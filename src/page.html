@@ -461,13 +461,69 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .dex-cell.rare { background: rgba(255,138,31,.16); }
 .dex-cell.locked .dex-ic svg { filter: brightness(0); opacity: .55; }
 .dex-cell.locked b { opacity: .5; }
+
+/* ===== 상점 팝업 (#26): 탭 도구·배낭·신발·옷, 장비는 5단계 한 줄 ===== */
+#shop .pop { width: min(520px, 100%); }
+#shop .pop-head { padding: 12px 12px 8px 16px; }
+#shop .shop-coins { font-size: 20px; } #shop .shop-coins i { width: 18px; height: 18px; }
+#shop .shop-coins.drain { animation: drain .5s ease-out; }
+@keyframes drain { 30% { transform: scale(.88); color: var(--gyul); } }
+#shop-close { width: 36px; height: 36px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+#shop-close svg { width: 18px; height: 18px; }
+.shop-tabs button span { font-size: 13px; }
+.gyul[role="button"], #chip-gyul { cursor: pointer; }
+.tiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 6px 0 4px; }
+.tier { position: relative; display: grid; justify-items: center; gap: 4px; padding: 10px 2px 8px; border: 1px solid var(--hair); border-radius: 16px; background: rgba(255,255,255,.06); color: #fff; font: inherit; min-width: 0; }
+.tier svg.art { width: 30px; height: 30px; }
+.tier .n { font-family: var(--display); font-weight: 800; font-size: 13px; white-space: nowrap; }
+.tier .st { position: absolute; top: -7px; right: -5px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #3d9a4a; color: #fff; box-shadow: 0 0 0 2px rgba(20,20,24,.8); }
+.tier .st svg { width: 12px; height: 12px; }
+.tier.own { background: rgba(61,154,74,.18); border-color: rgba(61,154,74,.5); }
+.tier.cur { box-shadow: inset 0 0 0 2px #3d9a4a; }
+.tier.next { border-color: var(--acc); background: rgba(255,138,31,.16); }
+.tier.next .st { background: var(--acc); }
+.tier.lock { opacity: .42; } .tier.lock .st { background: rgba(255,255,255,.25); }
+.tier[aria-pressed="true"] { outline: 2px solid #fff; outline-offset: 1px; }
+.tier .pr { display: flex; align-items: center; gap: 3px; font-family: var(--display); font-weight: 800; font-size: 12px; color: var(--ink-soft); }
+.tier.next .pr { color: var(--acc); }
+.tier .pr .g, .tier-buy .g { width: 11px; height: 11px; border-radius: 50%; background: var(--gyul); display: inline-block; }
+.tier-pop { animation: tierPop .5s ease-out; }
+@keyframes tierPop { 40% { transform: scale(1.14); } }
+.tier-detail { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-top: 10px; padding: 12px; border-radius: 18px; background: rgba(255,255,255,.07); }
+.tier-detail h3 { margin: 0 0 6px; font-family: var(--display); font-weight: 800; font-size: 17px; }
+.tier-stats { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.tier-stats span { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-weight: 800; font-size: 15px; }
+.tier-stats svg { width: 16px; height: 16px; opacity: .75; }
+.tier-stats em { font-style: normal; color: var(--acc); }
+.tier-stats s { color: var(--ink-soft); text-decoration: none; font-weight: 500; font-size: 13px; }
+.tier-buy { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 104px; min-height: 48px; border: 0; border-radius: 999px; background: var(--acc); color: var(--acc-fg); padding: 0 18px; font: inherit; font-family: var(--display); font-weight: 800; font-size: 18px; }
+.tier-buy .g { width: 15px; height: 15px; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 1.5px #fff; }
+.tier-buy.short { background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); }
+.tier-buy:disabled { background: rgba(255,255,255,.06); color: rgba(255,255,255,.5); }
+.tier-buy svg { width: 18px; height: 18px; }
+.fx-spend { position: fixed; z-index: 30; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--gyul); box-shadow: inset -3px -3px 0 rgba(0,0,0,.15), 0 0 0 2px #fff; pointer-events: none; transition: transform .55s cubic-bezier(.3,.7,.4,1), opacity .55s ease-in; }
+#shop-arrow { position: fixed; left: 0; top: 0; z-index: 15; width: 40px; height: 40px; margin: -20px 0 0 -20px; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 0; animation: hintPulse 1.1s ease-in-out infinite; }
+#shop-arrow[hidden] { display: none; }
+#shop-arrow .g { width: 18px; height: 18px; border-radius: 50%; background: var(--gyul); box-shadow: inset -3px -3px 0 rgba(0,0,0,.15); }
+#shop-arrow .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid var(--acc); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(28px); }
+@keyframes hintPulse { 50% { box-shadow: 0 0 0 6px rgba(255,138,31,.35); } }
+@media (max-width: 600px) {
+  #chip-gyul { display: flex; align-items: center; gap: 6px; margin: -6px -2px -6px -6px; padding: 6px 2px 6px 6px; }
+  #shop.overlay { place-items: end stretch; padding: 0; }
+  #shop .pop { width: 100%; max-height: 86%; border-radius: 24px 24px 0 0; padding-bottom: var(--safe-b); animation: sheetUp .22s ease-out; }
+  #shop .pop-head { padding: 10px 12px 6px 16px; }
+  .shop-tabs { padding: 8px 12px 0; } .shop-tabs button { flex-direction: column; gap: 2px; padding: 7px 4px; border-radius: 14px; } .shop-tabs button span { font-size: 11px; }
+  .tiers { gap: 4px; } .tier { padding: 9px 0 7px; border-radius: 13px; } .tier svg.art { width: 26px; height: 26px; } .tier .n { font-size: 12px; }
+  .tier-detail { grid-template-columns: 1fr; } .tier-buy { width: 100%; min-height: 54px; }
+}
+@media (prefers-reduced-motion: reduce) { #shop-arrow, .tier-pop, #shop .shop-coins.drain { animation: none; } .fx-spend { transition: none; } }
 </style>
 
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
 
 <div class="hud hud-left">
   <div class="panel place" data-tut="hud"><b id="place-name">다랑쉬오름</b><small id="nick">러너</small><small class="peers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15 20c0-3 1.5-5 4-5 1.5 0 2.5.5 3 1"/></svg><span id="peers">혼자</span></small></div>
-  <div class="panel gyul" data-tut="gyul" title="귤: 길에서 줍고, 업적 보상으로 받아요"><i></i><span id="coins">0</span></div>
+  <div class="panel gyul" data-tut="gyul" role="button" tabindex="0" title="상점"><i></i><span id="coins">0</span></div>
   <div class="panel tpill" id="wx-pill" hidden></div>
   <div id="trash-hud" hidden>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
@@ -477,7 +533,8 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   <button type="button" id="btn-cancelreq" class="panel icon-btn" hidden><span>신청 취소</span></button>
 </div>
 <div id="ch-arrow" class="panel round" hidden aria-hidden="true" title="클린하우스 쪽"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg><i class="tip"></i><small></small></div>
-<button type="button" id="ach-chip" class="panel" data-tut="hud" title="오늘의 업적"><svg class="dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg><span class="label">오늘의 업적</span><i class="g ph"></i><span id="coins2" class="ph">0</span><i class="sep ph"></i><svg class="ring ph" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.22)" stroke-width="3.2"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.2" stroke-dasharray="0 56.5"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
+<div id="shop-arrow" class="panel round" hidden aria-hidden="true"><i class="g"></i><i class="tip"></i></div>
+<button type="button" id="ach-chip" class="panel" data-tut="hud" title="오늘의 업적"><svg class="dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg><span class="label">오늘의 업적</span><span id="chip-gyul" class="ph" title="상점"><i class="g"></i><span id="coins2">0</span></span><i class="sep ph"></i><svg class="ring ph" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.22)" stroke-width="3.2"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.2" stroke-dasharray="0 56.5"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
 <div id="sun-chip" class="panel" hidden></div>
 <div class="hud hud-right">
   <div class="panel status" data-tut="hud">
@@ -604,11 +661,13 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 </aside>
 
 <div class="overlay dim" id="shop" hidden>
-  <div class="panel pop">
-    <div class="pop-head"><h2>용품점</h2><span class="coins-pill"><i></i><span id="shop-coins">0</span></span><button type="button" class="btn small" id="shop-close">닫기</button></div>
+  <div class="panel pop" role="dialog" aria-label="상점">
+    <div class="pop-head"><span class="coins-pill shop-coins"><i></i><span id="shop-coins">0</span></span><button type="button" class="btn small" id="shop-close" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="shop-tabs" id="shop-tabs">
-      <button type="button" data-tab="gear" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M7 21l5-7 5 7M12 14v4"/></svg>장비</button>
-      <button type="button" data-tab="wear" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4l4 2 4-2 4 3-2 4-2-1v10H8V10l-2 1-2-4z"/></svg>옷</button>
+      <button type="button" data-tab="tool" aria-pressed="true" title="도구"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M7 21l5-7 5 7M12 14v4"/></svg><span>도구</span></button>
+      <button type="button" data-tab="bag" aria-pressed="false" title="배낭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM9 8V6a3 3 0 0 1 6 0v2M9 14h6"/></svg><span>배낭</span></button>
+      <button type="button" data-tab="shoes" aria-pressed="false" title="신발"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17h17a1 1 0 0 0 1-1v0a3 3 0 0 0-3-3h-3l-3-4H5L3 13zM3 17v2h18v-2"/></svg><span>신발</span></button>
+      <button type="button" data-tab="wear" aria-pressed="false" title="옷"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4l4 2 4-2 4 3-2 4-2-1v10H8V10l-2 1-2-4z"/></svg><span>옷</span></button>
     </div>
     <div id="shop-body" class="pop-body"></div>
   </div>
