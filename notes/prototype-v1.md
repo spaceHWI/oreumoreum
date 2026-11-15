@@ -264,3 +264,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 덩어리 `WALL.chunk`(8조각)마다 가까이용·멀리용 InstancedMesh 두 벌(같은 행렬). `lodR`(70, LOW 50) 안은 가까이용, `nearR`(230/150) 안은 멀리용, 그 밖은 예전 띠. 안쪽 돌담(`createCrossWall`)도 같은 조각·같은 덩어리, `jeong.lod(pos)` 로 가까이/멀리(띠 없음, 늘 보임)
 - 재질: 멧돼지처럼 MeshToon+gradHard + 텍스처 색에 비례한 자체 빛 `WALL.glow`(0.16) → 밤에 덜 뭉개짐. 정주석은 예전 구멍 무늬 그대로
 - 충돌은 예전처럼 조각마다 `col.addBox`(반두께 0.42). 테스트: `__oreum.wall.tris()`, `__oreum.jeong.tris()` (지금 보이는 돌담 삼각형)
+
+## 클린하우스 자동 걸어가기 (#40)
+- `src/autowalk.js`: 탐방로 선(nsPaths)을 그래프로 만들어(노드 ≤8 간격, 다른 선과 6 안이면 이음) Dijkstra 로 가장 가까운 길을 따라가는 경유점을 만든다. 직선이 더 짧으면 직선
+- 화면의 집 모양 표시(`#ch-arrow`)는 클린하우스에서 14m 이상 떨어져 있으면 늘 보임(배낭이 차면 귤색 `.full`, 가는 중엔 점선 `.going`). 누르면 `startAutoGo()`, 가는 중 다시 누르거나 조이스틱·방향키·패널·쓰러짐이면 `stopAutoGo()`
+- 경유점은 `player.target` 으로 하나씩 넘김(2.4m 안이면 다음). 도착하면 멈추기만 하고 버리기는 직접. 사물에 막혀 못 나아가면 기존 탭 이동의 stuck 처리로 멈춤(정낭이 닫혀 있으면 거기서 멈춤)
+- 확인용: `__oreum.cleanhouse.autoGo()/autoStop()/autoState()`
