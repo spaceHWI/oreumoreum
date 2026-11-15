@@ -167,3 +167,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 버리기 연출이 끝났을 때 살 수 있는 장비가 있으면 CLEANHOUSE.shopHint(8)초 동안 #shop-arrow 가 가판대를 가리킴(가판대 앞에 오거나 상점을 열면 끝). 화살표 위치 계산은 placeArrow 로 클린하우스 화살표와 같이 씀
 - 폰(폭 600 이하): 아래에서 올라오는 시트, 구매 버튼은 폭 가득 54px
 - 확인용: __oreum.cleanhouse.openShop / buyGear(k) / canBuyGear() / shopHint()
+
+## 캐릭터 텍스처 이음매 정리 (#27)
+- 원인: ① `lo4.glb` 굽기 여백이 8px 뿐이고 그 밖은 검정 → 멀리서(밉맵) 섬 가장자리가 어둡게 번짐 ② #24 볼터치 덮기에서 섬 가장자리를 따라 분홍 테두리가 남아 볼 근처 이음매에 선처럼 보임 ③ 이음매 양쪽 굽기 색이 조금씩 다름. 법선 불연속은 얼굴엔 없음(모자 챙·옷깃 몇 곳만)
+- `model/fixseams.py`: 얼굴 앞(|x|<0.235, y 0.55~0.82, 앞면) 피부·분홍 텍셀은 밝기만 두고 색을 피부색으로 → 같은 3D 모서리를 가진 UV 모서리 쌍을 따라 안쪽 1.2px 색을 비교해 차이(RGB 합 50 미만은 전부, 100 넘으면 원래 색 경계로 보고 그대로)의 반씩을 양쪽 섬 안으로 가우스(σ3)로 번지게 → 섬 밖 모든 텍셀을 가장 가까운 섬 색으로 채움. 결과 `model/tex5.jpg`
+- 다시 만들기: `python3 model/fixseams.py model/lo4.glb model/tex4.jpg model/tex5.jpg && node model/extract.js model/lo4.glb model/params.json model/tex5.jpg`
+- 확인용 `tools/face.js <이름>` → `dist/face-<이름>-{close,far}.png` (정면·옆·3/4·뒤)
+- `ca39651`(기획 커밋)에서 `runnermodel.js` 가 #24 이전 텍스처(볼터치 있음)로 되돌아가 있었음 → 이번에 tex5 로 다시 만들며 함께 바로잡음
