@@ -270,3 +270,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 화면의 집 모양 표시(`#ch-arrow`)는 클린하우스에서 14m 이상 떨어져 있으면 늘 보임(배낭이 차면 귤색 `.full`, 가는 중엔 점선 `.going`). 누르면 `startAutoGo()`, 가는 중 다시 누르거나 조이스틱·방향키·패널·쓰러짐이면 `stopAutoGo()`
 - 경유점은 `player.target` 으로 하나씩 넘김(2.4m 안이면 다음). 도착하면 멈추기만 하고 버리기는 직접. 사물에 막혀 못 나아가면 기존 탭 이동의 stuck 처리로 멈춤(정낭이 닫혀 있으면 거기서 멈춤)
 - 확인용: `__oreum.cleanhouse.autoGo()/autoStop()/autoState()`
+
+## 개울 다듬기 (#41) — 돌담 밖까지·떠내려가다 낚이기·징검돌 크게
+- `src/streamshape.js`: 개울 모양 한곳. lat(하류 +, 시작에서 오름을 볼 때 왼→오른쪽)마다 `centerOff`(굽이: 징검다리 둘레 `STREAM.flatLat` 안은 0, 돌담 안 3, 밖 멀리 14) · `halfW`(가운데 6.6 → 그 밖 3.4±, 돌담 근처 `wallW` 2.4). 같은 식을 `STREAM_GLSL` 로 풀 셰이더(`noStream(…, walls)`)에서도 씀. `streamCross(line, insideBy)` = 물길이 바깥 돌담과 만나는 lat 둘·점
+- `stream.js`: 물길 띠를 lat ±`STREAM.far`(300, 돌담 밖 원경)까지. 바닥은 정점 색(물 밑 어둡게 → 물가 자갈 띠 → 땅으로 흐려짐, 투명), 물 면 셰이더 잔물결·줄무늬가 `STREAM.flow` 로 하류로 밀림. 물가 자갈·풀포기 InstancedMesh(`near` 70 안), 떠가는 나뭇잎(`leaves`, 160 안에서만 갱신)
+- 수문: `createStoneWall({ arches })` 가 물길에서 `w+1` 안의 돌담 조각을 비우고(충돌 박스는 남김) `buildArch` — 돌 판(ExtrudeGeometry, 구멍 `archOpen` 폭마다 하나, 사이 기둥) + 창살. 사람은 못 지나감
+- 징검돌: 3개, 반지름 1.08(1.8배), 가운데 간격 3.9(물 간격 ≈1.7 = 걷다 뛴 거리 3.3 의 절반), 윗면 평평한 원기둥. 디딤 범위는 `addWalkable(…, round=true)`(타원) 반지름 `stoneWalk` 1.24
+- 빠짐: sink(`sinkT`) → drift(허우적 `pose 'flail'`, 하류로 `flow`, 최대 `driftMax`) → catch(찌가 몸에, 물보라, `audio.bite`, 낚시꾼 들썩 + '!' 스프라이트, `catchT`) → reel(`TUT.rescueT` 포물선) → 징검다리 건너기 전 자리(`near(lastSide, 0)`). 낚시꾼 찌(lat 6.1)보다 2.5~14 위에서 빠지면 찌까지 떠내려오고, 아니면 낚시꾼이 빠진 곳 하류 3 에 찌를 옮겨 둠. 징검다리에서 빠지면 약 3.6초. 확인용 `__oreum.stream.phase`·`inWater`·`at(al, lat)`
+- 점프 발 높이: `tickJump` 가 공중에서 발밑 디딤판 높이(groundAt − height)가 바뀐 만큼 `jumpY` 를 보정(`player.airOff`) → 돌에서 물 위로 뛸 때 툭 내려가지 않음(비탈은 그대로)
+- 임시: 수문·징검돌·자갈·풀·나뭇잎은 로우폴리. 물길은 땅 높이를 따라가서 돌담 밖 먼 곳은 오르내림이 있음. 탐방객 NPC·노루는 여전히 개울을 그냥 지나감

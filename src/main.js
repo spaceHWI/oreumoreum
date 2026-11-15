@@ -6,6 +6,7 @@ import { dexIcon } from './dexicons.js';
 import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW } from './balance.js';
 import { createHp } from './hp.js';
 import { createStream } from './stream.js';
+import { streamCross } from './streamshape.js';
 import { createCollide } from './collide.js';
 import { equipGear, TOOL_GEAR } from './gear.js';
 import { createCleanhouse } from './cleanhouse.js';
@@ -344,11 +345,12 @@ if (col) {
 }
 // ---------- 현무암 돌담 경계 (#25, 남송이만) ----------
 const wallPl = { value: new THREE.Vector3() };
-const wall = NSW ? createStoneWall({ scene, height, line: NSB.boundLine, gate: NSB.gate, low: LOW, col, uPl: wallPl }) : null;
+const STREAM_LINE = NSW && spots.tut?.stream ? NSB.crossLine(TUT.streamD) : null, STREAM_X = STREAM_LINE ? streamCross(STREAM_LINE, NSB.insideBy) : null; // 개울이 돌담 밑을 지나는 곳 (#41)
+const wall = NSW ? createStoneWall({ scene, height, line: NSB.boundLine, gate: NSB.gate, low: LOW, col, uPl: wallPl, arches: STREAM_X ? STREAM_X.pts : [] }) : null;
 // ---------- 들머리(#31): 개울·징검다리·낚시 NPC, 들머리와 오름 사이 돌담·정낭 ----------
 const NS_TUT = NSW && spots.tut?.stream ? spots.tut : null;
-const stream = NS_TUT ? createStream({ scene, height, groundAt, addWalkable, line: NSB.crossLine(TUT.streamD), buildRunner, outfit: DEFAULT_OUTFIT, low: LOW, sound: { splash: () => sound.splash(), reel: (d) => sound.reel(d) } }) : null;
-if (stream) { const L = NSB.crossLine(TUT.streamD); NSW.grass.noStream?.(L.c.x, L.c.z, L.fx, L.fz, TUT.streamW); }
+const stream = NS_TUT ? createStream({ scene, height, groundAt, addWalkable, line: STREAM_LINE, walls: STREAM_X.lats, buildRunner, outfit: DEFAULT_OUTFIT, low: LOW, sound: { splash: () => sound.splash(), reel: (d) => sound.reel(d) } }) : null;
+if (stream) { const L = STREAM_LINE; NSW.grass.noStream?.(L.c.x, L.c.z, L.fx, L.fz, TUT.streamW, STREAM_X.lats); }
 const jeongReady = () => save.equip.tool >= 2 && save.equip.bag >= 1;
 if (stream && col) col.add(stream.npcPos[0], stream.npcPos[1], 0.6); // 낚시 NPC·앉은 바위
 const jeong = NS_TUT ? createCrossWall({ scene, height, line: NSB.crossLine(TUT.gateD), low: LOW, col, open: !!save.jeong || !!save.tut?.done || jeongReady() }) : null;
@@ -840,9 +842,13 @@ function doJump() {
 }
 $('btn-jump').addEventListener('click', doJump);
 function tickJump(dt) {
-  const p = player; if (!p.air) return;
+  const p = player; if (!p.air) { p.airOff = null; return; }
+  // 공중에서 발밑 디딤판(징검돌·계단) 높이가 바뀌어도 몸 높이는 그대로 (#41: 돌에서 물 위로 뛸 때 툭 내려가던 것)
+  const off = groundAt(p.pos.x, p.pos.z) - height(p.pos.x, p.pos.z);
+  if (p.airOff != null) p.jumpY += p.airOff - off;
+  p.airOff = off;
   p.jumpV -= GRAV * dt; p.jumpY += p.jumpV * dt;
-  if (p.jumpY <= 0) { p.jumpY = 0; p.jumpV = 0; p.air = false; sound.step(surfaceAt(p.pos.x, p.pos.z), true); }
+  if (p.jumpY <= 0) { p.jumpY = 0; p.jumpV = 0; p.air = false; p.airOff = null; sound.step(surfaceAt(p.pos.x, p.pos.z), true); }
 }
 
 // 호흡
@@ -1935,7 +1941,7 @@ function frame(now) {
   tickPhoto(dt);
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
-  const pose = player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose;
+  const pose = player.flail ? 'flail' : player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time });
