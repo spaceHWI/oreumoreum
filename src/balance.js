@@ -78,3 +78,10 @@ export const ACH = {
   topPick: { goal: 20 }, // 정상 근처에서 줍기
   sunPick: { goal: 10 }, // 해돋이·해넘이 때 줍기
 };
+
+// 소원 돌탑: 한 사람당 돌 하나, 최대 이만큼까지 그림
+export const CAIRN = {
+  max: 2000, step: 0.2, // 돌 하나가 올리는 높이
+  bend: 40, bendH: 300, // 맨 위로 갈수록 휘는 정도(m)와 기준 높이
+  farD: 90, // 이 거리보다 멀면 돌을 건너뛰어 단순하게 그림
+};

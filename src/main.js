@@ -2,7 +2,7 @@ import { NSMODE, TEXCS } from './boot.js'; // 반드시 맨 먼저
 import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE, DEX } from './balance.js';
+import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN } from './balance.js';
 import { equipGear } from './gear.js';
 import { createCleanhouse } from './cleanhouse.js';
 import { gradHard } from './toon.js';
@@ -231,35 +231,62 @@ const life = createLife({ scene, onToast: (m) => toast(m), rnd, hooks: {}, spots
 spots.hareubangs.forEach((h) => life.addHareubang(h.pos, h.heading));
 if (!spots.sign.silent) { const sg = buildSign(spots.sign.board); sg.position.copy(spots.sign.pos); sg.rotation.y = spots.sign.rot; scene.add(sg); }
 
-// 소원 돌탑: 바닥 돌 3개 위로 모두의 돌이 쌓임 (한 사람당 돌탑마다 하나)
-const STACK_MAX = 90;
+// 소원 돌탑: 바닥 돌 3개 위로 모두의 돌이 쌓임 (한 사람당 돌탑마다 하나, 다시 올리면 맨 위로)
+const STACK_MAX = CAIRN.max;
 const cairns = [];
 const stoneGeo = new THREE.DodecahedronGeometry(0.3, 0);
-spots.cairns.forEach((cd) => {
+const stoneMat = new THREE.MeshToonMaterial({ color: '#ffffff', gradientMap: gradHard });
+spots.cairns.forEach((cd, ci) => {
   const g = new THREE.Group(); g.position.copy(cd.pos); scene.add(g);
   let y = 0;
   [1.0, 0.82, 0.66].forEach((s, i) => { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), lam(basalt[i])); m.scale.y = 0.55; m.rotation.y = i * 1.3; m.position.y = y + s * 0.5; y += s * 0.8; m.castShadow = true; m.receiveShadow = true; g.add(m); });
-  const im = new THREE.InstancedMesh(stoneGeo, new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true }), STACK_MAX);
-  im.count = 0; im.castShadow = true; g.add(im);
-  cairns.push({ ...cd, group: g, base: y, im, count: 0, drop: 0 });
+  const im = new THREE.InstancedMesh(stoneGeo, stoneMat, STACK_MAX);
+  im.count = 0; im.castShadow = false; im.frustumCulled = false; g.add(im);
+  cairns.push({ ...cd, group: g, base: y, im, count: 0, drop: 0, lean: ci * 2.1 + 0.7, n: 0, P: new Float32Array(STACK_MAX * 3), Q: new Float32Array(STACK_MAX * 4), S: new Float32Array(STACK_MAX), C: new Uint8Array(STACK_MAX), stride: 0 });
 });
-const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), eul = new THREE.Euler(), colr = new THREE.Color();
+const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), eul = new THREE.Euler(), colr = new THREE.Color(), tv = new THREE.Vector3(), ts = new THREE.Vector3();
 function layoutCairn(c) {
   const list = social.stones.get(c.id) || [];
   const n = Math.min(STACK_MAX, list.length);
   let y = c.base;
+  const cx = Math.cos(c.lean), cz = Math.sin(c.lean);
   for (let i = 0; i < n; i++) {
     const e = list[list.length - n + i];
     const s = 0.85 + ((i * 37) % 10) / 30;
-    const r = Math.max(0.05, 0.22 - i * 0.002);
+    const h = y - c.base;
+    // 위로 갈수록 한쪽으로 휘고 살짝 흔들림
+    const bend = Math.pow(h / CAIRN.bendH, 1.5) * CAIRN.bend, sway = Math.sin(h * 0.11 + c.lean) * 0.28 * Math.min(1, h / 15);
+    const jx = Math.sin(i * 2.4) * 0.07, jz = Math.cos(i * 2.4) * 0.07;
     eul.set(0.2 * Math.sin(i * 1.7), i * 2.1, 0.2 * Math.cos(i * 1.3)); q.setFromEuler(eul);
-    mtx.compose(new THREE.Vector3(Math.sin(i * 2.4) * r, y + 0.13 * s, Math.cos(i * 2.4) * r), q, new THREE.Vector3(s, s * 0.6, s));
-    c.im.setMatrixAt(i, mtx);
-    colr.set(e.mine ? '#a89a82' : basalt[i % 4]); c.im.setColorAt(i, colr);
-    y += 0.2 * s;
+    c.P[i * 3] = cx * bend - cz * sway + jx; c.P[i * 3 + 1] = y + 0.13 * s; c.P[i * 3 + 2] = cz * bend + cx * sway + jz;
+    c.Q[i * 4] = q.x; c.Q[i * 4 + 1] = q.y; c.Q[i * 4 + 2] = q.z; c.Q[i * 4 + 3] = q.w;
+    c.S[i] = s; c.C[i] = e.mine ? 255 : i % 4;
+    y += CAIRN.step * s;
   }
-  c.im.count = n; c.im.instanceMatrix.needsUpdate = true; if (c.im.instanceColor) c.im.instanceColor.needsUpdate = true;
-  c.top = y; c.count = list.length;
+  c.n = n; c.stride = 0; c.top = y; c.count = list.length;
+  fillCairn(c, 1);
+}
+const mineCol = new THREE.Color('#c9b48a');
+const basaltCols = basalt.map((b) => new THREE.Color(b));
+// 먼 돌탑은 돌을 건너뛰어 크게 그려 단순하게 (stride 1 = 전부)
+function fillCairn(c, stride) {
+  if (c.stride === stride) return;
+  c.stride = stride;
+  let k = 0;
+  const big = stride > 1 ? 1 + (stride - 1) * 0.45 : 1;
+  for (let i = 0; i < c.n; i += stride) {
+    q.set(c.Q[i * 4], c.Q[i * 4 + 1], c.Q[i * 4 + 2], c.Q[i * 4 + 3]);
+    const s = c.S[i] * big;
+    mtx.compose(tv.set(c.P[i * 3], c.P[i * 3 + 1], c.P[i * 3 + 2]), q, ts.set(s, s * 0.6 * (stride > 1 ? stride * 0.7 : 1), s));
+    c.im.setMatrixAt(k, mtx);
+    c.im.setColorAt(k, c.C[i] === 255 ? mineCol : basaltCols[c.C[i]]); k++;
+  }
+  c.im.count = k; c.im.instanceMatrix.needsUpdate = true; if (c.im.instanceColor) c.im.instanceColor.needsUpdate = true;
+}
+let cairnLodT = 0;
+function tickCairnLod(dt) {
+  cairnLodT -= dt; if (cairnLodT > 0) return; cairnLodT = 0.5;
+  cairns.forEach((c) => { if (!c.n) return; const d = Math.hypot(camera.position.x - c.pos.x, camera.position.z - c.pos.z); fillCairn(c, d > CAIRN.farD ? (LOW ? 5 : 3) : 1); });
 }
 
 // ---------- 쓰레기 (남송이) ----------
@@ -706,8 +733,8 @@ function openWishes(c) {
   const list = social.stones.get(c.id) || [];
   const mine = list.find((e) => e.mine);
   $('wish-title').textContent = c.name;
-  $('wish-count').textContent = list.length ? `돌 ${list.length}개가 쌓여 있어요. 한 사람당 돌 하나씩이에요.` : '아직 아무도 돌을 올리지 않았어요. 첫 돌을 올려 보세요.';
-  $('wish-submit').textContent = mine ? '소원 바꾸기' : '돌 올리기';
+  $('wish-count').textContent = list.length ? `돌 ${list.length}개가 쌓여 있어요. 한 사람당 돌 하나, 다시 올리면 맨 위로 옮겨져요.` : '아직 아무도 돌을 올리지 않았어요. 첫 돌을 올려 보세요.';
+  $('wish-submit').textContent = mine ? '맨 위로 다시 올리기' : '돌 올리기';
   $('wish-input').value = mine?.wish || '';
   $('wish-solo').hidden = social.canWrite;
   const box = $('wish-list'); box.innerHTML = '';
@@ -1512,6 +1539,7 @@ function frame(now) {
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time });
   marker.rotation.z += dt;
+  tickCairnLod(dt);
   cairns.forEach((c) => { if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
   clouds.rotation.y += dt * 0.012;
   { // 나침반: 화면이 보는 방향 기준으로 다이얼 회전 (북쪽 = -z)
@@ -1609,5 +1637,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

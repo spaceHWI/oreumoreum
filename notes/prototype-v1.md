@@ -102,3 +102,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 도감: balance.js DEX(흔한 4×5종 + 드문 2×5종 = 30종, 드문 확률 1/400, 귤 +20). 주울 때 trash.take 가 무작위로 정함(드문 것은 그 종류 안에서). 저장은 save.trash.dex(id→수, 예전 저장엔 없으면 {}) — trash 저장소에만 있음. 처음 얻으면 토스트·ach 'dex' 이벤트, 드문 것은 줍을 때마다 귤 +20
 - 패널 #dex(메뉴 '도감'·업적 창 머리 버튼): 격자, 못 얻은 것은 실루엣·???, 드문 것은 귤빛 칸. 아이콘 dexicons.js(종류별 기본 모양 + 칸마다 색·장식, 드문 것 10개 개별)
 - 테스트: window.__oreum.trash.dexForce(id)·dex()·dexList·openDex·checkGearBadges
+
+## 돌탑 개편 (#12)
+- 남송이 돌탑 3개(`ns-head` 들머리·`ns-ridge` 능선·`ns-rim` 정상). 한 사람당 돌탑마다 돌 하나, 다시 올리면 `at` 이 갱신돼 맨 위로 옮겨짐(social.placeStone)
+- 수치는 `balance.js` 의 `CAIRN`(max 2000, step, bend, farD). main.js 의 InstancedMesh(툰 재질) 하나에 돌을 쌓고, 위로 갈수록 휘고 흔들림. 멀면(farD) 돌을 건너뛰어 크게 그림(`fillCairn` stride, LOW 는 5)
+- 이전 id(`ns-crater`)로 올린 돌은 더 이상 표시되지 않음
