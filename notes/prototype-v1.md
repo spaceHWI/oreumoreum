@@ -178,3 +178,4 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## 돌탑 100개 제한 (#28)
 - `balance.js` CAIRN: `max` 2000→100, `step` 0.042, `stoneSize` 0.55(돌 크기 배율), `bend`/`bendH` 2.5/5. 100개일 때 밑돌 약 2m + 쌓인 돌 약 4.2m = 약 6.2m
 - 100개가 넘으면 `layoutCairn` 이 최신 100개만 그림(`list.slice(-n)`) → 가장 오래된 돌이 빠지고, 내 돌은 `at` 갱신으로 맨 위. 서버(db) 데이터는 지우지 않음. 흔들림 주기도 짧은 탑에 맞게 조정
+- 멧돼지 비탈 기울기(#29): `life.js` updateBoar 가 앞뒤·좌우 땅 높이 차로 pitch/roll 을 구해 `root.rotation`(YXZ)에 부드럽게 적용(한계 0.6rad). 다리 묻힘은 그대로.
