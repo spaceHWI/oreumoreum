@@ -224,3 +224,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 깨끗한 오름에서는 멧돼지가 안 나옴(`life.js spawnBoar`, 테스트 spawn 도 막힘)
 - A/B 기록: 저장 키 `KEY + '.ab'`(처음부터 다시 해도 남음)에 서버별 visits·sec·picked, 고른 기록 50개. `window.__oreum.abStats()`, `__oreum.server`(id, isBattle, open)
 - `tools/err.js` 는 첫 카드를 고르고 입장하도록 고침
+
+## HP·쓰러짐·들것 귀환 (#36, 전투 오름만)
+- `src/hp.js` `createHp`: `enabled()` = `isBattle() && sessionOn`. 깨끗한 오름에선 막대 숨김·피해 없음. 수치는 `balance.js HP`
+- 멧돼지에 받히면 `boarHit` 에서 `hp.hit(HP.boarDmg)`(25). 넉백·귤 흩뿌리기(#32)는 그대로. `regenDelay`(8초) 동안 안 맞으면 초당 5 회복. HP 는 저장하지 않음(새로고침하면 가득)
+- HP 0 → `pending` → 넉백이 땅에 닿아 구르기까지 끝나면 `tryBegin` → 단계 fall(뒤로 눕기, 머리가 시작 지점 쪽) → come(흰 옷 두 사람이 빈 들것을 들고 시작 지점 쪽에서 걸어옴) → load → carry(화면 0.55→검정) → black(시작 지점으로 옮김) → wait(들것에 누워 원형 게이지 `#hp-wait`) → rise(HP 가득) → 두 사람은 빈 들것을 들고 떠남(`leaveT`)
+- 누운 몸은 `hp.lie {ang, y}` 를 `placeRunner` 가 knock 과 같은 방식(축 = heading 의 오른쪽)으로 적용. 쓰러진 동안 `busy()`·`pickBlocked`·`doInteract` 막힘, `updatePlayer` 는 바로 돌아감. `player.down` 이면 멧돼지는 달아나고 몸 충돌 없음
+- 대기: `save.hpDown = {n, at}` — 쓰러질 때 `at` 에서 `resetSec`(180초) 지났으면 n=0, 아니면 n+1 (`waits` 5·10·20·30). 일어날 때도 `at` 갱신
+- `runner.js` 에 pose `'carry'`(carry +1 앞사람 손 뒤로, −1 뒷사람 손 앞으로)
+- UI: `#hp-bar`(하트+막대, 위 가운데, `.low` 깜빡임, `.hit` 흔들림), `#hp-dim`, `#hp-wait`. `body.hp-on` 이면 해 칩·토스트·배너를 아래로, `body.hp-down` 이면 튜토리얼 힌트·화살표 숨김
+- 업적 이벤트 `down`. 확인용 `__oreum.hp`(hp, phase, waitSec, streak, set(v), kill(), resetStreak())
+- 임시: 들것·두 사람은 로우폴리·기존 캐릭터(흰 재킷·흰 모자). 실어 갈 때 충돌 없이 곧장 시작 지점 쪽으로 감(돌담을 지나칠 수 있음, 화면이 어두워지는 동안)

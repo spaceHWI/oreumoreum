@@ -3,7 +3,8 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP } from './balance.js';
+import { createHp } from './hp.js';
 import { createStream } from './stream.js';
 import { createCollide } from './collide.js';
 import { equipGear } from './gear.js';
@@ -367,6 +368,11 @@ const player = {
   visY: 0, lapAcc: 0, lapPrevA: null, laps: 0, viewSeen: false,
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
+// ---------- HP·쓰러짐·들것 귀환 (#36, 전투 오름만) ----------
+const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, enabled: () => isBattle() && sessionOn,
+  el: { bar: $('hp-bar'), fill: $('hp-fill'), dim: $('hp-dim'), wait: $('hp-wait'), ring: $('hp-ring'), num: $('hp-num') },
+  onDown: () => { closePanels(); if (player.riding) dismountDeer(); if (player.pose === 'sit') standUp(); if (player.pose === 'breath') stopBreath(); ach.emit('down'); },
+});
 
 // ---------- 카메라 ----------
 const cam = { yaw: player.heading + Math.PI, pitch: 0.32, dist: 13, mode: 'follow', look: new THREE.Vector3(), pos: new THREE.Vector3() };
@@ -412,7 +418,7 @@ function updateStats() {
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
-const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen() || !!player.rescue;
+const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
 function cancelAll() {
   closePanels();
@@ -987,7 +993,7 @@ const dismountAct = { label: '노루에서 내리기', ic: 'down', act: () => di
 const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
 // 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
 const throwAct = { label: '귤 던지기', ic: 'throw', act: () => throwTangerine() };
-function doInteract() { if (ctxTarget) ctxTarget.act(); }
+function doInteract() { if (ctxTarget && !hp.isDown && !hp.pending) ctxTarget.act(); }
 ui.ctx.addEventListener('click', doInteract);
 ui.ctx.addEventListener('contextmenu', (e) => e.preventDefault());
 // 줍기 (E·줍기 버튼): 누르고 있는 동안 계속
@@ -1005,7 +1011,7 @@ const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
 const canPick = () => !!trash && !player.riding && !player.air && trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom());
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 들머리 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
-const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air || !!player.rescue;
+const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air || !!player.rescue || hp.isDown || hp.pending;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
@@ -1439,6 +1445,7 @@ sound.forest = MAP_ID === 'donnaeko';
 life.bind(player, sound);
 life.hooks.boarHit = (dir) => {
   if (player.air && player.jumpV > 0) return;
+  if (hp.isDown || hp.pending) return;
   if (player.riding) dismountDeer();
   player.kb.copy(dir).multiplyScalar(BOAR.knockSpeed); player.air = true; player.jumpV = BOAR.knockV; player.jumpY = 0.01;
   player.target = null; marker.visible = false; player.pose = 'move';
@@ -1446,7 +1453,8 @@ life.hooks.boarHit = (dir) => {
   // 가진 귤의 일부가 주변에 흩어짐 (#32): 가진 귤의 10%(3~15개), 가진 것보다 많이는 안 흩어짐
   const n = Math.min(save.coins, Math.max(SCATTER.min, Math.min(SCATTER.max, Math.round(save.coins * SCATTER.frac))));
   if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
-  sound.stone(); toast(n > 0 ? `멧돼지에 받혔어요! 귤 ${n}개가 흩어졌어요` : '멧돼지에 받혔어요! 귤을 던지면 도망가요');
+  const downed = hp.hit(HP.boarDmg); // 전투 오름만 (#36). 0 이 되면 넉백이 끝난 뒤 쓰러짐
+  sound.stone(); if (downed) return; toast(n > 0 ? `멧돼지에 받혔어요! 귤 ${n}개가 흩어졌어요` : '멧돼지에 받혔어요! 귤을 던지면 도망가요');
 };
 // 받혀 날아가 구르고 일어나는 동안(#32) 조작 잠금. 날 때 뒤로 눕고 → 착지 뒤 구르고 → 일어남
 function tickKnock(dt) {
@@ -1592,6 +1600,7 @@ if (Object.keys(ach.state.visited).length >= 2 && !ach.state.badges['b-both']) a
 function updatePlayer(dt) {
   const p = player;
   p.poseT += dt;
+  if (hp.isDown) { marker.visible = false; placeRunner(dt); return; } // 쓰러져 들것에 실려 가는 중 (#36)
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
   if (p.pose === 'wave' && p.poseT > 2.2) p.pose = 'move';
   const aiming = p.pose === 'throw' && !!throwAim;
@@ -1740,6 +1749,7 @@ function placeRunner(dt = 1) {
   runner.root.position.copy(player.pos); runner.root.position.y = player.visY + player.jumpY;
   runner.root.rotation.y = player.heading;
   { const k = player.knock; if (k && k.ang > 0.001) { runner.root.rotation.y = player.heading + k.spin; _ka.set(k.ax, 0, k.az).normalize(); _kq.setFromAxisAngle(_ka, k.ang); runner.root.quaternion.premultiply(_kq); } }
+  { const L = hp.lie; if (L.ang > 0.001) { const h = player.heading; _ka.set(-Math.cos(h), 0, Math.sin(h)); _kq.setFromAxisAngle(_ka, L.ang); runner.root.quaternion.premultiply(_kq); runner.root.position.y += L.y; } } // 뒤로 누움 (#36)
   followLight();
 }
 const shadowFocus = new THREE.Vector3(), camFwd = new THREE.Vector3();
@@ -1782,6 +1792,7 @@ const tmpDir = new THREE.Vector3(); const compassDial = document.getElementById(
 function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
+  hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
@@ -1898,5 +1909,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { abStats: () => ab.get(), server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

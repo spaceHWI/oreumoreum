@@ -405,6 +405,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     const to = player.pos.clone().sub(b.pos).setY(0); const d = to.length();
     if (!b.warned && d < 40) { b.warned = true; hooks.boarAppear?.(); sound.boar?.(); }
     let want = 0;
+    if (player.down && !b.fleeing) b.fleeing = true; // 쓰러뜨리면 숲으로 돌아감 (#36)
     if (b.fleeing) { want = 9; b.heading = Math.atan2(-to.x, -to.z) + Math.sin(time * 2) * 0.3; }
     else if (d < 70) { want = d > 3 ? 7.2 : 2; turnTo(b, Math.atan2(to.x, to.z), Math.min(1, dt * 3)); }
     else { want = 3; if (Math.random() < dt * 0.3) b.heading += (rnd() - 0.5) * 1.5; }
@@ -426,7 +427,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     const charge = !b.fleeing && b.speed > 4 ? 1 : 0; b.chg = (b.chg || 0) + (charge - (b.chg || 0)) * Math.min(1, dt * 4); b.head.rotation.x = 0.05 + b.chg * 0.25 + Math.sin(b.phase * 0.5) * 0.08; // 돌진할 때 머리를 숙임 b.tail.rotation.x = Math.sin(time * 9) * 0.4;
     { // 몸 충돌 (#32): 원 둘이 겹치지 않게 멧돼지를 뒤로 물림 (뛰어 넘으면 통과). 막혀 못 물러나면 플레이어를 밀어냄
       const minD = BOAR.bodyR + COLLIDE.player;
-      if (d < minD && player.jumpY < BOAR.jumpClear && !player.air) {
+      if (d < minD && player.jumpY < BOAR.jumpClear && !player.air && !player.down) {
         const ux = d > 1e-3 ? to.x / d : -Math.sin(b.heading), uz = d > 1e-3 ? to.z / d : -Math.cos(b.heading), push = minD - d;
         const bx = b.pos.x - ux * push, bz = b.pos.z - uz * push;
         if (spots.inBounds(bx, bz)) b.pos.set(bx, height(bx, bz), bz);
