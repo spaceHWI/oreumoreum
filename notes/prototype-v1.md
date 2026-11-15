@@ -202,3 +202,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `life.js updateBoar`: 멧돼지 몸 원(`BOAR.bodyR`)과 플레이어 원이 겹치면 멧돼지를 뒤로 물림 (뛰어올라 `jumpClear` 이상이면 통과). 받힘은 몸이 닿은 뒤 `hitGap` 안, 받힌 뒤 `hitCd`(3초) 동안 다시 안 받힘
 - 넉백은 `main.js boarHit` 훅: 속도·뜨는 힘을 2배(`BOAR.knockSpeed/knockV`), 돌담·사물 충돌은 기존 kb 이동(clamp·col.move) 그대로. `tickKnock` 이 날 때 뒤로 눕고 → 착지 뒤 구르고 → 일어나는 동안 조작을 잠금 (`player.knock`)
 - 귤 흩뿌리기: `life.scatterTangerines(pos, n)` — 가진 귤의 10%(3~15, 가진 만큼만)를 반경 2~7 에 포물선으로 떨어뜨림. `tangerines` 에 `drop:true` 로 들어가 30초간 줍기(reclaim, +1) 가능, 동물은 안 먹음. 수치는 `balance.js BOAR`·`SCATTER`
+
+## 처음부터 다시 하기 (#33)
+- 메뉴 맨 아래 `#menu-reset` 아이콘 버튼(`main.js` 의 `menu-more` 아래 블록). 2초 꾹 누르면 테두리(`--p` conic)가 차오르고, 다 차면 `localStorage[KEY]` 를 `{nick, gfx, gfxV3, introSound, reset:1}` 만 남기고 덮어쓴 뒤 reload
+- `resetting` 플래그로 이후 `persist()` 가 옛 저장을 되쓰지 않게 막음. `reset:1` 은 다음 시작 때 `freshSave` 로 읽혀 호주머니(배낭 0)부터 시작하고 곧 지워짐
+- 키(`KEY`)가 개발/실서버 별도라 지금 열린 쪽만 지워짐. 돌탑의 돌은 서버 쪽이라 그대로
