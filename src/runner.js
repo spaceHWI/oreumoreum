@@ -175,7 +175,7 @@ export function buildRunner(opts = {}) {
   const mats = {
     skin: lam(SKIN_C), hairMat: lam(opts.hairColor || '#2a221c'), shirt: lam('#fff'), pants: lam('#000'), shoes: lam('#000'), vest: lam('#000'), hat: lam('#000'),
     sole: lam('#f2efe6'), black: lam('#1c1c22'), mirror: new THREE.MeshStandardMaterial({ color: '#4fb3e8', emissive: '#1d5f88', roughness: 0.2, metalness: 0.6 }),
-    cheek: new THREE.MeshBasicMaterial({ color: '#ff9f9a', transparent: true, opacity: 0.7 }), bottle: lam('#bfe3f2'), lug: lam('#2a2a2e'),
+    bottle: lam('#bfe3f2'), lug: lam('#2a2a2e'),
   };
   const HIP = 0.78;
   const hips = new THREE.Group(); hips.position.y = HIP; body.add(hips);
@@ -225,7 +225,6 @@ export function buildRunner(opts = {}) {
   const eyes = [];
   [-0.17, 0.17].forEach((x) => { const eye = opts.kind ? new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), eyeMat) : ball(0.064, mats.black, 0.9, 1.25, 0.5); eye.position.set(x, opts.kind ? 0.02 : -0.02, 0.47); head.add(eye); eyes.push(eye); if (opts.kind) { const br = box(0.14, 0.03, 0.03, mats.black); br.position.set(x, 0.14, 0.47); br.rotation.z = x > 0 ? 0.25 : -0.25; head.add(br); } });
   [-0.17, 0.17].forEach((x) => { const hl = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' })); hl.position.set(x + 0.022, opts.kind ? 0.06 : 0.012, 0.505); head.add(hl); });
-  [-0.29, 0.29].forEach((x) => { const ck = new THREE.Mesh(new THREE.SphereGeometry(opts.kind ? 0.095 : 0.085, 10, 8), mats.cheek); ck.scale.set(1, 0.6, 0.3); ck.position.set(x * 1.04, -0.13, 0.41); ck.castShadow = false; head.add(ck); });
   const smile = new THREE.Mesh(new THREE.TorusGeometry(opts.kind ? 0.15 : 0.055, opts.kind ? 0.022 : 0.017, 6, 14, Math.PI), mats.black); smile.rotation.z = Math.PI; smile.position.set(0, opts.kind ? -0.14 : -0.13, 0.475); head.add(smile);
   if (opts.beard) { const bd = new THREE.Mesh(new THREE.SphereGeometry(0.54, 12, 8, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5), mats.hairMat); bd.position.set(0, 0.02, 0.04); bd.scale.set(1, 0.9, 1); head.add(bd); const mus = box(0.3, 0.06, 0.08, mats.hairMat); mus.position.set(0, -0.09, 0.48); head.add(mus); }
   if (opts.book) { const bk = box(0.3, 0.36, 0.06, lam('#9c4a33')); const pg = box(0.27, 0.33, 0.04, lam('#fbf6e6')); pg.position.z = 0.03; bk.add(pg); bk.name = 'book'; root.userData.book = bk; }

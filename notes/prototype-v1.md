@@ -140,3 +140,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## 귤 던지기 동작 (#23)
 - `runner.js` 에 `throw` 포즈 + `THROW`({release:0.45,total:1.0}) 추가: 준비(뒤로 젖히고 가슴 틀기) → 던지기 → 뻗은 채 머묾 → 복귀. 걷기·뛰기 하반신은 그대로, 서 있을 땐 발을 살짝 딛음
 - `main.js` `throwTangerine()` 은 포즈만 시작, `releaseTangerine()` 이 poseT≥release 에 오른손(armR 끝) 위치에서 귤을 띄우고 귤 1개를 차감. 말 탄 상태는 즉시 던짐
+
+## 볼터치 제거 (#24)
+- 기본 캐릭터 텍스처: `model/fixcheek.py` 가 `lo4.glb` 의 UV 로 볼 둘레(rest 공간 |x| 0.05~0.24, y 0.55~0.77, 앞면) 텍셀 중 피부↔분홍 색 선 위에 있는 것만 피부 중간값으로 덮음(눈·머리카락 제외). 결과 `model/tex4.jpg` → `node model/extract.js model/lo4.glb model/params.json model/tex4.jpg` 로 `runnermodel.js` 재생성 (`tex3.jpg` 는 예전 UV 라 안 맞음)
+- 도형 캐릭터(`buildRunner` 의 cheek 메시·재질) 삭제 → 탐방객·다른 플레이어 모두 볼터치 없음
