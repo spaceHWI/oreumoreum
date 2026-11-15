@@ -450,6 +450,16 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   #menu .m-more button { justify-content: center; font-family: var(--body); font-weight: 500; font-size: 13px; padding: 10px 6px; background: rgba(255,255,255,.06); border-radius: 12px; }
 }
 @media (max-width: 600px) and (prefers-reduced-motion: reduce) { #menu { animation: none; } }
+
+/* 쓰레기 도감 (#13) */
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+.dex-cell { display: grid; justify-items: center; gap: 3px; text-align: center; padding: 8px 4px 6px; border-radius: 14px; background: rgba(255,255,255,.08); font-size: 12px; min-height: 104px; align-content: start; }
+.dex-cell .dex-ic { width: 48px; height: 48px; display: block; }
+.dex-cell b { font-weight: 600; font-size: 12px; line-height: 1.25; word-break: keep-all; }
+.dex-cell small { font-size: 11px; opacity: .65; }
+.dex-cell.rare { background: rgba(255,138,31,.16); }
+.dex-cell.locked .dex-ic svg { filter: brightness(0); opacity: .55; }
+.dex-cell.locked b { opacity: .5; }
 </style>
 
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
@@ -542,6 +552,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
+    <button type="button" id="menu-dex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7zM6.5 9h2M15.5 9h2"/></svg>도감</button>
     <button type="button" id="menu-wardrobe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7a2 2 0 1 0-2-2M12 7v2l8 6H4l8-6"/></svg>옷장</button>
     <button type="button" id="menu-shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>상점</button>
     <button type="button" id="menu-sign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V4M12 5h7l2 2.5-2 2.5h-7M12 12H6l-2 2.5L6 17h6"/></svg>탐방 안내</button>
@@ -603,13 +614,20 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 
 <div class="overlay dim" id="ach" hidden>
   <div class="panel pop">
-    <div class="pop-head"><h2>업적</h2><span class="coins-pill"><i></i><span id="ach-coins">0</span></span><button type="button" class="btn small" id="ach-close">닫기</button></div>
+    <div class="pop-head"><h2>업적</h2><span class="coins-pill"><i></i><span id="ach-coins">0</span></span><button type="button" class="btn small" id="ach-dex" title="쓰레기 도감"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg> 도감</button><button type="button" class="btn small" id="ach-close">닫기</button></div>
     <div class="pop-body">
       <div class="ach-head"><h3>오늘의 업적</h3><span id="ach-date"></span></div>
       <div class="ach-list" id="ach-list"></div>
       <div class="ach-head" style="margin-top:14px"><h3>뱃지</h3><span id="ach-streak"></span></div>
       <div class="badges" id="badge-list"></div>
     </div>
+  </div>
+</div>
+
+<div class="overlay dim" id="dex" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>쓰레기 도감</h2><span class="coins-pill"><b id="dex-count">0 / 30</b></span><button type="button" class="btn small" id="dex-close">닫기</button></div>
+    <div class="pop-body"><div class="dex-grid" id="dex-grid"></div></div>
   </div>
 </div>
 

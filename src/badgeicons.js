@@ -39,6 +39,26 @@ export const BADGE_ICONS = {
   'b-both': `<path d="M24 40 V12" ${s('stroke-width="3"')}/><path d="M24 14 H38 l4 4 -4 4 H24z" fill="${W}" ${s()}/><path d="M24 24 H10 l-4 4 4 4 H24z" fill="${Y}" ${s()}/><path d="M16 42 q8 -4 16 0" fill="none" ${s()}/>`,
 };
 
+// #13 새 뱃지: 단계형은 fam 이름(trash·recycle·heap·dex)으로 한 아이콘을 같이 씀
+Object.assign(BADGE_ICONS, {
+  // 줍는 사람: 쓰레기 봉투
+  trash: `<path d="M16 14 q8 -6 16 0 l4 22 q-12 6 -24 0z" fill="#3f9a5a" ${s()}/><path d="M18 14 l-2 -5 5 3 M30 14 l2 -5 -5 3" fill="none" ${s()}/>${eyes(21, 27, 26)}<path d="M21.5 30 q2.5 2 5 0" fill="none" ${s()}/>`,
+  // 재활용 단골: 도는 화살표
+  recycle: `<path d="M24 9 l7 12 h-14z" fill="${G}" ${s()}/><path d="M12 35 l7 -12 7 12z" fill="#5b8fc9" transform="rotate(-60 19 29)" ${s()}/><path d="M36 35 l-7 -12 -7 12z" fill="${Y}" transform="rotate(60 29 29)" ${s()}/>`,
+  // 더미 해결사: 쓰레기 더미 + 반짝
+  heap: `<path d="M5 38 Q24 8 43 38z" fill="#7a6a58" ${s()}/><rect x="14" y="26" width="9" height="5" rx="1.5" fill="${W}" ${s('stroke-width="1.8"')}/><circle cx="30" cy="29" r="3.2" fill="#d8423a" ${s('stroke-width="1.8"')}/><path d="M36 9 v8 M32 13 h8" ${s('stroke="' + Y + '" stroke-width="3"')}/>`,
+  // 도감 수집가: 책
+  dex: `<path d="M8 12 H24 V38 H8z M24 12 H40 V38 H24z" fill="${W}" ${s()}/><path d="M12 19 h8 M12 24 h8 M28 19 h8" fill="none" ${s()}/><circle cx="32" cy="29" r="3" fill="${O}" ${s('stroke-width="1.8"')}/>`,
+  'b-kind-can': `<rect x="14" y="12" width="20" height="26" rx="4" fill="#d8423a" ${s()}/><path d="M14 18 H34 M14 32 H34" ${s()}/><ellipse cx="24" cy="12" rx="10" ry="2.5" fill="#c9ccd2" ${s()}/>`,
+  'b-kind-pet': `<path d="M20 6 h8 v5 l5 5 v22 q0 3 -3 3 H18 q-3 0 -3 -3 V16 l5 -5z" fill="#d9eef5" ${s()}/><rect x="20" y="4" width="8" height="5" rx="1.5" fill="#3a7fd0" ${s()}/><path d="M15 22 H33 M15 31 H33" ${s()}/>`,
+  'b-kind-vinyl': `<path d="M10 20 q6 -10 14 -6 q10 -4 14 8 q4 10 -6 16 q-10 4 -18 -2 q-8 -6 -4 -16z" fill="${W}" ${s()}/><path d="M18 22 q4 4 10 0" fill="none" ${s()}/>`,
+  'b-kind-foam': `<rect x="8" y="17" width="32" height="20" rx="3" fill="${W}" ${s()}/><path d="M8 24 H40" ${s()}/><circle cx="16" cy="31" r="1.4" fill="${K}"/><circle cx="24" cy="31" r="1.4" fill="${K}"/><circle cx="32" cy="31" r="1.4" fill="${K}"/>`,
+  'b-kind-gear': `<circle cx="24" cy="25" r="13" fill="none" ${s('stroke-width="5" stroke="#e2683a"')}/><circle cx="24" cy="25" r="13" fill="none" ${s('stroke-dasharray="6 5"')}/><path d="M36 10 l5 -4" ${s()}/>`,
+  'b-streak-30': `<rect x="9" y="11" width="30" height="28" rx="4" fill="${W}" ${s()}/><rect x="9" y="11" width="30" height="8" rx="3" fill="#d6a13b" ${s()}/><path d="M16 8 v6 M32 8 v6" ${s()}/><text x="24" y="35" font-size="14" font-weight="900" text-anchor="middle" fill="${K}" font-family="Noto Sans KR, sans-serif">30</text>`,
+  'b-gear-one': `<path d="M10 38 L30 18" ${s('stroke-width="5"')}/><path d="M10 38 L30 18" stroke="#c39a4c" stroke-width="2.4" stroke-linecap="round"/><path d="M28 10 l10 0 -2 8 -8 0z M34 22 l8 -2 M32 26 l7 4" fill="${W}" ${s()}/><path d="M36 6 v4 M40 9 h-4" ${s('stroke="' + Y + '"')}/>`,
+  'b-gear-all': `<path d="M24 5 l16 6 v12 q0 14 -16 20 q-16 -6 -16 -20 V11z" fill="#e8b94a" ${s()}/><path d="M24 14 l3 6 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z" fill="${W}" ${s('stroke-width="1.8"')}/>`,
+});
+
 export const DAILY_ICON = `<circle cx="24" cy="24" r="12" fill="${O}" ${s()}/><path d="M24 12 q3 -5 7 -4 q-1 4 -7 4z" fill="${G}" ${s('stroke-width="1.8"')}/>${eyes(20, 28, 23)}<path d="M21 27 q3 2.5 6 0" fill="none" ${s()}/>`;
 export const ALLDAY_ICON = `<path d="M24 6 l5 10 11 1.5 -8 7.5 2 11 -10 -5.5 -10 5.5 2 -11 -8 -7.5 11 -1.5z" fill="${Y}" ${s()}/>${eyes(20.5, 27.5, 22)}<path d="M21.5 26 q2.5 2 5 0" fill="none" ${s()}/>`;
 

@@ -4,7 +4,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH } from './balance.js';
+import { TRASH_TYPES, TRASH, DEX } from './balance.js';
+
+// 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
+export const DEX_LIST = [];
+TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push({ id: `${t.id}:${i}`, kind: t.id, name, rare: false })); DEX.rare.filter((r) => r.kind === t.id).forEach((r, i) => DEX_LIST.push({ id: `${t.id}:r${i}`, kind: t.id, name: r.name, rare: true })); });
 import { kstDate } from './achievements.js';
 
 const N = TRASH.total, NH = TRASH.heaps * TRASH.heapN, NS = N - NH; // 0..NS-1 흩어진 것, NS.. 더미 칸(더미 h 의 s번째 = NS + h*heapN + s)
@@ -20,6 +24,7 @@ export function createLocalTrashStore({ save, persist }) {
   if (!T.bag || typeof T.bag !== 'object') T.bag = {};
   TRASH_TYPES.forEach((t) => { T.bag[t.id] = Math.max(0, Math.floor(Number(T.bag[t.id]) || 0)); });
   T.total = Math.max(0, Math.floor(Number(T.total) || 0));
+  if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수 (예전 저장엔 없음)
   const bits = dec(T.picked, Math.ceil(N / 8));
   T.today = popc(bits);
   let dirty = false;
@@ -31,6 +36,9 @@ export function createLocalTrashStore({ save, persist }) {
     pickedCount: () => T.today,
     totalCount: () => T.total,
     bag: T.bag,
+    dex: T.dex,
+    dexAdd(id) { const isNew = !T.dex[id]; T.dex[id] = (T.dex[id] || 0) + 1; return isNew; },
+    dexSpecies: () => DEX_LIST.reduce((n, d) => n + (T.dex[d.id] > 0 ? 1 : 0), 0),
     commit() { if (dirty) { T.picked = enc(bits); dirty = false; } persist(); },
   };
 }
@@ -186,12 +194,16 @@ export function createTrash({ scene, store, height, paths, inBounds, low }) {
     if (!store.markPicked(id)) return null;
     const t = L.TY[id], type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
+    // 도감: 드문 것은 1/rareChance, 아니면 그 종류의 흔한 것 4개 중 무작위
+    const rares = DEX_LIST.filter((d) => d.kind === type.id && d.rare), commons = DEX_LIST.filter((d) => d.kind === type.id && !d.rare);
+    const dx = Math.random() < DEX.rareChance && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
+    const dexNew = store.dexAdd(dx.id);
     let heapClear = false;
     if (isHeap(id)) { const h = Math.floor((id - NS) / TRASH.heapN); heapLeft[h]--; layoutHeaps(); if (!heapLeft[h]) heapClear = true; }
     dirty = true;
-    emit('trash', { kind: type.id });
+    emit('trash', { kind: type.id, dex: dx, dexNew });
     if (heapClear) emit('heap-clear', {});
-    return { id, t, type, pos: new THREE.Vector3(L.X[id], Y[id] + (isHeap(id) ? 0.6 : 0.15), L.Z[id]), color: PAL[t][L.col[id]] };
+    return { id, t, type, dex: dx, dexNew, pos: new THREE.Vector3(L.X[id], Y[id] + (isHeap(id) ? 0.6 : 0.15), L.Z[id]), color: PAL[t][L.col[id]] };
   }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   function ensureDay() { const d = kstDate(); if (store.date() !== d) { const first = !store.date(); store.reset(d); layout(d); emit('reset', { first }); return true; } return false; }
@@ -208,6 +220,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low }) {
     fillBag(vol, kind = 'can') { const t = TRASH_TYPES.find((x) => x.id === kind) || TRASH_TYPES[0]; store.bag[t.id] += Math.max(0, Math.floor(vol / t.vol)); store.commit(); emit('changed', {}); return bagVol(); },
     emptyBag() { TRASH_TYPES.forEach((t) => { store.bag[t.id] = 0; }); store.commit(); emit('changed', {}); },
     nearest(px, pz) { let b = null, bd = 1e18; for (let i = 0; i < NS; i++) { if (store.isPicked(i)) continue; const d = (L.X[i] - px) ** 2 + (L.Z[i] - pz) ** 2; if (d < bd) { bd = d; b = i; } } return b == null ? null : { id: b, x: L.X[b], z: L.Z[b], kind: TRASH_TYPES[L.TY[b]].id, d: Math.sqrt(bd) }; },
+    dex: () => ({ ...store.dex }), dexForce(id) { const d = DEX_LIST.find((x) => x.id === id); if (!d) return false; const n = store.dexAdd(id); emit('dex-test', { dex: d, dexNew: n }); store.commit(); return n; },
     heaps: () => L.heaps.map((h, k) => ({ x: h.x, z: h.z, left: heapLeft[k] })),
     drawn: () => meshes.reduce((s, m) => s + m.count, 0),
   };
