@@ -6,6 +6,7 @@ import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
 import { COLLIDE, BOUND } from './balance.js';
+import { STREAM_GLSL } from './streamshape.js';
 
 const T = THREE, PI = Math.PI;
 export const K = 1.4;
@@ -166,7 +167,7 @@ vec3 groundColor(vec2 p){
 
   const U = {
     uStroke: { value: strokeTex }, uHt: { value: heightTex }, uMask: { value: maskTex }, uPathT: { value: pathTex },
-    uStream: { value: new T.Vector4(0, 0, 1, 0) }, uStreamW: { value: -1 }, // 들머리 개울(#31): 가운데 xz, 길 방향 fx fz, 반폭 (음수면 없음)
+    uStream: { value: new T.Vector4(0, 0, 1, 0) }, uStreamW: { value: -1 }, uStreamM: { value: new T.Vector2(-1e4, 1e4) }, // 들머리 개울(#31, #41): 가운데 xz, 길 방향 fx fz, 반폭 (음수면 없음), 돌담과 만나는 lat 둘
     uTime: { value: 0 }, uWind: { value: 1 }, uPl: { value: new T.Vector3() }, uPlV: { value: new T.Vector3(0, 0, -8) },
     uG1: { value: C('#62a64a') }, uG2: { value: C('#86c257') }, uG3: { value: C('#b9d264') },
     uGold: { value: C('#d8b562') }, uForest: { value: C('#4c8442') }, uTea: { value: C('#3f8a48') }, uPath: { value: C('#dcbb8c') },
@@ -215,7 +216,7 @@ vec3 groundColor(vec2 p){
     const m = new T.MeshToonMaterial({ color: 0xffffff, gradientMap: gradSoft, side: T.DoubleSide });
     m.onBeforeCompile = (s) => {
       Object.assign(s.uniforms, U);
-      s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aOff;\nvarying vec3 vCol;\nuniform vec4 uStream; uniform float uStreamW;\n' + TERR)
+      s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aOff;\nvarying vec3 vCol;\nuniform vec4 uStream; uniform float uStreamW; uniform vec2 uStreamM;\n' + STREAM_GLSL + TERR)
         .replace('#include <beginnormal_vertex>', `
       vec2 gc=uPl.xz+mod(aOff.xy-uPl.xz+GS*0.5,GS)-GS*0.5;
       float gh=terrainH(gc);
@@ -228,7 +229,7 @@ vec3 groundColor(vec2 p){
       sc*=0.3+0.7*smoothstep(0.34,0.6,ptc);
       sc*=1.0-pathMask(gc);
       sc*=1.0-teaMask(gc);
-      sc*=step(uStreamW+0.9,abs(dot(gc-uStream.xy,uStream.zw))); // 개울 안엔 풀 없음
+      sc*=step(0.9,stOut(gc,uStream,uStreamW,uStreamM)); // 개울 안엔 풀 없음 (굽이·폭은 streamshape.js)
       sc*=1.0-0.45*forestMask(gc)*(1.0-gold);
       vec2 dv=gc-uPl.xz; float dd=length(dv);
       sc*=1.0-smoothstep(GS*0.36,GS*0.5,dd);
@@ -248,7 +249,7 @@ vec3 groundColor(vec2 p){
         .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal=normalize(vNormal);');
     };
     const mesh = new T.Mesh(g, m); mesh.frustumCulled = false; mesh.receiveShadow = true; scene.add(mesh);
-    return { mesh, set(v) { mesh.visible = v; }, update() {}, noStream(x, z, fx, fz, w) { U.uStream.value.set(x, z, fx, fz); U.uStreamW.value = w; } };
+    return { mesh, set(v) { mesh.visible = v; }, update() {}, noStream(x, z, fx, fz, w, walls = [-1e4, 1e4]) { U.uStream.value.set(x, z, fx, fz); U.uStreamW.value = w; U.uStreamM.value.set(walls[0], walls[1]); } };
   })();
 
   /* 나무·바위용 재질: 흔들림 + 캐릭터를 가리면 점무늬로 비침 */

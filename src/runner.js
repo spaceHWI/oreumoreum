@@ -352,7 +352,7 @@ export function buildRunner(opts = {}) {
   }
 
   const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
-  // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry'
+  // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
   function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1 }) {
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
@@ -445,6 +445,12 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(-2.4 + Math.sin(b) * 0.6, 0, 0.9 + Math.sin(b * 0.5) * 0.3); armR.rotation.set(-2.4 - Math.sin(b) * 0.6, 0, -0.9 - Math.sin(b * 0.5) * 0.3);
       legL.rotation.set(Math.sin(b) * 0.35, 0, 0.15); legR.rotation.set(-Math.sin(b) * 0.35, 0, -0.15);
       head.rotation.z = Math.sin(b * 0.5) * 0.2; head.rotation.y = Math.sin(b * 0.25) * 0.3;
+    } else if (pose === 'flail') { // 물에 빠져 허우적댐 (#41): 두 팔을 번갈아 휘젓고 다리를 버둥댐
+      const b = st.clock * 11;
+      armL.rotation.set(-2.3 + Math.sin(b) * 0.9, 0, 0.6 + Math.cos(b) * 0.35); armR.rotation.set(-2.3 - Math.sin(b) * 0.9, 0, -0.6 - Math.cos(b) * 0.35);
+      legL.rotation.set(-0.5 + Math.sin(b * 0.8) * 0.5, 0, 0.12); legR.rotation.set(-0.5 - Math.sin(b * 0.8) * 0.5, 0, -0.12);
+      torso.rotation.x = -0.15; torso.rotation.z = Math.sin(b * 0.5) * 0.12; hips.position.y = HIP;
+      head.rotation.x = -0.25; head.rotation.z = Math.sin(b * 0.5 + 1) * 0.15;
     } else if (air) {
       const up = Math.max(-1, Math.min(1, (jumpV ?? 0) / 8.5));
       legL.rotation.set(-0.9 - up * 0.3, 0, 0.1); legR.rotation.set(0.5, 0, -0.1);

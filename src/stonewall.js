@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { WALL } from './balance.js';
+import { WALL, STREAM } from './balance.js';
 import { NSMODE, TEXCS } from './boot.js';
 import { WM_NEAR, WM_FAR } from './wallmodel.js';
 
@@ -77,7 +77,35 @@ function pieceMeshes(scene, pieces, height, rnd, low, col) {
   return { near, far, cx, cz, r };
 }
 
-export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
+// 개울이 돌담 밑을 지나는 곳 (#41): 낮은 돌 수문. 담은 이어지고 물은 아치 구멍(창살) 밑으로 흐른다. 사람은 못 지나감
+// P0→P1 = 비운 돌담 조각들의 처음·끝, cross = 물길 가운데, w = 물 반폭
+function buildArch(scene, P0, P1, cross, w, height, low, map) {
+  const dx = P1[0] - P0[0], dz = P1[1] - P0[1], L0 = Math.hypot(dx, dz) || 1, ux = dx / L0, uz = dz / L0, L = L0 + 0.7;
+  const mx = (P0[0] + P1[0]) / 2, mz = (P0[1] + P1[1]) / 2;
+  let gmin = 1e9, gmax = -1e9; for (let k = -0.5; k <= 0.5; k += 0.05) { const h = height(mx + ux * k * L, mz + uz * k * L); gmin = Math.min(gmin, h); gmax = Math.max(gmax, h); }
+  const base = gmin - 0.4, H = gmax + 1.72 - base, xc = (cross.x - mx) * ux + (cross.z - mz) * uz, hc = height(cross.x, cross.z) - base;
+  const ow = Math.min(2 * w + 0.6, L - 1.2), n = Math.max(1, Math.round(ow / STREAM.archOpen)), pier = 0.42, bw = (ow - (n - 1) * pier) / n;
+  const x0c = Math.max(-L / 2 + 0.6, Math.min(L / 2 - 0.6 - ow, xc - ow / 2));
+  const spring = hc + 0.5, rise = Math.min(bw * 0.42, 0.55);
+  const shape = new THREE.Shape(); shape.moveTo(-L / 2, 0); shape.lineTo(L / 2, 0); shape.lineTo(L / 2, H); shape.lineTo(-L / 2, H); shape.lineTo(-L / 2, 0);
+  const bars = [];
+  for (let k = 0; k < n; k++) {
+    const a = x0c + k * (bw + pier), b = a + bw, h = new THREE.Path();
+    h.moveTo(a, 0.1); h.lineTo(b, 0.1); h.lineTo(b, spring); h.quadraticCurveTo((a + b) / 2, spring + rise * 2, a, spring); h.lineTo(a, 0.1); shape.holes.push(h);
+    // 수문 창살
+    const nb = Math.max(2, Math.round(bw / 0.6));
+    for (let j = 1; j <= nb; j++) { const x = a + bw * j / (nb + 1), u = (x - (a + b) / 2) / (bw / 2), top = spring + rise * (1 - u * u) - 0.02;
+      bars.push(new THREE.CylinderGeometry(0.035, 0.035, top - 0.1, 5).translate(x, (top + 0.1) / 2, 0)); }
+  }
+  const D = WALL.width * 0.95;
+  const g = new THREE.ExtrudeGeometry(shape, { depth: D, bevelEnabled: false, curveSegments: 6 }).translate(0, 0, -D / 2);
+  const grp = new THREE.Group(); grp.position.set(mx, base, mz); grp.rotation.y = Math.atan2(-uz, ux); scene.add(grp);
+  const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ color: new THREE.Color(0.32, 0.32, 0.34), map, gradientMap: gradHard })); m.castShadow = !low; m.receiveShadow = true; grp.add(m);
+  const bm = new THREE.Mesh(mergeGeometries(bars), new THREE.MeshToonMaterial({ color: '#2c2b2a', gradientMap: gradHard })); grp.add(bm);
+  return grp;
+}
+
+export function createStoneWall({ scene, height, line, gate, low, col, uPl, arches = [] }) {
   // 경계선을 길이로 매개화
   const P = line, cum = [0];
   for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
@@ -90,12 +118,21 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
 
   /* 가까운 곳: 돌담 조각 (덩어리마다 가까이용·멀리용) */
   const rnd = mulberry(2511), chunks = [];
+  // 개울이 지나는 곳의 조각은 비우고(충돌은 남김) 수문으로 바꿈 (#41)
+  const skip = arches.map(() => []);
+  const segD = (p, q, x, z) => { const vx = q[0] - p[0], vz = q[1] - p[1], l2 = vx * vx + vz * vz || 1, k = Math.max(0, Math.min(1, ((x - p[0]) * vx + (z - p[1]) * vz) / l2)); return Math.hypot(p[0] + vx * k - x, p[1] + vz * k - z); };
   for (let k0 = 0; k0 < n; k0 += WALL.chunk) {
     const pieces = [];
-    for (let k = k0; k < Math.min(n, k0 + WALL.chunk); k++) pieces.push([at(s0 + k * seg), at(s0 + (k + 1) * seg)]);
-    chunks.push(pieceMeshes(scene, pieces, height, rnd, low, col));
+    for (let k = k0; k < Math.min(n, k0 + WALL.chunk); k++) {
+      const p = at(s0 + k * seg), q = at(s0 + (k + 1) * seg), ai = arches.findIndex((A) => segD(p, q, A.x, A.z) < A.w + 1.0);
+      if (ai < 0) { pieces.push([p, q]); continue; }
+      skip[ai].push([p, q]);
+      if (col) { const dx = q[0] - p[0], dz = q[1] - p[1]; col.addBox((p[0] + q[0]) / 2, (p[1] + q[1]) / 2, Math.atan2(-dz, dx), Math.hypot(dx, dz) / 2, WALL.thick); }
+    }
+    if (pieces.length) chunks.push(pieceMeshes(scene, pieces, height, rnd, low, col));
   }
   const mat = { map: poreTex() };
+  const archMeshes = arches.map((A, i) => skip[i].length ? buildArch(scene, skip[i][0][0], skip[i][skip[i].length - 1][1], A, A.w, height, low, mat.map) : null);
 
   /* 먼 곳: 단순한 띠 (가까운 곳은 셰이더에서 버림) */
   const NR = low ? WALL.nearRLow : WALL.nearR, NR1 = low ? WALL.lodRLow : WALL.lodR;
@@ -142,7 +179,7 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
   function update(pos) {
     for (const ch of chunks) { const d = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r; ch.near.visible = d < NR1; ch.far.visible = !ch.near.visible && d < NR; }
   }
-  return { update, length: LEN, chunks: chunks.length, modules: n, nearR: NR, lodR: NR1, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
+  return { update, arches: archMeshes, length: LEN, chunks: chunks.length, modules: n, nearR: NR, lodR: NR1, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
 }
 
 // 들머리와 오름 사이를 가로막는 안쪽 돌담 + 정낭(#31). line = nsbound.crossLine(TUT.gateD)

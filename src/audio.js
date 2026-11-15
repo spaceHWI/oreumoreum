@@ -389,6 +389,15 @@ export class Sound {
     for (let i = 0; i < 4; i++) { const tt = t + 0.08 + i * 0.07 + Math.random() * 0.04, o = c.createOscillator(); o.type = 'sine'; const f0 = 700 + Math.random() * 900; o.frequency.setValueAtTime(f0, tt); o.frequency.exponentialRampToValueAtTime(f0 * 1.8, tt + 0.06);
       const gg = c.createGain(); gg.gain.setValueAtTime(0.0001, tt); gg.gain.linearRampToValueAtTime(0.04, tt + 0.005); gg.gain.exponentialRampToValueAtTime(0.001, tt + 0.08); o.connect(gg); gg.connect(this.sfx); o.start(tt); o.stop(tt + 0.1); }
   }
+  // 낚싯줄에 걸림 (#41): 찌가 쑥 들어가는 '퐁' + 줄이 팽팽해지는 높은 '띵'
+  bite() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(520, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.12);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.18);
+    const o2 = c.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(1320, t + 0.1); o2.frequency.linearRampToValueAtTime(1480, t + 0.3);
+    const g2 = c.createGain(); g2.gain.setValueAtTime(0.0001, t + 0.1); g2.gain.linearRampToValueAtTime(0.06, t + 0.11); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.38); o2.connect(g2); g2.connect(this.sfx); o2.start(t + 0.1); o2.stop(t + 0.4);
+  }
   // 낚싯줄 감는 소리: 짧은 딸깍 여러 번
   reel(dur = 1) {
     if (!this.on || !this.sfxOn) return;

@@ -210,11 +210,11 @@ export function contactShadows(scene, items, baseR, lift = 0.07) {
   im.renderOrder = -1; im.frustumCulled = false; scene.add(im); return im;
 }
 
-// 밟을 수 있는 구조물(계단·데크): 회전된 직사각형 윗면. 4m 격자로 찾음
+// 밟을 수 있는 구조물(계단·데크): 회전된 직사각형 윗면 (round 면 그 안에 든 타원, 징검돌 #41). 4m 격자로 찾음
 const walkGrid = new Map();
 const WCELL = 4;
-export function addWalkable(x, z, rotY, hx, hz, top) {
-  const w = { x, z, c: Math.cos(rotY), s: Math.sin(rotY), hx, hz, top };
+export function addWalkable(x, z, rotY, hx, hz, top, round = false) {
+  const w = { x, z, c: Math.cos(rotY), s: Math.sin(rotY), hx, hz, top, round };
   const R = Math.hypot(hx, hz);
   for (let gx = Math.floor((x - R) / WCELL); gx <= Math.floor((x + R) / WCELL); gx++)
     for (let gz = Math.floor((z - R) / WCELL); gz <= Math.floor((z + R) / WCELL); gz++) {
@@ -228,7 +228,7 @@ export function groundAt(x, z) {
     const dx = x - w.x, dz = z - w.z;
     // 로컬 좌표 (three.js Y 회전: x' = c*dx - s*dz, z' = s*dx + c*dz)
     const lx = w.c * dx - w.s * dz, lz = w.s * dx + w.c * dz;
-    if (Math.abs(lx) <= w.hx && Math.abs(lz) <= w.hz && w.top > y) y = w.top;
+    if (w.top > y && (w.round ? (lx / w.hx) ** 2 + (lz / w.hz) ** 2 <= 1 : Math.abs(lx) <= w.hx && Math.abs(lz) <= w.hz)) y = w.top;
   }
   return y;
 }
