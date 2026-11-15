@@ -174,3 +174,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 다시 만들기: `python3 model/fixseams.py model/lo4.glb model/tex4.jpg model/tex5.jpg && node model/extract.js model/lo4.glb model/params.json model/tex5.jpg`
 - 확인용 `tools/face.js <이름>` → `dist/face-<이름>-{close,far}.png` (정면·옆·3/4·뒤)
 - `ca39651`(기획 커밋)에서 `runnermodel.js` 가 #24 이전 텍스처(볼터치 있음)로 되돌아가 있었음 → 이번에 tex5 로 다시 만들며 함께 바로잡음
+
+## 돌탑 100개 제한 (#28)
+- `balance.js` CAIRN: `max` 2000→100, `step` 0.042, `stoneSize` 0.55(돌 크기 배율), `bend`/`bendH` 2.5/5. 100개일 때 밑돌 약 2m + 쌓인 돌 약 4.2m = 약 6.2m
+- 100개가 넘으면 `layoutCairn` 이 최신 100개만 그림(`list.slice(-n)`) → 가장 오래된 돌이 빠지고, 내 돌은 `at` 갱신으로 맨 위. 서버(db) 데이터는 지우지 않음. 흔들림 주기도 짧은 탑에 맞게 조정
