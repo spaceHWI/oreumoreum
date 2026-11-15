@@ -1,7 +1,8 @@
 import { NSMODE, TEXCS } from './boot.js'; // 반드시 맨 먼저
 import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
-import { createTrash, createLocalTrashStore } from './trash.js';
-import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE } from './balance.js';
+import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
+import { dexIcon } from './dexicons.js';
+import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE, DEX } from './balance.js';
 import { equipGear } from './gear.js';
 import { createCleanhouse } from './cleanhouse.js';
 import { gradHard } from './toon.js';
@@ -321,7 +322,7 @@ function updateStats() {
   if (save.coins !== lastCoins) { lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; $('coins2').textContent = c; $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
-const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'maps', 'feedback', 'notes'];
+const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch', 'eat'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen();
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -334,16 +335,17 @@ function cancelAll() {
   player.target = null; player.onArrive = null; marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
-['shop', 'sign', 'wishes', 'ach', 'maps', 'feedback', 'notes'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
+[['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+['shop', 'sign', 'wishes', 'ach', 'dex', 'maps', 'feedback', 'notes'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
 const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r) });
 let bannerQueue = [], bannerT = 0;
+const bIcon = (b) => BADGE_ICONS[b.id] || BADGE_ICONS[b.fam] || '';
 function onAchievement(r) {
   sound.fanfare?.();
   if (r.kind === 'daily') bannerQueue.push({ icon: DAILY_ICON, color: '#4f7a36', title: `오늘의 업적 · ${r.def.name}`, sub: `보상 귤 ${r.def.reward}` });
-  else if (r.kind === 'badge') bannerQueue.push({ icon: BADGE_ICONS[r.def.id], color: r.def.color, title: `뱃지 · ${r.def.name}`, sub: r.def.desc });
+  else if (r.kind === 'badge') bannerQueue.push({ icon: bIcon(r.def), color: r.def.color, title: `뱃지 · ${r.def.name}${r.def.fam ? ` ${r.def.tier}단계` : ''}`, sub: r.def.desc });
   else if (r.kind === 'allday') bannerQueue.push({ icon: ALLDAY_ICON, color: '#8f7bd6', title: '오늘의 업적을 모두 마쳤어요', sub: `모두 마친 날 ${ach.state.allDays}일` });
   refreshAchUI();
 }
@@ -388,16 +390,47 @@ function buildAch() {
   });
   $('ach-streak').textContent = `모두 마친 날 ${ach.state.allDays}일`;
   const bl = $('badge-list'); bl.innerHTML = '';
-  BADGES.forEach((b) => {
-    const st = ach.state.badges[b.id];
-    const el = document.createElement('div'); el.className = 'badge' + (st ? '' : ' locked');
-    const circ = document.createElement('span'); circ.className = 'bdg'; circ.style.background = b.color; circ.innerHTML = iconSvg(BADGE_ICONS[b.id] || '');
-    const nm = document.createElement('b'); nm.style.fontWeight = '600'; nm.textContent = b.name;
+  // 단계형(fam)은 한 칸: 받을 수 있는 단계가 있으면 그 단계, 아니면 다음 목표(다 했으면 마지막 단계)
+  const groups = []; const byFam = {};
+  BADGES.forEach((b) => { if (!b.fam) { groups.push([b]); return; } if (!byFam[b.fam]) { byFam[b.fam] = []; groups.push(byFam[b.fam]); } byFam[b.fam].push(b); });
+  groups.forEach((g) => {
+    const earned = g.filter((b) => ach.state.badges[b.id]);
+    const unclaimed = earned.find((b) => !ach.state.badges[b.id].claimed);
+    const next = g.find((b) => !ach.state.badges[b.id]);
+    const b = unclaimed || next || g[g.length - 1], st = ach.state.badges[b.id];
+    const tierN = earned.length;
+    const el = document.createElement('div'); el.className = 'badge' + (earned.length ? '' : ' locked');
+    const circ = document.createElement('span'); circ.className = 'bdg'; circ.style.background = b.color; circ.innerHTML = iconSvg(bIcon(b));
+    const nm = document.createElement('b'); nm.style.fontWeight = '600'; nm.textContent = b.fam ? `${b.name}${tierN ? ` ${tierN}단계` : ''}` : b.name;
     const ds = document.createElement('small'); ds.textContent = st ? b.desc : `${b.desc}${b.goal > 1 ? ` (${Math.min(b.goal, ach.state.life[b.ev] || 0).toLocaleString('ko-KR')}/${b.goal.toLocaleString('ko-KR')})` : ''}`;
     el.append(circ, nm, ds);
     if (st && !st.claimed) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip claim'; c.textContent = `귤 ${b.reward}${b.item ? ' + 아이템' : ''} 받기`; c.addEventListener('click', () => { const got = ach.claim('badge', b.id); if (got) { addCoins(got.reward, `뱃지 ${got.name}`); if (got.item) { save.owned[got.item] = 1; persist(); toast(`뱃지 보상 아이템이 옷장에 들어왔어요`); } } refreshAchUI(); buildAch(); }); el.append(c); }
     bl.append(el);
   });
+}
+
+// ---------- 쓰레기 도감 (#13) ----------
+function openDex() { closePanels(); buildDex(); $('dex').hidden = false; }
+function buildDex() {
+  if (!trash) return;
+  const dx = trash.store.dex, got = DEX_LIST.filter((d) => dx[d.id] > 0).length;
+  $('dex-count').textContent = `${got} / ${DEX_LIST.length}`;
+  const g = $('dex-grid'); g.innerHTML = '';
+  DEX_LIST.forEach((d) => {
+    const n = dx[d.id] || 0, el = document.createElement('div'); el.className = 'dex-cell' + (n ? '' : ' locked') + (d.rare ? ' rare' : '');
+    el.dataset.id = d.id;
+    const ic = document.createElement('span'); ic.className = 'dex-ic'; ic.innerHTML = iconSvg(dexIcon(d));
+    const nm = document.createElement('b'); nm.textContent = n ? d.name : '???';
+    const sm = document.createElement('small'); sm.textContent = n ? `${n.toLocaleString('ko-KR')}개` : (d.rare ? '드문 것' : '');
+    el.append(ic, nm, sm); g.append(el);
+  });
+}
+$('menu-dex')?.addEventListener('click', openDex);
+$('ach-dex')?.addEventListener('click', openDex);
+function onDexGet(dex, isNew) {
+  if (isNew) { ach.emit('dex'); if (dex.rare) addCoins(DEX.rareGyul, `드문 것! ${dex.name} · 도감 등록`); else toast(`도감 · ${dex.name}`); }
+  else if (dex.rare) addCoins(DEX.rareGyul, `드문 것! ${dex.name}`);
+  if (!$('dex').hidden) buildDex();
 }
 
 // ---------- 입력 ----------
@@ -890,6 +923,7 @@ function tickFly(dt) {
     if (k >= 1) { scene.remove(f.m); f.m.material.dispose(); flyPool.splice(i, 1); }
   }
 }
+const nearTop = () => spots.isViewpoint(player.pos) || player.pos.distanceTo(spots.sunWatch.pos) <= spots.sunWatch.r;
 let lastTrashUI = '';
 function updateTrashUI(bump) {
   if (!trash) return;
@@ -902,7 +936,8 @@ function updateTrashUI(bump) {
 if (trash) {
   $('trash-hud').hidden = false;
   trash.on((ev, d) => {
-    if (ev === 'trash') { ach.emit('trash'); ach.emit('trash-' + d.kind); }
+    if (ev === 'trash') { ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); onDexGet(d.dex, d.dexNew); }
+    else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
     else if (ev === 'heap-clear') { ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); }
     else if (ev === 'reset') { pickS.cyc = -1; if (!d.first) toast('자정이 지나 오름에 쓰레기가 새로 쌓였어요'); }
     updateTrashUI(false);
@@ -1031,12 +1066,17 @@ const GEAR_SVG = {
   bag: '<path d="M7 8h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM9 8V6a3 3 0 0 1 6 0v2M9 14h6"/>',
   shoe: '<path d="M3 17h17a1 1 0 0 0 1-1v0a3 3 0 0 0-3-3h-3l-3-4H5L3 13zM3 17v2h18v-2M9 9l1 2M11 9.5l1 1.5"/>',
 };
+function checkGearBadges() { // 장비 최고 단계 뱃지 (#13)
+  const m = ['tool', 'bag', 'shoes'].map((k) => save.equip[k] >= 5);
+  if (m.some(Boolean) && !ach.state.badges['b-gear-one']) ach.emit('gear-max-one');
+  if (m.every(Boolean) && !ach.state.badges['b-gear-all']) ach.emit('gear-max-all');
+}
 function buyGear(row) {
   const cur = save.equip[row.k], next = row.list[cur]; if (!next) return;
   if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
   save.coins -= next.price; save.equip[row.k] = cur + 1;
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
-  sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + row.k);
+  sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + row.k); checkGearBadges();
   toast(`${next.name || ''}${next.name ? ' · ' : ''}${cur + 1}단계 · 바로 착용했어요`.trim());
   buildShop();
 }
@@ -1569,5 +1609,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

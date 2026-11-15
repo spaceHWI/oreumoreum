@@ -1,18 +1,30 @@
 // 업적: 매일 바뀌는 오늘의 업적 5개 + 평생 업적(뱃지). 보상은 귤과 한정 아이템
 // 이벤트 이름 → 진행도. emit(event, n)
+import { ACH } from './balance.js';
 
 // 오늘의 업적 풀. map: 그 맵에서만 가능한 것
 export const DAILY_POOL = [
-  { id: 'd-steps-1500', ev: 'steps', goal: 1500, name: '천천히 1,500걸음', reward: 8 },
-  { id: 'd-steps-4000', ev: 'steps', goal: 4000, name: '오늘은 4,000걸음', reward: 15 },
+  // 남송이 풀 (ns): 쓰레기 줍기 기준 (#13)
+  { id: 'd-trash-50', ev: 'trash', goal: 50, name: '쓰레기 50개 줍기', reward: 10, ns: true },
+  { id: 'd-trash-150', ev: 'trash', goal: 150, name: '쓰레기 150개 줍기', reward: 25, ns: true },
+  { id: 'd-recycle-2', ev: 'recycle', goal: 2, name: '클린하우스 2번 다녀오기', reward: 8, ns: true },
+  { id: 'd-recycle-5', ev: 'recycle', goal: 5, name: '클린하우스 5번 다녀오기', reward: 20, ns: true },
+  { id: 'd-foam-10', ev: 'trash-foam', goal: 10, name: '스티로폼 10개 줍기', reward: 10, ns: true },
+  { id: 'd-gear-5', ev: 'trash-gear', goal: 5, name: '폐어구 5개 줍기', reward: 12, ns: true },
+  { id: 'd-heap-1', ev: 'heap-clear', goal: 1, name: '쓰레기 더미 1곳 치우기', reward: 15, ns: true },
+  { id: 'd-earn-100', ev: 'earn', goal: 100, name: '귤 100 벌기', reward: 10, ns: true },
+  { id: 'd-top-20', ev: 'trash-top', goal: ACH.topPick.goal, name: `정상 근처에서 ${ACH.topPick.goal}개 줍기`, reward: 15, ns: true },
+  { id: 'd-sunpick', ev: 'trash-sun', goal: ACH.sunPick.goal, name: `해돋이·해넘이 때 ${ACH.sunPick.goal}개 줍기`, reward: 20, ns: true },
+  { id: 'd-steps-1500', ev: 'steps', goal: 1500, name: '천천히 1,500걸음', reward: 8, ns: true },
+  { id: 'd-steps-4000', ev: 'steps', goal: 4000, name: '오늘은 4,000걸음', reward: 15, ns: true },
   { id: 'd-lap-1', ev: 'lap', goal: 1, name: '굼부리 한 바퀴', reward: 12, map: 'darangswi' },
   { id: 'd-lap-2', ev: 'lap', goal: 2, name: '굼부리 두 바퀴', reward: 20, map: 'darangswi' },
   { id: 'd-wall', ev: 'view-donnaeko', goal: 1, name: '남벽분기점 닿기', reward: 20, map: 'donnaeko' },
-  { id: 'd-ns-ridge', ev: 'view-namsongi', goal: 1, name: '남송이 능선 오르기', reward: 12, map: 'namsongi' },
+  { id: 'd-ns-ridge', ev: 'view-namsongi', goal: 1, name: '남송이 능선 오르기', reward: 12, map: 'namsongi', ns: true },
   { id: 'd-summit', ev: 'view-darangswi', goal: 1, name: '다랑쉬 굼부리 오르기', reward: 10, map: 'darangswi' },
-  { id: 'd-stone', ev: 'stone', goal: 1, name: '돌탑에 소원 하나', reward: 6 },
+  { id: 'd-stone', ev: 'stone', goal: 1, name: '돌탑에 소원 하나', reward: 6, ns: true },
   { id: 'd-stone-2', ev: 'stone', goal: 2, name: '돌탑 두 곳에 돌 올리기', reward: 12 },
-  { id: 'd-photo', ev: 'photo', goal: 1, name: '표지석 인증샷', reward: 10 },
+  { id: 'd-photo', ev: 'photo', goal: 1, name: '표지석 인증샷', reward: 10, ns: true },
   { id: 'd-feed', ev: 'feed', goal: 1, name: '동물에게 귤 주기', reward: 8 },
   { id: 'd-feed-3', ev: 'feed', goal: 3, name: '귤 세 번 나눠 주기', reward: 15 },
   { id: 'd-follow', ev: 'follower', goal: 1, name: '동물 친구와 함께 걷기', reward: 10 },
@@ -22,7 +34,7 @@ export const DAILY_POOL = [
   { id: 'd-boar', ev: 'boar-repel', goal: 1, name: '멧돼지 귤로 쫓기', reward: 15 },
   { id: 'd-pickup', ev: 'pickup', goal: 8, name: '떨어진 귤 8개 줍기', reward: 6 },
   { id: 'd-eat', ev: 'eat', goal: 2, name: '귤 먹고 힘내기 2번', reward: 5 },
-  { id: 'd-sit', ev: 'sit', goal: 1, name: '쉼터에서 쉬어 가기', reward: 5 },
+  { id: 'd-sit', ev: 'sit', goal: 1, name: '쉼터에서 쉬어 가기', reward: 5, ns: true },
   { id: 'd-breath', ev: 'breath', goal: 1, name: '호흡 한 세트', reward: 5 },
   { id: 'd-dance-top', ev: 'dance-top', goal: 1, name: '전망 좋은 곳에서 춤추기', reward: 8 },
   { id: 'd-sprint', ev: 'sprint-dist', goal: 400, name: '질주로 400m', reward: 10 },
@@ -50,8 +62,26 @@ export const BADGES = [
   { id: 'b-hand', ev: 'hand', goal: 1, name: '함께 걷는 길', desc: '다른 사람과 손잡고 걸었어요', glyph: '손', color: '#e9719a', reward: 20 },
   { id: 'b-streak-3', ev: 'daily-all', goal: 3, name: '사흘 개근', desc: '오늘의 업적을 모두 마친 날 3일', glyph: '3', color: '#8f7bd6', reward: 40 },
   { id: 'b-streak-7', ev: 'daily-all', goal: 7, name: '일주일 개근', desc: '오늘의 업적을 모두 마친 날 7일', glyph: '7', color: '#7fb8e8', reward: 100, item: 'glasses:t:round' },
+  { id: 'b-streak-30', ev: 'daily-all', goal: 30, name: '한 달 개근', desc: '오늘의 업적을 모두 마친 날 30일', glyph: '30', color: '#d6a13b', reward: 300 },
   { id: 'b-both', ev: 'visit-both', goal: 1, name: '두 길의 러너', desc: '다랑쉬와 돈내코 모두 걸었어요', glyph: '길', color: '#3e8f5a', reward: 20 },
 ];
+
+// 단계형 뱃지(#13): 같은 fam 은 한 칸에 단계가 올라감. 단계마다 따로 받음. 기존 id 는 그대로
+const tiers = (fam, name, ev, desc, color, goals, rewards) => goals.map((goal, i) => ({ id: `b-${fam}-${i + 1}`, fam, tier: i + 1, tiers: goals.length, ev, goal, name, desc: desc(goal), color, reward: rewards[i] }));
+const f = (n) => n.toLocaleString('ko-KR');
+BADGES.push(
+  ...tiers('trash', '줍는 사람', 'trash', (g) => `쓰레기 ${f(g)}개 줍기`, '#3f9a5a', [100, 1000, 10000, 100000], [20, 80, 300, 1200]),
+  ...tiers('recycle', '재활용 단골', 'recycle', (g) => `클린하우스 ${f(g)}번 다녀오기`, '#3c7fc9', [10, 100, 1000], [20, 100, 500]),
+  ...tiers('heap', '더미 해결사', 'heap-clear', (g) => `쓰레기 더미 ${f(g)}곳 치우기`, '#7a6a58', [10, 100], [40, 300]),
+  ...tiers('dex', '도감 수집가', 'dex', (g) => `쓰레기 도감 ${g}종 채우기`, '#8f7bd6', [10, 20, 30], [30, 100, 300]),
+  { id: 'b-kind-can', ev: 'trash-can', goal: 500, name: '캔 박사', desc: '캔 500개 줍기', color: '#d8423a', reward: 60 },
+  { id: 'b-kind-pet', ev: 'trash-pet', goal: 500, name: '페트병 박사', desc: '페트병 500개 줍기', color: '#5bb0d6', reward: 60 },
+  { id: 'b-kind-vinyl', ev: 'trash-vinyl', goal: 500, name: '비닐 박사', desc: '비닐 500개 줍기', color: '#9aa0aa', reward: 60 },
+  { id: 'b-kind-foam', ev: 'trash-foam', goal: 500, name: '스티로폼 박사', desc: '스티로폼 500개 줍기', color: '#c9c3a8', reward: 80 },
+  { id: 'b-kind-gear', ev: 'trash-gear', goal: 500, name: '폐어구 박사', desc: '폐어구 500개 줍기', color: '#e2683a', reward: 100 },
+  { id: 'b-gear-one', ev: 'gear-max-one', goal: 1, name: '장비 단련', desc: '장비 하나를 최고 단계까지', color: '#c39a4c', reward: 100 },
+  { id: 'b-gear-all', ev: 'gear-max-all', goal: 1, name: '완전 무장', desc: '장비를 전부 최고 단계까지', color: '#e8b94a', reward: 400 },
+);
 
 export const kstDate = (t = Date.now()) => { const k = new Date(t + 9 * 3600000); return `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, '0')}-${String(k.getUTCDate()).padStart(2, '0')}`; };
 
@@ -59,7 +89,7 @@ function seeded(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charC
 
 // 날짜로 정해지는 오늘의 업적 5개: 모두에게 같음. 맵 전용은 최대 2개, 보상 높은 것 1개 포함
 // 지금 열려 있는 맵(남송이오름)에서 할 수 있는 것만 오늘의 업적으로 뽑음
-const usable = (a) => (!a.map || a.map === 'namsongi') && a.ev !== 'visit-other';
+const usable = (a) => !!a.ns;
 export function todaysDaily(date) {
   const r = seeded('oreum-' + date);
   const pool = DAILY_POOL.filter(usable);
