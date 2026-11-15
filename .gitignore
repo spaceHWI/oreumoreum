@@ -3,6 +3,7 @@ dist/
 *.log
 model/*.glb
 !model/lo4.glb
+!model/boar.glb
 model/*.png
 reel/
 reel4/
