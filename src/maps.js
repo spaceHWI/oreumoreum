@@ -58,6 +58,7 @@ function darangswiSpots() {
     sign: { pos: V(Math.cos(a0 + 0.04) * (R_BASE + 34), Math.sin(a0 + 0.04) * (R_BASE + 34)), rot: Math.PI + 0.3, html: SIGN_TEXT },
     clamp(x, z) { const r = Math.hypot(x, z); if (r > WALL_R - 1.2) return { x: x * (WALL_R - 1.2) / r, z: z * (WALL_R - 1.2) / r, hit: '여기부터는 남의 밭이에요. 오름 쪽으로 돌아가요' }; return null; },
     inBounds: (x, z) => Math.hypot(x, z) < WALL_R - 4,
+    enemyOk: (x, z) => Math.hypot(x, z) < WALL_R - 14, // 적(#37)이 나타날 수 있는 곳
     isViewpoint: (p) => Math.abs(Math.hypot(p.x, p.z) - R_RIM) < 12 && p.y > 100,
     viewpointLine: '굼부리가 열렸어요. 바람 소리를 들으며 둘러보세요',
     npcRoute: route,
@@ -68,7 +69,6 @@ function darangswiSpots() {
     crows: { cx: 0, cz: -40, minY: 140 },
     flowers: [[18, 360], [-30, 330], [150, 250], [-120, 280]],
     pickSpot: (rnd) => { const a = rnd() * Math.PI * 2, r = R_RIM + 2 + rnd() * (R_BASE + 60 - R_RIM); return [Math.cos(a) * r, Math.sin(a) * r]; },
-    boarSpawn: (rnd, pp) => { const a = Math.atan2(pp.z, pp.x) + (rnd() - 0.5) * 1.2; const r = Math.min(WALL_R - 10, R_BASE + 100); return [Math.cos(a) * r, Math.sin(a) * r]; },
     sunWatch: { pos: summitPos, r: 40 },
     lamps: (() => { const L = []; for (let i = 6; i < trail.length; i += 14) { const p = trail[i]; const q = trail[Math.min(trail.length - 1, i + 1)]; const d = Math.atan2(q.x - p.x, q.y - p.y); const s = (Math.floor(i / 14) % 2) ? 1 : -1; L.push([p.x + Math.cos(d) * 2.8 * s, p.y - Math.sin(d) * 2.8 * s, d + Math.PI / 2 * -s]); }
       for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 + 0.2; L.push([Math.cos(a) * (R_RIM + 4), Math.sin(a) * (R_RIM + 4), -a]); }
@@ -108,6 +108,7 @@ function donnaekoSpots() {
       return null;
     },
     inBounds: (x, z) => Math.abs(x) < 550 && z > DN.limitZ + 4 && z < 590,
+    enemyOk: (x, z) => Math.abs(x) < 540 && z > DN.limitZ + 14 && z < 580, // 적(#37)이 나타날 수 있는 곳
     isViewpoint: (p) => p.z < -360,
     viewpointLine: '남벽이 눈앞에 솟았어요. 뒤로 돌면 서귀포 바다가 보여요',
     npcRoute: full,
@@ -117,7 +118,6 @@ function donnaekoSpots() {
     crows: { cx: 0, cz: -470, minY: 360 },
     flowers: [],
     pickSpot: (rnd) => { const i = Math.floor(rnd() * dnTrail.length); const p = dnTrail[i]; return [p.x + (rnd() - 0.5) * 8, p.y + (rnd() - 0.5) * 8]; },
-    boarSpawn: (rnd, pp) => [pp.x + (rnd() < 0.5 ? -1 : 1) * (40 + rnd() * 30), Math.max(-200, Math.min(540, pp.z + (rnd() - 0.5) * 60))],
     sunWatch: { pos: vp, r: 30 },
     lamps: (() => { const L = []; for (let i = 4; i < dnTrail.length; i += 12) { const s = (Math.floor(i / 12) % 2) ? 1 : -1; const q = onTrail(i, s, 3.2); const d = dnTrailDir(i); L.push([q.x, q.z, d + Math.PI / 2 * -s]); } L.push([vp.x - 7, vp.z + 3, 0], [vp.x + 7, vp.z + 3, 0]); return L; })(),
   };
@@ -149,7 +149,7 @@ function gateSpots() {
     crows: { cx: -60, cz: -60, minY: 30 },
     flowers: [[-8, 36], [7, 18], [-9, -2]],
     pickupCount: 3, pickSpot: (() => { let i = 0; return () => { const g = P.gyul[i % P.gyul.length]; i++; return [g[0], g[1]]; }; })(),
-    boarSpawn: null,
+    enemyOk: null, // 적 없음 (#37)
     sunWatch: { pos: V(0, -22), r: 30 },
     lamps: (() => { const L = [[-3.2, 40, Math.PI / 2], [3.4, 24, -Math.PI / 2], [-3.4, 6, Math.PI / 2], [3.6, -8, -Math.PI / 2], [-3.2, -19, Math.PI / 2], [3.2, -19, -Math.PI / 2]];
       gatePaths.west.filter((_, i) => i % 2 === 1).forEach((q) => L.push([q.x, q.y + 3.2, 0])); gatePaths.east.filter((_, i) => i % 2 === 1).forEach((q) => L.push([q.x, q.y + 3.2, 0])); return L; })(),
@@ -208,8 +208,7 @@ function namsongiSpots() {
     crows: { cx: sm.x, cz: sm.z, minY: sm.y + 14 },
     flowers: [],
     pickSpot: (rnd) => { if (pickI < 3) { const g = T1.gyul[pickI++]; return [g.x, g.z]; } const q = pickPts[Math.floor(rnd() * pickPts.length)]; return [q[0] + (rnd() - 0.5) * 9, q[1] + (rnd() - 0.5) * 9]; },
-    // 멧돼지: 플레이어 둘레 70~110 중 돌담 안인 곳 (여러 방향을 시도)
-    boarSpawn: (rnd, pp) => { let p = null; for (let k = 0; k < 12; k++) { const a = rnd() * Math.PI * 2, r = 70 + rnd() * 40, x = pp.x + Math.cos(a) * r, z = pp.z + Math.sin(a) * r; p = [x, z]; if (nsIn(x, z, 12)) break; } return p; },
+    enemyOk: (x, z) => nsIn(x, z, 12), // 적(#37)이 나타날 수 있는 곳: 돌담 안
     sunWatch: { pos: sm, r: 45 },
     lamps: (() => { const L = []; for (let d = 10, i = 0; d < LA; d += 46, i++) { if (Math.abs(d - TUT.streamD) < TUT.streamW + 4 || Math.abs(d - G0) < 5) continue; const s = i % 2 ? 1 : -1, q = nsAlong('approach', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); }
       for (let d = 30, i = 0; d < LR; d += 90, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('rim', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); } return L; })(),

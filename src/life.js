@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { isBattle } from './server.js';
 import { height, surfaceAt } from './world.js';
-import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
-import { BOAR, SCATTER, COLLIDE } from './balance.js';
+import { createEnemies } from './enemies.js';
+import { SCATTER, THROW_DMG } from './balance.js';
 
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; return m; };
@@ -101,7 +100,7 @@ export function buildHareubang() {
 // spots: maps.js의 맵별 배치(노루 무리, 말, 까마귀, 꽃, 귤 위치, 멧돼지 등장 위치, 경계)
 export function createLife({ scene, onToast, rnd, hooks, spots }) {
   let player = null, sound = null;
-  function bind(p, s) { player = p; sound = s; }
+  function bind(p, s) { player = p; sound = s; enemies.bind(p, s); }
   const deer = [], horses = [], crows = [], flies = [];
   const tangerines = [];
   const group = new THREE.Group(); scene.add(group);
@@ -329,9 +328,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (boar && !tg.drop && !boar.fleeing && Math.hypot(p.x - boar.pos.x, p.z - boar.pos.z) < BOAR.hitR && p.y < boar.pos.y + BOAR_MODEL_H * BOAR.scale + BOAR.hitPad) {
-        boar.fleeing = true; boar.t = 12; sound.boar?.(); onToast('멧돼지가 놀라 도망가요'); hooks.boarRepel?.(); tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
-      }
+      if (!tg.drop && !tg.enemyHit && enemies.hitTest(p, tg, THROW_DMG.hand)) tg.enemyHit = true; // 적 (#37)
       for (const hb of hareubangs) {
         const hd = Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z);
         if (hd < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3 && !tg.hbHit) {
@@ -386,70 +383,19 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     if (got) hooks.pickup?.(got);
   }
 
-  // ---------- 멧돼지 ----------
-  let boar = null, boarTimer = 90 + rnd() * 90;
-  const buildBoar = buildBoarModel;
-  function spawnBoar() {
-    if (!spots.boarSpawn) { boarTimer = 1e9; return; }
-    if (!isBattle()) { boarTimer = 30; return; } // 깨끗한 오름에는 멧돼지가 없음 (#35)
-    const b = buildBoar();
-    const [x, z] = spots.boarSpawn(rnd, player.pos);
-    if (!spots.inBounds(x, z)) { boarTimer = 20; return; }
-    const pos = new THREE.Vector3(x, height(x, z), z);
-    b.root.position.copy(pos); group.add(b.root);
-    boar = { ...b, pos, heading: 0, speed: 0, phase: 0, t: 45 + rnd() * 30, fleeing: false, hitCd: 0, warned: false };
-  }
-  function updateBoar(dt, time) {
-    if (!boar) { boarTimer -= dt; if (boarTimer <= 0 && spots.inBounds(player.pos.x, player.pos.z)) spawnBoar(); return; }
-    const b = boar; b.t -= dt; b.hitCd -= dt;
-    const to = player.pos.clone().sub(b.pos).setY(0); const d = to.length();
-    if (!b.warned && d < 40) { b.warned = true; hooks.boarAppear?.(); sound.boar?.(); }
-    let want = 0;
-    if (player.down && !b.fleeing) b.fleeing = true; // 쓰러뜨리면 숲으로 돌아감 (#36)
-    if (b.fleeing) { want = 9; b.heading = Math.atan2(-to.x, -to.z) + Math.sin(time * 2) * 0.3; }
-    else if (d < 70) { want = d > 3 ? 7.2 : 2; turnTo(b, Math.atan2(to.x, to.z), Math.min(1, dt * 3)); }
-    else { want = 3; if (Math.random() < dt * 0.3) b.heading += (rnd() - 0.5) * 1.5; }
-    b.speed += (want - b.speed) * Math.min(1, dt * 3);
-    b.phase += dt * b.speed * 1.6;
-    const nx = b.pos.x + Math.sin(b.heading) * b.speed * dt, nz = b.pos.z + Math.cos(b.heading) * b.speed * dt;
-    if (spots.inBounds(nx, nz)) b.pos.set(nx, height(nx, nz), nz); else b.heading += 2.5;
-    b.root.position.copy(b.pos); b.root.rotation.order = 'YXZ'; b.root.rotation.y = b.heading;
-    { // 비탈 기울기: 앞뒤·좌우 땅 높이 차로 몸 기울기를 구해 부드럽게 따라감
-      const L = 0.9, W = 0.6, sh = Math.sin(b.heading), ch = Math.cos(b.heading), px = b.pos.x, pz = b.pos.z;
-      const tp = Math.atan2(height(px - sh * L, pz - ch * L) - height(px + sh * L, pz + ch * L), 2 * L);
-      const tr = Math.atan2(height(px + ch * W, pz - sh * W) - height(px - ch * W, pz + sh * W), 2 * W);
-      const k = Math.min(1, dt * 6), lim = 0.6;
-      b.pitch = (b.pitch || 0) + (Math.max(-lim, Math.min(lim, tp)) - (b.pitch || 0)) * k;
-      b.roll = (b.roll || 0) + (Math.max(-lim, Math.min(lim, tr)) - (b.roll || 0)) * k;
-      b.root.rotation.x = b.pitch; b.root.rotation.z = b.roll;
-    }
-    legs4(b, b.speed > 0.3 ? 0.7 : 0);
-    const charge = !b.fleeing && b.speed > 4 ? 1 : 0; b.chg = (b.chg || 0) + (charge - (b.chg || 0)) * Math.min(1, dt * 4); b.head.rotation.x = 0.05 + b.chg * 0.25 + Math.sin(b.phase * 0.5) * 0.08; // 돌진할 때 머리를 숙임 b.tail.rotation.x = Math.sin(time * 9) * 0.4;
-    { // 몸 충돌 (#32): 원 둘이 겹치지 않게 멧돼지를 뒤로 물림 (뛰어 넘으면 통과). 막혀 못 물러나면 플레이어를 밀어냄
-      const minD = BOAR.bodyR + COLLIDE.player;
-      if (d < minD && player.jumpY < BOAR.jumpClear && !player.air && !player.down) {
-        const ux = d > 1e-3 ? to.x / d : -Math.sin(b.heading), uz = d > 1e-3 ? to.z / d : -Math.cos(b.heading), push = minD - d;
-        const bx = b.pos.x - ux * push, bz = b.pos.z - uz * push;
-        if (spots.inBounds(bx, bz)) b.pos.set(bx, height(bx, bz), bz);
-        else { const px = player.pos.x + ux * push, pz = player.pos.z + uz * push; const cl = spots.clamp?.(px, pz); player.pos.x = cl ? cl.x : px; player.pos.z = cl ? cl.z : pz; }
-        b.root.position.copy(b.pos);
-      }
-    }
-    if (!b.fleeing && d < BOAR.bodyR + COLLIDE.player + BOAR.hitGap && b.hitCd <= 0 && player.jumpY < 0.6) { b.hitCd = BOAR.hitCd; hooks.boarHit?.(to.normalize()); }
-    if (b.t <= 0 || (b.fleeing && d > 90)) { group.remove(b.root); const wasNear = b.warned; boar = null; boarTimer = 120 + rnd() * 120; if (wasNear) hooks.boarGone?.(); }
-  }
+  // ---------- 적 (#37, src/enemies.js) ----------
+  const enemies = createEnemies({ group, spots, rnd, hooks, onToast, legs4 });
   function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
   const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000).length;
   // 귤로 맞힐 대상 (#34 자동 조준). 새 적은 여기에 더한다. pos: 발 위치(살아 있는 Vector3), h: 겨눌 높이, size: 발밑 표시 크기, vel: 움직임
-  const aimBoar = { kind: 'boar', pos: null, h: BOAR_MODEL_H * BOAR.scale * 0.5, size: 1.5, vel: new THREE.Vector3() };
   const aimHbs = new Map();
   function aimTargets() {
     const out = [];
-    if (boar && !boar.fleeing) { aimBoar.pos = boar.pos; aimBoar.vel.set(Math.sin(boar.heading) * boar.speed, 0, Math.cos(boar.heading) * boar.speed); out.push(aimBoar); }
+    enemies.aimTargets(out);
     for (const hb of hareubangs) { let a = aimHbs.get(hb); if (!a) { a = { kind: 'hareubang', pos: hb.pos, h: 1.9, size: 1.0, vel: null }; aimHbs.set(hb, a); } out.push(a); }
     return out;
   }
-  return { bind, hooks, nearestDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, boarTest: { spawn: () => { if (boar) { group.remove(boar.root); boar = null; } boarTimer = 0; }, get: () => boar }, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
+  return { bind, hooks, nearestDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } }, throwTangerine, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
 }

@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES } from './balance.js';
 import { createHp } from './hp.js';
 import { createStream } from './stream.js';
 import { createCollide } from './collide.js';
@@ -1443,7 +1443,7 @@ buildMapPick($('intro-pick'), false); $('intro-pick').hidden = true;
 const sound = new Sound();
 sound.forest = MAP_ID === 'donnaeko';
 life.bind(player, sound);
-life.hooks.boarHit = (dir) => {
+life.hooks.enemyHit = (dir, def) => {
   if (player.air && player.jumpV > 0) return;
   if (hp.isDown || hp.pending) return;
   if (player.riding) dismountDeer();
@@ -1453,8 +1453,8 @@ life.hooks.boarHit = (dir) => {
   // 가진 귤의 일부가 주변에 흩어짐 (#32): 가진 귤의 10%(3~15개), 가진 것보다 많이는 안 흩어짐
   const n = Math.min(save.coins, Math.max(SCATTER.min, Math.min(SCATTER.max, Math.round(save.coins * SCATTER.frac))));
   if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
-  const downed = hp.hit(HP.boarDmg); // 전투 오름만 (#36). 0 이 되면 넉백이 끝난 뒤 쓰러짐
-  sound.stone(); if (downed) return; toast(n > 0 ? `멧돼지에 받혔어요! 귤 ${n}개가 흩어졌어요` : '멧돼지에 받혔어요! 귤을 던지면 도망가요');
+  const downed = hp.hit(def.dmg); // 전투 오름만 (#36), 피해는 적 표(ENEMIES). 0 이 되면 넉백이 끝난 뒤 쓰러짐
+  sound.stone(); if (downed) return; toast(n > 0 ? `${def.name}에 받혔어요! 귤 ${n}개가 흩어졌어요` : `${def.name}에 받혔어요! 귤을 던지면 도망가요`);
 };
 // 받혀 날아가 구르고 일어나는 동안(#32) 조작 잠금. 날 때 뒤로 눕고 → 착지 뒤 구르고 → 일어남
 function tickKnock(dt) {
@@ -1470,9 +1470,36 @@ function tickKnock(dt) {
   }
 }
 const _kq = new THREE.Quaternion(), _ka = new THREE.Vector3();
-life.hooks.boarAppear = () => { toast('멧돼지가 나타났어요! 귤을 던지면 도망가요'); };
-life.hooks.boarGone = () => toast('멧돼지가 숲으로 돌아갔어요');
-life.hooks.boarRepel = () => ach.emit('boar-repel');
+// 적 (#37): 나타남(경고) · 스스로 떠남 · 쫓아냄(귤 흩뿌림·드문 쓰레기) · 땅 헤집기(쓰레기 흘림)
+const ENEMY_NAME = (k) => ENEMIES[k]?.name || '적';
+const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (c >= 0 && c < 11172 && c % 28 ? '이' : '가'); };
+life.hooks.enemyWave = (w) => { toast(`${ENEMY_NAME(w.kind)} ${w.n}마리가 나타났어요! 귤을 맞히면 도망가요`); enemyWarn.start(w); };
+life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(ENEMY_NAME(kind))} 숲으로 돌아갔어요`); };
+life.hooks.enemyRepel = (kind, pos, def) => {
+  life.scatterTangerines(pos, def.reward.gyul);
+  if (trash && Math.random() < def.reward.rare) { const rares = DEX_LIST.filter((d) => d.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
+  ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind);
+  if (kind === 'boar') ach.emit('boar-repel');
+};
+life.hooks.enemyRoot = (kind, pos, n) => { if (trash) trash.drop(pos.x, pos.z, n, ENEMIES[kind]?.rootR || 14); };
+// 나타날 때 화면 가장자리 빨간 느낌표 (무리 쪽 방향)
+const enemyWarn = (() => {
+  const el = document.createElement('div'); el.id = 'enemy-warn'; el.hidden = true; el.setAttribute('aria-hidden', 'true'); el.textContent = '!'; document.body.appendChild(el);
+  let t = 0; const at = new THREE.Vector3(), v = new THREE.Vector3();
+  return {
+    start(w) { at.set(w.x, height(w.x, w.z) + 1, w.z); t = ENEMY_SPAWN.warnT; el.hidden = false; },
+    update(dt) {
+      if (t <= 0) return; t -= dt; if (t <= 0) { el.hidden = true; return; }
+      v.copy(at).project(camera); let x = v.x, y = v.y;
+      if (v.z > 1) { x = -x; y = -y; } // 뒤쪽이면 뒤집음
+      const W = innerWidth, H = innerHeight, m = 34;
+      { const k = 1 / Math.max(Math.abs(x), Math.abs(y), 1e-3); x *= k; y *= k; } // 늘 가장자리, 무리 쪽 방향
+      const px = Math.min(W - m, Math.max(m, (x * 0.5 + 0.5) * W)), py = Math.min(H - m, Math.max(m, (-y * 0.5 + 0.5) * H));
+      el.style.transform = `translate(${px - 22}px, ${py - 22}px)`; el.style.opacity = String(Math.min(1, t * 2) * (0.75 + 0.25 * Math.abs(Math.sin(t * 9))));
+    },
+    get t() { return t; },
+  };
+})();
 life.hooks.hareubang = () => { ach.emit('hareubang'); tut.notify('hareubang'); };
 life.hooks.pickup = (n) => { tut.notify('pickup'); save.coins += n; persist(); updateStats(); sound.coin?.(); ach.emit('pickup', n); };
 // 귤 줍는 효과: 그 자리에서 +1이 떠오르고 귤이 왼쪽 위 귤 칸으로 날아감
@@ -1854,7 +1881,7 @@ function frame(now) {
 
   updateContext(); tickAimMark(now / 1000);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) ui.toast.hidden = true; }
-  alertMark.visible = life.boarActive() && life.boarNear(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
+  enemyWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
   if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); renderer.render(scene, camera); }
@@ -1909,5 +1936,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };
