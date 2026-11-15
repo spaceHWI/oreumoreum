@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM } from './balance.js';
 import { createStream } from './stream.js';
 import { createCollide } from './collide.js';
 import { equipGear } from './gear.js';
@@ -347,8 +347,8 @@ function openJeong(anim = true) { if (!jeong || !jeong.open(anim)) return; save.
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
 const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
-const chAct = CH && { ch: true, label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
-const shopAct = CH && { label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
+const chAct = CH && { ch: true, ic: 'dump', label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
+const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
 
 // ---------- 러너 ----------
 const runner = buildRunner();
@@ -590,10 +590,10 @@ addEventListener('keydown', (e) => {
   if (k === '1') doWave();
   if (k === '2') startBreath();
   if (k === '3') doDance();
-  if (k === 't') throwTangerine();
   if (k === 'enter') { e.preventDefault(); openChat(); }
   if (k === 'r' || k === 'shift') cycleSpeed();
-  if (k === 'e') doInteract();
+  if (k === 'f') doInteract(); // 상호작용 (#34). 줍기(E)는 tickPick 이 누르고 있는 동안 처리
+  if (k === 'e') startPick();
   if (k === ' ') { e.preventDefault(); doJump(); }
   if (k === 'escape') cancelAll();
 });
@@ -650,24 +650,60 @@ $('act-wave').addEventListener('click', () => { closePanels(); doWave(); });
 $('act-dance').addEventListener('click', () => { closePanels(); doDance(); });
 $('act-breath').addEventListener('click', () => { closePanels(); startBreath(); });
 
-let throwPending = false;
+// 귤 던지기 (#34): 상호작용 버튼(F)으로, 할 일이 없을 때. 손으로 던지기는 무료라 가진 귤이 줄지 않음
+// 자동 조준: 사거리 안 가장 가까운 대상(적·하르방)을 겨눠 몸을 돌려 던지고, 대상 발밑에 표시. 없으면 보는 방향으로
+let throwPending = false, throwAim = null;
+function aimTarget() {
+  let best = null, bd = THROW_AIM.range;
+  for (const t of life.aimTargets()) { const d = Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z); if (d < bd) { bd = d; best = t; } }
+  return best;
+}
+const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function throwTangerine() {
   if (busy() || player.pose === 'wave' || player.pose === 'throw') return;
-  if (save.coins < 1) { toast('귤이 없어요. 길에 떨어진 귤을 주워 보세요'); return; }
+  throwAim = player.riding ? null : aimTarget();
   if (player.riding) { releaseTangerine(); return; }
+  player.target = null; player.onArrive = null; marker.visible = false;
   player.pose = 'throw'; player.poseT = 0; throwPending = true; sound.beep(false);
 }
 // 손이 앞으로 뻗는 순간 손 위치에서 귤이 떠난다
 function releaseTangerine() {
   throwPending = false;
-  if (save.coins < 1) return;
-  save.coins -= 1; persist(); updateStats();
-  const dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
+  const t = throwAim; throwAim = null;
+  let dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
   let from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
   if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
-  life.throwTangerine(from, dir, 11 + (player.running ? 3 : 0), () => [...[...net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]);
+  const peers = () => [...[...net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))];
+  const shot = t && aimShot(from, t);
+  if (shot) life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy);
+  else life.throwTangerine(from, dir, THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0), peers);
 }
-$('btn-throw').addEventListener('click', throwTangerine);
+// 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔
+function aimShot(from, t) {
+  const aim = new THREE.Vector3(t.pos.x, t.pos.y + t.h, t.pos.z);
+  let vh = THROW_AIM.power, k = THROW_AIM.k;
+  for (let i = 0; i < 2; i++) {
+    const p = aim.clone();
+    if (t.vel && i) p.addScaledVector(t.vel, THROW_AIM.lead * Math.hypot(aim.x - from.x, aim.z - from.z) / vh);
+    const dx = p.x - from.x, dz = p.z - from.z, D = Math.hypot(dx, dz), dy = p.y - from.y;
+    if (D < 0.5) return null;
+    k = Math.min(THROW_AIM.kMax, Math.max(THROW_AIM.k, (dy + 0.25 * D) / D));
+    const den = k * D - dy; if (den <= 0.05) return null;
+    vh = Math.min(THROW_AIM.vMax, Math.max(THROW_AIM.vMin, Math.sqrt(11 * D * D / den)));
+    if (i === 1 || !t.vel) return { dir: new THREE.Vector3(dx / D, 0, dz / D), vh, vy: k * vh };
+  }
+  return null;
+}
+// 겨눈 대상 발밑 표시
+const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));
+aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
+function tickAimMark(time) {
+  const t = throwAim || (ctxTarget === throwAct ? aimTarget() : null);
+  aimMark.visible = !!t;
+  if (!t) return;
+  const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);
+  aimMark.scale.set(s, 1, s); aimMark.position.set(t.pos.x, height(t.pos.x, t.pos.z) + 0.08, t.pos.z); aimMark.rotation.y = time * 1.5;
+}
 
 function openChat() { if (cam.mode === 'wardrobe') return; closePanels(); $('chat').hidden = false; $('chat-input').focus(); }
 $('btn-chat').addEventListener('click', openChat);
@@ -929,25 +965,29 @@ function updateHandLine() {
 
 // ---------- 상호작용 ----------
 const interactables = [
-  ...(spots.tutorial ? [] : [{ label: '인증샷 찍기', pos: P.stone, r: 9, act: startPhoto }]),
-  { label: '앉아 쉬기', pos: benchPos, r: 8, act: sitDown },
-  ...(spots.sign.silent ? [] : [{ label: '안내 읽기', pos: spots.sign.pos, r: 6, act: () => openSign() }]),
+  ...(spots.tutorial ? [] : [{ label: '인증샷 찍기', ic: 'photo', pos: P.stone, r: 9, act: startPhoto }]),
+  { label: '앉아 쉬기', ic: 'sit', pos: benchPos, r: 8, act: sitDown },
+  ...(spots.sign.silent ? [] : [{ label: '안내 읽기', ic: 'sign', pos: spots.sign.pos, r: 6, act: () => openSign() }]),
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
   ...(chAct ? [chAct, shopAct] : []),
 ];
 let ctxTarget = null, handAct = null, deerAct = null;
-const dismountAct = { label: '노루에서 내리기', act: () => dismountDeer() };
-const standAct = { label: '일어나기', act: () => standUp() };
-function doInteract() { if (ctxTarget) ctxTarget.act(); else if (trashFull()) fullToast(); else toast('돌탑·표지석·쉼터·안내판·노루·다른 러너 가까이 가면 이 버튼으로 바로 해요'); }
+const dismountAct = { label: '노루에서 내리기', ic: 'down', act: () => dismountDeer() };
+const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
+// 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
+const throwAct = { label: '귤 던지기', ic: 'throw', act: () => throwTangerine() };
+function doInteract() { if (ctxTarget) ctxTarget.act(); }
 ui.ctx.addEventListener('click', doInteract);
-// 줍기는 누르고 있는 동안 계속
-ui.ctx.addEventListener('pointerdown', () => { pickS.held = true; if (ctxTarget === pickAct) startPick(); });
-['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => ui.ctx.addEventListener(ev, () => { pickS.held = false; }));
 ui.ctx.addEventListener('contextmenu', (e) => e.preventDefault());
+// 줍기 (E·줍기 버튼): 누르고 있는 동안 계속
+const pickBtn = $('btn-pick');
+pickBtn.addEventListener('pointerdown', (e) => { if (e.button) return; pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } startPick(); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => pickBtn.addEventListener(ev, () => { pickS.held = false; }));
+pickBtn.addEventListener('click', (e) => { if (e.detail === 0) startPick(); }); // 키보드로 누른 경우
+pickBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ---------- 줍기·배낭 ----------
 const pickS = { held: false, cyc: -1, got: false, fullT: 0 };
-const pickAct = { label: '줍기', act: () => startPick() };
 const toolNow = () => TOOLS[save.equip.tool - 1];
 const bagCap = () => (save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap;
 const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
@@ -978,9 +1018,9 @@ function takeNow() {
 }
 function tickPick(dt) {
   if (!trash) return;
-  const holding = pickS.held || keys.has('f') || (keys.has('e') && ctxTarget === pickAct);
+  const holding = pickS.held || keys.has('e');
   if (pickS.cyc < 0) {
-    if (holding && !pickBlocked() && player.pose !== 'crouch') { if (canPick()) startPick(); else if (keys.has('f') && trashFull()) fullToast(); }
+    if (holding && !pickBlocked() && player.pose !== 'crouch') { if (canPick()) startPick(); else if (trashFull()) fullToast(); }
     return;
   }
   const tool = toolNow(); pickS.cyc += dt;
@@ -1126,11 +1166,8 @@ function updateContext() {
   let best = null, bd = 1e9;
   if (player.pose === 'sit') best = standAct;
   else if (player.riding && !busy()) best = dismountAct;
-  else if (pickS.cyc >= 0) best = pickAct;
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
-    // 도구 반경 안에 쓰레기가 있으면 줍기 (다른 할 일 바로 앞이면 그쪽)
-    if (canPick() && (!best || bd > best.r * 0.45) && !(best && best.ch && trash.bagVol() > 0)) best = pickAct;
     const d = life.nearestDeer(player.pos, 2.6);
     if (d) { if (!deerAct || deerAct.deer !== d) deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = deerAct; }
     if (!net.hand.with && !net.hand.req && !net.hand.pendingFrom) {
@@ -1140,13 +1177,34 @@ function updateContext() {
         best = handAct;
       }
     }
+    if (!best) best = throwAct; // 할 일이 없으면 귤 던지기
   }
-  if (best !== ctxTarget) { ctxTarget = best; ui.ctx.classList.toggle('idle', !best); }
+  if (best !== ctxTarget) { ctxTarget = best; ui.ctx.classList.toggle('idle', !best); ui.ctx.classList.toggle('soft', best === throwAct); }
   let label = '상호작용';
   if (best) label = best.cairn ? ((social.stones.get(best.cairn.id) || []).some((e) => e.mine) ? '소원 보기' : '돌 올리기') : best.label;
   const span = ui.ctx.querySelector('span');
-  if (span.textContent !== label) span.textContent = label;
+  if (span.textContent !== label) { span.textContent = label; ui.ctx.title = `${label} (F)`; }
+  const ic = best ? (best.ic || (best.cairn ? 'cairn' : best.deer ? 'deer' : best.peer ? 'hand' : 'do')) : 'do';
+  if (ui.ctx.dataset.ic !== ic) { ui.ctx.dataset.ic = ic; ui.ctx.querySelector('svg').innerHTML = CTX_ICON[ic] || CTX_ICON.do; }
+  // 줍기 버튼: 도구 반경 안에 주울 쓰레기가 없으면 흐리게
+  const can = pickS.cyc >= 0 || canPick();
+  if (pickBtn.classList.contains('dim') === can) pickBtn.classList.toggle('dim', !can);
 }
+// 상호작용 버튼 아이콘 (지금 될 동작)
+const CTX_ICON = {
+  do: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
+  throw: '<circle cx="11" cy="14" r="6"/><path d="M11 8c0-2 1-3 3-4M8 5c1 1 2 2 3 3M19 5l2-2M20 9h2"/>',
+  dump: '<path d="M4 10l8-6 8 6M6 9v11h12V9M10 20v-5h4v5"/><path d="M12 4v-2" />',
+  shop: '<path d="M3 9l2-5h14l2 5M3 9h18M3 9c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3M5 12v8h14v-8"/><circle cx="12" cy="16" r="2"/>',
+  cairn: '<ellipse cx="12" cy="19" rx="7" ry="2.5"/><ellipse cx="12" cy="13.5" rx="5" ry="2.2"/><ellipse cx="12" cy="8.5" rx="3.5" ry="2"/><ellipse cx="12" cy="4.5" rx="2" ry="1.4"/>',
+  photo: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  sit: '<path d="M4 11h16M5 11V8h14v3M6 11v8M18 11v8M4 15h16"/>',
+  sign: '<rect x="4" y="4" width="16" height="11" rx="1"/><path d="M12 15v6M8 8h8M8 11h5"/>',
+  deer: '<path d="M8 3l1 3-2 1M16 3l-1 3 2 1M9 7h6l1 4-2 2v7M10 13v7M8 11l1-4"/>',
+  hand: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 8v6l-2 7M17 8v6l2 7M7 10h10"/>',
+  stand: '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v7M12 14l-2.5 7M12 14l2.5 7M9 10l3-2 3 2M19 12V5M16.5 7.5L19 5l2.5 2.5"/>',
+  down: '<path d="M12 4v13M6 11l6 6 6-6M5 21h14"/>',
+};
 
 // ---------- 상점·옷장 ----------
 function owned(part, kind, v) { const pr = itemPrice(part, kind, v); return pr === 0 || !!save.owned[itemKey(part, kind, v)]; }
@@ -1354,7 +1412,7 @@ function buildMapPick(box, go) {
   });
 }
 function switchMap(id) { save.prevMap = MAP_ID; save.map = id; persist(); location.hash = id; location.reload(); }
-let leaving = false, throwT = 0;
+let leaving = false;
 function leaveTo(id) {
   leaving = true; player.target = null; player.onArrive = null;
   if (save.tut && !save.tut.done) { save.tut.done = true; }
@@ -1489,8 +1547,10 @@ function updatePlayer(dt) {
   p.poseT += dt;
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
   if (p.pose === 'wave' && p.poseT > 2.2) p.pose = 'move';
+  const aiming = p.pose === 'throw' && !!throwAim;
+  if (aiming) p.heading += wrapA(aimHeading(throwAim) - p.heading) * Math.min(1, dt * 18); // 겨눈 대상 쪽으로 몸을 돌림
   if (p.pose === 'throw') { if (throwPending && p.poseT >= THROW.release) releaseTangerine(); if (p.poseT >= THROW.total) p.pose = 'move'; }
-  else if (throwPending) throwPending = false;
+  else if (throwPending) { throwPending = false; throwAim = null; }
   if (p.pose === 'dance' && p.poseT > 6) p.pose = 'move';
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';
 
@@ -1509,11 +1569,11 @@ function updatePlayer(dt) {
       const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
       dir = new THREE.Vector3(joy.x * c + joy.y * s, 0, -joy.x * s + joy.y * c).normalize();
       p.joyMag = jm;
-      if (!p.riding) { let dh = wrapA(Math.atan2(dir.x, dir.z) - p.heading); p.heading += dh * Math.min(1, dt * 10); }
+      if (!p.riding && !aiming) { let dh = wrapA(Math.atan2(dir.x, dir.z) - p.heading); p.heading += dh * Math.min(1, dt * 10); }
       if (ptrs.size === 0 && camHold <= 0) { const dy = wrapA((p.heading + Math.PI) - cam.yaw); cam.yaw += dy * Math.min(1, dt * 0.8); }
     } else if (fx || fz) {
       p.target = null; p.onArrive = null; marker.visible = false; p.joyMag = 1;
-      if (fx) { if (p.riding) p.riding.heading -= fx * dt * 2.6; else p.heading -= fx * dt * 2.6; }
+      if (fx) { if (p.riding) p.riding.heading -= fx * dt * 2.6; else if (!aiming) p.heading -= fx * dt * 2.6; }
       const hh = p.riding ? p.riding.heading : p.heading;
       if (fz) dir = new THREE.Vector3(Math.sin(hh), 0, Math.cos(hh)).multiplyScalar(-fz);
       const dy = wrapA((hh + Math.PI) - cam.yaw);
@@ -1733,13 +1793,10 @@ function frame(now) {
     ease(dt, false, 1.5);
   } else if (cam.mode === 'photo') ease(dt, false, 4);
 
-  updateContext();
+  updateContext(); tickAimMark(now / 1000);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) ui.toast.hidden = true; }
   alertMark.visible = life.boarActive() && life.boarNear(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
-  // 폰: 귤 던지기 버튼은 던질 상대(노루·하르방·멧돼지)가 가까울 때만
-  throwT -= dt; if (throwT <= 0) { throwT = 0.4; const near = (q) => Math.abs(q.x - player.pos.x) < 34 && Math.abs(q.z - player.pos.z) < 34;
-    document.body.classList.toggle('throw-near', life.deer.some((d) => near(d.pos)) || life.hareubangs.some((h) => near(h.pos)) || (life.boarActive() && life.boarNear(player.pos, 40))); }
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
   if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
@@ -1793,5 +1850,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

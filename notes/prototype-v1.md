@@ -207,3 +207,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 메뉴 맨 아래 `#menu-reset` 아이콘 버튼(`main.js` 의 `menu-more` 아래 블록). 2초 꾹 누르면 테두리(`--p` conic)가 차오르고, 다 차면 `localStorage[KEY]` 를 `{nick, gfx, gfxV3, introSound, reset:1}` 만 남기고 덮어쓴 뒤 reload
 - `resetting` 플래그로 이후 `persist()` 가 옛 저장을 되쓰지 않게 막음. `reset:1` 은 다음 시작 때 `freshSave` 로 읽혀 호주머니(배낭 0)부터 시작하고 곧 지워짐
 - 키(`KEY`)가 개발/실서버 별도라 지금 열린 쪽만 지워짐. 돌탑의 돌은 서버 쪽이라 그대로
+
+## 버튼 두 개: 줍기(E)·상호작용(F) (#34)
+- `#btn-pick`(손 아이콘): E·버튼을 누르고 있는 동안 계속 줍기(`tickPick` 의 holding = pickS.held || keys e). 도구 반경 안 주울 쓰레기가 없으면 `.dim`. pointer capture 로 손가락이 버튼 밖으로 나가도 계속
+- `#btn-ctx`: F·버튼. 가까운 할 일(버리기·상점·돌탑·인증샷·쉼터·안내판·노루·손잡기·일어나기·내리기)이 없으면 `throwAct`(귤 던지기, `.soft` = 깜빡이지 않음). 아이콘은 `CTX_ICON[act.ic]`(임시 SVG), 글자는 데스크톱만 작게. 예전 `pickAct`·`#btn-throw`·`body.throw-near`·T 키 삭제
+- 귤 던지기는 무료(가진 귤이 줄지 않고 0이어도 됨). 자동 조준: `life.aimTargets()`(멧돼지·하르방, 새 적은 여기에 더함) 중 `THROW_AIM.range`(16) 안 가장 가까운 대상 → 몸을 그쪽으로 돌리고(던지는 동안 이동 방향 회전 막음) `aimShot` 이 포물선(중력 22)으로 겨눌 점(t.h)에 닿는 수평·수직 속도를 구함, 움직이는 대상은 `lead` 만큼 미리. 발밑 주황 고리 `aimMark`(상호작용이 던지기일 때·던지는 중). 수치 `balance.js THROW_AIM`
+- 폰 오른쪽 아래: 큰 버튼 둘(줍기 왼쪽·상호작용 오른쪽) + 위에 달리기·점프. 작은 버튼은 `.round.sm`
+- 튜토리얼: 줍기 버튼은 pick 단계, 상호작용 버튼은 dump 단계부터. 힌트 카드 키 E. 단계 UI 를 `UNLOCK` 표로 누적해 중간에 다시 들어와도 앞 단계 버튼이 보임
+- 확인용 `__oreum.aim`(target, mark, throw, ctx, pick)
