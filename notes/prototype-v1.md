@@ -184,3 +184,16 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 속도는 걷기(gait 0)·달리기(gait 1) 둘뿐. 체력(stamina)·질주(sprint)·귤 먹기(eatTangerine, act-eat, 키 4)·체력 링·'숨이 차요' 제거. `player.stamina` 없음
 - 호흡(키 2)은 체력 회복 없이 동작만 남김. 업적 d-eat·d-sprint 삭제 (예전 저장 데이터는 오늘의 업적 재생성으로 처리)
 - `juiceBurst`/`tickJuice` 는 남겨 둠 (버프 아이템 먹기 때 재사용). 안 쓰는 CSS(.stamina-*, #eat-glow)는 남아 있음
+
+## 튜토리얼 전면 개편 (#31) — 징검다리·호주머니·정낭
+- 들머리 배치(탐방로 approach 거리, `balance.js` `TUT`): 시작 5 → 걷기 원 16 → 달리기 원 40 → 개울 58(반폭 6.6) → 쓰레기 6개 70~82.5 → 클린하우스 94(가판대 포함) → 안쪽 돌담·정낭 112 → 오름. 하르방 둘·안내판·들머리 돌탑·귤 3개는 정낭 너머로 옮김. `nsbound.js` 의 plaza 도 새 클린하우스 자리로
+- `src/tutorial.js` 새로 씀: 단계 walk → run(달리기 상태로 원 도착) → jump(개울 건너편) → pick(튜토리얼 쓰레기 6개 또는 호주머니 가득) → dump → bonus(약 3.6초) → tongs → bag → gate(정낭 지나 1.5). 집게·배낭이 이미 있으면 그 단계 건너뜀. 힌트 카드(#tut-hint, 화면 아래 가운데, SVG 그림만·글자는 숫자와 키 이름)·바닥 빛나는 원·멀거나 화면 밖이면 #tut-arrow·건너뛰기 #tut-skip(왼쪽 위). UI 는 move(1)·speed(2)·jump(3)·interact+bag(4)·gyul(6, 폰은 #ach-chip 도) 순서, 나머지는 끝날 때. 확인용 `TUT_ICONS`
+- 저장: `save.nsV3`(기존 유저도 다시 봄: tut·trash.tp·jeong 초기화), `save.jeong`(정낭 열림), `save.firstBonus`, `save.bagV`(배낭 이행)
+- 호주머니: `save.equip.bag` 0 = 호주머니(`POCKET` 6), 1~5 = `BAGS`(20/80귤, 40/300, 80/1000, 150/3000, 300/7000). 새 유저만 0 에서 시작, 예전 저장의 1단계(20)는 첫 배낭을 가진 것으로 그대로. 상점 배낭 탭의 5칸 = BAGS. #bag-pill 은 .pocket 이면 호주머니 아이콘
+- 배낭 없음 겉모습: `gear.js` `back:none`(hide pack+straps, 등을 재킷 색 덩어리로 메움), `runner.js` 셰이더 `noStrap` 이 어깨끈을 재킷 색으로 덮음. `npc: true` 장비(back:none, hat:straw)는 옷장 목록에서 빠짐
+- `src/stream.js`: 개울(돌담~돌담, `crossLine(TUT.streamD)`), 바닥 띠 + 반투명 물 면(잔물결 셰이더), 징검돌 5개(간격 2.6, `addWalkable`), 낚시 NPC(buildRunner + 밀짚모자, 앉은 자세, 낚싯대·줄·찌). 땅에 서 있고 물 띠 안이면 빠짐 → 첨벙(물보라·고리·`audio.splash`) → 0.35초 잠긴 뒤 포물선으로 마지막에 서 있던 둑에 내려놓음(`TUT.rescueT`, 낚싯대 들림·`audio.reel`). 그동안 `player.rescue`(busy). 개울 안엔 풀 없음(`NSW.grass.noStream`)
+- 안쪽 돌담·정낭: `nsbound.crossLine(d)`(길에 수직으로 바깥 돌담까지), `stonewall.js` `createCrossWall` — 돌담 마디·정주석 둘(구멍)·막대 둘. 닫혀 있으면 길목 충돌 박스, `open()` 하면 `collide.setOff` 로 끄고 막대가 왼쪽 땅으로 내려짐(1.4초, `audio.gate`). 집게(tool≥2)·배낭(bag≥1)이 다 있거나 튜토리얼을 마쳤/건너뛰면 열림, 그 뒤 계속 열림
+- 첫 보너스: 클린하우스에 처음 버릴 때 귤이 `TUT.firstBonus`(200)가 되도록 채움(`gyulShower` 연출). 건너뛰어도 나중에 처음 버릴 때 받음
+- `collide.js`: add/addBox 가 번호를 돌려주고 `setOff(ids, off)` 로 잠시 끌 수 있음
+- 테스트: `__oreum.tut.step`, `__oreum.stream`(local, near, busy), `__oreum.jeong`(isOpen, open), `__oreum.openJeong()`, `__oreum.gyulShower(n)`
+- 임시: 개울·징검돌·낚시 NPC·정낭 막대 모양은 로우폴리, 힌트 그림 SVG 임시. 점프로 징검돌에서 물 위로 넘어갈 때 발 높이가 돌 높이(0.32)만큼 툭 내려감. NPC 탐방객·노루는 개울을 그냥 지나감

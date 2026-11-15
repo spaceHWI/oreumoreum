@@ -28,12 +28,14 @@ export const TOOLS = [
   { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 1200 },
   { tier: 5, name: '흡입기', per: 1, rate: 4, time: 0.25, r: 5.0, price: 4000 },
 ];
+// 배낭: 처음엔 배낭 없이 호주머니(POCKET)만. save.equip.bag 0 = 호주머니, 1~5 = BAGS[bag-1] (#31)
+export const POCKET = { tier: 0, name: '호주머니', cap: 6, price: 0 };
 export const BAGS = [
-  { tier: 1, name: '기본 배낭', cap: 20, price: 0 },
-  { tier: 2, name: '작은 배낭', cap: 40, price: 80 },
-  { tier: 3, name: '배낭', cap: 80, price: 300 },
-  { tier: 4, name: '큰 배낭', cap: 150, price: 1000 },
-  { tier: 5, name: '원정 배낭', cap: 300, price: 3000 },
+  { tier: 1, name: '배낭', cap: 20, price: 80 },
+  { tier: 2, name: '큰 배낭', cap: 40, price: 300 },
+  { tier: 3, name: '등산 배낭', cap: 80, price: 1000 },
+  { tier: 4, name: '대형 배낭', cap: 150, price: 3000 },
+  { tier: 5, name: '원정 배낭', cap: 300, price: 7000 },
 ];
 export const SHOES = [
   { tier: 1, name: '운동화', speed: 1.0, price: 0 },
@@ -144,4 +146,19 @@ export const WALL = {
   nearR: 230, nearRLow: 150, // 이 안은 돌 하나하나, 밖은 단순한 띠
   chunk: 40, // 마디 몇 개를 한 덩어리로 그릴지
   gateW: 3.2, // 정낭 입구 반폭
+};
+
+// 들머리 튜토리얼 (#31): 시작 → 걷기 원 → 달리기 원 → 개울·징검다리 → 쓰레기 6개 → 클린하우스·가판대 → 정낭 → 오름
+// 자리는 들머리 탐방로(approach)를 따라 시작에서 잰 거리(단위). maps.js 가 이 값으로 좌표를 만든다
+export const TUT = {
+  walkD: 16, runD: 40, // 걷기·달리기 원 자리
+  ringR: 2.4, // 원에 이만큼 들어오면 도착
+  streamD: 58, streamW: 6.6, // 개울 가운데 자리, 길 방향 반폭 (점프 없이 못 건넘)
+  stones: 5, stoneGap: 2.6, stoneR: 0.6, stoneTop: 0.32, // 징검돌 수·간격·반지름·물 위 높이
+  trashD: [70, 72.5, 75, 77.5, 80, 82.5], // 쓰레기 6개
+  cleanD: 94, // 클린하우스(길 오른쪽 7.5)
+  gateD: 112, // 안쪽 돌담·정낭
+  firstBonus: 200, // 클린하우스에 처음 버릴 때 귤이 이만큼이 되도록 채워 줌 (집게 100 + 배낭 80)
+  rescueT: 1.3, // 낚시 NPC 가 건져 올리는 시간(초)
+  arrowFar: 22, // 목표가 이보다 멀거나 화면 밖이면 가장자리 화살표
 };
