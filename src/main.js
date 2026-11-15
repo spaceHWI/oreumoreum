@@ -43,7 +43,7 @@ try { save = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { 
 save.nick ||= `${pick(ADJ)} ${pick(NOUN)}`;
 save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit || {}) };
 if (!save.hatBackV) { save.outfit.hat.back = true; save.hatBackV = 1; }
-if (!save.nsV1) { save.tut = { step: 0, done: false }; save.nsV1 = 1; } // 남송이오름에서 새로 배우기
+if (!save.nsV2) { save.tut = { step: 0, done: false }; if (save.trash) save.trash.tp = []; save.nsV1 = 1; save.nsV2 = 1; } // 새 튜토리얼(#17): 기존 유저도 한 번 다시 봄
 if (!save.styleV5) { save.outfit.hat.color = '#5c9a3c'; save.outfit.shirt.color = '#e8d9b5'; save.outfit.pants.color = '#8a6a3c'; save.outfit.shoes.color = '#26262b'; save.styleV5 = 1; } // 모델 캐릭터 기본 색으로 한 번만 초기화
 if (!save.styleV2) { save.outfit.hat.type = 'none'; save.outfit.glasses.type = 'none'; save.styleV2 = 1; } // 똥머리가 보이게 한 번만 초기화 save.outfit.shirt.type ||= 'tee'; save.outfit.shoes.type ||= 'road';
 save.totalSteps ||= 0;
@@ -290,7 +290,7 @@ function tickCairnLod(dt) {
 }
 
 // ---------- 쓰레기 (남송이) ----------
-const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW }) : null;
+const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW, fixed: spots.tut?.trash || [] }) : null;
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
 const shopAct = CH && { label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
@@ -917,7 +917,7 @@ function takeNow() {
     room -= it.type.vol; n++; flyToBag(it); sound.pick?.(it.type.id);
     if (room < 1) break;
   }
-  if (n) { trash.store.commit(); updateTrashUI(true); tut.notify?.('trash'); }
+  if (n) { trash.store.commit(); updateTrashUI(true); tut.notify('trash', n); }
   if (bagRoom() < 1) { sound.full?.(); fullToast(); }
 }
 function tickPick(dt) {
@@ -982,7 +982,7 @@ function dumpBag() {
   TRASH_TYPES.forEach((t) => { bag[t.id] = 0; });
   save.recycle.visits++; save.recycle.gyul += g;
   trash.store.commit();
-  addCoins(g);
+  addCoins(g); tut.notify('dump');
   ach.emit('recycle'); ach.emit('earn', g);
   updateTrashUI(true);
   // 날아갈 모양: 종류마다 개수 비례로 나누되 종류마다 하나는
@@ -1603,7 +1603,7 @@ setGait(0);
 followCam(0, true);
 requestAnimationFrame(frame);
 // ---------- 튜토리얼 (입구 마당) ----------
-const tut = createTutorial({ save, persist, player, cam, isTouch, pts: spots.tut });
+const tut = createTutorial({ save, persist, player, cam, isTouch, pts: spots.tut, addCoins: (n) => addCoins(n, '튜토리얼 보상') });
 if (spots.tut && tut.active) { document.body.classList.add('tut'); hideHint(); }
 else if (!spots.tut && save.tut && !save.tut.done) { save.tut.done = true; persist(); }
 // ---------- 개발용 라벨 ----------

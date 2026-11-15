@@ -206,7 +206,8 @@ function namsongiSpots() {
     lamps: (() => { const L = []; for (let d = 10, i = 0; d < LA; d += 46, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('approach', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); }
       for (let d = 30, i = 0; d < LR; d += 90, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('rim', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); } return L; })(),
     // 걸으며 배우는 지점들 (들머리에서 첫 140걸음 사이)
-    tut: { gyul: [T1.gyul[0].x, T1.gyul[0].z], hareubang: [T1.hare.x, T1.hare.z], jump: [T1.jump.x, T1.jump.z], cairn: [T1.cairn.x, T1.cairn.z], speed: [T1.speed.x, T1.speed.z], fork: null, giveUp: 320 },
+    // 튜토리얼(#17): 시작 자리 바로 앞에 늘 놓이는 쓰레기 3개(캔·페트병·비닐), 보상 귤, 길을 너무 벗어나면 그만
+    tut: { trash: [[at('approach', 7.5, -1, 1.1), 0], [at('approach', 9.5, 1, 1.3), 1], [at('approach', 11.2, -1, 1.6), 2]].map(([q, t]) => ({ x: q.x, z: q.z, t, r: q.x * 3.1 % 6.28 })), reward: 100, giveUp: 320 },
     jumpStones: { pos: T1.jump, dir: T1.jump.dir },
     // 클린하우스(재활용장): 들머리 시작하자마자 오른쪽 길옆. 앞면이 길을 봄
     cleanhouse: (() => { const q = nsAlong('approach', 13, 1, 7.5); const c = nsAlong('approach', 13); return { x: q.x, z: q.z, rot: Math.atan2(c.x - q.x, c.z - q.z) }; })(),
