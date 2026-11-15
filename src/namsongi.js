@@ -120,7 +120,7 @@ export function buildNamsongi({ scene, renderer }) {
 uniform highp sampler2D uHt;
 uniform sampler2D uMask; uniform sampler2D uPathT; uniform sampler2D uStroke;
 uniform vec3 uG1; uniform vec3 uG2; uniform vec3 uG3; uniform vec3 uGold; uniform vec3 uForest; uniform vec3 uTea; uniform vec3 uPath;
-uniform vec3 uPl; uniform float uTime;
+uniform vec3 uPl; uniform float uTime; uniform float uWind;
 float terrainH(vec2 p){
   vec2 f=clamp((p+EXT)/CELL,0.0,GN-1.001); ivec2 i=ivec2(f); vec2 u=f-vec2(i);
   float a=texelFetch(uHt,i,0).r, b=texelFetch(uHt,i+ivec2(1,0),0).r, c=texelFetch(uHt,i+ivec2(0,1),0).r, d=texelFetch(uHt,i+ivec2(1,1),0).r;
@@ -164,7 +164,7 @@ vec3 groundColor(vec2 p){
 
   const U = {
     uStroke: { value: strokeTex }, uHt: { value: heightTex }, uMask: { value: maskTex }, uPathT: { value: pathTex },
-    uTime: { value: 0 }, uPl: { value: new T.Vector3() }, uPlV: { value: new T.Vector3(0, 0, -8) },
+    uTime: { value: 0 }, uWind: { value: 1 }, uPl: { value: new T.Vector3() }, uPlV: { value: new T.Vector3(0, 0, -8) },
     uG1: { value: C('#62a64a') }, uG2: { value: C('#86c257') }, uG3: { value: C('#b9d264') },
     uGold: { value: C('#d8b562') }, uForest: { value: C('#4c8442') }, uTea: { value: C('#3f8a48') }, uPath: { value: C('#dcbb8c') },
   };
@@ -232,7 +232,7 @@ vec3 groundColor(vec2 p){
       float y=position.y;
       vec3 transformed=vec3(gc.x+ca*position.x-sa*position.z, gh+y*sc, gc.y+sa*position.x+ca*position.z);
       float wv=sin(uTime*1.5+gc.x*0.16+gc.y*0.12)+0.5*sin(uTime*2.6+gc.x*0.5-gc.y*0.29);
-      transformed.xz+=vec2(0.85,0.45)*wv*0.11*y*y*sc;
+      transformed.xz+=vec2(0.85,0.45)*wv*0.11*uWind*y*y*sc;
       float push=(1.0-smoothstep(0.35,2.1,dd))*y;
       transformed.xz+=normalize(dv+vec2(0.0001))*push*0.7;
       transformed.y-=push*sc*0.6;
@@ -467,7 +467,7 @@ vec3 groundColor(vec2 p){
     skyMesh.position.copy(camera.position);
     for (const c of chunks) { const hi = Math.hypot(c.cx - pos.x, c.cz - pos.z) < HI_R; c.hi.visible = hi; c.lo.visible = !hi; }
   }
-  return { solids, terrain, grass, sky, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  return { solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */

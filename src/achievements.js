@@ -15,6 +15,7 @@ export const DAILY_POOL = [
   { id: 'd-earn-100', ev: 'earn', goal: 100, name: '귤 100 벌기', reward: 10, ns: true },
   { id: 'd-top-20', ev: 'trash-top', goal: ACH.topPick.goal, name: `정상 근처에서 ${ACH.topPick.goal}개 줍기`, reward: 15, ns: true },
   { id: 'd-sunpick', ev: 'trash-sun', goal: ACH.sunPick.goal, name: `해돋이·해넘이 때 ${ACH.sunPick.goal}개 줍기`, reward: 20, ns: true },
+  { id: 'd-rainpick', ev: 'trash-rain', goal: 5, name: '비 올 때 5개 줍기', reward: 15, ns: true },
   { id: 'd-steps-1500', ev: 'steps', goal: 1500, name: '천천히 1,500걸음', reward: 8, ns: true },
   { id: 'd-steps-4000', ev: 'steps', goal: 4000, name: '오늘은 4,000걸음', reward: 15, ns: true },
   { id: 'd-lap-1', ev: 'lap', goal: 1, name: '굼부리 한 바퀴', reward: 12, map: 'darangswi' },
