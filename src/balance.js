@@ -103,3 +103,14 @@ export const WEATHER = {
   particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
   cloudCount: 11, // namsongi 구름 덩어리 수
 };
+
+// 발자국 (#21): 걸음마다 왼발·오른발 자국. 달리기·질주는 간격이 넓고 조금 진함
+export const FOOTPRINT = {
+  max: 60, maxLow: 30, // 동시에 남는 최대 개수 (넘으면 오래된 것부터 지움)
+  life: 8, // 사라지는 데 걸리는 초 (뒤쪽 절반 동안 서서히)
+  stride: { walk: 1.1, run: 1.7, sprint: 2.1 }, // 걸음 간격 (countSteps 와 같게)
+  side: 0.28, // 왼발·오른발이 중심에서 벌어진 정도
+  alpha: { path: 0.55, grass: 0.16 }, // 탐방로·흙은 또렷하게, 풀밭은 흐리게
+  boost: { walk: 1, run: 1.15, sprint: 1.3 }, // 달릴수록 조금 진하게
+  size: [0.36, 0.62], // 발자국 가로·세로
+};
