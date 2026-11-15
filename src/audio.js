@@ -311,6 +311,31 @@ export class Sound {
     const c = this.ctx; const t = c.currentTime;
     [1318.5, 1760].forEach((fr, i) => { const o = c.createOscillator(); o.type = 'square'; o.frequency.value = fr; const g = c.createGain(); g.gain.setValueAtTime(0.035, t + i * 0.07); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.12); o.connect(g); g.connect(this.sfx); o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.14); });
   }
+  // 쓰레기 줍는 소리: 캔은 땡그랑, 페트병은 통통, 나머지는 바스락
+  pick(kind) {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    if (kind === 'can' || kind === 'pet') {
+      const fr = kind === 'can' ? [1900, 2850] : [520, 780];
+      fr.forEach((f, i) => { const o = c.createOscillator(); o.type = kind === 'can' ? 'triangle' : 'sine'; o.frequency.setValueAtTime(f, t + i * 0.05); if (kind === 'pet') o.frequency.exponentialRampToValueAtTime(f * 0.7, t + i * 0.05 + 0.1);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t + i * 0.05); g.gain.linearRampToValueAtTime(0.06, t + i * 0.05 + 0.005); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + (kind === 'can' ? 0.22 : 0.12));
+        o.connect(g); g.connect(this.sfx); o.start(t + i * 0.05); o.stop(t + i * 0.05 + 0.25); });
+    }
+    const n = kind === 'can' || kind === 'pet' ? 1 : 3;
+    for (let i = 0; i < n; i++) {
+      const tt = t + i * 0.06 + Math.random() * 0.02;
+      const s = c.createBufferSource(); s.buffer = this.noise;
+      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = (kind === 'gear' ? 900 : kind === 'foam' ? 2400 : 3600) + Math.random() * 800; f.Q.value = 1.2;
+      const g = c.createGain(); g.gain.setValueAtTime(0.12, tt); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.06);
+      s.connect(f); f.connect(g); g.connect(this.sfx); s.start(tt, Math.random()); s.stop(tt + 0.07);
+    }
+  }
+  // 배낭이 다 찼을 때: 낮은 두 음
+  full() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    [440, 330].forEach((f, i) => { const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t + i * 0.12); g.gain.linearRampToValueAtTime(0.07, t + i * 0.12 + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.2); o.connect(g); g.connect(this.sfx); o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.22); });
+  }
   shutter() {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;
