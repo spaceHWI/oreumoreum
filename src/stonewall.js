@@ -118,3 +118,51 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
   }
   return { update, length: LEN, chunks: chunks.length, modules: n, nearR: NR };
 }
+
+// 들머리와 오름 사이를 가로막는 안쪽 돌담 + 정낭(#31). line = nsbound.crossLine(TUT.gateD)
+// 정주석(구멍 뚫린 돌기둥) 둘 사이에 긴 나무 막대(정낭) 둘이 걸쳐 길을 막는다. open() 하면 막대가 한쪽으로 내려지고 그 뒤로는 계속 열림
+export function createCrossWall({ scene, height, line, low, col, open: open0 = false }) {
+  const GW = WALL.gateW, { a, b, c } = line;
+  const geo = moduleGeo(WALL.seg);
+  const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: poreTex(), gradientMap: gradHard });
+  const rnd = mulberry(4417), m4 = new THREE.Matrix4(), xa = new THREE.Vector3(), ya = new THREE.Vector3(), za = new THREE.Vector3(), cc = new THREE.Color();
+  // 정낭 양옆 두 토막 (a → 정낭 왼쪽, 정낭 오른쪽 → b)
+  const la = Math.hypot(c.x - a[0], c.z - a[1]), lb = Math.hypot(b[0] - c.x, b[1] - c.z), g0 = GW + 0.35;
+  const pieces = [];
+  const run = (p0, p1) => { const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.round(L / WALL.seg)); for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n; pieces.push([[p0[0] + (p1[0] - p0[0]) * t0, p0[1] + (p1[1] - p0[1]) * t0], [p0[0] + (p1[0] - p0[0]) * t1, p0[1] + (p1[1] - p0[1]) * t1]]); } };
+  run(a, [c.x + (a[0] - c.x) * g0 / la, c.z + (a[1] - c.z) * g0 / la]);
+  run([c.x + (b[0] - c.x) * g0 / lb, c.z + (b[1] - c.z) * g0 / lb], b);
+  const im = new THREE.InstancedMesh(geo, mat, pieces.length);
+  pieces.forEach(([p, q], i) => {
+    const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1, mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
+    const yp = height(p[0], p[1]), yq = height(q[0], q[1]), y = Math.min(height(mx, mz), (yp + yq) / 2) - 0.08, flip = rnd() < 0.5 ? -1 : 1;
+    xa.set(dx * flip, (yq - yp) * flip, dz * flip).normalize(); ya.set(0, 1, 0); za.crossVectors(xa, ya).normalize(); ya.crossVectors(za, xa).normalize();
+    m4.makeBasis(xa.multiplyScalar(l / WALL.seg * 1.02), ya.multiplyScalar(1.12 + rnd() * 0.16), za); m4.setPosition(mx, y, mz);
+    im.setMatrixAt(i, m4); const v = 0.26 + rnd() * 0.08; im.setColorAt(i, cc.setRGB(v, v, v * 1.06));
+    if (col) col.addBox(mx, mz, Math.atan2(-dz, dx), l / 2, WALL.thick);
+  });
+  im.computeBoundingSphere(); im.castShadow = !low; im.receiveShadow = true; scene.add(im);
+
+  // 정낭: 돌기둥 둘(막대 꽂는 구멍 셋) + 막대 둘
+  const rot = Math.atan2(-line.uz, line.ux), ys = height(c.x, c.z) - 0.1, r = mulberry(77);
+  const gate = new THREE.Group(); gate.position.set(c.x, ys, c.z); gate.rotation.y = rot; scene.add(gate);
+  const post = (side) => { const g = new THREE.BoxGeometry(0.62, 1.9, 0.58, 1, 3, 1); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (r() - 0.5) * 0.1, p.getY(i), p.getZ(i) + (r() - 0.5) * 0.1); g.translate(side * (GW + 0.05), 0.85, 0); return g.toNonIndexed(); };
+  const stoneM = new THREE.MeshToonMaterial({ color: new THREE.Color(0.3, 0.3, 0.32), map: mat.map, gradientMap: gradHard });
+  const posts = new THREE.Mesh(mergeGeometries([post(-1), post(1)]), stoneM); posts.castShadow = !low; posts.receiveShadow = true; gate.add(posts);
+  const holeM = new THREE.MeshBasicMaterial({ color: '#141416' }), holeG = new THREE.CircleGeometry(0.1, 8);
+  for (const side of [-1, 1]) for (const hy of [0.62, 1.05, 1.48]) for (const zz of [0.3, -0.3]) { const h = new THREE.Mesh(holeG, holeM); h.position.set(side * (GW + 0.05), hy + 0.1, zz); if (zz < 0) h.rotation.y = Math.PI; gate.add(h); }
+  const woodM = new THREE.MeshToonMaterial({ color: '#8a6a48', gradientMap: gradHard });
+  const BL = 2 * GW + 0.9, pivX = -(GW + 0.05), bars = [];
+  [1.15, 0.72].forEach((by, i) => {
+    const piv = new THREE.Group(); piv.position.set(pivX, by, 0); gate.add(piv);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.085, BL, 6).rotateZ(Math.PI / 2), woodM); pole.position.x = BL / 2 - 0.45; pole.castShadow = !low; piv.add(pole);
+    bars.push({ piv, by, yEnd: 0.1 + i * 0.15, rEnd: -2.85 + i * 0.12 });
+  });
+  const barrier = col ? col.addBox(c.x, c.z, rot, GW + 0.4, WALL.thick) : [];
+  let isOpen = false, t = -1;
+  const pose = (k) => { const e = k * k * (3 - 2 * k); bars.forEach((B) => { B.piv.position.y = B.by + (B.yEnd - B.by) * e + Math.sin(k * Math.PI) * 0.35; B.piv.rotation.y = B.rEnd * e; B.piv.rotation.z = Math.sin(k * Math.PI) * 0.25; }); };
+  function open(anim = true) { if (isOpen) return false; isOpen = true; if (col) col.setOff(barrier, true); if (anim) t = 0; else pose(1); return true; }
+  if (open0) open(false);
+  function update(dt) { if (t < 0) return; t += dt / 1.4; if (t >= 1) { pose(1); t = -1; } else pose(t); }
+  return { open, update, get isOpen() { return isOpen; }, center: new THREE.Vector3(c.x, height(c.x, c.z), c.z), modules: pieces.length };
+}

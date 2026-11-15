@@ -108,6 +108,15 @@ Object.assign(ACCESSORIES, {
       const bag = M(new THREE.SphereGeometry(0.15, 8, 6), net, 0, 0.27, -0.34); bag.scale.set(1.2, 0.8, 0.7);
       return G(M(new RoundedBoxGeometry(0.44, 0.58, 0.24, 3, 0.08), m, 0, 0.5, -0.21), bar(1), bar(-1), roll, bag); } },
   'shoes:s1': { slot: 'shoes', label: '운동화', builtin: true },
+  // 배낭 없음(#31, 처음엔 호주머니만): 몸에 구운 배낭·어깨끈을 감추고, 비는 등 쪽을 재킷 색 덩어리로 메움
+  'back:none': { slot: 'back', label: '배낭 없음', bone: 'chest', hide: ['pack', 'straps'], tint: { main: 'shirt' }, npc: true,
+    build: (mat) => { const m = mat('main', '#dccfac'); const b = M(new THREE.SphereGeometry(0.2, 20, 14), m, 0, 0.44, -0.035); b.scale.set(1.0, 0.95, 0.5); return G(b); } },
+  // 낚시 NPC 밀짚모자 (#31)
+  'hat:straw': { slot: 'hat', label: '밀짚모자', bone: 'head', hide: ['hat'], npc: true,
+    build: (mat) => { const m = mat('main', '#e3c77d'), band = mat('band', '#b5482f');
+      const crown = M(new THREE.CylinderGeometry(0.19, 0.23, 0.17, 18, 1), m, 0, 0.88, 0.02);
+      const brim = M(new THREE.CylinderGeometry(0.42, 0.44, 0.025, 24, 1), m, 0, 0.8, 0.02);
+      return G(crown, brim, M(new THREE.CylinderGeometry(0.232, 0.232, 0.04, 18, 1, true), band, 0, 0.82, 0.02)); } },
 });
 // 신발 2~5단계: 발을 덮는 한 켤레 (몸과 같은 뼈대로 휨). 단계마다 모양·색이 다름. 윗부분은 옷장 신발 색을 따라감
 const FOOT = { x: 0.106, z: 0.076, w: 0.14, d: 0.24 };
@@ -134,10 +143,10 @@ Object.entries(SHOE_LOOK).forEach(([k, L]) => { ACCESSORIES['shoes:' + k] = { sl
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];
 export const BAG_GEAR = ['back:pack', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];
 export const SHOE_GEAR = ['shoes:s1', 'shoes:s2', 'shoes:s3', 'shoes:s4', 'shoes:s5'];
-export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] });
+export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:none' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] });
 
 // 칸별 장비 목록 (옷장용)
-export const gearList = (slot) => Object.entries(ACCESSORIES).filter(([, a]) => a.slot === slot).map(([k]) => k);
+export const gearList = (slot) => Object.entries(ACCESSORIES).filter(([, a]) => a.slot === slot && !a.npc).map(([k]) => k);
 export const DEFAULT_GEAR = { hat: 'hat:cap', face: 'face:none', back: 'back:pack', bottom: 'bottom:shorts', shoes: 'shoes:s1', hand: 'hand:none' };
 // 네트워크로 받은 값 검사
 export const cleanGear = (g) => { const out = {}; if (g && typeof g === 'object') Object.entries(g).forEach(([slot, k]) => { if (SLOTS[slot] && ACCESSORIES[k]?.slot === slot) out[slot] = k; }); return out; };

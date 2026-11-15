@@ -517,6 +517,22 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   .tier-detail { grid-template-columns: 1fr; } .tier-buy { width: 100%; min-height: 54px; }
 }
 @media (prefers-reduced-motion: reduce) { #shop-arrow, .tier-pop, #shop .shop-coins.drain { animation: none; } .fx-spend { transition: none; } }
+
+/* 튜토리얼 개편 (#31): 힌트 카드는 화면 아래 가운데 하나, 건너뛰기 버튼, 목표 화살표, 호주머니 아이콘 */
+#bag-pill svg.pk { display: none; } #bag-pill.pocket svg.pk { display: block; } #bag-pill.pocket svg.bg { display: none; }
+#tut-hint, #tut-hint.pos-center, #tut-hint.pos-left, #tut-hint.pos-right { left: 50%; right: auto; bottom: calc(var(--safe-b) + 22px); width: 168px; height: 108px; padding: 8px 10px; margin-left: -84px; }
+#tut-hint.tut-in { animation: tutIn .5s cubic-bezier(.2,1.6,.4,1); }
+#tut-hint .hop { animation: tutHop 1.4s ease-in-out infinite; } #tut-hint .spark { animation: tutSpark 1s ease-in-out infinite; transform-origin: 102px 46px; }
+@keyframes tutHop { 0% { transform: translate(-22px, 0); } 25% { transform: translate(-4px, -16px); } 50% { transform: translate(14px, 0); } 75% { transform: translate(32px, -16px); } 100% { transform: translate(50px, 0); } }
+@keyframes tutSpark { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: .75; } }
+@media (max-width: 600px) { #tut-hint, #tut-hint.pos-center, #tut-hint.pos-left, #tut-hint.pos-right { bottom: calc(var(--safe-b) + 164px); width: 136px; height: 90px; margin-left: -68px; padding: 6px 8px; } }
+#tut-skip { position: fixed; z-index: 16; top: calc(var(--safe-t) + 10px); left: calc(var(--gut-l) + 10px); width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; color: #fff; opacity: .8; }
+#tut-skip[hidden] { display: none; } #tut-skip svg { width: 18px; height: 18px; } #tut-skip:hover { opacity: 1; }
+#tut-arrow { position: fixed; left: 0; top: 0; z-index: 15; width: 40px; height: 40px; margin: -20px 0 0 -20px; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 0; animation: hintPulse 1.1s ease-in-out infinite; }
+#tut-arrow[hidden] { display: none; }
+#tut-arrow .dot { width: 14px; height: 14px; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 10px #ffd27a; }
+#tut-arrow .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid #ffd27a; transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(28px); }
+@media (prefers-reduced-motion: reduce) { #tut-hint .hop, #tut-hint .spark, #tut-arrow { animation: none; } }
 </style>
 
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
@@ -526,7 +542,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   <div class="panel gyul" data-tut="gyul" role="button" tabindex="0" title="상점"><i></i><span id="coins">0</span></div>
   <div class="panel tpill" id="wx-pill" hidden></div>
   <div id="trash-hud" hidden>
-    <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
+    <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피)"><svg class="pk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/><path d="M9 13l3 3 3-3"/></svg><svg class="bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" data-tut="clean" title="오늘 오름이 깨끗해진 정도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg><b id="clean-n">0</b><small>%</small></div>
   </div>
   <button type="button" id="btn-release" class="panel icon-btn" hidden><span>손 놓기</span></button>

@@ -348,6 +348,32 @@ export class Sound {
     const c = this.ctx; const t = c.currentTime;
     [440, 330].forEach((f, i) => { const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t + i * 0.12); g.gain.linearRampToValueAtTime(0.07, t + i * 0.12 + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.2); o.connect(g); g.connect(this.sfx); o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.22); });
   }
+  // 개울에 빠짐: 첨벙 (낮게 퍼지는 잡음 + 물방울) (#31)
+  splash() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(400, t + 0.5);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.32, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t, Math.random()); s.stop(t + 0.65);
+    for (let i = 0; i < 4; i++) { const tt = t + 0.08 + i * 0.07 + Math.random() * 0.04, o = c.createOscillator(); o.type = 'sine'; const f0 = 700 + Math.random() * 900; o.frequency.setValueAtTime(f0, tt); o.frequency.exponentialRampToValueAtTime(f0 * 1.8, tt + 0.06);
+      const gg = c.createGain(); gg.gain.setValueAtTime(0.0001, tt); gg.gain.linearRampToValueAtTime(0.04, tt + 0.005); gg.gain.exponentialRampToValueAtTime(0.001, tt + 0.08); o.connect(gg); gg.connect(this.sfx); o.start(tt); o.stop(tt + 0.1); }
+  }
+  // 낚싯줄 감는 소리: 짧은 딸깍 여러 번
+  reel(dur = 1) {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime, n = Math.round(dur * 14);
+    for (let i = 0; i < n; i++) { const tt = t + i / 14; const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 4200; f.Q.value = 3;
+      const g = c.createGain(); g.gain.setValueAtTime(0.08, tt); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.025); s.connect(f); f.connect(g); g.connect(this.sfx); s.start(tt, Math.random()); s.stop(tt + 0.03); }
+  }
+  // 정낭 나무 막대가 내려지는 소리: 나무 부딪는 둔탁한 두 번
+  gate() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    [0, 0.42, 0.9].forEach((dt, i) => { const tt = t + dt; const o = c.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(i === 2 ? 180 : 240, tt); o.frequency.exponentialRampToValueAtTime(90, tt + 0.12);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(0.14, tt + 0.006); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.2); o.connect(g); g.connect(this.sfx); o.start(tt); o.stop(tt + 0.22);
+      const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 1.5; const gn = c.createGain(); gn.gain.setValueAtTime(0.12, tt); gn.gain.exponentialRampToValueAtTime(0.001, tt + 0.07); s.connect(f); f.connect(gn); gn.connect(this.sfx); s.start(tt, Math.random()); s.stop(tt + 0.08); });
+  }
   shutter() {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

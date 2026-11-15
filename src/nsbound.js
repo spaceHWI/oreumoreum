@@ -2,7 +2,7 @@
 // 중심에서 본 각도마다 반지름 R(θ) 하나로 나타낸 닫힌 선이다. 이 선을 따라 돌담을 두르고(stonewall.js),
 // 걷기 막기·동물 범위·쓰레기 자리(오름에만)가 모두 여기 값을 쓴다
 import { relAt, nsPaths, nsAlong, nsSummit } from './namsongi.js';
-import { BOUND } from './balance.js';
+import { BOUND, TUT } from './balance.js';
 
 const N = 720, TAU = Math.PI * 2;
 
@@ -37,7 +37,7 @@ function must(x, z, c) {
   }
 }
 nsPaths.approach.forEach((p) => must(p[0], p[1], BOUND.approach));
-const plaza = [nsAlong('approach', 0), nsAlong('approach', 5), nsAlong('approach', 13, 1, 7.5), nsAlong('approach', 13, 1, 16), nsAlong('approach', 24)];
+const plaza = [nsAlong('approach', 0), nsAlong('approach', 5), nsAlong('approach', 24), nsAlong('approach', TUT.cleanD, 1, 7.5), nsAlong('approach', TUT.cleanD, 1, 16)]; // 시작·클린하우스·가판대 (#31: 클린하우스는 개울 너머)
 plaza.forEach((p) => must(p.x, p.z, BOUND.plaza));
 for (let i = 0; i < N; i++) R[i] = Math.max(R[i], need[i]);
 // 3) 부드럽게: 여러 번 이웃 평균 → 꼭 들어야 할 곳은 다시 채움
@@ -85,3 +85,11 @@ export const oreumPaths = (() => {
   return out;
 })();
 export const BOUND_CENTER = { x: cx, z: cz };
+
+// 들머리와 오름 사이를 가로지르는 안쪽 돌담 자리(#31): 들머리 탐방로 TUT.gateD 지점에서 길에 수직으로 양쪽 바깥 돌담까지.
+// 반환 { a:[x,z] 한쪽 끝, b:[x,z] 다른 쪽 끝, c:{x,z} 길 위 정낭 가운데, ux,uz 선 방향, fx,fz 오름 쪽 }
+export function crossLine(d) {
+  const p = nsAlong('approach', d), q = nsAlong('approach', d + 1), fl = Math.hypot(q.x - p.x, q.z - p.z) || 1, fx = (q.x - p.x) / fl, fz = (q.z - p.z) / fl;
+  const ux = -fz, uz = fx, end = (s) => { let t = 0; while (t < 300 && insideBy(p.x + ux * s * t, p.z + uz * s * t) > -1.2) t += 0.25; return [p.x + ux * s * t, p.z + uz * s * t]; };
+  return { a: end(-1), b: end(1), c: { x: p.x, z: p.z }, ux, uz, fx, fz };
+}

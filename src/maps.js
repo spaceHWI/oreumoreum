@@ -5,6 +5,7 @@ import { SIGN_TEXT } from './props.js';
 import { GATE, gatePaths } from './gate.js';
 import { MAP_ID } from './boot.js';
 import { inBound as nsIn, clampBound as nsClamp, gate as nsGate } from './nsbound.js';
+import { TUT } from './balance.js';
 import { K as NK, NS_E, nsPaths, nsAlong, nsLen, nsSummit, nsDistToRim, relAt, NS_SIGN_TEXT } from './namsongi.js';
 
 // 어떤 맵인지: 주소 해시(#donnaeko) → 저장값 → 기본 다랑쉬
@@ -171,7 +172,9 @@ function namsongiSpots() {
   const LA = nsLen('approach'), LR = nsLen('rim');
   const route = [...nsPaths.approach, ...nsPaths.rim.slice().reverse()].map((q) => new THREE.Vector3(q[0], 0, q[1]));
   const full = [...route, ...route.slice().reverse()]; full.forEach((q) => { q.y = height(q.x, q.z); });
-  const T1 = { gyul: [at('approach', 16, 1, 0.8), at('approach', 21, -1, 0.7), at('approach', 26, 1, 0.5)], hare: at('approach', 50, 1, 4.4), jump: at('approach', 82), cairn: at('approach', 114, -1, 4.6), speed: at('approach', 138) };
+  // 들머리(#31): 시작 → 걷기 원 → 달리기 원 → 개울 → 쓰레기 6개 → 클린하우스·가판대 → 정낭(TUT.gateD) → 오름. 하르방·돌탑·귤은 정낭 너머로
+  const G0 = TUT.gateD;
+  const T1 = { gyul: [at('approach', G0 + 14, 1, 0.8), at('approach', G0 + 19, -1, 0.7), at('approach', G0 + 24, 1, 0.5)], hare: at('approach', G0 + 6, 1, 4.4), cairn: at('approach', G0 + 34, -1, 4.6) };
   const pickPts = [...nsPaths.approach, ...nsPaths.rim, ...nsPaths.toCrater, ...nsPaths.crater].filter((q) => nsIn(q[0], q[1], 14)); // 돌담 안만
   let pickI = 0;
   return {
@@ -186,10 +189,11 @@ function namsongiSpots() {
     ],
     hareubangs: [
       { pos: T1.hare, heading: T1.hare.dir + Math.PI - 0.5 },
+      { pos: at('approach', G0 + 6, -1, 4.4), heading: T1.hare.dir + Math.PI + 0.5 },
       { pos: at('approach', LA - 14, -1, 4.4), heading: at('approach', LA - 14).dir + Math.PI + 0.4 },
       { pos: V(stone.x - smOut.z * 6, stone.z + smOut.x * 6), heading: Math.atan2(-smOut.x, -smOut.z) },
     ],
-    sign: { pos: at('approach', 34, -1, 5), rot: at('approach', 34).dir + Math.PI + 0.35, html: NS_SIGN_TEXT, board: { title: '남송이오름 탐방로', sub: '서귀포시 안덕면 서광리', l1: '능선 · 정상(339m)', go: '▲ 정상까지 솔숲길' } },
+    sign: { pos: at('approach', G0 + 9, -1, 5), rot: at('approach', G0 + 9).dir + Math.PI + 0.35, html: NS_SIGN_TEXT, board: { title: '남송이오름 탐방로', sub: '서귀포시 안덕면 서광리', l1: '능선 · 정상(339m)', go: '▲ 정상까지 솔숲길' } },
     // 걸을 수 있는 범위(#25): 돌담(충돌)이 먼저 막고, 이건 돌담 바로 뒤의 안전망. 안내 문구 없음(돌담이 보이니까)
     clamp(x, z) { const c = nsClamp(x, z, -0.3); return c ? { x: c.x, z: c.z, hit: '' } : null; },
     inBounds: (x, z) => nsIn(x, z, 6),
@@ -207,13 +211,20 @@ function namsongiSpots() {
     // 멧돼지: 플레이어 둘레 70~110 중 돌담 안인 곳 (여러 방향을 시도)
     boarSpawn: (rnd, pp) => { let p = null; for (let k = 0; k < 12; k++) { const a = rnd() * Math.PI * 2, r = 70 + rnd() * 40, x = pp.x + Math.cos(a) * r, z = pp.z + Math.sin(a) * r; p = [x, z]; if (nsIn(x, z, 12)) break; } return p; },
     sunWatch: { pos: sm, r: 45 },
-    lamps: (() => { const L = []; for (let d = 10, i = 0; d < LA; d += 46, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('approach', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); }
+    lamps: (() => { const L = []; for (let d = 10, i = 0; d < LA; d += 46, i++) { if (Math.abs(d - TUT.streamD) < TUT.streamW + 4 || Math.abs(d - G0) < 5) continue; const s = i % 2 ? 1 : -1, q = nsAlong('approach', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); }
       for (let d = 30, i = 0; d < LR; d += 90, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('rim', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); } return L; })(),
-    // 걸으며 배우는 지점들 (들머리에서 첫 140걸음 사이)
-    // 튜토리얼(#17): 시작 자리 바로 앞에 늘 놓이는 쓰레기 3개(캔·페트병·비닐), 보상 귤, 길을 너무 벗어나면 그만
-    tut: { trash: [[at('approach', 7.5, -1, 1.1), 0], [at('approach', 9.5, 1, 1.3), 1], [at('approach', 11.2, -1, 1.6), 2]].map(([q, t]) => ({ x: q.x, z: q.z, t, r: q.x * 3.1 % 6.28 })), reward: 100, giveUp: 320 },
-    jumpStones: { pos: T1.jump, dir: T1.jump.dir },
-    // 클린하우스(재활용장): 들머리 시작하자마자 오른쪽 길옆. 앞면이 길을 봄
-    cleanhouse: (() => { const q = nsAlong('approach', 13, 1, 7.5); const c = nsAlong('approach', 13); return { x: q.x, z: q.z, rot: Math.atan2(c.x - q.x, c.z - q.z) }; })(),
+    // 튜토리얼(#31): 걷기·달리기 원, 개울(징검돌), 늘 그 자리의 쓰레기 6개(캔·페트병·비닐), 안쪽 정낭
+    tut: (() => {
+      const st = at('approach', TUT.streamD);
+      return {
+        walk: at('approach', TUT.walkD), run: at('approach', TUT.runD),
+        trash: TUT.trashD.map((d, k) => { const q = at('approach', d, k % 2 ? 1 : -1, 0.9 + (k % 3) * 0.35); return { x: q.x, z: q.z, t: k % 3, r: q.x * 3.1 % 6.28 }; }),
+        stream: { x: st.x, z: st.z, dir: st.dir },
+        farBank: at('approach', TUT.streamD + TUT.streamW + 2.2),
+        gate: at('approach', G0), beyond: at('approach', G0 + 6),
+      };
+    })(),
+    // 클린하우스(재활용장): 개울과 정낭 사이 길 오른쪽. 앞면이 길을 봄
+    cleanhouse: (() => { const q = nsAlong('approach', TUT.cleanD, 1, 7.5); const c = nsAlong('approach', TUT.cleanD); return { x: q.x, z: q.z, rot: Math.atan2(c.x - q.x, c.z - q.z) }; })(),
   };
 }

@@ -86,13 +86,13 @@ function getModelGeo() {
 const MODEL_DEFAULT = { hat: '#5c9a3c', shirt: '#e8d9b5', pants: '#8a6a3c', shoes: '#26262b' };
 function buildModel() {
   const geo = getModelGeo();
-  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 } };
+  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 } };
   // 남송이오름(새 그림체)에서는 3단 툰 명암
   const mat = NSMODE ? new THREE.MeshToonMaterial({ map: modelTex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: modelTex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   // 텍스처 색과 부위(기본 자세 위치)로 모자·상의·바지·신발을 가려 옷 색을 바꿈
   mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); patchDQS(sh);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack;\nvec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack, noStrap;\nvec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }')
       .replace('#include <map_fragment>', `#include <map_fragment>
       { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); float y = vRest.y; float ax = abs(vRest.x);
         float green = smoothstep(0.2, 0.24, h.x) * (1.0 - smoothstep(0.42, 0.46, h.x)) * smoothstep(0.25, 0.4, h.y);
@@ -103,7 +103,11 @@ function buildModel() {
         float rShirt = cream * smoothstep(0.23, 0.26, y) * (1.0 - smoothstep(0.585, 0.605, y));
         float rPants = olive * smoothstep(0.15, 0.17, y) * (1.0 - smoothstep(0.27, 0.29, y)) * (1.0 - smoothstep(0.21, 0.24, ax)) * step(-0.2, vRest.z);
         float rShoes = (1.0 - smoothstep(0.25, 0.4, h.z)) * (1.0 - smoothstep(0.09, 0.105, y));
-        float rPack = smoothstep(0.04, 0.06, h.x) * (1.0 - smoothstep(0.12, 0.14, h.x)) * smoothstep(0.34, 0.4, h.y) * smoothstep(0.4, 0.46, h.z) * step(0.26, y) * step(y, 0.62) * step(ax, 0.28) * step(vRest.z, -0.09);
+        float packCol = smoothstep(0.04, 0.06, h.x) * (1.0 - smoothstep(0.12, 0.14, h.x)) * smoothstep(0.34, 0.4, h.y) * smoothstep(0.4, 0.46, h.z);
+        float rPack = packCol * step(0.26, y) * step(y, 0.62) * step(ax, 0.28) * step(vRest.z, -0.09);
+        // 배낭 없음(#31): 어깨끈도 재킷 색으로 덮음
+        float rStrap = noStrap * smoothstep(0.03, 0.06, h.x) * (1.0 - smoothstep(0.13, 0.15, h.x)) * smoothstep(0.3, 0.38, h.y) * smoothstep(0.3, 0.4, h.z) * step(0.27, y) * step(y, 0.61) * step(ax, 0.3);
+        diffuseColor.rgb = mix(diffuseColor.rgb, cShirt, rStrap);
         // 장비로 바꾼 부분은 감춤 (새 장비가 덮음)
         if (max(max(rHat * hide.x, rShirt * hide.y), max(max(rPants * hide.z, rShoes * hide.w), rPack * hidePack)) > 0.5) discard;
         float mHat = rHat * on.x, mShirt = rShirt * on.y, mPants = rPants * on.z, mShoes = rShoes * on.w;
@@ -142,7 +146,7 @@ function buildModel() {
     }
     // 감출 부분 다시 계산
     const hid = new Set(); Object.values(worn).forEach((w) => (ACCESSORIES[w.key]?.hide || []).forEach((h) => hid.add(h)));
-    U.hide.value.set(+hid.has('hat'), +hid.has('top'), +hid.has('bottom'), +hid.has('shoes')); U.hidePack.value = +hid.has('pack');
+    U.hide.value.set(+hid.has('hat'), +hid.has('top'), +hid.has('bottom'), +hid.has('shoes')); U.hidePack.value = +hid.has('pack'); U.noStrap.value = +hid.has('straps');
   }
   const TINT = { hat: 'hat', pants: 'pants', shirt: 'shirt', shoes: 'shoes' };
   const set = (of) => { const pick = (k, u, i) => { const c = of[k]?.color || MODEL_DEFAULT[k]; U[u].value.set(c); U.on.value.setComponent(i, c.toLowerCase() === MODEL_DEFAULT[k] ? 0 : 1); }; pick('hat', 'cHat', 0); pick('shirt', 'cShirt', 1); pick('pants', 'cPants', 2); pick('shoes', 'cShoes', 3);
