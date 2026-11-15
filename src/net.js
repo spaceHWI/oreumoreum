@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TEXCS } from './boot.js';
 import { buildRunner } from './runner.js';
+import { cleanGear } from './gear.js';
 import { height, groundAt } from './world.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
@@ -13,7 +14,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   let hitOut = null;
 
   function compactOutfit(o) {
-    return { hr: o.hair?.type, hrc: o.hair?.color, sk: o.skin?.color, h: o.hat.type, hc: o.hat.color, hb: o.hat.back ? 1 : 0, g: o.glasses.type, v: o.vest.type, vc: o.vest.color, s: o.shirt.color, st: o.shirt.type, p: o.pants.type, pc: o.pants.color, sh: o.shoes.color, sht: o.shoes.type };
+    return { hr: o.hair?.type, hrc: o.hair?.color, sk: o.skin?.color, h: o.hat.type, hc: o.hat.color, hb: o.hat.back ? 1 : 0, g: o.glasses.type, v: o.vest.type, vc: o.vest.color, s: o.shirt.color, st: o.shirt.type, p: o.pants.type, pc: o.pants.color, sh: o.shoes.color, sht: o.shoes.type, gr: o.gear };
   }
   function expandOutfit(c) {
     if (!c || typeof c !== 'object') return null;
@@ -27,6 +28,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       shirt: { type: str(c.st, ['tee', 'singlet', 'long'], 'tee'), color: col(c.s, '#e9e4d6') },
       pants: { type: str(c.p, ['shorts', 'tights', 'half'], 'shorts'), color: col(c.pc, '#2b2b33') },
       shoes: { type: str(c.sht, ['road', 'trail', 'sandal'], 'road'), color: col(c.sh, '#e2683c') },
+      gear: cleanGear(c.gr),
     };
   }
   const safeNick = (n) => (typeof n === 'string' ? n.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 16) : '') || '러너';

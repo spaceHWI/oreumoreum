@@ -1181,7 +1181,12 @@ function checkViewpoint() {
 }
 function placeRunner(dt = 1) {
   // 계단·턱: 논리 위치는 땅에 딱 붙이고, 보이는 높이만 부드럽게 따라가 덜그럭거림을 없앰 (큰 낙차는 바로 반영)
-  { const dy = player.pos.y - player.visY; player.visY = Math.abs(dy) > 1.6 || player.riding || player.air ? player.pos.y : player.visY + dy * Math.min(1, dt * 9); }
+  // 비탈처럼 걸음에 비례해 이어지는 높이 변화는 바로 따라가고(늦게 따라가면 오르막에서 하반신이 땅에 묻힘), 계단처럼 툭 끊기는 변화만 부드럽게.
+  // 남은 차이는 땅보다 낮을 때 더 빨리 메움
+  { const p = player, run = Math.hypot(p.pos.x - (p.prevX ?? p.pos.x), p.pos.z - (p.prevZ ?? p.pos.z)), dyG = p.pos.y - (p.prevY ?? p.pos.y);
+    p.prevX = p.pos.x; p.prevY = p.pos.y; p.prevZ = p.pos.z;
+    if (Math.abs(dyG) <= run * 1.4 + 0.004) p.visY += dyG;
+    const dy = p.pos.y - p.visY; p.visY = Math.abs(dy) > 1.6 || p.riding || p.air ? p.pos.y : p.visY + dy * Math.min(1, dt * (dy > 0 ? 18 : 9)); }
   runner.root.position.copy(player.pos); runner.root.position.y = player.visY + player.jumpY;
   runner.root.rotation.y = player.heading;
   followLight();
@@ -1240,7 +1245,9 @@ function frame(now) {
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
   const pose = player.riding ? 'sit' : player.pose === 'photo-wait' ? 'move' : player.pose;
-  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV });
+  const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
+  const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
+  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)) });
   marker.rotation.z += dt;
   cairns.forEach((c) => { if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
   clouds.rotation.y += dt * 0.012;
