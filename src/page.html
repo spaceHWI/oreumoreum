@@ -353,6 +353,19 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .beta-chip { color: var(--acc-fg); border: 0; border-radius: 999px; padding: 1px 7px; }
 .intro-notice { background: rgba(255,255,255,.08); border: 0; border-radius: 14px; } .intro-notice b { color: #fff; }
 #intro-help { border-top: 1px solid var(--hair); }
+/* 서버 고르기 (#35): 그림 카드 둘 */
+.srv-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 12px; }
+.srv-pick button { position: relative; padding: 0; border: 2px solid var(--hair); border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.08); aspect-ratio: 16 / 11; cursor: pointer; transition: transform .15s, border-color .15s, opacity .15s; }
+.srv-pick button svg { display: block; width: 100%; height: 100%; }
+.srv-pick button[aria-checked="true"] { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(255,138,31,.35); transform: translateY(-2px); }
+.srv-pick.chosen button[aria-checked="false"] { opacity: .55; }
+.srv-pick button i { position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: none; place-items: center; }
+.srv-pick button i svg { width: 14px; height: 14px; }
+.srv-pick button[aria-checked="true"] i { display: grid; }
+.srv-pick:not(.chosen) button { animation: srvWave 2.4s ease-in-out infinite; } .srv-pick:not(.chosen) button + button { animation-delay: 1.2s; }
+@keyframes srvWave { 0%, 100% { border-color: var(--hair); } 50% { border-color: rgba(255,138,31,.8); } }
+.intro-actions .btn:disabled { opacity: .4; pointer-events: none; }
+@media (max-width: 600px) { .srv-pick { gap: 8px; } .srv-pick button { border-radius: 14px; } }
 #tut-hint { background: var(--glass-2); border: 1px solid var(--hair); border-radius: 22px; box-shadow: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; }
 #tut-hint::after { display: none; }
 .ach-item { border: 0; border-radius: 14px; background: rgba(255,255,255,.08); padding: 10px 12px; }
@@ -640,6 +653,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
     <button type="button" id="menu-more" class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>설정</button>
   </div>
   <div class="m-more">
+    <button type="button" id="menu-server">서버 바꾸기</button>
     <button type="button" id="menu-map">다른 탐방로</button>
     <button type="button" id="menu-help">조작법</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
@@ -756,6 +770,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
     <h1>오름오름</h1>
     <div class="ver-line"><span class="beta-chip">BETA</span> <span id="ver-text"></span> · <button type="button" class="linkish" id="intro-notes">릴리스 노트</button></div>
     <div class="map-pick" id="intro-pick"></div>
+    <div class="srv-pick" id="intro-srv" role="radiogroup" aria-label="서버 고르기"></div>
     <div class="intro-actions">
       <button type="button" class="btn primary" id="enter-sound">소리 켜고 오르기</button>
       <button type="button" class="btn" id="enter-quiet">조용히 오르기</button>
@@ -773,6 +788,12 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
       <span><b>귤</b> 길에서 줍고 업적으로 받아요. 던지면 노루·말이 먹고 따라와요</span>
       <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
     </div>
+  </div>
+</div>
+<div class="overlay dim" id="server" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>서버</h2><button type="button" class="btn small" id="server-close">닫기</button></div>
+    <div class="pop-body"><div class="srv-pick" id="server-pick" role="radiogroup" aria-label="서버 고르기"></div></div>
   </div>
 </div>
 <div class="overlay dim" id="notes" hidden>

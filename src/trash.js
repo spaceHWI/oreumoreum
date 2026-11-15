@@ -18,21 +18,26 @@ export const TRASH_N = N;
 const enc = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 4096) s += String.fromCharCode.apply(null, u8.subarray(i, i + 4096)); return btoa(s); };
 const dec = (s, n) => { const u = new Uint8Array(n); try { const b = atob(s || ''); for (let i = 0; i < Math.min(n, b.length); i++) u[i] = b.charCodeAt(i); } catch (e) { /* 깨진 값은 비움 */ } return u; };
 const popc = (u8) => { let c = 0; for (let i = 0; i < u8.length; i++) { let v = u8[i]; while (v) { v &= v - 1; c++; } } return c; };
-export function createLocalTrashStore({ save, persist }) {
+export function createLocalTrashStore({ save, persist, server = 'clean' }) {
   const T = save.trash = (save.trash && typeof save.trash === 'object') ? save.trash : {};
-  if (typeof T.date !== 'string') T.date = '';
+  // 서버별 주운 기록 (#35): srv[서버] = { date, picked }. 예전 저장의 date·picked 는 깨끗한 오름 것으로 옮김
+  if (!T.srv || typeof T.srv !== 'object') { T.srv = { clean: { date: typeof T.date === 'string' ? T.date : '', picked: typeof T.picked === 'string' ? T.picked : '' } }; delete T.date; delete T.picked; }
+  let S = null, bits = null;
+  const slot = (id) => { const o = T.srv[id] = (T.srv[id] && typeof T.srv[id] === 'object') ? T.srv[id] : {}; if (typeof o.date !== 'string') o.date = ''; if (typeof o.picked !== 'string') o.picked = ''; return o; };
+  const load = (id) => { S = slot(id); bits = dec(S.picked, Math.ceil(N / 8)); T.today = popc(bits); };
   if (!T.bag || typeof T.bag !== 'object') T.bag = {};
   TRASH_TYPES.forEach((t) => { T.bag[t.id] = Math.max(0, Math.floor(Number(T.bag[t.id]) || 0)); });
   T.total = Math.max(0, Math.floor(Number(T.total) || 0));
   if (!Array.isArray(T.tp)) T.tp = []; // 튜토리얼용 고정 쓰레기: 주운 번호(0부터). 오늘 수·누적 수엔 세지 않음
   if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수 (예전 저장엔 없음)
-  const bits = dec(T.picked, Math.ceil(N / 8));
-  T.today = popc(bits);
+  load(server);
   let dirty = false;
   return {
-    date: () => T.date,
+    date: () => S.date,
+    // 다른 서버의 주운 기록으로 바꿔 끼움 (지금 기록은 먼저 저장). 바꾼 뒤 trash.relayout() 필요
+    setServer(id) { if (dirty) { S.picked = enc(bits); dirty = false; } load(id); persist(); },
     resetTutorial() { T.tp = []; dirty = true; },
-    reset(date) { T.date = date; bits.fill(0); T.today = 0; dirty = true; this.commit(); },
+    reset(date) { S.date = date; bits.fill(0); T.today = 0; dirty = true; this.commit(); },
     isPicked: (i) => i >= N ? T.tp.includes(i - N) : (bits[i >> 3] >> (i & 7)) & 1,
     markPicked(i) { if (i >= N) { if (T.tp.includes(i - N)) return false; T.tp.push(i - N); dirty = true; return true; } if ((bits[i >> 3] >> (i & 7)) & 1) return false; bits[i >> 3] |= 1 << (i & 7); T.today++; T.total++; dirty = true; return true; },
     pickedCount: () => T.today,
@@ -41,7 +46,7 @@ export function createLocalTrashStore({ save, persist }) {
     dex: T.dex,
     dexAdd(id) { const isNew = !T.dex[id]; T.dex[id] = (T.dex[id] || 0) + 1; return isNew; },
     dexSpecies: () => DEX_LIST.reduce((n, d) => n + (T.dex[d.id] > 0 ? 1 : 0), 0),
-    commit() { if (dirty) { T.picked = enc(bits); dirty = false; } persist(); },
+    commit() { if (dirty) { S.picked = enc(bits); dirty = false; } persist(); },
   };
 }
 
@@ -217,6 +222,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   function ensureDay() { const d = kstDate(); if (store.date() !== d) { const first = !store.date(); store.reset(d); layout(d); emit('reset', { first }); return true; } return false; }
+  function relayout() { if (store.date() !== kstDate()) store.reset(kstDate()); layout(store.date()); emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
   if (store.date() === kstDate()) layout(store.date()); else { store.reset(kstDate()); layout(kstDate()); }
   let dayT = 0;
   function update(dt, pos) {
@@ -234,5 +240,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     heaps: () => L.heaps.map((h, k) => ({ x: h.x, z: h.z, left: heapLeft[k] })),
     drawn: () => meshes.reduce((s, m) => s + m.count, 0),
   };
-  return { update, any, candidates, take, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, layout: () => L };
+  return { update, any, candidates, take, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, relayout, layout: () => L };
 }

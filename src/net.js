@@ -84,7 +84,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     try { lobby = await window.claude.use('room'); } catch (e) { lobby = null; }
     if (!lobby) return;
     // 오름마다 따로 모이는 방 (서버 하나에 오름 하나)
-    try { room = lobby.join ? await lobby.join(roomName || 'oreum') : lobby; } catch (e) { room = lobby; }
+    try { room = lobby.join ? await lobby.join((typeof roomName === 'function' ? roomName() : roomName) || 'oreum') : lobby; } catch (e) { room = lobby; }
     room.onPeers((ch) => {
       for (const pr of ch.peers) if (pr.sameTab) myPeer = pr.peer;
       for (const pr of ch.left) removePeer(pr.peer);
