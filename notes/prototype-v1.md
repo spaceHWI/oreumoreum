@@ -227,7 +227,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 ## HP·쓰러짐·들것 귀환 (#36, 전투 오름만)
 - `src/hp.js` `createHp`: `enabled()` = `isBattle() && sessionOn`. 깨끗한 오름에선 막대 숨김·피해 없음. 수치는 `balance.js HP`
-- 멧돼지에 받히면 `boarHit` 에서 `hp.hit(HP.boarDmg)`(25). 넉백·귤 흩뿌리기(#32)는 그대로. `regenDelay`(8초) 동안 안 맞으면 초당 5 회복. HP 는 저장하지 않음(새로고침하면 가득)
+- 멧돼지에 받히면 `enemyHit` 에서 `hp.hit(def.dmg)`(멧돼지 25, #37 이후 ENEMIES 표). 넉백·귤 흩뿌리기(#32)는 그대로. `regenDelay`(8초) 동안 안 맞으면 초당 5 회복. HP 는 저장하지 않음(새로고침하면 가득)
 - HP 0 → `pending` → 넉백이 땅에 닿아 구르기까지 끝나면 `tryBegin` → 단계 fall(뒤로 눕기, 머리가 시작 지점 쪽) → come(흰 옷 두 사람이 빈 들것을 들고 시작 지점 쪽에서 걸어옴) → load → carry(화면 0.55→검정) → black(시작 지점으로 옮김) → wait(들것에 누워 원형 게이지 `#hp-wait`) → rise(HP 가득) → 두 사람은 빈 들것을 들고 떠남(`leaveT`)
 - 누운 몸은 `hp.lie {ang, y}` 를 `placeRunner` 가 knock 과 같은 방식(축 = heading 의 오른쪽)으로 적용. 쓰러진 동안 `busy()`·`pickBlocked`·`doInteract` 막힘, `updatePlayer` 는 바로 돌아감. `player.down` 이면 멧돼지는 달아나고 몸 충돌 없음
 - 대기: `save.hpDown = {n, at}` — 쓰러질 때 `at` 에서 `resetSec`(180초) 지났으면 n=0, 아니면 n+1 (`waits` 5·10·20·30). 일어날 때도 `at` 갱신
@@ -235,3 +235,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - UI: `#hp-bar`(하트+막대, 위 가운데, `.low` 깜빡임, `.hit` 흔들림), `#hp-dim`, `#hp-wait`. `body.hp-on` 이면 해 칩·토스트·배너를 아래로, `body.hp-down` 이면 튜토리얼 힌트·화살표 숨김
 - 업적 이벤트 `down`. 확인용 `__oreum.hp`(hp, phase, waitSec, streak, set(v), kill(), resetStreak())
 - 임시: 들것·두 사람은 로우폴리·기존 캐릭터(흰 재킷·흰 모자). 실어 갈 때 충돌 없이 곧장 시작 지점 쪽으로 감(돌담을 지나칠 수 있음, 화면이 어두워지는 동안)
+
+## 적: 멧돼지 쫓아내기 (#37, 전투 오름만)
+- `src/enemies.js` `createEnemies` (life.js 안에서 만듦, `life.enemies`). 종류 표는 `balance.js ENEMIES`(name·hp·walk·chase·flee·dmg·reward{gyul,rare}·sight·lose·life·rootEvery·rootT·rootTrash·rootR·size), 출현은 `ENEMY_SPAWN`, 귤 피해는 `THROW_DMG.hand`(1). 새 종류는 표 한 줄 + `MODELS` 에 모양
+- 출현: 전투 오름에서 `every`(240초)마다 한 무리 2~3마리, 플레이어에서 40~70 사이, 맵의 `spots.enemyOk(x,z)`(남송이는 돌담 안 `nsIn(x,z,12)`, 정낭 맵은 null = 없음). 동시에 최대 4. 깨끗한 오름에선 모두 지움. 예전 `spots.boarSpawn`·life.js 의 멧돼지 한 마리 코드는 없앰
+- 상태: wander → (rootEvery 마다) root(머리 숙여 헤집기, 중간에 `enemyRoot` → `trash.drop(x,z,n,r)`) / sight 18 안에 보이면 charge(받히면 `enemyHit(dir, def)` → 넉백·귤 흩뿌리기·`hp.hit(def.dmg)`) / 귤 맞아 hp 0 → flee / life(180초) 다 되거나 플레이어가 쓰러지면 leave. 맞으면 바로 charge
+- 머리 위 기운 막대는 스프라이트 둘(맞으면 잠깐 흰색, 1/3 이하 빨강). 나타날 때 `#enemy-warn`(빨간 느낌표)이 화면 가장자리 무리 쪽에 `warnT` 초. 가까우면 머리 위 `alertMark`
+- 쫓아내면 `enemyRepel(kind,pos,def)`: 그 자리에 귤 10개 `scatterTangerines`(30초 동안 주울 수 있음), 5% 로 드문 쓰레기 하나 도감 등록(`onDexGet`). 업적 이벤트 `enemy-repel`, `enemy-repel-<종류>` (멧돼지는 예전 `boar-repel` 도)
+- 쓰레기 흘리기: `trash.drop` 은 둘레 r 안의 이미 주운 흩어진 쓰레기를 가까운 순으로 다시 놓음(`store.unmarkPicked`, 오늘 수만 줄고 누적은 그대로). 이미 더러운 곳이면 0
+- 확인용 `__oreum.enemies.test`(wave(), spawn(kind,dx,dz), clear(), timer, state()), `__oreum.enemyWarn`
+- 임시: 다른 종류 모양 없음(표의 후보만). 드문 쓰레기는 10종 중 무작위

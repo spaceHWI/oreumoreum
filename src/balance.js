@@ -132,6 +132,26 @@ export const BOAR = {
   knockSpeed: 28, knockV: 11, // 튕겨 나가는 속도·떠오르는 속도 (예전 14·9, 거리 약 2배)
   rollT: 0.55, getUpT: 0.5, // 착지 뒤 구르는 시간·일어나는 시간 (이 동안 조작 못 함)
 };
+// 적 (#37): 쓰러뜨리지 않고 귤을 맞혀 쫓아냄. 전투 오름에서만. 새 종류는 여기에 한 줄 + src/enemies.js MODELS 에 모양
+// hp 기운, walk·chase·flee 속도, dmg 받힐 때 플레이어 HP 피해(#36), reward 쫓아냈을 때 귤 개수·드문 쓰레기 확률
+// sight 이 거리 안에 플레이어가 보이면 돌진, lose 이보다 멀어지면 그만둠, life 안 쫓아내면 스스로 떠나는 시간(초)
+// rootEvery 땅 헤집는 간격(초), rootT 헤집는 시간, rootTrash 흘리는 쓰레기 수, size 판정·충돌 크기 배율
+// 다음 후보: 들개, 아기 멧돼지, 쓰레기 투기 트럭, 외계인
+export const ENEMIES = {
+  boar: { name: '멧돼지', hp: 6, walk: 2.4, chase: 7.2, flee: 9, dmg: 25, reward: { gyul: 10, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+};
+export const ENEMY_SPAWN = {
+  every: 240, first: 240, // 4분마다 한 무리 (들어온 뒤 첫 무리도 4분 뒤)
+  group: [2, 3], // 한 무리 마릿수
+  r: [40, 70], // 플레이어에서 이 거리 사이 (오름 안)
+  max: 4, // 동시에 최대
+  kinds: ['boar'], // 나올 수 있는 종류
+  warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
+  goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
+};
+// 귤 피해 (#37): 손으로 던지기 1. 무기(#38)가 붙으면 여기에 더한다
+export const THROW_DMG = { hand: 1 };
+
 // 받혀서 흩어지는 귤 (#32)
 export const SCATTER = {
   frac: 0.1, min: 3, max: 15, // 가진 귤의 비율·최소·최대 개수 (가진 것보다 많이는 안 흩어짐)
@@ -189,7 +209,6 @@ export const THROW_AIM = {
 // HP·쓰러짐·들것 귀환 (#36). 전투 오름에서만
 export const HP = {
   max: 100,
-  boarDmg: 25, // 멧돼지에 받힐 때
   regenDelay: 8, regen: 5, // 이 초 동안 안 맞으면 초당 regen 씩 회복
   waits: [5, 10, 20, 30], // 시작 지점 대기 시간: 처음, 연달아 쓰러질 때마다 다음 칸 (마지막이 최대)
   resetSec: 180, // 일어난 뒤 이만큼 안 쓰러지면 대기 시간이 처음 칸으로

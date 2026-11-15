@@ -40,6 +40,8 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
     reset(date) { S.date = date; bits.fill(0); T.today = 0; dirty = true; this.commit(); },
     isPicked: (i) => i >= N ? T.tp.includes(i - N) : (bits[i >> 3] >> (i & 7)) & 1,
     markPicked(i) { if (i >= N) { if (T.tp.includes(i - N)) return false; T.tp.push(i - N); dirty = true; return true; } if ((bits[i >> 3] >> (i & 7)) & 1) return false; bits[i >> 3] |= 1 << (i & 7); T.today++; T.total++; dirty = true; return true; },
+    // 다시 흘림 (#37 멧돼지가 헤집음): 오늘 주운 수만 줄고 누적 수는 그대로
+    unmarkPicked(i) { if (i >= N || !((bits[i >> 3] >> (i & 7)) & 1)) return false; bits[i >> 3] &= ~(1 << (i & 7)); T.today = Math.max(0, T.today - 1); dirty = true; return true; },
     pickedCount: () => T.today,
     totalCount: () => T.total,
     bag: T.bag,
@@ -220,6 +222,18 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     if (heapClear) emit('heap-clear', {});
     return { id, t, type, dex: dx, dexNew, pos: new THREE.Vector3(L.X[id], Y[id] + (isHeap(id) ? 0.6 : 0.15), L.Z[id]), color: PAL[t][L.col[id]] };
   }
+  // 흘리기 (#37): (x, z) 둘레 r 안의 주운 쓰레기(흩어진 것) 중 가까운 n 개를 다시 놓음. 이미 더러운 곳이면 놓을 게 없어 0
+  function drop(x, z, n, r) {
+    const out = [], r2 = r * r;
+    for (let i = Math.floor((x - r) / C); i <= Math.floor((x + r) / C); i++) for (let j = Math.floor((z - r) / C); j <= Math.floor((z + r) / C); j++) {
+      const a = cells.get(ck(i, j)); if (!a) continue;
+      for (let k = 0; k < a.length; k++) { const id = a[k], d2 = (L.X[id] - x) ** 2 + (L.Z[id] - z) ** 2; if (d2 <= r2 && store.isPicked(id)) out.push({ id, d2 }); }
+    }
+    out.sort((p, q) => p.d2 - q.d2);
+    let got = 0; for (const o of out) { if (got >= n) break; if (store.unmarkPicked(o.id)) got++; }
+    if (got) { dirty = true; store.commit(); emit('changed', {}); }
+    return got;
+  }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   function ensureDay() { const d = kstDate(); if (store.date() !== d) { const first = !store.date(); store.reset(d); layout(d); emit('reset', { first }); return true; } return false; }
   function relayout() { if (store.date() !== kstDate()) store.reset(kstDate()); layout(store.date()); emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
@@ -240,5 +254,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     heaps: () => L.heaps.map((h, k) => ({ x: h.x, z: h.z, left: heapLeft[k] })),
     drawn: () => meshes.reduce((s, m) => s + m.count, 0),
   };
-  return { update, any, candidates, take, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, relayout, layout: () => L };
+  return { update, any, candidates, take, drop, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, relayout, layout: () => L };
 }
