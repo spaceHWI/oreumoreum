@@ -1,7 +1,8 @@
 import { NSMODE, TEXCS } from './boot.js'; // 반드시 맨 먼저
 import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createTrash, createLocalTrashStore } from './trash.js';
-import { TOOLS, BAGS, TRASH_TYPES, CLEANHOUSE } from './balance.js';
+import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE } from './balance.js';
+import { equipGear } from './gear.js';
 import { createCleanhouse } from './cleanhouse.js';
 import { gradHard } from './toon.js';
 import { createRetro } from './retro.js';
@@ -49,7 +50,10 @@ if (typeof save.coins !== 'number') save.coins = 5;
 save.owned ||= {};
 save.wishes ||= {};
 if (!save.equip || typeof save.equip !== 'object') save.equip = {};
-for (const k of ['tool', 'bag', 'shoes']) save.equip[k] = Math.max(1, Math.min(5, Math.floor(Number(save.equip[k]) || 1))); // 장비 단계 (지금은 1단계만)
+for (const k of ['tool', 'bag', 'shoes']) save.equip[k] = Math.max(1, Math.min(5, Math.floor(Number(save.equip[k]) || 1))); // 장비 단계 1~5 (상점에서 다음 단계만 삼)
+// 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감
+const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip) }; };
+syncEquipGear();
 if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
 save.recycle.gyul = Math.max(0, Math.floor(Number(save.recycle.gyul) || 0)); // 클린하우스에서 번 귤 누적
@@ -261,6 +265,7 @@ function layoutCairn(c) {
 const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW }) : null;
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
+const shopAct = CH && { label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
 
 // ---------- 러너 ----------
 const runner = buildRunner();
@@ -554,7 +559,7 @@ $('chat-form').addEventListener('submit', (e) => { e.preventDefault(); const v =
 $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('chat').hidden = true; });
 
 $('menu-wardrobe').addEventListener('click', () => { closePanels(); openWardrobe(); });
-$('menu-shop').addEventListener('click', () => { closePanels(); openShop(); });
+$('menu-shop').addEventListener('click', () => { closePanels(); openShop('gear'); });
 $('menu-sign').addEventListener('click', () => { closePanels(); openSign(); });
 if (Object.values(MAPS).filter((x) => !x.hidden).length < 2 && MAP_ID === 'namsongi') $('menu-map').hidden = true;
 $('menu-map').addEventListener('click', () => { closePanels(); if (MAP_ID === 'gate') toast('갈림길 표지판으로 가서 길을 고르면 돼요'); else leaveTo('gate'); });
@@ -812,7 +817,7 @@ const interactables = [
   { label: '앉아 쉬기', pos: benchPos, r: 8, act: sitDown },
   ...(spots.sign.silent ? [] : [{ label: '안내 읽기', pos: spots.sign.pos, r: 6, act: () => openSign() }]),
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
-  ...(chAct ? [chAct] : []),
+  ...(chAct ? [chAct, shopAct] : []),
 ];
 let ctxTarget = null, handAct = null, deerAct = null;
 const dismountAct = { label: '노루에서 내리기', act: () => dismountDeer() };
@@ -1012,9 +1017,50 @@ function updateContext() {
 
 // ---------- 상점·옷장 ----------
 function owned(part, kind, v) { const pr = itemPrice(part, kind, v); return pr === 0 || !!save.owned[itemKey(part, kind, v)]; }
-function openShop() { if (cam.mode === 'wardrobe' || player.pose === 'sit') return; closePanels(); buildShop(); $('shop').hidden = false; }
+let shopTab = 'gear';
+function openShop(tab) { if (cam.mode === 'wardrobe' || player.pose === 'sit') return; closePanels(); if (tab) shopTab = tab; buildShop(); $('shop').hidden = false; }
+document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.tab; buildShop(); }));
+// 장비 탭: 도구·배낭·신발 각 5단계. 다음 단계만 살 수 있고 사면 바로 착용
+const GEAR_ROWS = [
+  { k: 'tool', list: TOOLS, icon: 'tool', stat: (t) => `${t.rate ? `${t.rate}/s` : `×${t.per}`} · ↔${t.r}` }, // 한 번에 몇 개 · 닿는 거리
+  { k: 'bag', list: BAGS, icon: 'bag', stat: (t) => String(t.cap) },
+  { k: 'shoes', list: SHOES, icon: 'shoe', stat: (t) => `×${t.speed.toFixed(2).replace(/0$/, '')}` },
+];
+const GEAR_SVG = {
+  tool: '<path d="M12 3v11M7 21l5-7 5 7M9 21v-3M15 21v-3M12 14v4"/>',
+  bag: '<path d="M7 8h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM9 8V6a3 3 0 0 1 6 0v2M9 14h6"/>',
+  shoe: '<path d="M3 17h17a1 1 0 0 0 1-1v0a3 3 0 0 0-3-3h-3l-3-4H5L3 13zM3 17v2h18v-2M9 9l1 2M11 9.5l1 1.5"/>',
+};
+function buyGear(row) {
+  const cur = save.equip[row.k], next = row.list[cur]; if (!next) return;
+  if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
+  save.coins -= next.price; save.equip[row.k] = cur + 1;
+  syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
+  sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + row.k);
+  toast(`${next.name || ''}${next.name ? ' · ' : ''}${cur + 1}단계 · 바로 착용했어요`.trim());
+  buildShop();
+}
+function buildGearShop(body) {
+  for (const row of GEAR_ROWS) {
+    const cur = save.equip[row.k], now = row.list[cur - 1], next = row.list[cur];
+    const el = document.createElement('div'); el.className = 'gear-row'; el.dataset.k = row.k;
+    const ic = document.createElement('div'); ic.className = 'gear-ic'; ic.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GEAR_SVG[row.icon]}</svg>`;
+    const mid = document.createElement('div'); mid.className = 'gear-mid';
+    const pips = document.createElement('div'); pips.className = 'gear-pips'; pips.setAttribute('aria-label', `${cur}/5단계`);
+    for (let i = 1; i <= 5; i++) { const d = document.createElement('i'); if (i <= cur) d.className = 'on'; pips.append(d); }
+    const st = document.createElement('div'); st.className = 'gear-stat';
+    st.innerHTML = `<b>${now.name || ''}</b> <span>${row.stat(now)}</span>${next ? ` <em>→ ${row.stat(next)}</em>` : ''}`;
+    mid.append(pips, st);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'gear-buy';
+    if (next) { b.innerHTML = `${next.name ? `<small>${next.name}</small>` : ''}<span><i class="g"></i>${next.price.toLocaleString()}</span>`; b.classList.toggle('short', save.coins < next.price); b.addEventListener('click', () => buyGear(row)); }
+    else { b.disabled = true; b.innerHTML = '<span>MAX</span>'; }
+    el.append(ic, mid, b); body.append(el);
+  }
+}
 function buildShop() {
   const body = $('shop-body'); body.innerHTML = '';
+  document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)));
+  if (shopTab === 'gear') { buildGearShop(body); return; }
   for (const [part, opt] of Object.entries(OUTFIT_OPTIONS)) {
     const row = document.createElement('div'); row.className = 'w-row';
     const h = document.createElement('div'); h.className = 'w-label'; h.textContent = opt.label; row.append(h);
@@ -1089,7 +1135,7 @@ function openWardrobe() {
   $('wardrobe').hidden = false;
 }
 function closeWardrobe() { $('wardrobe').hidden = true; cam.mode = 'follow'; if (camBefore) Object.assign(cam, camBefore); }
-$('wardrobe-shop').addEventListener('click', () => { closeWardrobe(); openShop(); });
+$('wardrobe-shop').addEventListener('click', () => { closeWardrobe(); openShop('wear'); });
 $('wardrobe-done').addEventListener('click', closeWardrobe);
 $('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; ui.nick.textContent = save.nick; $('nick-mirror').textContent = save.nick; persist(); });
 
@@ -1311,7 +1357,7 @@ function updatePlayer(dt) {
   }
   tickStamina(dt, !!dir);
   const slow = joy.active && p.joyMag < 0.6;
-  const want = dir ? (slow ? 4 : p.sprint ? 14.5 : p.running ? 10 : 5) : 0;
+  const want = dir ? (slow ? 4 : p.sprint ? 14.5 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed : 0; // 신발 단계만큼 빨라짐
   p.speed += (want - p.speed) * Math.min(1, dt * 8);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -1424,7 +1470,7 @@ function frame(now) {
   const pose = player.riding ? 'sit' : player.pose === 'photo-wait' ? 'move' : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
-  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)) });
+  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time });
   marker.rotation.z += dt;
   cairns.forEach((c) => { if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
   clouds.rotation.y += dt * 0.012;
