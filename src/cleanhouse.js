@@ -64,6 +64,18 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
     const sx = x + rt.x * SX + fw.x * SZ, sz = z + rt.z * SX + fw.z * SZ;
     stall.add(new THREE.Mesh(mergeGeometries(sp), mat)); stall.position.set(sx, height(sx, sz) - 0.05, sz); stall.rotation.y = rot;
     stall.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = !low; } }); scene.add(stall); }
+  // 가판대 위 귤 표시: 화면에서 늘 같은 크기라 멀리서도 보임
+  const markTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.arc(33, 36, 24, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ff8a1f'; g.beginPath(); g.arc(32, 34, 23, 0, Math.PI * 2); g.fill();
+    g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
+    g.fillStyle = 'rgba(0,0,0,.14)'; g.beginPath(); g.arc(37, 39, 15, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#3d9a4a'; g.beginPath(); g.ellipse(36, 10, 9, 4.5, -0.4, 0, Math.PI * 2); g.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const mark = new THREE.Sprite(new THREE.SpriteMaterial({ map: markTex, sizeAttenuation: false, depthWrite: false, transparent: true }));
+  mark.scale.setScalar(CLEANHOUSE.stallMark); mark.renderOrder = 3;
+  const markY = stall.position.y + 3.4; mark.position.set(stall.position.x, markY, stall.position.z); scene.add(mark);
+  let markT = 0;
   const shopFront = new THREE.Vector3(x + rt.x * SX + fw.x * (SZ + 1.6), 0, z + rt.z * SX + fw.z * (SZ + 1.6)); shopFront.y = height(shopFront.x, shopFront.z);
   scene.add(root);
   root.updateMatrixWorld(true);
@@ -73,9 +85,10 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
   const center = toWorld(0, 0, 0);
   const bump = [0, 0, 0, 0, 0];
   function update(dt, night) {
+    markT += dt; mark.position.y = markY + Math.sin(markT * 2.2) * 0.18;
     bulbMat.emissiveIntensity = night * 1.5; poolMat.opacity = night * 0.55;
     if (light) light.intensity = night * 22;
     for (let i = 0; i < 5; i++) { if (bump[i] <= 0) continue; bump[i] = Math.max(0, bump[i] - dt * 4); const k = Math.sin(bump[i] * Math.PI); lids[i].position.y = 1.37 + k * 0.18; lids[i].rotation.x = -k * 0.25; }
   }
-  return { root, binTop, front, center, shopFront, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
+  return { root, binTop, front, center, shopFront, stallTop: mark.position, mark, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
 }

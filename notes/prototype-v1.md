@@ -38,7 +38,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 
 ## 상점·장비 강화 (2026-11-15, #10)
 - 상점 패널(#shop)에 탭: 장비(기본)·옷(예전 색 구매 그대로). 장비 탭은 도구·배낭·신발 줄마다 단계 막대 5칸·지금 수치→다음 수치·다음 단계 구매 버튼(귤 모자라면 흐리게, 5단계면 MAX). 사면 save.equip 올리고 바로 착용·저장·net.send, 업적 이벤트 gear-buy, gear-buy-<tool|bag|shoes>
-- 진입: 메뉴 '상점'(장비 탭) + 클린하우스 오른쪽 귤 가판대(cleanhouse.js 의 stall, 앞 CH.shopFront, 반경 CLEANHOUSE.shopR 3.2 안이면 상호작용 '상점'). 옷장의 '상점'은 옷 탭
+- (#26에서 팝업으로 바뀜) 진입: 메뉴 '상점'(장비 탭) + 클린하우스 오른쪽 귤 가판대(cleanhouse.js 의 stall, 앞 CH.shopFront, 반경 CLEANHOUSE.shopR 3.2 안이면 상호작용 '상점'). 옷장의 '상점'은 옷 탭
 - 효과: 도구 = TOOLS(per·time·r, 흡입기는 time 0.25 로 누르는 동안 초당 4개), 배낭 = BAGS.cap, 신발 = 이동 속도 × SHOES.speed (main.js want)
 - 겉모습: gear.js 에 칸 hand 추가. TOOL_GEAR(hand:none·tongs·rake·bigrake·vacuum, armR 뼈에 쥠), BAG_GEAR(back:pack 기본·bag2~5, 몸 배낭 감춤), SHOE_GEAR(shoes:s1 기본·s2~5, 몸과 같이 휘는 한 켤레, 윗부분은 옷장 신발 색을 따라감). equipGear(save.equip) 를 main.syncEquipGear 가 outfit.gear 에 넣어 다른 사람에게도 보임
 - 줍는 동작: runner.animate({tool, dur}) — 맨손 쪼그려 두 손, 집게 허리 숙여 한 손, 갈퀴·큰 갈퀴 앞에서 당겨 긁기, 흡입기 선 채로 좌우로 훑기(누르는 동안 유지)
@@ -158,3 +158,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `namsongi.js` `buildNamsongi({ bound })`: 돌담 자리(±4~5) 나무 비움, 밖 나무는 45%만·돌담에서 900 넘으면 없음·충돌 없음, 밖 바위·꽃 없음. 시작 지점 삼각형 64만→45만
 - 쓰레기: `createTrash({ paths: oreumPaths, inBounds: onOreum })`. 들머리 평지·클린하우스·가판대·접근로(오름 자락 전)엔 없음, 시작에서 200 안 0개. 총량·비율 그대로, 오름 위 약 41만 m² 에 100m² 당 6.6개. 못 찾으면 탐방로 위로(예전엔 아무 데나). 튜토리얼 3개는 그대로
 - 테스트: `__oreum.bound`(nsbound 전부), `__oreum.wall`(length, chunks, modules, nearR)
+
+## 상점 팝업 (2026-11-15, #26)
+- #shop 팝업 하나: 위 가진 귤(+닫기 X), 탭 도구·배낭·신발·옷. 장비 탭은 5단계 칸 한 줄(.tiers: own 체크 / next 위 화살표·값 / lock 자물쇠). 칸을 누르면 아래 .tier-detail 에 이름·수치 아이콘(지금→다음)과 큰 구매 버튼. 단계 그림은 main.js TIER_ART(임시 SVG)
+- 옷 탭은 예전 옷 구매 그대로. 구매 연출 spendFx: 귤 칸에서 귤 알갱이가 산 칸으로 빠져나가고 숫자가 줄어듦, 장비는 바로 착용
+- 여는 곳: 가판대(상호작용 '상점') · 데스크톱 왼쪽 위 귤 알약(.gyul) · 폰 위 알약의 귤 부분(#chip-gyul, 링 부분은 업적) · 메뉴 '상점'. openShop('gear')는 살 수 있는 첫 장비 탭으로 연다
+- 가판대 위 귤 표시: cleanhouse.js 의 Sprite(sizeAttenuation false, 크기 CLEANHOUSE.stallMark), CH.stallTop
+- 버리기 연출이 끝났을 때 살 수 있는 장비가 있으면 CLEANHOUSE.shopHint(8)초 동안 #shop-arrow 가 가판대를 가리킴(가판대 앞에 오거나 상점을 열면 끝). 화살표 위치 계산은 placeArrow 로 클린하우스 화살표와 같이 씀
+- 폰(폭 600 이하): 아래에서 올라오는 시트, 구매 버튼은 폭 가득 54px
+- 확인용: __oreum.cleanhouse.openShop / buyGear(k) / canBuyGear() / shopHint()
