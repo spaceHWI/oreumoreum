@@ -197,3 +197,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `collide.js`: add/addBox 가 번호를 돌려주고 `setOff(ids, off)` 로 잠시 끌 수 있음
 - 테스트: `__oreum.tut.step`, `__oreum.stream`(local, near, busy), `__oreum.jeong`(isOpen, open), `__oreum.openJeong()`, `__oreum.gyulShower(n)`
 - 임시: 개울·징검돌·낚시 NPC·정낭 막대 모양은 로우폴리, 힌트 그림 SVG 임시. 점프로 징검돌에서 물 위로 넘어갈 때 발 높이가 돌 높이(0.32)만큼 툭 내려감. NPC 탐방객·노루는 개울을 그냥 지나감
+
+## 멧돼지 몸 충돌·넉백·귤 흩뿌리기 (#32)
+- `life.js updateBoar`: 멧돼지 몸 원(`BOAR.bodyR`)과 플레이어 원이 겹치면 멧돼지를 뒤로 물림 (뛰어올라 `jumpClear` 이상이면 통과). 받힘은 몸이 닿은 뒤 `hitGap` 안, 받힌 뒤 `hitCd`(3초) 동안 다시 안 받힘
+- 넉백은 `main.js boarHit` 훅: 속도·뜨는 힘을 2배(`BOAR.knockSpeed/knockV`), 돌담·사물 충돌은 기존 kb 이동(clamp·col.move) 그대로. `tickKnock` 이 날 때 뒤로 눕고 → 착지 뒤 구르고 → 일어나는 동안 조작을 잠금 (`player.knock`)
+- 귤 흩뿌리기: `life.scatterTangerines(pos, n)` — 가진 귤의 10%(3~15, 가진 만큼만)를 반경 2~7 에 포물선으로 떨어뜨림. `tangerines` 에 `drop:true` 로 들어가 30초간 줍기(reclaim, +1) 가능, 동물은 안 먹음. 수치는 `balance.js BOAR`·`SCATTER`

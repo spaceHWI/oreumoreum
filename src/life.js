@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { height, surfaceAt } from './world.js';
 import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
-import { BOAR } from './balance.js';
+import { BOAR, SCATTER, COLLIDE } from './balance.js';
 
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; return m; };
@@ -162,6 +162,24 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     const v = dir.clone().multiplyScalar(power); v.y += power * 0.55;
     tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null });
   }
+  // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
+  function scatterTangerines(center, n) {
+    const T = SCATTER.air;
+    for (let i = 0; i < n; i++) {
+      let x = center.x, z = center.z;
+      for (let k = 0; k < 6; k++) {
+        const a = rnd() * Math.PI * 2, r = SCATTER.rMin + rnd() * (SCATTER.rMax - SCATTER.rMin);
+        const tx = center.x + Math.sin(a) * r, tz = center.z + Math.cos(a) * r;
+        if (spots.inBounds(tx, tz)) { x = tx; z = tz; break; }
+      }
+      const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true;
+      const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = 0.17; leaf.rotation.x = -1; m.add(leaf);
+      const y0 = center.y + 1; m.position.set(center.x, y0, center.z); group.add(m);
+      const gy = height(x, z) + 0.16, tt = T * (0.8 + rnd() * 0.4);
+      const v = new THREE.Vector3((x - center.x) / tt, (gy - y0) / tt + 11 * tt, (z - center.z) / tt);
+      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true });
+    }
+  }
   const hareubangs = [];
   function addHareubang(pos, heading) {
     const h = buildHareubang(); h.root.position.copy(pos); h.root.rotation.y = heading; scene.add(h.root);
@@ -172,7 +190,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   function seekFood(a, range) {
     if (a.target || a.state === 'ridden' || a.state === 'flee') return;
     let best = null, bd = range;
-    for (const tg of tangerines) { if (!tg.landed || tg.eaten || tg.claimedBy) continue; const d = tg.mesh.position.distanceTo(a.pos); if (d < bd) { bd = d; best = tg; } }
+    for (const tg of tangerines) { if (!tg.landed || tg.eaten || tg.claimedBy || tg.drop) continue; const d = tg.mesh.position.distanceTo(a.pos); if (d < bd) { bd = d; best = tg; } }
     if (best) { best.claimedBy = a; a.target = best; a.state = 'food'; }
   }
   function feedStep(a, dt, time) { // returns desired speed or null if not handled
@@ -299,7 +317,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     // 귤
     for (let i = tangerines.length - 1; i >= 0; i--) {
       const tg = tangerines[i];
-      if (tg.landed) { tg.rest += dt; if (tg.rest > 45 || tg.eaten) { if (!tg.eaten) group.remove(tg.mesh); if (tg.claimedBy && tg.claimedBy.target === tg) tg.claimedBy.target = null; tangerines.splice(i, 1); } continue; }
+      if (tg.landed) { tg.rest += dt; if (tg.rest > (tg.drop ? SCATTER.life : 45) || tg.eaten) { if (!tg.eaten) group.remove(tg.mesh); if (tg.claimedBy && tg.claimedBy.target === tg) tg.claimedBy.target = null; tangerines.splice(i, 1); } continue; }
       tg.vel.y -= 22 * dt; tg.t += dt;
       const p = tg.mesh.position;
       p.addScaledVector(tg.vel, dt);
@@ -309,7 +327,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (boar && !boar.fleeing && Math.hypot(p.x - boar.pos.x, p.z - boar.pos.z) < BOAR.hitR && p.y < boar.pos.y + BOAR_MODEL_H * BOAR.scale + BOAR.hitPad) {
+      if (boar && !tg.drop && !boar.fleeing && Math.hypot(p.x - boar.pos.x, p.z - boar.pos.z) < BOAR.hitR && p.y < boar.pos.y + BOAR_MODEL_H * BOAR.scale + BOAR.hitPad) {
         boar.fleeing = true; boar.t = 12; sound.boar?.(); onToast('멧돼지가 놀라 도망가요'); hooks.boarRepel?.(); tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
       }
       for (const hb of hareubangs) {
@@ -323,7 +341,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const gy = height(p.x, p.z) + 0.16;
       if (p.y <= gy) {
         p.y = gy;
-        if (Math.abs(tg.vel.y) > 2.5) { tg.vel.y = -tg.vel.y * 0.35; tg.vel.x *= 0.6; tg.vel.z *= 0.6; sound.step(surfaceAt(p.x, p.z), false); }
+        if (!tg.drop && Math.abs(tg.vel.y) > 2.5) { tg.vel.y = -tg.vel.y * 0.35; tg.vel.x *= 0.6; tg.vel.z *= 0.6; sound.step(surfaceAt(p.x, p.z), false); }
         else { tg.landed = true; tg.vel.set(0, 0, 0); }
       }
     }
@@ -403,12 +421,22 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     }
     legs4(b, b.speed > 0.3 ? 0.7 : 0);
     const charge = !b.fleeing && b.speed > 4 ? 1 : 0; b.chg = (b.chg || 0) + (charge - (b.chg || 0)) * Math.min(1, dt * 4); b.head.rotation.x = 0.05 + b.chg * 0.25 + Math.sin(b.phase * 0.5) * 0.08; // 돌진할 때 머리를 숙임 b.tail.rotation.x = Math.sin(time * 9) * 0.4;
-    if (!b.fleeing && d < 1.6 && b.hitCd <= 0 && player.jumpY < 0.6) { b.hitCd = 2.5; hooks.boarHit?.(to.normalize()); }
+    { // 몸 충돌 (#32): 원 둘이 겹치지 않게 멧돼지를 뒤로 물림 (뛰어 넘으면 통과). 막혀 못 물러나면 플레이어를 밀어냄
+      const minD = BOAR.bodyR + COLLIDE.player;
+      if (d < minD && player.jumpY < BOAR.jumpClear && !player.air) {
+        const ux = d > 1e-3 ? to.x / d : -Math.sin(b.heading), uz = d > 1e-3 ? to.z / d : -Math.cos(b.heading), push = minD - d;
+        const bx = b.pos.x - ux * push, bz = b.pos.z - uz * push;
+        if (spots.inBounds(bx, bz)) b.pos.set(bx, height(bx, bz), bz);
+        else { const px = player.pos.x + ux * push, pz = player.pos.z + uz * push; const cl = spots.clamp?.(px, pz); player.pos.x = cl ? cl.x : px; player.pos.z = cl ? cl.z : pz; }
+        b.root.position.copy(b.pos);
+      }
+    }
+    if (!b.fleeing && d < BOAR.bodyR + COLLIDE.player + BOAR.hitGap && b.hitCd <= 0 && player.jumpY < 0.6) { b.hitCd = BOAR.hitCd; hooks.boarHit?.(to.normalize()); }
     if (b.t <= 0 || (b.fleeing && d > 90)) { group.remove(b.root); const wasNear = b.warned; boar = null; boarTimer = 120 + rnd() * 120; if (wasNear) hooks.boarGone?.(); }
   }
   function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
   const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000).length;
-  return { bind, hooks, nearestDeer, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, addHareubang, hareubangs, deer, horses, tangerines, boarTest: { spawn: () => { if (boar) { group.remove(boar.root); boar = null; } boarTimer = 0; }, get: () => boar }, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
+  return { bind, hooks, nearestDeer, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, boarTest: { spawn: () => { if (boar) { group.remove(boar.root); boar = null; } boarTimer = 0; }, get: () => boar }, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
 }
