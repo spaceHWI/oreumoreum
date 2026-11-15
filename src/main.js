@@ -277,16 +277,16 @@ function layoutCairn(c) {
   const cx = Math.cos(c.lean), cz = Math.sin(c.lean);
   for (let i = 0; i < n; i++) {
     const e = list[list.length - n + i];
-    const s = 0.85 + ((i * 37) % 10) / 30;
+    const s = (0.85 + ((i * 37) % 10) / 30) * CAIRN.stoneSize;
     const h = y - c.base;
     // 위로 갈수록 한쪽으로 휘고 살짝 흔들림
-    const bend = Math.pow(h / CAIRN.bendH, 1.5) * CAIRN.bend, sway = Math.sin(h * 0.11 + c.lean) * 0.28 * Math.min(1, h / 15);
+    const bend = Math.pow(h / CAIRN.bendH, 1.5) * CAIRN.bend, sway = Math.sin(h * 0.9 + c.lean) * 0.07 * Math.min(1, h / 2);
     const jx = Math.sin(i * 2.4) * 0.07, jz = Math.cos(i * 2.4) * 0.07;
     eul.set(0.2 * Math.sin(i * 1.7), i * 2.1, 0.2 * Math.cos(i * 1.3)); q.setFromEuler(eul);
     c.P[i * 3] = cx * bend - cz * sway + jx; c.P[i * 3 + 1] = y + 0.13 * s; c.P[i * 3 + 2] = cz * bend + cx * sway + jz;
     c.Q[i * 4] = q.x; c.Q[i * 4 + 1] = q.y; c.Q[i * 4 + 2] = q.z; c.Q[i * 4 + 3] = q.w;
     c.S[i] = s; c.C[i] = e.mine ? 255 : i % 4;
-    y += CAIRN.step * s;
+    y += CAIRN.step * s / CAIRN.stoneSize;
   }
   c.n = n; c.stride = 0; c.top = y; c.count = list.length;
   fillCairn(c, 1);
