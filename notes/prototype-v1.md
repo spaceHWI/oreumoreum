@@ -107,3 +107,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 남송이 돌탑 3개(`ns-head` 들머리·`ns-ridge` 능선·`ns-rim` 정상). 한 사람당 돌탑마다 돌 하나, 다시 올리면 `at` 이 갱신돼 맨 위로 옮겨짐(social.placeStone)
 - 수치는 `balance.js` 의 `CAIRN`(max 2000, step, bend, farD). main.js 의 InstancedMesh(툰 재질) 하나에 돌을 쌓고, 위로 갈수록 휘고 흔들림. 멀면(farD) 돌을 건너뛰어 크게 그림(`fillCairn` stride, LOW 는 5)
 - 이전 id(`ns-crater`)로 올린 돌은 더 이상 표시되지 않음
+
+## 튜토리얼 개편 (#17)
+- `src/tutorial.js`: 단계 `move → pick(쓰레기 3개) → dump(클린하우스) → shop(집게) → stone(돌탑) → run(달리기 전환)`. 앞 단계가 끝나는 대로 다음 단계가 시작되고 그림 힌트 카드만 보임. 끝나면 `skipAll` 로 나머지 UI 전부 노출·`body.tut` 제거
+- 알약은 `data-tut`: 배낭 `bag`(pick 시작), 귤 `gyul`(dump 끝), 깨끗한 정도 `clean`(마지막에 나머지와 함께). `notify(k, n)` 으로 trash(주운 수)·dump·stone·gait 를 받음
+- shop 단계 시작 때 보상 귤 `spots.tut.reward`(100)를 한 번만 줌(`save.tut.paid`). 이미 집게 이상이면 안 줌
+- 튜토리얼 쓰레기: `spots.tut.trash`(남송이 `maps.js`)의 3개를 `createTrash({ fixed })` 로 넘김. 번호는 N 이후(`N+k`), 날짜 배치·오늘/누적 수와 무관하게 늘 그 자리. 주운 기록은 `save.trash.tp`
+- 저장 키 `save.nsV2`: 기존 유저도 튜토리얼 한 번 다시(`save.tut`·`save.trash.tp` 초기화). 예전 단계(귤 던지기·하르방·징검돌)는 튜토리얼에서만 빠짐

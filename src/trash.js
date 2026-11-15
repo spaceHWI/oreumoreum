@@ -24,15 +24,17 @@ export function createLocalTrashStore({ save, persist }) {
   if (!T.bag || typeof T.bag !== 'object') T.bag = {};
   TRASH_TYPES.forEach((t) => { T.bag[t.id] = Math.max(0, Math.floor(Number(T.bag[t.id]) || 0)); });
   T.total = Math.max(0, Math.floor(Number(T.total) || 0));
+  if (!Array.isArray(T.tp)) T.tp = []; // 튜토리얼용 고정 쓰레기: 주운 번호(0부터). 오늘 수·누적 수엔 세지 않음
   if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수 (예전 저장엔 없음)
   const bits = dec(T.picked, Math.ceil(N / 8));
   T.today = popc(bits);
   let dirty = false;
   return {
     date: () => T.date,
+    resetTutorial() { T.tp = []; dirty = true; },
     reset(date) { T.date = date; bits.fill(0); T.today = 0; dirty = true; this.commit(); },
-    isPicked: (i) => (bits[i >> 3] >> (i & 7)) & 1,
-    markPicked(i) { if ((bits[i >> 3] >> (i & 7)) & 1) return false; bits[i >> 3] |= 1 << (i & 7); T.today++; T.total++; dirty = true; return true; },
+    isPicked: (i) => i >= N ? T.tp.includes(i - N) : (bits[i >> 3] >> (i & 7)) & 1,
+    markPicked(i) { if (i >= N) { if (T.tp.includes(i - N)) return false; T.tp.push(i - N); dirty = true; return true; } if ((bits[i >> 3] >> (i & 7)) & 1) return false; bits[i >> 3] |= 1 << (i & 7); T.today++; T.total++; dirty = true; return true; },
     pickedCount: () => T.today,
     totalCount: () => T.total,
     bag: T.bag,
@@ -61,10 +63,10 @@ function makeTrail(paths) {
   return { dist, at, L };
 }
 
-function genLayout(date, trail, ok) {
+function genLayout(date, trail, ok, fixed) {
   const rnd = mulberry(strSeed('trash-' + date));
   const gauss = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
-  const X = new Float32Array(N), Z = new Float32Array(N), R = new Float32Array(N), TY = new Uint8Array(N);
+  const M = N + fixed.length, X = new Float32Array(M), Z = new Float32Array(M), R = new Float32Array(M), TY = new Uint8Array(M);
   // 종류: 비율대로 정확히 나눠 섞음
   let o = 0; TRASH_TYPES.forEach((t, k) => { const n = k === TRASH_TYPES.length - 1 ? N - o : Math.round(N * t.ratio); TY.fill(k, o, o + n); o += n; });
   for (let i = N - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = TY[i]; TY[i] = TY[j]; TY[j] = t; }
@@ -98,6 +100,7 @@ function genLayout(date, trail, ok) {
     X[i] = p[0]; Z[i] = p[1]; R[i] = rnd() * Math.PI * 2;
   }
   for (let h = 0; h < heaps.length; h++) for (let s = 0; s < TRASH.heapN; s++) { const i = NS + h * TRASH.heapN + s; X[i] = heaps[h].x; Z[i] = heaps[h].z; R[i] = 0; }
+  fixed.forEach((f, k) => { X[N + k] = f.x; Z[N + k] = f.z; R[N + k] = f.r || 0; TY[N + k] = f.t; }); // 튜토리얼용: 날짜와 상관없이 늘 그 자리
   return { X, Z, R, TY, heaps };
 }
 
@@ -128,7 +131,7 @@ function makeHeapGeo() {
 }
 
 /* ---------- 쓰레기 세상 ---------- */
-export function createTrash({ scene, store, height, paths, inBounds, low }) {
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [] }) {
   const trail = makeTrail(paths);
   const ok = (x, z) => inBounds(x, z) && height(x, z) > 2; // 바다·맵 밖 제외
   const geos = makeGeos();
@@ -142,16 +145,16 @@ export function createTrash({ scene, store, height, paths, inBounds, low }) {
   const listeners = [];
   const emit = (ev, d) => listeners.forEach((f) => f(ev, d));
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), col = new THREE.Color();
-  const Y = new Float32Array(N);
+  const Y = new Float32Array(N + fixed.length);
   function layout(date) {
-    L = genLayout(date, trail, ok);
-    for (let i = 0; i < N; i++) Y[i] = height(L.X[i], L.Z[i]);
+    L = genLayout(date, trail, ok, fixed);
+    for (let i = 0; i < N + fixed.length; i++) Y[i] = height(L.X[i], L.Z[i]);
     const m = new Map();
     for (let i = 0; i < NS; i++) { const k = ck(Math.floor(L.X[i] / C), Math.floor(L.Z[i] / C)); let a = m.get(k); if (!a) m.set(k, a = []); a.push(i); }
     cells = new Map(); for (const [k, a] of m) cells.set(k, Int32Array.from(a));
     heapLeft = L.heaps.map((_, h) => { let n = 0; for (let s = 0; s < TRASH.heapN; s++) if (!store.isPicked(NS + h * TRASH.heapN + s)) n++; return n; });
     // 각 쓰레기의 색 (번호로 정해짐)
-    L.col = new Uint8Array(N); for (let i = 0; i < N; i++) L.col[i] = (Math.imul(i, 2654435761) >>> 24) % PAL[L.TY[i]].length;
+    L.col = new Uint8Array(N + fixed.length); for (let i = 0; i < N + fixed.length; i++) L.col[i] = (Math.imul(i, 2654435761) >>> 24) % PAL[L.TY[i]].length;
     layoutHeaps(); dirty = true;
   }
   function layoutHeaps() {
@@ -171,6 +174,12 @@ export function createTrash({ scene, store, height, paths, inBounds, low }) {
         meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, col.set(PAL[t][L.col[id]])); cnt[t] = c + 1;
       }
     }
+    for (let k = 0; k < fixed.length; k++) {
+      const id = N + k, dx = L.X[id] - px, dz = L.Z[id] - pz; if (dx * dx + dz * dz > r2 || store.isPicked(id)) continue;
+      const t = L.TY[id], c = cnt[t]; if (c >= CAP) continue;
+      e.set(0, L.R[id], 0); q.setFromEuler(e); v.set(L.X[id], Y[id], L.Z[id]); m4.compose(v, q, one);
+      meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, col.set(PAL[t][L.col[id]])); cnt[t] = c + 1;
+    }
     meshes.forEach((im, t) => { im.count = cnt[t]; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; });
   }
   // 반경 안에서 주울 수 있는 것들 (가까운 순). room: 배낭 남은 부피
@@ -180,6 +189,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low }) {
       const a = cells.get(ck(i, j)); if (!a) continue;
       for (let n = 0; n < a.length; n++) { const id = a[n], dx = L.X[id] - px, dz = L.Z[id] - pz, d2 = dx * dx + dz * dz; if (d2 > r2 || store.isPicked(id) || TRASH_TYPES[L.TY[id]].vol > room) continue; if (fn(id, d2)) return true; }
     }
+    for (let k = 0; k < fixed.length; k++) { const id = N + k, dx = L.X[id] - px, dz = L.Z[id] - pz, d2 = dx * dx + dz * dz; if (d2 > r2 || store.isPicked(id) || TRASH_TYPES[L.TY[id]].vol > room) continue; if (fn(id, d2)) return true; }
     const hr = r + TRASH.heapR;
     for (let h = 0; h < L.heaps.length; h++) {
       if (!heapLeft[h]) continue; const H = L.heaps[h], d2 = (H.x - px) ** 2 + (H.z - pz) ** 2; if (d2 > hr * hr) continue;
@@ -189,7 +199,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low }) {
   }
   const any = (px, pz, r, room) => each(px, pz, r, room, () => true);
   function candidates(px, pz, r, room) { const out = []; each(px, pz, r, room, (id, d2) => { out.push({ id, d2 }); return false; }); out.sort((a, b) => a.d2 - b.d2); return out.map((o) => o.id); }
-  const isHeap = (id) => id >= NS;
+  const isHeap = (id) => id >= NS && id < N;
   function take(id) {
     if (!store.markPicked(id)) return null;
     const t = L.TY[id], type = TRASH_TYPES[t];
