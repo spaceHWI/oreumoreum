@@ -128,3 +128,6 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 테스트: `__oreum.setWeather('rain')` (`null` 이면 실제 날씨로). 업적 `d-rainpick`(이벤트 `trash-rain`)
 
 - 반딧불이(`gfx2.js` createMotes): 입자 좌표는 월드 기준. 플레이어에서 ±30 넘으면 60 상자 안에서 반대편으로 되감고, 높이는 입자 자기 위치의 땅 높이 기준 (#19)
+
+### #20 업적 뱃지 플랫화
+- `.bdg`(패널 뱃지·달성 배너 공용)에서 테두리·inset 그림자·하이라이트를 제거하고 단색 원 + 글리프만 남김. 못 얻은 뱃지는 흐린 단색(`#d8d2bf`, 글리프 opacity .3). 코드(`badgeicons.js`, `buildAch`)는 그대로, 스타일만 `src/page.html`.
