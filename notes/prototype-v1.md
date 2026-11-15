@@ -157,7 +157,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `maps.js` 남송이: `clamp` 는 돌담 바로 뒤 안전망(문구 없음, 예전 사각 경계·'아직 길이 없어요' 삭제), `inBounds`=경계 6 안쪽, 노루 무리 3곳 돌담 안으로 옮김, 멧돼지 등장은 돌담 안 방향을 여러 번 시도, 귤 줍기 자리도 돌담 안 길만
 - `namsongi.js` `buildNamsongi({ bound })`: 돌담 자리(±4~5) 나무 비움, 밖 나무는 45%만·돌담에서 900 넘으면 없음·충돌 없음, 밖 바위·꽃 없음. 시작 지점 삼각형 64만→45만
 - 쓰레기: `createTrash({ paths: oreumPaths, inBounds: onOreum })`. 들머리 평지·클린하우스·가판대·접근로(오름 자락 전)엔 없음, 시작에서 200 안 0개. 총량·비율 그대로, 오름 위 약 41만 m² 에 100m² 당 6.6개. 못 찾으면 탐방로 위로(예전엔 아무 데나). 튜토리얼 3개는 그대로
-- 테스트: `__oreum.bound`(nsbound 전부), `__oreum.wall`(length, chunks, modules, nearR)
+- 테스트: `__oreum.bound`(nsbound 전부), `__oreum.wall`(length, chunks, modules, nearR, lodR, tris())
 
 ## 상점 팝업 (2026-11-15, #26)
 - #shop 팝업 하나: 위 가진 귤(+닫기 X), 탭 도구·배낭·신발·옷. 장비 탭은 5단계 칸 한 줄(.tiers: own 체크 / next 위 화살표·값 / lock 자물쇠). 칸을 누르면 아래 .tier-detail 에 이름·수치 아이콘(지금→다음)과 큰 구매 버튼. 단계 그림은 main.js TIER_ART(임시 SVG)
@@ -256,3 +256,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - UI: 상호작용 버튼 아이콘 `CTX_ICON.bow`·글자 '귤 활 쏘기', 버튼 위 `#ammo`(점 5개, 귤을 쓰면 살짝 튐)
 - 확인용 `__oreum.weapon`(now, ammo, armed, hold, fire(), set(v), arrows())
 - 임시: 활·화살·무기 그림은 로우폴리·SVG 임시. 화살은 다시 줍지 못함. 다른 사람에게는 활 든 모습만 보이고 화살은 안 보임(손 던지기처럼 멀티 동기화 없음)
+
+## 현무암 돌담을 조각 모델로 (#39)
+- 원본 `assets` 브랜치 `wall-basalt.glb`(Tripo, 17만 삼각형) → `python3 model/bake-wall.py wall-basalt.glb 400 512 256 model/wall-near.glb model/wall-far.glb`(bpy, `pip install bpy`) → `node model/extract-wall.js` 로 `src/wallmodel.js`(약 69KB, `WM_NEAR`·`WM_FAR`) 생성
+- 원본을 Decimate 로 바로 줄이면 뒤집힌 면·검은 얼룩이 생겨서, 원본 크기 상자를 칸으로 나눠(바닥 없음) Shrinkwrap 으로 겉면에 붙인 뒤 텍스처를 구움. 가까이용 15×2×5칸 = 400 삼각형·512, 멀리용 4×1×2칸 = 48 삼각형·256
+- `stonewall.js`: 마디 대신 조각 하나를 `WALL.seg`(6) 마다 이어 붙임. 길이 방향은 땅 기울기만큼 밀기(세로는 곧게), 끝을 `WALL.overlap`(0.5) 겹침, 반은 180° 돌림(앞뒤 바꿈, 음수 크기 대신이라 면 뒤집힘 없음), 높이·두께 ±7%, 밝기 차이. 바닥은 조각 밑 땅(길이 5곳×두께 3곳) 가장 낮은 곳보다 `WALL.bury`(0.25) 묻음 → 비탈·굽은 곳 틈 없음
+- 덩어리 `WALL.chunk`(8조각)마다 가까이용·멀리용 InstancedMesh 두 벌(같은 행렬). `lodR`(70, LOW 50) 안은 가까이용, `nearR`(230/150) 안은 멀리용, 그 밖은 예전 띠. 안쪽 돌담(`createCrossWall`)도 같은 조각·같은 덩어리, `jeong.lod(pos)` 로 가까이/멀리(띠 없음, 늘 보임)
+- 재질: 멧돼지처럼 MeshToon+gradHard + 텍스처 색에 비례한 자체 빛 `WALL.glow`(0.16) → 밤에 덜 뭉개짐. 정주석은 예전 구멍 무늬 그대로
+- 충돌은 예전처럼 조각마다 `col.addBox`(반두께 0.42). 테스트: `__oreum.wall.tris()`, `__oreum.jeong.tris()` (지금 보이는 돌담 삼각형)
