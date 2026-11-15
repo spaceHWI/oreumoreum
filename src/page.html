@@ -91,22 +91,25 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 .dock button:hover { background: var(--paper-2); }
 .dock button svg { width: 26px; height: 26px; stroke-width: 2; }
 .dock .badge-dot { position: absolute; top: 3px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--songi); }
-.pad { position: fixed; right: var(--gut-r); bottom: calc(var(--safe-b) + 12px); z-index: 5; width: 200px; height: 200px; pointer-events: none; }
+.pad { position: fixed; right: var(--gut-r); bottom: calc(var(--safe-b) + 12px); z-index: 5; width: 184px; height: 160px; pointer-events: none; }
 .pad > * { pointer-events: auto; position: absolute; }
 .round { border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 0; line-height: 1.05; }
-#btn-ctx { right: 0; bottom: 0; width: 96px; height: 96px; background: var(--songi); color: #fff; font-family: var(--display); font-weight: 800; font-size: 15px; padding: 8px; }
+#btn-ctx, #btn-pick { bottom: 0; width: 88px; height: 88px; background: var(--songi); color: #fff; font-family: var(--display); font-weight: 800; font-size: 11px; padding: 8px; align-content: center; gap: 2px; }
+#btn-ctx { right: 0; } #btn-pick { right: 96px; }
+.pad #btn-ctx svg, .pad #btn-pick svg { width: 34px; height: 34px; margin: 0 auto; }
+#btn-pick.dim { opacity: .45; animation: none; }
 #btn-ctx.idle { background: var(--paper-2); color: var(--ink-soft); }
 #btn-ctx:not(.idle) { animation: pulse 1.2s ease-in-out infinite; }
-#btn-ctx span { display: block; max-width: 80px; word-break: keep-all; }
+#btn-ctx.soft { animation: none; } /* 귤 던지기는 언제나 되는 기본 동작이라 깜빡이지 않음 */
+#btn-ctx span, #btn-pick span { display: block; max-width: 76px; word-break: keep-all; }
 @keyframes pulse { 0%, 100% { box-shadow: inset 0 0 0 2px #fff, 0 3px 0 rgba(36,37,31,.35), 0 0 0 0 rgba(156,74,51,0); } 50% { box-shadow: inset 0 0 0 2px #fff, 0 3px 0 rgba(36,37,31,.35), 0 0 0 6px rgba(156,74,51,.3); } }
-.pad .round:not(#btn-ctx) { width: 60px; height: 60px; font-size: 11px; gap: 0; align-content: center; }
-.pad .round:not(#btn-ctx) span { display: none; }
+.pad .round.sm { width: 60px; height: 60px; font-size: 11px; gap: 0; align-content: center; }
+.pad .round.sm span { display: none; }
 .pad .round svg { width: 28px; height: 28px; stroke-width: 2; }
 #btn-speed svg { display: none; } #btn-speed[data-g="0"] .g0, #btn-speed[data-g="1"] .g1, #btn-speed[data-g="2"] .g2 { display: block; }
 #btn-speed[data-g="1"] { background: #ffe7b8; } #btn-speed[data-g="2"] { background: #ffc98f; }
-#btn-jump { right: 104px; bottom: 0; }
-#btn-throw { right: 96px; bottom: 66px; }
-#btn-speed { right: 38px; bottom: 104px; }
+#btn-jump { right: 14px; bottom: 96px; }
+#btn-speed { right: 110px; bottom: 96px; }
 #btn-speed[data-g="1"] { background: #e6efd7; }
 #btn-speed[data-g="2"] { background: var(--ink); color: var(--paper); }
 #joy { position: fixed; left: var(--gut-l); bottom: calc(var(--safe-b) + 22px); width: 132px; height: 132px; border-radius: 50%; background: rgba(251,246,230,.35); border: 3px solid rgba(51,64,42,.55); z-index: 5; touch-action: none; }
@@ -286,12 +289,12 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
   #sun-chip { top: auto; bottom: calc(var(--safe-b) + 222px); left: var(--gut-l); transform: none; }
   .status { min-width: 128px; padding: 5px 8px; }
   .place b { font-size: 16px; }
-  .pad { width: 176px; height: 176px; }
-  #btn-ctx { width: 86px; height: 86px; font-size: 14px; }
-  .pad .round:not(#btn-ctx) { width: 52px; height: 52px; }
-  #btn-jump { right: 92px; }
-  #btn-throw { right: 84px; bottom: 58px; }
-  #btn-speed { right: 30px; bottom: 92px; }
+  .pad { width: 164px; height: 144px; }
+  #btn-ctx, #btn-pick { width: 78px; height: 78px; }
+  #btn-pick { right: 86px; }
+  .pad .round.sm { width: 52px; height: 52px; }
+  #btn-jump { right: 13px; bottom: 86px; }
+  #btn-speed { right: 99px; bottom: 86px; }
   #joy { width: 120px; height: 120px; }
   #wardrobe { top: auto; height: 50%; width: auto; left: var(--gut-l); right: var(--gut-r); }
   .pop-menu { bottom: calc(var(--safe-b) + 214px); }
@@ -323,7 +326,9 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 #countdown { text-shadow: 0 4px 24px rgba(0,0,0,.45); }
 .dock { border-radius: 26px; } .dock button { border-radius: 20px; } .dock .badge-dot { background: var(--acc); }
 #btn-ctx { background: var(--acc); color: var(--acc-fg); border: 0; box-shadow: 0 6px 18px rgba(255,138,31,.45); -webkit-backdrop-filter: none; backdrop-filter: none; }
-#btn-ctx.idle { background: var(--glass); color: var(--ink-soft); border: 1px solid var(--hair); box-shadow: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+#btn-pick { background: var(--acc); color: var(--acc-fg); border: 0; box-shadow: 0 6px 18px rgba(255,138,31,.45); -webkit-backdrop-filter: none; backdrop-filter: none; }
+#btn-ctx.idle, #btn-ctx.soft, #btn-pick.dim { background: var(--glass); color: var(--ink-soft); border: 1px solid var(--hair); box-shadow: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+#btn-ctx.soft { color: #fff; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 6px 18px rgba(255,138,31,.45), 0 0 0 0 rgba(255,138,31,0); } 50% { box-shadow: 0 6px 18px rgba(255,138,31,.45), 0 0 0 7px rgba(255,138,31,.25); } }
 #btn-speed[data-g="1"] { background: rgba(255,138,31,.28); color: #fff; }
 #btn-speed[data-g="2"] { background: var(--acc); color: var(--acc-fg); }
@@ -406,7 +411,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 #ch-arrow .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid var(--acc); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(30px); }
 #ch-arrow small { position: absolute; top: 100%; left: 50%; transform: translate(-50%, 3px); font-family: var(--display); font-weight: 800; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .fx-recycle.tick b { animation: none; } }
-#btn-ctx { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#btn-ctx, #btn-pick { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 @media (min-width: 601px) { .ph { display: none !important; } }
 
 /* ===== 폰(세로): 쉬는 화면에 7개만. 걸음·소리·옷장 등은 메뉴 시트로, 체력은 달리기 버튼 테두리로 ===== */
@@ -427,11 +432,12 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   body:not(.touch) #btn-actions { bottom: calc(var(--safe-b) + 24px); }
   #joy { left: 20px; bottom: calc(var(--safe-b) + 26px); width: 104px; height: 104px; border: 1.5px dashed rgba(255,255,255,.35); background: transparent; }
   #joy-knob { width: 44px; height: 44px; margin: -22px 0 0 -22px; background: rgba(255,255,255,.28); }
-  .pad { right: 16px; bottom: calc(var(--safe-b) + 24px); width: 170px; height: 170px; }
-  #btn-ctx { width: 78px; height: 78px; font-size: 13px; }
-  .pad .round:not(#btn-ctx) { width: 50px; height: 50px; }
-  #btn-jump { right: 90px; bottom: 0; } #btn-speed { right: 14px; bottom: 90px; } #btn-throw { right: 76px; bottom: 62px; display: none; }
-  body.throw-near #btn-throw { display: grid; }
+  .pad { right: 16px; bottom: calc(var(--safe-b) + 24px); width: 160px; height: 138px; }
+  #btn-ctx, #btn-pick { width: 76px; height: 76px; padding: 0; }
+  #btn-ctx span, #btn-pick span { display: none; }
+  #btn-pick { right: 84px; }
+  .pad .round.sm { width: 50px; height: 50px; }
+  #btn-jump { right: 13px; bottom: 86px; } #btn-speed { right: 97px; bottom: 86px; }
   #btn-speed svg.st { display: block; }
   #sun-chip { top: calc(var(--safe-t) + 100px); bottom: auto; left: max(12px, env(safe-area-inset-left, 0px)); transform: none; font-size: 11px; }
   .hint { top: calc(var(--safe-t) + 146px); background: var(--glass); border-radius: 16px; }
@@ -588,14 +594,12 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 <div id="joy" class="touch-only" data-tut="move" aria-label="이동 조이스틱"><div id="joy-knob"></div></div>
 
 <div class="pad">
-  <button type="button" id="btn-ctx" class="panel round idle" data-tut="interact" title="가까운 곳에서 할 일 (E)"><span>상호작용</span></button>
-  <button type="button" id="btn-jump" class="panel round" data-tut="jump" title="점프 (Space)">
+  <button type="button" id="btn-ctx" class="panel round idle" data-tut="interact" title="상호작용 (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span>상호작용</span></button>
+  <button type="button" id="btn-pick" class="panel round dim" data-tut="pick" title="줍기 (E) · 누르고 있으면 계속"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.5 0-4-1.5-5.5-4L4 13a1.5 1.5 0 0 1 2.5-1.5L8 13"/></svg><span>줍기</span></button>
+  <button type="button" id="btn-jump" class="panel round sm" data-tut="jump" title="점프 (Space)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9M7 8l5-5 5 5M5 21c2-3 4-4 7-4s5 1 7 4"/></svg><span>점프</span>
   </button>
-  <button type="button" id="btn-throw" class="panel round" data-tut="throw" title="귤 던지기 (T) · 귤 1개">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="6"/><path d="M12 8c0-2 1-3 3-4M9 5c1 1 2 2 3 3"/></svg><span>던지기</span>
-  </button>
-  <button type="button" id="btn-speed" class="panel round" data-tut="speed" data-g="0" title="걷기 ↔ 달리기 (Shift)">
+  <button type="button" id="btn-speed" class="panel round sm" data-tut="speed" data-g="0" title="걷기 ↔ 달리기 (Shift)">
     <svg class="g0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4" r="1.8"/><path d="M12 7v6M12 13l-2.5 8M12 13l2.5 8M9 10l3-2 3 2"/></svg>
     <svg class="g1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2 1-5.5L17 15h3M9 11l2.5-3.5 4 1.5 2 3M5 12l3-1"/></svg>
 <span id="speed-label">걷기</span>
@@ -764,7 +768,8 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
       <span class="touch-only"><b>이동</b> 왼쪽 아래 조이스틱 · 땅을 탭해도 걸어가요</span>
       <span class="desk-only"><b>이동</b> W/S 앞뒤 · A/D 방향 · 땅 클릭 · Shift 걷기·달리기·질주 · Space 점프</span>
       <span><b>시점</b> 화면을 끌어서 둘러보기 · 두 손가락이나 휠로 확대</span>
-      <span><b>상호작용</b> 오른쪽 아래 큰 버튼(E). 돌탑·표지석·쉼터·노루·다른 사람 가까이 가면 바뀌어요</span>
+      <span><b>줍기</b> 손 버튼(E) · 누르고 있으면 계속 주워요</span>
+      <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가판대·돌탑·표지석·쉼터 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
       <span><b>귤</b> 길에서 줍고 업적으로 받아요. 던지면 노루·말이 먹고 따라와요</span>
       <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
     </div>

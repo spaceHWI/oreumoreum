@@ -15,7 +15,7 @@ export const UI_LABELS = [
   ['UI-12', '이동 조이스틱', '#joy'],
   ['UI-13', '상호작용 버튼', '#btn-ctx'],
   ['UI-14', '점프 버튼', '#btn-jump'],
-  ['UI-15', '던지기 버튼', '#btn-throw'],
+  ['UI-15', '줍기 버튼', '#btn-pick'],
   ['UI-16', '속도 버튼', '#btn-speed'],
   ['UI-17', '하단 메뉴 바', '.dock'],
   ['UI-18', '동작', '#btn-actions'],

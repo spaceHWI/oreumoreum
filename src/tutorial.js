@@ -32,7 +32,7 @@ const ICON = {
   runBtn: `${btn(40, 44, RUNI)}${runner(104, 78)}`,
   jumpKey: `${stones}${key(36, 6, 68, 'Space', 14)}<g class="hop">${walker(52, 66)}</g>`,
   jumpBtn: `${stones}${btn(26, 22, '<path d="M12 19V5M6 11l6-6 6 6"/>')}<g class="hop">${walker(52, 66)}</g>`,
-  pickKey: `${can(14, 52)}<g class="bob-y" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 14) scale(1.2)">${HAND}</g>${key(56, 30, 30, 'F')}${num(116, 52, 6, 26)}`,
+  pickKey: `${can(14, 52)}<g class="bob-y" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 14) scale(1.2)">${HAND}</g>${key(56, 30, 30, 'E')}${num(116, 52, 6, 26)}`,
   pickBtn: `${can(14, 52)}<g class="bob-y" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 14) scale(1.2)">${HAND}</g>${btn(72, 43, HAND)}${num(116, 52, 6, 26)}`,
   dump: `${pocket(12, 30, true)}${arrow(56, 50)}${house(92, 30)}`,
   bonus: `${can(16, 32)}${arrow(48, 44)}<g class="spark">${gyul(102, 46, 14)}</g><path class="spark" d="M124 18 v8 M120 22 h8 M80 20 v6 M77 23 h6 M126 64 v6 M123 67 h6" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`,
@@ -48,6 +48,8 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   const none = { update() {}, notify() {}, skipAll() {}, active: false };
   if (!pts || !pts.walk || !stream || !jeong) { return none; }
   const steps = ['walk', 'run', 'jump', 'pick', 'dump', 'bonus', 'tongs', 'bag', 'gate'];
+  // 단계마다 새로 나오는 UI. 줍기 버튼(E)은 pick, 상호작용 버튼(F)은 클린하우스에 버릴 때(dump)부터 (#34)
+  const UNLOCK = { walk: ['move'], run: ['speed'], jump: ['jump'], pick: ['pick', 'bag'], dump: ['interact'], bonus: ['gyul'] };
   const card = document.createElement('div'); card.id = 'tut-hint'; card.hidden = true; document.body.append(card);
   const arrowEl = document.createElement('div'); arrowEl.id = 'tut-arrow'; arrowEl.className = 'panel round'; arrowEl.hidden = true; arrowEl.innerHTML = '<i class="dot"></i><i class="tip"></i>'; document.body.append(arrowEl);
   const skip = document.createElement('button'); skip.type = 'button'; skip.id = 'tut-skip'; skip.className = 'panel round'; skip.title = '튜토리얼 건너뛰기'; skip.setAttribute('aria-label', '튜토리얼 건너뛰기');
@@ -78,12 +80,14 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   const shopFront = () => ch?.shopFront || ch?.front;
   const begin = (name) => {
     cur = name; timer = 0;
-    if (name === 'walk') { unlock('move'); show(phone() ? 'joy' : 'keys'); target(pts.walk); }
-    if (name === 'run') { unlock('speed'); show(phone() ? 'runBtn' : 'runKey'); target(pts.run); }
-    if (name === 'jump') { unlock('jump'); show(phone() ? 'jumpBtn' : 'jumpKey'); target(pts.farBank, 2.6); }
-    if (name === 'pick') { unlock('interact'); unlock('bag'); show(phone() ? 'pickBtn' : 'pickKey'); target(tutTrashNext(), 1.2); }
+    // 이 단계까지 나와야 할 UI (중간에 다시 들어와도 앞 단계 UI 가 보이게)
+    for (const st of steps.slice(0, steps.indexOf(name) + 1)) for (const u of UNLOCK[st] || []) unlock(u);
+    if (name === 'walk') { show(phone() ? 'joy' : 'keys'); target(pts.walk); }
+    if (name === 'run') { show(phone() ? 'runBtn' : 'runKey'); target(pts.run); }
+    if (name === 'jump') { show(phone() ? 'jumpBtn' : 'jumpKey'); target(pts.farBank, 2.6); }
+    if (name === 'pick') { show(phone() ? 'pickBtn' : 'pickKey'); target(tutTrashNext(), 1.2); }
     if (name === 'dump') { show('dump'); target(ch?.front, 2.4); }
-    if (name === 'bonus') { unlock('gyul'); show('bonus'); target(null); }
+    if (name === 'bonus') { show('bonus'); target(null); }
     if (name === 'tongs') { show('tongs'); target(shopFront(), 1.8); }
     if (name === 'bag') { show('bag'); target(shopFront(), 1.8); }
     if (name === 'gate') { openJeong(); show('gate'); target(pts.beyond, 2.4); }

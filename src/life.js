@@ -155,11 +155,12 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   const tanMat = new THREE.MeshLambertMaterial({ color: '#f29a2e' });
   const leafGeo = new THREE.PlaneGeometry(0.14, 0.08);
   const leafMat = new THREE.MeshLambertMaterial({ color: '#4f8a3a', side: THREE.DoubleSide });
-  function throwTangerine(from, dir, power, peersFn) {
+  // vy: 위로 던지는 속도(없으면 power*0.55). 자동 조준(#34)이 대상까지 닿게 정해 넘김
+  function throwTangerine(from, dir, power, peersFn, vy) {
     const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true;
     const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = 0.17; leaf.rotation.x = -1; m.add(leaf);
     m.position.copy(from); group.add(m);
-    const v = dir.clone().multiplyScalar(power); v.y += power * 0.55;
+    const v = dir.clone().multiplyScalar(power); v.y += vy ?? power * 0.55;
     tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null });
   }
   // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
@@ -438,5 +439,14 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
   const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000).length;
-  return { bind, hooks, nearestDeer, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, boarTest: { spawn: () => { if (boar) { group.remove(boar.root); boar = null; } boarTimer = 0; }, get: () => boar }, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
+  // 귤로 맞힐 대상 (#34 자동 조준). 새 적은 여기에 더한다. pos: 발 위치(살아 있는 Vector3), h: 겨눌 높이, size: 발밑 표시 크기, vel: 움직임
+  const aimBoar = { kind: 'boar', pos: null, h: BOAR_MODEL_H * BOAR.scale * 0.5, size: 1.5, vel: new THREE.Vector3() };
+  const aimHbs = new Map();
+  function aimTargets() {
+    const out = [];
+    if (boar && !boar.fleeing) { aimBoar.pos = boar.pos; aimBoar.vel.set(Math.sin(boar.heading) * boar.speed, 0, Math.cos(boar.heading) * boar.speed); out.push(aimBoar); }
+    for (const hb of hareubangs) { let a = aimHbs.get(hb); if (!a) { a = { kind: 'hareubang', pos: hb.pos, h: 1.9, size: 1.0, vel: null }; aimHbs.set(hb, a); } out.push(a); }
+    return out;
+  }
+  return { bind, hooks, nearestDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, boarTest: { spawn: () => { if (boar) { group.remove(boar.root); boar = null; } boarTimer = 0; }, get: () => boar }, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
 }
