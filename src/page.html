@@ -300,7 +300,7 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
   .pop-menu { bottom: calc(var(--safe-b) + 214px); }
   #chat { bottom: calc(var(--safe-b) + 214px); }
 }
-@media (prefers-reduced-motion: reduce) { .fx-plus, .gyul.bump { animation: none; } .fx-gyul { transition: none; } #tut-hint, .tut-pop, .bob-x, .bob-y, #flash.go, #eat-glow.go, .stamina-track.boost, .stamina-track.boost .stamina-fill, .fx-stamina, .fx-yum { animation: none; } .hint { transition: none; } #btn-ctx:not(.idle) { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fx-plus, .gyul.bump { animation: none; } .fx-gyul { transition: none; } #tut-hint, #ch-arrow, #ch-arrow svg, .tut-pop, .bob-x, .bob-y, #flash.go, #eat-glow.go, .stamina-track.boost, .stamina-track.boost .stamina-fill, .fx-stamina, .fx-yum { animation: none; } .hint { transition: none; } #btn-ctx:not(.idle) { animation: none; } }
 
 /* ===== 현무암 UI 덮어쓰기 ===== */
 body { font-weight: 500; color: #fff; }
@@ -418,7 +418,11 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .fx-recycle { position: fixed; z-index: 20; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 26px; color: var(--gyul); text-shadow: 0 2px 0 var(--ink), 0 0 6px #fff; pointer-events: none; }
 .fx-recycle i { width: 20px; height: 20px; border-radius: 50%; background: var(--gyul); box-shadow: inset -3px -3px 0 rgba(0,0,0,.15), 0 0 0 2px #fff; }
 .fx-recycle.tick b { animation: bump .18s ease-out; display: inline-block; }
-#ch-arrow { position: fixed; left: 0; top: 0; z-index: 15; width: 44px; height: 44px; margin: -22px 0 0 -22px; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 0; }
+#ch-arrow { position: fixed; left: 0; top: 0; z-index: 15; width: 44px; height: 44px; margin: -22px 0 0 -22px; display: flex; align-items: center; justify-content: center; pointer-events: auto; cursor: pointer; touch-action: manipulation; padding: 0; opacity: .82; }
+#ch-arrow.full { opacity: 1; color: var(--acc-fg); background: var(--acc); animation: hintPulse 1.1s ease-in-out infinite; }
+#ch-arrow.going { opacity: 1; outline: 2px dashed var(--acc); outline-offset: 2px; animation: hintPulse 0.8s ease-in-out infinite; }
+#ch-arrow.going svg { animation: chGo .6s ease-in-out infinite alternate; }
+@keyframes chGo { to { transform: translateY(-3px); } }
 #ch-arrow[hidden] { display: none; }
 #ch-arrow svg { width: 22px; height: 22px; }
 #ch-arrow .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid var(--acc); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(30px); }
@@ -609,7 +613,7 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
   <button type="button" id="btn-release" class="panel icon-btn" hidden><span>손 놓기</span></button>
   <button type="button" id="btn-cancelreq" class="panel icon-btn" hidden><span>신청 취소</span></button>
 </div>
-<div id="ch-arrow" class="panel round" hidden aria-hidden="true" title="클린하우스 쪽"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg><i class="tip"></i><small></small></div>
+<div id="ch-arrow" class="panel round" hidden title="클린하우스로 걸어가기" role="button" aria-label="클린하우스로 걸어가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg><i class="tip"></i><small></small></div>
 <div id="shop-arrow" class="panel round" hidden aria-hidden="true"><i class="g"></i><i class="tip"></i></div>
 <button type="button" id="ach-chip" class="panel" data-tut="hud" title="오늘의 업적"><svg class="dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg><span class="label">오늘의 업적</span><span id="chip-gyul" class="ph" title="상점"><i class="g"></i><span id="coins2">0</span></span><i class="sep ph"></i><svg class="ring ph" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.22)" stroke-width="3.2"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.2" stroke-dasharray="0 56.5"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
 <div id="sun-chip" class="panel" hidden></div>
