@@ -5,6 +5,7 @@ import { RIM, NEAR, REL, FAR, FW, FH } from './namsongidata.js';
 import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
+import { COLLIDE } from './balance.js';
 
 const T = THREE, PI = Math.PI;
 export const K = 1.4;
@@ -326,6 +327,7 @@ vec3 groundColor(vec2 p){
   const treeMat = enhance(new T.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: leafTex, gradientMap: gradHard }), true, true);
 
   /* 나무는 칸으로 나눠 둔다. 가까운 칸만 자세한 모양으로 그리고 그림자를 떨어뜨린다 */
+  const solids = []; // 충돌 목록 [x, z, 반지름] (#15)
   const CH = 12, CSZ = 2 * E / CH, chunks = [], dummy = new T.Object3D();
   function share(geo, tint) { const g = new T.BufferGeometry(); for (const k in geo.attributes) g.setAttribute(k, geo.attributes[k]); g.setAttribute('aTint', tint); if (!geo.boundingSphere) geo.computeBoundingSphere(); g.boundingSphere = geo.boundingSphere; g.boundingBox = geo.boundingBox; return g; }
   function plant(geoHi, geoLo, spots) {
@@ -353,6 +355,7 @@ vec3 groundColor(vec2 p){
       else if (oaks.length < BN && fbm(x / K * 0.004 + 5, z / K * 0.004, 3) > 0.5 && rnd() < 0.55) oaks.push({ x, z, r: rnd() * 6.28, s: rr(1.3, 2.1) * K, t: rr(0.9, 1.15), c: C(oakCols[Math.floor(rnd() * rnd() * oakCols.length)]) });
     }
     plant(pineGeo(true), pineGeo(false), pines); plant(oakGeo(true), oakGeo(false), oaks);
+    pines.forEach((s) => solids.push([s.x, s.z, s.s * COLLIDE.pine])); oaks.forEach((s) => solids.push([s.x, s.z, s.s * COLLIDE.oak]));
   }
   const HI_R = (LOW ? 260 : 380) * K;
 
@@ -383,6 +386,7 @@ vec3 groundColor(vec2 p){
       const v = rr(0.27, 0.4); im.setColorAt(i, c.setRGB(v, v, v * 1.1));
     });
     im.castShadow = true; im.receiveShadow = true; scene.add(im);
+    items.forEach((s) => { if (s.s * COLLIDE.rock >= 0.45) solids.push([s.x, s.z, s.s * COLLIDE.rock]); });
   }
 
   /* 길가 꽃 무리 */
@@ -463,7 +467,7 @@ vec3 groundColor(vec2 p){
     skyMesh.position.copy(camera.position);
     for (const c of chunks) { const hi = Math.hypot(c.cx - pos.x, c.cz - pos.z) < HI_R; c.hi.visible = hi; c.lo.visible = !hi; }
   }
-  return { terrain, grass, sky, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  return { solids, terrain, grass, sky, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */

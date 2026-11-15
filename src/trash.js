@@ -131,9 +131,9 @@ function makeHeapGeo() {
 }
 
 /* ---------- 쓰레기 세상 ---------- */
-export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [] }) {
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], blocked = null }) {
   const trail = makeTrail(paths);
-  const ok = (x, z) => inBounds(x, z) && height(x, z) > 2; // 바다·맵 밖 제외
+  const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(blocked && blocked(x, z)); // 사물 충돌 범위 안에는 놓지 않음 (#15) // 바다·맵 밖 제외
   const geos = makeGeos();
   const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
   const CAP = low ? 900 : 1700, DRAW_R = low ? TRASH.drawRLow : TRASH.drawR;
