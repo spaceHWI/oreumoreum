@@ -4,6 +4,8 @@ dist/
 model/*.glb
 !model/lo4.glb
 !model/boar.glb
+!model/wall-near.glb
+!model/wall-far.glb
 model/*.png
 reel/
 reel4/

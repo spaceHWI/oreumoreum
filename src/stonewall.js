@@ -1,10 +1,13 @@
-// 현무암 돌담 (#25): 걸을 수 있는 범위(nsbound.js 경계선)를 따라 허리 높이의 구멍 숭숭한 밭담.
-// 가까운 곳은 돌 하나하나(마디 InstancedMesh, 덩어리별로 켜고 끔), 먼 곳은 단순한 띠 하나(가까우면 셰이더에서 버림).
+// 현무암 돌담 (#25, #39): 걸을 수 있는 범위(nsbound.js 경계선)를 따라 허리 높이의 밭담.
+// Tripo 돌담 조각 모델(wallmodel.js) 하나를 경계를 따라 InstancedMesh 로 이어 붙인다. 덩어리마다 가까우면 400 삼각형,
+// 조금 멀면 48 삼각형 조각, 그보다 먼 곳은 단순한 띠 하나(가까우면 셰이더에서 버림).
 // 들머리 뒤쪽에 정낭 입구(정주석 두 개 + 정낭)를 두지만 나갈 수는 없다. 로우폴리 임시 모양
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
 import { WALL } from './balance.js';
+import { NSMODE, TEXCS } from './boot.js';
+import { WM_NEAR, WM_FAR } from './wallmodel.js';
 
 function mulberry(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -16,21 +19,62 @@ function poreTex() {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
 }
 
-// 돌담 한 마디: 길이 L(x 방향), 돌 3켜. 돌 사이를 조금씩 띄워 틈으로 빛이 보이게
-function moduleGeo(L) {
-  const r = mulberry(25), parts = [];
-  const stone = (x, y, sx, sy, sz) => {
-    const g = new THREE.IcosahedronGeometry(0.5, 0); const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (r() - 0.5) * 0.14, p.getY(i) + (r() - 0.5) * 0.12, p.getZ(i) + (r() - 0.5) * 0.14);
-    g.scale(sx, sy, sz); g.rotateY((r() - 0.5) * 0.5); g.translate(x, y, (r() - 0.5) * 0.08);
-    const n = g.attributes.position.count, col = new Float32Array(n * 3), v = 0.82 + r() * 0.3; col.fill(v);
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals(); parts.push(g);
-  };
-  const row = (n, y, w, h, d, off, skip) => { const step = L / n; for (let i = 0; i < n; i++) { if (skip && r() < skip) continue; stone(-L / 2 + step * (i + 0.5) + off + (r() - 0.5) * 0.14, y + (r() - 0.5) * 0.06, w * (0.85 + r() * 0.25), h * (0.85 + r() * 0.3), d * (0.9 + r() * 0.2)); } };
-  row(4, 0.3, 0.98, 0.72, 0.74, 0);
-  row(4, 0.86, 0.9, 0.62, 0.64, L / 8);
-  row(3, 1.32, 0.95, 0.5, 0.56, 0, 0.15);
-  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)));
+// 돌담 조각 모델 (x = 길이, y = 높이·바닥 0, z = 두께)
+const b64 = (s, T) => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+function pieceGeo(M) {
+  const pos = b64(M.pos, Float32Array), nq = b64(M.nor, Int8Array), nor = new Float32Array(nq.length); for (let i = 0; i < nq.length; i++) nor[i] = nq[i] / 127;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(b64(M.uv, Float32Array), 2)); g.setIndex(new THREE.BufferAttribute(b64(M.idx, Uint16Array), 1));
+  g.computeBoundingSphere(); return g;
+}
+function pieceMat(M) {
+  const tex = new THREE.TextureLoader().load(M.tex); tex.colorSpace = TEXCS; tex.flipY = false; tex.anisotropy = 4;
+  // 멧돼지처럼: 툰 3단 명암 + 텍스처 색에 비례한 약한 자체 빛 → 밤에 까맣게 뭉개지지 않게
+  const m = NSMODE ? new THREE.MeshToonMaterial({ map: tex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: WALL.glow })
+    : new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveIntensity: WALL.glow * 2 });
+  m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));'); };
+  return m;
+}
+let SHARED = null;
+const shared = () => SHARED || (SHARED = { near: pieceGeo(WM_NEAR), far: pieceGeo(WM_FAR), nearM: pieceMat(WM_NEAR), farM: pieceMat(WM_FAR) });
+
+// 조각 하나 [p, q](경계선 위 두 점)의 행렬: 길이 방향은 땅 기울기만큼 비스듬히(세로는 곧게 = 기울이지 않고 밀기),
+// 끝을 WALL.overlap 만큼 겹치고, 반은 180° 돌려(앞뒤 바꿈) 반복이 티 나지 않게. 바닥은 조각 아래 땅에서 가장 낮은 곳보다 WALL.bury 묻음
+const _m = new THREE.Matrix4(), _c = new THREE.Color();
+function placePiece(im, i, p, q, height, rnd) {
+  const L = WM_NEAR.size[0], H = WM_NEAR.size[1], D = WM_NEAR.size[2];
+  const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l, nx = -uz, nz = ux;
+  const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2, yp = height(p[0], p[1]), yq = height(q[0], q[1]), slope = (yq - yp) / l, yc = (yp + yq) / 2;
+  const len = l + WALL.overlap * (0.8 + rnd() * 0.4), hgt = WALL.height * (0.93 + rnd() * 0.14), thk = WALL.width * (0.92 + rnd() * 0.16);
+  // 조각 밑 땅이 기울기 선보다 낮은 곳을 찾아 그만큼 내림 (길이 5곳 × 두께 3곳)
+  let off = 0;
+  for (let a = -0.5; a <= 0.5; a += 0.25) for (const b of [-0.5, 0, 0.5]) {
+    const t = a * len, x = mx + ux * t + nx * b * thk, z = mz + uz * t + nz * b * thk;
+    off = Math.min(off, height(x, z) - (yc + slope * t));
+  }
+  const sx = len / L, sy = hgt / H, sz = thk / D, f = rnd() < 0.5 ? -1 : 1;
+  _m.set(
+    ux * sx * f, 0, nx * sz * f, mx,
+    slope * sx * f, sy, 0, yc + off - WALL.bury + (rnd() - 0.5) * 0.06,
+    uz * sx * f, 0, nz * sz * f, mz,
+    0, 0, 0, 1);
+  im.setMatrixAt(i, _m);
+  const v = 0.94 + rnd() * 0.14; im.setColorAt(i, _c.setRGB(v, v, v * 1.02));
+  return { mx, mz, rot: Math.atan2(-dz, dx), hl: l / 2 };
+}
+
+// 조각 여러 개를 가까이용·멀리용 InstancedMesh 두 벌로 (같은 행렬)
+function pieceMeshes(scene, pieces, height, rnd, low, col) {
+  const S = shared(), near = new THREE.InstancedMesh(S.near, S.nearM, pieces.length), far = new THREE.InstancedMesh(S.far, S.farM, pieces.length);
+  let cx = 0, cz = 0;
+  const info = pieces.map(([p, q], i) => { const it = placePiece(near, i, p, q, height, rnd); cx += it.mx / pieces.length; cz += it.mz / pieces.length; if (col) col.addBox(it.mx, it.mz, it.rot, it.hl, WALL.thick); return it; });
+  far.instanceMatrix.copy(near.instanceMatrix); far.instanceColor = near.instanceColor;
+  near.name = 'wall-near'; far.name = 'wall-far';
+  for (const m of [near, far]) { m.computeBoundingSphere(); m.receiveShadow = true; m.visible = false; scene.add(m); }
+  near.castShadow = !low;
+  const r = Math.max(...info.map((it) => Math.hypot(it.mx - cx, it.mz - cz) + it.hl)) + 1;
+  return { near, far, cx, cz, r };
 }
 
 export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
@@ -44,35 +88,17 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
   let sG = 0, bd = 1e9; for (let i = 0; i < P.length; i++) { const d = Math.hypot(P[i][0] - gate.x, P[i][1] - gate.z); if (d < bd) { bd = d; sG = cum[i]; } }
   const GW = WALL.gateW, s0 = sG + GW + 0.35, span = LEN - 2 * (GW + 0.35), n = Math.max(1, Math.round(span / WALL.seg)), seg = span / n;
 
-  /* 가까운 곳: 돌 하나하나 */
-  const geo = moduleGeo(WALL.seg);
-  const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: poreTex(), gradientMap: gradHard });
-  const rnd = mulberry(2511), m4 = new THREE.Matrix4(), xa = new THREE.Vector3(), ya = new THREE.Vector3(), za = new THREE.Vector3(), c = new THREE.Color();
-  const chunks = [];
-  let cur = null;
-  for (let k = 0; k < n; k++) {
-    if (!cur || cur.items.length >= WALL.chunk) chunks.push(cur = { items: [], cx: 0, cz: 0 });
-    const sa = s0 + k * seg, sb = sa + seg, a = at(sa), b = at(sb), mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
-    const ya0 = height(a[0], a[1]), yb0 = height(b[0], b[1]), ym = height(mx, mz);
-    cur.items.push({ a, b, mx, mz, y: Math.min(ym, (ya0 + yb0) / 2) - 0.08, dy: yb0 - ya0 });
+  /* 가까운 곳: 돌담 조각 (덩어리마다 가까이용·멀리용) */
+  const rnd = mulberry(2511), chunks = [];
+  for (let k0 = 0; k0 < n; k0 += WALL.chunk) {
+    const pieces = [];
+    for (let k = k0; k < Math.min(n, k0 + WALL.chunk); k++) pieces.push([at(s0 + k * seg), at(s0 + (k + 1) * seg)]);
+    chunks.push(pieceMeshes(scene, pieces, height, rnd, low, col));
   }
-  for (const ch of chunks) {
-    const im = new THREE.InstancedMesh(geo, mat, ch.items.length);
-    ch.items.forEach((it, i) => {
-      const dx = it.b[0] - it.a[0], dz = it.b[1] - it.a[1], l = Math.hypot(dx, dz) || 1, flip = rnd() < 0.5 ? -1 : 1;
-      xa.set(dx * flip, it.dy * flip, dz * flip).normalize(); ya.set(0, 1, 0); za.crossVectors(xa, ya).normalize(); ya.crossVectors(za, xa).normalize();
-      m4.makeBasis(xa.multiplyScalar(l / WALL.seg * 1.02), ya.multiplyScalar(1.12 + rnd() * 0.16), za); m4.setPosition(it.mx, it.y, it.mz);
-      im.setMatrixAt(i, m4); const v = 0.26 + rnd() * 0.08; im.setColorAt(i, c.setRGB(v, v, v * 1.06));
-      ch.cx += it.mx / ch.items.length; ch.cz += it.mz / ch.items.length;
-      if (col) col.addBox(it.mx, it.mz, Math.atan2(-dz, dx), l / 2, WALL.thick);
-    });
-    im.computeBoundingSphere(); im.castShadow = !low; im.receiveShadow = true; im.visible = false;
-    ch.r = Math.max(...ch.items.map((it) => Math.hypot(it.mx - ch.cx, it.mz - ch.cz))) + WALL.seg;
-    ch.mesh = im; scene.add(im);
-  }
+  const mat = { map: poreTex() };
 
   /* 먼 곳: 단순한 띠 (가까운 곳은 셰이더에서 버림) */
-  const NR = low ? WALL.nearRLow : WALL.nearR;
+  const NR = low ? WALL.nearRLow : WALL.nearR, NR1 = low ? WALL.lodRLow : WALL.lodR;
   {
     const pos = [], idx = [], r = mulberry(99), STEP = 4;
     const m = Math.round(span / STEP);
@@ -114,34 +140,27 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl }) {
   }
 
   function update(pos) {
-    for (const ch of chunks) ch.mesh.visible = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r < NR;
+    for (const ch of chunks) { const d = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r; ch.near.visible = d < NR1; ch.far.visible = !ch.near.visible && d < NR; }
   }
-  return { update, length: LEN, chunks: chunks.length, modules: n, nearR: NR };
+  return { update, length: LEN, chunks: chunks.length, modules: n, nearR: NR, lodR: NR1, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
 }
 
 // 들머리와 오름 사이를 가로막는 안쪽 돌담 + 정낭(#31). line = nsbound.crossLine(TUT.gateD)
 // 정주석(구멍 뚫린 돌기둥) 둘 사이에 긴 나무 막대(정낭) 둘이 걸쳐 길을 막는다. open() 하면 막대가 한쪽으로 내려지고 그 뒤로는 계속 열림
 export function createCrossWall({ scene, height, line, low, col, open: open0 = false }) {
   const GW = WALL.gateW, { a, b, c } = line;
-  const geo = moduleGeo(WALL.seg);
-  const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: poreTex(), gradientMap: gradHard });
-  const rnd = mulberry(4417), m4 = new THREE.Matrix4(), xa = new THREE.Vector3(), ya = new THREE.Vector3(), za = new THREE.Vector3(), cc = new THREE.Color();
+  const mat = { map: poreTex() }, rnd = mulberry(4417);
   // 정낭 양옆 두 토막 (a → 정낭 왼쪽, 정낭 오른쪽 → b)
   const la = Math.hypot(c.x - a[0], c.z - a[1]), lb = Math.hypot(b[0] - c.x, b[1] - c.z), g0 = GW + 0.35;
   const pieces = [];
   const run = (p0, p1) => { const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.round(L / WALL.seg)); for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n; pieces.push([[p0[0] + (p1[0] - p0[0]) * t0, p0[1] + (p1[1] - p0[1]) * t0], [p0[0] + (p1[0] - p0[0]) * t1, p0[1] + (p1[1] - p0[1]) * t1]]); } };
   run(a, [c.x + (a[0] - c.x) * g0 / la, c.z + (a[1] - c.z) * g0 / la]);
   run([c.x + (b[0] - c.x) * g0 / lb, c.z + (b[1] - c.z) * g0 / lb], b);
-  const im = new THREE.InstancedMesh(geo, mat, pieces.length);
-  pieces.forEach(([p, q], i) => {
-    const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1, mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
-    const yp = height(p[0], p[1]), yq = height(q[0], q[1]), y = Math.min(height(mx, mz), (yp + yq) / 2) - 0.08, flip = rnd() < 0.5 ? -1 : 1;
-    xa.set(dx * flip, (yq - yp) * flip, dz * flip).normalize(); ya.set(0, 1, 0); za.crossVectors(xa, ya).normalize(); ya.crossVectors(za, xa).normalize();
-    m4.makeBasis(xa.multiplyScalar(l / WALL.seg * 1.02), ya.multiplyScalar(1.12 + rnd() * 0.16), za); m4.setPosition(mx, y, mz);
-    im.setMatrixAt(i, m4); const v = 0.26 + rnd() * 0.08; im.setColorAt(i, cc.setRGB(v, v, v * 1.06));
-    if (col) col.addBox(mx, mz, Math.atan2(-dz, dx), l / 2, WALL.thick);
-  });
-  im.computeBoundingSphere(); im.castShadow = !low; im.receiveShadow = true; scene.add(im);
+  const chunks = []; for (let k = 0; k < pieces.length; k += WALL.chunk) chunks.push(pieceMeshes(scene, pieces.slice(k, k + WALL.chunk), height, rnd, low, col));
+  const NR1 = low ? WALL.lodRLow : WALL.lodR;
+  // 가까우면 가까이용, 아니면 멀리용 (바깥 돌담과 달리 띠가 없어 늘 보임)
+  function lod(pos) { for (const ch of chunks) { ch.near.visible = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r < NR1; ch.far.visible = !ch.near.visible; } }
+  lod({ x: c.x, z: c.z });
 
   // 정낭: 돌기둥 둘(막대 꽂는 구멍 셋) + 막대 둘
   const rot = Math.atan2(-line.uz, line.ux), ys = height(c.x, c.z) - 0.1, r = mulberry(77);
@@ -164,5 +183,5 @@ export function createCrossWall({ scene, height, line, low, col, open: open0 = f
   function open(anim = true) { if (isOpen) return false; isOpen = true; if (col) col.setOff(barrier, true); if (anim) t = 0; else pose(1); return true; }
   if (open0) open(false);
   function update(dt) { if (t < 0) return; t += dt / 1.4; if (t >= 1) { pose(1); t = -1; } else pose(t); }
-  return { open, update, get isOpen() { return isOpen; }, center: new THREE.Vector3(c.x, height(c.x, c.z), c.z), modules: pieces.length };
+  return { open, update, lod, get isOpen() { return isOpen; }, center: new THREE.Vector3(c.x, height(c.x, c.z), c.z), modules: pieces.length, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
 }

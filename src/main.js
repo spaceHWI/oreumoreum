@@ -1963,7 +1963,7 @@ function frame(now) {
   enemyWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
-  if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); renderer.render(scene, camera); }
+  if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
   if (captureNext) { captureNext = false; capture(); }
   requestAnimationFrame(frame);
