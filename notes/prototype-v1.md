@@ -131,3 +131,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 ### #20 업적 뱃지 플랫화
 - `.bdg`(패널 뱃지·달성 배너 공용)에서 테두리·inset 그림자·하이라이트를 제거하고 단색 원 + 글리프만 남김. 못 얻은 뱃지는 흐린 단색(`#d8d2bf`, 글리프 opacity .3). 코드(`badgeicons.js`, `buildAch`)는 그대로, 스타일만 `src/page.html`.
+
+## 발자국 (2026-11-15, #21)
+- footprints.js: InstancedMesh 하나(최대 FOOTPRINT.max 60, LOW 30), 칸마다 알파 속성. stamp(x,z,heading,gait) 가 왼발·오른발을 번갈아 땅 기울기(높이 격자 법선)에 맞춰 찍음. 8초(FOOTPRINT.life) 중 뒤 60% 동안 서서히 사라지고, 가득 차면 오래된 것부터 덮어씀
+- main.js countSteps 에서 걸음마다 호출(간격은 걷기 1.1·달리기 1.7·질주 2.1 그대로라 달릴수록 넓음, 질주·달리기는 조금 진하게). 점프 중(p.air)·노루 탈 때(p.riding)는 안 찍음. 탐방로·흙(surfaceAt != 0)은 알파 0.55, 풀밭 0.16. 수치는 balance.js FOOTPRINT
+- 테스트: window.__oreum.prints (stamp, update, clear, live, max)
