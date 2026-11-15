@@ -1,0 +1,8 @@
+node_modules
+dist/
+*.log
+model/*.glb
+!model/lo4.glb
+model/*.png
+reel/
+reel4/

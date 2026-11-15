@@ -1,0 +1,37 @@
+# dev 브랜치에 올리면 /dev/ 로, release 브랜치에 올리면 실서버(루트)로 빌드해 게시한다.
+# 게시물은 main 브랜치에 커밋되고, Pages 는 지금처럼 main 을 그대로 내보낸다.
+name: publish
+on:
+  push:
+    branches: [dev, release]
+permissions:
+  contents: write
+concurrency:
+  group: publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node build.mjs
+        env:
+          DEV: ${{ github.ref_name == 'dev' && '1' || '' }}
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+      - name: 게시
+        run: |
+          if [ "$GITHUB_REF_NAME" = dev ]; then mkdir -p site/dev && cp dist/index.html site/dev/index.html; else cp dist/index.html site/index.html; fi
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "publish $GITHUB_REF_NAME ${GITHUB_SHA::7}"
+          git push

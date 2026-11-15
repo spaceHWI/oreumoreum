@@ -1,0 +1,22 @@
+const { chromium } = require('playwright');
+(async()=>{
+ const b = await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p = await b.newPage({viewport:{width:1024,height:1024}});
+ p.on('pageerror',e=>console.log('ERR',e.message));
+ await p.goto('file://'+process.cwd()+'/dist/test.html#gate'); await p.waitForTimeout(4000);
+ await p.click('#enter-quiet').catch(()=>{}); await p.waitForTimeout(800);
+ await p.evaluate(()=>{ const o=window.__oreum; const st=document.createElement('style'); st.textContent='body > *:not(canvas){display:none!important}'; document.head.append(st);
+  o.save.gfx='lite'; o.setTod(12);
+  o.scene.children.forEach(c=>{ if(!c.isLight) c.visible=false; }); o.scene.background = new (o.scene.fog.color.constructor)('#ffffff'); o.scene.fog.near=1e5; o.scene.fog.far=2e5;
+  const r=o.buildRunner({hair:'short', hairColor:'#3a2a20'}); const base=JSON.parse(JSON.stringify(o.save.outfit));
+  r.apply({...base, hat:{type:'cap',color:'#2f6db5',back:true}, glasses:{type:'none'}, vest:{type:'none',color:'#000'}, shirt:{type:'tee',color:'#e2683c'}, pants:{type:'shorts',color:'#2b2b33'}, shoes:{type:'road',color:'#f2f2f2'}, skin:{color:'#ffdcbf'}});
+  const P=r.root.userData.parts; P.armL.rotation.z=0.75; P.armR.rotation.z=-0.75; P.legL.rotation.z=0.12; P.legR.rotation.z=-0.12; P.shadow.visible=false; P.hair.visible=true;
+  r.root.position.set(0,500,0); o.scene.add(r.root); window.__r=r;
+  o.cam.mode='free'; const c=o.camObj; c.fov=22; c.updateProjectionMatrix(); c.position.set(0,501.3,8.2); c.lookAt(0,501.28,0); });
+ await p.waitForTimeout(2500);
+ await p.screenshot({path:'dist/ref-front.png',timeout:90000});
+ await p.evaluate(()=>{ const c=window.__oreum.camObj; c.position.set(3.2,501.5,7.6); c.lookAt(0,501.28,0); });
+ await p.waitForTimeout(1500);
+ await p.screenshot({path:'dist/ref-34.png',timeout:90000});
+ await b.close();
+})();

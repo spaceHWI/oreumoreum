@@ -1,0 +1,68 @@
+# 오름오름 프로토타입 (2026-11-15, v0.20 · 아티팩트 버전 33)
+
+Artifact(개발·테스트, 멀티 됨): https://claude.ai/artifact/7cea3use57e2Ag7tnrpeb7
+GitHub Pages(공개, 혼자 모드): https://spacehwi.github.io/oreumoreum/ — 저장소 spaceHWI/oreumoreum, index.html 하나를 업로드하는 방식. 마지막 배포는 v0.16 (0.17~0.19는 아티팩트에만)
+capabilities: room, user, db(stones/{self}, feedback/{self} — 개발자에게 보내기, notes는 미사용)
+소스: /home/claude/oreum (로컬 git). dist/oreumoreum.html = 아티팩트용, dist/test.html = 로컬 playwright용
+Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만료) 발급됨. 멀티 서버(Durable Objects, 오름당 채널 분할)와 저장(SQLite)은 미구현
+피드백 리포트(모의 사용자 30명): https://claude.ai/artifact/D7gyt4HATXAJdLBbk5Q636 — 우선순위 10개 표를 사용자와 하나씩 검토 예정 (1번 귤 경제부터)
+
+## 남송이오름 (2026-11-15, v0.20)
+지금 열린 맵은 남송이오름 하나. 사용자 계획: 남송이에서 모든 시스템을 다진다 → 실제 유저 테스트 → 다음 오름으로 확장
+- 예전 맵(입구 마당·다랑쉬·돈내코)은 코드 그대로 두고 숨김. 주소 해시(#gate, #darangswi, #donnaeko)로만 열림. 저장된 맵 값은 더 이상 안 씀
+- boot.js(맨 먼저 import): 맵 결정 + 남송이면 ColorManagement 끔(색을 화면 값 그대로, 시안과 같은 색), 텍스처 색 공간 TEXCS, 출력 Linear, 빛 세기 ×π
+- namsongi.js: 시안(claude/namsongi-draft.md)을 게임에 옮김. 실제 1m = 1.4 단위(K). 높이 격자 하나를 땅·풀·걷기가 공유, 길 격자(surface), 나무 칸 LOD, 하늘·바다·구름, 해 고도별 빛(밤·새벽/노을·늦은 오후·낮), 그림자 따라가기. 후처리 없이 직접 렌더, 그래픽 메뉴는 기본/가볍게만
+- namsongidata.js 고도 자료, toon.js 툰 명암 단계
+- maps.js namsongiSpots: 들머리 시작, 정상 표지석, 돌탑 4, 하르방 3, 안내판, 가로등, 튜토리얼 지점(spots.tut), 징검돌
+- tutorial.js: 지점 좌표를 맵에서 받음. 들머리 첫 140단위 안에 귤→하르방→징검돌→돌탑→속도, 끝나면 UI 전부 노출. 길을 벗어나 320 넘게 가면 그만둠. 기존 유저도 한 번 다시 봄(save.nsV1)
+- 캐릭터: 남송이에서는 MeshToonMaterial(3단)
+- 오늘의 업적은 남송이에서 가능한 것만 뽑음, '남송이 능선 오르기' 추가
+- 미확인·남은 것: 실기기 성능, 나무·바위 충돌 없음, NPC·동물은 예전 재질 그대로, 조랑말 없음, 멀티 방 이름 oreum-namsongi
+
+## UI (2026-11-15) — 현무암 시안 적용 (background-sian.md)
+page.html: 토큰을 검은 유리(rgba(20,20,24,.5)+blur 12, 1px 흰 테두리 16%)·귤색 #ff8a1f 하나·Gothic A1 800/500 으로 바꾸고, 스타일 끝의 '현무암 UI 덮어쓰기' 블록에서 패널·버튼·팝업(흐린 유리 배경)·업적·옷장·상점·튜토리얼 카드를 다시 입힘
+폰(폭 600 이하) 쉬는 화면 7개: 장소 알약, 귤+업적 링 알약(#ach-chip), 메뉴 버튼, 동작 버튼(말하기는 동작 안으로), 점선 조이스틱, 상호작용, 점프, 달리기(체력 링 #sta-ring). 걸음·업적·옷장·상점·탐방 안내·소리·설정은 아래 유리 시트(#menu). 귤 던지기는 노루·하르방·멧돼지가 가까울 때만(body.throw-near). 데스크톱 배치는 그대로
+
+## 개발 프로세스
+아티팩트에서 개발·테스트 → "배포해줘" 때만 버전 올리고 릴리스 노트 정리해 Pages에 업로드
+
+## 모듈
+world.js 지형(맵별 extent/seg 지원, groundColor)·탐방로·억새(바람+밟힘 밀림)·꽃·나무·접지 그림자(contactShadows)·밟는 구조물(addWalkable/groundAt)·원경(한라산 라테 산체)
+gfx2.js 새 그래픽(아래)
+gate.js 입구 마당(튜토리얼 맵: 본길+서·동 갈래, 쉼터·개울·표지판·출구 아치) / donnaeko.js 돈내코 / maps.js 맵별 spots(gate·darangswi·donnaeko, lamps, exits, pickupCount, npcCount)
+tutorial.js 걸으며 배우는 튜토리얼(그림 힌트 카드, data-tut로 UI 순차 노출) / lamps.js 가로등(가까운 3개만 PointLight) / retro.js 후처리(카툰·레트로 모드, 깊이 윤곽선) / devlabels.js 개발용 라벨(UI-xx, W-xx, F2)
+runner.js 러너(둥근 툰, 머리 1.3배, 똥머리 기본형 5종)·의상·포즈 / life.js 동물·귤·멧돼지(boarSpawn null이면 없음) / npc.js / net.js / social.js(stones, feedback) / achievements.js(일일 5개+뱃지 16) / badgeicons.js / audio.js(발소리 CC0 샘플 stepsamples.js) / sun.js / version.js(릴리스 노트) / main.js / page.html
+
+## 그래픽 v2 (2026-11-11, gfx2.js) — 시안(proto/scene.js) 방식 그대로
+MOODS(day·sunset·dawn·night, 시안 값)를 해 고도로 섞어 blendMood → 공용 색 G(잎·삼나무·구름·풀·억새·바다·안개·지형 색조)에 반영. main.applySky가 호출
+렌더: 기본은 톤매핑 없이 HalfFloat 렌더타깃 → createPost(빛 번짐·채도·색온도·비네트·감마). '가볍게'는 후처리·풀·씨앗 없이 직접 렌더. 카툰·레트로만 ACES
+softMat(조명 없는 2색 툰, 공용 색 또는 고정 색), fluffyGeo(뭉게 수관), cedarGeo(층층 삼나무), skyDome, cloudShadow(지형 색조+구름 그림자), seaMat, createGrass(플레이어 주변 칸 단위 풀 2겹), createEoksae(억새를 긴 날로, 다랑쉬 3.8만/저 1.6만), createMotes
+저사양(LOW: 코어 4개 이하 또는 모바일)은 풀 밀도 45%·수관 덩어리 수 감소. 테스트는 ?hi 로 고사양 강제
+삼각형 수: 다랑쉬 저사양 약 64만(이전 180만)
+캐릭터: 캡슐·구 기반(시안 mochi), 눈·입 작게, 머리는 매끈한 캡+앞머리 2개+묶음
+테스트 스크립트: view.js(맵·시간·위치별 스크린샷), chars.js, tris.js, dbgtree.js
+
+## 캐릭터 모델 (2026-11-13)
+기본 캐릭터 = 사용자가 직접 그린 캐릭터(인스타그램 insighthwi 2025-02-06, 담배 제거)를 아늑한 생활 게임풍 토이 스타일로 옮긴 모델 (2026-11-15 확정, model/src4.glb): 초록 스냅백 뒤로, 검은 머리, 얼굴에 인쇄한 듯 평평한 큰 세로 타원 눈, 분홍 볼, 코·입 없음, 머리는 키의 약 40%, 크림 재킷, 황갈색 배낭, 올리브 반바지, 흰 양말, 검정 운동화. 이전 생성본 src.glb(파란 모자)·src2.glb(보라 스냅백)·src3.glb(2등신 큰 눈)는 미사용. 시안은 Tripo 이미지 생성(무료)으로 그리고, 고른 그림을 이미지 편집으로 T포즈로 바꾼 뒤 '3D 생성'(55크레딧)으로 넘김. 모델별 관절 치수는 model/params.json, 옷 색 마스크 범위는 runner.js 셰이더. Tripo CLI는 API 크레딧이 스튜디오와 별도(잔액 0)라 미사용. Higgsfield 커넥터 연결됨(무료 요금제, 10크레딧).
+runner.js: 옵션 없는 러너(나·다른 탐방객)는 SkinnedMesh. 뼈대 7개(hips·chest·head·armL/R·legL/R) 가중치를 정점 위치로 계산, 예전 도형 몸은 숨긴 채 동작 계산용으로 쓰고 syncModel이 뼈에 복사. 옷 색은 셰이더에서 텍스처 색+부위로 모자·상의·바지·신발만 바꿈
+옷장은 지금 색 4종만(머리 모양·피부·안경·베스트·종류 옵션은 빠짐). NPC는 예전 도형 캐릭터 그대로
+Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환불 요청 중(support@tripo3d.ai, 2026-11-12). 작업은 개인 카드로 1개월 결제한 다른 계정으로 진행
+
+## 결정 사항
+- 풍경 바닥은 Pigs and Wolf 방식(2026-11-12 사용자 결정): 풀잎 없이 지형에 붓질 명암(G.paint, cloudShadow 안) + 꽃 무리(createFlowers). 억새는 오름 사면에만 포기 단위. 예전 풀잎은 ?blades 로만
+- 게임 핵심: 조용한 탐험 + 매일 추가되는 상호작용·업적 + 귤로 아바타 꾸미기. 텍스트 최소화. 경쟁(경주·랭킹)은 넣지 않음
+- 첫 실행은 입구 마당에서 시작, UI는 쓸 일이 생길 때 하나씩 노출, 갈림길 표지판으로 다랑쉬/돈내코 선택. 재방문은 마지막 맵에서 시작, 메뉴 '다른 탐방로'는 입구로
+- 그래픽은 시안 씬5 방향(후처리 없음). 새벽·밤은 청록빛 몽환, 낮·노을은 자연스럽게 (2026-11-11 사용자 결정). 카툰·레트로 후처리는 메뉴 선택으로만
+- 캐릭터는 똥머리 기본형. 옷장에 머리 모양 5종(똥머리·양갈래·낮은 똥머리·반묶음·꽁지머리)·머리색 6·피부색 5 무료 옵션, 모자·안경 기본 없음
+- 기록은 브라우저 로컬 저장. 로그인 없음(경쟁 요소 생길 때 재검토). 도메인은 출시 때
+- 폰트 Jua(제목)+Noto Sans KR. UI는 아이콘 중심, 파스텔 토큰
+- Shift로 걷기·달리기·질주 전환, 체력 200, 귤 먹기 +80
+- 별은 해가 -6°~-14° 사이에서 서서히 보임. 밤 밝기 상향, 가로등
+- 업적 기획 고도화 예정: 단계형(귤 주기→친밀도→노루 타기) 업적
+
+## 알려진 제한
+- 공개 링크는 혼자 모드. 맵 전환은 새로고침
+- 멧돼지·NPC·동물은 로컬 시뮬
+- Messenger(abeto) 로딩 연출은 사용자가 어떤 점이 좋았는지 확인 필요(브라우저에서 못 봄)
+- 억새가 삼각형 수의 절반 이상. 더 줄이려면 포기 수나 원거리 생략 필요
+- 돈내코 조릿대(납작한 덩어리)가 새 풀과 어울리지 않음
