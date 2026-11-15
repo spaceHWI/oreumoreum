@@ -215,3 +215,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 폰 오른쪽 아래: 큰 버튼 둘(줍기 왼쪽·상호작용 오른쪽) + 위에 달리기·점프. 작은 버튼은 `.round.sm`
 - 튜토리얼: 줍기 버튼은 pick 단계, 상호작용 버튼은 dump 단계부터. 힌트 카드 키 E. 단계 UI 를 `UNLOCK` 표로 누적해 중간에 다시 들어와도 앞 단계 버튼이 보임
 - 확인용 `__oreum.aim`(target, mark, throw, ctx, pick)
+
+## 서버 고르기: 깨끗한 오름 / 전투 오름 (#35)
+- `src/server.js`: `save.server` = clean | battle. 코드는 `isBattle()`·`serverId()` 로만 묻는다. `roomFor(base)` 가 멀티 방 이름을 나눔(깨끗한 오름은 예전 이름 `oreum-namsongi`, 전투는 `-battle`). net 은 roomName 을 함수로 받고, `net.start()` 는 입장할 때(`startSession`) 한 번
+- 시작 화면 `#intro-srv`: 그림 카드 둘(`SERVER_ART`, 임시 SVG, 글자 없음). 처음 온 사람은 고르기 전까지 입장 버튼이 꺼져 있음, 다시 온 사람은 저장된 서버가 골라져 있음. 시작 화면에서 바꾸면 새로고침 없이 바꿔 끼움(`trash.store.setServer` + `trash.relayout`)
+- 메뉴 '서버 바꾸기' → `#server` 팝업에서 고르면 `save.srvSwitch` 표시 후 새로고침, 새로고침 뒤 시작 화면 없이 바로 입장
+- 쓰레기 주운 기록만 서버별: `save.trash.srv[서버] = { date, picked }`(예전 `trash.date/picked` 는 clean 으로 옮김). 배낭·누적·도감·튜토리얼 쓰레기와 귤·장비·옷·업적은 같이 씀
+- 깨끗한 오름에서는 멧돼지가 안 나옴(`life.js spawnBoar`, 테스트 spawn 도 막힘)
+- A/B 기록: 저장 키 `KEY + '.ab'`(처음부터 다시 해도 남음)에 서버별 visits·sec·picked, 고른 기록 50개. `window.__oreum.abStats()`, `__oreum.server`(id, isBattle, open)
+- `tools/err.js` 는 첫 카드를 고르고 입장하도록 고침

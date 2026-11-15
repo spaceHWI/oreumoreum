@@ -32,6 +32,7 @@ import { createStoneWall, createCrossWall } from './stonewall.js';
 import { createWeather, WX, wxIcon } from './weather.js';
 import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js';
 import { createAchievements, BADGES, kstDate } from './achievements.js';
+import { isBattle, serverId, setServerId, validServer, roomFor, createAbStats, SERVERS, SERVER_ART, SERVER_LABEL } from './server.js';
 
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -68,6 +69,11 @@ if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
 save.recycle.gyul = Math.max(0, Math.floor(Number(save.recycle.gyul) || 0)); // 클린하우스에서 번 귤 누적
 let resetting = false;
+// 서버 (#35): save.server = clean | battle. 처음 온 사람은 시작 화면에서 고름 (그 전엔 깨끗한 오름으로 둠)
+if (!validServer(save.server)) delete save.server;
+setServerId(save.server || 'clean');
+const srvSwitched = !!save.srvSwitch && !!save.server; delete save.srvSwitch; // 메뉴에서 서버를 바꿔 새로고침한 직후
+const ab = createAbStats(KEY + '.ab'); // 서버별 접속 횟수·플레이 시간·주운 수 (기기 기록, 처음부터 다시 해도 남음)
 const persist = () => { if (resetting) return; try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
 
 const MAP_ID = pickMapId(save.map);
@@ -345,7 +351,7 @@ if (jeong && jeong.isOpen && !save.jeong) { save.jeong = 1; persist(); }
 // 정낭이 열리는 때: 집게·배낭을 둘 다 가졌을 때, 튜토리얼을 마치거나 건너뛰었을 때. 한 번 열리면 계속 열림
 function openJeong(anim = true) { if (!jeong || !jeong.open(anim)) return; save.jeong = 1; persist(); if (anim) sound.gate?.(); }
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
-const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
+const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, ic: 'dump', label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
 const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
@@ -404,7 +410,7 @@ function updateStats() {
   if (save.coins !== lastCoins) { lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; $('coins2').textContent = c; $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
-const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes'];
+const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen() || !!player.rescue;
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -417,7 +423,7 @@ function cancelAll() {
   player.target = null; player.onArrive = null; marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+[['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['server-close', 'server'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
 ['shop', 'sign', 'wishes', 'ach', 'dex', 'maps', 'feedback', 'notes'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
@@ -924,7 +930,7 @@ $('photo-close').addEventListener('click', () => {
 
 // ---------- 함께 (room) ----------
 const net = createNet({
-  scene, player, save, roomName: 'oreum-' + MAP_ID,
+  scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
   extra: () => social.presenceExtra(),
   onToast: (m) => toast(m),
   onPeersChanged: (n, hand) => {
@@ -938,7 +944,12 @@ const net = createNet({
 });
 const social = createSocial({ scene, net, save, onToast: (m) => toast(m), mapId: MAP_ID });
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
-net.start(); social.start();
+social.start();
+// 입장할 때 한 번: 방 접속(서버가 정해진 뒤)·서버별 접속 기록
+let sessionOn = false;
+function startSession() { if (sessionOn) return; sessionOn = true; net.start(); ab.visit(); }
+addEventListener('pagehide', () => ab.flush());
+document.addEventListener('visibilitychange', () => { if (document.hidden) ab.flush(); });
 $('handreq-ok').addEventListener('click', () => { net.accept(); $('handreq').hidden = true; linkSetup(); });
 $('handreq-no').addEventListener('click', () => { net.decline(); $('handreq').hidden = true; });
 $('btn-release').addEventListener('click', () => { net.release(); $('btn-release').hidden = true; });
@@ -1060,7 +1071,7 @@ function updateTrashUI(bump) {
 if (trash) {
   $('trash-hud').hidden = false;
   trash.on((ev, d) => {
-    if (ev === 'trash') { ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
+    if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
     else if (ev === 'heap-clear') { ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); }
     else if (ev === 'reset') { pickS.cyc = -1; if (!d.first) toast('자정이 지나 오름에 쓰레기가 새로 쌓였어요'); }
@@ -1525,7 +1536,43 @@ life.hooks.hitRunner = (who) => {
 runner.setTint(false);
 function setSoundUI() { const b = $('btn-sound'); b.setAttribute('aria-pressed', String(sound.on)); $('menu-sound').setAttribute('aria-pressed', String(sound.on)); b.querySelector('span').textContent = sound.on ? '소리 켜짐' : '소리 꺼짐'; }
 $('btn-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); setSoundUI(); });
+// ---------- 서버 고르기 (#35) ----------
+let introSrv = save.server || null; // 처음 온 사람은 아직 안 고름
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function buildSrvPick(box, sel, onPick) {
+  box.innerHTML = ''; box.classList.toggle('chosen', !!sel);
+  SERVERS.forEach((id) => {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.srv = id;
+    b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(sel === id)); b.setAttribute('aria-label', SERVER_LABEL[id]); b.title = SERVER_LABEL[id];
+    b.innerHTML = SERVER_ART[id] + '<i>' + CHECK_SVG + '</i>';
+    b.addEventListener('click', () => onPick(id));
+    box.append(b);
+  });
+}
+function syncIntroSrv() {
+  buildSrvPick($('intro-srv'), introSrv, (id) => { introSrv = id; syncIntroSrv(); });
+  $('enter-sound').disabled = $('enter-quiet').disabled = !introSrv;
+}
+syncIntroSrv();
+// 시작 화면에서 고른 서버 적용 (아직 아무것도 시작하기 전이라 새로고침 없이 바꿔 끼움)
+function applyIntroSrv() {
+  if (!introSrv) return;
+  if (introSrv !== serverId()) { setServerId(introSrv); if (trash) { trash.store.setServer(introSrv); trash.relayout(); } }
+  save.server = introSrv; persist();
+}
+// 메뉴: 서버 바꾸기 → 저장하고 새로고침 (새로고침 뒤 바로 입장)
+function openServer() {
+  closePanels();
+  buildSrvPick($('server-pick'), serverId(), (id) => {
+    if (id === serverId()) { $('server').hidden = true; return; }
+    save.server = id; save.srvSwitch = 1; save.introSound = sound.on ? 1 : 0; ab.flush(); persist(); location.reload();
+  });
+  $('server').hidden = false;
+}
+$('menu-server').addEventListener('click', openServer);
 function enter(withSound) {
+  if (!introSrv) return;
+  applyIntroSrv(); startSession();
   if (introMap !== MAP_ID) { save.introSound = withSound ? 1 : 0; switchMap(introMap); return; }
   if (withSound) sound.start();
   setSoundUI();
@@ -1537,7 +1584,7 @@ $('enter-sound').addEventListener('click', () => enter(true));
 $('enter-quiet').addEventListener('click', () => enter(false));
 document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
-if (prevMap && prevMap !== MAP_ID && save.entered) { $('intro').hidden = true; if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
+if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
 if (prevMap && prevMap !== MAP_ID && prevMap !== 'gate' && MAP_ID !== 'gate') ach.emit('visit-other');
 if (Object.keys(ach.state.visited).length >= 2 && !ach.state.badges['b-both']) ach.emit('visit-both');
 
@@ -1737,6 +1784,7 @@ function frame(now) {
   camHold = Math.max(0, camHold - dt);
   updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
+  if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000);
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
   if (awe > 0) { awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (awe <= 0) aweBack = 2; }
@@ -1850,5 +1898,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { abStats: () => ab.get(), server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

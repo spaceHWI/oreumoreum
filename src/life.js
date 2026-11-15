@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { isBattle } from './server.js';
 import { height, surfaceAt } from './world.js';
 import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
 import { BOAR, SCATTER, COLLIDE } from './balance.js';
@@ -390,6 +391,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   const buildBoar = buildBoarModel;
   function spawnBoar() {
     if (!spots.boarSpawn) { boarTimer = 1e9; return; }
+    if (!isBattle()) { boarTimer = 30; return; } // 깨끗한 오름에는 멧돼지가 없음 (#35)
     const b = buildBoar();
     const [x, z] = spots.boarSpawn(rnd, player.pos);
     if (!spots.inBounds(x, z)) { boarTimer = 20; return; }
