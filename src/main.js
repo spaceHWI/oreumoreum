@@ -2,7 +2,8 @@ import { NSMODE, TEXCS } from './boot.js'; // 반드시 맨 먼저
 import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN } from './balance.js';
+import { TOOLS, BAGS, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE } from './balance.js';
+import { createCollide } from './collide.js';
 import { equipGear } from './gear.js';
 import { createCleanhouse } from './cleanhouse.js';
 import { gradHard } from './toon.js';
@@ -289,8 +290,20 @@ function tickCairnLod(dt) {
   cairns.forEach((c) => { if (!c.n) return; const d = Math.hypot(camera.position.x - c.pos.x, camera.position.z - c.pos.z); fillCairn(c, d > CAIRN.farD ? (LOW ? 5 : 3) : 1); });
 }
 
+// ---------- 사물 충돌 (#15, 남송이만) ----------
+const col = NSW ? createCollide() : null;
+if (col) {
+  NSW.solids.forEach(([x, z, r]) => col.add(x, z, r));
+  spots.hareubangs.forEach((h) => col.add(h.pos.x, h.pos.z, 0.75));
+  spots.cairns.forEach((c) => col.add(c.pos.x, c.pos.z, 1.0));
+  (spots.lamps || []).forEach(([x, z]) => col.add(x, z, 0.2));
+  { const a = Math.atan2(P.out.x, P.out.z); col.addBox(P.stone.x, P.stone.z, a, 1.3, 0.8); }
+  col.addBox(spots.bench.pos.x, spots.bench.pos.z, Math.atan2(spots.bench.out.x, spots.bench.out.z), 1.6, 0.4, 0, -0.2);
+  if (!spots.sign.silent) { const r = spots.sign.rot; [-1.3, 1.3].forEach((u) => col.add(spots.sign.pos.x + Math.cos(r) * u - Math.sin(r) * 0.1, spots.sign.pos.z - Math.sin(r) * u - Math.cos(r) * 0.1, 0.25)); }
+  if (spots.cleanhouse) { const c = spots.cleanhouse; col.addBox(c.x, c.z, c.rot, 3.6, 1.4); col.addBox(c.x, c.z, c.rot, 0.95, 0.55, 3.6 + 2.6 + 0, 0.6); }
+}
 // ---------- 쓰레기 (남송이) ----------
-const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW, fixed: spots.tut?.trash || [] }) : null;
+const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
 const shopAct = CH && { label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
@@ -1409,6 +1422,7 @@ function updatePlayer(dt) {
     if (d.speed > 0.05) {
       let nx = d.pos.x + Math.sin(d.heading) * d.speed * dt, nz = d.pos.z + Math.cos(d.heading) * d.speed * dt;
       const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
+      if (col) { const r = col.move(d.pos.x, d.pos.z, nx, nz, 0.9); nx = r.x; nz = r.z; }
       const moved = Math.hypot(nx - d.pos.x, nz - d.pos.z);
       d.pos.set(nx, height(nx, nz), nz);
       d.phase += dt * d.speed * 1.4;
@@ -1431,6 +1445,11 @@ function updatePlayer(dt) {
     let x = p.pos.x + dir.x * p.speed * dt, z = p.pos.z + dir.z * p.speed * dt;
     const cl = spots.clamp(x, z);
     if (cl) { x = cl.x; z = cl.z; if (!p.wallToast || performance.now() - p.wallToast > 8000) { p.wallToast = performance.now(); toast(cl.hit); } }
+    if (col && p.pose !== 'sit') { const want = p.speed * dt, r = col.move(p.pos.x, p.pos.z, x, z); x = r.x; z = r.z;
+      // 탭 이동 중 사물에 막혀 못 나아가면 멈춤 (도착 콜백이 있고 거의 다 왔으면 도착으로 침)
+      if (p.target && want > 0.01 && Math.hypot(x - p.pos.x, z - p.pos.z) < want * 0.3) { p.stuckT = (p.stuckT || 0) + dt;
+        if (p.stuckT > COLLIDE.stuckT) { p.stuckT = 0; const cb = p.onArrive, near = Math.hypot(p.target.x - p.pos.x, p.target.z - p.pos.z) < 3; p.target = null; p.onArrive = null; marker.visible = false; if (cb && near) cb(); }
+      } else p.stuckT = 0; }
     const moved = Math.hypot(x - p.pos.x, z - p.pos.z);
     if (spots.exits && !leaving) for (const ex of spots.exits) if (Math.hypot(x - ex.pos.x, z - ex.pos.z) < ex.r) { leaveTo(ex.id); break; }
     const gy = groundAt(x, z);
@@ -1453,6 +1472,7 @@ function updatePlayer(dt) {
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
     const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
+    if (col) { const r = col.move(p.pos.x, p.pos.z, nx, nz); nx = r.x; nz = r.z; }
     p.pos.set(nx, height(nx, nz), nz);
     p.kb.multiplyScalar(Math.max(0, 1 - dt * 2.2));
   }
@@ -1637,5 +1657,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

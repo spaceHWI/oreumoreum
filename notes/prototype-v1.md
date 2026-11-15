@@ -114,3 +114,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - shop 단계 시작 때 보상 귤 `spots.tut.reward`(100)를 한 번만 줌(`save.tut.paid`). 이미 집게 이상이면 안 줌
 - 튜토리얼 쓰레기: `spots.tut.trash`(남송이 `maps.js`)의 3개를 `createTrash({ fixed })` 로 넘김. 번호는 N 이후(`N+k`), 날짜 배치·오늘/누적 수와 무관하게 늘 그 자리. 주운 기록은 `save.trash.tp`
 - 저장 키 `save.nsV2`: 기존 유저도 튜토리얼 한 번 다시(`save.tut`·`save.trash.tp` 초기화). 예전 단계(귤 던지기·하르방·징검돌)는 튜토리얼에서만 빠짐
+
+## 사물 충돌 (#15)
+- `src/collide.js` `createCollide()`: 원 목록 + 8m 칸 격자. `add(x,z,r)`·`addBox(x,z,rot,hw,hd,ox,oz)`(폭 방향 원을 이어 근사)·`blocked(x,z,pad)`·`move(ox,oz,nx,nz,pr)`. 겹치면 법선 방향으로만 밀어내 옆으로 미끄러짐. 0.35m 단위로 나눠 움직여 빨리 달려도 안 뚫림. 수치는 `balance.js` `COLLIDE`
+- 나무·길가 바위: `namsongi.js` 가 `buildNamsongi().solids`([x,z,r])로 내놓음(소나무 s×0.42, 참나무 s×0.3, 바위 s×0.9). 구조물(하르방·돌탑·가로등·표지석·벤치·안내판 기둥·클린하우스·가판대)은 `main.js` 의 "사물 충돌" 블록에서 `spots` 로 등록. 남송이에서만 켜짐(`col`, 테스트는 `__oreum.col`)
+- 이동 적용: 걷기·넉백·노루 타기(반지름 0.9). 탭 이동은 0.5초 못 나아가면 멈춤(도착 콜백이 있고 3m 안이면 도착으로 침). 상호작용 거리(r 6~9)는 충돌 반경보다 넉넉함. 징검돌은 뛰어넘는 용이라 충돌 없음
+- 쓰레기 배치: `createTrash({ blocked })` 로 충돌 반경+0.6 안은 피함(날짜별 배치가 이전과 달라질 수 있음)
