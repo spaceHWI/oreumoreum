@@ -1,0 +1,75 @@
+// 장비(몸 말고 나머지) 교체 시스템
+// - 캐릭터 = 몸 메시(runnermodel.js) + 뼈대 7개 + 칸(slot)마다 장비 하나
+// - 장비 좌표는 모델 기본 자세(T포즈, 키 0.98) 기준. 머리 정수리 약 y 0.97, 얼굴 앞 z 약 0.26
+// - 장비 종류
+//   bone: 'head' 등 → 그 뼈에 붙는 단단한 물건 (모자·안경·배낭)
+//   skin: true      → 몸과 같은 뼈대로 휘는 옷 (바지·소매처럼 관절을 지나는 것). 가중치는 몸과 같은 규칙으로 자동 계산
+// - hide: 지금 몸 메시에 함께 구워진 부분 중 감출 곳 ('hat' 모자, 'pack' 배낭(어깨끈 빼고), 'top' 재킷, 'bottom' 반바지, 'shoes' 신발)
+//   감춘 자리는 비어 보이므로 새 장비가 그 자리를 덮어야 한다. 몸만 있는 모델로 바꾸면 hide 없이 쓰면 된다
+// - tint: 옷장 색(outfit[tint].color)을 따라갈 재질 이름
+// - 새 디자인은 Tripo·블렌더에서 기본 자세에 맞춰 만든 glb 를 model/extract-gear.js 로 바꿔 data 로 넣는다
+import * as THREE from 'three';
+import { TEXCS } from './boot.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+
+// 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
+const dec = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
+export const fromData = (D, def = '#ffffff') => (mat) => {
+  const g = new THREE.BufferGeometry(); const nq = dec(D.nor, Int8Array), nor = new Float32Array(nq.length); for (let i = 0; i < nq.length; i++) nor[i] = nq[i] / 127;
+  g.setAttribute('position', new THREE.BufferAttribute(dec(D.pos, Float32Array), 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  if (D.uv) g.setAttribute('uv', new THREE.BufferAttribute(dec(D.uv, Float32Array), 2)); g.setIndex(new THREE.BufferAttribute(dec(D.idx, D.idx16 ? Uint16Array : Uint32Array), 1));
+  const m = mat('main', def); if (D.tex) { const t = new THREE.TextureLoader().load(D.tex); t.flipY = false; t.colorSpace = TEXCS; m.map = t; }
+  return new THREE.Mesh(g, m);
+};
+
+export const SLOTS = { hat: '모자', face: '얼굴', back: '등', top: '상의', bottom: '하의', shoes: '신발' };
+
+const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
+const G = (...ms) => { const g = new THREE.Group(); ms.forEach((m) => g.add(m)); return g; };
+
+// build(mat) → Object3D (기본 자세 좌표). mat(이름, 기본색) 으로 재질을 받는다
+export const ACCESSORIES = {
+  // ---- 모자 ----
+  'hat:cap': { slot: 'hat', label: '스냅백', builtin: true },
+  'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
+    build: (mat) => { const m = mat('main', '#c8553d');
+      const top = M(new THREE.SphereGeometry(0.235, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.79, 0.02); top.scale.set(1.06, 0.9, 1.0);
+      const band = M(new THREE.CylinderGeometry(0.255, 0.258, 0.075, 28, 1), m, 0, 0.785, 0.02); band.scale.z = 0.98;
+      const pom = M(new THREE.SphereGeometry(0.055, 12, 10), mat('pom', '#f2efe6'), 0, 1.0, 0.02);
+      return G(top, band, pom); } },
+  'hat:bucket': { slot: 'hat', label: '버킷햇', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
+    build: (mat) => { const m = mat('main', '#d9c27a');
+      const crown = M(new THREE.CylinderGeometry(0.2, 0.245, 0.2, 28, 1), m, 0, 0.88, 0.02);
+      const lid = M(new THREE.SphereGeometry(0.2, 28, 8, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.975, 0.02); lid.scale.y = 0.25;
+      const brim = M(new THREE.CylinderGeometry(0.255, 0.36, 0.05, 32, 1, true), m, 0, 0.77, 0.02); brim.material = m.clone(); brim.material.side = THREE.DoubleSide;
+      return G(crown, lid, brim); } },
+
+  // ---- 얼굴 ----
+  'face:none': { slot: 'face', label: '없음', builtin: true },
+  'face:sunglass': { slot: 'face', label: '선글라스', bone: 'head',
+    build: (mat) => { const lens = mat('lens', '#22252b'), frame = mat('frame', '#22252b');
+      const l = (sx) => { const g = M(new RoundedBoxGeometry(0.15, 0.1, 0.03, 3, 0.03), lens, sx * 0.095, 0.715, 0.27); g.rotation.y = sx * 0.28; return g; };
+      return G(l(1), l(-1), M(new THREE.BoxGeometry(0.06, 0.018, 0.02), frame, 0, 0.73, 0.285)); } },
+
+  // ---- 등 ----
+  'back:pack': { slot: 'back', label: '배낭', builtin: true },
+  'back:round': { slot: 'back', label: '둥근 배낭', bone: 'chest', hide: ['pack'], tint: { main: 'pack' },
+    build: (mat) => { const m = mat('main', '#3e6b8a');
+      const body = M(new THREE.SphereGeometry(0.22, 24, 18), m, 0, 0.43, -0.2); body.scale.set(1.05, 0.95, 0.62);
+      const pocket = M(new THREE.SphereGeometry(0.12, 18, 12), mat('pocket', '#f2c94c'), 0, 0.38, -0.31); pocket.scale.set(1.1, 0.9, 0.5);
+      return G(body, pocket); } },
+
+  // ---- 하의 (몸과 같이 휘는 옷 예시) ----
+  'bottom:shorts': { slot: 'bottom', label: '반바지', builtin: true },
+  'bottom:long': { slot: 'bottom', label: '긴바지', skin: true, hide: ['bottom'], tint: { main: 'pants' },
+    build: (mat) => { const m = mat('main', '#4a5a78');
+      const hip = M(new THREE.SphereGeometry(0.2, 24, 14), m, 0, 0.215, 0.035); hip.scale.set(1.0, 0.42, 0.82);
+      const leg = (sx) => M(new THREE.CylinderGeometry(0.068, 0.06, 0.2, 16, 6), m, sx * 0.1, 0.13, 0.035);
+      return G(hip, leg(1), leg(-1)); } },
+};
+
+// 칸별 장비 목록 (옷장용)
+export const gearList = (slot) => Object.entries(ACCESSORIES).filter(([, a]) => a.slot === slot).map(([k]) => k);
+export const DEFAULT_GEAR = { hat: 'hat:cap', face: 'face:none', back: 'back:pack', bottom: 'bottom:shorts' };
+// 네트워크로 받은 값 검사
+export const cleanGear = (g) => { const out = {}; if (g && typeof g === 'object') Object.entries(g).forEach(([slot, k]) => { if (SLOTS[slot] && ACCESSORIES[k]?.slot === slot) out[slot] = k; }); return out; };

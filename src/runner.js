@@ -3,6 +3,8 @@ import { NSMODE, TEXCS } from './boot.js';
 import { gradHard } from './toon.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { RM } from './runnermodel.js';
+import { patchDQS } from './dqskin.js';
+import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
 
 // 가격 0 = 기본 제공. 상점에서 귤로 구매
 // 기본 캐릭터는 모델(모자 뒤로 쓴 아이)이라 지금은 색만 바꿀 수 있음. 가격 0 = 기본 제공
@@ -45,19 +47,20 @@ const b64 = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.l
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const MODEL_S = 2.5; // 모델 키 0.98 → 게임 키 약 2.45
 const P = RM.P; // 모델별 치수 (model/params.json)
-const JOINT = { hips: [0, P.hipY, 0], chest: [0, P.hipY + 0.01, 0], head: [0, P.neckY, 0], armL: [P.shoulderX, P.armY, 0], armR: [-P.shoulderX, P.armY, 0], legL: [P.legX, P.hipY - 0.01, 0], legR: [-P.legX, P.hipY - 0.01, 0] };
+// 팔 관절은 소매 중심선(armY·armZ) 위, 몸통 옆면보다 조금 안쪽(pivotX)에 둬서 팔을 내려도 어깨 위가 덜 늘어나게
+const AZ = P.armZ ?? 0, LZ = P.legZ ?? 0, PX = P.pivotX ?? P.shoulderX;
+const JOINT = { hips: [0, P.hipY, 0], chest: [0, P.hipY + 0.01, 0], head: [0, P.neckY, 0], armL: [PX, P.armY, AZ], armR: [-PX, P.armY, AZ], legL: [P.legX, P.hipY - 0.01, LZ], legR: [-P.legX, P.hipY - 0.01, LZ] };
 const BONE_ORDER = ['hips', 'chest', 'head', 'armL', 'armR', 'legL', 'legR'];
-let modelGeo = null, modelTex = null;
-function getModelGeo() {
-  if (modelGeo) return modelGeo;
-  const pos = b64(RM.pos, Float32Array), nq = b64(RM.nor, Int8Array), uv = b64(RM.uv, Float32Array), idx = b64(RM.idx, RM.idx16 ? Uint16Array : Uint32Array);
-  const nor = new Float32Array(nq.length); for (let i = 0; i < nq.length; i++) nor[i] = nq[i] / 127;
-  const si = new Uint16Array(RM.n * 4), sw = new Float32Array(RM.n * 4);
-  for (let v = 0; v < RM.n; v++) {
-    const x = pos[v * 3], y = pos[v * 3 + 1], ax = Math.abs(x);
+// 기본 자세 좌표 → 뼈 가중치 (몸 메시와 '휘는 옷' 장비가 같이 씀)
+export function skinWeights(pos) {
+  const n = pos.length / 3, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  for (let v = 0; v < n; v++) {
+    const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2], ax = Math.abs(x);
     const w = [0, 0, 0, 0, 0, 0, 0];
-    const armZone = y > P.armLo && (y < P.armTop || ax > P.handX) && y < P.armHi;
-    const wArm = armZone ? sstep(P.shoulderX - 0.04, P.shoulderX + 0.045, ax) : 0;
+    // 팔: 소매 중심선에서 가까운 정점만 (몸통 옆면 아래·위는 팔을 따라가지 않게). 몸통 옆면(shoulderX) 바로 안쪽에서 바깥까지 짧게 넘어감
+    const rr = Math.hypot((y - P.armY) / (P.armR ?? 0.075), (z - AZ) / (P.armR ?? 0.075));
+    const gate = ax > P.handX ? (y > P.armLo && y < P.armHi ? 1 : 0) : 1 - sstep(1.05, 1.6, rr);
+    const wArm = gate * sstep(PX - 0.01, P.shoulderX + 0.012, ax);
     const wHead = sstep(P.neckY - 0.02, P.neckY + 0.01, y) * (1 - wArm);
     const wLeg = (1 - sstep(P.hipY - 0.05, P.hipY + 0.02, y));
     const side = sstep(-0.015, 0.015, x);
@@ -66,6 +69,14 @@ function getModelGeo() {
     const order = [0, 1, 2, 3, 4, 5, 6].sort((a, b) => w[b] - w[a]).slice(0, 4); let sum = 0; order.forEach((k) => { sum += w[k]; });
     order.forEach((k, j) => { si[v * 4 + j] = k; sw[v * 4 + j] = w[k] / (sum || 1); });
   }
+  return { si, sw };
+}
+let modelGeo = null, modelTex = null;
+function getModelGeo() {
+  if (modelGeo) return modelGeo;
+  const pos = b64(RM.pos, Float32Array), nq = b64(RM.nor, Int8Array), uv = b64(RM.uv, Float32Array), idx = b64(RM.idx, RM.idx16 ? Uint16Array : Uint32Array);
+  const nor = new Float32Array(nq.length); for (let i = 0; i < nq.length; i++) nor[i] = nq[i] / 127;
+  const { si, sw } = skinWeights(pos);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); g.setIndex(new THREE.BufferAttribute(idx, 1));
@@ -75,23 +86,27 @@ function getModelGeo() {
 const MODEL_DEFAULT = { hat: '#5c9a3c', shirt: '#e8d9b5', pants: '#8a6a3c', shoes: '#26262b' };
 function buildModel() {
   const geo = getModelGeo();
-  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) } };
+  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 } };
   // 남송이오름(새 그림체)에서는 3단 툰 명암
   const mat = NSMODE ? new THREE.MeshToonMaterial({ map: modelTex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: modelTex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   // 텍스처 색과 부위(기본 자세 위치)로 모자·상의·바지·신발을 가려 옷 색을 바꿈
-  mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U);
+  mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); patchDQS(sh);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on;\nvec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack;\nvec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }')
       .replace('#include <map_fragment>', `#include <map_fragment>
       { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); float y = vRest.y; float ax = abs(vRest.x);
         float green = smoothstep(0.2, 0.24, h.x) * (1.0 - smoothstep(0.42, 0.46, h.x)) * smoothstep(0.25, 0.4, h.y);
         float cream = smoothstep(0.07, 0.1, h.x) * (1.0 - smoothstep(0.17, 0.2, h.x)) * (1.0 - smoothstep(0.38, 0.46, h.y)) * smoothstep(0.55, 0.68, h.z);
         float olive = smoothstep(0.05, 0.08, h.x) * (1.0 - smoothstep(0.16, 0.2, h.x)) * smoothstep(0.35, 0.45, h.y) * (1.0 - smoothstep(0.6, 0.7, h.z));
         { float dark = (1.0 - smoothstep(0.22, 0.34, h.z)) * smoothstep(0.57, 0.6, y); float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l) * 0.75, dark); } // 머리카락·눈은 무채색 검정으로
-        float mHat = green * smoothstep(0.56, 0.6, y) * on.x;
-        float mShirt = cream * smoothstep(0.23, 0.26, y) * (1.0 - smoothstep(0.585, 0.605, y)) * on.y;
-        float mPants = olive * smoothstep(0.15, 0.17, y) * (1.0 - smoothstep(0.27, 0.29, y)) * (1.0 - smoothstep(0.21, 0.24, ax)) * step(-0.2, vRest.z) * on.z;
-        float mShoes = (1.0 - smoothstep(0.25, 0.4, h.z)) * (1.0 - smoothstep(0.09, 0.105, y)) * on.w;
+        float rHat = green * smoothstep(0.56, 0.6, y);
+        float rShirt = cream * smoothstep(0.23, 0.26, y) * (1.0 - smoothstep(0.585, 0.605, y));
+        float rPants = olive * smoothstep(0.15, 0.17, y) * (1.0 - smoothstep(0.27, 0.29, y)) * (1.0 - smoothstep(0.21, 0.24, ax)) * step(-0.2, vRest.z);
+        float rShoes = (1.0 - smoothstep(0.25, 0.4, h.z)) * (1.0 - smoothstep(0.09, 0.105, y));
+        float rPack = smoothstep(0.04, 0.06, h.x) * (1.0 - smoothstep(0.12, 0.14, h.x)) * smoothstep(0.34, 0.4, h.y) * smoothstep(0.4, 0.46, h.z) * step(0.26, y) * step(y, 0.62) * step(ax, 0.28) * step(vRest.z, -0.09);
+        // 장비로 바꾼 부분은 감춤 (새 장비가 덮음)
+        if (max(max(rHat * hide.x, rShirt * hide.y), max(max(rPants * hide.z, rShoes * hide.w), rPack * hidePack)) > 0.5) discard;
+        float mHat = rHat * on.x, mShirt = rShirt * on.y, mPants = rPants * on.z, mShoes = rShoes * on.w;
         diffuseColor.rgb = mix(diffuseColor.rgb, cHat * min(h.z / 0.66, 1.3), mHat);
         diffuseColor.rgb = mix(diffuseColor.rgb, cShirt * min(h.z / 0.92, 1.1), mShirt);
         diffuseColor.rgb = mix(diffuseColor.rgb, cPants * min(h.z / 0.52, 1.4), mPants);
@@ -102,11 +117,42 @@ function buildModel() {
   rel('hips'); rel('chest', 'hips'); rel('head', 'chest'); rel('armL', 'chest'); rel('armR', 'chest'); rel('legL', 'hips'); rel('legR', 'hips');
   const mesh = new THREE.SkinnedMesh(geo, mat); mesh.add(bones.hips); mesh.bind(new THREE.Skeleton(BONE_ORDER.map((k) => bones[k])));
   mesh.frustumCulled = false; mesh.castShadow = true; mesh.receiveShadow = false;
+  mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); mesh.customDepthMaterial.onBeforeCompile = patchDQS; // 그림자도 같은 방식으로 굽힘
   const holder = new THREE.Group(); holder.scale.setScalar(MODEL_S); holder.add(mesh);
-  const set = (of) => { const pick = (k, u, i) => { const c = of[k]?.color || MODEL_DEFAULT[k]; U[u].value.set(c); U.on.value.setComponent(i, c.toLowerCase() === MODEL_DEFAULT[k] ? 0 : 1); }; pick('hat', 'cHat', 0); pick('shirt', 'cShirt', 1); pick('pants', 'cPants', 2); pick('shoes', 'cShoes', 3); };
-  return { holder, mesh, mat, bones, set };
+  // 장비: 칸마다 하나. 뼈에 붙이거나(단단한 것) 같은 뼈대로 휘게(옷) 붙임
+  const worn = {}; // slot → { key, obj, mats }
+  const gearMat = (tintCol) => (name, def) => { const m = NSMODE ? new THREE.MeshToonMaterial({ color: def, gradientMap: gradHard }) : new THREE.MeshLambertMaterial({ color: def });
+    m.userData.def = def; m.userData.name = name; return m; };
+  function wear(slot, key) {
+    const cur = worn[slot]; if (cur?.key === key) return; if (cur?.obj) { cur.obj.removeFromParent(); cur.obj.traverse((o) => { if (o.isMesh) { o.material.dispose?.(); } }); }
+    const a = ACCESSORIES[key]; worn[slot] = { key, obj: null, mats: [] };
+    if (a && !a.builtin && a.build) {
+      const mats = []; const mk = gearMat(); const src = a.build((n, d) => { const m = mk(n, d); mats.push(m); return m; });
+      src.updateMatrixWorld(true);
+      let obj;
+      if (a.skin) { // 기본 자세 좌표로 합쳐 정점마다 가중치를 붙임
+        obj = new THREE.Group();
+        src.traverse((o) => { if (!o.isMesh) return; const g = o.geometry.clone().applyMatrix4(o.matrixWorld); const { si, sw } = skinWeights(g.attributes.position.array);
+          g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+          o.material.onBeforeCompile = patchDQS; const sm = new THREE.SkinnedMesh(g, o.material); sm.bind(mesh.skeleton, mesh.bindMatrix); sm.frustumCulled = false; obj.add(sm); });
+        holder.add(obj);
+      } else { obj = src; const j = JOINT[a.bone || 'chest']; obj.position.sub(new THREE.Vector3(...j)); bones[a.bone || 'chest'].add(obj); }
+      obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+      worn[slot].obj = obj; worn[slot].mats = mats;
+    }
+    // 감출 부분 다시 계산
+    const hid = new Set(); Object.values(worn).forEach((w) => (ACCESSORIES[w.key]?.hide || []).forEach((h) => hid.add(h)));
+    U.hide.value.set(+hid.has('hat'), +hid.has('top'), +hid.has('bottom'), +hid.has('shoes')); U.hidePack.value = +hid.has('pack');
+  }
+  const TINT = { hat: 'hat', pants: 'pants', shirt: 'shirt', shoes: 'shoes' };
+  const set = (of) => { const pick = (k, u, i) => { const c = of[k]?.color || MODEL_DEFAULT[k]; U[u].value.set(c); U.on.value.setComponent(i, c.toLowerCase() === MODEL_DEFAULT[k] ? 0 : 1); }; pick('hat', 'cHat', 0); pick('shirt', 'cShirt', 1); pick('pants', 'cPants', 2); pick('shoes', 'cShoes', 3);
+    const g = { ...DEFAULT_GEAR, ...(of.gear || {}) }; Object.entries(g).forEach(([slot, key]) => wear(slot, key));
+    // 장비 색: tint 로 묶인 재질은 옷장 색을 따름 (기본색이면 장비 자체 색)
+    Object.values(worn).forEach((w) => { const t = ACCESSORIES[w.key]?.tint || {}; w.mats.forEach((m) => { const part = TINT[t[m.userData.name]]; const c = part && of[part]?.color; m.color.set(c && c.toLowerCase() !== MODEL_DEFAULT[part] ? c : m.userData.def); m.emissive.copy(m.color).multiplyScalar(NSMODE ? 0.16 : 0.32); }); }); };
+  return { holder, mesh, mat, bones, set, wear };
 }
 const qTmp = new THREE.Quaternion(), eTmp = new THREE.Euler();
+const LEG_M = (P.hipY - 0.01) * MODEL_S; // 모델 다리 길이(골반 관절 → 발바닥)
 const ARM_OUT = 0.42; // 팔을 완전히 내리지 않고 살짝 벌려 두면 어깨가 덜 구겨짐
 const Q_ARM_L = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2 + ARM_OUT)), Q_ARM_R = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2 - ARM_OUT));
 
@@ -291,9 +337,10 @@ export function buildRunner(opts = {}) {
     mats.shoes.color.set(of.shoes.color);
   }
 
-  const st = { phase: 0, blend: 0 };
+  const st = { phase: 0, blend: 0, slope: 0 };
   // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath'
-  function animate(dt, { speed, running, pose, t, breath, air, jumpV }) {
+  // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
+  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0 }) {
     const moving = speed > 0.1 && pose === 'move';
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
     st.phase += dt * speed * (running ? 1.05 : 1.6);
@@ -309,6 +356,13 @@ export function buildRunner(opts = {}) {
     body.position.set(0, 0, 0);
     chest.scale.set(1, 1, 1);
     head.rotation.set(0, 0, 0); hips.rotation.y = 0; torso.rotation.z = 0;
+    // 어깨: 팔과 같은 박자로 가슴이 반대쪽 다리와 엇갈려 돌고(골반은 반대로 조금), 머리는 앞을 보게 되돌림
+    { const tw = s * amp; hips.rotation.y = tw * 0.12; torso.rotation.y = -tw * 0.3; head.rotation.y = tw * 0.18;
+      torso.rotation.z = Math.cos(st.phase) * amp * 0.035; } // 걸음마다 어깨가 살짝 기우뚱
+    // 비탈: 몸을 비탈 쪽으로 숙이고 다리 흔들림 중심을 비탈에 맞춤
+    st.slope += (slope - st.slope) * Math.min(1, dt * 8);
+    const sa = Math.atan(st.slope) * st.blend;
+    torso.rotation.x += sa * 0.45; legL.rotation.x += sa * 0.55; legR.rotation.x += sa * 0.55;
 
     if (pose === 'wave') {
       armR.rotation.set(0, 0, -2.25 + Math.sin(t * 12) * 0.35);
@@ -353,6 +407,12 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(0, 0, 0.12 + b * 0.35); armR.rotation.set(0, 0, -0.12 - b * 0.35);
       head.rotation.x = -b * 0.15;
     }
+    // 발이 비탈 아래로 들어가면 그만큼 골반을 올림 (앞발은 오르막에, 뒷발은 내리막에 걸림)
+    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath')) {
+      const L = model ? LEG_M : 0.775, base = model ? LEG_M : HIP;
+      const pen = (lg) => { const th = lg.rotation.x, hy = base + hips.position.y - HIP, f = -L * Math.sin(th); return st.slope * f - (hy - L * Math.cos(th)); };
+      hips.position.y += Math.max(0, pen(legL), pen(legR));
+    }
     if (model) syncModel();
   }
 
@@ -361,6 +421,10 @@ export function buildRunner(opts = {}) {
   function setTint(on) {
     if (on === tinted) return; tinted = on;
     tintable.forEach((m) => { if (model) { m.emissive.set(on ? '#ffd84a' : '#ffffff'); m.emissiveIntensity = on ? 0.75 : 0.32; } else { m.emissive.set(on ? '#c9a200' : '#000000'); m.emissiveIntensity = on ? 0.9 : 1; } });
+    if (model) model.holder.traverse((o) => { if (o.isMesh && o !== model.mesh) { if (on) o.material.emissive.set('#ffd84a'); else o.material.emissive.copy(o.material.color).multiplyScalar(NSMODE ? 0.16 : 0.32); } }); // 장비도 같이
   }
-  return { root, apply, animate, setTint };
+  const setPhase = (ph) => { st.phase = ph; st.blend = 1; };
+  // 장비 하나만 바꾸기 (확인용). 저장되는 값은 outfit.gear
+  const setGear = (slot, key) => { if (model && ACCESSORIES[key]) model.wear(slot, key); };
+  return { root, apply, animate, setTint, setPhase, setGear };
 }
