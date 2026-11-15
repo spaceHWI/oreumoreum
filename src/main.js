@@ -19,7 +19,7 @@ import { useDonnaeko, buildDonnaekoDecor } from './donnaeko.js';
 import { useGate, buildGateDecor } from './gate.js';
 import { createTutorial } from './tutorial.js';
 import { createLamps } from './lamps.js';
-import { buildRunner, OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemKey, itemPrice } from './runner.js';
+import { buildRunner, THROW, OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemKey, itemPrice } from './runner.js';
 import { Sound } from './audio.js';
 import { createNet } from './net.js';
 import { createLife } from './life.js';
@@ -636,15 +636,22 @@ $('act-dance').addEventListener('click', () => { closePanels(); doDance(); });
 $('act-eat').addEventListener('click', () => { closePanels(); eatTangerine(); });
 $('act-breath').addEventListener('click', () => { closePanels(); startBreath(); });
 
+let throwPending = false;
 function throwTangerine() {
-  if (busy() || player.pose === 'wave') return;
+  if (busy() || player.pose === 'wave' || player.pose === 'throw') return;
   if (save.coins < 1) { toast('귤이 없어요. 길에 떨어진 귤을 주워 보세요'); return; }
+  if (player.riding) { releaseTangerine(); return; }
+  player.pose = 'throw'; player.poseT = 0; throwPending = true; sound.beep(false);
+}
+// 손이 앞으로 뻗는 순간 손 위치에서 귤이 떠난다
+function releaseTangerine() {
+  throwPending = false;
+  if (save.coins < 1) return;
   save.coins -= 1; persist(); updateStats();
   const dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
-  const from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
+  let from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
+  if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
   life.throwTangerine(from, dir, 11 + (player.running ? 3 : 0), () => [...[...net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]);
-  if (!player.riding) { player.pose = 'wave'; player.poseT = 1.6; }
-  sound.beep(false);
 }
 $('btn-throw').addEventListener('click', throwTangerine);
 
@@ -1379,6 +1386,8 @@ function updatePlayer(dt) {
   const p = player;
   p.poseT += dt;
   if (p.pose === 'wave' && p.poseT > 2.2) p.pose = 'move';
+  if (p.pose === 'throw') { if (throwPending && p.poseT >= THROW.release) releaseTangerine(); if (p.poseT >= THROW.total) p.pose = 'move'; }
+  else if (throwPending) throwPending = false;
   if (p.pose === 'dance' && p.poseT > 6) p.pose = 'move';
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';
   if (p.pose === 'eat' && p.poseT > 1.6) p.pose = 'move';

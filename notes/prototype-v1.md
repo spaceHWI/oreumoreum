@@ -136,3 +136,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - footprints.js: InstancedMesh 하나(최대 FOOTPRINT.max 60, LOW 30), 칸마다 알파 속성. stamp(x,z,heading,gait) 가 왼발·오른발을 번갈아 땅 기울기(높이 격자 법선)에 맞춰 찍음. 8초(FOOTPRINT.life) 중 뒤 60% 동안 서서히 사라지고, 가득 차면 오래된 것부터 덮어씀
 - main.js countSteps 에서 걸음마다 호출(간격은 걷기 1.1·달리기 1.7·질주 2.1 그대로라 달릴수록 넓음, 질주·달리기는 조금 진하게). 점프 중(p.air)·노루 탈 때(p.riding)는 안 찍음. 탐방로·흙(surfaceAt != 0)은 알파 0.55, 풀밭 0.16. 수치는 balance.js FOOTPRINT
 - 테스트: window.__oreum.prints (stamp, update, clear, live, max)
+
+## 귤 던지기 동작 (#23)
+- `runner.js` 에 `throw` 포즈 + `THROW`({release:0.45,total:1.0}) 추가: 준비(뒤로 젖히고 가슴 틀기) → 던지기 → 뻗은 채 머묾 → 복귀. 걷기·뛰기 하반신은 그대로, 서 있을 땐 발을 살짝 딛음
+- `main.js` `throwTangerine()` 은 포즈만 시작, `releaseTangerine()` 이 poseT≥release 에 오른손(armR 끝) 위치에서 귤을 띄우고 귤 1개를 차감. 말 탄 상태는 즉시 던짐
