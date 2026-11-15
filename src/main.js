@@ -25,6 +25,7 @@ import { createLife } from './life.js';
 import { createSocial } from './social.js';
 import { buildSign } from './props.js';
 import { MAPS, pickMapId, buildSpots } from './maps.js';
+import { createWeather, WX, wxIcon } from './weather.js';
 import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js';
 import { createAchievements, BADGES, kstDate } from './achievements.js';
 
@@ -122,6 +123,7 @@ if (NSW) { /* 남송이오름은 자기 풍경을 직접 만든다 */ } else if 
 const sky = NSW ? NSW.sky : buildSky(scene);
 const clouds = sky.clouds;
 const bodies = buildSkyBodies(scene);
+const wx = createWeather({ scene, low: LOW });
 if (NSW) bodies.stars.scale.setScalar(14); // 먼 산 뒤로
 const eoksaeMat = scene.getObjectByName('eoksae')?.material || null;
 scene.fog.color = FOG; G.fogC.value = FOG; const FOG_N = scene.fog.near, FOG_F = scene.fog.far;
@@ -167,11 +169,29 @@ function applySky() {
   bodies.sunSprite.material.color.copy(mix('#ff8a50', '#fff8e8', clamp(el / 20, 0, 1)));
   const sc = 700 + g * 500; bodies.sunSprite.scale.set(sc, sc, 1);
   bodies.stars.material.opacity = THREE.MathUtils.smoothstep(-el, 6, 14) * 0.85; // 해가 지평선 아래 6° 지나면서 서서히, 14°쯤 다 보임
-  nsAfter();
+  nsAfter(); applyWx(el);
   sunState = { el, az, k, golden: g };
   sound.setDaylight?.(k);
   updateSunChip();
 }
+// 날씨 반영 (#18): 빛·안개·구름·하늘 회색기·풀 흔들림. 밤낮 계산이 끝난 값 위에 얹는다
+const wxGray = new THREE.Color();
+function applyWx(el) {
+  const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8);
+  sun.intensity *= c.light; hemi.intensity *= 0.55 + 0.45 * c.light; fill.intensity *= c.light;
+  scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; G.fogN.value = scene.fog.near; G.fogF.value = scene.fog.far;
+  const gr = (col, a) => { const l = (col.r + col.g + col.b) / 3; col.lerp(wxGray.setRGB(l * 0.97, l, l * 1.04), a); };
+  gr(FOG, c.gray * 0.8); G.fogC.value.copy(FOG);
+  if (NSW) {
+    const u = NSW.skyU; gr(u.uTop.value, c.gray); gr(u.uHor.value, c.gray * 0.9); gr(u.uCl.value, c.gray * 0.8); gr(u.uCs.value, c.gray);
+    u.uSunCol.value.multiplyScalar(1 - 0.9 * c.gray); NSW.wind.value = c.wind;
+    const ch = NSW.sky.clouds.children, n = Math.round(ch.length * c.cover); ch.forEach((m, i) => { m.visible = i < n; });
+  }
+  void day;
+}
+function updateWxChip() { const k = wx.kind, el = $('wx-pill'); if (!el) return; el.hidden = false; el.innerHTML = wxIcon(k); el.title = '지금 날씨: ' + WX[k].name + (wx.forced ? ' (테스트)' : ''); }
+wx.onChange(() => { updateWxChip(); wxT = 0; });
+let wxT = 0;
 function sunEvent() {
   const t = nowDate().getTime();
   const r = todayTimes.rise?.getTime(), s = todayTimes.set?.getTime();
@@ -976,7 +996,7 @@ function updateTrashUI(bump) {
 if (trash) {
   $('trash-hud').hidden = false;
   trash.on((ev, d) => {
-    if (ev === 'trash') { ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); onDexGet(d.dex, d.dexNew); }
+    if (ev === 'trash') { ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
     else if (ev === 'heap-clear') { ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); }
     else if (ev === 'reset') { pickS.cyc = -1; if (!d.first) toast('자정이 지나 오름에 쓰레기가 새로 쌓였어요'); }
@@ -1567,6 +1587,7 @@ function frame(now) {
     const r = Math.round(-ang * 2) / 2; if (r !== compassRot) { compassRot = r; compassDial.setAttribute('transform', `rotate(${r})`); }
   }
   G.uT.value = now / 1000; G.uP.value.copy(player.pos); if (player.air) G.uP.value.y = 1e6;
+  wx.update(dt, player.pos, wx.cur.wind); sound.setRain?.(wx.cur.snd); wxT -= dt; if (wxT <= 0 && !wx.settled) { wxT = 0.25; applySky(); }
   grass.update(player.pos, camera.position); if (save.gfx !== 'lite') motes.update(player.pos, now / 1000, dt, lampNight);
   if (eoksaeMat) eoksaeMat.userData.wind.value = now / 1000;
   if (eoksaeMat?.userData.push) {
@@ -1617,7 +1638,7 @@ function frame(now) {
 addEventListener('resize', resize);
 resize();
 cairns.forEach(layoutCairn);
-applySky();
+applySky(); updateWxChip();
 refreshAchUI();
 setGait(0);
 followCam(0, true);
@@ -1657,5 +1678,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

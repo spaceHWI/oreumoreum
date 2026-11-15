@@ -95,3 +95,11 @@ export const COLLIDE = {
   trashPad: 0.6, // 쓰레기는 충돌 범위에서 이만큼 더 떨어지게 둠
   pine: 0.42, oak: 0.3, rock: 0.9, // 나무·바위 충돌 반지름 = 크기 × 이 값
 };
+
+// 실제 날씨 연동 (#18)
+export const WEATHER = {
+  lat: 33.3, lon: 126.3, // 남송이오름(서귀포시 안덕면 서광리) 근처
+  pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
+  particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
+  cloudCount: 11, // namsongi 구름 덩어리 수
+};
