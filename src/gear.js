@@ -118,6 +118,18 @@ Object.assign(ACCESSORIES, {
       const brim = M(new THREE.CylinderGeometry(0.42, 0.44, 0.025, 24, 1), m, 0, 0.8, 0.02);
       return G(crown, brim, M(new THREE.CylinderGeometry(0.232, 0.232, 0.04, 18, 1, true), band, 0, 0.82, 0.02)); } },
 });
+// 귤 활 (#38): 왼손(armL 뼈, 기본 자세에서 +x 로 뻗은 팔 끝)에 쥠. 쏠 때만 손 칸을 줍는 도구 대신 이것으로 바꿈
+// 팔을 앞으로 들면 뼈의 +z 가 위가 되므로 활대는 ±z 로, 줄은 몸 쪽(-x)에 둠
+const HAND_L = [0.43, 0.505, 0.045];
+ACCESSORIES['hand:bow'] = { slot: 'hand', label: '귤 활', bone: 'armL', npc: true,
+  build: (mat) => { const wood = mat('wood', '#9a6b3a'), grip = mat('grip', '#f29a2e'), str = mat('string', '#f2efe6');
+    const R = 0.3, A = 1.7, back = R * (1 - Math.cos(A / 2)), half = R * Math.sin(A / 2);
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(R, 0.014, 4, 14, A), wood); arc.rotation.z = -A / 2;
+    const limbs = G(arc); limbs.rotation.x = Math.PI / 2; limbs.position.set(HAND_L[0] - R + 0.02, HAND_L[1], HAND_L[2]);
+    const string = CY(0.004, 0.004, half * 2, str, HAND_L[0] + 0.02 - back, HAND_L[1], HAND_L[2], 4); string.rotation.x = Math.PI / 2;
+    const g = CY(0.024, 0.024, 0.08, grip, HAND_L[0] + 0.02, HAND_L[1], HAND_L[2], 8); g.rotation.x = Math.PI / 2;
+    const tip = (sz) => M(new THREE.SphereGeometry(0.022, 6, 4), grip, HAND_L[0] + 0.02 - back, HAND_L[1], HAND_L[2] + sz * half);
+    return G(limbs, string, g, tip(1), tip(-1)); } };
 // 신발 2~5단계: 발을 덮는 한 켤레 (몸과 같은 뼈대로 휨). 단계마다 모양·색이 다름. 윗부분은 옷장 신발 색을 따라감
 const FOOT = { x: 0.106, z: 0.076, w: 0.14, d: 0.24 };
 const shoePair = (mat, { up, sole, acc, h, soleH, boot = 0, toe = 0 }) => () => {

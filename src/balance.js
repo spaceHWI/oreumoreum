@@ -149,8 +149,25 @@ export const ENEMY_SPAWN = {
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
 };
-// 귤 피해 (#37): 손으로 던지기 1. 무기(#38)가 붙으면 여기에 더한다
-export const THROW_DMG = { hand: 1 };
+// 무기 (#38): 전투 오름에서만. 상점 무기 탭에서 다음 단계만 삼. 저장은 save.equip.weapon = 1(손)~
+// dmg 적에게 주는 피해, range 자동 조준 사거리(수평 m), speed 화살 속도(m/s), grav 화살에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
+// soon: 아직 없는 단계 (상점에 잠긴 그림만)
+export const WEAPONS = [
+  { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 300 },
+  { tier: 3, id: 'gun', name: '귤 총', soon: true },
+  { tier: 4, id: 'mg', name: '귤 머신건', soon: true },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', soon: true },
+  { tier: 6, id: 'bomb', name: '귤 폭탄', soon: true },
+];
+// 귤 활 연출 (#38)
+export const BOW = {
+  release: 0.3, total: 0.62, // 당겨서 놓는 순간·동작 전체 (초)
+  splash: 14, splashLow: 7, // 맞으면 튀는 즙 방울 수
+  life: 1.6, // 화살이 아무것도 안 맞고 날아가는 최대 시간(초)
+};
+// 귤 피해 (#37): 손으로 던지기. 무기 표의 손과 같음
+export const THROW_DMG = { hand: WEAPONS[0].dmg };
 
 // 받혀서 흩어지는 귤 (#32)
 export const SCATTER = {

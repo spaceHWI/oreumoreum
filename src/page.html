@@ -496,6 +496,17 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .shop-tabs button span { font-size: 13px; }
 .gyul[role="button"], #chip-gyul { cursor: pointer; }
 .tiers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 6px 0 4px; }
+.tiers.t6 { grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.tier.soon svg.art { opacity: .35; }
+.tier-detail svg.soon-art { width: 44px; height: 44px; opacity: .4; color: #fff; }
+/* 귤 활 남은 화살 (#38): 상호작용 버튼 위 작은 점. 귤 하나 = 5발 */
+#btn-ctx .ammo { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; padding: 3px 6px; border-radius: 999px; background: rgba(23,23,26,.78); pointer-events: none; }
+#btn-ctx .ammo[hidden] { display: none; }
+#btn-ctx .ammo b { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.25); }
+#btn-ctx .ammo b.on { background: #ff9a2e; }
+#btn-ctx .ammo.empty { opacity: .5; }
+#btn-ctx .ammo.use { animation: ammo-use .45s ease-out; }
+@keyframes ammo-use { 0% { transform: translateX(-50%) scale(1.35); } 100% { transform: translateX(-50%) scale(1); } }
 .tier { position: relative; display: grid; justify-items: center; gap: 4px; padding: 10px 2px 8px; border: 1px solid var(--hair); border-radius: 16px; background: rgba(255,255,255,.06); color: #fff; font: inherit; min-width: 0; }
 .tier svg.art { width: 30px; height: 30px; }
 .tier .n { font-family: var(--display); font-weight: 800; font-size: 13px; white-space: nowrap; }
@@ -635,7 +646,7 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
 <div id="joy" class="touch-only" data-tut="move" aria-label="이동 조이스틱"><div id="joy-knob"></div></div>
 
 <div class="pad">
-  <button type="button" id="btn-ctx" class="panel round idle" data-tut="interact" title="상호작용 (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span>상호작용</span></button>
+  <button type="button" id="btn-ctx" class="panel round idle" data-tut="interact" title="상호작용 (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span>상호작용</span><i id="ammo" class="ammo" hidden aria-label="남은 화살"></i></button>
   <button type="button" id="btn-pick" class="panel round dim" data-tut="pick" title="줍기 (E) · 누르고 있으면 계속"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.5 0-4-1.5-5.5-4L4 13a1.5 1.5 0 0 1 2.5-1.5L8 13"/></svg><span>줍기</span></button>
   <button type="button" id="btn-jump" class="panel round sm" data-tut="jump" title="점프 (Space)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9M7 8l5-5 5 5M5 21c2-3 4-4 7-4s5 1 7 4"/></svg><span>점프</span>
@@ -732,6 +743,7 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
       <button type="button" data-tab="tool" aria-pressed="true" title="도구"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M7 21l5-7 5 7M12 14v4"/></svg><span>도구</span></button>
       <button type="button" data-tab="bag" aria-pressed="false" title="배낭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM9 8V6a3 3 0 0 1 6 0v2M9 14h6"/></svg><span>배낭</span></button>
       <button type="button" data-tab="shoes" aria-pressed="false" title="신발"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17h17a1 1 0 0 0 1-1v0a3 3 0 0 0-3-3h-3l-3-4H5L3 13zM3 17v2h18v-2"/></svg><span>신발</span></button>
+      <button type="button" data-tab="weapon" aria-pressed="false" title="무기" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/></svg><span>무기</span></button>
       <button type="button" data-tab="wear" aria-pressed="false" title="옷"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4l4 2 4-2 4 3-2 4-2-1v10H8V10l-2 1-2-4z"/></svg><span>옷</span></button>
     </div>
     <div id="shop-body" class="pop-body"></div>

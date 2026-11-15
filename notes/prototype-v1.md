@@ -245,3 +245,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 쓰레기 흘리기: `trash.drop` 은 둘레 r 안의 이미 주운 흩어진 쓰레기를 가까운 순으로 다시 놓음(`store.unmarkPicked`, 오늘 수만 줄고 누적은 그대로). 이미 더러운 곳이면 0
 - 확인용 `__oreum.enemies.test`(wave(), spawn(kind,dx,dz), clear(), timer, state()), `__oreum.enemyWarn`
 - 임시: 다른 종류 모양 없음(표의 후보만). 드문 쓰레기는 10종 중 무작위
+
+## 귤 활 (#38, 전투 오름만)
+- `balance.js` `WEAPONS` 표(손 dmg1·사거리16 / 귤 활 dmg2·사거리32·speed40·grav5·perGyul5·300귤 / 귤 총·머신건·귤즙 레이저·귤 폭탄은 `soon`), 연출 `BOW`(release·total·즙 방울 수·화살 최대 시간). `THROW_DMG.hand` 는 표의 손 값
+- 저장: `save.equip.weapon`(1 = 손, 2 = 귤 활), `save.bowAmmo`(지금 귤 하나로 남은 화살 0~5). 예전 저장은 1·0 으로 시작
+- 상점 무기 탭(`GEAR_ROWS.weapon`, `battle: true`): 전투 오름에서만 탭이 보이고(`gearKeys()`), 6칸(`.tiers.t6`), `soon` 칸은 잠긴 그림만. 사면 업적 이벤트 `weapon-buy`, `weapon-buy-bow`
+- F(상호작용, 할 일 없을 때) = `fireWeapon`: `bowArmed()`(전투 오름·활 가짐·말 안 탐·남은 화살이나 귤 있음)면 `shootBow`, 아니면 예전 귤 던지기. 남은 화살이 0이면 귤 1개를 써서 5발 채움. 자동 조준은 #34 와 같은 `aimTarget`, 사거리만 무기 값
+- 화살: `life.shootArrow(from, vel, {dmg, grav, peersFn})` — 막대+귤 머리+잎 깃, 나눠 움직이며 적(`enemies.hitTest`)·하르방·다른 사람·땅에 맞으면 `juiceSplash`(InstancedMesh 방울, LOW 는 절반) + `audio.splat`. 겨누기 `arrowShot`(날아갈 시간만큼 중력·대상 움직임 미리 셈). 쏠 때 `audio.bow`
+- 손에 들기: `holdBow` 면 `syncEquipGear` 가 손 칸을 `hand:bow`(gear.js, 왼손 armL 뼈)로 바꿈. 쏘면 활, 줍기(E·버튼) 누르면 도구로. 깨끗한 오름이 되면 내려놓음. runner pose `'bow'`(들기→당기기→놓고 튕김→내리기)
+- UI: 상호작용 버튼 아이콘 `CTX_ICON.bow`·글자 '귤 활 쏘기', 버튼 위 `#ammo`(점 5개, 귤을 쓰면 살짝 튐)
+- 확인용 `__oreum.weapon`(now, ammo, armed, hold, fire(), set(v), arrows())
+- 임시: 활·화살·무기 그림은 로우폴리·SVG 임시. 화살은 다시 줍지 못함. 다른 사람에게는 활 든 모습만 보이고 화살은 안 보임(손 던지기처럼 멀티 동기화 없음)
