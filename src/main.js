@@ -26,6 +26,8 @@ import { createLife } from './life.js';
 import { createSocial } from './social.js';
 import { buildSign } from './props.js';
 import { MAPS, pickMapId, buildSpots } from './maps.js';
+import * as NSB from './nsbound.js';
+import { createStoneWall } from './stonewall.js';
 import { createWeather, WX, wxIcon } from './weather.js';
 import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js';
 import { createAchievements, BADGES, kstDate } from './achievements.js';
@@ -89,7 +91,7 @@ const scene = new THREE.Scene();
 const FOG = new THREE.Color('#cfe0dc');
 scene.background = FOG;
 scene.fog = new THREE.Fog(FOG, MAP_ID === 'gate' ? 90 : 220, MAP_ID === 'donnaeko' ? 3200 : MAP_ID === 'gate' ? 900 : 2600);
-const NSW = NSMODE ? buildNamsongi({ scene, renderer }) : null;
+const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB }) : null;
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 const camera = new THREE.PerspectiveCamera(50, 1, 0.5, NSW ? NSW.camFar : 14000);
 function resize() {
@@ -324,8 +326,11 @@ if (col) {
   if (!spots.sign.silent) { const r = spots.sign.rot; [-1.3, 1.3].forEach((u) => col.add(spots.sign.pos.x + Math.cos(r) * u - Math.sin(r) * 0.1, spots.sign.pos.z - Math.sin(r) * u - Math.cos(r) * 0.1, 0.25)); }
   if (spots.cleanhouse) { const c = spots.cleanhouse; col.addBox(c.x, c.z, c.rot, 3.6, 1.4); col.addBox(c.x, c.z, c.rot, 0.95, 0.55, 3.6 + 2.6 + 0, 0.6); }
 }
-// ---------- 쓰레기 (남송이) ----------
-const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
+// ---------- 현무암 돌담 경계 (#25, 남송이만) ----------
+const wallPl = { value: new THREE.Vector3() };
+const wall = NSW ? createStoneWall({ scene, height, line: NSB.boundLine, gate: NSB.gate, low: LOW, col, uPl: wallPl }) : null;
+// ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
+const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
 const shopAct = CH && { label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
@@ -1475,7 +1480,8 @@ function updatePlayer(dt) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
     let x = p.pos.x + dir.x * p.speed * dt, z = p.pos.z + dir.z * p.speed * dt;
     const cl = spots.clamp(x, z);
-    if (cl) { x = cl.x; z = cl.z; if (!p.wallToast || performance.now() - p.wallToast > 8000) { p.wallToast = performance.now(); toast(cl.hit); } }
+    if (cl) { x = cl.x; z = cl.z; if (cl.hit && (!p.wallToast || performance.now() - p.wallToast > 8000)) { p.wallToast = performance.now(); toast(cl.hit); } }
+    { const g = spots.gateHint; if (g && Math.hypot(x - g.x, z - g.z) < g.r && (!p.wallToast || performance.now() - p.wallToast > 8000)) { p.wallToast = performance.now(); toast(g.line); } }
     if (col && p.pose !== 'sit') { const want = p.speed * dt, r = col.move(p.pos.x, p.pos.z, x, z); x = r.x; z = r.z;
       // 탭 이동 중 사물에 막혀 못 나아가면 멈춤 (도착 콜백이 있고 거의 다 왔으면 도착으로 침)
       if (p.target && want > 0.01 && Math.hypot(x - p.pos.x, z - p.pos.z) < want * 0.3) { p.stuckT = (p.stuckT || 0) + dt;
@@ -1640,7 +1646,7 @@ function frame(now) {
   throwT -= dt; if (throwT <= 0) { throwT = 0.4; const near = (q) => Math.abs(q.x - player.pos.x) < 34 && Math.abs(q.z - player.pos.z) < 34;
     document.body.classList.toggle('throw-near', life.deer.some((d) => near(d.pos)) || life.hareubangs.some((h) => near(h.pos)) || (life.boarActive() && life.boarNear(player.pos, 40))); }
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
-  if (NSW) { NSW.update(dt, player.pos, camera); renderer.render(scene, camera); }
+  if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
   if (captureNext) { captureNext = false; capture(); }
   requestAnimationFrame(frame);
@@ -1689,5 +1695,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { prints, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }) }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

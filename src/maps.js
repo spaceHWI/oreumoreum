@@ -4,6 +4,7 @@ import { DN, dnTrail, DN_SHELTER_I, dnTrailDir, DN_SIGN_TEXT } from './donnaeko.
 import { SIGN_TEXT } from './props.js';
 import { GATE, gatePaths } from './gate.js';
 import { MAP_ID } from './boot.js';
+import { inBound as nsIn, clampBound as nsClamp, gate as nsGate } from './nsbound.js';
 import { K as NK, NS_E, nsPaths, nsAlong, nsLen, nsSummit, nsDistToRim, relAt, NS_SIGN_TEXT } from './namsongi.js';
 
 // 어떤 맵인지: 주소 해시(#donnaeko) → 저장값 → 기본 다랑쉬
@@ -171,8 +172,7 @@ function namsongiSpots() {
   const route = [...nsPaths.approach, ...nsPaths.rim.slice().reverse()].map((q) => new THREE.Vector3(q[0], 0, q[1]));
   const full = [...route, ...route.slice().reverse()]; full.forEach((q) => { q.y = height(q.x, q.z); });
   const T1 = { gyul: [at('approach', 16, 1, 0.8), at('approach', 21, -1, 0.7), at('approach', 26, 1, 0.5)], hare: at('approach', 50, 1, 4.4), jump: at('approach', 82), cairn: at('approach', 114, -1, 4.6), speed: at('approach', 138) };
-  const lim = NS_E - 120;
-  const pickPts = [...nsPaths.approach, ...nsPaths.rim, ...nsPaths.toCrater, ...nsPaths.crater];
+  const pickPts = [...nsPaths.approach, ...nsPaths.rim, ...nsPaths.toCrater, ...nsPaths.crater].filter((q) => nsIn(q[0], q[1], 14)); // 돌담 안만
   let pickI = 0;
   return {
     id: 'namsongi', name: '남송이오름', laps: false,
@@ -190,18 +190,22 @@ function namsongiSpots() {
       { pos: V(stone.x - smOut.z * 6, stone.z + smOut.x * 6), heading: Math.atan2(-smOut.x, -smOut.z) },
     ],
     sign: { pos: at('approach', 34, -1, 5), rot: at('approach', 34).dir + Math.PI + 0.35, html: NS_SIGN_TEXT, board: { title: '남송이오름 탐방로', sub: '서귀포시 안덕면 서광리', l1: '능선 · 정상(339m)', go: '▲ 정상까지 솔숲길' } },
-    clamp(x, z) { const nx = Math.max(-lim, Math.min(lim, x)), nz = Math.max(-lim, Math.min(lim, z)); if (nx !== x || nz !== z) return { x: nx, z: nz, hit: '여기부터는 아직 길이 없어요' }; return null; },
-    inBounds: (x, z) => Math.abs(x) < lim - 6 && Math.abs(z) < lim - 6,
+    // 걸을 수 있는 범위(#25): 돌담(충돌)이 먼저 막고, 이건 돌담 바로 뒤의 안전망. 안내 문구 없음(돌담이 보이니까)
+    clamp(x, z) { const c = nsClamp(x, z, -0.3); return c ? { x: c.x, z: c.z, hit: '' } : null; },
+    inBounds: (x, z) => nsIn(x, z, 6),
+    gateHint: { x: nsGate.x, z: nsGate.z, r: 5.5, line: '정낭 너머는 아직 갈 수 없어요' },
     isViewpoint: (p) => relAt(p.x, p.z) > 100 && nsDistToRim(p.x, p.z) < 14,
     viewpointLine: '능선에 올랐어요. 서쪽은 바다, 동쪽은 한라산이에요',
     npcRoute: full,
-    deerHerds: [[s0.x + 90, s0.z + 70], [s0.x + 260, s0.z + 40], [sm.x - 380, sm.z + 330]],
-    deerZone: (x, z) => Math.abs(x) < lim - 20 && Math.abs(z) < lim - 20,
+    // 노루 무리: 돌담 안 오름 자락 (#25)
+    deerHerds: [[s0.x + 330, s0.z - 40], [sm.x - 350, sm.z + 280], [sm.x + 220, sm.z - 120]].filter(([x, z]) => nsIn(x, z, 30)),
+    deerZone: (x, z) => nsIn(x, z, 20),
     horses: null,
     crows: { cx: sm.x, cz: sm.z, minY: sm.y + 14 },
     flowers: [],
     pickSpot: (rnd) => { if (pickI < 3) { const g = T1.gyul[pickI++]; return [g.x, g.z]; } const q = pickPts[Math.floor(rnd() * pickPts.length)]; return [q[0] + (rnd() - 0.5) * 9, q[1] + (rnd() - 0.5) * 9]; },
-    boarSpawn: (rnd, pp) => { const a = rnd() * Math.PI * 2, r = 70 + rnd() * 40; return [pp.x + Math.cos(a) * r, pp.z + Math.sin(a) * r]; },
+    // 멧돼지: 플레이어 둘레 70~110 중 돌담 안인 곳 (여러 방향을 시도)
+    boarSpawn: (rnd, pp) => { let p = null; for (let k = 0; k < 12; k++) { const a = rnd() * Math.PI * 2, r = 70 + rnd() * 40, x = pp.x + Math.cos(a) * r, z = pp.z + Math.sin(a) * r; p = [x, z]; if (nsIn(x, z, 12)) break; } return p; },
     sunWatch: { pos: sm, r: 45 },
     lamps: (() => { const L = []; for (let d = 10, i = 0; d < LA; d += 46, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('approach', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); }
       for (let d = 30, i = 0; d < LR; d += 90, i++) { const s = i % 2 ? 1 : -1, q = nsAlong('rim', d, s, 3.4); L.push([q.x, q.z, q.dir + Math.PI / 2 * -s]); } return L; })(),

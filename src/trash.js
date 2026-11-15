@@ -75,7 +75,7 @@ function genLayout(date, trail, ok, fixed) {
   const farPt = () => { const [x, z] = trail.at(rnd()); const a = rnd() * Math.PI * 2, r = D + 2 + (TRASH.offMax - D) * Math.pow(rnd(), 1.4); return [x + Math.cos(a) * r, z + Math.sin(a) * r]; };
   const okNear = (x, z) => ok(x, z) && trail.dist(x, z, D + 1) <= D;
   const okFar = (x, z) => ok(x, z) && trail.dist(x, z, D + 3) > D + 2;
-  const pickPt = (gen, test) => { for (let k = 0; k < 30; k++) { const p = gen(); if (test(p[0], p[1])) return p; } return gen(); };
+  const pickPt = (gen, test) => { for (let k = 0; k < 60; k++) { const p = gen(); if (test(p[0], p[1])) return p; } const [x, z] = trail.at(rnd()); return [x, z]; }; // 끝내 못 찾으면 탐방로 위(오름 위)
   // 뭉치는 자리
   const cN = [], cF = []; for (let k = 0; k < 700; k++) cN.push(pickPt(nearPt, okNear)); for (let k = 0; k < 320; k++) cF.push(pickPt(farPt, okFar));
   // 더미 60곳: 40곳은 길 옆, 20곳은 숲·들판. 서로 40 이상 떨어지게
