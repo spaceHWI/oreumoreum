@@ -150,3 +150,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `src/boar.js` buildBoarModel: 한 덩어리 메시에 위치 기준 뼈 가중치(몸·머리·꼬리·다리 4). 남송이는 MeshToonMaterial+gradHard(캐릭터와 같음). `life.js` buildBoar 가 이걸 씀(legs4·머리·꼬리 그대로)
 - 돌진(속도>4)할 때 머리를 0.25 rad 더 숙임. 크기·귤 판정은 `balance.js` BOAR (scale 2.0 → 키 약 1.54)
 - 확인용: `__oreum.life.boarTest.spawn()` (바로 나타나게), `.get()`
+
+## 맵 줄이기·현무암 돌담·쓰레기는 오름에만 (#25)
+- `src/nsbound.js`: 걸을 수 있는 범위. 오름 무게중심에서 각도 720개마다 반지름 R(θ) — 오름 자락(솟은 높이 `BOUND.rel` 4m 넘는 마지막 곳)+여유 30, 들머리 접근로 양옆 24·시작/클린하우스/가판대 둘레 30 은 꼭 포함, 이웃 평균으로 부드럽게. `insideBy`·`inBound`·`clampBound`·`onOreum`(솟은 5m 넘고 돌담에서 10 안쪽)·`boundLine`·`gate`(시작점 뒤 탐방로 연장선이 경계와 만나는 곳, 시작에서 약 34)·`oreumPaths`(오름 위 탐방로 구간만). 둘레 약 4,000단위, 수치는 `balance.js` `BOUND`
+- `src/stonewall.js`: 경계선을 따라 4단위 마디(돌 3켜, 틈·구멍 무늬)를 InstancedMesh 로, 40마디씩 덩어리로 나눠 `WALL.nearR`(230, LOW 150) 안 덩어리만 켬. 그 밖은 단순한 띠 하나(가까운 곳은 셰이더에서 버림). 지형 높이·기울기 따라감. 충돌은 마디마다 `col.addBox`(반두께 0.42) — 막히고 옆으로 미끄러짐. 정낭 입구: 정주석 둘 + 가로 정낭 하나 + 내려 둔 정낭 둘, 트여 보이지만 보이지 않는 막이 있고 가까이 가면 '정낭 너머는 아직 갈 수 없어요'. 정낭 밖으로 길 그림만 70 이어짐
+- `maps.js` 남송이: `clamp` 는 돌담 바로 뒤 안전망(문구 없음, 예전 사각 경계·'아직 길이 없어요' 삭제), `inBounds`=경계 6 안쪽, 노루 무리 3곳 돌담 안으로 옮김, 멧돼지 등장은 돌담 안 방향을 여러 번 시도, 귤 줍기 자리도 돌담 안 길만
+- `namsongi.js` `buildNamsongi({ bound })`: 돌담 자리(±4~5) 나무 비움, 밖 나무는 45%만·돌담에서 900 넘으면 없음·충돌 없음, 밖 바위·꽃 없음. 시작 지점 삼각형 64만→45만
+- 쓰레기: `createTrash({ paths: oreumPaths, inBounds: onOreum })`. 들머리 평지·클린하우스·가판대·접근로(오름 자락 전)엔 없음, 시작에서 200 안 0개. 총량·비율 그대로, 오름 위 약 41만 m² 에 100m² 당 6.6개. 못 찾으면 탐방로 위로(예전엔 아무 데나). 튜토리얼 3개는 그대로
+- 테스트: `__oreum.bound`(nsbound 전부), `__oreum.wall`(length, chunks, modules, nearR)

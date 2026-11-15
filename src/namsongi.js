@@ -5,7 +5,7 @@ import { RIM, NEAR, REL, FAR, FW, FH } from './namsongidata.js';
 import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
-import { COLLIDE } from './balance.js';
+import { COLLIDE, BOUND } from './balance.js';
 
 const T = THREE, PI = Math.PI;
 export const K = 1.4;
@@ -100,13 +100,15 @@ function blendPre(el, morning) {
   for (const k in a) { if (a[k].isColor) cur[k].copy(a[k]).lerp(b[k], t); else cur[k] = a[k] + (b[k] - a[k]) * t; }
 }
 
-export function buildNamsongi({ scene, renderer }) {
+// bound: nsbound.js (#25). 있으면 돌담 밖 나무는 줄이고 돌담 자리는 비움
+export function buildNamsongi({ scene, renderer, bound = null }) {
+  const ib = bound ? bound.insideBy : () => 1e9;
   const heightTex = new T.DataTexture(HG, GN, GN, T.RedFormat, T.FloatType); heightTex.magFilter = heightTex.minFilter = T.NearestFilter; heightTex.needsUpdate = true;
   const maskTex = new T.DataTexture(MK, GN, GN, T.RGBAFormat); maskTex.magFilter = maskTex.minFilter = T.LinearFilter; maskTex.needsUpdate = true;
   const pathTex = (() => {
     const PN = LOW ? 2048 : 4096, c = document.createElement('canvas'); c.width = c.height = PN; const x = c.getContext('2d'), k = PN / (2 * E);
     x.fillStyle = '#000'; x.fillRect(0, 0, PN, PN); x.strokeStyle = '#fff'; x.lineCap = x.lineJoin = 'round'; x.lineWidth = Math.max(2 * PATH_W * k, LOW ? 2.2 : 0);
-    SEGS.forEach((s) => { x.beginPath(); s.forEach((p, i) => { const px = (p[0] + E) * k, py = (p[1] + E) * k; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
+    (bound ? SEGS.concat([bound.gate.path]) : SEGS).forEach((s) => { x.beginPath(); s.forEach((p, i) => { const px = (p[0] + E) * k, py = (p[1] + E) * k; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
     const t = new T.CanvasTexture(c); t.format = T.RedFormat; t.flipY = false; t.minFilter = T.LinearMipmapLinearFilter; t.magFilter = T.LinearFilter; t.anisotropy = 4; return t;
   })();
   const GS = (LOW ? 34 : 46) * K;
@@ -354,8 +356,11 @@ vec3 groundColor(vec2 p){
       if (r > 10) { if (pines.length < CN && rnd() < (r > 100 ? 0.12 : 0.8)) pines.push({ x, z, r: rnd() * 6.28, s: rr(1.05, 1.6) * K, t: rr(0.95, 1.4), c: C(pineCols[Math.floor(rnd() * pineCols.length)]) }); }
       else if (oaks.length < BN && fbm(x / K * 0.004 + 5, z / K * 0.004, 3) > 0.5 && rnd() < 0.55) oaks.push({ x, z, r: rnd() * 6.28, s: rr(1.3, 2.1) * K, t: rr(0.9, 1.15), c: C(oakCols[Math.floor(rnd() * rnd() * oakCols.length)]) });
     }
-    plant(pineGeo(true), pineGeo(false), pines); plant(oakGeo(true), oakGeo(false), oaks);
-    pines.forEach((s) => solids.push([s.x, s.z, s.s * COLLIDE.pine])); oaks.forEach((s) => solids.push([s.x, s.z, s.s * COLLIDE.oak]));
+    // 돌담 안은 그대로, 돌담 자리는 비우고, 밖은 일부만 남기고 아주 먼 것은 뺌 (#25). 충돌은 안쪽 나무만
+    const keep = (s) => { const d = ib(s.x, s.z); s.inside = d > 4; return s.inside || (d < -5 && d > -BOUND.outTreeFar && hash(s.x * 3.1, s.z * 2.7) < BOUND.outTrees); };
+    const P2 = pines.filter(keep), O2 = oaks.filter(keep);
+    plant(pineGeo(true), pineGeo(false), P2); plant(oakGeo(true), oakGeo(false), O2);
+    P2.forEach((s) => { if (s.inside) solids.push([s.x, s.z, s.s * COLLIDE.pine]); }); O2.forEach((s) => { if (s.inside) solids.push([s.x, s.z, s.s * COLLIDE.oak]); });
   }
   const HI_R = (LOW ? 260 : 380) * K;
 
@@ -379,6 +384,7 @@ vec3 groundColor(vec2 p){
     const mat = enhance(new T.MeshToonMaterial({ color: 0xffffff, gradientMap: gradHard }), false);
     const items = [];
     allPts.forEach((q) => { if (rnd() < 0.22) { const a = rnd() * 6.28, d = rr(4.6, 11) * K; items.push({ x: q[0] + Math.cos(a) * d, z: q[1] + Math.sin(a) * d, s: rr(0.3, 1.1) * K }); } });
+    for (let i = items.length - 1; i >= 0; i--) if (ib(items[i].x, items[i].z) < 3) items.splice(i, 1); // 돌담 밖·돌담 자리 바위는 뺌 (#25)
     const im = new T.InstancedMesh(g, mat, items.length), c = new T.Color();
     items.forEach((s, i) => {
       dummy.position.set(s.x, H(s.x, s.z), s.z); dummy.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3);
@@ -397,7 +403,7 @@ vec3 groundColor(vec2 p){
       if (rnd() > 0.3) return;
       const a = rnd() * 6.28, d = rr(3.5, 16) * K, cx = q[0] + Math.cos(a) * d, cz = q[1] + Math.sin(a) * d, c = C(cols[Math.floor(rnd() * cols.length)]);
       const n = 5 + Math.floor(rnd() * 9);
-      for (let i = 0; i < n; i++) { const x = cx + rr(-1.6, 1.6) * K, z = cz + rr(-1.6, 1.6) * K; if (nearTrail(x, z, 2.8 * K)) continue; items.push({ x, z, c }); }
+      for (let i = 0; i < n; i++) { const x = cx + rr(-1.6, 1.6) * K, z = cz + rr(-1.6, 1.6) * K; if (nearTrail(x, z, 2.8 * K) || ib(x, z) < 1) continue; items.push({ x, z, c }); }
     });
     const im = new T.InstancedMesh(g, new T.MeshToonMaterial({ color: 0xffffff, gradientMap: gradSoft }), items.length);
     items.forEach((s, i) => { dummy.position.set(s.x, H(s.x, s.z) + rr(0.3, 0.5) * K, s.z); dummy.rotation.set(0, 0, 0); dummy.scale.setScalar(rr(0.8, 1.4)); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); im.setColorAt(i, s.c); });
