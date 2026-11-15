@@ -120,6 +120,10 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 #banner small { color: var(--ink-soft); }
 
 /* 팝오버 */
+.m-reset { display: flex; justify-content: center; width: 100%; }
+#menu-reset { --p: 0; position: relative; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; color: var(--ink-soft); background: transparent; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#menu-reset::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), rgba(128,128,128,.35) 0); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+#menu-reset svg { width: 18px; height: 18px; }
 .pop-menu { position: fixed; z-index: 7; bottom: calc(var(--safe-b) + 74px); left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 6px; max-width: calc(100vw - 32px); }
 .pop-menu button { white-space: nowrap; background: transparent; border: 0; border-radius: 7px; padding: 9px 14px; font-family: var(--display); font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 6px; }
 .pop-menu button:hover { background: var(--paper-2); }
@@ -639,6 +643,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
+  <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4"/></svg></button></div>
 </nav>
 
 <div class="panel" id="chat" hidden>

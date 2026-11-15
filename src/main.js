@@ -46,7 +46,7 @@ const NOUN = ['억새', '까마귀', '송이', '바람', '노루', '들꽃', '�
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 let save = {};
 try { save = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { save = {}; }
-const freshSave = !save.nick; // 처음 온 사람
+const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 사람
 save.nick ||= `${pick(ADJ)} ${pick(NOUN)}`;
 save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit || {}) };
 if (!save.hatBackV) { save.outfit.hat.back = true; save.hatBackV = 1; }
@@ -67,7 +67,8 @@ syncEquipGear();
 if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
 save.recycle.gyul = Math.max(0, Math.floor(Number(save.recycle.gyul) || 0)); // 클린하우스에서 번 귤 누적
-const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
+let resetting = false;
+const persist = () => { if (resetting) return; try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
 
 const MAP_ID = pickMapId(save.map);
 const prevMap = save.prevMap || null; save.prevMap = null;
@@ -612,6 +613,24 @@ $('btn-speed').addEventListener('click', cycleSpeed);
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; });
 $('btn-menu').addEventListener('click', () => { const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
 $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'));
+// 처음부터 다시(#33): 2초 꾹 누르면 이 기기의 저장을 지움. 닉네임·그래픽·소리 설정은 남김 (돌탑의 돌은 서버에 있어 그대로)
+{
+  const b = $('menu-reset'), HOLD = 2000; let t0 = 0, raf = 0;
+  const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
+  const doReset = () => {
+    resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, introSound: save.introSound, reset: 1 }; // reset: 처음 온 사람처럼 시작
+    for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
+    try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
+    location.reload();
+  };
+  const tick = () => { if (!t0) return; const p = Math.min(1, (performance.now() - t0) / HOLD); b.style.setProperty('--p', p); if (p >= 1) { t0 = 0; doReset(); } else raf = requestAnimationFrame(tick); };
+  b.addEventListener('pointerdown', (e) => { if (e.button) return; e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } t0 = performance.now(); raf = requestAnimationFrame(tick); });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, stop);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  b.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !t0) { e.preventDefault(); t0 = performance.now(); raf = requestAnimationFrame(tick); } });
+  b.addEventListener('keyup', stop); b.addEventListener('blur', stop);
+}
 $('menu-ach').addEventListener('click', () => openAch());
 $('menu-sound').addEventListener('click', () => $('btn-sound').click());
 $('act-chat').addEventListener('click', () => openChat());
