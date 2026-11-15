@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER } from './balance.js';
 import { createStream } from './stream.js';
 import { createCollide } from './collide.js';
 import { equipGear } from './gear.js';
@@ -1352,10 +1352,28 @@ life.bind(player, sound);
 life.hooks.boarHit = (dir) => {
   if (player.air && player.jumpV > 0) return;
   if (player.riding) dismountDeer();
-  player.kb.copy(dir).multiplyScalar(14); player.air = true; player.jumpV = 9; player.jumpY = 0.01;
+  player.kb.copy(dir).multiplyScalar(BOAR.knockSpeed); player.air = true; player.jumpV = BOAR.knockV; player.jumpY = 0.01;
   player.target = null; marker.visible = false; player.pose = 'move';
-  sound.stone(); toast('멧돼지에 받혔어요! 귤을 던지면 도망가요');
+  player.knock = { t: 0, land: -1, ang: 0, spin: 0, ax: -dir.z, az: dir.x };
+  // 가진 귤의 일부가 주변에 흩어짐 (#32): 가진 귤의 10%(3~15개), 가진 것보다 많이는 안 흩어짐
+  const n = Math.min(save.coins, Math.max(SCATTER.min, Math.min(SCATTER.max, Math.round(save.coins * SCATTER.frac))));
+  if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
+  sound.stone(); toast(n > 0 ? `멧돼지에 받혔어요! 귤 ${n}개가 흩어졌어요` : '멧돼지에 받혔어요! 귤을 던지면 도망가요');
 };
+// 받혀 날아가 구르고 일어나는 동안(#32) 조작 잠금. 날 때 뒤로 눕고 → 착지 뒤 구르고 → 일어남
+function tickKnock(dt) {
+  const k = player.knock; if (!k) return;
+  k.t += dt;
+  if (player.air) { k.ang = Math.min(1.45, k.ang + dt * 5); }
+  else {
+    if (k.land < 0) k.land = k.t;
+    const g = k.t - k.land;
+    if (g < BOAR.rollT) { k.ang = 1.45; k.spin = (g / BOAR.rollT) * Math.PI * 2; }
+    else if (g < BOAR.rollT + BOAR.getUpT) { const u = (g - BOAR.rollT) / BOAR.getUpT; k.ang = 1.45 * (1 - u * u * (3 - 2 * u)); k.spin = 0; }
+    else player.knock = null;
+  }
+}
+const _kq = new THREE.Quaternion(), _ka = new THREE.Vector3();
 life.hooks.boarAppear = () => { toast('멧돼지가 나타났어요! 귤을 던지면 도망가요'); };
 life.hooks.boarGone = () => toast('멧돼지가 숲으로 돌아갔어요');
 life.hooks.boarRepel = () => ach.emit('boar-repel');
@@ -1458,7 +1476,7 @@ function updatePlayer(dt) {
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';
 
   let dir = null;
-  if (!busy() && p.pose !== 'wave' && p.pose !== 'photo-wait') {
+  if (!busy() && !p.knock && p.pose !== 'wave' && p.pose !== 'photo-wait') {
     let fx = 0, fz = 0;
     if (keys.has('w') || keys.has('arrowup')) fz -= 1;
     if (keys.has('s') || keys.has('arrowdown')) fz += 1;
@@ -1595,6 +1613,7 @@ function placeRunner(dt = 1) {
     const dy = p.pos.y - p.visY; p.visY = Math.abs(dy) > 1.6 || p.riding || p.air ? p.pos.y : p.visY + dy * Math.min(1, dt * (dy > 0 ? 18 : 9)); }
   runner.root.position.copy(player.pos); runner.root.position.y = player.visY + player.jumpY;
   runner.root.rotation.y = player.heading;
+  { const k = player.knock; if (k && k.ang > 0.001) { runner.root.rotation.y = player.heading + k.spin; _ka.set(k.ax, 0, k.az).normalize(); _kq.setFromAxisAngle(_ka, k.ang); runner.root.quaternion.premultiply(_kq); } }
   followLight();
 }
 const shadowFocus = new THREE.Vector3(), camFwd = new THREE.Vector3();
@@ -1637,7 +1656,7 @@ const tmpDir = new THREE.Vector3(); const compassDial = document.getElementById(
 function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
-  updatePlayer(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   life.update(dt, now / 1000);
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
@@ -1648,7 +1667,7 @@ function frame(now) {
   tickPhoto(dt);
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
-  const pose = player.riding ? 'sit' : player.pose === 'photo-wait' ? 'move' : player.pose;
+  const pose = player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time });
