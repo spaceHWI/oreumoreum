@@ -7,7 +7,6 @@ export const UI_LABELS = [
   ['UI-03', '오늘의 업적 칩', '#ach-chip'],
   ['UI-04', '해돋이·해넘이 칩', '#sun-chip'],
   ['UI-05', '걸음·둘레·체력', '.hud-right > .panel:first-child'],
-  ['UI-06', '체력바', '.stamina-track'],
   ['UI-07', '소리 버튼', '#btn-sound'],
   ['UI-08', '나침반', '#compass'],
   ['UI-09', '조작 안내 문구', '#hint'],
