@@ -1,5 +1,7 @@
 import { NSMODE, TEXCS } from './boot.js'; // 반드시 맨 먼저
-import { useNamsongi, buildNamsongi } from './namsongi.js';
+import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
+import { createTrash, createLocalTrashStore } from './trash.js';
+import { TOOLS, BAGS } from './balance.js';
 import { gradHard } from './toon.js';
 import { createRetro } from './retro.js';
 import { createDevLabels } from './devlabels.js';
@@ -45,6 +47,8 @@ save.totalSteps ||= 0;
 if (typeof save.coins !== 'number') save.coins = 5;
 save.owned ||= {};
 save.wishes ||= {};
+if (!save.equip || typeof save.equip !== 'object') save.equip = {};
+for (const k of ['tool', 'bag', 'shoes']) save.equip[k] = Math.max(1, Math.min(5, Math.floor(Number(save.equip[k]) || 1))); // 장비 단계 (지금은 1단계만)
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
 
 const MAP_ID = pickMapId(save.map);
@@ -249,6 +253,9 @@ function layoutCairn(c) {
   c.top = y; c.count = list.length;
 }
 
+// ---------- 쓰레기 (남송이) ----------
+const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: Object.values(nsPaths), inBounds: spots.inBounds, low: LOW }) : null;
+
 // ---------- 러너 ----------
 const runner = buildRunner();
 runner.apply(save.outfit);
@@ -291,7 +298,7 @@ const ui = { steps: $('steps'), laps: $('laps'), nick: $('nick'), ctx: $('btn-ct
 ui.nick.textContent = save.nick;
 $('place-name').textContent = spots.name;
 $('laps-row').hidden = !spots.laps;
-ui.hint.textContent = isTouch ? '왼쪽 아래 조이스틱으로 이동 · 화면을 끌어 둘러보기' : 'W/S 앞뒤 · A/D 방향 · 땅 클릭 이동 · 끌어서 둘러보기 · E 상호작용';
+ui.hint.textContent = isTouch ? '왼쪽 아래 조이스틱으로 이동 · 화면을 끌어 둘러보기' : 'W/S 앞뒤 · A/D 방향 · 땅 클릭 이동 · 끌어서 둘러보기 · E 상호작용 · F 줍기(누르고 있기)';
 let hintHidden = false;
 function hideHint() { if (hintHidden) return; hintHidden = true; ui.hint.classList.add('fade'); }
 let toastT = 0;
@@ -445,7 +452,7 @@ function setTarget(p, onArrive) {
   player.target = p.clone(); player.onArrive = onArrive; hideHint();
   marker.position.set(p.x, height(p.x, p.z) + 0.15, p.z); marker.visible = !onArrive;
 }
-const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', KeyT: 't', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
+const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', KeyT: 't', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
 const keyOf = (e) => CODE2KEY[e.code] || e.key.toLowerCase();
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -803,14 +810,102 @@ const interactables = [
 let ctxTarget = null, handAct = null, deerAct = null;
 const dismountAct = { label: '노루에서 내리기', act: () => dismountDeer() };
 const standAct = { label: '일어나기', act: () => standUp() };
-function doInteract() { if (ctxTarget) ctxTarget.act(); else toast('돌탑·표지석·쉼터·안내판·노루·다른 러너 가까이 가면 이 버튼으로 바로 해요'); }
+function doInteract() { if (ctxTarget) ctxTarget.act(); else if (trashFull()) fullToast(); else toast('돌탑·표지석·쉼터·안내판·노루·다른 러너 가까이 가면 이 버튼으로 바로 해요'); }
 ui.ctx.addEventListener('click', doInteract);
+// 줍기는 누르고 있는 동안 계속
+ui.ctx.addEventListener('pointerdown', () => { pickS.held = true; if (ctxTarget === pickAct) startPick(); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => ui.ctx.addEventListener(ev, () => { pickS.held = false; }));
+ui.ctx.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ---------- 줍기·배낭 ----------
+const pickS = { held: false, cyc: -1, got: false, fullT: 0 };
+const pickAct = { label: '줍기', act: () => startPick() };
+const toolNow = () => TOOLS[save.equip.tool - 1];
+const bagCap = () => BAGS[save.equip.bag - 1].cap;
+const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
+const canPick = () => !!trash && !player.riding && !player.air && trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom());
+const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
+function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); toast('배낭이 가득 찼어요'); }
+const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo', 'photo-wait', 'breath', 'eat'].includes(player.pose) || player.riding || player.air;
+function startPick() {
+  if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
+  const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
+  if (!list.length) { if (trashFull()) fullToast(); return; }
+  const L = trash.layout(), id = list[0];
+  player.target = null; player.onArrive = null; marker.visible = false;
+  player.heading = Math.atan2(L.X[id] - player.pos.x, L.Z[id] - player.pos.z) || player.heading;
+  player.pose = 'crouch'; player.poseT = 0; player.speed = 0;
+  pickS.cyc = 0; pickS.got = false;
+}
+function takeNow() {
+  const tool = toolNow(); let room = bagRoom(), n = 0;
+  for (const id of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
+    if (n >= tool.per) break;
+    const it = trash.take(id); if (!it) continue;
+    room -= it.type.vol; n++; flyToBag(it); sound.pick?.(it.type.id);
+    if (room < 1) break;
+  }
+  if (n) { trash.store.commit(); updateTrashUI(true); tut.notify?.('trash'); }
+  if (bagRoom() < 1) { sound.full?.(); fullToast(); }
+}
+function tickPick(dt) {
+  if (!trash) return;
+  const holding = pickS.held || keys.has('f') || (keys.has('e') && ctxTarget === pickAct);
+  if (pickS.cyc < 0) {
+    if (holding && !pickBlocked() && player.pose !== 'crouch') { if (canPick()) startPick(); else if (keys.has('f') && trashFull()) fullToast(); }
+    return;
+  }
+  const tool = toolNow(); pickS.cyc += dt;
+  if (!pickS.got && pickS.cyc >= tool.time * 0.5) { pickS.got = true; takeNow(); }
+  if (pickS.cyc >= tool.time) {
+    pickS.cyc = -1;
+    if (player.pose === 'crouch') player.pose = 'move';
+    if (holding && canPick()) startPick();
+  }
+}
+// 주운 쓰레기가 배낭으로 빨려 들어가는 연출
+const flyPool = [];
+function flyToBag(it) {
+  const m = new THREE.Mesh(trash.geos[it.t], trash.fxMats[it.t].clone()); m.material.color.set(it.color);
+  m.position.copy(it.pos); scene.add(m); flyPool.push({ m, from: it.pos.clone(), t: 0 });
+}
+function tickFly(dt) {
+  for (let i = flyPool.length - 1; i >= 0; i--) {
+    const f = flyPool[i]; f.t += dt; const k = Math.min(1, f.t / 0.42), e = k * k;
+    const back = player.pos.clone(); back.y = player.visY + player.jumpY + 1.45; back.addScaledVector(new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading)), -0.35);
+    f.m.position.lerpVectors(f.from, back, e); f.m.position.y += Math.sin(k * Math.PI) * 0.9;
+    f.m.rotation.y += dt * 9; f.m.rotation.x += dt * 5; f.m.scale.setScalar(1 - 0.75 * e);
+    if (k >= 1) { scene.remove(f.m); f.m.material.dispose(); flyPool.splice(i, 1); }
+  }
+}
+let lastTrashUI = '';
+function updateTrashUI(bump) {
+  if (!trash) return;
+  const vol = trash.bagVol(), cap = bagCap(), c = trash.clean() * 100;
+  const cs = c > 0 && c < 10 ? c.toFixed(1) : String(Math.floor(c));
+  const key = `${vol}/${cap}/${cs}`;
+  if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('bag-pill').classList.toggle('full', vol >= cap); }
+  if (bump) { const b = $('bag-pill'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+}
+if (trash) {
+  $('trash-hud').hidden = false;
+  trash.on((ev, d) => {
+    if (ev === 'trash') { ach.emit('trash'); ach.emit('trash-' + d.kind); }
+    else if (ev === 'heap-clear') { ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); }
+    else if (ev === 'reset') { pickS.cyc = -1; if (!d.first) toast('자정이 지나 오름에 쓰레기가 새로 쌓였어요'); }
+    updateTrashUI(false);
+  });
+  updateTrashUI(false);
+}
 function updateContext() {
   let best = null, bd = 1e9;
   if (player.pose === 'sit') best = standAct;
   else if (player.riding && !busy()) best = dismountAct;
+  else if (pickS.cyc >= 0) best = pickAct;
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
+    // 도구 반경 안에 쓰레기가 있으면 줍기 (다른 할 일 바로 앞이면 그쪽)
+    if (canPick() && (!best || bd > best.r * 0.45)) best = pickAct;
     const d = life.nearestDeer(player.pos, 2.6);
     if (d) { if (!deerAct || deerAct.deer !== d) deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = deerAct; }
     if (!net.hand.with && !net.hand.req && !net.hand.pendingFrom) {
@@ -1228,7 +1323,7 @@ const tmpDir = new THREE.Vector3(); const compassDial = document.getElementById(
 function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
-  updatePlayer(dt); tickJuice(dt); devLabels.update(dt); tut.update(dt); lamps.update(player.pos, lampNight);
+  updatePlayer(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); } devLabels.update(dt); tut.update(dt); lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   life.update(dt, now / 1000);
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
@@ -1341,5 +1436,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { trash: trash && { ...trash.test, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };
