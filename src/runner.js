@@ -157,6 +157,16 @@ const ARM_OUT = 0.42; // 팔을 완전히 내리지 않고 살짝 벌려 두면 
 const Q_ARM_L = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2 + ARM_OUT)), Q_ARM_R = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2 - ARM_OUT));
 
 // opts: { skin, hair: 'short'|'bob'|'perm'|'bald', hairColor, beard, kind, tattoo, turtle, book, scaleW, scaleH }
+// 귤 던지기: 준비(뒤로 젖히며 몸 틀기) → 던지기(가슴이 먼저 돌고 팔이 따라 나감) → 마무리(뻗은 채 머묾) → 복귀
+export const THROW = { release: 0.45, total: 1.0 };
+// [시간, 오른팔 x, z, 왼팔 x, z, 가슴 y, 가슴 x]
+const THROW_KEYS = [[0, 0, -0.12, 0, 0.12, 0, 0], [0.3, 1.1, -0.55, -1.0, 0.3, -0.55, -0.05], [0.4, -1.5, -0.25, 0.2, 0.5, 0.35, 0.18], [0.45, -2.3, -0.2, 0.5, 0.6, 0.45, 0.3], [0.72, -2.2, -0.2, 0.5, 0.6, 0.42, 0.28], [1.0, 0, -0.12, 0, 0.12, 0, 0]];
+function throwKey(t) {
+  const K = THROW_KEYS; if (t <= 0) return K[0]; if (t >= 1) return K[K.length - 1];
+  let i = 0; while (K[i + 1][0] < t) i++;
+  const a = K[i], b = K[i + 1]; let f = (t - a[0]) / (b[0] - a[0]); f = f * f * (3 - 2 * f);
+  return a.map((v, j) => v + (b[j] - v) * f);
+}
 export function buildRunner(opts = {}) {
   const root = new THREE.Group();
   const SKIN_C = opts.skin || SKIN;
@@ -342,7 +352,7 @@ export function buildRunner(opts = {}) {
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
   function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9 }) {
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
-    const moving = speed > 0.1 && pose === 'move';
+    const moving = speed > 0.1 && (pose === 'move' || pose === 'throw');
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
     st.phase += dt * speed * (running ? 1.05 : 1.6);
     const amp = (running ? 0.95 : 0.55) * st.blend;
@@ -365,7 +375,12 @@ export function buildRunner(opts = {}) {
     const sa = Math.atan(st.slope) * st.blend;
     torso.rotation.x += sa * 0.45; legL.rotation.x += sa * 0.55; legR.rotation.x += sa * 0.55;
 
-    if (pose === 'wave') {
+    if (pose === 'throw') {
+      const k = throwKey(t), f = Math.abs(k[5]) / 0.5, still = 1 - st.blend;
+      armR.rotation.set(k[1], 0, k[2]); armL.rotation.set(k[3], 0, k[4]);
+      torso.rotation.y += k[5]; torso.rotation.x += k[6]; hips.rotation.y -= k[5] * 0.25; head.rotation.y -= k[5] * 0.6;
+      legL.rotation.x += -0.3 * f * still * Math.sign(k[5] || 1) * -1; legR.rotation.x += 0.25 * f * still * Math.sign(k[5] || 1) * -1; // 서 있을 땐 발도 딛고 무게를 옮김
+    } else if (pose === 'wave') {
       armR.rotation.set(0, 0, -2.25 + Math.sin(t * 12) * 0.35);
       head.rotation.z = Math.sin(t * 3) * 0.08;
     } else if (pose === 'sit') {
@@ -427,7 +442,7 @@ export function buildRunner(opts = {}) {
       head.rotation.x = -b * 0.15;
     }
     // 발이 비탈 아래로 들어가면 그만큼 골반을 올림 (앞발은 오르막에, 뒷발은 내리막에 걸림)
-    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath')) {
+    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw')) {
       const L = model ? LEG_M : 0.775, base = model ? LEG_M : HIP;
       const pen = (lg) => { const th = lg.rotation.x, hy = base + hips.position.y - HIP, f = -L * Math.sin(th); return st.slope * f - (hy - L * Math.cos(th)); };
       hips.position.y += Math.max(0, pen(legL), pen(legR));
