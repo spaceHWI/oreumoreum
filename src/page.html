@@ -354,6 +354,27 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .w-nick { border-bottom: 1px solid var(--hair); } .w-row + .w-row { border-top: 1px solid var(--hair); }
 .swatch { border: 1px solid rgba(255,255,255,.5); border-radius: 50%; } .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #17171a, 0 0 0 4px var(--acc); }
 .shop-item { border: 0; background: rgba(255,255,255,.08); border-radius: 14px; color: #fff; padding: 9px 10px; }
+.shop-tabs { display: flex; gap: 6px; padding: 10px 16px 0; }
+.shop-tabs button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--hair); background: rgba(255,255,255,.08); color: #fff; border-radius: 999px; padding: 7px 10px; font: inherit; font-size: 14px; }
+.shop-tabs button svg { width: 18px; height: 18px; }
+.shop-tabs button[aria-pressed="true"] { background: #fff; color: #17171a; }
+.gear-row { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 10px; padding: 10px 0; }
+.gear-row + .gear-row { border-top: 1px solid var(--hair); }
+.gear-ic { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; }
+.gear-ic svg { width: 24px; height: 24px; }
+.gear-mid { min-width: 0; display: grid; gap: 5px; }
+.gear-pips { display: flex; gap: 4px; }
+.gear-pips i { width: 18px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); }
+.gear-pips i.on { background: var(--acc); }
+.gear-stat { font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gear-stat b { color: #fff; font-weight: 700; } .gear-stat em { font-style: normal; color: var(--acc); font-weight: 700; }
+.gear-buy { display: grid; justify-items: center; gap: 1px; min-width: 84px; border: 0; border-radius: 16px; background: var(--acc); color: var(--acc-fg); padding: 7px 12px; font: inherit; font-family: var(--display); }
+.gear-buy small { font-size: 11px; font-family: var(--body); opacity: .85; }
+.gear-buy span { display: flex; align-items: center; gap: 5px; font-weight: 800; font-size: 16px; }
+.gear-buy .g { width: 13px; height: 13px; border-radius: 50%; background: var(--gyul); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 1.5px #fff; }
+.gear-buy.short { background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); }
+.gear-buy:disabled { background: rgba(255,255,255,.06); color: rgba(255,255,255,.45); }
+@media (max-width: 600px) { .gear-row { grid-template-columns: 36px 1fr auto; gap: 8px; } .gear-ic { width: 36px; height: 36px; } .gear-buy { min-width: 72px; padding: 6px 9px; } }
 .wish { border-bottom: 1px solid var(--hair); } .wish b { color: var(--ink-soft); } .wish.mine b { color: var(--acc); }
 #feedback-input, #wish-form input, #chat-form input { border: 1px solid var(--hair); border-radius: 14px; background: rgba(255,255,255,.1); color: #fff; }
 #feedback-input::placeholder, #wish-form input::placeholder, #chat-form input::placeholder { color: rgba(255,255,255,.5); }
@@ -572,6 +593,10 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 <div class="overlay dim" id="shop" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>용품점</h2><span class="coins-pill"><i></i><span id="shop-coins">0</span></span><button type="button" class="btn small" id="shop-close">닫기</button></div>
+    <div class="shop-tabs" id="shop-tabs">
+      <button type="button" data-tab="gear" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M7 21l5-7 5 7M12 14v4"/></svg>장비</button>
+      <button type="button" data-tab="wear" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4l4 2 4-2 4 3-2 4-2-1v10H8V10l-2 1-2-4z"/></svg>옷</button>
+    </div>
     <div id="shop-body" class="pop-body"></div>
   </div>
 </div>

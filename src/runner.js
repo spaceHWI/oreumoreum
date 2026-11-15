@@ -337,10 +337,11 @@ export function buildRunner(opts = {}) {
     mats.shoes.color.set(of.shoes.color);
   }
 
-  const st = { phase: 0, blend: 0, slope: 0 };
+  const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
   // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
-  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0 }) {
+  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9 }) {
+    st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && pose === 'move';
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
     st.phase += dt * speed * (running ? 1.05 : 1.6);
@@ -378,11 +379,29 @@ export function buildRunner(opts = {}) {
       legL.rotation.set(0, 0, 0.18); legR.rotation.set(0, 0, -0.18);
       head.rotation.z = 0.12;
     } else if (pose === 'crouch') {
-      const k = Math.sin(Math.min(1, t / 0.9) * Math.PI);
-      torso.rotation.x = 0.9 * k;
-      hips.position.y = HIP - 0.25 * k;
-      legL.rotation.x = -0.6 * k; legR.rotation.x = -0.6 * k;
-      armL.rotation.set(-1.4 * k, 0, 0.1); armR.rotation.set(-1.4 * k, 0, -0.1);
+      // 줍기: 도구 단계(tool 1~5)마다 동작이 다름. dur = 한 번 줍는 시간
+      const u = Math.min(1, t / Math.max(0.1, dur)), k = Math.sin(u * Math.PI);
+      if (tool <= 1) { // 맨손: 깊이 쪼그려 두 손으로
+        torso.rotation.x = 0.9 * k; hips.position.y = HIP - 0.25 * k;
+        legL.rotation.x = -0.6 * k; legR.rotation.x = -0.6 * k;
+        armL.rotation.set(-1.4 * k, 0, 0.1); armR.rotation.set(-1.4 * k, 0, -0.1);
+      } else if (tool === 2) { // 집게: 허리만 숙이고 오른손으로 집어 올림
+        torso.rotation.x = 0.45 * k; hips.position.y = HIP - 0.08 * k;
+        legL.rotation.x = -0.2 * k; legR.rotation.x = 0.1 * k;
+        armR.rotation.set(-1.1 * k, 0, -0.1); armL.rotation.set(-0.2, 0, 0.15);
+      } else if (tool <= 4) { // 갈퀴: 앞에서 몸 쪽으로 긁어 당김 (큰 갈퀴는 더 크게)
+        const big = tool === 4 ? 1.25 : 1, sw = Math.sin(u * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5; // 0→1→0
+        torso.rotation.x = (0.25 + 0.2 * k) * big; hips.position.y = HIP - 0.06 * k;
+        legL.rotation.x = -0.35 * big; legR.rotation.x = 0.2;
+        armR.rotation.set(-1.2 * big + sw * 0.8, 0, -0.12); armL.rotation.set(-1.0 * big + sw * 0.7, 0, 0.25);
+        torso.rotation.y = -0.15 * k;
+      } else { // 흡입기: 선 채로 앞을 겨누고 좌우로 훑음 (계속 누르는 동안 유지)
+        const a = st.pick, w = Math.sin(st.clock * 9) * 0.25;
+        torso.rotation.x = 0.2 * a; torso.rotation.y = w * 0.4 * a;
+        armR.rotation.set(-0.9 * a, w * a, -0.1); armL.rotation.set(-0.8 * a, 0, 0.3 * a);
+        legL.rotation.x = -0.15 * a; legR.rotation.x = 0.1 * a;
+        chest.scale.setScalar(1 + Math.sin(st.clock * 40) * 0.006 * a);
+      }
     } else if (pose === 'eat') {
       const k = Math.min(1, t / 0.4);
       armR.rotation.set(-2.0 * k, 0, -0.5 * k); armL.rotation.set(-0.3, 0, 0.12);

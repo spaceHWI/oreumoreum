@@ -1,4 +1,4 @@
-// 클린하우스(재활용장): 지붕 있는 작은 정류장 꼴 + 종류별 통 5개. 로우폴리 임시 모양
+// 클린하우스(재활용장): 지붕 있는 작은 정류장 꼴 + 종류별 통 5개 + 옆 귤 가판대(상점). 로우폴리 임시 모양
 // 통 순서는 balance.js 의 TRASH_TYPES 순서(캔·페트병·비닐·스티로폼·폐어구)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -51,6 +51,20 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, D + 6).rotateX(-Math.PI / 2), poolMat); pool.position.set(0, 0.2, 1.2); pool.renderOrder = 2; root.add(pool);
   const light = low ? null : new THREE.PointLight('#ffd08a', 0, 14, 2);
   if (light) { light.position.set(0, H - 0.2, 0.8); root.add(light); }
+  // 옆 귤 가판대(상점 입구): 지붕 띠·계산대·귤 바구니. 클린하우스 오른쪽
+  const stall = new THREE.Group(); const SX = W / 2 + 2.6, SZ = 0.6;
+  { const sp = [], sw = 1.9, sd = 1.1;
+    sp.push(piece(new THREE.BoxGeometry(sw, 1.0, sd).translate(0, 0.5, 0), '#b08350')); // 계산대
+    sp.push(piece(new THREE.BoxGeometry(sw + 0.1, 0.08, sd + 0.1).translate(0, 1.04, 0), '#8a6a3c'));
+    for (const a of [-1, 1]) sp.push(piece(new THREE.BoxGeometry(0.1, 2.3, 0.1).translate(a * (sw / 2 - 0.05), 1.15, -sd / 2 + 0.05), '#3b4a42'));
+    for (let i = 0; i < 4; i++) sp.push(piece(new THREE.BoxGeometry(sw / 4 + 0.02, 0.1, 1.0).rotateX(0.35).translate(-sw / 2 + sw / 8 + i * sw / 4, 2.3, -0.1), i % 2 ? '#f2efe4' : '#ff8a1f')); // 줄무늬 차양
+    sp.push(piece(new THREE.CylinderGeometry(0.42, 0.32, 0.22, 8).translate(-0.35, 1.19, 0), '#8a6a3c')); // 바구니
+    const gy = new THREE.IcosahedronGeometry(0.12, 0); for (let i = 0; i < 6; i++) { const a = i * 1.05; sp.push(piece(gy.clone().translate(-0.35 + Math.cos(a) * 0.18, 1.33 + (i % 2) * 0.05, Math.sin(a) * 0.18), '#ff9a2e')); }
+    sp.push(piece(new THREE.BoxGeometry(0.5, 0.36, 0.06).translate(0.45, 1.3, 0.2), '#f7f5ee')); // 가격표
+    const sx = x + rt.x * SX + fw.x * SZ, sz = z + rt.z * SX + fw.z * SZ;
+    stall.add(new THREE.Mesh(mergeGeometries(sp), mat)); stall.position.set(sx, height(sx, sz) - 0.05, sz); stall.rotation.y = rot;
+    stall.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = !low; } }); scene.add(stall); }
+  const shopFront = new THREE.Vector3(x + rt.x * SX + fw.x * (SZ + 1.6), 0, z + rt.z * SX + fw.z * (SZ + 1.6)); shopFront.y = height(shopFront.x, shopFront.z);
   scene.add(root);
   root.updateMatrixWorld(true);
   const toWorld = (lx, ly, lz) => new THREE.Vector3(lx, ly, lz).applyMatrix4(root.matrixWorld);
@@ -63,5 +77,5 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
     if (light) light.intensity = night * 22;
     for (let i = 0; i < 5; i++) { if (bump[i] <= 0) continue; bump[i] = Math.max(0, bump[i] - dt * 4); const k = Math.sin(bump[i] * Math.PI); lids[i].position.y = 1.37 + k * 0.18; lids[i].rotation.x = -k * 0.25; }
   }
-  return { root, binTop, front, center, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
+  return { root, binTop, front, center, shopFront, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
 }
