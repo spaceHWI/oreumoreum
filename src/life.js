@@ -391,7 +391,16 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     b.phase += dt * b.speed * 1.6;
     const nx = b.pos.x + Math.sin(b.heading) * b.speed * dt, nz = b.pos.z + Math.cos(b.heading) * b.speed * dt;
     if (spots.inBounds(nx, nz)) b.pos.set(nx, height(nx, nz), nz); else b.heading += 2.5;
-    b.root.position.copy(b.pos); b.root.rotation.y = b.heading;
+    b.root.position.copy(b.pos); b.root.rotation.order = 'YXZ'; b.root.rotation.y = b.heading;
+    { // 비탈 기울기: 앞뒤·좌우 땅 높이 차로 몸 기울기를 구해 부드럽게 따라감
+      const L = 0.9, W = 0.6, sh = Math.sin(b.heading), ch = Math.cos(b.heading), px = b.pos.x, pz = b.pos.z;
+      const tp = Math.atan2(height(px - sh * L, pz - ch * L) - height(px + sh * L, pz + ch * L), 2 * L);
+      const tr = Math.atan2(height(px + ch * W, pz - sh * W) - height(px - ch * W, pz + sh * W), 2 * W);
+      const k = Math.min(1, dt * 6), lim = 0.6;
+      b.pitch = (b.pitch || 0) + (Math.max(-lim, Math.min(lim, tp)) - (b.pitch || 0)) * k;
+      b.roll = (b.roll || 0) + (Math.max(-lim, Math.min(lim, tr)) - (b.roll || 0)) * k;
+      b.root.rotation.x = b.pitch; b.root.rotation.z = b.roll;
+    }
     legs4(b, b.speed > 0.3 ? 0.7 : 0);
     const charge = !b.fleeing && b.speed > 4 ? 1 : 0; b.chg = (b.chg || 0) + (charge - (b.chg || 0)) * Math.min(1, dt * 4); b.head.rotation.x = 0.05 + b.chg * 0.25 + Math.sin(b.phase * 0.5) * 0.08; // 돌진할 때 머리를 숙임 b.tail.rotation.x = Math.sin(time * 9) * 0.4;
     if (!b.fleeing && d < 1.6 && b.hitCd <= 0 && player.jumpY < 0.6) { b.hitCd = 2.5; hooks.boarHit?.(to.normalize()); }
