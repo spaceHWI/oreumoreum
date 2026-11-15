@@ -28,6 +28,14 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 업적 이벤트: trash, trash-<종류>, heap-clear (정의는 #13). 테스트: window.__oreum.trash (fillClean(%), fillBag(부피, 종류), emptyBag, nearest, heaps, state)
 - 임시: 쓰레기·더미 모양은 로우폴리 임시. 폰에서 해돋이 알약·힌트 위치를 배낭 알약 아래로 내림
 
+## 클린하우스·귤 지급 (2026-11-15, #9)
+- cleanhouse.js: 지붕 있는 정류장 꼴 + 통 5개(TRASH_TYPES 순서, 색은 balance.js CLEANHOUSE.binColors). 본체 한 메시로 합침, 뚜껑 5개만 따로(넣을 때 들썩). 밤 조명은 지붕 밑 등·바닥 빛웅덩이·PointLight 하나(LOW 는 없음, 늘 켜 두고 세기만 바꿈)
+- 위치: maps.js namsongiSpots.cleanhouse = 들머리 approach 13 지점 오른쪽 7.5, 앞면이 길을 봄
+- 버리기(main.js '클린하우스'): CLEANHOUSE.r(7) 안이면 상호작용 버튼 '버리기'(배낭에 뭔가 있으면 줍기보다 우선). 누르는 순간 배낭 비움·addCoins·save.recycle(visits, gyul) 저장·업적 이벤트 recycle, earn(귤 수). 그 뒤 1.9초 연출(쓰레기 최대 40개·LOW 20개가 종류별 통으로 날아감, 귤 숫자 올라감, audio.recycle)
+- 배낭이 차고 14 넘게 떨어져 있으면 #ch-arrow: 화면 밖이면 가장자리에서 방향, 보이면 클린하우스 위에서 가리킴 + 거리
+- 테스트: window.__oreum.cleanhouse (go, dump, recycle, api)
+- 임시: 모양 로우폴리, 충돌 없음(#15), 쓰레기가 클린하우스 자리에도 깔림
+
 ## UI (2026-11-15) — 현무암 시안 적용 (background-sian.md)
 page.html: 토큰을 검은 유리(rgba(20,20,24,.5)+blur 12, 1px 흰 테두리 16%)·귤색 #ff8a1f 하나·Gothic A1 800/500 으로 바꾸고, 스타일 끝의 '현무암 UI 덮어쓰기' 블록에서 패널·버튼·팝업(흐린 유리 배경)·업적·옷장·상점·튜토리얼 카드를 다시 입힘
 폰(폭 600 이하) 쉬는 화면 7개: 장소 알약, 귤+업적 링 알약(#ach-chip), 메뉴 버튼, 동작 버튼(말하기는 동작 안으로), 점선 조이스틱, 상호작용, 점프, 달리기(체력 링 #sta-ring). 걸음·업적·옷장·상점·탐방 안내·소리·설정은 아래 유리 시트(#menu). 귤 던지기는 노루·하르방·멧돼지가 가까울 때만(body.throw-near). 데스크톱 배치는 그대로

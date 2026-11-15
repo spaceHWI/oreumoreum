@@ -42,3 +42,12 @@ export const SHOES = [
   { tier: 4, speed: 1.3, price: 1400 },
   { tier: 5, speed: 1.45, price: 3600 },
 ];
+
+// 클린하우스(재활용장): 들머리 한 곳. 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
+export const CLEANHOUSE = {
+  r: 7, // 이 거리 안이면 상호작용 버튼이 '버리기'
+  dumpTime: 1.9, // 버리기 연출 전체 길이(초). 2초 안
+  flyMax: 40, flyMaxLow: 20, // 날아가는 쓰레기 모양 최대 개수 (많으면 묶어서 보여 줌)
+  binColors: ['#c9473d', '#3c7fc9', '#e8c13a', '#eeeee6', '#3f9a5a'], // 캔·페트병·비닐·스티로폼·폐어구 통
+  arrowNear: 14, // 배낭이 찼을 때 이보다 멀면 방향 화살표
+};
