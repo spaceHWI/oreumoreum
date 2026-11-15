@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { height, surfaceAt } from './world.js';
+import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
+import { BOAR } from './balance.js';
 
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; return m; };
@@ -307,7 +309,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (boar && !boar.fleeing && Math.hypot(p.x - boar.pos.x, p.z - boar.pos.z) < 1.3 && p.y < boar.pos.y + 1.6) {
+      if (boar && !boar.fleeing && Math.hypot(p.x - boar.pos.x, p.z - boar.pos.z) < BOAR.hitR && p.y < boar.pos.y + BOAR_MODEL_H * BOAR.scale + BOAR.hitPad) {
         boar.fleeing = true; boar.t = 12; sound.boar?.(); onToast('멧돼지가 놀라 도망가요'); hooks.boarRepel?.(); tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
       }
       for (const hb of hareubangs) {
@@ -366,21 +368,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
 
   // ---------- 멧돼지 ----------
   let boar = null, boarTimer = 90 + rnd() * 90;
-  function buildBoar() {
-    const g = new THREE.Group();
-    const fur = lam('#4a3a30'), dark = lam('#2a201a'), tusk = lam('#efe6d2');
-    const body = box(0.9, 0.8, 1.6, fur); body.position.y = 0.85; g.add(body);
-    const mane = box(0.3, 0.3, 1.2, dark); mane.position.y = 1.3; g.add(mane);
-    const head = new THREE.Group(); head.position.set(0, 0.85, 0.95); g.add(head);
-    const skull = box(0.6, 0.6, 0.7, fur); skull.position.z = 0.1; head.add(skull);
-    const snout = box(0.36, 0.3, 0.3, dark); snout.position.set(0, -0.1, 0.55); head.add(snout);
-    [-0.22, 0.22].forEach((x) => { const t = box(0.07, 0.22, 0.07, tusk); t.position.set(x, -0.15, 0.5); t.rotation.z = -x * 2; head.add(t); const ear = box(0.16, 0.2, 0.06, fur); ear.position.set(x, 0.35, -0.1); head.add(ear); const eye = box(0.06, 0.06, 0.03, lam('#e2342a')); eye.position.set(x * 0.8, 0.12, 0.45); head.add(eye); });
-    const legs = [];
-    [[0.3, 0.55], [-0.3, 0.55], [0.3, -0.55], [-0.3, -0.55]].forEach(([x, z]) => { const l = new THREE.Group(); l.position.set(x, 0.5, z); g.add(l); const lo = box(0.2, 0.55, 0.22, dark); lo.position.y = -0.27; l.add(lo); legs.push(l); });
-    const tail = box(0.06, 0.4, 0.06, dark); tail.position.set(0, 1.1, -0.82); g.add(tail);
-    g.scale.setScalar(1.05);
-    return { root: g, legs, head, tail };
-  }
+  const buildBoar = buildBoarModel;
   function spawnBoar() {
     if (!spots.boarSpawn) { boarTimer = 1e9; return; }
     const b = buildBoar();
@@ -405,7 +393,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     if (spots.inBounds(nx, nz)) b.pos.set(nx, height(nx, nz), nz); else b.heading += 2.5;
     b.root.position.copy(b.pos); b.root.rotation.y = b.heading;
     legs4(b, b.speed > 0.3 ? 0.7 : 0);
-    b.head.rotation.x = 0.15 + Math.sin(b.phase * 0.5) * 0.08; b.tail.rotation.x = Math.sin(time * 9) * 0.4;
+    const charge = !b.fleeing && b.speed > 4 ? 1 : 0; b.chg = (b.chg || 0) + (charge - (b.chg || 0)) * Math.min(1, dt * 4); b.head.rotation.x = 0.05 + b.chg * 0.25 + Math.sin(b.phase * 0.5) * 0.08; // 돌진할 때 머리를 숙임 b.tail.rotation.x = Math.sin(time * 9) * 0.4;
     if (!b.fleeing && d < 1.6 && b.hitCd <= 0 && player.jumpY < 0.6) { b.hitCd = 2.5; hooks.boarHit?.(to.normalize()); }
     if (b.t <= 0 || (b.fleeing && d > 90)) { group.remove(b.root); const wasNear = b.warned; boar = null; boarTimer = 120 + rnd() * 120; if (wasNear) hooks.boarGone?.(); }
   }
@@ -413,5 +401,5 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
   const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000).length;
-  return { bind, hooks, nearestDeer, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, addHareubang, hareubangs, deer, horses, tangerines, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
+  return { bind, hooks, nearestDeer, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { updateBoar(dt, time); updatePicks(dt, time); } }, throwTangerine, addHareubang, hareubangs, deer, horses, tangerines, boarTest: { spawn: () => { if (boar) { group.remove(boar.root); boar = null; } boarTimer = 0; }, get: () => boar }, boarActive: () => !!boar && !boar.fleeing, boarNear: (p, d) => !!boar && boar.pos.distanceTo(p) < d };
 }

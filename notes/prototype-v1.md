@@ -144,3 +144,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## 볼터치 제거 (#24)
 - 기본 캐릭터 텍스처: `model/fixcheek.py` 가 `lo4.glb` 의 UV 로 볼 둘레(rest 공간 |x| 0.05~0.24, y 0.55~0.77, 앞면) 텍셀 중 피부↔분홍 색 선 위에 있는 것만 피부 중간값으로 덮음(눈·머리카락 제외). 결과 `model/tex4.jpg` → `node model/extract.js model/lo4.glb model/params.json model/tex4.jpg` 로 `runnermodel.js` 재생성 (`tex3.jpg` 는 예전 UV 라 안 맞음)
 - 도형 캐릭터(`buildRunner` 의 cheek 메시·재질) 삭제 → 탐방객·다른 플레이어 모두 볼터치 없음
+
+## 멧돼지 모델 B3 (#22)
+- 원본 `assets` 브랜치 `boar-b3.glb`(197만 삼각형) → `python3 model/bake-boar.py boar-b3.glb 1500 512 model/boar.glb`(bpy, 줄이기+텍스처 굽기) → `node model/extract-boar.js model/boar.glb` 로 `src/boarmodel.js`(약 114KB) 생성
+- `src/boar.js` buildBoarModel: 한 덩어리 메시에 위치 기준 뼈 가중치(몸·머리·꼬리·다리 4). 남송이는 MeshToonMaterial+gradHard(캐릭터와 같음). `life.js` buildBoar 가 이걸 씀(legs4·머리·꼬리 그대로)
+- 돌진(속도>4)할 때 머리를 0.25 rad 더 숙임. 크기·귤 판정은 `balance.js` BOAR (scale 2.0 → 키 약 1.54)
+- 확인용: `__oreum.life.boarTest.spawn()` (바로 나타나게), `.get()`

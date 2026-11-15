@@ -114,3 +114,9 @@ export const FOOTPRINT = {
   boost: { walk: 1, run: 1.15, sprint: 1.3 }, // 달릴수록 조금 진하게
   size: [0.36, 0.62], // 발자국 가로·세로
 };
+
+// 멧돼지 (src/boar.js 모델)
+export const BOAR = {
+  scale: 2.0, // 모델 키 0.77 → 게임 키 약 1.54 (예전 상자 멧돼지와 비슷)
+  hitR: 1.3, hitPad: 0.06, // 귤 맞는 판정: 수평 반경, 몸 높이 위 여유
+};
