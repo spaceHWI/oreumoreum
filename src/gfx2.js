@@ -203,17 +203,21 @@ export function createEoksae({ scene, list, height }) {
 
 // ---------- 떠다니는 것: 낮엔 억새 씨앗, 밤엔 반딧불 ----------
 export function createMotes({ scene, height, low }) {
-  const n = low ? 80 : 180, pos = new Float32Array(n * 3), ph = [];
-  for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - 0.5) * 60; pos[i * 3 + 1] = 0.5 + Math.random() * 5; pos[i * 3 + 2] = (Math.random() - 0.5) * 60; ph.push(Math.random() * 6.28); }
+  const n = low ? 80 : 180, pos = new Float32Array(n * 3), ph = []; let ready = false;
+  for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - 0.5) * 60; pos[i * 3 + 2] = (Math.random() - 0.5) * 60; ph.push(Math.random() * 6.28); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const cv = document.createElement('canvas'); cv.width = cv.height = 32; const cx = cv.getContext('2d'); const gr = cx.createRadialGradient(16, 16, 1, 16, 16, 15); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
   const m = new THREE.PointsMaterial({ color: '#fff6dc', size: 0.12, map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.9, depthWrite: false, fog: false });
   const pts = new THREE.Points(g, m); pts.frustumCulled = false; scene.add(pts);
   return { pts, update(p, t, dt, night) {
-    pts.position.set(p.x, 0, p.z); const base = height(p.x, p.z);
+    if (!ready) { for (let i = 0; i < n; i++) { pos[i * 3] += p.x; pos[i * 3 + 2] += p.z; } ready = true; }  // 입자 좌표는 월드 기준. 처음 한 번만 플레이어 주변에 깔기
     m.color.copy(M.mote); m.size = 0.12 + night * 0.2; m.blending = night > 0.4 ? THREE.AdditiveBlending : THREE.NormalBlending;
-    for (let i = 0; i < n; i++) { const sp = 1.4 * (1 - night * 0.8); pos[i * 3] += (sp + Math.sin(t + ph[i]) * 0.5) * dt; pos[i * 3 + 2] += Math.cos(t * 0.7 + ph[i]) * 0.3 * dt; if (pos[i * 3] > 30) pos[i * 3] = -30;
-      pos[i * 3 + 1] = base + 0.6 + (Math.sin(ph[i] * 3.1) * 0.5 + 0.5) * 4.5 + Math.sin(t * 0.8 + ph[i] * 2) * 0.4; }
+    for (let i = 0; i < n; i++) { const sp = 1.4 * (1 - night * 0.8); pos[i * 3] += (sp + Math.sin(t + ph[i]) * 0.5) * dt; pos[i * 3 + 2] += Math.cos(t * 0.7 + ph[i]) * 0.3 * dt;
+      // 플레이어에서 30 넘게 멀어지면 60 상자 안에서 반대편으로 되감기
+      let dx = pos[i * 3] - p.x, dz = pos[i * 3 + 2] - p.z; 
+      if (dx > 30) { pos[i * 3] -= 60; } else if (dx < -30) { pos[i * 3] += 60; }
+      if (dz > 30) { pos[i * 3 + 2] -= 60; } else if (dz < -30) { pos[i * 3 + 2] += 60; }
+      pos[i * 3 + 1] = height(pos[i * 3], pos[i * 3 + 2]) + 0.6 + (Math.sin(ph[i] * 3.1) * 0.5 + 0.5) * 4.5 + Math.sin(t * 0.8 + ph[i] * 2) * 0.4; }
     g.attributes.position.needsUpdate = true; } };
 }
 

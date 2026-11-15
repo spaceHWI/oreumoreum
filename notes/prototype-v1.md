@@ -126,3 +126,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `main.js` 의 `applyWx()` 가 밤낮 계산 뒤에 빛·안개·하늘 회색기·구름 수·풀 흔들림(`NSW.wind`)을 덧씌움. 바뀔 때 약 6초 동안 천천히 섞임
 - 비·눈 입자는 캐릭터 둘레 Points, 빗소리는 `audio.js` `setRain()`(합성 잡음). HUD 날씨 아이콘 `#wx-pill`
 - 테스트: `__oreum.setWeather('rain')` (`null` 이면 실제 날씨로). 업적 `d-rainpick`(이벤트 `trash-rain`)
+
+- 반딧불이(`gfx2.js` createMotes): 입자 좌표는 월드 기준. 플레이어에서 ±30 넘으면 60 상자 안에서 반대편으로 되감고, 높이는 입자 자기 위치의 땅 높이 기준 (#19)
