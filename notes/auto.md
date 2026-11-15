@@ -3,7 +3,7 @@
 예약 작업으로 뜬 세션이 이슈 하나를 끝까지 수행할 때 따른다. 사람이 지켜보지 않으므로 질문하지 않는다.
 
 ## 시작
-1. `gh api repos/spaceHWI/oreumoreum/issues/<번호>` 로 이슈 본문과 코멘트를 읽는다. 기획 전체는 `notes/spec.md`, 코드 구조는 `notes/prototype-v1.md`
+1. 맡을 이슈는 `notes/queue.md` 에서 위에서부터 처음으로 열려 있는 이슈 하나다. `gh api repos/spaceHWI/oreumoreum/issues/<번호>` 로 이슈 본문과 코멘트를 읽는다. 기획 전체는 `notes/spec.md`, 코드 구조는 `notes/prototype-v1.md`
 2. 최신 `dev` 에서 `work/<번호>-<짧은 이름>` 브랜치를 만든다
 3. 앞 이슈에서 만든 코드를 먼저 읽고 그 위에 얹는다
 
@@ -26,7 +26,7 @@
 2. 확인이 통과했으면 `dev` 에 합쳐 올린다 (`git checkout dev && git pull --ff-only origin dev && git merge --no-ff <브랜치> && git push origin dev`). 개발 서버에 자동 게시된다
 3. `notes/prototype-v1.md` 에 새 모듈·결정 사항을 몇 줄 더한다 (2의 합치기 전에)
 4. 이슈에 결과 코멘트(바꾼 것, dev 에서 확인하는 방법, 임시로 둔 것·남은 점)를 달고 이슈를 닫는다
-5. 프롬프트에 다음 예약 작업 ID 가 있으면 `fire_trigger` 도구로 실행한다 (ToolSearch 로 `select:mcp__claude-code-remote__fire_trigger`). 도구가 없으면 넘어간다
+5. `notes/queue.md` 에서 다음으로 열려 있는 이슈를 찾아, 그 이슈의 모델에 맞는 예약 작업을 `fire_trigger` 도구로 실행한다 (ToolSearch 로 `select:mcp__claude-code-remote__fire_trigger`, 예약 작업 ID 는 프롬프트에 있음). 남은 이슈가 없거나 도구가 없으면 넘어간다
 - 확인이 통과하지 못하고 고칠 수 없으면: `dev` 에 합치지 않고, 이슈에 막힌 점을 코멘트로 남기고, 이슈를 닫지 않고, 다음 작업도 실행하지 않는다
 - `release`·`main` 은 건드리지 않는다. PR 은 만들지 않는다
 - 답변은 한글로 짧게
