@@ -48,11 +48,11 @@ export function createSocial({ scene, net, save, onToast, mapId }) {
     } catch (e) { dbReady = false; }
   }
 
-  // 한 사람당 돌탑마다 돌 하나. 이미 올렸으면 소원만 바뀜
+  // 한 사람당 돌탑마다 돌 하나. 이미 올렸으면 내 돌이 맨 위로 옮겨짐
   async function placeStone(cid, wish) {
     save.wishes ||= {};
     const had = !!save.wishes[cid];
-    save.wishes[cid] = { at: had ? save.wishes[cid].at : Date.now(), wish: clean(wish, 60) };
+    save.wishes[cid] = { at: Date.now(), wish: clean(wish, 60) };
     rebuild();
     if (!db || !uid) return had;
     const ref = db.collection('stones').doc(uid);

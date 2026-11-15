@@ -181,9 +181,8 @@ function namsongiSpots() {
     bench: { pos: benchPos, out: outOf(benchPos), line: '솔바람 소리를 들으며 숨을 고르는 중' },
     cairns: [
       { id: 'ns-head', name: '들머리 돌탑', pos: T1.cairn },
-      { id: 'ns-ridge', name: '남쪽 능선 돌탑', pos: at('rim', LR - 30, 1, 5) },
-      { id: 'ns-rim', name: '북쪽 능선 돌탑', pos: at('rim', 40, -1, 5) },
-      { id: 'ns-crater', name: '작은 굼부리 돌탑', pos: at('toCrater', nsLen('toCrater') - 12, 1, 5) },
+      { id: 'ns-ridge', name: '능선 돌탑', pos: at('rim', LR - 30, 1, 5) },
+      { id: 'ns-rim', name: '정상 돌탑', pos: at('rim', Math.max(10, rimD - 14), -1, 5) },
     ],
     hareubangs: [
       { pos: T1.hare, heading: T1.hare.dir + Math.PI - 0.5 },
