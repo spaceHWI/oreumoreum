@@ -540,7 +540,6 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   <div class="panel status" data-tut="hud">
     <div class="status-row" title="걸음"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="8" cy="14" rx="3" ry="4.5"/><circle cx="6" cy="7.5" r="1.3"/><circle cx="8.6" cy="6.2" r="1.3"/><circle cx="11.2" cy="7.4" r="1.1"/><ellipse cx="16.5" cy="10" rx="3" ry="4.5" opacity=".55"/><circle cx="14.5" cy="3.5" r="1.3" opacity=".55"/><circle cx="17.1" cy="2.2" r="1.3" opacity=".55"/><circle cx="19.7" cy="3.4" r="1.1" opacity=".55"/></svg><b id="steps">0</b></div>
     <div class="status-row" id="laps-row" title="굼부리 둘레 바퀴"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="13" rx="8" ry="5"/><path d="M20 9l-1 4-3-2"/></svg><b><span id="laps">0</span></b></div>
-    <div class="stamina-track" title="체력: 달리기·질주에서만 줄어요"><div id="stamina-bar" class="stamina-fill"></div></div>
   </div>
   <button type="button" id="btn-sound" class="panel icon-btn" data-tut="hud" aria-pressed="false" title="소리">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9c1.2 1.6 1.2 4.4 0 6M18.5 6.5c2.6 3 2.6 8 0 11"/></svg>
@@ -576,11 +575,10 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   <button type="button" id="btn-throw" class="panel round" data-tut="throw" title="귤 던지기 (T) · 귤 1개">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="6"/><path d="M12 8c0-2 1-3 3-4M9 5c1 1 2 2 3 3"/></svg><span>던지기</span>
   </button>
-  <button type="button" id="btn-speed" class="panel round" data-tut="speed" data-g="0" title="걷기 → 달리기 → 질주 (Shift)">
-    <svg class="st" viewBox="0 0 60 60" fill="none" aria-hidden="true"><circle cx="30" cy="30" r="28" stroke="rgba(255,255,255,.18)" stroke-width="3"/><circle id="sta-ring" cx="30" cy="30" r="28" stroke="#ff8a1f" stroke-width="3" stroke-dasharray="176 176"/></svg>
+  <button type="button" id="btn-speed" class="panel round" data-tut="speed" data-g="0" title="걷기 ↔ 달리기 (Shift)">
     <svg class="g0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4" r="1.8"/><path d="M12 7v6M12 13l-2.5 8M12 13l2.5 8M9 10l3-2 3 2"/></svg>
     <svg class="g1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2 1-5.5L17 15h3M9 11l2.5-3.5 4 1.5 2 3M5 12l3-1"/></svg>
-    <svg class="g2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15" cy="4.5" r="1.8"/><path d="M5 21l4-5 3 2 1-5.5L17 15h3M9 11l3-3.5 4 1.5 2 3M2 13h4M1 17h5M3 9h3"/></svg><span id="speed-label">걷기</span>
+<span id="speed-label">걷기</span>
   </button>
 </div>
 
@@ -603,7 +601,6 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
   <button type="button" id="act-wave">인사 <kbd>1</kbd></button>
   <button type="button" id="act-breath">호흡 <kbd>2</kbd></button>
   <button type="button" id="act-dance">춤 <kbd>3</kbd></button>
-  <button type="button" id="act-eat">귤 먹기 <kbd>4</kbd></button>
   <button type="button" id="act-chat" class="ph">말하기</button>
 </nav>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
@@ -642,7 +639,6 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 </div>
 <div class="overlay" id="countdown" hidden>3</div>
 <div class="overlay" id="flash" hidden></div>
-<div class="overlay" id="eat-glow" hidden></div>
 <div class="panel banner-bar" id="queue" hidden><span id="queue-n">앞에 1명이 있어요</span><button type="button" class="btn small" id="queue-cancel">그만두기</button></div>
 <div class="panel banner-bar" id="handreq" hidden><span><b id="handreq-who">러너</b>이(가) 손을 잡자고 해요</span><button type="button" class="btn small primary" id="handreq-ok">잡기</button><button type="button" class="btn small" id="handreq-no">괜찮아요</button></div>
 <div class="panel" id="sitbar" hidden><span id="sit-line">숨을 고르는 중</span><button type="button" class="btn small" id="btn-stand">일어나기</button></div>

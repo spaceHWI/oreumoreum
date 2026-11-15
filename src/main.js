@@ -340,10 +340,10 @@ const runner = buildRunner();
 runner.apply(save.outfit);
 scene.add(runner.root);
 const player = {
-  pos: spots.start.clone(), heading: spots.startHeading, gait: 0, running: false, sprint: false, speed: 0,
+  pos: spots.start.clone(), heading: spots.startHeading, gait: 0, running: false, speed: 0,
   target: null, onArrive: null, pose: 'move', poseT: 0, strideAcc: 0, steps: 0,
   jumpY: 0, jumpV: 0, air: false, driving: false, handSide: 1, kb: new THREE.Vector3(), yellowUntil: 0, riding: null,
-  stamina: 200, visY: 0, lapAcc: 0, lapPrevA: null, laps: 0, viewSeen: false,
+  visY: 0, lapAcc: 0, lapPrevA: null, laps: 0, viewSeen: false,
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
 
@@ -391,7 +391,7 @@ function updateStats() {
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
-const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch', 'eat'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen();
+const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen();
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
 function cancelAll() {
   closePanels();
@@ -575,7 +575,6 @@ addEventListener('keydown', (e) => {
   if (k === '1') doWave();
   if (k === '2') startBreath();
   if (k === '3') doDance();
-  if (k === '4') eatTangerine();
   if (k === 't') throwTangerine();
   if (k === 'enter') { e.preventDefault(); openChat(); }
   if (k === 'r' || k === 'shift') cycleSpeed();
@@ -587,23 +586,13 @@ addEventListener('keyup', (e) => { keys.delete(keyOf(e)); keys.delete(e.key.toLo
 addEventListener('blur', () => keys.clear());
 
 // ---------- 속도·체력 ----------
-const GAIT = ['걷기', '달리기', '질주'];
-const STA_MAX = 200;
+const GAIT = ['걷기', '달리기'];
 function setGait(g) {
-  player.gait = g; player.running = g >= 1; player.sprint = g === 2;
+  player.gait = g; player.running = g >= 1;
   $('btn-speed').dataset.g = String(g); $('speed-label').textContent = GAIT[g];
 }
-function cycleSpeed() { tut.notify('gait'); if (player.stamina < 5 && player.gait === 0) { toast('숨이 차요. 조금 걸으면 다시 달릴 수 있어요'); return; } setGait((player.gait + 1) % 3); }
+function cycleSpeed() { tut.notify('gait'); setGait((player.gait + 1) % 2); }
 $('btn-speed').addEventListener('click', cycleSpeed);
-function tickStamina(dt, moving) {
-  const p = player;
-  const eff = p.gait;
-  p.running = eff >= 1; p.sprint = eff === 2;
-  const drain = moving && !p.riding ? (p.sprint ? 5 : p.running ? 1.2 : 0) : 0;
-  if (drain) p.stamina = Math.max(0, p.stamina - drain * dt); else p.stamina = Math.min(STA_MAX, p.stamina + (moving ? 12 : 24) * dt);
-  if (p.stamina <= 0 && p.gait > 0) { setGait(0); toast('숨이 차요. 걸으면서 숨을 고르거나 귤을 먹어요'); }
-  const bar = $('stamina-bar'); const w = Math.round(p.stamina / STA_MAX * 100) + '%'; if (bar.style.width !== w) { bar.style.width = w; $('sta-ring').setAttribute('stroke-dasharray', `${(p.stamina / STA_MAX * 176).toFixed(0)} 176`); bar.classList.toggle('low', p.stamina < STA_MAX * 0.25); }
-}
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; });
@@ -624,22 +613,8 @@ function doDance() {
   player.pose = player.pose === 'dance' ? 'move' : 'dance'; player.poseT = 0;
   if (player.pose === 'dance' && spots.isViewpoint(player.pos)) ach.emit('dance-top');
 }
-function eatTangerine() {
-  if (busy() || player.riding) return;
-  if (save.coins < 1) { toast('귤이 없어요. 길에 떨어진 귤을 주워 보세요'); return; }
-  save.coins -= 1; persist(); updateStats();
-  player.pose = 'eat'; player.poseT = 0; player.target = null; marker.visible = false;
-  sound.crunch?.();
-  setTimeout(() => {
-    const before = player.stamina;
-    player.stamina = Math.min(STA_MAX, player.stamina + 80);
-    sound.juice?.(); juiceBurst(); eatScreenFx(Math.round(player.stamina - before));
-  }, 700);
-  ach.emit('eat');
-}
 $('act-wave').addEventListener('click', () => { closePanels(); doWave(); });
 $('act-dance').addEventListener('click', () => { closePanels(); doDance(); });
-$('act-eat').addEventListener('click', () => { closePanels(); eatTangerine(); });
 $('act-breath').addEventListener('click', () => { closePanels(); startBreath(); });
 
 let throwPending = false;
@@ -747,7 +722,7 @@ function tickBreath(dt) {
   if (!breathState) return 0;
   const b = breathState; b.t += dt;
   const ct = b.t % (IN + OUT); const cycle = Math.floor(b.t / (IN + OUT));
-  if (cycle >= CYCLES) { stopBreath(); player.stamina = Math.min(STA_MAX, player.stamina + 50); toast('숨이 고르게 돌아왔어요'); ach.emit('breath'); return 0; }
+  if (cycle >= CYCLES) { stopBreath(); toast('숨이 고르게 돌아왔어요'); ach.emit('breath'); return 0; }
   const phase = ct < IN ? 0 : 1;
   if (phase !== b.phase || cycle !== b.cycle) { b.phase = phase; b.cycle = cycle; sound.breath(phase === 0, phase === 0 ? IN : OUT); $('breath-label').textContent = phase === 0 ? '들이쉬고' : '내쉬고'; $('breath-count').textContent = `${cycle + 1} / ${CYCLES}`; }
   const k = phase === 0 ? ct / IN : 1 - (ct - IN) / OUT;
@@ -946,7 +921,7 @@ const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
 const canPick = () => !!trash && !player.riding && !player.air && trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom());
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); toast(CH ? '배낭이 가득 찼어요 · 들머리 클린하우스에 버려요' : '배낭이 가득 찼어요'); }
-const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo', 'photo-wait', 'breath', 'eat'].includes(player.pose) || player.riding || player.air;
+const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
@@ -1402,22 +1377,6 @@ function tickJuice(dt) {
     if (k >= 1) { scene.remove(j.m); j.m.material.dispose(); juicePool.splice(i, 1); }
   }
 }
-function eatScreenFx(gain) {
-  const glow = $('eat-glow'); glow.hidden = false; glow.classList.remove('go'); void glow.offsetWidth; glow.classList.add('go');
-  setTimeout(() => { glow.hidden = true; }, 900);
-  const bar = $('stamina-bar'); const track = bar.parentElement;
-  track.classList.remove('boost'); void track.offsetWidth; track.classList.add('boost');
-  const r = track.getBoundingClientRect();
-  const t = document.createElement('div'); t.className = 'fx-stamina'; t.textContent = gain > 0 ? `체력 +${gain}` : '체력 가득!';
-  t.style.left = (r.left + r.width / 2) + 'px'; t.style.top = (r.bottom + 6) + 'px'; document.body.append(t);
-  setTimeout(() => t.remove(), 1300);
-  const v = player.pos.clone(); v.y += 2.3; v.project(camera);
-  if (v.z <= 1) {
-    const w = document.createElement('div'); w.className = 'fx-yum'; w.textContent = '새콤달콤!';
-    w.style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px'; w.style.top = ((-v.y * 0.5 + 0.5) * innerHeight) + 'px'; document.body.append(w);
-    setTimeout(() => w.remove(), 1200);
-  }
-}
 function coinFx(wp, n) {
   const v = wp.clone(); v.y += 0.6; v.project(camera);
   if (v.z > 1) return;
@@ -1464,7 +1423,6 @@ function updatePlayer(dt) {
   else if (throwPending) throwPending = false;
   if (p.pose === 'dance' && p.poseT > 6) p.pose = 'move';
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';
-  if (p.pose === 'eat' && p.poseT > 1.6) p.pose = 'move';
 
   let dir = null;
   if (!busy() && p.pose !== 'wave' && p.pose !== 'photo-wait') {
@@ -1519,7 +1477,6 @@ function updatePlayer(dt) {
     }
   }
   if (p.riding) {
-    tickStamina(dt, false);
     const d = p.riding;
     const want = dir ? (p.running ? 15 : 9) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) : 0;
     d.speed += (want - d.speed) * Math.min(1, dt * 5);
@@ -1541,9 +1498,8 @@ function updatePlayer(dt) {
     runner.root.rotation.y = p.heading;
     followLight(); return;
   }
-  tickStamina(dt, !!dir);
   const slow = joy.active && p.joyMag < 0.6;
-  const want = dir ? (slow ? 4 : p.sprint ? 14.5 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed : 0; // 신발 단계만큼 빨라짐
+  const want = dir ? (slow ? 4 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed : 0; // 신발 단계만큼 빨라짐
   p.speed += (want - p.speed) * Math.min(1, dt * 8);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -1562,7 +1518,6 @@ function updatePlayer(dt) {
     // 계단 단 차이는 살짝 부드럽게 오르내림
     p.pos.set(x, gy, z);
     countSteps(moved);
-    if (p.sprint) { p.sprintAcc = (p.sprintAcc || 0) + moved * 1.9; if (p.sprintAcc >= 10) { ach.emit('sprint-dist', Math.floor(p.sprintAcc)); p.sprintAcc = 0; } }
     checkViewpoint();
     if (spots.laps) {
       const r = Math.hypot(x, z);
@@ -1587,9 +1542,9 @@ function updatePlayer(dt) {
 function countSteps(moved) {
   const p = player;
   p.strideAcc += moved;
-  const stride = p.sprint ? 2.1 : p.running ? 1.7 : 1.1;
+  const stride = p.running ? 1.7 : 1.1;
   let n = 0;
-  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.sprint ? 2 : p.running ? 1 : 0); }
+  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0); }
   if (n) ach.emit('steps', n);
 }
 function checkViewpoint() {
