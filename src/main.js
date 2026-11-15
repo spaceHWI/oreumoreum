@@ -18,7 +18,6 @@ import { createNet } from './net.js';
 import { createLife } from './life.js';
 import { createSocial } from './social.js';
 import { buildSign } from './props.js';
-import { createNpcs } from './npc.js';
 import { MAPS, pickMapId, buildSpots } from './maps.js';
 import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js';
 import { createAchievements, BADGES, kstDate } from './achievements.js';
@@ -530,7 +529,7 @@ function throwTangerine() {
   save.coins -= 1; persist(); updateStats();
   const dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
   const from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
-  life.throwTangerine(from, dir, 11 + (player.running ? 3 : 0), () => [...[...net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos })), ...npcs.positions()]);
+  life.throwTangerine(from, dir, 11 + (player.running ? 3 : 0), () => [...[...net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]);
   if (!player.riding) { player.pose = 'wave'; player.poseT = 1.6; }
   sound.beep(false);
 }
@@ -770,7 +769,6 @@ const net = createNet({
 const social = createSocial({ scene, net, save, onToast: (m) => toast(m), mapId: MAP_ID });
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
 net.start(); social.start();
-const npcs = createNpcs({ scene, social, rnd, route: spots.npcRoute, spots, hooks: { greet: () => ach.emit('npc-greet') } });
 $('handreq-ok').addEventListener('click', () => { net.accept(); $('handreq').hidden = true; linkSetup(); });
 $('handreq-no').addEventListener('click', () => { net.decline(); $('handreq').hidden = true; });
 $('btn-release').addEventListener('click', () => { net.release(); $('btn-release').hidden = true; });
@@ -1025,7 +1023,6 @@ function coinFx(wp, n) {
 life.hooks.fed = () => { ach.emit('feed'); ach.emit('follower'); };
 life.hooks.hitRunner = (who) => {
   if (who === 'me') { player.yellowUntil = Date.now() + 6000; net.send(true); }
-  else if (String(who).startsWith('npc-')) { const n = npcs.list.find((x) => 'npc-' + x.id === who); if (n) { n.yellowUntil = Date.now() + 6000; n.pose = 'wave'; n.poseT = 0; social.showBubble(who, n.run.root, '앗, 귤!', 3.4); } }
   else net.hitPeer(who);
 };
 runner.setTint(false);
@@ -1234,8 +1231,6 @@ function frame(now) {
   updatePlayer(dt); tickJuice(dt); devLabels.update(dt); tut.update(dt); lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   life.update(dt, now / 1000);
-  npcs.update(dt, player, now / 1000);
-  npcs.list.forEach((n) => n.run.setTint(Date.now() < (n.yellowUntil || 0)));
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
   if (awe > 0) { awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (awe <= 0) aweBack = 2; }
   if (aweBack > 0 && !ptrs.size) { aweBack -= dt; cam.dist += (13 - cam.dist) * Math.min(1, dt * 2); cam.pitch += (0.32 - cam.pitch) * Math.min(1, dt * 2); }
@@ -1263,7 +1258,6 @@ function frame(now) {
     const add = (pos, w) => { if (n < 8 && Math.abs(pos.x - player.pos.x) < 45 && Math.abs(pos.z - player.pos.z) < 45) arr[n++].set(pos.x, pos.z, w, 0); };
     add(player.pos, player.air ? 0.3 : 1);
     for (const e of net.peersById.values()) add(e.pos, 1);
-    for (const q of npcs.positions()) add(q.pos, 1);
     for (const d of life.deer) if (d.speed > 0.3) add(d.pos, 0.8);
     for (const h of life.horses || []) if (h.speed > 0.3) add(h.pos, 1);
     for (; n < 8; n++) arr[n].z = 0;
@@ -1329,7 +1323,6 @@ const devLabels = createDevLabels({ camera, world: () => {
   L.push([code(), '해돋이·해넘이 지점', () => up(1.5)(spots.sunWatch.pos)]);
   cairns.forEach((c) => L.push([code(), `돌탑 · ${c.name}`, () => up(3)(c.pos)]));
   life.hareubangs.forEach((h, i) => L.push([code(), `돌하르방 ${i + 1}`, () => up(3.6)(h.pos)]));
-  npcs.list.forEach((q) => L.push([code(), `NPC · ${q.name}`, () => up(3)(q.pos)]));
   const deerCode = code(); life.deer.forEach((d) => L.push([deerCode, '노루', () => up(2.4)(d.pos)]));
   if (life.horses) { const hc = code(); life.horses.forEach((h) => L.push([hc, '조랑말', () => up(2.9)(h.pos)])); }
   const pc = code(); L.push([pc, '다른 러너', () => null]);
@@ -1348,5 +1341,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, npcs, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };
