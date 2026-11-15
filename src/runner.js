@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { RM } from './runnermodel.js';
 import { patchDQS } from './dqskin.js';
 import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
+import { BOW } from './balance.js';
 
 // 가격 0 = 기본 제공. 상점에서 귤로 구매
 // 기본 캐릭터는 모델(모자 뒤로 쓴 아이)이라 지금은 색만 바꿀 수 있음. 가격 0 = 기본 제공
@@ -355,7 +356,7 @@ export function buildRunner(opts = {}) {
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
   function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1 }) {
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
-    const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'carry');
+    const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'carry');
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
     st.phase += dt * speed * (running ? 1.05 : 1.6);
     const amp = (running ? 0.95 : 0.55) * st.blend;
@@ -383,6 +384,14 @@ export function buildRunner(opts = {}) {
       armR.rotation.set(k[1], 0, k[2]); armL.rotation.set(k[3], 0, k[4]);
       torso.rotation.y += k[5]; torso.rotation.x += k[6]; hips.rotation.y -= k[5] * 0.25; head.rotation.y -= k[5] * 0.6;
       legL.rotation.x += -0.3 * f * still * Math.sign(k[5] || 1) * -1; legR.rotation.x += 0.25 * f * still * Math.sign(k[5] || 1) * -1; // 서 있을 땐 발도 딛고 무게를 옮김
+    } else if (pose === 'bow') { // 귤 활 (#38): 왼팔로 활을 앞으로 들고 → 오른손으로 가슴까지 당김 → 놓으면 오른손이 튕겨 나감 → 내림
+      const rel = BOW.release, tot = BOW.total;
+      const up = t < tot - 0.16 ? sstep(0, 0.13, t) : 1 - sstep(tot - 0.16, tot, t);
+      const draw = t < rel ? sstep(0.05, rel - 0.02, t) : Math.max(0, 1 - (t - rel) / 0.05);
+      const snap = t >= rel ? Math.max(0, 1 - (t - rel) / 0.22) : 0;
+      armL.rotation.set(-1.55 * up + armL.rotation.x * (1 - up), 0, 0.12 + 0.08 * up);
+      armR.rotation.set((-1.45 + 0.5 * draw - 0.25 * snap) * up + armR.rotation.x * (1 - up), 0, (0.5 + 0.4 * draw - 0.3 * snap) * up - 0.12 * (1 - up));
+      torso.rotation.y += -0.22 * up; torso.rotation.x += 0.04 * up; head.rotation.y += 0.2 * up;
     } else if (pose === 'carry') { // 들것 들기 (#36): carry +1 = 앞사람(손이 뒤로), -1 = 뒷사람(손이 앞으로)
       const a = carry > 0 ? 0.32 : -0.62;
       armL.rotation.set(a, 0, 0.2); armR.rotation.set(a, 0, -0.2);
@@ -449,7 +458,7 @@ export function buildRunner(opts = {}) {
       head.rotation.x = -b * 0.15;
     }
     // 발이 비탈 아래로 들어가면 그만큼 골반을 올림 (앞발은 오르막에, 뒷발은 내리막에 걸림)
-    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw' || pose === 'carry')) {
+    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw' || pose === 'bow' || pose === 'carry')) {
       const L = model ? LEG_M : 0.775, base = model ? LEG_M : HIP;
       const pen = (lg) => { const th = lg.rotation.x, hy = base + hips.position.y - HIP, f = -L * Math.sin(th); return st.slope * f - (hy - L * Math.cos(th)); };
       hips.position.y += Math.max(0, pen(legL), pen(legR));

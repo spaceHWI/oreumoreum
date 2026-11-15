@@ -286,6 +286,36 @@ export class Sound {
       o.connect(og); og.connect(this.sfx); o.start(tt); o.stop(tt + 0.4);
     });
   }
+  // 귤 활 (#38): 줄이 튕기는 '퉁' + 바람 가르는 '슉'
+  bow() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    const o = c.createOscillator(); o.type = 'triangle';
+    o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.18);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.005); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.24);
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2;
+    f.frequency.setValueAtTime(2400, t + 0.02); f.frequency.exponentialRampToValueAtTime(900, t + 0.2);
+    const sg = c.createGain(); sg.gain.setValueAtTime(0.0001, t + 0.02); sg.gain.linearRampToValueAtTime(0.07, t + 0.05); sg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    s.connect(f); f.connect(sg); sg.connect(this.sfx); s.start(t + 0.02, Math.random()); s.stop(t + 0.24);
+  }
+  // 귤 화살이 맞아 즙이 터지는 소리: 촉촉한 '퍽' + 짧은 보글
+  splat() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(2200, t); f.frequency.exponentialRampToValueAtTime(400, t + 0.12);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.28, t + 0.008); g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t, Math.random()); s.stop(t + 0.16);
+    for (let i = 0; i < 3; i++) {
+      const tt = t + 0.03 + i * 0.03 + Math.random() * 0.015;
+      const o = c.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(380 + Math.random() * 300, tt); o.frequency.exponentialRampToValueAtTime(1100 + Math.random() * 400, tt + 0.04);
+      const og = c.createGain(); og.gain.setValueAtTime(0.05, tt); og.gain.exponentialRampToValueAtTime(0.001, tt + 0.05);
+      o.connect(og); og.connect(this.sfx); o.start(tt); o.stop(tt + 0.06);
+    }
+  }
   deerHop() {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t0 = c.currentTime;

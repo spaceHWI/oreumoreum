@@ -3,11 +3,11 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW } from './balance.js';
 import { createHp } from './hp.js';
 import { createStream } from './stream.js';
 import { createCollide } from './collide.js';
-import { equipGear } from './gear.js';
+import { equipGear, TOOL_GEAR } from './gear.js';
 import { createCleanhouse } from './cleanhouse.js';
 import { gradHard } from './toon.js';
 import { createRetro } from './retro.js';
@@ -62,9 +62,12 @@ save.wishes ||= {};
 if (!save.equip || typeof save.equip !== 'object') save.equip = {};
 // 배낭(#31): 0 = 호주머니(처음), 1~5 = 배낭. 예전 저장의 1단계(용량 20)는 첫 배낭(BAGS[0], 20)을 가진 것으로 그대로 둠
 if (!save.bagV) { if (freshSave || typeof save.equip.bag !== 'number') save.equip.bag = freshSave ? 0 : 1; save.bagV = 1; }
+{ const v = Math.floor(Number(save.equip.weapon)), top = WEAPONS.filter((w) => !w.soon).length; save.equip.weapon = Math.max(1, Math.min(top, Number.isFinite(v) ? v : 1)); } // 무기 단계 (#38, 1 = 손)
+save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.bowAmmo)) || 0)); // 귤 하나로 남은 화살 수
 for (const k of ['tool', 'bag', 'shoes']) { const lo = k === 'bag' ? 0 : 1, v = Math.floor(Number(save.equip[k])); save.equip[k] = Math.max(lo, Math.min(5, Number.isFinite(v) ? v : 1)); } // 장비 단계 (상점에서 다음 단계만 삼)
 // 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감
-const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip) }; };
+let holdBow = false; // 귤 활을 손에 들고 있음 (#38): 쏘면 활, 줍기 누르면 다시 도구
+const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip) }; if (holdBow) save.outfit.gear.hand = 'hand:bow'; };
 syncEquipGear();
 if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
@@ -665,14 +668,22 @@ $('act-breath').addEventListener('click', () => { closePanels(); startBreath(); 
 // 귤 던지기 (#34): 상호작용 버튼(F)으로, 할 일이 없을 때. 손으로 던지기는 무료라 가진 귤이 줄지 않음
 // 자동 조준: 사거리 안 가장 가까운 대상(적·하르방)을 겨눠 몸을 돌려 던지고, 대상 발밑에 표시. 없으면 보는 방향으로
 let throwPending = false, throwAim = null;
+// 무기 (#38): 전투 오름에서 귤 활을 샀으면 F 로 활을 쏨. 깨끗한 오름·말 탄 동안은 손 던지기
+const weaponNow = () => WEAPONS[(isBattle() ? save.equip.weapon : 1) - 1] || WEAPONS[0];
+const bowReady = () => weaponNow().id === 'bow' && !player.riding;
+const bowArmed = () => bowReady() && (save.bowAmmo > 0 || save.coins > 0); // 귤이 0이고 남은 화살도 없으면 손 던지기
+function setHoldBow(v) {
+  if (holdBow === v) return; holdBow = v;
+  syncEquipGear(); runner.apply(save.outfit); net.send(true);
+}
 function aimTarget() {
-  let best = null, bd = THROW_AIM.range;
+  let best = null, bd = bowArmed() ? weaponNow().range : THROW_AIM.range;
   for (const t of life.aimTargets()) { const d = Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z); if (d < bd) { bd = d; best = t; } }
   return best;
 }
 const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function throwTangerine() {
-  if (busy() || player.pose === 'wave' || player.pose === 'throw') return;
+  if (busy() || player.pose === 'wave' || player.pose === 'throw' || player.pose === 'bow') return;
   throwAim = player.riding ? null : aimTarget();
   if (player.riding) { releaseTangerine(); return; }
   player.target = null; player.onArrive = null; marker.visible = false;
@@ -705,6 +716,52 @@ function aimShot(from, t) {
     if (i === 1 || !t.vel) return { dir: new THREE.Vector3(dx / D, 0, dz / D), vh, vy: k * vh };
   }
   return null;
+}
+// 귤 활 쏘기 (#38): 5발에 귤 1개. 남은 화살이 없으면 귤 하나를 써서 채움
+let bowPending = false;
+function fireWeapon() { if (bowArmed()) shootBow(); else throwTangerine(); }
+function shootBow() {
+  if (busy() || player.pose === 'wave' || player.pose === 'throw' || player.pose === 'bow') return;
+  const w = weaponNow();
+  if (save.bowAmmo <= 0) { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = w.perGyul; updateStats(); ammoFlash = 1; }
+  save.bowAmmo -= 1; persist(); updateAmmo();
+  setHoldBow(true);
+  throwAim = aimTarget();
+  player.target = null; player.onArrive = null; marker.visible = false;
+  player.pose = 'bow'; player.poseT = 0; bowPending = true;
+}
+function releaseArrow() {
+  bowPending = false;
+  const t = throwAim; throwAim = null;
+  const w = weaponNow(), fwd = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
+  let from = player.pos.clone().addScaledVector(fwd, 0.7); from.y += 1.45 + player.jumpY;
+  { const arm = runner.root.userData.parts?.armL; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h.addScaledVector(fwd, 0.25); } }
+  const peers = () => [...net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }));
+  const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
+  life.shootArrow(from, vel, { dmg: w.dmg, grav: w.grav, peersFn: peers });
+  sound.bow?.();
+}
+// 거의 곧게 날아가는 화살: 날아갈 시간만큼 중력과 대상의 움직임을 미리 셈
+function arrowShot(from, t, w) {
+  const aim = new THREE.Vector3(t.pos.x, t.pos.y + t.h, t.pos.z), p = aim.clone();
+  let T = 0;
+  for (let i = 0; i < 2; i++) {
+    p.copy(aim); if (t.vel) p.addScaledVector(t.vel, T);
+    const D = Math.hypot(p.x - from.x, p.z - from.z); if (D < 0.3) return null;
+    T = D / w.speed;
+  }
+  return new THREE.Vector3((p.x - from.x) / T, (p.y - from.y) / T + 0.5 * w.grav * T, (p.z - from.z) / T);
+}
+// 남은 화살 표시: 상호작용 버튼 위 작은 점 5개 (활을 쓸 때만)
+let ammoFlash = 0, ammoKey = '';
+function updateAmmo() {
+  const el = $('ammo'); if (!el) return;
+  const on = bowReady(), n = save.bowAmmo, key = `${on}|${n}|${save.coins > 0}`;
+  if (key === ammoKey) return; ammoKey = key;
+  el.hidden = !on; if (!on) return;
+  el.classList.toggle('empty', n <= 0 && save.coins <= 0);
+  el.innerHTML = Array.from({ length: weaponNow().perGyul }, (_, i) => `<b class="${i < n ? 'on' : ''}"></b>`).join('');
+  if (ammoFlash) { ammoFlash = 0; el.classList.remove('use'); void el.offsetWidth; el.classList.add('use'); }
 }
 // 겨눈 대상 발밑 표시
 const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));
@@ -992,7 +1049,7 @@ let ctxTarget = null, handAct = null, deerAct = null;
 const dismountAct = { label: '노루에서 내리기', ic: 'down', act: () => dismountDeer() };
 const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
 // 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
-const throwAct = { label: '귤 던지기', ic: 'throw', act: () => throwTangerine() };
+const throwAct = { get label() { return bowArmed() ? '귤 활 쏘기' : '귤 던지기'; }, get ic() { return bowArmed() ? 'bow' : 'throw'; }, act: () => fireWeapon() };
 function doInteract() { if (ctxTarget && !hp.isDown && !hp.pending) ctxTarget.act(); }
 ui.ctx.addEventListener('click', doInteract);
 ui.ctx.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1019,7 +1076,7 @@ function startPick() {
   const L = trash.layout(), id = list[0];
   player.target = null; player.onArrive = null; marker.visible = false;
   player.heading = Math.atan2(L.X[id] - player.pos.x, L.Z[id] - player.pos.z) || player.heading;
-  player.pose = 'crouch'; player.poseT = 0; player.speed = 0;
+  player.pose = 'crouch'; player.poseT = 0; player.speed = 0; setHoldBow(false); // 줍기는 도구로 (#38)
   pickS.cyc = 0; pickS.got = false;
 }
 function takeNow() {
@@ -1037,6 +1094,7 @@ function tickPick(dt) {
   if (!trash) return;
   const holding = pickS.held || keys.has('e');
   if (pickS.cyc < 0) {
+    if (holding && holdBow && !pickBlocked()) setHoldBow(false); // 줍기를 누르면 활을 내리고 도구를 듦 (#38)
     if (holding && !pickBlocked() && player.pose !== 'crouch') { if (canPick()) startPick(); else if (trashFull()) fullToast(); }
     return;
   }
@@ -1203,6 +1261,7 @@ function updateContext() {
   if (span.textContent !== label) { span.textContent = label; ui.ctx.title = `${label} (F)`; }
   const ic = best ? (best.ic || (best.cairn ? 'cairn' : best.deer ? 'deer' : best.peer ? 'hand' : 'do')) : 'do';
   if (ui.ctx.dataset.ic !== ic) { ui.ctx.dataset.ic = ic; ui.ctx.querySelector('svg').innerHTML = CTX_ICON[ic] || CTX_ICON.do; }
+  updateAmmo();
   // 줍기 버튼: 도구 반경 안에 주울 쓰레기가 없으면 흐리게
   const can = pickS.cyc >= 0 || canPick();
   if (pickBtn.classList.contains('dim') === can) pickBtn.classList.toggle('dim', !can);
@@ -1210,6 +1269,7 @@ function updateContext() {
 // 상호작용 버튼 아이콘 (지금 될 동작)
 const CTX_ICON = {
   do: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
+  bow: '<path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/><circle cx="19" cy="6" r="1.6"/>',
   throw: '<circle cx="11" cy="14" r="6"/><path d="M11 8c0-2 1-3 3-4M8 5c1 1 2 2 3 3M19 5l2-2M20 9h2"/>',
   dump: '<path d="M4 10l8-6 8 6M6 9v11h12V9M10 20v-5h4v5"/><path d="M12 4v-2" />',
   shop: '<path d="M3 9l2-5h14l2 5M3 9h18M3 9c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3M5 12v8h14v-8"/><circle cx="12" cy="16" r="2"/>',
@@ -1226,7 +1286,8 @@ const CTX_ICON = {
 // ---------- 상점·옷장 ----------
 function owned(part, kind, v) { const pr = itemPrice(part, kind, v); return pr === 0 || !!save.owned[itemKey(part, kind, v)]; }
 // 상점 팝업 (#26): 탭 도구·배낭·신발·옷. 장비 탭은 5단계 한 줄(가진 것 체크·다음 것 값·그 뒤 잠금)
-const GEAR_ROWS = { tool: { k: 'tool', list: TOOLS }, bag: { k: 'bag', list: BAGS }, shoes: { k: 'shoes', list: SHOES } };
+const GEAR_ROWS = { tool: { k: 'tool', list: TOOLS }, bag: { k: 'bag', list: BAGS }, shoes: { k: 'shoes', list: SHOES }, weapon: { k: 'weapon', list: WEAPONS, battle: true } };
+const gearKeys = () => Object.keys(GEAR_ROWS).filter((k) => !GEAR_ROWS[k].battle || isBattle()); // 무기 탭은 전투 오름에서만 (#38)
 const SVG_A = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 // 단계마다 그림 (로우폴리 임시 아이콘)
 const TIER_ART = {
@@ -1245,6 +1306,12 @@ const TIER_ART = {
     '<path d="M3 16h17a2 2 0 0 0-2-3h-3l-3-4H5l-2 4zM3 16v2h17v-2M6 18v1M10 18v1M14 18v1M18 18v1"/>',
     '<path d="M4 16h16a2 2 0 0 0-2-3h-3l-2-6H6v6l-2 0zM4 16v3h16v-3M7 9h5M7 11h5"/>',
     '<path d="M3 15h17a2 2 0 0 0-2-3h-3l-3-4H5l-2 4zM3 15v2h17v-2M1 9h4M2 12h3M20 7l2-2M21 10h2"/>'],
+  weapon: ['<circle cx="9" cy="15" r="5"/><path d="M9 10c0-2 1-3 3-4M15 8l4-4M17 11h4"/>', // 손 (귤 던지기)
+    '<path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/><circle cx="19" cy="6" r="1.6"/>', // 귤 활
+    '<path d="M3 9h13l2 2v3H9l-1 5H5l1-5H3zM18 11h3M12 14v2"/><circle cx="20" cy="9" r="1.5"/>', // 귤 총
+    '<path d="M2 9h15l2 2v3H9l-1 5H5l1-5H2zM19 10h3M19 12h3M19 14h3M8 9V6h5v3"/>', // 귤 머신건
+    '<path d="M3 10h9v4H3zM12 11h2v2h-2M14 12h8M5 14l-1 5h3l1-5M7 7c1-2 3-2 4 0"/>', // 귤즙 레이저
+    '<circle cx="11" cy="14" r="7"/><path d="M14 7l2-3M16 4l3 1M18 2v2M9 12c0-1 1-2 2-2"/>'], // 귤 폭탄
 };
 const STAT_ICON = {
   per: '<circle cx="6" cy="16" r="2.5"/><circle cx="12" cy="8" r="2.5"/><circle cx="18" cy="16" r="2.5"/>', // 한 번에 몇 개
@@ -1252,15 +1319,17 @@ const STAT_ICON = {
   r: '<path d="M3 12h18M6 9l-3 3 3 3M18 9l3 3-3 3"/>', // 닿는 거리
   cap: '<path d="M7 8h10v12H7zM9.5 8V6a2.5 2.5 0 0 1 5 0v2"/>', // 배낭 칸
   speed: '<path d="M4 17l6-6 4 4 6-8M14 7h6v6"/>', // 빠르기
+  dmg: '<path d="M12 3l2.5 6 6.5.5-5 4 1.5 6.5L12 16l-5.5 4L8 13.5l-5-4 6.5-.5z"/>', // 피해
 };
-const tierStats = (k, t) => k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
+const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
   : k === 'bag' ? [['cap', String(t.cap)]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
-const nextGear = (k) => GEAR_ROWS[k].list[save.equip[k]];
-const canBuyGear = () => Object.keys(GEAR_ROWS).filter((k) => { const n = nextGear(k); return n && save.coins >= n.price; });
+const nextGear = (k) => { const n = GEAR_ROWS[k].list[save.equip[k]]; return n && !n.soon ? n : null; };
+const canBuyGear = () => gearKeys().filter((k) => { const n = nextGear(k); return n && save.coins >= n.price; });
 let shopTab = 'tool', shopPick = null; // shopPick: 장비 탭에서 고른 단계(없으면 다음 단계)
 function openShop(tab) {
   if (cam.mode === 'wardrobe' || player.pose === 'sit') return; closePanels();
-  if (tab === 'gear' || !tab) { const ok = canBuyGear(); shopTab = ok[0] || (shopTab === 'wear' || !GEAR_ROWS[shopTab] ? 'tool' : shopTab); } else shopTab = tab;
+  if (tab === 'gear' || !tab) { const ok = canBuyGear(); shopTab = ok[0] || (shopTab === 'wear' || !gearKeys().includes(shopTab) ? 'tool' : shopTab); } else shopTab = tab;
+  if (GEAR_ROWS[shopTab] && !gearKeys().includes(shopTab)) shopTab = 'tool';
   shopPick = null; shopHintUntil = 0; buildShop(); $('shop').hidden = false;
 }
 document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.tab; shopPick = null; buildShop(); }));
@@ -1286,34 +1355,41 @@ function spendFx(toEl, price, from) {
   requestAnimationFrame(step);
 }
 function buyGear(k) {
-  const row = GEAR_ROWS[k], cur = save.equip[k], next = row.list[cur]; if (!next) return;
+  const row = GEAR_ROWS[k], cur = save.equip[k], next = nextGear(k); if (!next) return;
   if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
   const from = save.coins;
   save.coins -= next.price; save.equip[k] = cur + 1;
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
-  sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges();
+  if (k === 'weapon') { sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); } // 무기 (#38)
+  else { sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
   toast(`${next.name} · 바로 착용했어요`);
   shopPick = null; buildShop();
   const cell = document.querySelector(`#shop-body .tier[data-i="${cur}"]`);
   if (cell) { cell.classList.add('tier-pop'); spendFx(cell, next.price, from); }
 }
 function buildGearShop(body, k) {
-  const row = GEAR_ROWS[k], cur = save.equip[k], pick = shopPick ?? Math.min(cur, row.list.length - 1);
-  const tiers = document.createElement('div'); tiers.className = 'tiers';
+  const row = GEAR_ROWS[k], cur = save.equip[k], pick = shopPick ?? (row.list[cur]?.soon ? cur - 1 : Math.min(cur, row.list.length - 1));
+  const tiers = document.createElement('div'); tiers.className = 'tiers' + (row.list.length > 5 ? ' t6' : '');
   const CHECK = `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`, LOCK = `${SVG_A} stroke-width="2.5"><path d="M7 11h10v9H7zM9 11V8a3 3 0 0 1 6 0v3"/></svg>`;
   row.list.forEach((t, i) => {
-    const own = i < cur, isNext = i === cur, lock = i > cur;
+    const own = i < cur, isNext = i === cur && !t.soon, lock = i > cur || !!t.soon;
     const c = document.createElement('button'); c.type = 'button'; c.dataset.i = i;
-    c.className = 'tier' + (own ? ' own' : '') + (i === cur - 1 ? ' cur' : '') + (isNext ? ' next' : '') + (lock ? ' lock' : '');
-    c.setAttribute('aria-pressed', String(i === pick)); c.setAttribute('aria-label', `${t.name} ${i + 1}단계`);
+    c.className = 'tier' + (own ? ' own' : '') + (i === cur - 1 ? ' cur' : '') + (isNext ? ' next' : '') + (lock ? ' lock' : '') + (t.soon ? ' soon' : '');
+    c.setAttribute('aria-pressed', String(i === pick)); c.setAttribute('aria-label', t.soon ? '준비 중' : `${t.name} ${i + 1}단계`);
     c.innerHTML = `<i class="st">${own ? CHECK : lock ? LOCK : `${SVG_A} stroke-width="3"><path d="M12 19V6M6 11l6-6 6 6"/></svg>`}</i>`
       + `${SVG_A.replace('<svg', '<svg class="art"')}>${TIER_ART[k][i]}</svg>`
-      + `<span class="n">${tierStats(k, t)[0][1]}</span>`
-      + (own ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>`);
+      + (t.soon ? '' : `<span class="n">${tierStats(k, t)[0][1]}</span>`)
+      + (own || t.soon ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>`);
     c.addEventListener('click', () => { shopPick = i; buildShop(); });
     tiers.append(c);
   });
   const t = row.list[pick], now = cur ? row.list[cur - 1] : POCKET;
+  if (t.soon) { // 아직 없는 무기: 잠긴 그림만
+    const det = document.createElement('div'); det.className = 'tier-detail';
+    const info = document.createElement('div'); info.innerHTML = `${SVG_A.replace('<svg', '<svg class="soon-art"')}>${TIER_ART[k][pick]}</svg>`;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tier-buy'; b.disabled = true; b.innerHTML = LOCK; b.setAttribute('aria-label', '준비 중');
+    det.append(info, b); body.append(tiers, det); return;
+  }
   const det = document.createElement('div'); det.className = 'tier-detail';
   const info = document.createElement('div');
   const stats = tierStats(k, t), was = pick === cur ? tierStats(k, now) : null;
@@ -1328,7 +1404,7 @@ function buildGearShop(body, k) {
 function buildShop() {
   const body = $('shop-body'); body.innerHTML = '';
   $('shop-coins').textContent = String(save.coins);
-  document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)));
+  document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)); if (GEAR_ROWS[b.dataset.tab]?.battle) b.hidden = !isBattle(); });
   if (GEAR_ROWS[shopTab]) { buildGearShop(body, shopTab); return; }
   for (const [part, opt] of Object.entries(OUTFIT_OPTIONS)) {
     const row = document.createElement('div'); row.className = 'w-row';
@@ -1630,10 +1706,13 @@ function updatePlayer(dt) {
   if (hp.isDown) { marker.visible = false; placeRunner(dt); return; } // 쓰러져 들것에 실려 가는 중 (#36)
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
   if (p.pose === 'wave' && p.poseT > 2.2) p.pose = 'move';
-  const aiming = p.pose === 'throw' && !!throwAim;
+  const aiming = (p.pose === 'throw' || p.pose === 'bow') && !!throwAim;
   if (aiming) p.heading += wrapA(aimHeading(throwAim) - p.heading) * Math.min(1, dt * 18); // 겨눈 대상 쪽으로 몸을 돌림
   if (p.pose === 'throw') { if (throwPending && p.poseT >= THROW.release) releaseTangerine(); if (p.poseT >= THROW.total) p.pose = 'move'; }
   else if (throwPending) { throwPending = false; throwAim = null; }
+  if (p.pose === 'bow') { if (bowPending && p.poseT >= BOW.release) releaseArrow(); if (p.poseT >= BOW.total) p.pose = 'move'; } // 귤 활 (#38)
+  else if (bowPending) { bowPending = false; throwAim = null; }
+  if (holdBow && !bowReady()) setHoldBow(false); // 깨끗한 오름으로 바꾸면 활을 내려놓음
   if (p.pose === 'dance' && p.poseT > 6) p.pose = 'move';
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';
 
@@ -1936,5 +2015,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

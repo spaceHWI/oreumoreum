@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { height, surfaceAt } from './world.js';
 import { createEnemies } from './enemies.js';
-import { SCATTER, THROW_DMG } from './balance.js';
+import { SCATTER, THROW_DMG, BOW } from './balance.js';
+import { LOW } from './gfx2.js';
 
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; return m; };
@@ -180,6 +181,84 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const v = new THREE.Vector3((x - center.x) / tt, (gy - y0) / tt + 11 * tt, (z - center.z) / tt);
       tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true });
     }
+  }
+  // ---------- 귤 활 화살 (#38) ----------
+  // 막대 + 앞에 작은 귤 + 뒤에 잎 깃. 직선에 가깝게 빠르게 날아가고, 맞거나 땅에 닿으면 즙이 튀고 사라짐 (다시 줍지 못함)
+  const shaftGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.9, 5).rotateX(Math.PI / 2);
+  const shaftMat = new THREE.MeshLambertMaterial({ color: '#b08350' });
+  const headGeo = new THREE.SphereGeometry(0.1, 7, 5);
+  const fletchGeo = new THREE.PlaneGeometry(0.12, 0.16);
+  const arrows = [];
+  const zAxis = new THREE.Vector3(0, 0, 1), aTmp = new THREE.Vector3(), aStep = new THREE.Vector3();
+  function makeArrow() {
+    const g = new THREE.Group();
+    const sh = new THREE.Mesh(shaftGeo, shaftMat); g.add(sh);
+    const hd = new THREE.Mesh(headGeo, tanMat); hd.position.z = 0.48; hd.scale.set(1, 1, 1.15); g.add(hd);
+    const f1 = new THREE.Mesh(fletchGeo, leafMat); f1.position.z = -0.38; f1.rotation.y = Math.PI / 2;
+    const f2 = new THREE.Mesh(fletchGeo, leafMat); f2.position.z = -0.38; f2.rotation.x = Math.PI / 2; g.add(f1, f2);
+    g.traverse((o) => { if (o.isMesh) o.castShadow = !LOW; });
+    return g;
+  }
+  // vel: 처음 속도(Vector3), opt: { dmg, grav, peersFn }
+  function shootArrow(from, vel, opt = {}) {
+    const m = makeArrow(); m.position.copy(from); m.quaternion.setFromUnitVectors(zAxis, aTmp.copy(vel).normalize()); group.add(m);
+    arrows.push({ mesh: m, vel: vel.clone(), t: 0, dmg: opt.dmg ?? 2, grav: opt.grav ?? 5, peersFn: opt.peersFn || null });
+  }
+  function endArrow(i, hit) {
+    const a = arrows[i]; group.remove(a.mesh); arrows.splice(i, 1);
+    if (hit) { juiceSplash(a.mesh.position, aTmp.copy(a.vel).normalize()); sound?.splat?.(); }
+  }
+  function updateArrows(dt) {
+    for (let i = arrows.length - 1; i >= 0; i--) {
+      const a = arrows[i]; a.t += dt;
+      if (a.t > BOW.life) { endArrow(i, false); continue; }
+      const p = a.mesh.position, n = Math.max(1, Math.ceil(a.vel.length() * dt / 0.45)), h = dt / n; // 빨라서 나눠 움직이며 맞았는지 봄
+      let done = false;
+      for (let k = 0; k < n && !done; k++) {
+        a.vel.y -= a.grav * h; p.addScaledVector(a.vel, h);
+        const dummy = { vel: aStep.set(0, 0, 0) };
+        if (enemies.hitTest(p, dummy, a.dmg)) { done = true; break; }
+        for (const hb of hareubangs) {
+          if (Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z) < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3) { hb.hitT = 1; sound.stone(); onToast('하르방 코를 맞혔어요. 복이 온대요'); hooks.hareubang?.(); done = true; break; }
+        }
+        if (done) break;
+        if (a.peersFn && a.t > 0.05) for (const pe of a.peersFn()) { if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.6 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { hooks.hitRunner?.(pe.id); done = true; break; } }
+        if (done) break;
+        if (p.y <= height(p.x, p.z) + 0.05) { p.y = height(p.x, p.z) + 0.05; done = true; }
+      }
+      if (done) { endArrow(i, true); continue; }
+      a.mesh.quaternion.setFromUnitVectors(zAxis, aTmp.copy(a.vel).normalize());
+    }
+  }
+  // 즙 튀기: 작은 방울들이 맞은 곳에서 뒤쪽·위로 튀고 떨어지며 작아짐 (방울은 미리 만들어 돌려 씀)
+  const JUICE_N = LOW ? 24 : 48;
+  const juiceMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 5, 4), new THREE.MeshBasicMaterial({ color: '#ffb02e' }), JUICE_N);
+  juiceMesh.frustumCulled = false; juiceMesh.count = 0; scene.add(juiceMesh);
+  const drops = []; for (let i = 0; i < JUICE_N; i++) drops.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), t: 0, life: 0, s: 1 });
+  let dropNext = 0, juiceLive = 0;
+  function juiceSplash(pos, dir) {
+    const n = LOW ? BOW.splashLow : BOW.splash;
+    for (let i = 0; i < n; i++) {
+      const d = drops[dropNext]; dropNext = (dropNext + 1) % JUICE_N;
+      const a = rnd() * Math.PI * 2, sp = 2 + rnd() * 3.5;
+      d.p.copy(pos); d.v.set(Math.cos(a) * sp, 2.5 + rnd() * 3.5, Math.sin(a) * sp);
+      if (dir) d.v.addScaledVector(dir, -2.5); // 날아온 쪽으로 조금 더 튐
+      d.t = 0; d.life = 0.35 + rnd() * 0.3; d.s = 0.6 + rnd() * 0.9;
+    }
+    juiceLive = 1;
+  }
+  const jm = new THREE.Matrix4(), jq = new THREE.Quaternion(), js = new THREE.Vector3();
+  function updateJuice(dt) {
+    if (!juiceLive) return;
+    let c = 0;
+    for (const d of drops) {
+      if (d.t >= d.life) continue;
+      d.t += dt; d.v.y -= 16 * dt; d.p.addScaledVector(d.v, dt);
+      const k = Math.max(0, 1 - d.t / d.life) * d.s; if (k <= 0) continue;
+      js.set(k, k, k); jm.compose(d.p, jq, js); juiceMesh.setMatrixAt(c++, jm);
+    }
+    juiceMesh.count = c; juiceMesh.instanceMatrix.needsUpdate = true;
+    if (!c) juiceLive = 0;
   }
   const hareubangs = [];
   function addHareubang(pos, heading) {
@@ -397,5 +476,5 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     for (const hb of hareubangs) { let a = aimHbs.get(hb); if (!a) { a = { kind: 'hareubang', pos: hb.pos, h: 1.9, size: 1.0, vel: null }; aimHbs.set(hb, a); } out.push(a); }
     return out;
   }
-  return { bind, hooks, nearestDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } }, throwTangerine, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  return { bind, hooks, nearestDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
 }
