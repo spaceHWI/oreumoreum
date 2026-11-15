@@ -330,6 +330,12 @@ export class Sound {
       s.connect(f); f.connect(g); g.connect(this.sfx); s.start(tt, Math.random()); s.stop(tt + 0.07);
     }
   }
+  // 클린하우스에 다 버렸을 때: 올라가는 세 음 + 반짝
+  recycle() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    [659.25, 830.6, 987.8, 1318.5].forEach((f, i) => { const tt = t + i * 0.08; const o = c.createOscillator(); o.type = i === 3 ? 'square' : 'triangle'; o.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(i === 3 ? 0.035 : 0.07, tt + 0.01); g.gain.exponentialRampToValueAtTime(0.001, tt + (i === 3 ? 0.35 : 0.18)); o.connect(g); g.connect(this.sfx); o.start(tt); o.stop(tt + 0.4); });
+  }
   // 배낭이 다 찼을 때: 낮은 두 음
   full() {
     if (!this.on || !this.sfxOn) return;

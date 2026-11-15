@@ -209,5 +209,7 @@ function namsongiSpots() {
     // 걸으며 배우는 지점들 (들머리에서 첫 140걸음 사이)
     tut: { gyul: [T1.gyul[0].x, T1.gyul[0].z], hareubang: [T1.hare.x, T1.hare.z], jump: [T1.jump.x, T1.jump.z], cairn: [T1.cairn.x, T1.cairn.z], speed: [T1.speed.x, T1.speed.z], fork: null, giveUp: 320 },
     jumpStones: { pos: T1.jump, dir: T1.jump.dir },
+    // 클린하우스(재활용장): 들머리 시작하자마자 오른쪽 길옆. 앞면이 길을 봄
+    cleanhouse: (() => { const q = nsAlong('approach', 13, 1, 7.5); const c = nsAlong('approach', 13); return { x: q.x, z: q.z, rot: Math.atan2(c.x - q.x, c.z - q.z) }; })(),
   };
 }
