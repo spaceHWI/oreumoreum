@@ -98,29 +98,31 @@ export const TRASH = {
 };
 
 // 장비 5단계. 상점에서 다음 단계만 살 수 있고 사면 바로 착용 (#10). 저장은 save.equip.{tool,bag,shoes} = 1~5
-// rate 가 있으면 누르고 있는 동안 초당 rate 개
+// rate 는 상점에 보이는 초당 개수 (= per ÷ time)
+// 값 (#49): tools/econ.js 로 맞춤. 하루 1시간씩 — 1일 끝 2~3단계, 3일 끝 4단계, 5일 안에 모두 5단계·귤 활. 옷은 계산에서 뺌
+// 흡입기는 예전(한 번 1개, 초당 4)이면 큰 갈퀴(초당 10)보다 느려 한 번 3개(초당 12)로
 export const TOOLS = [
   { tier: 1, name: '맨손', per: 1, time: 0.9, r: 1.6, price: 0 },
   { tier: 2, name: '집게', per: 1, time: 0.5, r: 2.4, price: 100 },
-  { tier: 3, name: '갈퀴', per: 3, time: 0.6, r: 3.2, price: 400 },
-  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 1200 },
-  { tier: 5, name: '흡입기', per: 1, rate: 4, time: 0.25, r: 5.0, price: 4000 },
+  { tier: 3, name: '갈퀴', per: 3, time: 0.6, r: 3.2, price: 300 },
+  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 1100 },
+  { tier: 5, name: '흡입기', per: 3, rate: 12, time: 0.25, r: 5.0, price: 3300 },
 ];
 // 배낭: 처음엔 배낭 없이 호주머니(POCKET)만. save.equip.bag 0 = 호주머니, 1~5 = BAGS[bag-1] (#31)
 export const POCKET = { tier: 0, name: '호주머니', cap: 6, price: 0 };
 export const BAGS = [
   { tier: 1, name: '배낭', cap: 20, price: 80 },
-  { tier: 2, name: '큰 배낭', cap: 40, price: 300 },
-  { tier: 3, name: '등산 배낭', cap: 80, price: 1000 },
-  { tier: 4, name: '대형 배낭', cap: 150, price: 3000 },
-  { tier: 5, name: '원정 배낭', cap: 300, price: 7000 },
+  { tier: 2, name: '큰 배낭', cap: 40, price: 200 },
+  { tier: 3, name: '등산 배낭', cap: 80, price: 500 },
+  { tier: 4, name: '대형 배낭', cap: 150, price: 1100 },
+  { tier: 5, name: '원정 배낭', cap: 300, price: 3600 },
 ];
 export const SHOES = [
   { tier: 1, name: '운동화', speed: 1.0, price: 0 },
-  { tier: 2, name: '러닝화', speed: 1.1, price: 120 },
+  { tier: 2, name: '러닝화', speed: 1.1, price: 150 },
   { tier: 3, name: '트레일화', speed: 1.2, price: 450 },
-  { tier: 4, name: '등산화', speed: 1.3, price: 1400 },
-  { tier: 5, name: '바람 신발', speed: 1.45, price: 3600 },
+  { tier: 4, name: '등산화', speed: 1.3, price: 1200 },
+  { tier: 5, name: '바람 신발', speed: 1.45, price: 3400 },
 ];
 
 // 클린하우스(재활용장): 들머리 한 곳. 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
@@ -238,7 +240,7 @@ export const ENEMY_SPAWN = {
 // soon: 아직 없는 단계 (상점에 잠긴 그림만)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 300 },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 800 },
   { tier: 3, id: 'gun', name: '귤 총', soon: true },
   { tier: 4, id: 'mg', name: '귤 머신건', soon: true },
   { tier: 5, id: 'laser', name: '귤즙 레이저', soon: true },
@@ -344,8 +346,8 @@ export const FISH = {
   missT: 0.6, // 놓쳐서 줄을 거둠
   rodL: 2.2, // 낚싯대 길이
   // 낚이는 것 비율. 호주머니·배낭에 자리가 없으면 쓰레기(드문 것 포함)는 안 낚이고 물고기만
-  odds: { trash: 0.6, fish: 0.35, rare: 0.05 },
-  fishGyul: 5, // 물고기를 놓아주면 받는 귤
+  odds: { trash: 0.64, fish: 0.35, rare: 0.01 },
+  fishGyul: 1, // 물고기를 놓아주면 받는 귤 (#49: 5 면 시간당 약 1,800 으로 오름보다 벌이가 좋아 1)
   // 떠내려온 쓰레기: kind 는 TRASH_TYPES id (호주머니·배낭에 들어가고 클린하우스에서 귤이 됨)
   trash: [{ id: 'boot', name: '장화', kind: 'vinyl' }, { id: 'tin', name: '깡통', kind: 'can' }, { id: 'bag', name: '비닐', kind: 'vinyl' }],
   // 물고기 3종 (도감 '개울' 칸, id 'fish:번호')
