@@ -370,3 +370,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## #61 오름 입구 정렬
 - `nsbound.gate` 에 길 직각 방향 `ux,uz` 를 더함. 정낭 자리·방향·돌담 시작점이 모두 `gate`(길 가운데 점 + 방향) 한 묶음에서 나온다.
 - `createStoneWall` 은 경계선을 따라 양쪽으로 가다가 길 직각 거리가 기둥 바깥(`gateW+0.38`)에 닿는 곳에서 돌담을 시작·끝낸다. 정낭은 경계선 접선이 아니라 길과 직각으로 선다.
+
+## 옷 10칸·능력치 (#52)
+- 수치·옷 목록 `balance.js WEAR`(칸 6개: hat·top·bottom·vest·jacket·socks, 단계별 능력치 `v[0~5]`, 값·단계 색)와 `CLOTHES`(한 줄 = 옷 한 벌, `look` 모양 값). 단계에 옷을 더하려면 `CLOTHES` 에 줄만 더함. 도구·배낭·신발·무기는 예전 장비 표 그대로(신발 1단계 = 쓰레빠 `shoes:slip`)
+- 모양 `src/clothes.js`: 몸통 단면 표(TORSO·HIPS)를 따라 감싸는 껍질 `shell` + 팔·다리 관 `tube` 로 코드에서 만듦(로우폴리, 몸과 같은 뼈대로 휨 `skin: true`, 모자만 머리 뼈). 겹침 안→밖: 피부 < 양말 < 바지 < 티셔츠 < 잠바 < 베스트. 재질 이름 `skin`(피부색)·`foot`(양말 색 또는 피부색)은 runner 가 칠함. `addClothes(ACCESSORIES)` 로 gear.js 에 등록
+- 옷(top·bottom)을 입으면 `hide: ['body']` → 몸 셰이더가 손(|x|≥0.37) 빼고 y<0.6 을 버림(구운 재킷·반바지·운동화·배낭 감춤). 그래서 팔뚝·종아리 맨살도 옷이 만듦. 배낭 1단계는 새 모양 `back:bag1`, 호주머니는 `back:empty`. NPC(DEFAULT_GEAR)는 예전처럼 구운 몸
+- skin 장비는 runner 가 같은 재질끼리 합쳐 SkinnedMesh 하나로 그림(옷 조각이 많아서)
+- 머리는 모자와 다른 칸 `hair`(키 이름은 예전 그대로 `hat:short` 등). 머리를 고르기 전(구운 머리)엔 옷 모자를 겹쳐 쓰지 않음
+- 저장 `save.clothes = { own, wear }`. 예전 저장: `outfit.gear.hat` 의 머리를 `hair` 로 옮김, 예전 옷 색 구매(`save.owned`)·초록 모자 머리는 귤로 돌려줌(`save.wearV`). 다른 사람에게는 `outfit.gear` 로 보임(net `cleanGear`, SLOTS 에 칸 추가)
+- 능력치 적용(`main.js wearV(칸)`): 모자 → `createTrash rareMul`, 티셔츠 → `createHp maxMul`, 바지 → `bagCap()`, 베스트 → `dumpBag` 귤, 잠바 → `hp.hit` 피해, 양말 → `regenMul`
+- 상점 옷 탭: 머리 줄 + 칸마다 한 줄(그림 `src/clothicons.js`, 단계 색 띠, 입은 것 체크, 가진 것은 눌러 갈아입기, 안 가진 것은 눌러 능력치 지금→바뀔 값과 사기). 옷장도 같은 줄(가진 것만)
+- 확인: `__oreum.clothes.state()/stats()/buy(id)/wear(칸, id)/give(id)/bagCap()/hpMax()`, `dist/char-motion.html?row`(1~5단계 다섯 명, `&wear=hat,top,bottom` 입을 칸만, `&slots=hat` 그 칸만 단계대로, `&nobag`, `view=front3|back3`), `?tier=3&one`

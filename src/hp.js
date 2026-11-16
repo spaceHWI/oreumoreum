@@ -16,8 +16,9 @@ const RING = 2 * Math.PI * 40;
 // 들것 든 사람: 지금 그림체 캐릭터, 흰 옷(조끼 대신 흰 재킷)·흰 모자
 const CREW_OUTFIT = (base) => ({ ...base, hat: { type: 'cap', color: '#ecebe4', back: false }, shirt: { type: 'tee', color: '#f4f3ee' }, pants: { ...base.pants, color: '#3d4352' }, shoes: { ...base.shoes, color: '#2a2a30' }, gear: { back: 'back:none', hand: 'hand:none' } });
 
-export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp, regenMul }) {
-  let hp = HP.max, sinceHit = 99, pending = false, down = null, flashT = 0;
+export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp, regenMul, maxMul }) {
+  const MAX = () => HP.max * (maxMul ? maxMul() : 1); // 티셔츠(#52) 최대 HP
+  let hp = MAX(), sinceHit = 99, pending = false, down = null, flashT = 0;
   if (!save.hpDown || typeof save.hpDown !== 'object') save.hpDown = {};
   const D = save.hpDown;
   D.n = Number.isFinite(D.n) ? Math.max(-1, Math.min(HP.waits.length - 1, Math.floor(D.n))) : -1;
@@ -64,8 +65,8 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
     const show = enabled();
     if (show !== lastShow) { lastShow = show; el.bar.hidden = !show; document.body.classList.toggle('hp-on', show); }
     if (!show) return;
-    const pct = Math.round((hp / HP.max) * 1000) / 10;
-    if (pct !== lastPct) { lastPct = pct; el.fill.style.width = pct + '%'; el.bar.classList.toggle('low', hp > 0 && hp <= HP.low); el.bar.setAttribute('aria-valuenow', String(Math.round(hp))); }
+    const pct = Math.round((hp / MAX()) * 1000) / 10;
+    if (pct !== lastPct) { lastPct = pct; el.fill.style.width = pct + '%'; el.bar.classList.toggle('low', hp > 0 && hp <= HP.low); el.bar.setAttribute('aria-valuenow', String(Math.round(hp))); el.bar.setAttribute('aria-valuemax', String(Math.round(MAX()))); }
     if (flashT > 0) { flashT -= dt; if (flashT <= 0) el.bar.classList.remove('hit'); }
     const isDown = !!down;
     if (isDown !== lastDown) { lastDown = isDown; document.body.classList.toggle('hp-down', isDown); }
@@ -105,7 +106,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
   // 넉백(#32)이 끝나고 땅에 누운 뒤에 쓰러짐을 시작. 넉백이 없으면 바로
   function tryBegin(P, rollT) {
     if (!pending || down) return;
-    if (!enabled()) { pending = false; hp = HP.max; return; }
+    if (!enabled()) { pending = false; hp = MAX(); return; }
     const k = P.knock;
     if (P.air) return;
     if (k) { if (k.land < 0 || k.t - k.land < rollT) return; begin(P, Math.atan2(k.az, -k.ax), k.ang); return; }
@@ -144,7 +145,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
       if (d.t >= HP.blackT) { d.ph = 'wait'; d.t = 0; }
     } else if (d.ph === 'wait') { // 시작 지점에서 들것에 누워 기다림
       d.dim = 1 + (HP.waitDim - 1) * ss(d.t / HP.fadeInT); placeIdle(dt);
-      if (d.t >= d.wait) { d.ph = 'rise'; d.t = 0; hp = HP.max; }
+      if (d.t >= d.wait) { d.ph = 'rise'; d.t = 0; hp = MAX(); }
     } else if (d.ph === 'rise') {
       const u = d.t / HP.riseT;
       lie.ang = LIE * (1 - ss(u)); lie.y = 0.26 * (1 - ss(u));
@@ -178,9 +179,10 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
   }
 
   function update(dt, P) {
-    if (!enabled()) { if (down) { finish(P); hideCrew(); } pending = false; hp = HP.max; ui(dt); return false; }
+    if (!enabled()) { if (down) { finish(P); hideCrew(); } pending = false; hp = MAX(); ui(dt); return false; }
     sinceHit += dt;
-    if (!down && !pending && hp < HP.max && sinceHit >= HP.regenDelay) hp = Math.min(HP.max, hp + HP.regen * (regenMul ? regenMul() : 1) * dt); // 식사 버프(#50)
+    if (hp > MAX()) hp = MAX(); // 티셔츠를 갈아입어 최대 HP 가 줄었을 때
+    if (!down && !pending && hp < MAX() && sinceHit >= HP.regenDelay) hp = Math.min(MAX(), hp + HP.regen * (regenMul ? regenMul() : 1) * dt); // 식사 버프(#50)
     if (down) step(dt, P);
     tickLeave(dt);
     ui(dt);
@@ -189,12 +191,12 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
 
   return {
     hit, tryBegin, update, lie,
-    get hp() { return hp; }, get isDown() { return !!down; }, get pending() { return pending; },
+    get hp() { return hp; }, get max() { return MAX(); }, get isDown() { return !!down; }, get pending() { return pending; },
     get phase() { return down ? down.ph : pending ? 'pending' : null; },
     get waitSec() { return down ? down.wait : null; },
     get streak() { return D.n; },
     // 확인용
-    set(v) { hp = Math.max(0, Math.min(HP.max, Number(v) || 0)); if (hp <= 0 && enabled() && !down) pending = true; },
+    set(v) { hp = Math.max(0, Math.min(MAX(), Number(v) || 0)); if (hp <= 0 && enabled() && !down) pending = true; },
     kill() { if (!enabled() || down) return false; hp = 0; pending = true; return true; },
     resetStreak() { D.n = -1; D.at = 0; persist(); },
   };

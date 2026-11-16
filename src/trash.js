@@ -166,7 +166,7 @@ function makeHeapGeo(k, st, low) {
 
 /* ---------- 쓰레기 세상 ---------- */
 // paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
-export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null }) {
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null }) {
   const trail = makeTrail(paths);
   const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(col && col.blocked(x, z, 0.45)); // 사물과 겹치지 않게 (#15)
   const heaps = placeHeaps(trail, ok, height, origin);
@@ -224,7 +224,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   }
   function rollDex(type) {
     const rares = DEX_LIST.filter((d) => d.kind === type.id && d.rare), commons = DEX_LIST.filter((d) => d.kind === type.id && !d.rare);
-    return Math.random() < DEX.rareChance && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
+    return Math.random() < DEX.rareChance * (rareMul ? rareMul() : 1) && rares.length // 모자(#52) 드문 쓰레기 확률 ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
   }
   // 하나 줍기. c: candidates 의 항목, room: 배낭 남은 부피. 못 주우면 null
   function take(c, room = 99) {

@@ -511,6 +511,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 
 /* ===== 상점 팝업 (#26): 탭 도구·배낭·신발·옷, 장비는 5단계 한 줄 ===== */
 #shop .pop { width: min(520px, 100%); }
+#shop.overlay { grid-template-rows: minmax(0, 1fr); } /* 옷 탭(#52)이 길어도 팝업이 화면 안에서 스크롤되게 (max-height % 가 먹도록) */
 #shop .pop-head { padding: 12px 12px 8px 16px; }
 #shop .shop-coins { font-size: 20px; } #shop .shop-coins i { width: 18px; height: 18px; }
 #shop .shop-coins.drain { animation: drain .5s ease-out; }
@@ -698,6 +699,26 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .hair-item .st svg { width: 12px; height: 12px; }
 .hair-item .pr { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 800; }
 .hair-item .pr.short { opacity: .5; }
+/* 옷 (#52): 칸마다 한 줄, 옷 그림 아래 단계 색 띠 */
+.wear-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wear-name { font-size: 13px; color: var(--ink-soft); }
+.wear-stat { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-weight: 800; font-size: 14px; }
+.wear-stat svg { width: 15px; height: 15px; opacity: .75; }
+.wear-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.wear-item { position: relative; aspect-ratio: 1; min-width: 0; border-radius: 14px; border: 1px solid var(--hair); background: rgba(255,255,255,.06); padding: 4px 4px 13px; display: grid; place-items: center; color: #fff; box-shadow: inset 0 -4px 0 var(--tc); overflow: hidden; }
+.wear-item svg.art { width: 100%; height: 100%; }
+.wear-item.on { border-color: var(--acc); box-shadow: inset 0 -4px 0 var(--tc), 0 0 0 2px var(--acc); background: rgba(255,255,255,.16); }
+.wear-item:not(.has) svg.art { opacity: .6; }
+.wear-item.none svg.art { opacity: .45; }
+.wear-item[aria-expanded="true"] { outline: 2px solid #fff; outline-offset: 1px; }
+.wear-item .st { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; }
+.wear-item .st svg { width: 10px; height: 10px; }
+.wear-item .pr { position: absolute; left: 0; right: 0; bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 800; }
+.wear-item .pr .g { width: 9px; height: 9px; border-radius: 50%; background: var(--gyul); display: inline-block; }
+.wear-item .pr.short { opacity: .5; }
+.wear-detail { margin-top: 2px; }
+.wear-detail .tdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+@media (max-width: 600px) { .wear-grid { gap: 4px; } .wear-item { border-radius: 11px; padding: 3px 3px 12px; } .wear-item .pr { font-size: 10px; } }
 .hair-item .pr .g { width: 11px; height: 11px; border-radius: 50%; background: var(--gyul); display: inline-block; }
 </style>
 
