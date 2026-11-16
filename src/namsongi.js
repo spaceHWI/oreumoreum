@@ -243,9 +243,11 @@ vec3 groundColor(vec2 p){
       float sc=mix(0.26,0.56,aOff.z)*mix(1.0,2.4,gold)*KS;
       float ptc=texture2D(uStroke,gc/KS*0.017+0.5).r;
       sc*=0.3+0.7*smoothstep(0.34,0.6,ptc);
-      sc*=1.0-pathMask(gc);
-      sc*=1.0-teaMask(gc);
-      sc*=step(0.9,stOut(gc,uStream,uStreamW,uStreamM)); // 개울 안엔 풀 없음 (굽이·폭은 streamshape.js)
+      float pres=1.0-pathMask(gc); // 풀이 있는 정도: 길·마당·가게 거리·찻밭·개울 안은 0 (눕는 효과도 여기에 곱함 #73)
+      pres*=1.0-teaMask(gc);
+      float so=stOut(gc,uStream,uStreamW,uStreamM); // 개울 안엔 풀 없음 (굽이·폭은 streamshape.js)
+      sc*=pres*step(0.9,so);
+      pres*=smoothstep(0.9,2.6,so);
       sc*=1.0-0.45*forestMask(gc)*(1.0-gold);
       vec2 dv=gc-uPl.xz; float dd=length(dv);
       sc*=1.0-smoothstep(GS*0.36,GS*0.5,dd);
@@ -254,7 +256,7 @@ vec3 groundColor(vec2 p){
       vec3 transformed=vec3(gc.x+ca*position.x-sa*position.z, gh+y*sc, gc.y+sa*position.x+ca*position.z);
       float wv=sin(uTime*1.5+gc.x*0.16+gc.y*0.12)+0.5*sin(uTime*2.6+gc.x*0.5-gc.y*0.29);
       transformed.xz+=vec2(0.85,0.45)*wv*0.11*uWind*y*y*sc;
-      float push=(1.0-smoothstep(0.35,2.1,dd))*y;
+      float push=(1.0-smoothstep(0.35,2.1,dd))*y*pres;
       transformed.xz+=normalize(dv+vec2(0.0001))*push*0.7;
       transformed.y-=push*sc*0.6;
       vec3 gcol=groundColor(gc);
