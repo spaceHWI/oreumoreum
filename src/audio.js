@@ -373,6 +373,42 @@ export class Sound {
     g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.025, t0 + 0.4); g.gain.exponentialRampToValueAtTime(0.0005, t0 + 1.8);
     n.connect(hp); hp.connect(g); g.connect(this.sfx); n.start(t0); n.stop(t0 + 1.9);
   }
+  // 더미를 다 치움 (#65): 음이 올라가는 맑은 종소리. lvl 0 작은 · 1 큰 · 2 대형 (클수록 길고 높게)
+  heapClear(lvl = 0, vol = 1) {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t0 = c.currentTime + 0.02;
+    const notes = [[659.25, 830.6, 987.8, 1318.5], [587.3, 740, 880, 1174.7, 1480], [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568, 2093]][lvl] || [];
+    notes.forEach((fr, i) => {
+      const t = t0 + i * (0.075 + lvl * 0.01), o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = fr; o2.type = 'sine'; o2.frequency.value = fr * 2.76; // 종 배음
+      const peak = 0.055 * vol * (i === notes.length - 1 ? 1.3 : 1);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0006, t + 0.7 + lvl * 0.3);
+      const g2 = c.createGain(); g2.gain.value = 0.25; o2.connect(g2); g2.connect(g);
+      o.connect(g); g.connect(this.sfx); o.start(t); o2.start(t); o.stop(t + 1.3); o2.stop(t + 1.3);
+    });
+    const n = c.createBufferSource(); n.buffer = this.noise; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000; const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.012 * vol * (1 + lvl), t0 + 0.15); g.gain.exponentialRampToValueAtTime(0.0004, t0 + 0.9 + lvl * 0.3);
+    n.connect(hp); hp.connect(g); g.connect(this.sfx); n.start(t0); n.stop(t0 + 1.4);
+  }
+  // 구역이 꽃밭이 됨 (#65): 큰 팡파르(화음 세 번 → 길게) + 위로 쏟아지는 종소리
+  bloomFanfare() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t0 = c.currentTime + 0.03;
+    const chords = [[392, 493.9, 587.3], [392, 493.9, 587.3], [523.25, 659.25, 783.99, 1046.5]], at = [0, 0.16, 0.34], len = [0.12, 0.14, 1.5];
+    chords.forEach((ch, k) => ch.forEach((fr) => {
+      const t = t0 + at[k], o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+      o.type = 'sawtooth'; o.frequency.value = fr; f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(2600, t + 0.06); f.frequency.exponentialRampToValueAtTime(1200, t + len[k]);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.035, t + 0.02); g.gain.setValueAtTime(0.035, t + len[k] * 0.6); g.gain.exponentialRampToValueAtTime(0.0006, t + len[k] + 0.25);
+      o.connect(f); f.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + len[k] + 0.3);
+    }));
+    const tb = t0 + 0.5; // 아래 → 위 종소리
+    [1046.5, 1174.7, 1318.5, 1568, 1760, 2093, 2349, 2637].forEach((fr, i) => {
+      const t = tb + i * 0.07, o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle'; o.frequency.value = fr; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.03, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.9);
+      o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 1);
+    });
+    setTimeout(() => this.bloom(), 900);
+  }
   coin() {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

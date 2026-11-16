@@ -474,3 +474,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 메뉴 `.m-music`: `#menu-music`(켜기/끄기) + `#music-vol`(0~100). 저장 `save.music = { on, vol }`(예전 저장엔 없으면 기본값), 리셋해도 유지. 버스 크기 = `MUSIC.gain × vol²`. 소리(전체)를 끄면 음악도 꺼짐. 폰은 입장 버튼(첫 터치)에서 `sound.start()` 할 때 같이 시작
 - 확인용 `__oreum.sound.music.state()` → { mode, threat, night, active, calm, tense }
 - 발소리 거친 성분 빼기: 샘플(일부 클리핑·고역 많음)을 하이패스 60 + 2단 로우패스(풀 1700·송이 2300·계단 1500·흙 2000)로 걸러 고역을 줄이고, 자르는 끝에 실제 재생 시간 기준 80ms 페이드(딸깍 없앰). 풀잎 스침 잡음은 5200Hz → 1600Hz 로 낮고 작게. 샘플이 아직 없을 때 쓰는 합성 발소리도 높은 대역 대신 1~1.3kHz 대역
+
+## 치웠을 때·꽃밭 효과 (#65)
+- `src/bloomfx.js createBloomFx({ scene, height, tier })`: 후처리 없이 3D 만. 땅 높이를 따라가는 빛 고리(띠 3줄, 더해 그리기, 풀 6개), 꽃잎(납작 마름모)·반짝이(팔면체, 더해 그리기)·귤(툰 공) InstancedMesh 3개를 풀로 돌려 씀, 꽃잎 기둥(나선으로 뿜음). 입자 최대 수 × `BLOOM_FX.tierMul[tier]` (tier = LOW 0, 아니면 `quality.level`)
+- `heap({x,z,r,size,color,gyul})`: 크기 s/l/xl 마다 고리 수·꽃잎·반짝이·솟는 높이 3단계(`BLOOM_FX.heap`). gyul > 0 이면 귤도 튐(지금 더미 보상 없음, 자리만). `zone({x,z,color})`: 큰 고리 2개 + 꽃잎 기둥 + 터짐
+- bloom.js: 더미 자리에 풀 포기(kind 2, `heapTuft`)를 더하고 꽃 수를 늘림(`heapRing` 6/12/20). 더미가 0 이 되면 가운데부터 `heapWave`(0.8초)에 걸쳐 풀 → 꽃 순으로 톡톡(`heapGrow` 0.45초). `bloom.replay({heap}|{zone})` 다시 피우기(확인용)
+- main.js `heapFx(i, {by, gyul})`: heap-clear 이벤트에서. 소리 `sound.heapClear(0|1|2, vol)`(올라가는 종소리), 폰 진동(`pointer: coarse`), 줍기 동작이 끝나면 `cheer` 동작(runner.js, 두 팔 번쩍·통통, 움직이면 끊김). `by` 가 있으면(다른 사람) `otherR` 안에서만 보이고 소리는 거리만큼 작게, 동작·진동 없음 — 멀티 때 서버 이벤트에 by 를 넣으면 됨
+- `zoneFx(z)`: zone-bloom 이벤트에서. `sound.bloomFanfare()`, 그 구역 안이면 꽃잎 기둥 + 카메라가 `camT` 1.5초 동안 물러남(`camPullT`, followCam 에서 거리·각만 더함, 조작 안 막음), `#bloom-glow` 가장자리 귤색 빛, `#bloom-banner` 구역 아이콘(번호)·화살표·구역 색 꽃 3개(글자 없음). zone-clear 글 토스트는 뺌
+- 확인용 `__oreum.bloom.test`: heap(10|50|200, {clear}) 가장 가까운 그 크기 더미 옆으로 가서 효과(clear 면 실제로 비움), zone(z) 꽃밭 효과(지금 구역), fx() 입자 수. 수치 `balance.js BLOOM_FX`

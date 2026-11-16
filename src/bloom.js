@@ -33,6 +33,12 @@ function clumpGeo(kind, seed) {
   }
   return { stem: mergeGeometries(stems), head: mergeGeometries(heads) };
 }
+function tuftGeo(seed) { // 살아나는 풀 포기 (#65): 가는 잎 여러 장
+  const r = mulberry(seed), g = [];
+  for (let i = 0; i < 7; i++) { const a = r() * 6.28, d = r() * 0.16, h = 0.28 + r() * 0.26, lean = 0.15 + r() * 0.35;
+    g.push(paint(new THREE.ConeGeometry(0.035, h, 3).translate(0, h / 2, 0).rotateX(lean).rotateY(a).translate(Math.cos(a) * d, 0, Math.sin(a) * d), i % 2 ? '#79b850' : '#8fca5c')); }
+  return mergeGeometries(g);
+}
 function treeGeo() {
   return mergeGeometries([
     paint(new THREE.CylinderGeometry(0.06, 0.1, 1.25, 5).translate(0, 0.62, 0), '#7a5a40'),
@@ -64,7 +70,9 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   scatter(low ? B.treePerLow : B.treePer, (x, z, k) => { if (rnd() > B.zones[k].tree || !free(x, z, 1.1)) return;
     items.push({ x, z, y: height(x, z) - 0.05, rot: rnd() * 6.28, s: 0.8 + rnd() * 0.55, zone: k, kind: 1, g: 0, tOn: 1, tOff: B.treeOff[0] + rnd() * (B.treeOff[1] - B.treeOff[0]), heap: -1 }); });
   trash.heaps.forEach((h, hi) => { const n = B.heapRing[h.k] || 4; for (let i = 0; i < n; i++) { const a = i / n * 6.28 + rnd() * 0.6, d = h.r * (0.2 + rnd() * 0.85), x = h.x + Math.cos(a) * d, z = h.z + Math.sin(a) * d;
-    items.push({ x, z, y: height(x, z) - 0.03, rot: rnd() * 6.28, s: 0.9 + rnd() * 0.5, zone: h.zone, kind: 0, g: i % 3, tOn: 0, tOff: 0, heap: hi }); } });
+    items.push({ x, z, y: height(x, z) - 0.03, rot: rnd() * 6.28, s: 0.9 + rnd() * 0.5, zone: h.zone, kind: 0, g: i % 3, tOn: 0, tOff: 0, heap: hi, hd: d / h.r }); }
+    const nt = B.heapTuft[h.k] || 6; for (let i = 0; i < nt; i++) { const a = rnd() * 6.28, d = h.r * Math.sqrt(rnd()) * 1.05, x = h.x + Math.cos(a) * d, z = h.z + Math.sin(a) * d; // 더미 자리 풀 (#65)
+    items.push({ x, z, y: height(x, z) - 0.02, rot: rnd() * 6.28, s: 0.8 + rnd() * 0.6, zone: h.zone, kind: 2, g: 0, tOn: 0, tOff: 0, heap: hi, hd: d / h.r }); } });
   items.forEach((it) => { it.cur = 0; it.tgt = 0; it.delay = 0; it.wd = false; it.on = false; });
   // 칸(32)별 목록: 그릴 것만 빨리 고름
   const CELL = 32, cells = new Map(); items.forEach((it, i) => { const key = Math.floor(it.x / CELL) * 8191 + Math.floor(it.z / CELL); let a = cells.get(key); if (!a) cells.set(key, a = []); a.push(i); });
@@ -77,6 +85,8 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   ZONE_IDS.forEach((z) => { IM[z] = [0, 1, 2].map((g) => { const geo = clumpGeo(B.zones[z].kind, z * 10 + g), cap = Math.max(1, items.filter((it) => it.kind === 0 && it.zone === z && it.g === g).length);
     const mk = (gg, m) => { const im = new THREE.InstancedMesh(gg, m, cap); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; scene.add(im); return im; };
     const head = mk(geo.head, headMat); head.setColorAt(0, new THREE.Color()); return { stem: mk(geo.stem, stemMat), head }; }); });
+  const tuftCap = Math.max(1, items.filter((it) => it.kind === 2).length);
+  const tufts = new THREE.InstancedMesh(tuftGeo(77), stemMat, tuftCap); tufts.count = 0; tufts.frustumCulled = false; tufts.receiveShadow = !low; scene.add(tufts);
   const treeCap = Math.max(1, items.filter((it) => it.kind === 1).length);
   const trees = new THREE.InstancedMesh(treeGeo(), treeMat, treeCap); trees.count = 0; trees.frustumCulled = false; trees.castShadow = !low; trees.receiveShadow = !low; trees.setColorAt(0, new THREE.Color()); scene.add(trees);
   const ZC = {}; ZONE_IDS.forEach((z) => { ZC[z] = new THREE.Color(B.zones[z].color); });
@@ -88,13 +98,14 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   function rebuild(px, pz) {
     lastX = px; lastZ = pz; dirty = false;
     const FR = low ? B.drawRLow : B.drawR, TR = low ? B.treeDrawRLow : B.treeDrawR, R = Math.max(FR, TR), cr = Math.ceil(R / CELL), ci = Math.floor(px / CELL), cj = Math.floor(pz / CELL);
-    const cnt = {}; ZONE_IDS.forEach((z) => { cnt[z] = [0, 0, 0]; }); let tc = 0;
+    const cnt = {}; ZONE_IDS.forEach((z) => { cnt[z] = [0, 0, 0]; }); let tc = 0, gc = 0;
     for (let i = ci - cr; i <= ci + cr; i++) for (let j = cj - cr; j <= cj + cr; j++) {
       const a = cells.get(i * 8191 + j); if (!a) continue;
       for (const k of a) {
         const it = items[k]; if (it.cur <= 0.01) continue;
-        const d2 = (it.x - px) ** 2 + (it.z - pz) ** 2; if (d2 > (it.kind ? TR * TR : FR * FR)) continue;
+        const d2 = (it.x - px) ** 2 + (it.z - pz) ** 2; if (d2 > (it.kind === 1 ? TR * TR : FR * FR)) continue;
         const k1 = shown(it) * it.s, wilt = it.wd ? 1 - it.cur : 0;
+        if (it.kind === 2) { e.set(wilt * 0.6, it.rot, 0); q.setFromEuler(e); m4.compose(v.set(it.x, it.y, it.z), q, sc.set(k1, k1 * (1 - wilt * 0.6), k1)); tufts.setMatrixAt(gc++, m4); continue; }
         if (it.kind === 1) { e.set(wilt * 0.25, it.rot, 0); q.setFromEuler(e); m4.compose(v.set(it.x, it.y, it.z), q, sc.set(k1 * (0.6 + 0.4 * it.cur), k1, k1 * (0.6 + 0.4 * it.cur)));
           trees.setMatrixAt(tc, m4); trees.setColorAt(tc, colr.copy(TREE_C[k % 3]).lerp(BROWN, wilt * 0.8)); tc++; continue; }
         const im = IM[it.zone][it.g], c = cnt[it.zone][it.g]++;
@@ -103,6 +114,7 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
       }
     }
     ZONE_IDS.forEach((z) => IM[z].forEach((im, g) => { im.stem.count = im.head.count = cnt[z][g]; im.stem.instanceMatrix.needsUpdate = im.head.instanceMatrix.needsUpdate = true; if (im.head.instanceColor) im.head.instanceColor.needsUpdate = true; }));
+    tufts.count = gc; tufts.instanceMatrix.needsUpdate = true;
     trees.count = tc; trees.instanceMatrix.needsUpdate = true; if (trees.instanceColor) trees.instanceColor.needsUpdate = true;
   }
 
@@ -111,6 +123,7 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   const anim = new Set();
   const heapsOf = {}; ZONE_IDS.forEach((z) => { heapsOf[z] = trash.heaps.filter((h) => h.zone === z); });
   function setT(i, on, delay, now) { const it = items[i]; if (it.on === on) return; it.on = on; it.tgt = on ? 1 : 0; it.wd = !on; it.delay = delay; if (now) { it.cur = it.tgt; anim.delete(i); } else anim.add(i); }
+  const heapDelay = (it) => Math.min(1.1, it.hd) * B.heapWave * (it.kind === 2 ? 0.8 : 1) + (it.kind === 2 ? 0 : 0.06) + Math.random() * 0.05;
   function refresh(initial = false) {
     const wave = {};
     ZONE_IDS.forEach((z) => {
@@ -125,7 +138,8 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
       else if (it.kind === 1) on = bloomed[it.zone] || (it.on && clean[it.zone] >= it.tOff);
       else on = it.tOn >= 1 ? bloomed[it.zone] : (it.on ? clean[it.zone] >= it.tOff : clean[it.zone] >= it.tOn);
       let delay = 0;
-      if (on && !it.on && wave[it.zone]) { let d = 1e9; heapsOf[it.zone].forEach((h) => { d = Math.min(d, Math.hypot(h.x - it.x, h.z - it.z)); }); delay = Math.min(B.waveMax, d / B.wave) + (it.kind ? 0.6 : 0); }
+      if (on && !it.on && it.heap >= 0 && !initial) delay = heapDelay(it); // 더미 자리: 가운데부터 물결처럼 (#65)
+      else if (on && !it.on && wave[it.zone]) { let d = 1e9; heapsOf[it.zone].forEach((h) => { d = Math.min(d, Math.hypot(h.x - it.x, h.z - it.z)); }); delay = Math.min(B.waveMax, d / B.wave) + (it.kind === 1 ? 0.6 : 0); }
       else if (!on && it.on) delay = Math.random() * 2; // 시들 때는 하나씩
       setT(i, on, delay, initial);
     });
@@ -186,7 +200,7 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
     let moving = false;
     for (const i of anim) {
       const it = items[i]; if (it.delay > 0) { it.delay -= dt; continue; }
-      const rate = it.on ? 1 / (it.kind ? B.treeGrow : it.heap >= 0 ? B.grow * 1.3 : B.grow) : 1 / B.wither;
+      const rate = it.on ? 1 / (it.kind === 1 ? B.treeGrow : it.heap >= 0 ? B.heapGrow : B.grow) : 1 / B.wither;
       it.cur += Math.sign(it.tgt - it.cur) * Math.min(Math.abs(it.tgt - it.cur), rate * dt); moving = true;
       if (it.cur === it.tgt) anim.delete(i);
     }
@@ -198,11 +212,20 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   function spotIn(z, ok) { const c = items.filter((it) => it.zone === z && it.kind === 0 && it.heap < 0 && (!ok || ok(it.x, it.z))); const it = c[Math.floor(c.length * 0.37)]; return it ? { x: it.x, z: it.z } : null; }
   const test = {
     state: () => ZONE_IDS.map((z) => ({ zone: z, clean: +clean[z].toFixed(3), bloomed: !!bloomed[z], dry: +ns.zoneDry[z].toFixed(2), flowers: items.filter((it) => it.zone === z && it.kind === 0 && it.on).length, trees: items.filter((it) => it.zone === z && it.kind === 1 && it.on).length })),
-    counts: () => ({ flowers: items.filter((it) => it.kind === 0).length, trees: items.filter((it) => it.kind === 1).length, drawn: ZONE_IDS.reduce((s, z) => s + IM[z].reduce((t, im) => t + im.head.count, 0), 0) + trees.count, anim: anim.size, butterflies: bf.count / 2, birds: bd.count / 2 }),
+    counts: () => ({ flowers: items.filter((it) => it.kind === 0).length, tufts: items.filter((it) => it.kind === 2).length, trees: items.filter((it) => it.kind === 1).length, drawn: ZONE_IDS.reduce((s, z) => s + IM[z].reduce((t, im) => t + im.head.count, 0), 0) + trees.count, anim: anim.size, butterflies: bf.count / 2, birds: bd.count / 2 }),
     flock: (x, z) => flock(x, z),
     finish() { anim.forEach((i) => { items[i].cur = items[i].tgt; items[i].delay = 0; }); anim.clear(); ZONE_IDS.forEach((z) => { ns.zoneDry[z] = dryT[z]; }); dirty = true; },
   };
+  // 다시 보기 (#65 확인용): 더미 자리 hi 또는 구역 z 의 꽃을 처음부터 다시 피움. 아직 안 핀 것도 잠깐 피움(다음 쓰레기 변화 때 원래대로)
+  function replay({ heap: hi = -1, zone: z = 0 }) {
+    items.forEach((it, i) => {
+      if (hi >= 0 ? it.heap !== hi : (it.zone !== z || it.heap >= 0)) return;
+      let delay; if (hi >= 0) delay = heapDelay(it); else { let d = 1e9; heapsOf[z].forEach((h) => { d = Math.min(d, Math.hypot(h.x - it.x, h.z - it.z)); }); delay = Math.min(B.waveMax, d / B.wave) + (it.kind === 1 ? 0.6 : 0); }
+      it.on = true; it.tgt = 1; it.wd = false; it.cur = 0; it.delay = delay; anim.add(i);
+    });
+    dirty = true;
+  }
   // 서버를 바꿀 때 (#35): 그 사이 쓰레기 변화는 연출 없이 바로 맞춤. run 안에서 쓰레기를 바꿈
   function resync(run) { mute = true; try { run?.(); } finally { mute = false; } items.forEach((it) => { it.on = false; it.cur = 0; it.wd = false; }); anim.clear(); ZONE_IDS.forEach((z) => { bloomed[z] = false; }); refresh(true); }
-  return { update, resync, on: (f) => listeners.push(f), isBloomed: (z) => !!bloomed[z], bloomed: () => ZONE_IDS.filter((z) => bloomed[z]), clean: (z) => clean[z], flock, spotIn, test };
+  return { update, resync, replay, on: (f) => listeners.push(f), isBloomed: (z) => !!bloomed[z], bloomed: () => ZONE_IDS.filter((z) => bloomed[z]), clean: (z) => clean[z], flock, spotIn, test };
 }

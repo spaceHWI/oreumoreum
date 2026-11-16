@@ -406,7 +406,7 @@ export function buildRunner(opts = {}) {
   }
 
   const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
-  // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail' | 'fish'
+  // pose: 'move' | 'wave' | 'cheer' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail' | 'fish'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
   // 눈 (#74): 사람마다 박자가 다름(처음 간격 무작위). face: 'shut' 감은 채(쓰러짐), 'wide' 크게(받힘·놀람). lid(0..1) 를 주면 그대로 (확인용)
   const eye = { next: BLINK.gapMin + Math.random() * (BLINK.gapMax - BLINK.gapMin), t: -1, again: false, lid: 0, wide: 0, far: false };
@@ -478,6 +478,12 @@ export function buildRunner(opts = {}) {
     } else if (pose === 'wave') {
       armR.rotation.set(0, 0, -2.25 + Math.sin(t * 12) * 0.35);
       head.rotation.z = Math.sin(t * 3) * 0.08;
+    } else if (pose === 'cheer') { // 더미를 다 치우고 기뻐함 (#65): 두 팔을 번쩍, 통통 두 번
+      const k = Math.min(1, t * 7), hop = Math.abs(Math.sin(Math.min(t, 0.9) * Math.PI * 2.2)) * (1 - Math.min(1, t / 1.1));
+      hips.position.y = HIP + hop * 0.16;
+      armL.rotation.set(-2.7 * k + Math.sin(t * 14) * 0.18, 0, 0.45 * k); armR.rotation.set(-2.7 * k - Math.sin(t * 14) * 0.18, 0, -0.45 * k);
+      legL.rotation.set(-hop * 0.4, 0, 0.06); legR.rotation.set(-hop * 0.4, 0, -0.06);
+      head.rotation.x = -0.18 * k; torso.rotation.x = -0.06 * k;
     } else if (pose === 'sit') {
       hips.position.y = 0.5;
       legL.rotation.set(-1.45, 0, 0.08); legR.rotation.set(-1.45, 0, -0.08);
