@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, DUMP, STONE } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, DUMP, STONE, HAIR } from './balance.js';
 import { createStone, stoneSite } from './stone.js';
 import { createBuff } from './buff.js';
 import { FOOD_SVG, BUFF_ICON, FORK_KNIFE, buffText } from './stoneicons.js';
@@ -29,7 +29,7 @@ import { useDonnaeko, buildDonnaekoDecor } from './donnaeko.js';
 import { useGate, buildGateDecor } from './gate.js';
 import { createTutorial } from './tutorial.js';
 import { createLamps } from './lamps.js';
-import { buildRunner, THROW, OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemKey, itemPrice } from './runner.js';
+import { buildRunner, THROW, OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemKey, itemPrice, SKIN_TONES } from './runner.js';
 import { Sound } from './audio.js';
 import { createNet } from './net.js';
 import { createLife } from './life.js';
@@ -80,6 +80,15 @@ let holdBow = false; // 귤 활을 손에 들고 있음 (#38): 쏘면 활, 줍�
 let holdRod = false; // 낚시하는 동안 손 도구를 숨김 (#44, 낚싯대는 fishing.js 가 따로 그림)
 const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip) }; if (holdBow) save.outfit.gear.hand = 'hand:bow'; if (holdRod) save.outfit.gear.hand = 'hand:none'; };
 syncEquipGear();
+// 캐릭터 고르기 (#51): save.look = { sex: 'm'|'f', skin: 0~2 }. 없으면 입장 뒤 튜토리얼보다 먼저 고르기 화면. save.hairs = 가진 머리(hat 칸 장비)
+const lookS = { open: false, t: 0, sex: 'm', skin: 0, oldPlayer: !freshSave && !save.look }; // 예전부터 하던 사람은 쓰던 초록 모자도 가짐
+if (!save.hairs || typeof save.hairs !== 'object') save.hairs = {};
+if (save.look && typeof save.look === 'object') {
+  save.look.sex = save.look.sex === 'f' ? 'f' : 'm'; save.look.skin = Math.max(0, Math.min(SKIN_TONES.length - 1, Math.floor(Number(save.look.skin)) || 0));
+  save.hairs[HAIR.start[save.look.sex]] = 1;
+  if (!save.hairs[save.outfit.gear.hat]) save.outfit.gear.hat = HAIR.start[save.look.sex]; // 안 가진 머리를 쓰고 있으면 기본 머리로
+  save.outfit.skin = { color: SKIN_TONES[save.look.skin] };
+} else delete save.look;
 if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
 save.recycle.gyul = Math.max(0, Math.floor(Number(save.recycle.gyul) || 0)); // 클린하우스에서 번 귤 누적
@@ -440,7 +449,7 @@ function updateStats() {
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'stone'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
-const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
+const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
 function cancelAll() {
   closePanels();
@@ -1208,7 +1217,7 @@ const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
 const canPick = () => !!trash && !player.riding && !player.air && trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom());
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 들머리 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
-const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air || !!player.rescue || hp.isDown || hp.pending;
+const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air || !!player.rescue || hp.isDown || hp.pending;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
@@ -1607,6 +1616,7 @@ function buildShop() {
   $('shop-coins').textContent = String(save.coins);
   document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)); if (GEAR_ROWS[b.dataset.tab]?.battle) b.hidden = !isBattle(); });
   if (GEAR_ROWS[shopTab]) { buildGearShop(body, shopTab); return; }
+  buildHairShop(body);
   for (const [part, opt] of Object.entries(OUTFIT_OPTIONS)) {
     const row = document.createElement('div'); row.className = 'w-row';
     const h = document.createElement('div'); h.className = 'w-label'; h.textContent = opt.label; row.append(h);
@@ -1633,6 +1643,69 @@ function buildShop() {
     (opt.colors || []).forEach(([c, pr]) => add('c', c, '색상', pr, true));
     if (grid.children.length) { row.append(grid); body.append(row); }
   }
+}
+// ---------- 캐릭터 고르기·머리 (#51) ----------
+const HEAD_SVG = (key, skin = SKIN_TONES[0]) => { // 머리 그림 (상점·고르기 화면)
+  const hair = '#2b2724', face = `<circle cx="20" cy="22" r="11" fill="${skin}"/><circle cx="16" cy="23" r="1.6" fill="#2b2724"/><circle cx="24" cy="23" r="1.6" fill="#2b2724"/>`;
+  const H = {
+    'hat:short': `${face}<path d="M8.5 21c0-8 5-12 11.5-12S31.5 13 31.5 21c-2-3-5-5-9-5-3 0-5 1-7 3-2-1-4 0-7 2z" fill="${hair}"/>`,
+    'hat:bob': `<path d="M7.5 30V20c0-8 5.5-12 12.5-12s12.5 4 12.5 12v10h-5V21H12.5v9z" fill="${hair}"/>${face}<path d="M8.5 20c0-7 5-11 11.5-11s11.5 4 11.5 11c-4-1-7-2-11.5-2s-7.5 1-11.5 2z" fill="${hair}"/>`,
+    'hat:bun': `<circle cx="20" cy="6.5" r="4.5" fill="${hair}"/>${face}<path d="M8.5 21c0-8 5-11.5 11.5-11.5S31.5 13 31.5 21c-3-2-6-3-11.5-3s-8.5 1-11.5 3z" fill="${hair}"/>`,
+    'hat:cap': `${face}<path d="M8.5 19c0-7 5-10.5 11.5-10.5S31.5 12 31.5 19z" fill="#5c9a3c"/><path d="M27 18.5h8c0 1.5-1 2.5-3 2.5h-5z" fill="#4a8030"/>`,
+  };
+  return `<svg viewBox="0 0 40 40" aria-hidden="true">${H[key] || ''}</svg>`;
+};
+const HAIR_LABEL = { 'hat:short': '짧은 머리', 'hat:bob': '단발', 'hat:bun': '똥머리', 'hat:cap': '초록 모자' };
+const wearHair = (key) => { save.outfit.gear = { ...(save.outfit.gear || {}), hat: key }; runner.apply(save.outfit); persist(); net.send(true); };
+function buyHair(key) {
+  const price = HAIR.price[key]; if (price == null) return false;
+  if (save.hairs[key]) { wearHair(key); buildShop(); return true; }
+  if (save.coins < price) { toast(`귤이 ${price - save.coins}개 모자라요`); return false; }
+  const from = save.coins; save.coins -= price; save.hairs[key] = 1; wearHair(key); updateStats(); sound.coin?.();
+  buildShop(); const cell = document.querySelector(`#shop-body .hair-item[data-k="${key}"]`); if (cell) { cell.classList.add('tier-pop'); spendFx(cell, price, from); }
+  toast(`${HAIR_LABEL[key]} · 바로 바꿨어요`); return true;
+}
+// 상점 옷 탭 맨 위: 머리 줄. 쓰고 있는 것 체크, 가진 것은 눌러서 바꿔 쓰기, 없는 것은 값
+function buildHairShop(body) {
+  if (!save.look) return;
+  const row = document.createElement('div'); row.className = 'w-row';
+  const grid = document.createElement('div'); grid.className = 'hair-grid';
+  const skin = SKIN_TONES[save.look.skin] || SKIN_TONES[0], cur = save.outfit.gear?.hat;
+  Object.keys(HAIR.price).forEach((key) => {
+    const has = !!save.hairs[key], on = cur === key;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'hair-item' + (on ? ' on' : '') + (has ? ' has' : ''); b.dataset.k = key;
+    b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', `${HAIR_LABEL[key]}${has ? '' : ` 귤 ${HAIR.price[key]}`}`); b.title = HAIR_LABEL[key];
+    b.innerHTML = HEAD_SVG(key, skin) + (on ? `<i class="st">${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></i>` : '') + (has ? '' : `<span class="pr${save.coins < HAIR.price[key] ? ' short' : ''}"><i class="g"></i>${HAIR.price[key]}</span>`);
+    b.addEventListener('click', () => buyHair(key));
+    grid.append(b);
+  });
+  row.append(grid); body.append(row);
+}
+// 고르기 화면: 성별(기본 머리) 둘 + 피부색 셋 + 확인. 고르면 바로 캐릭터에 입혀 보임
+function lookPreview() {
+  const of = { ...save.outfit, skin: { color: SKIN_TONES[lookS.skin] }, gear: { ...(save.outfit.gear || {}), hat: HAIR.start[lookS.sex] } };
+  runner.apply(of);
+  document.querySelectorAll('#look [data-sex]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.sex === lookS.sex)); b.innerHTML = HEAD_SVG(HAIR.start[b.dataset.sex], SKIN_TONES[lookS.skin]); });
+  document.querySelectorAll('#look [data-skin]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.skin === lookS.skin)));
+}
+function openLook() {
+  if (lookS.open) return;
+  cancelAll(); player.target = null; marker.visible = false;
+  lookS.open = true; lookS.t = 0; lookS.sex = save.look?.sex || 'm'; lookS.skin = save.look?.skin || 0;
+  cam.mode = 'look'; $('look').hidden = false; document.body.classList.add('looking'); lookPreview();
+}
+function closeLook() {
+  save.look = { sex: lookS.sex, skin: lookS.skin };
+  const start = HAIR.start[lookS.sex]; save.hairs[start] = 1; if (lookS.oldPlayer) save.hairs['hat:cap'] = 1;
+  save.outfit.skin = { color: SKIN_TONES[lookS.skin] }; save.outfit.gear = { ...(save.outfit.gear || {}), hat: start };
+  lookS.open = false; $('look').hidden = true; document.body.classList.remove('looking'); cam.mode = 'follow';
+  runner.apply(save.outfit); persist(); net.send(true); followCam(0, true);
+}
+{
+  const sx = $('look-sex'), sk = $('look-skin');
+  ['m', 'f'].forEach((v) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.sex = v; b.setAttribute('aria-label', v === 'm' ? '기본 남성 · 짧은 머리' : '기본 여성 · 단발'); b.addEventListener('click', () => { lookS.sex = v; lookPreview(); }); sx.append(b); });
+  SKIN_TONES.forEach((c, i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.skin = i; b.style.background = c; b.setAttribute('aria-label', ['밝은 피부', '중간 피부', '어두운 피부'][i]); b.addEventListener('click', () => { lookS.skin = i; lookPreview(); }); sk.append(b); });
+  $('look-ok').addEventListener('click', closeLook);
 }
 let camBefore = null;
 function buildWardrobe() {
@@ -1912,12 +1985,13 @@ function enter(withSound) {
   canvas.focus({ preventScroll: true });
   $('intro').hidden = true; $('intro-help').hidden = true;
   if (!save.entered) { save.entered = 1; persist(); awe = 5; cam.dist = 30; cam.pitch = 0.35; $('intro-help').hidden = false; }
+  if (!save.look) openLook();
 }
 $('enter-sound').addEventListener('click', () => enter(true));
 $('enter-quiet').addEventListener('click', () => enter(false));
 document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
-if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
+if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (!save.look) openLook(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
 if (prevMap && prevMap !== MAP_ID && prevMap !== 'gate' && MAP_ID !== 'gate') ach.emit('visit-other');
 if (Object.keys(ach.state.visited).length >= 2 && !ach.state.badges['b-both']) ach.emit('visit-both');
 
@@ -2122,7 +2196,7 @@ function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
-  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } if (STN) { STN.update(dt, lampNight); tickMeal(dt); tickStoneMark(); } buff.tick(); updateBuffUI(); devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } if (STN) { STN.update(dt, lampNight); tickMeal(dt); tickStoneMark(); } buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
@@ -2172,6 +2246,12 @@ function frame(now) {
     camTarget.look.copy(look);
     const d = narrow ? 10 : 4.6;
     camTarget.pos.set(look.x + Math.sin(yaw) * d, look.y + (narrow ? 2.2 : 0.5), look.z + Math.cos(yaw) * d);
+    ease(dt, false, 6);
+  } else if (cam.mode === 'look') { // 캐릭터 고르기 (#51): 캐릭터 둘레를 천천히 돎. 아래 카드에 가리지 않게 캐릭터를 화면 가운데 조금 위에
+    lookS.t += dt;
+    const narrow = innerWidth <= 600, look = player.pos.clone(); look.y += narrow ? 0.75 : 1.0;
+    const yaw = player.heading + lookS.t * HAIR.spin, d = narrow ? 7.2 : 6.2;
+    camTarget.look.copy(look); camTarget.pos.set(look.x + Math.sin(yaw) * d, look.y + 0.9, look.z + Math.cos(yaw) * d);
     ease(dt, false, 6);
   } else if (cam.mode === 'sit') {
     const tan = new THREE.Vector3(-benchOut.z, 0, benchOut.x);
@@ -2257,5 +2337,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat }), buyHair, buildHairShop }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

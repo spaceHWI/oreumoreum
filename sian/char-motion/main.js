@@ -1,7 +1,7 @@
 // 캐릭터 동작 확인 페이지: 경사면 위에서 걷기·달리기·포즈를 본다. node sian/char-motion/build.mjs → dist/char-motion.html
 import * as THREE from 'three';
 import '../../src/boot.js';
-import { buildRunner, DEFAULT_OUTFIT } from '../../src/runner.js';
+import { buildRunner, DEFAULT_OUTFIT, SKIN_TONES } from '../../src/runner.js';
 import { ACCESSORIES } from '../../src/gear.js';
 
 const q = new URLSearchParams(location.search);
@@ -25,8 +25,10 @@ const heightAt = (z) => z * state.slope;
 
 const runners = [];
 const wearAll = (r) => state.gear.split(',').filter((k) => ACCESSORIES[k]).forEach((k) => r.setGear(ACCESSORIES[k].slot, k));
-const add = (x, heading) => { const r = buildRunner(); r.apply(DEFAULT_OUTFIT); wearAll(r); scene.add(r.root); runners.push({ r, x, heading }); return r; };
-add(0, +(q.get('h') || 0)); // h=0 오르막을 향해, 3.14 내리막
+// ?skin=0|1|2 피부색 (#51)
+const OUT = { ...DEFAULT_OUTFIT, skin: { color: SKIN_TONES[+(q.get('skin') || 0)] || SKIN_TONES[0] } };
+const add = (x, heading) => { const r = buildRunner(); r.apply(OUT); wearAll(r); scene.add(r.root); runners.push({ r, x, heading }); return r; };
+add(+(q.get('x') || 0), +(q.get('h') || 0)); // h=0 오르막을 향해, 3.14 내리막
 if (!q.has('one')) { add(-2.2, Math.PI); add(2.2, Math.PI / 2); } // 내리막, 옆으로
 
 const view = q.get('view') || 'side';

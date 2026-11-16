@@ -85,17 +85,32 @@ function getModelGeo() {
   return (modelGeo = g);
 }
 const MODEL_DEFAULT = { hat: '#5c9a3c', shirt: '#e8d9b5', pants: '#8a6a3c', shoes: '#26262b' };
+// 피부색 3가지 (#51): 첫째가 텍스처에 구운 피부색(그대로). 나머지는 텍스처 피부를 이 색 비율로 곱함 (outfit.skin.color)
+export const SKIN_TONES = ['#e8bf99', '#c98a5e', '#8a5636'];
+const skinRatio = (c, out) => { const i = SKIN_TONES.indexOf(String(c || '').toLowerCase()); if (i <= 0) return out.set(1, 1, 1); const a = new THREE.Color(SKIN_TONES[0]), b = new THREE.Color(SKIN_TONES[i]); return out.set(b.r / a.r, b.g / a.g, b.b / a.b); };
+// 텍스처 피부(색상 0.074·채도 0.34·명도 0.91 근처)만 골라 cSkin 을 곱함. 재킷(색상 0.11)·머리카락·눈·양말은 빠짐. region: 몸에서 피부가 있는 곳
+const HSV_GLSL = 'vec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }';
+const skinGLSL = (hsv, region) => `{ float sk = smoothstep(0.035, 0.05, ${hsv}.x) * (1.0 - smoothstep(0.088, 0.098, ${hsv}.x)) * smoothstep(0.14, 0.2, ${hsv}.y) * (1.0 - smoothstep(0.5, 0.58, ${hsv}.y)) * smoothstep(0.62, 0.72, ${hsv}.z) * (${region});
+  diffuseColor.rgb *= mix(vec3(1.0), cSkin, sk); }`;
+// 머리 장비(#51)용 재질 패치: 피부색 + 몸과 같은 발광(텍스처 색 비율)
+const patchHead = (U) => (sh) => { sh.uniforms.cSkin = U.cSkin;
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 cSkin;\n' + HSV_GLSL)
+    .replace('#include <map_fragment>', `#include <map_fragment>
+    { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); ${skinGLSL('h', '1.0')} }`)
+    .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));'); };
 function buildModel() {
   const geo = getModelGeo();
-  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 } };
+  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 }, hideHead: { value: 0 }, cSkin: { value: new THREE.Vector3(1, 1, 1) } };
   // 남송이오름(새 그림체)에서는 3단 툰 명암
   const mat = NSMODE ? new THREE.MeshToonMaterial({ map: modelTex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: modelTex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   // 텍스처 색과 부위(기본 자세 위치)로 모자·상의·바지·신발을 가려 옷 색을 바꿈
   mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); patchDQS(sh);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack, noStrap;\nvec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack, noStrap, hideHead; uniform vec3 cSkin;\n' + HSV_GLSL)
       .replace('#include <map_fragment>', `#include <map_fragment>
       { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); float y = vRest.y; float ax = abs(vRest.x);
+        if (hideHead > 0.5 && y > 0.595) discard; // 머리 장비(#51)가 목 위를 덮음
+        ${skinGLSL('h', 'max(max(step(0.57, y), step(0.37, ax)), step(0.095, y) * step(y, 0.15))')}
         float green = smoothstep(0.2, 0.24, h.x) * (1.0 - smoothstep(0.42, 0.46, h.x)) * smoothstep(0.25, 0.4, h.y);
         float cream = smoothstep(0.07, 0.1, h.x) * (1.0 - smoothstep(0.17, 0.2, h.x)) * (1.0 - smoothstep(0.38, 0.46, h.y)) * smoothstep(0.55, 0.68, h.z);
         float olive = smoothstep(0.05, 0.08, h.x) * (1.0 - smoothstep(0.16, 0.2, h.x)) * smoothstep(0.35, 0.45, h.y) * (1.0 - smoothstep(0.6, 0.7, h.z));
@@ -143,14 +158,15 @@ function buildModel() {
         holder.add(obj);
       } else { obj = src; const j = JOINT[a.bone || 'chest']; obj.position.sub(new THREE.Vector3(...j)); bones[a.bone || 'chest'].add(obj); }
       obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+      if (a.skinTint) mats.forEach((m) => { m.onBeforeCompile = patchHead(U); });
       worn[slot].obj = obj; worn[slot].mats = mats;
     }
     // 감출 부분 다시 계산
     const hid = new Set(); Object.values(worn).forEach((w) => (ACCESSORIES[w.key]?.hide || []).forEach((h) => hid.add(h)));
-    U.hide.value.set(+hid.has('hat'), +hid.has('top'), +hid.has('bottom'), +hid.has('shoes')); U.hidePack.value = +hid.has('pack'); U.noStrap.value = +hid.has('straps');
+    U.hide.value.set(+hid.has('hat'), +hid.has('top'), +hid.has('bottom'), +hid.has('shoes')); U.hidePack.value = +hid.has('pack'); U.noStrap.value = +hid.has('straps'); U.hideHead.value = +hid.has('head');
   }
   const TINT = { hat: 'hat', pants: 'pants', shirt: 'shirt', shoes: 'shoes' };
-  const set = (of) => { const pick = (k, u, i) => { const c = of[k]?.color || MODEL_DEFAULT[k]; U[u].value.set(c); U.on.value.setComponent(i, c.toLowerCase() === MODEL_DEFAULT[k] ? 0 : 1); }; pick('hat', 'cHat', 0); pick('shirt', 'cShirt', 1); pick('pants', 'cPants', 2); pick('shoes', 'cShoes', 3);
+  const set = (of) => { const pick = (k, u, i) => { const c = of[k]?.color || MODEL_DEFAULT[k]; U[u].value.set(c); U.on.value.setComponent(i, c.toLowerCase() === MODEL_DEFAULT[k] ? 0 : 1); }; pick('hat', 'cHat', 0); pick('shirt', 'cShirt', 1); pick('pants', 'cPants', 2); pick('shoes', 'cShoes', 3); skinRatio(of.skin?.color, U.cSkin.value);
     const g = { ...DEFAULT_GEAR, ...(of.gear || {}) }; Object.entries(g).forEach(([slot, key]) => wear(slot, key));
     // 장비 색: tint 로 묶인 재질은 옷장 색을 따름 (기본색이면 장비 자체 색)
     Object.values(worn).forEach((w) => { const t = ACCESSORIES[w.key]?.tint || {}; w.mats.forEach((m) => { const part = TINT[t[m.userData.name]]; const c = part && of[part]?.color; m.color.set(c && c.toLowerCase() !== MODEL_DEFAULT[part] ? c : m.userData.def); m.emissive.copy(m.color).multiplyScalar(NSMODE ? 0.16 : 0.32); }); }); };
