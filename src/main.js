@@ -1220,6 +1220,7 @@ if (bloom) {
   syncBloomDeer();
   life.hooks.spawnBlock = (x, z) => bloom.isBloomed(trash.zoneAt(x, z));
 }
+if (trash) life.hooks.zoneAt = (x, z) => trash.zoneAt(x, z); // 구역별 몹 (#48): 플레이어가 있는 구역의 종류가 나옴
 // ---------- 클린하우스: 배낭 비우고 귤 받기 ----------
 // 귤·저장은 누르는 순간 한 번에 처리하고, 날아가는 쓰레기와 올라가는 숫자는 연출만 한다
 const dumpS = { list: [], t: 0, dur: 0, total: 0, shown: 0, el: null, sndT: 0 };

@@ -210,20 +210,26 @@ export const BOAR = {
   knockSpeed: 28, knockV: 11, // 튕겨 나가는 속도·떠오르는 속도 (예전 14·9, 거리 약 2배)
   rollT: 0.55, getUpT: 0.5, // 착지 뒤 구르는 시간·일어나는 시간 (이 동안 조작 못 함)
 };
-// 적 (#37): 쓰러뜨리지 않고 귤을 맞혀 쫓아냄. 전투 오름에서만. 새 종류는 여기에 한 줄 + src/enemies.js MODELS 에 모양
+// 적 (#37, 구역별 #48): 쓰러뜨리지 않고 귤을 맞혀 쫓아냄. 전투 오름에서만. 새 종류는 여기에 한 줄 + src/enemymodels.js 에 모양
 // hp 기운, walk·chase·flee 속도, dmg 받힐 때 플레이어 HP 피해(#36), reward 쫓아냈을 때 귤 개수·드문 쓰레기 확률
 // sight 이 거리 안에 플레이어가 보이면 돌진, lose 이보다 멀어지면 그만둠, life 안 쫓아내면 스스로 떠나는 시간(초)
-// rootEvery 땅 헤집는 간격(초), rootT 헤집는 시간, rootTrash 흘리는 쓰레기 수, size 판정·충돌 크기 배율
-// 다음 후보: 들개, 아기 멧돼지, 쓰레기 투기 트럭, 외계인
+// rootEvery 땅 헤집는 간격(초), rootT 헤집는 시간, rootTrash 흘리는 쓰레기 수(가까운 더미에 더함), size 판정·충돌 크기 배율
+// ranged: 멀리서 쏘는 적. keep 이 거리를 지키며 every 초마다 광선, range 쏘는 거리, speed 광선 속도, r 맞는 반경
 export const ENEMIES = {
-  boar: { name: '멧돼지', hp: 6, walk: 2.4, chase: 7.2, flee: 9, dmg: 25, reward: { gyul: 10, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.8, chase: 4.6, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
+  dog: { name: '들개', hp: 6, walk: 3.0, chase: 9.5, flee: 11, dmg: 15, reward: { gyul: 10, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
+  boar: { name: '멧돼지', hp: 12, walk: 2.4, chase: 7.2, flee: 9, dmg: 25, reward: { gyul: 20, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+  rabid: { name: '광견병 걸린 들개', hp: 20, walk: 3.6, chase: 12, flee: 12, dmg: 30, reward: { gyul: 35, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
+  alien: { name: '외계인', hp: 40, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 60, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 2.6, speed: 15, r: 1.0 } },
 };
 export const ENEMY_SPAWN = {
-  every: 240, first: 240, // 4분마다 한 무리 (들어온 뒤 첫 무리도 4분 뒤)
+  every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤)
   group: [2, 3], // 한 무리 마릿수
-  r: [40, 70], // 플레이어에서 이 거리 사이 (오름 안)
+  r: [26, 60], // 플레이어에서 이 거리 사이, 플레이어가 있는 구역 안 (없으면 가까운 곳 near)
+  near: [12, 26],
   max: 4, // 동시에 최대
-  kinds: ['boar'], // 나올 수 있는 종류
+  byZone: { 1: 'piglet', 2: 'dog', 3: 'boar', 4: 'rabid', 5: 'alien' }, // 구역별 몹 (#48). 들머리(0)·다 핀 구역에는 안 나옴
+  kinds: ['boar'], // 구역이 없는 맵에서 나올 수 있는 종류
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
 };
