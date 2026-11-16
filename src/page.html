@@ -336,6 +336,10 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 #btn-ctx.idle, #btn-ctx.soft, #btn-pick.dim { background: var(--glass); color: var(--ink-soft); border: 1px solid var(--hair); box-shadow: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 #btn-ctx.soft { color: #fff; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 6px 18px rgba(255,138,31,.45), 0 0 0 0 rgba(255,138,31,0); } 50% { box-shadow: 0 6px 18px rgba(255,138,31,.45), 0 0 0 7px rgba(255,138,31,.25); } }
+/* 낚시 (#44): 찌가 쑥 들어간 동안 상호작용 버튼이 크게 두근거림 */
+#btn-ctx.bite { animation: ctxBite .28s ease-in-out infinite alternate; }
+@keyframes ctxBite { from { transform: scale(1); box-shadow: 0 6px 18px rgba(255,138,31,.45), 0 0 0 0 rgba(255,255,255,.0); } to { transform: scale(1.12); box-shadow: 0 6px 18px rgba(255,138,31,.6), 0 0 0 9px rgba(255,255,255,.35); } }
+@media (prefers-reduced-motion: reduce) { #btn-ctx.bite { animation: none; outline: 4px solid #fff; } }
 #btn-speed[data-g="1"] { background: rgba(255,138,31,.28); color: #fff; }
 #btn-speed[data-g="2"] { background: var(--acc); color: var(--acc-fg); }
 #btn-speed svg.st { display: none; position: absolute; inset: -4px; width: auto; height: auto; transform: rotate(-90deg); pointer-events: none; }
@@ -492,6 +496,8 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .dex-cell b { font-weight: 600; font-size: 12px; line-height: 1.25; word-break: keep-all; }
 .dex-cell small { font-size: 11px; opacity: .65; }
 .dex-cell.rare { background: rgba(255,138,31,.16); }
+.dex-sec { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; opacity: .8; margin-top: 6px; }
+.dex-sec::after { content: ''; flex: 1; height: 1px; background: currentColor; opacity: .3; }
 .dex-cell.locked .dex-ic svg { filter: brightness(0); opacity: .55; }
 .dex-cell.locked b { opacity: .5; }
 

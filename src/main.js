@@ -3,9 +3,10 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH } from './balance.js';
 import { createHp } from './hp.js';
 import { createStream } from './stream.js';
+import { createFishing } from './fishing.js';
 import { streamCross } from './streamshape.js';
 import { createCollide } from './collide.js';
 import { equipGear, TOOL_GEAR } from './gear.js';
@@ -54,7 +55,7 @@ const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 �
 save.nick ||= `${pick(ADJ)} ${pick(NOUN)}`;
 save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit || {}) };
 if (!save.hatBackV) { save.outfit.hat.back = true; save.hatBackV = 1; }
-if (!save.nsV3) { save.tut = { step: 0, done: false }; if (save.trash) save.trash.tp = []; save.nsV1 = save.nsV2 = save.nsV3 = 1; save.jeong = 0; } // 새 튜토리얼(#31): 기존 유저도 한 번 다시 봄
+if (!save.nsV3) { save.tut = { step: 0, done: false, v: 2 }; if (save.trash) save.trash.tp = []; save.nsV1 = save.nsV2 = save.nsV3 = 1; save.jeong = 0; } // 새 튜토리얼(#31): 기존 유저도 한 번 다시 봄
 if (!save.styleV5) { save.outfit.hat.color = '#5c9a3c'; save.outfit.shirt.color = '#e8d9b5'; save.outfit.pants.color = '#8a6a3c'; save.outfit.shoes.color = '#26262b'; save.styleV5 = 1; } // 모델 캐릭터 기본 색으로 한 번만 초기화
 if (!save.styleV2) { save.outfit.hat.type = 'none'; save.outfit.glasses.type = 'none'; save.styleV2 = 1; } // 똥머리가 보이게 한 번만 초기화 save.outfit.shirt.type ||= 'tee'; save.outfit.shoes.type ||= 'road';
 save.totalSteps ||= 0;
@@ -69,7 +70,8 @@ save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.b
 for (const k of ['tool', 'bag', 'shoes']) { const lo = k === 'bag' ? 0 : 1, v = Math.floor(Number(save.equip[k])); save.equip[k] = Math.max(lo, Math.min(5, Number.isFinite(v) ? v : 1)); } // 장비 단계 (상점에서 다음 단계만 삼)
 // 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감
 let holdBow = false; // 귤 활을 손에 들고 있음 (#38): 쏘면 활, 줍기 누르면 다시 도구
-const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip) }; if (holdBow) save.outfit.gear.hand = 'hand:bow'; };
+let holdRod = false; // 낚시하는 동안 손 도구를 숨김 (#44, 낚싯대는 fishing.js 가 따로 그림)
+const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip) }; if (holdBow) save.outfit.gear.hand = 'hand:bow'; if (holdRod) save.outfit.gear.hand = 'hand:none'; };
 syncEquipGear();
 if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
@@ -516,13 +518,14 @@ function buildDex() {
   if (!trash) return;
   const dx = trash.store.dex, got = DEX_LIST.filter((d) => dx[d.id] > 0).length;
   $('dex-count').textContent = `${got} / ${DEX_LIST.length}`;
-  const g = $('dex-grid'); g.innerHTML = '';
+  const g = $('dex-grid'); g.innerHTML = ''; let sec = '';
   DEX_LIST.forEach((d) => {
+    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : ''; g.append(h); } // 개울 칸 (#44)
     const n = dx[d.id] || 0, el = document.createElement('div'); el.className = 'dex-cell' + (n ? '' : ' locked') + (d.rare ? ' rare' : '');
     el.dataset.id = d.id;
     const ic = document.createElement('span'); ic.className = 'dex-ic'; ic.innerHTML = iconSvg(dexIcon(d));
     const nm = document.createElement('b'); nm.textContent = n ? d.name : '???';
-    const sm = document.createElement('small'); sm.textContent = n ? `${n.toLocaleString('ko-KR')}개` : (d.rare ? '드문 것' : '');
+    const sm = document.createElement('small'); sm.textContent = n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
     el.append(ic, nm, sm); g.append(el);
   });
 }
@@ -1084,6 +1087,8 @@ const interactables = [
   ...(chAct ? [chAct, shopAct] : []),
 ];
 let ctxTarget = null, handAct = null, deerAct = null;
+let fishing = null; // 낚시 (#44) — 아래 튜토리얼 만든 뒤에 만듦
+const fishAct = { get label() { return fishing.label; }, get ic() { return fishing.ic; }, act: () => fishing.press() };
 const dismountAct = { label: '노루에서 내리기', ic: 'down', act: () => dismountDeer() };
 const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
 // 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
@@ -1312,9 +1317,11 @@ function updateContext() {
         best = handAct;
       }
     }
+    if (fishing && (fishing.active || (!best && fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
     if (!best) best = throwAct; // 할 일이 없으면 귤 던지기
   }
   if (best !== ctxTarget) { ctxTarget = best; ui.ctx.classList.toggle('idle', !best); ui.ctx.classList.toggle('soft', best === throwAct); }
+  { const bite = best === fishAct && fishing.phase === 'bite'; if (ui.ctx.classList.contains('bite') !== bite) ui.ctx.classList.toggle('bite', bite); }
   let label = '상호작용';
   if (best) label = best.cairn ? ((social.stones.get(best.cairn.id) || []).some((e) => e.mine) ? '소원 보기' : '돌 올리기') : best.label;
   const span = ui.ctx.querySelector('span');
@@ -1341,6 +1348,8 @@ const CTX_ICON = {
   hand: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 8v6l-2 7M17 8v6l2 7M7 10h10"/>',
   stand: '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v7M12 14l-2.5 7M12 14l2.5 7M9 10l3-2 3 2M19 12V5M16.5 7.5L19 5l2.5 2.5"/>',
   down: '<path d="M12 4v13M6 11l6 6 6-6M5 21h14"/>',
+  fish: '<path d="M3 21L18 3M18 3v11a3 3 0 0 1-6 0"/><circle cx="12" cy="11" r="1.2"/><path d="M4 17c2 1 4 1 6 0"/>',
+  reel: '<circle cx="9" cy="15" r="5.5"/><circle cx="9" cy="15" r="1.3"/><path d="M14.5 15H18v3M18 2v8M15 5l3-3 3 3"/>',
 };
 
 // ---------- 상점·옷장 ----------
@@ -1809,6 +1818,7 @@ function updatePlayer(dt) {
     }
   }
   p.driving = !!dir;
+  if (dir && fishing?.active) fishing.stop(); // 움직이면 낚시를 그만둠 (#44)
   // 손잡고 있을 때: 움직이는 쪽이 끌고, 가만히 있는 쪽은 옆에 붙어 따라감
   const partner = net.hand.with && net.peersById.get(net.hand.with);
   if (partner && !busy() && !p.riding) {
@@ -1974,7 +1984,8 @@ function frame(now) {
   const pose = player.flail ? 'flail' : player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
-  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time });
+  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4 });
+  fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);
   cairns.forEach((c) => { if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
@@ -2044,6 +2055,24 @@ const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLef
 const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH, onDone: () => updateTrashUI(false) });
 if (NS_TUT && tut.active) { document.body.classList.add('tut'); hideHint(); }
 else if (!NS_TUT && save.tut && !save.tut.done) { save.tut.done = true; persist(); }
+// ---------- 낚시 (#44) ----------
+// 보상은 F 로 당기는 순간: 물고기 = 귤 5 + 도감 '개울' 칸, 쓰레기 = 호주머니·배낭(클린하우스에서 귤), 드문 것 = 배낭 + 도감(드문 것 귤)
+fishing = createFishing({ scene, stream, player, runner, groundAt, height, sound, toast,
+  room: () => bagRoom(),
+  setHoldRod: (v) => { if (holdRod === v) return; holdRod = v; if (v) holdBow = false; syncEquipGear(); runner.apply(save.outfit); net.send(true); },
+  reward: (c, at) => {
+    if (c.type === 'fish') {
+      const sp = FISH.species[c.i], dx = DEX_LIST.find((d) => d.id === `fish:${c.i}`);
+      if (trash && dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
+      addCoins(FISH.fishGyul); ach.emit('earn', FISH.fishGyul); setTimeout(() => coinFx(at.clone().setY(at.y + 1.2), FISH.fishGyul), FISH.pullT * 1000);
+      ach.emit('fish'); ach.emit('fish-' + sp.id);
+    } else if (trash) {
+      const kind = c.type === 'trash' ? c.t.kind : c.kind;
+      if (trash.addToBag(kind, bagCap())) setTimeout(() => updateTrashUI(true), (FISH.pullT + FISH.stowT) * 1000);
+      if (c.type === 'rare') { const dx = DEX_LIST.find((d) => d.rare && d.name === c.name); if (dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); } }
+      ach.emit('fish'); ach.emit('fish-' + (c.type === 'trash' ? c.t.id : 'rare'));
+    }
+  } });
 // ---------- 개발용 라벨 ----------
 const up = (y) => (p) => p && p.clone().setY((p.y || 0) + y);
 const devLabels = createDevLabels({ camera, world: () => {
@@ -2075,5 +2104,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

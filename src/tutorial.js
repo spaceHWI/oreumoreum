@@ -1,6 +1,7 @@
 // 들머리 튜토리얼 (#31). 글자 없이 그림 힌트 카드(숫자·키 이름만)와 바닥의 빛나는 원으로 이끈다.
-// 걷기 → 달리기 → 점프(징검다리) → 쓰레기 6개 줍기(호주머니) → 클린하우스에 버리기 → 첫 보너스 귤 → 집게 → 배낭 → 정낭 지나 오름으로
+// 걷기 → 달리기 → (돌다리를 건너) 쓰레기 6개 줍기(호주머니) → 클린하우스에 버리기 → 첫 보너스 귤 → 집게 → 배낭 → 정낭 지나 오름으로
 // UI 는 쓸 차례에 하나씩(data-tut). 건너뛰기 버튼을 누르면 정낭이 열리고 UI 가 전부 나온다. 저장 save.tut (main.js 의 save.nsV3 에서 초기화)
+// #44: 점프 단계를 뺌(점프 버튼은 달리기 단계에 같이 나옴). 예전 저장(save.tut.v 없음)의 단계 번호는 하나씩 당김
 import * as THREE from 'three';
 import { TUT } from './balance.js';
 
@@ -15,7 +16,6 @@ const runner = (x, y) => `<g transform="translate(${x} ${y})" fill="none" ${SW}>
 const RUNI = '<circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2 1-5.5L17 15h3M9 11l2.5-3.5 4 1.5 2 3M5 12l3-1"/>';
 const HAND = '<path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2 7-6 7s-6-3-6-6l-1-3a1.4 1.4 0 0 1 2.5-1L8 13"/>';
 const can = (x, y) => `<rect x="${x}" y="${y}" width="16" height="22" rx="4" fill="#d9eef5" ${SW}/><path d="M${x + 3} ${y + 7} h10" stroke="#3c7fc9" stroke-width="3"/>`;
-const stones = '<path d="M4 76 q32 -7 66 0 q34 7 66 0" fill="none" stroke="#7cc4d4" stroke-width="5" stroke-linecap="round"/><ellipse cx="34" cy="72" rx="11" ry="4.5" fill="#8a857c" stroke="#fff" stroke-width="2.5"/><ellipse cx="70" cy="72" rx="11" ry="4.5" fill="#8a857c" stroke="#fff" stroke-width="2.5"/><ellipse cx="106" cy="72" rx="11" ry="4.5" fill="#8a857c" stroke="#fff" stroke-width="2.5"/>';
 const house = (x, y) => `<g transform="translate(${x} ${y})"><path d="M0 34 v-22 l20 -12 l20 12 v22z" fill="#3c7fc9" ${SW}/><rect x="6" y="18" width="8" height="16" fill="#c9473d" stroke="#fff" stroke-width="2"/><rect x="16" y="18" width="8" height="16" fill="#e8c13a" stroke="#fff" stroke-width="2"/><rect x="26" y="18" width="8" height="16" fill="#3f9a5a" stroke="#fff" stroke-width="2"/></g>`;
 const pocket = (x, y, full) => `<g transform="translate(${x} ${y})"><path d="M0 0 h30 v20 q0 14 -15 14 q-15 0 -15 -14z" fill="rgba(255,255,255,.16)" ${SW}/><path d="M0 7 h30" ${SW} fill="none"/>${full ? `<rect x="6" y="-8" width="7" height="12" rx="2" fill="#d9eef5" stroke="#fff" stroke-width="2"/><rect x="16" y="-10" width="7" height="13" rx="2" fill="#a8d0f0" stroke="#fff" stroke-width="2"/>` : ''}</g>`;
 const arrow = (x, y, cls = 'bob-x') => `<path class="${cls}" d="M${x} ${y} h20 M${x + 12} ${y - 8} l8 8 -8 8" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -30,8 +30,6 @@ const ICON = {
   joy: `<circle cx="70" cy="44" r="32" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="6 5"/><g class="bob-y"><circle cx="70" cy="34" r="14" fill="${O}" stroke="#fff" stroke-width="3"/><path d="M74 62 v-20 a5 5 0 0 1 10 0 v8 l6 1 q6 2 5 8 l-2 14 h-16 l-8 -9 a4 4 0 0 1 5 -6z" fill="rgba(255,255,255,.3)" ${SW}/></g>`,
   runKey: `${key(8, 30, 52, 'Shift', 14)}${runner(104, 78)}`,
   runBtn: `${btn(40, 44, RUNI)}${runner(104, 78)}`,
-  jumpKey: `${stones}${key(36, 6, 68, 'Space', 14)}<g class="hop">${walker(52, 66)}</g>`,
-  jumpBtn: `${stones}${btn(26, 22, '<path d="M12 19V5M6 11l6-6 6 6"/>')}<g class="hop">${walker(52, 66)}</g>`,
   pickKey: `${can(14, 52)}<g class="bob-y" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 14) scale(1.2)">${HAND}</g>${key(56, 30, 30, 'E')}${num(116, 52, 6, 26)}`,
   pickBtn: `${can(14, 52)}<g class="bob-y" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 14) scale(1.2)">${HAND}</g>${btn(72, 43, HAND)}${num(116, 52, 6, 26)}`,
   dump: `${pocket(12, 30, true)}${arrow(56, 50)}${house(92, 30)}`,
@@ -44,12 +42,13 @@ const svg = (inner) => `<svg viewBox="0 0 140 85" aria-hidden="true">${inner}</s
 export const TUT_ICONS = ICON; // 확인용
 
 export function createTutorial({ save, persist, player, isTouch, pts, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol, bagCap, tutTrashLeft, tutTrashNext, ch, onDone }) {
-  const S = (save.tut ||= { step: 0, done: false });
+  const S = (save.tut ||= { step: 0, done: false, v: 2 });
+  if (!S.v) { if (S.step > 2) S.step--; S.v = 2; persist(); } // 예전 순서(점프가 3번째)의 저장 → 새 순서
   const none = { update() {}, notify() {}, skipAll() {}, active: false };
   if (!pts || !pts.walk || !stream || !jeong) { return none; }
-  const steps = ['walk', 'run', 'jump', 'pick', 'dump', 'bonus', 'tongs', 'bag', 'gate'];
+  const steps = ['walk', 'run', 'pick', 'dump', 'bonus', 'tongs', 'bag', 'gate'];
   // 단계마다 새로 나오는 UI. 줍기 버튼(E)은 pick, 상호작용 버튼(F)은 클린하우스에 버릴 때(dump)부터 (#34)
-  const UNLOCK = { walk: ['move'], run: ['speed'], jump: ['jump'], pick: ['pick', 'bag'], dump: ['interact'], bonus: ['gyul'] };
+  const UNLOCK = { walk: ['move'], run: ['speed', 'jump'], pick: ['pick', 'bag'], dump: ['interact'], bonus: ['gyul'] };
   const card = document.createElement('div'); card.id = 'tut-hint'; card.hidden = true; document.body.append(card);
   const arrowEl = document.createElement('div'); arrowEl.id = 'tut-arrow'; arrowEl.className = 'panel round'; arrowEl.hidden = true; arrowEl.innerHTML = '<i class="dot"></i><i class="tip"></i>'; document.body.append(arrowEl);
   const skip = document.createElement('button'); skip.type = 'button'; skip.id = 'tut-skip'; skip.className = 'panel round'; skip.title = '튜토리얼 건너뛰기'; skip.setAttribute('aria-label', '튜토리얼 건너뛰기');
@@ -84,7 +83,6 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
     for (const st of steps.slice(0, steps.indexOf(name) + 1)) for (const u of UNLOCK[st] || []) unlock(u);
     if (name === 'walk') { show(phone() ? 'joy' : 'keys'); target(pts.walk); }
     if (name === 'run') { show(phone() ? 'runBtn' : 'runKey'); target(pts.run); }
-    if (name === 'jump') { show(phone() ? 'jumpBtn' : 'jumpKey'); target(pts.farBank, 2.6); }
     if (name === 'pick') { show(phone() ? 'pickBtn' : 'pickKey'); target(tutTrashNext(), 1.2); }
     if (name === 'dump') { show('dump'); target(ch?.front, 2.4); }
     if (name === 'bonus') { show('bonus'); target(null); }
@@ -96,7 +94,6 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   const doneWhen = {
     walk: () => near(pts.walk, TUT.ringR),
     run: () => near(pts.run, TUT.ringR) && player.running,
-    jump: () => !player.rescue && stream.local(player.pos.x, player.pos.z)[0] > stream.W + 0.4,
     pick: () => tutTrashLeft() === 0 || bagVol() >= bagCap(),
     dump: () => counters.dump > 0,
     bonus: () => timer > (counters.bonus ? 3.6 : 0.4),

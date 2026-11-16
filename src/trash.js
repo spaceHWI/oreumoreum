@@ -4,11 +4,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, DEX } from './balance.js';
+import { TRASH_TYPES, TRASH, DEX, FISH } from './balance.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
 TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push({ id: `${t.id}:${i}`, kind: t.id, name, rare: false })); DEX.rare.filter((r) => r.kind === t.id).forEach((r, i) => DEX_LIST.push({ id: `${t.id}:r${i}`, kind: t.id, name: r.name, rare: true })); });
+// 개울 칸 (#44): 낚시로 잡는 물고기 3종 'fish:번호'. 쓰레기가 아니라 kind 'fish', sec 'stream'
+FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
 import { kstDate } from './achievements.js';
 
 const N = TRASH.total, NH = TRASH.heaps * TRASH.heapN, NS = N - NH; // 0..NS-1 흩어진 것, NS.. 더미 칸(더미 h 의 s번째 = NS + h*heapN + s)
@@ -254,5 +256,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     heaps: () => L.heaps.map((h, k) => ({ x: h.x, z: h.z, left: heapLeft[k] })),
     drawn: () => meshes.reduce((s, m) => s + m.count, 0),
   };
-  return { update, any, candidates, take, drop, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, relayout, layout: () => L };
+  // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
+  function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
+  return { update, any, candidates, take, drop, addToBag, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, relayout, layout: () => L };
 }

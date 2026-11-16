@@ -1,12 +1,13 @@
-// 들머리 개울·징검다리·낚시하는 NPC (#31, #41).
+// 들머리 개울·돌다리·낚시하는 NPC (#31, #41, #44).
 // 개울은 돌담 밖 멀리에서 흘러와 들머리 길을 가로지르고 반대쪽 돌담 밖으로 흘러간다(모양은 streamshape.js, 수문은 stonewall.js).
 // 물은 lat + 쪽(시작 지점에서 오름을 볼 때 왼쪽 → 오른쪽)으로 흐른다: 잔물결·떠가는 나뭇잎.
-// 징검돌은 걷다가 뛰어도 닿는 간격. 물에 빠지면 허우적대며 하류로 떠내려가다 하류 쪽 물가 낚시꾼의 줄에 걸리고,
-// 낚시꾼이 놀라 낚싯대를 당겨 징검다리 건너기 전 자리에 내려놓는다. 튜토리얼이 끝나도 늘 그 자리.
+// 돌다리로 걸어서 건넌다(#44). 옆으로 벗어나 물에 빠지면 허우적대며 하류로 떠내려가다 하류 쪽 물가 낚시꾼의 줄에 걸리고,
+// 낚시꾼이 놀라 낚싯대를 당겨 다리 건너기 전 자리에 내려놓는다. 튜토리얼이 끝나도 늘 그 자리.
+// 플레이어 낚시(#44)는 fishing.js 가 여기의 물길 좌표·물보라를 씀
 // 좌표: 개울 가운데 c, 길 방향(오름 쪽) f, 개울 방향(하류) u. 점 = c + f*al + u*lat
 import * as THREE from 'three';
 import { gradHard } from './toon.js';
-import { TUT, STREAM as S } from './balance.js';
+import { TUT, STREAM as S, BRIDGE } from './balance.js';
 import { centerOff, halfW } from './streamshape.js';
 
 const sm = (k) => k * k * (3 - 2 * k);
@@ -21,7 +22,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
   const latA = walls[0] ?? -Math.hypot(line.a[0] - c.x, line.a[1] - c.z), latB = walls[1] ?? Math.hypot(line.b[0] - c.x, line.b[1] - c.z);
   const rnd = mulberry(4141);
 
-  /* 물길 띠: 줄(lat)마다 가로 칸. cols(w) = 가운데에서 잰 길 방향 거리들. 징검다리 둘레는 촘촘하게 */
+  /* 물길 띠: 줄(lat)마다 가로 칸. cols(w) = 가운데에서 잰 길 방향 거리들. 다리 둘레는 촘촘하게 */
   const lats = []; for (let l = -S.far; l <= S.far + 0.01;) { lats.push(l); l += Math.abs(l) < S.near + 10 ? 1.5 : 5; }
   function strip(cols, lift, color) {
     const pos = [], uv = [], col = [], idx = [], m = cols(1).length;
@@ -63,7 +64,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
   const water = new THREE.Mesh(strip((w) => [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1].map((s) => s * w), 0.09), wMat); water.renderOrder = 2; scene.add(water);
   const waterY = (x, z) => height(x, z) + 0.09;
 
-  /* 물가: 자갈·풀 (징검다리 둘레 S.near 안). 길이 지나는 곳과 낚시꾼 자리는 비움 */
+  /* 물가: 자갈·풀 (다리 둘레 S.near 안). 길이 지나는 곳과 낚시꾼 자리는 비움 */
   const fLat = 7.5;
   {
     const nP = low ? S.pebblesLow : S.pebbles, nR = low ? S.reedsLow : S.reeds;
@@ -111,19 +112,33 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
     leafIM.instanceMatrix.needsUpdate = true;
   }
 
-  /* 징검돌: 1.8배, 윗면 평평. 디딜 수 있는 범위(둥근 addWalkable)는 보이는 돌보다 조금 넓게 */
-  const stoneGeo = new THREE.CylinderGeometry(1, 1.12, 1, 11, 1).translate(0, -0.5, 0);
-  { const p = stoneGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z); if (r < 0.01) continue; const a = Math.atan2(z, x), k = 1 + 0.07 * Math.sin(3 * a + 1) + 0.05 * Math.sin(5 * a + 2); p.setXYZ(i, x * k, p.getY(i), z * k); } stoneGeo.computeVertexNormals(); }
+  /* 돌다리 (#44): 난간 없는 넓적한 현무암 판 몇 장을 길 방향으로 이어 놓음. 판마다 디딜 수 있는 네모(addWalkable)
+     양끝 판은 낮고 가운데로 갈수록 조금 높음. 옆으로 벗어나면 물(inWater)이라 빠짐 */
+  const B = BRIDGE, span = W + B.over, nS = B.slabs, slabL = (2 * span - (nS - 1) * B.gap) / nS;
+  const slabGeo = new THREE.BoxGeometry(1, 1, 1, 2, 1, 2).translate(0, -0.5, 0);
+  { const p = slabGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const k = 1 + 0.05 * Math.sin(x * 9 + z * 5) + 0.04 * Math.cos(z * 11 - x * 3); p.setXYZ(i, x * k, y + (y > -0.01 ? 0.02 * Math.sin(x * 13 + z * 7) : 0), z * (1 + 0.04 * Math.sin(x * 7))); } slabGeo.computeVertexNormals(); }
   const stoneMat = new THREE.MeshToonMaterial({ color: '#5d5952', gradientMap: gradHard });
-  const stones = [];
-  for (let i = 0; i < TUT.stones; i++) {
-    const al = (i - (TUT.stones - 1) / 2) * TUT.stoneGap, lat = Math.sin(i * 2.3) * 0.25, [x, z] = at(al, lat), y = height(x, z), rot = i * 1.7, top = y + TUT.stoneTop;
-    const m = new THREE.Mesh(stoneGeo, stoneMat); m.position.set(x, top, z); m.scale.set(TUT.stoneR, TUT.stoneTop + 0.38, TUT.stoneR * 0.93); m.rotation.y = rot;
+  const slabMats = [stoneMat, new THREE.MeshToonMaterial({ color: '#56534c', gradientMap: gradHard }), new THREE.MeshToonMaterial({ color: '#64605a', gradientMap: gradHard })];
+  const bridgeRot = Math.atan2(-fz, fx); // 판의 긴 쪽(로컬 x)을 길 방향(f)으로
+  const slabs = [];
+  for (let i = 0; i < nS; i++) {
+    const al = -span + slabL / 2 + i * (slabL + B.gap), mid = 1 - Math.abs(al) / span, lat = Math.sin(i * 2.3) * 0.06;
+    const [x, z] = at(al, lat), top = height(x, z) + B.endTop + (B.top - B.endTop) * Math.min(1, mid * 1.6), hz = B.halfW * (0.97 + 0.05 * Math.sin(i * 1.7));
+    const rot = bridgeRot + Math.sin(i * 3.1) * 0.025;
+    const m = new THREE.Mesh(slabGeo, slabMats[i % 3]); m.position.set(x, top, z); m.rotation.y = rot; m.scale.set(slabL, B.thick + (top - height(x, z)), hz * 2);
     m.castShadow = !low; m.receiveShadow = true; scene.add(m);
-    addWalkable(x, z, rot, TUT.stoneWalk, TUT.stoneWalk * 0.93, top, true); stones.push([x, z]);
+    addWalkable(x, z, rot, slabL / 2 + B.gap, hz, top); slabs.push({ x, z, top });
   }
+  // 판 이음매 밑 받침돌 (물속, 양옆)
+  for (let i = 1; i < nS; i++) for (const sd of [-1, 1]) {
+    const al = -span + i * (slabL + B.gap) - B.gap / 2; if (Math.abs(al) > W) continue;
+    const [x, z] = at(al, sd * (B.halfW - 0.25)), r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), stoneMat);
+    r.scale.set(1.1, 0.7, 0.9); r.rotation.y = i * 1.3 + sd; r.position.set(x, height(x, z) + 0.05, z); r.receiveShadow = true; scene.add(r);
+  }
+  const onBridge = (x, z) => { const [al, lat] = local(x, z); return Math.abs(al) < span && Math.abs(lat) < B.halfW + 0.1 && groundAt(x, z) - height(x, z) > 0.05; };
 
-  /* 낚시 NPC: 징검다리 하류 쪽, 들머리 둑의 바위에 앉아 개울을 봄 */
+  /* 낚시 NPC: 다리 하류 쪽, 들머리 둑의 바위에 앉아 개울을 봄 */
   const [nx, nz] = at(-W - 1.0, fLat), ny = height(nx, nz);
   const npc = buildRunner();
   npc.apply({ ...outfit, hat: { ...outfit.hat, color: '#5c9a3c' }, shirt: { ...outfit.shirt, color: '#6f93b8' }, pants: { ...outfit.pants, color: '#55574e' }, shoes: { ...outfit.shoes, color: '#3a3a40' }, gear: { hat: 'hat:straw', back: 'back:none', hand: 'hand:none' } });
@@ -157,10 +172,10 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
   const rings = []; for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.55, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false })); scene.add(m); rings.push({ m, t: 9 }); }
   let ringI = 0;
   const ring = (x, y, z, delay = 0) => { const r = rings[ringI++ % rings.length]; r.m.position.set(x, y + 0.02, z); r.t = -delay; };
-  function splash(x, y, z, big = 1) {
-    drops.forEach((d, i) => { const a = i / SP * Math.PI * 2 + Math.random(); d.m.position.set(x, y, z); d.v.set(Math.cos(a) * (1 + Math.random() * 2) * big, (3 + Math.random() * 3) * big, Math.sin(a) * (1 + Math.random() * 2) * big); d.t = 0; d.m.visible = true; });
+  function splash(x, y, z, big = 1, snd = true) {
+    drops.forEach((d, i) => { const a = i / SP * Math.PI * 2 + Math.random(); d.m.position.set(x, y, z); d.v.set(Math.cos(a) * (1 + Math.random() * 2) * big, (3 + Math.random() * 3) * Math.sqrt(big), Math.sin(a) * (1 + Math.random() * 2) * big); d.t = 0; d.m.visible = true; d.m.scale.setScalar(Math.min(1, 0.4 + big)); });
     ring(x, y, z); ring(x, y, z, 0.2);
-    sound?.splash?.();
+    if (snd) sound?.splash?.();
   }
 
   /* 빠짐 → 떠내려감 → 줄에 걸림 → 건져 올림 */
@@ -213,7 +228,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
       placeRod(rodRest.clone().lerp(rodUp, sm(k))); setLine(chest, 0.4 * (1 - k));
       npc.root.position.y = ny + Math.sin(k * Math.PI) * 0.3; npc.root.rotation.x = -0.25 * Math.sin(k * Math.PI);
       bang.position.set(nx, ny + 2.9 + k * 0.2, nz); bang.scale.setScalar(0.4 + 0.5 * Math.min(1, k * 3));
-    } else { // 포물선으로 끌어 올려 건너기 전 자리에 내려놓음
+    } else { // 포물선으로 끌어 올려 다리 건너기 전 자리에 내려놓음
       if (!R.reeled) { R.reeled = true; sound?.reel?.(TUT.rescueT); npc.root.position.y = ny; npc.root.rotation.x = 0; }
       const k = Math.min(1, (R.t - R.T3) / TUT.rescueT), e = k * (2 - k);
       p.pos.lerpVectors(R.from, R.to, e); p.pos.y = R.from.y + (R.to.y - R.from.y) * e;
@@ -226,5 +241,5 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
     }
     return true;
   }
-  return { update, local, splash, inWater, centerOff, halfW: hw, walls, npcPos: [nx, nz], get busy() { return !!res; }, get phase() { return res && (res.t < res.T1 ? 'sink' : res.t < res.T2 ? 'drift' : res.t < res.T3 ? 'catch' : 'reel'); }, stones, npc, W, near: (side, lat = 0) => at(side * (W + 1.6), lat), at };
+  return { update, local, splash, ring, waterY, inWater, onBridge, centerOff, halfW: hw, walls, npcPos: [nx, nz], get busy() { return !!res; }, get phase() { return res && (res.t < res.T1 ? 'sink' : res.t < res.T2 ? 'drift' : res.t < res.T3 ? 'catch' : 'reel'); }, slabs, bridge: { span, halfW: B.halfW }, npc, W, near: (side, lat = 0) => at(side * (W + 1.6), lat), at };
 }
