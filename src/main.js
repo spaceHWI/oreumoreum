@@ -48,6 +48,7 @@ import { createWeather, WX, wxIcon } from './weather.js';
 import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js';
 import { createAchievements, BADGES, kstDate } from './achievements.js';
 import { isBattle, serverId, setServerId, validServer, roomFor, createAbStats, SERVERS, SERVER_ART, SERVER_LABEL } from './server.js';
+import { initUiTips } from './uitips.js';
 
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -472,7 +473,8 @@ ui.hint.textContent = isTouch ? '왼쪽 아래 조이스틱으로 이동 · 화�
 let hintHidden = false;
 function hideHint() { if (hintHidden) return; hintHidden = true; ui.hint.classList.add('fade'); }
 let toastT = 0;
-function toast(msg) { ui.toast.textContent = msg; ui.toast.hidden = false; toastT = 2.8; }
+function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; toastT = sec; }
+initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () => (save.equip.bag === 0 ? '호주머니' : '배낭') } }); // #60 UI 누르면 토스트
 let lastCoins = -1;
 function updateStats() {
   ui.steps.textContent = player.steps.toLocaleString('ko-KR');
