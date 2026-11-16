@@ -50,6 +50,7 @@ import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js'
 import { createAchievements, BADGES, kstDate } from './achievements.js';
 import { isBattle, serverId, setServerId, validServer, roomFor, createAbStats, SERVERS, SERVER_ART, SERVER_LABEL } from './server.js';
 import { initUiTips } from './uitips.js';
+import { createTips, TIP, TIP_ICON } from './tips.js';
 
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -405,7 +406,7 @@ const shopsBuilt = street ? SHOPS.filter((sh) => STREET.lot(sh.lot) && SHOP_BUIL
 const STN = shopsBuilt.find((sh) => sh.id === 'stone')?.api || null; // 레스토랑 스톤 (#50)
 const SAL = shopsBuilt.find((sh) => sh.id === 'salon')?.api || null; // 루이네 미장원 (#58)
 const LEAPB = shopsBuilt.find((sh) => sh.id === 'leap')?.api || null; // LEAP (#59): 있으면 옷·신발은 여기서만 삼
-const buff = createBuff({ save, persist, onEnd: (m) => { if (m) toast('식사 버프가 끝났어요'); } });
+const buff = createBuff({ save, persist, onEnd: (m) => { if (m) { toast('식사 버프가 끝났어요'); tips.event('buffEnd'); } } });
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
 const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, rareMul: () => wearV('hat') }) : null; // 구역마다 쓰레기 더미 (#45)
 // 깨끗해진 구역에 꽃과 어린 나무 (#46): 풀 색·꽃·나무·나비·새, 다 핀 구역엔 노루가 돌아오고 몹이 나오지 않음
@@ -430,6 +431,7 @@ player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
 const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, enabled: () => isBattle() && sessionOn, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top'),
   el: { bar: $('hp-bar'), fill: $('hp-fill'), dim: $('hp-dim'), wait: $('hp-wait'), ring: $('hp-ring'), num: $('hp-num') },
   onDown: () => { closePanels(); if (player.riding) dismountDeer(); if (player.pose === 'sit') standUp(); if (player.pose === 'breath') stopBreath(); ach.emit('down'); },
+  onUp: () => tips.event('carried'), // 들것으로 돌아옴 (#66)
 });
 
 // ---------- 카메라 ----------
@@ -482,7 +484,43 @@ const topFit = (() => {
 let toastT = 0;
 function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; toastT = sec; }
 initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () => (save.equip.bag === 0 ? '호주머니' : '배낭') } }); // #60 UI 누르면 토스트
-let lastCoins = -1;
+
+// ---------- 상황에 맞는 팁 (#66): 표는 tips.js ----------
+const tipEl = $('tip'); let tipT = 0, tipNow = null, tipMarkT = 0, tipMarkPos = null;
+function showTip(tip) {
+  tipNow = tip; tipEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIP_ICON[tip.ic] || ''}</svg><span>${tip.text}</span>`;
+  tipEl.classList.toggle('go', !!tip.go); tipEl.hidden = false; tipT = TIP.sec; sound.beep?.(false);
+}
+const tips = createTips({ save, persist, show: showTip });
+function tipMark(pos) { tipMarkPos = pos; tipMarkT = 6; }
+function nearestHeapPos() { if (!trash) return null; let b = null, bd = 1e9; trash.heaps.forEach((h, i) => { if (!(trash.store.left(i) > 0)) return; const d = Math.hypot(h.x - player.pos.x, h.z - player.pos.z); if (d < bd) { bd = d; b = { x: h.x, z: h.z }; } }); return b; }
+const TIP_GO = {
+  shop: () => openShop(), cleanhouse: () => { if (CH) startAutoGo(); }, dex: () => openDex(),
+  heap: () => { const p = nearestHeapPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
+  stream: () => { const p = tipStreamPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
+  stone: () => { if (STN?.terrace) tipMark(STN.terrace.clone()); },
+};
+tipEl.addEventListener('click', () => { const g = tipNow?.go; tipEl.hidden = true; tipT = 0; if (g && TIP_GO[g]) TIP_GO[g](); });
+{ const b = $('menu-tips'); const sync = () => b.setAttribute('aria-pressed', String(!tips.isOff())); sync(); b.addEventListener('click', () => { tips.off(!tips.isOff()); sync(); if (tips.isOff()) { tipEl.hidden = true; tipT = 0; } }); } // 메뉴에서 팁 끄기
+function tipStreamPos() { if (!stream) return null; const [al, lat] = stream.local(player.pos.x, player.pos.z); const [x, z] = stream.at(stream.centerOff(lat) + 0, Math.max(-20, Math.min(20, lat))); return { x, z, d: Math.hypot(x - player.pos.x, z - player.pos.z) }; }
+let tipIdle = 0, tipBagN = -1;
+function tipState() {
+  const full = !!trash && bagRoom() < 1, sp = tipStreamPos();
+  return {
+    busy: !!(tut.active) || !$('toast').hidden || !tipEl.hidden || mealS.on || cutS.on || panelOpen() || cam.mode === 'wardrobe' || !sessionOn || document.hidden || player.down || (isTouch && false),
+    bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && canBuyGear().length > 0,
+    hpLow: isBattle() && hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!dumpers && dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
+    battle: isBattle(), hasBow: weaponNow().id === 'bow', idle: tipIdle,
+    nearStream: !!sp && sp.d < 8 && !fishing?.busy && !stream.onBridge(player.pos.x, player.pos.z),
+  };
+}
+function tickTips(dt) {
+  const n = trash ? trash.store.pickedCount() : 0;
+  if (n !== tipBagN) { tipBagN = n; tipIdle = 0; } else if (!panelOpen() && !tut.active) tipIdle += dt;
+  if (tipT > 0) { tipT -= dt; if (tipT <= 0) tipEl.hidden = true; }
+  if (tipMarkT > 0) { tipMarkT -= dt; if (tipMarkT <= 0 || (tipMarkPos && player.pos.distanceTo(tipMarkPos) < 6)) { tipMarkT = 0; tipMarkPos = null; } }
+  tips.update(dt, tipState);
+}let lastCoins = -1;
 function updateStats() {
   if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
@@ -595,6 +633,7 @@ function buildDex() {
 $('menu-dex')?.addEventListener('click', openDex);
 $('ach-dex')?.addEventListener('click', openDex);
 function onDexGet(dex, isNew) {
+  if (dex.rare) tips.event('rare');
   if (isNew) { ach.emit('dex'); if (dex.rare) addCoins(DEX.rareGyul, `드문 것! ${dex.name} · 도감 등록`); else toast(`도감 · ${dex.name}`); }
   else if (dex.rare) addCoins(DEX.rareGyul, `드문 것! ${dex.name}`);
   if (!$('dex').hidden) buildDex();
@@ -1450,6 +1489,7 @@ function updateBuffUI(force) {
 // 가장자리 가게 아이콘 (#57): 가게마다 아이콘 하나, 가장 가까운 (열 수 있는) 가게만. 화면 밖이거나 조금 멀 때
 const shopMark = $('shop-mark'); let shopMarkId = '';
 function tickShopMark() {
+  if (tipMarkT > 0 && tipMarkPos) { shopMarkId = '*tip'; shopMark.querySelector('svg').innerHTML = TIP_ICON.arrow; shopMark.hidden = false; placeArrow(shopMark, tipMarkPos, 0.6); return; }
   let best = null, bd = 1e9;
   for (const sh of shopsBuilt) { const w = SHOP_POP[sh.pop]?.when; if (w && !w()) continue; const d = Math.hypot(player.pos.x - sh.door.x, player.pos.z - sh.door.z); if (d < bd) { bd = d; best = sh; } }
   const on = !!best && bd > SHOP_ST.markNear && bd < SHOP_ST.markFar && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on && !cutS.on;
@@ -1573,7 +1613,7 @@ if (trash) {
   trash.on((ev, d) => {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
-    else if (ev === 'heap-clear') { ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
+    else if (ev === 'heap-clear') { tips.event('heapClear'); ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
     else if (ev === 'zone-clear') { ach.emit('zone-clear'); ach.emit('zone-clear-' + d.zone); } // 글 대신 꽃밭 배너 (#65, zone-bloom)
     updateTrashUI(false);
   });
@@ -2148,7 +2188,7 @@ const dumpers = trash ? createDumpers({
   avoid: NS_TUT ? (() => { const L = NSB.crossLine(TUT.gateD); return (x, z) => (x - L.c.x) * L.fx + (z - L.c.z) * L.fz < 6 && Math.hypot(x - L.c.x, z - L.c.z) < 260; })() : null, // 들머리 튜토리얼 쪽 길은 트럭이 안 지남
   hooks: {
     canSpawn: () => !NS_TUT || !!save.jeong || !!save.tut?.done, // 튜토리얼 중엔 안 옴
-    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
+    appear: (d) => { tips.event('dumper'); dumpWarn.start({ x: d.pos.x, z: d.pos.z }); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
     dumped: (d, n) => { if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
     repel: (kind, pos, def) => {
       life.scatterTangerines(pos, def.reward);
@@ -2571,6 +2611,7 @@ function frame(now) {
 
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) ui.toast.hidden = true; }
+  tickTips(dt);
   if (sound.music) { sound.setThreat(threatNear()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
