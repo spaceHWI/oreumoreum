@@ -733,9 +733,26 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   try { const q = new URLSearchParams(location.search).get('hwi'); if (q === '1') localStorage.setItem(HK, '1'); else if (q === '0') localStorage.removeItem(HK); on = localStorage.getItem(HK) === '1'; } catch (e) { /* 저장 불가 환경 */ }
   $('m-dev').hidden = !on;
   if (on) {
+    const TK = 'oreumoreum.hwi.tod'; // 시간대 (이 화면에만, 새로 고쳐도 유지)
+    const tv = $('adm-tv'), sl = $('adm-tod');
+    const setTod = (h) => {
+      todOverride = h == null ? null : Math.min(24, Math.max(0, h));
+      try { if (todOverride == null) localStorage.removeItem(TK); else localStorage.setItem(TK, String(todOverride)); } catch (e) { /* 무시 */ }
+      tv.textContent = todOverride == null ? '실제' : `${String(Math.floor(todOverride)).padStart(2, '0')}:${String(Math.round((todOverride % 1) * 60)).padStart(2, '0')}`;
+      if (todOverride != null) sl.value = todOverride;
+      applySky();
+    };
+    try { const v = parseFloat(localStorage.getItem(TK)); if (Number.isFinite(v)) setTod(v); } catch (e) { /* 무시 */ }
+    sl.addEventListener('input', () => setTod(parseFloat(sl.value)));
+    $('adm-body').querySelectorAll('[data-h]').forEach((b) => b.addEventListener('click', () => setTod(parseFloat(b.dataset.h))));
+    $('adm-real').addEventListener('click', () => setTod(null));
+    $('adm-body').querySelectorAll('[data-wx]').forEach((b) => b.addEventListener('click', () => { wx.set(b.dataset.wx || null); toast('날씨: ' + WX[wx.kind].name); }));
+    $('adm-toggle').addEventListener('click', () => { const h = !$('adm-body').hidden; $('adm-body').hidden = h; $('adm-toggle').setAttribute('aria-expanded', String(!h)); });
+    let rc = 0;
     $('dev-reset').addEventListener('click', () => {
+      if (!rc) { rc = 1; $('dev-reset').textContent = '정말 지울까요? 한 번 더'; setTimeout(() => { rc = 0; $('dev-reset').textContent = '모두 리셋'; }, 4000); return; }
       resetting = true;
-      try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); } catch (e) { /* 무시 */ }
+      try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); localStorage.removeItem(TK); } catch (e) { /* 무시 */ }
       location.reload();
     });
     $('dev-gyul').addEventListener('click', () => { save.coins += 10000; persist(); updateStats(); sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
