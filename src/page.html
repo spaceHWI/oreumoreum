@@ -423,6 +423,9 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .tpill small { font-weight: 500; font-size: 12px; color: var(--ink-soft); }
 #bag-pill.full { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
 #bag-pill.full small { color: var(--acc-fg); opacity: .75; }
+#zone-pill[hidden] { display: none; }
+#zone-pill .zc { margin-left: 3px; }
+#zone-pill.done { color: var(--ok, #3f9a5a); }
 .tpill.bump { animation: bump .35s ease-out; }
 /* 클린하우스: 버릴 때 올라가는 귤 숫자 · 배낭이 찼을 때 방향 화살표 */
 .fx-recycle { position: fixed; z-index: 20; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 26px; color: var(--gyul); text-shadow: 0 2px 0 var(--ink), 0 0 6px #fff; pointer-events: none; }
@@ -620,7 +623,8 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
   <div class="panel tpill" id="wx-pill" hidden></div>
   <div id="trash-hud" hidden>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피)"><svg class="pk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/><path d="M9 13l3 3 3-3"/></svg><svg class="bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
-    <div class="panel tpill" id="clean-pill" data-tut="clean" title="오늘 오름이 깨끗해진 정도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg><b id="clean-n">0</b><small>%</small></div>
+    <div class="panel tpill" id="clean-pill" data-tut="clean" title="오름 전체가 깨끗해진 정도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg><b id="clean-n">0</b><small>%</small></div>
+    <div class="panel tpill" id="zone-pill" title="지금 구역 · 구역이 깨끗해진 정도" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><b id="zone-n">1</b><small class="zc"><span id="zone-c">0</span>%</small></div>
   </div>
   <button type="button" id="btn-release" class="panel icon-btn" hidden><span>손 놓기</span></button>
   <button type="button" id="btn-cancelreq" class="panel icon-btn" hidden><span>신청 취소</span></button>

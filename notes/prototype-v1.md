@@ -21,7 +21,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 
 ## 쓰레기 줍기 (2026-11-15, #8)
 - balance.js: 수치 한곳(쓰레기 종류 비율·부피·귤, 배치 규칙, 장비 5단계 표 TOOLS·BAGS·SHOES). save.equip(tool·bag·shoes) 1~5, 상점은 #10
-- trash.js: createLocalTrashStore 가 쓰레기 상태를 읽고 쓰는 유일한 곳(save.trash = date, picked 비트셋 base64, bag 종류별 개수, today, total). 멀티 때 같은 모양의 서버 저장소로 바꿔 끼움
+- trash.js: createLocalTrashStore 가 쓰레기 상태를 읽고 쓰는 유일한 곳(save.trash = srv[서버]{sig, heaps 더미마다 남은 수}, bag 종류별 개수, total, tp 튜토리얼 낱개, dex). 멀티 때 같은 모양의 서버 저장소로 바꿔 끼움 (#45 부터 더미 방식)
 - 배치: 한국 날짜 시드. 0~23999 흩어진 것(길 25 안 70%·그 밖 420 안, 뭉치는 자리 700+320), 24000~ 더미 60곳×50(40곳 길 옆). 바다·맵 밖 제외. 종류마다 InstancedMesh, 32단위 칸, 반경 110(LOW 70) 안만 그림. 5단위 움직이거나 주우면 다시 채움(0.5ms), 하루 배치 생성 약 60ms
 - 줍기(main.js '줍기·배낭'): 도구 반경 안에 쓰레기가 있으면 상호작용 버튼이 '줍기'(다른 할 일 바로 앞이면 그쪽). 버튼·F·E 누르고 있으면 계속. 숙이기(crouch)·종류별 소리(audio.pick)·배낭으로 날아가는 연출. 배낭이 차면 #bag-pill.full(귤색)
 - 자정(KST): 1초마다 날짜 확인 → 주운 기록만 지우고 새 배치. 배낭·누적은 유지
@@ -300,3 +300,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 낚싯대는 사지 않음: 낚시 중에만 오른손 위치(armR 끝)에서 그리는 로우폴리 막대 + 줄 + 찌(fishing.js), 그동안 손 도구는 숨김(`holdRod` → `syncEquipGear`). runner pose `'fish'`(rod = 낚싯대 들린 각). 소리 `audio.cast`·`plop`(+ 기존 splash·bite·reel). `stream.splash(x,y,z,big,snd)`·`stream.ring` 재사용
 - 확인용 `__oreum.fish`(go(side, lat) 물가로 옮기기, can(), press(), state(), force({type:'fish',i}|{type:'trash',t}|{type:'rare',kind,name}), wait(초), parts)
 - 임시: 물고기·쓰레기·병·낚싯대는 로우폴리. 멀티에 낚시 모습은 안 보임(손 도구만 숨겨짐). 탐방객 NPC·노루는 여전히 개울을 그냥 지나감
+
+## 구역과 쓰레기 더미 (#45)
+- 흩뿌린 27,000개·자정 리셋 없앰. 남송이를 구역 5개로 나눔: `src/zones.js zoneAt(x,z)` 하나(0 들머리, 1 자락 숲길, 2 남쪽 사면, 3 능선, 4 굼부리, 5 정상). 경계: 정상 반경 → 말굽 능선 길 둘레 → 말굽 안쪽(능선을 닫은 다각형)·북쪽 원형 굼부리 → 솟은 높이·정상보다 남쪽 → 나머지. 수치 `balance.js ZONE_SHAPE`
+- 더미: `balance.js HEAP`(작은 10·큰 50·대형 200, 반경·높이·4단계) + `ZONES`(구역별 더미 수·목표 분·권장 장비·쓰레기 종류 비율 mix·maxD·amt). 더미 순서는 `HEAP_DEFS`(구역 순, 큰 것부터) = 저장 heaps 순서. 구성이 바뀌면 sig 가 달라져 가득 찬 상태로 다시 시작
+- 자리: 고정 난수(`HEAP.seed`)로 길 옆(길을 막지 않게 trailMin 밖)·구역 안 빈터. 나무·바위·구조물(col)과 안 겹치게, 가파른 곳 피함. 1구역은 클린하우스 215 안
+- 모양: 크기·단계별 InstancedMesh(봉투·상자·타이어·스티로폼·그물·캔). 남은 비율로 4단계. 충돌도 단계마다 원을 등록해 지금 단계만 켬, 다 치우면 끔
+- 줍기: `trash.candidates(x,z,도구 r,남은 부피)` → `{h|k, x, z, d}` (d 는 더미 가장자리까지), `trash.take(c, room)` 한 개씩. 한 번(per)에 한 더미에서 per 개. 종류는 구역 mix 대로 배낭에 들어가는 것만, 도감·드문 것 규칙은 그대로
+- 이벤트: trash / heap-clear {h, zone} / zone-clear {zone} / heap-stage. main 에서 ach.emit('zone-clear'), 'zone-clear-N'
+- HUD: `#zone-pill` 구역 번호 + 구역 %(들머리에서는 숨김), `#clean-pill` 오름 전체 %
+- 멧돼지 헤집기(`trash.drop`)는 둘레 덜 찬 더미에 되돌림
+- 시간 어림 `__oreum.trash.estimate()`: 1구역 5.8 / 2구역 9.1 / 3구역 11.2 / 4구역 16.8 / 5구역 20.4분 (더미 사이 한 바퀴 포함이라 조금 넉넉). 조정: 1구역은 부피 1 쓰레기만·클린하우스 가까이, 5구역 대형 더미 140개, 권장 배낭·신발은 시간에 맞춰 정함
+- 확인용 `__oreum.trash`: clearZone(z)/fillZone(z)(0 = 전부), setHeap(i,n), heaps(), nearestHeap(x,z), goHeap(i), zoneAt, zoneClean(z), estimate(), state()
