@@ -476,5 +476,18 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     for (const hb of hareubangs) { let a = aimHbs.get(hb); if (!a) { a = { kind: 'hareubang', pos: hb.pos, h: 1.9, size: 1.0, vel: null }; aimHbs.set(hb, a); } out.push(a); }
     return out;
   }
-  return { bind, hooks, nearestDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  // 다 핀 구역에 다시 나타나는 노루 (#46): (x, z) 둘레에 n 마리. 돌려받은 목록으로 removeDeer
+  function addDeer(x, z, n) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const d = buildDeer(), home = new THREE.Vector3(x + (rnd() - 0.5) * 8, 0, z + (rnd() - 0.5) * 8); home.y = height(home.x, home.z);
+      d.root.position.copy(home); const heart = makeHeart(); heart.position.y = 2.3; d.root.add(heart); group.add(d.root);
+      const a = { ...d, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null, bloom: true };
+      deer.push(a); out.push(a);
+    }
+    return out;
+  }
+  // 타고 있는 노루는 남김. 남은(못 지운) 목록을 돌려줌
+  function removeDeer(list) { return list.filter((a) => { if (a.state === 'ridden') return true; const i = deer.indexOf(a); if (i >= 0) deer.splice(i, 1); group.remove(a.root); return false; }); }
+  return { bind, hooks, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
 }

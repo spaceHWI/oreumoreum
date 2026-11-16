@@ -45,6 +45,28 @@ export const ZONE_SHAPE = {
   craterPad: -8, // 북쪽 원형 굼부리 둘레 길에서 이만큼 (- 안쪽)
   slopeRel: 28, southZ: -90, // 솟은 높이(m) 이 위이고 정상보다 남쪽(z 가 정상 z + southZ 보다 큼)이면 남쪽 사면
 };
+// 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
+// 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름
+// 꽃: 70% 부터 피기 시작(early 비율의 꽃이 70~98% 사이에 하나씩), 나머지는 100% 에 한꺼번에(물결). 어린 나무는 100% 에 솟음
+export const BLOOM = {
+  dryTo: 0.4, liveAt: 0.7, lush: 0.35, dryRate: 0.35, // 풀 색 바뀌는 빠르기 (1초에)
+  flowerFrom: 0.7, early: 0.55,
+  per: 60, perLow: 110, // 꽃 무리 하나에 땅 넓이 (작을수록 빽빽)
+  treePer: 1400, treePerLow: 3200, treeOff: [0.85, 0.97], // 어린 나무 하나에 땅 넓이 · 이 아래로 떨어지면 시듦 (나무마다 다름)
+  heapRing: { s: 4, l: 7, xl: 11 }, // 치운 더미 자리에 바로 피는 꽃 무리 수
+  drawR: 120, drawRLow: 70, treeDrawR: 180, treeDrawRLow: 110,
+  grow: 0.9, treeGrow: 2.6, wither: 6, // 피는·자라는·시드는 시간 (초)
+  wave: 26, waveMax: 7, // 100% 순간 더미 자리부터 퍼지는 빠르기 (1초에) · 가장 늦게 피는 시간
+  butterflies: 7, butterfliesLow: 3, birds: 5, birdT: 22, deer: 2,
+  // 구역별 꽃: 1 자락 유채 노랑, 2 남쪽 사면 메밀 흰색, 3 능선 억새 금빛, 4 굼부리 수국 파랑, 5 정상 철쭉 분홍
+  zones: {
+    1: { name: '유채', color: '#f4d23c', kind: 'flower', tree: 1 },
+    2: { name: '메밀', color: '#f6f3ea', kind: 'flower', tree: 1 },
+    3: { name: '억새', color: '#e2bf6a', kind: 'plume', tree: 0.4 },
+    4: { name: '수국', color: '#7c9fe6', kind: 'ball', tree: 1 },
+    5: { name: '철쭉', color: '#ee7fae', kind: 'flower', tree: 0.6 },
+  },
+};
 export const TRASH = {
   cell: 32, // 튜토리얼 낱개 그리기 범위 칸
   drawR: 110, drawRLow: 70,

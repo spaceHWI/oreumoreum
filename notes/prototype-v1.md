@@ -312,3 +312,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멧돼지 헤집기(`trash.drop`)는 둘레 덜 찬 더미에 되돌림
 - 시간 어림 `__oreum.trash.estimate()`: 1구역 5.8 / 2구역 9.1 / 3구역 11.2 / 4구역 16.8 / 5구역 20.4분 (더미 사이 한 바퀴 포함이라 조금 넉넉). 조정: 1구역은 부피 1 쓰레기만·클린하우스 가까이, 5구역 대형 더미 140개, 권장 배낭·신발은 시간에 맞춰 정함
 - 확인용 `__oreum.trash`: clearZone(z)/fillZone(z)(0 = 전부), setHeap(i,n), heaps(), nearestHeap(x,z), goHeap(i), zoneAt, zoneClean(z), estimate(), state()
+
+## 깨끗해진 구역에 꽃과 어린 나무 (#46)
+- `src/bloom.js createBloom`: 저장 없음. 쓰레기 이벤트마다 `trash.zoneClean(z)` 로 다시 구함(다시 쌓이면 그대로 시듦). 수치 `balance.js BLOOM`
+- 풀 색: `namsongi.js` 땅·풀 셰이더 `groundColor` 에 `zoneDry(p)` — 구역 번호 격자 256×256(`setZoneGrid`, 범위 `zones.js ZONE_BOX`, 가장 가까운 칸 4개를 섞어 경계 부드럽게) × 구역별 `uDry[6]`(`NSW.zoneDry`). 40% 이하 1(탁한 누런 풀) → 70% 0 → 100% −`lush`(더 푸름). 길은 그대로. `dryRate` 로 서서히
+- 꽃 무리: 구역마다 고르게(`per`, LOW `perLow`) 흩음. `early` 비율은 70~98% 사이 문턱마다 하나씩 피고, 나머지는 100% 에. 어린 나무(`treePer`)도 100% 에 솟고, 나무마다 `treeOff`(85~97%) 아래로 떨어지면 시듦. 치운 더미 자리 둘레(`heapRing`)엔 그 더미가 0 이 되자마자 핌
+- 100% 순간: 더미 자리에서 가까운 것부터 `wave`(26/초, 최대 `waveMax` 7초) 차례로 핌, `sound.bloom()` + 새 소리, 새 떼(`birds`, 멀리서 날아와 `birdT` 동안 돌고 떠남, 그 구역에 있을 때만), 나비(다 핀 구역 안에 있으면 둘레에서 팔랑, `butterflies`/LOW 3)
+- 모양: 구역별 꽃 모양·색 `BLOOM.zones` (1 유채 노랑·2 메밀 흰·3 억새 금빛(plume)·4 수국 파랑(ball)·5 철쭉 분홍), 무리 모양 3가지 × 줄기·꽃송이 InstancedMesh, 어린 나무 하나. 32 칸 목록으로 `drawR`(120/LOW 70)·`treeDrawR`(180/110) 안만 그림. 시들 때는 기울며 갈색으로 줄어듦(`wither` 6초)
+- 이벤트 `zone-bloom` / `zone-wilt` {zone} (main: ach.emit('zone-bloom')). 노루: 다 핀 구역마다 `life.addDeer` 로 `BLOOM.deer` 마리, 시들면 `life.removeDeer`(타고 있으면 남김). 몹: `life.hooks.spawnBlock` → 다 핀 구역에는 나오지 않음(enemies okAt)
+- HUD: `#zone-pill.bloom` 이면 산 아이콘 대신 구역 색 꽃, `#clean-pill` 안 `#bloom-row` 에 다 핀 구역마다 작은 꽃 점
+- 서버 바꿀 때 `bloom.resync(fn)` 로 연출 없이 맞춤
+- 확인용 `__oreum.bloom`: state() 구역별 깨끗함·마름·핀 꽃·나무, counts(), finish() 애니메이션 바로 끝, flock(x,z), deer(), api
+- 임시: 꽃·나무·나비·새는 로우폴리. 다른 노루 무리(지도 고정)는 구역과 상관없이 그대로

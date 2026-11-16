@@ -113,6 +113,9 @@ export function buildNamsongi({ scene, renderer, bound = null }) {
     const t = new T.CanvasTexture(c); t.format = T.RedFormat; t.flipY = false; t.minFilter = T.LinearMipmapLinearFilter; t.magFilter = T.LinearFilter; t.anisotropy = 4; return t;
   })();
   const GS = (LOW ? 34 : 46) * K;
+  // 구역 번호 격자 (#46): ZN×ZN, 한 칸 = 구역 번호. setZoneGrid 로 채움
+  const ZN = 256, zoneData = new Uint8Array(ZN * ZN), zoneTex = new T.DataTexture(zoneData, ZN, ZN, T.RedFormat, T.UnsignedByteType);
+  zoneTex.magFilter = zoneTex.minFilter = T.NearestFilter; zoneTex.needsUpdate = true;
   const f = (v, d = 1) => v.toFixed(d);
   const TERR = `
 #define GS ${f(GS)}
@@ -120,10 +123,16 @@ export function buildNamsongi({ scene, renderer, bound = null }) {
 #define CELL ${f(CELL, 5)}
 #define EXT ${f(E)}
 #define KS ${f(K, 3)}
+#define ZN ${ZN}
 uniform highp sampler2D uHt;
 uniform sampler2D uMask; uniform sampler2D uPathT; uniform sampler2D uStroke;
 uniform vec3 uG1; uniform vec3 uG2; uniform vec3 uG3; uniform vec3 uGold; uniform vec3 uForest; uniform vec3 uTea; uniform vec3 uPath;
 uniform vec3 uPl; uniform float uTime; uniform float uWind;
+uniform sampler2D uZoneT; uniform vec4 uZoneB; uniform float uDry[6];
+float zdry(ivec2 i){ int k=int(texelFetch(uZoneT,clamp(i,ivec2(0),ivec2(ZN-1)),0).r*255.0+0.5); return uDry[clamp(k,0,5)]; }
+// 구역 마른 정도 (#46): 1 메마름 ~ 0 보통 ~ - 무성함. 구역 번호 격자(가장 가까운 칸)를 네 칸 섞어 경계를 부드럽게
+float zoneDry(vec2 p){ if(uZoneB.z<=0.0) return 0.0; vec2 f=(p-uZoneB.xy)/uZoneB.z-0.5; vec2 fl=floor(f); ivec2 i=ivec2(fl); vec2 u=f-fl;
+  return mix(mix(zdry(i),zdry(i+ivec2(1,0)),u.x),mix(zdry(i+ivec2(0,1)),zdry(i+ivec2(1,1)),u.x),u.y); }
 float terrainH(vec2 p){
   vec2 f=clamp((p+EXT)/CELL,0.0,GN-1.001); ivec2 i=ivec2(f); vec2 u=f-vec2(i);
   float a=texelFetch(uHt,i,0).r, b=texelFetch(uHt,i+ivec2(1,0),0).r, c=texelFetch(uHt,i+ivec2(0,1),0).r, d=texelFetch(uHt,i+ivec2(1,1),0).r;
@@ -144,6 +153,10 @@ vec3 groundColor(vec2 p){
   g=mix(g,uForest*(0.82+0.36*n),mk.g*0.78);
   g=mix(g,uGold,smoothstep(88.0,122.0,mk.r*160.0)*(0.55+0.4*n));
   g=mix(g,uTea*(0.8+0.3*n2),teaMask(p));
+  float zd=zoneDry(p)*(1.0-pathMask(p));
+  float lum=dot(g,vec3(0.3,0.59,0.11));
+  g=mix(g,mix(vec3(lum),g,0.35)*vec3(1.04,0.95,0.7)*(0.84+0.1*n2),max(zd,0.0)); // 메마른 땅: 탁한 누런 빛
+  g=mix(g,g*vec3(0.9,1.1,0.86),max(-zd,0.0)); // 다 핀 구역: 더 푸름
   g=mix(g,uPath*(0.88+0.24*n2),pathMask(p));
   return g;
 }`;
@@ -170,6 +183,7 @@ vec3 groundColor(vec2 p){
     uStream: { value: new T.Vector4(0, 0, 1, 0) }, uStreamW: { value: -1 }, uStreamM: { value: new T.Vector2(-1e4, 1e4) }, // 들머리 개울(#31, #41): 가운데 xz, 길 방향 fx fz, 반폭 (음수면 없음), 돌담과 만나는 lat 둘
     uTime: { value: 0 }, uWind: { value: 1 }, uPl: { value: new T.Vector3() }, uPlV: { value: new T.Vector3(0, 0, -8) },
     uG1: { value: C('#62a64a') }, uG2: { value: C('#86c257') }, uG3: { value: C('#b9d264') },
+    uZoneT: { value: zoneTex }, uZoneB: { value: new T.Vector4(0, 0, 0, 0) }, uDry: { value: [0, 0, 0, 0, 0, 0] }, // 구역 마른 정도 (#46, bloom.js 가 채움)
     uGold: { value: C('#d8b562') }, uForest: { value: C('#4c8442') }, uTea: { value: C('#3f8a48') }, uPath: { value: C('#dcbb8c') },
   };
 
@@ -476,7 +490,10 @@ vec3 groundColor(vec2 p){
     skyMesh.position.copy(camera.position);
     for (const c of chunks) { const hi = Math.hypot(c.cx - pos.x, c.cz - pos.z) < HI_R; c.hi.visible = hi; c.lo.visible = !hi; }
   }
-  return { solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  // 구역 격자 채우기 (#46): fn(x, z) → 구역 번호, (x0, z0) 왼쪽 위, cell 한 칸 크기
+  function setZoneGrid(fn, x0, z0, cell) { for (let j = 0; j < ZN; j++) for (let i = 0; i < ZN; i++) zoneData[j * ZN + i] = fn(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell); zoneTex.needsUpdate = true; U.uZoneB.value.set(x0, z0, cell, 0); return ZN; }
+  const zoneDry = U.uDry.value; // [0..5] 구역별 마른 정도. 바꾸면 바로 반영
+  return { setZoneGrid, zoneDry, solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */

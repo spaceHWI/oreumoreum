@@ -31,7 +31,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   let player = null, sound = null;
   const list = [];
   let waveT = ENEMY_SPAWN.first;
-  const okAt = spots.enemyOk || null; // 맵이 적을 허락하지 않으면 없음 (null)
+  const okMap = spots.enemyOk || null; // 맵이 적을 허락하지 않으면 없음 (null)
+  const okAt = okMap && ((x, z) => okMap(x, z) && !hooks.spawnBlock?.(x, z)); // 다 핀 구역(#46)에는 나오지 않음
 
   function spawnOne(kind, x, z) {
     const def = ENEMIES[kind], m = MODELS[kind]();
