@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC } from './balance.js';
 import { STREET } from './streetlayout.js';
 import { createShopStreet, SHOP_BUILD, SHOP_ICON, SCISSORS, SHIRT } from './shops.js';
 import { leapLogo } from './leap.js';
@@ -716,7 +716,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
   const doReset = () => {
     resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
-    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, introSound: save.introSound, reset: 1 }; // reset: 처음 온 사람처럼 시작
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, introSound: save.introSound, music: save.music, reset: 1 }; // reset: 처음 온 사람처럼 시작
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
     location.reload();
@@ -762,6 +762,10 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
 }
 $('menu-ach').addEventListener('click', () => openAch());
 $('menu-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
+// 배경 음악 켜기/끄기·크기 (#64). save.music = { on, vol }
+$('menu-music').addEventListener('click', () => { save.music.on = save.music.on ? 0 : 1; sound.setMusic(save.music.on); if (save.music.on && !sound.on) sound.start(); setSoundUI(); persist(); });
+$('music-vol').addEventListener('input', (e) => { save.music.vol = Math.round(+e.target.value) / 100; sound.setMusicVol(save.music.vol); if (save.music.vol > 0 && !save.music.on) { save.music.on = 1; sound.setMusic(1); } setSoundUI(); });
+$('music-vol').addEventListener('change', () => persist());
 $('act-chat').addEventListener('click', () => openChat());
 function doWave() {
   if (busy()) return;
@@ -2026,6 +2030,9 @@ buildMapPick($('intro-pick'), false); $('intro-pick').hidden = true;
 // ---------- 소리·후크 ----------
 const sound = new Sound();
 sound.forest = MAP_ID === 'donnaeko';
+if (!save.music || typeof save.music !== 'object') save.music = { on: 1, vol: MUSIC.vol }; // 예전 저장엔 없음 (#64)
+save.music.vol = Math.max(0, Math.min(1, Number.isFinite(+save.music.vol) ? +save.music.vol : MUSIC.vol));
+sound.setMusic(save.music.on); sound.setMusicVol(save.music.vol); setSoundUI();
 life.bind(player, sound);
 life.hooks.enemyHit = (dir, def) => {
   if (player.air && player.jumpV > 0) return;
@@ -2175,7 +2182,16 @@ life.hooks.hitRunner = (who) => {
   else net.hitPeer(who);
 };
 runner.setTint(false);
-function setSoundUI() { $('menu-sound').setAttribute('aria-pressed', String(sound.on)); }
+function setSoundUI() {
+  $('menu-sound').setAttribute('aria-pressed', String(sound.on));
+  $('menu-music').setAttribute('aria-pressed', String(!!(sound.on && save.music.on)));
+  $('music-vol').value = String(Math.round(save.music.vol * 100));
+}
+// 적 근처면 긴장 음악 (#64): 몹·멧돼지(enemies) + 투기꾼·투기 트럭(dumpers)
+function threatNear() {
+  if (life.enemies.near(player.pos, MUSIC.near)) return true;
+  return !!dumpers && dumpers.list.some((d) => d.state !== 'flee' && d.state !== 'leave' && Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < MUSIC.near);
+}
 // ---------- 서버 고르기 (#35) ----------
 let introSrv = save.server || null; // 처음 온 사람은 아직 안 고름
 const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -2507,6 +2523,7 @@ function frame(now) {
 
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) ui.toast.hidden = true; }
+  if (sound.music) { sound.setThreat(threatNear()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }

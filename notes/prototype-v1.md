@@ -465,3 +465,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 색은 더 밝은 귤색 + emissive(후처리 없음). 바닥 귤은 살짝 떠서 천천히 돌고 아래에 옅은 빛 원. 줍기 귤은 가까운 것(60m)만 매 프레임 갱신
 - 던진·흩어진 귤은 날아가는 동안 꼬리(작아지며 옅어지는 점 `trailN`개), 땅에 닿으면 꼬리를 지우고 `restTangerine` 으로 떠서 돌기 + 빛 원(귤의 자식 메시라 귤과 함께 사라짐)
 - 스크린샷: `notes/shots/63-day|dusk|night.png`
+
+## 배경 음악·발소리 (#64)
+- `src/music.js` `Music`: Web Audio 로 만드는 배경 음악(음원 없음). `audio.js` 가 `start()` 때 음악 버스(`sound.mus`)와 함께 만든다. 200ms 간격 스케줄러가 1.2초 앞까지 음을 넣음, 꺼져 있거나 ctx 가 멈춰 있으면 아무것도 안 넣음
+- 평소(calm): 패드 화음(낮 Fmaj7·C/E·Am7·G6sus, 밤 Am9·Fmaj7·Dm9·Em7, 밤은 더 낮고 어두운 필터·긴 메아리) + 드문드문 종소리 음(5음 음계). 낮·밤은 `setDaylight` 값 < `MUSIC.nightK` 로 화음마다 고름
+- 적 근처(tense): 8분 베이스 반복·1·3박 북·뒷박 셰이커·두 마디마다 떨리는 감화음. `sound.setThreat(bool)` 이 켜지면 `MUSIC.fadeIn`(2초) 크로스페이드, 꺼지고 `MUSIC.holdOut`(5초) 뒤 `fadeOut` 으로 돌아옴
+- main.js `threatNear()`: `life.enemies.near(player.pos, MUSIC.near)` 또는 도망·떠나는 중이 아닌 투기꾼·트럭이 `MUSIC.near` 안. 매 프레임 `sound.setThreat`, 식사·머리 손질 중 `sound.setDuck(true)`(`MUSIC.duck` 배)
+- 메뉴 `.m-music`: `#menu-music`(켜기/끄기) + `#music-vol`(0~100). 저장 `save.music = { on, vol }`(예전 저장엔 없으면 기본값), 리셋해도 유지. 버스 크기 = `MUSIC.gain × vol²`. 소리(전체)를 끄면 음악도 꺼짐. 폰은 입장 버튼(첫 터치)에서 `sound.start()` 할 때 같이 시작
+- 확인용 `__oreum.sound.music.state()` → { mode, threat, night, active, calm, tense }
+- 발소리 거친 성분 빼기: 샘플(일부 클리핑·고역 많음)을 하이패스 60 + 2단 로우패스(풀 1700·송이 2300·계단 1500·흙 2000)로 걸러 고역을 줄이고, 자르는 끝에 실제 재생 시간 기준 80ms 페이드(딸깍 없앰). 풀잎 스침 잡음은 5200Hz → 1600Hz 로 낮고 작게. 샘플이 아직 없을 때 쓰는 합성 발소리도 높은 대역 대신 1~1.3kHz 대역
