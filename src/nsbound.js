@@ -75,7 +75,7 @@ export const gate = (() => {
   const ux = a.x - b.x, uz = a.z - b.z, l = Math.hypot(ux, uz);
   let d = 0; while (d < 400 && inBound(a.x + ux / l * d, a.z + uz / l * d)) d += 0.25;
   const x = a.x + ux / l * d, z = a.z + uz / l * d;
-  return { x, z, dx: ux / l, dz: uz / l, path: [[a.x, a.z], [x + ux / l * 70, z + uz / l * 70]] }; // path: 정낭 밖으로 이어지는 길 모양(그림만)
+  return { x, z, dx: ux / l, dz: uz / l, ux: -uz / l, uz: ux / l, path: [[a.x, a.z], [x + ux / l * 70, z + uz / l * 70]] }; // path: 정낭 밖으로 이어지는 길 모양(그림만)
 })();
 
 // 쓰레기 길 기준: 오름 위에 있는 탐방로 구간만 (들머리 평지·접근로 제외)

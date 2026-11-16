@@ -366,3 +366,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 저장: `save.look = { sex: 'm'|'f', skin }`, `save.hairs` 가진 머리, 쓰는 머리는 `outfit.gear.hat`. look 이 없으면 입장 직후(튜토리얼보다 먼저) 고르기 화면 `#look`(cam.mode 'look' 이 캐릭터 둘레를 돎, 그동안 busy·튜토리얼 멈춤). 예전부터 하던 사람은 초록 모자도 가짐
 - 상점 옷 탭 맨 위 머리 줄(가진 것 눌러 바꿔 쓰기, 없는 것 귤로 사기). 값 `balance.js HAIR`(임시: 똥머리 300, 나머지 150)
 - 확인: `__oreum.look.open()/set(sex, skin)/close()/state()/buyHair(k)`, `dist/char-motion.html?gear=hat:bun&skin=2`
+
+## #61 오름 입구 정렬
+- `nsbound.gate` 에 길 직각 방향 `ux,uz` 를 더함. 정낭 자리·방향·돌담 시작점이 모두 `gate`(길 가운데 점 + 방향) 한 묶음에서 나온다.
+- `createStoneWall` 은 경계선을 따라 양쪽으로 가다가 길 직각 거리가 기둥 바깥(`gateW+0.38`)에 닿는 곳에서 돌담을 시작·끝낸다. 정낭은 경계선 접선이 아니라 길과 직각으로 선다.

@@ -114,7 +114,13 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl, arch
     const a = P[lo], b = P[lo + 1], l = cum[lo + 1] - cum[lo] || 1, t = (s - cum[lo]) / l; return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; };
   // 정낭 자리의 길이 위치
   let sG = 0, bd = 1e9; for (let i = 0; i < P.length; i++) { const d = Math.hypot(P[i][0] - gate.x, P[i][1] - gate.z); if (d < bd) { bd = d; sG = cum[i]; } }
-  const GW = WALL.gateW, s0 = sG + GW + 0.35, span = LEN - 2 * (GW + 0.35), n = Math.max(1, Math.round(span / WALL.seg)), seg = span / n;
+  // 정낭 가운데(gate.x,z)·길 직각 방향(gate.ux,uz) 한 묶음에서 돌담 시작점을 구한다 (#61):
+  // 경계선을 따라 양쪽으로 가다가 정낭 기둥 바깥(길 직각 거리 GW+0.38)에 닿는 곳에서 돌담을 시작·끝낸다
+  const GW = WALL.gateW, GAP = GW + 0.38;
+  const offU = (s) => { const p = at(s); return Math.abs((p[0] - gate.x) * gate.ux + (p[1] - gate.z) * gate.uz); };
+  let sF = sG; while (sF < sG + 40 && offU(sF) < GAP) sF += 0.05;
+  let sB = sG; while (sB > sG - 40 && offU(sB) < GAP) sB -= 0.05;
+  const s0 = sF, span = LEN - (sF - sB), n = Math.max(1, Math.round(span / WALL.seg)), seg = span / n;
 
   /* 가까운 곳: 돌담 조각 (덩어리마다 가까이용·멀리용) */
   const rnd = mulberry(2511), chunks = [];
@@ -158,7 +164,7 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl, arch
 
   /* 정낭 입구: 정주석 두 개, 정낭 하나는 가로로 걸치고 둘은 내려 둠 */
   {
-    const a = at(sG - 1), b = at(sG + 1), tx = b[0] - a[0], tz = b[1] - a[1], tl = Math.hypot(tx, tz), ux = tx / tl, uz = tz / tl;
+    const ux = gate.ux, uz = gate.uz; // 길과 직각 (#61)
     const gx = gate.x, gz = gate.z, rot = Math.atan2(-uz, ux), parts = [];
     const r = mulberry(31);
     const post = (side) => { const g = new THREE.BoxGeometry(0.66, 2.2, 0.6, 1, 3, 1); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (r() - 0.5) * 0.1, p.getY(i), p.getZ(i) + (r() - 0.5) * 0.1); g.translate(side * (GW + 0.05), 0.95, 0); return g; };
