@@ -563,7 +563,7 @@ canvas.addEventListener('pointermove', (e) => {
 });
 const endPtr = (e) => {
   const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
-  if (p && !dragMoved && ptrs.size === 0 && e.type === 'pointerup') tapGround(e.clientX, e.clientY);
+  if (p && !dragMoved && ptrs.size === 0 && e.type === 'pointerup' && !joy.active) tapGround(e.clientX, e.clientY); // 조이스틱을 잡은 채 화면을 톡 친 건 목적지 아님
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
@@ -579,8 +579,25 @@ const joy = { active: false, id: null, x: 0, y: 0, cx: 0, cy: 0 };
   el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); const r = el.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; joy.active = true; joy.id = e.pointerId; move(e); closePanelsSoft(); hideHint(); });
   const move = (e) => { if (!joy.active || e.pointerId !== joy.id) return; let dx = (e.clientX - joy.cx) / R, dy = (e.clientY - joy.cy) / R; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } joy.x = dx; joy.y = dy; setKnob(); };
   el.addEventListener('pointermove', move);
-  const end = (e) => { if (e.pointerId !== joy.id) return; joy.active = false; joy.x = joy.y = 0; setKnob(); };
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  const end = (e) => { if (e.pointerId !== joy.id) return; joy.active = false; joy.id = null; joy.x = joy.y = 0; setKnob(); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+// 멀티터치 (#42): 화면의 손가락은 pointerId 로 따로 추적한다 — 조이스틱(joy.id), 시점·핀치(ptrs: 캔버스에 닿은 손가락만), 버튼(각 버튼이 자기 손가락만 캡처).
+// 패드 버튼은 손가락이 닿는 순간(pointerdown) 반응. click 은 한 손가락 탭에서만 생겨서(iOS 사파리 등) 조이스틱을 잡은 채로는 버튼이 안 눌렸음
+function pressBtn(el, fn) {
+  el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); fn(e); });
+  el.addEventListener('click', (e) => { if (e.detail === 0) fn(e); }); // 키보드(Enter·Space)·.click()
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+// 게임 화면(캔버스·조이스틱·패드)에서는 브라우저 기본 터치 동작(스크롤·두 번 탭 확대·길게 눌러 메뉴·핀치 확대)을 막는다. 패널 안 스크롤은 그대로
+{
+  const GAME = '#view, #joy, .pad';
+  const block = (e) => { if (e.target instanceof Element && e.target.closest(GAME)) e.preventDefault(); };
+  document.addEventListener('touchstart', block, { passive: false });
+  document.addEventListener('touchmove', block, { passive: false });
+  for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault()); // iOS 사파리 페이지 핀치 확대
 }
 
 const ray = new THREE.Raycaster();
@@ -625,7 +642,7 @@ function setGait(g) {
   $('btn-speed').dataset.g = String(g); $('speed-label').textContent = GAIT[g];
 }
 function cycleSpeed() { tut.notify('gait'); setGait((player.gait + 1) % 2); }
-$('btn-speed').addEventListener('click', cycleSpeed);
+pressBtn($('btn-speed'), cycleSpeed);
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; });
@@ -840,7 +857,7 @@ function doJump() {
   sound.step(surfaceAt(p.pos.x, p.pos.z), true);
   ach.emit('jump'); tut.notify('jump');
 }
-$('btn-jump').addEventListener('click', doJump);
+pressBtn($('btn-jump'), () => doJump());
 function tickJump(dt) {
   const p = player; if (!p.air) { p.airOff = null; return; }
   // 공중에서 발밑 디딤판(징검돌·계단) 높이가 바뀌어도 몸 높이는 그대로 (#41: 돌에서 물 위로 뛸 때 툭 내려가던 것)
@@ -1058,11 +1075,10 @@ const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
 // 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
 const throwAct = { get label() { return bowArmed() ? '귤 활 쏘기' : '귤 던지기'; }, get ic() { return bowArmed() ? 'bow' : 'throw'; }, act: () => fireWeapon() };
 function doInteract() { if (ctxTarget && !hp.isDown && !hp.pending) ctxTarget.act(); }
-ui.ctx.addEventListener('click', doInteract);
-ui.ctx.addEventListener('contextmenu', (e) => e.preventDefault());
+pressBtn(ui.ctx, () => doInteract());
 // 줍기 (E·줍기 버튼): 누르고 있는 동안 계속
 const pickBtn = $('btn-pick');
-pickBtn.addEventListener('pointerdown', (e) => { if (e.button) return; pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } startPick(); });
+pickBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } startPick(); });
 ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => pickBtn.addEventListener(ev, () => { pickS.held = false; }));
 pickBtn.addEventListener('click', (e) => { if (e.detail === 0) startPick(); }); // 키보드로 누른 경우
 pickBtn.addEventListener('contextmenu', (e) => e.preventDefault());

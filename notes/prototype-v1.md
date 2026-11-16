@@ -279,3 +279,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 빠짐: sink(`sinkT`) → drift(허우적 `pose 'flail'`, 하류로 `flow`, 최대 `driftMax`) → catch(찌가 몸에, 물보라, `audio.bite`, 낚시꾼 들썩 + '!' 스프라이트, `catchT`) → reel(`TUT.rescueT` 포물선) → 징검다리 건너기 전 자리(`near(lastSide, 0)`). 낚시꾼 찌(lat 6.1)보다 2.5~14 위에서 빠지면 찌까지 떠내려오고, 아니면 낚시꾼이 빠진 곳 하류 3 에 찌를 옮겨 둠. 징검다리에서 빠지면 약 3.6초. 확인용 `__oreum.stream.phase`·`inWater`·`at(al, lat)`
 - 점프 발 높이: `tickJump` 가 공중에서 발밑 디딤판 높이(groundAt − height)가 바뀐 만큼 `jumpY` 를 보정(`player.airOff`) → 돌에서 물 위로 뛸 때 툭 내려가지 않음(비탈은 그대로)
 - 임시: 수문·징검돌·자갈·풀·나뭇잎은 로우폴리. 물길은 땅 높이를 따라가서 돌담 밖 먼 곳은 오르내림이 있음. 탐방객 NPC·노루는 여전히 개울을 그냥 지나감
+
+## 모바일 멀티터치 (#42)
+- 원인: 점프·달리기·상호작용 버튼이 `click` 에 의존 → iOS 사파리 등은 다른 손가락(조이스틱)이 닿아 있으면 click 을 만들지 않음. 조이스틱·캔버스·줍기는 이미 pointerId 별 추적이라 그대로 둠
+- `pressBtn(el, fn)` (main.js 입력 부분): pointerdown 순간 반응 + `click` 은 `detail === 0`(키보드·`.click()`)일 때만. 패드 버튼(점프·달리기·상호작용)에 사용. 줍기는 기존 pointerdown + 캡처
+- 손가락 역할: 조이스틱 `joy.id`(놓침·`lostpointercapture` 도 끝으로), 시점·핀치 `ptrs`(캔버스에 닿은 손가락만 → 핀치는 조이스틱·버튼이 아닌 두 손가락일 때만), 버튼은 각자 캡처. 조이스틱을 잡은 채 화면을 톡 친 건 목적지 이동 안 함
+- 게임 화면(`#view, #joy, .pad`)에서 touchstart·touchmove 기본 동작을 막고(패널 스크롤은 그대로), iOS `gesturestart/change` 막음, viewport 에 `maximum-scale=1,user-scalable=no`. 패드 버튼 `touch-action: none`·`-webkit-touch-callout: none`
+- 확인: CDP `Input.dispatchTouchEvent` 로 조이스틱 손가락을 유지한 채 점프·달리기·시점 끌기, 줍기 누른 채 조이스틱
