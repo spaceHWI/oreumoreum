@@ -67,7 +67,7 @@ const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 �
 save.nick ||= `${pick(ADJ)} ${pick(NOUN)}`;
 save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit || {}) };
 if (!save.hatBackV) { save.outfit.hat.back = true; save.hatBackV = 1; }
-if (!save.nsV3) { save.tut = { step: 0, done: false, v: 2 }; if (save.trash) save.trash.tp = []; save.nsV1 = save.nsV2 = save.nsV3 = 1; save.jeong = 0; } // 새 튜토리얼(#31): 기존 유저도 한 번 다시 봄
+if (!save.nsV3) { save.tut = { step: 0, done: false, v: 3 }; if (save.trash) save.trash.tp = []; save.nsV1 = save.nsV2 = save.nsV3 = 1; save.jeong = 0; } // 새 튜토리얼(#31): 기존 유저도 한 번 다시 봄
 if (!save.styleV5) { save.outfit.hat.color = '#5c9a3c'; save.outfit.shirt.color = '#e8d9b5'; save.outfit.pants.color = '#8a6a3c'; save.outfit.shoes.color = '#26262b'; save.styleV5 = 1; } // 모델 캐릭터 기본 색으로 한 번만 초기화
 if (!save.styleV2) { save.outfit.hat.type = 'none'; save.outfit.glasses.type = 'none'; save.styleV2 = 1; } // 똥머리가 보이게 한 번만 초기화 save.outfit.shirt.type ||= 'tee'; save.outfit.shoes.type ||= 'road';
 save.totalSteps ||= 0;
@@ -756,6 +756,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
       try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); localStorage.removeItem(TK); } catch (e) { /* 무시 */ }
       location.reload();
     });
+    $('dev-tut').addEventListener('click', () => { tut.skipAll(); toast('튜토리얼 건너뛰기'); }); // #62 건너뛰기는 개발자 버튼에만
     $('dev-gyul').addEventListener('click', () => { save.coins += 10000; persist(); updateStats(); sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
   }
 }
@@ -898,7 +899,7 @@ function tickAimMark(time) {
   aimTri.position.set(t.pos.x, t.pos.y + (t.h || 0.8) * 2 + 0.9 + Math.sin(time * 6) * 0.1, t.pos.z); aimTri.rotation.y = time * 2;
 }
 // 화면 밖 가까운 적 방향 표시 (#56): 가장자리에 귤색 세모 + 종류 아이콘, 가까울수록 크고 진하게, 최대 3개
-const EDGE_IC = () => ({ boar: '<b>멧</b>', truck: DUMP_IC });
+const EDGE_IC = () => ({ boar: '<b>멧</b>', truck: DUMP_IC, target: '<b>◎</b>' }); // target: 튜토리얼 과녁 (#62)
 const edgeEls = Array.from({ length: 3 }, (_, i) => { const el = document.createElement('div'); el.className = 'edge-aim'; el.hidden = true; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); return el; });
 const edgeV = new THREE.Vector3();
 function tickEdgeAim() {
@@ -1473,16 +1474,18 @@ pickBtn.addEventListener('click', (e) => { if (e.detail === 0) startPick(); }); 
 pickBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ---------- 줍기·배낭 ----------
-const pickS = { held: false, cyc: -1, got: false, fullT: 0 };
+const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1 };
 const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick'); return k === 1 ? t : { ...t, time: t.time / k }; }; // 식사 버프(#50) 줍는 속도
 const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
 const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
-const canPick = () => !!trash && !player.riding && !player.air && trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom());
+const canPick = () => !!trash && !player.riding && !player.air && (tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 들머리 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
 const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air || !!player.rescue || hp.isDown || hp.pending;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
+  const gi = player.riding || player.air ? -1 : tut.gyulNear(player.pos); // 튜토리얼 귤 3개 (#62): 쓰레기보다 먼저
+  if (gi >= 0) { const g = tut.gyuls[gi]; player.target = null; player.onArrive = null; marker.visible = false; player.heading = Math.atan2(g.x - player.pos.x, g.z - player.pos.z) || player.heading; player.pose = 'crouch'; player.poseT = 0; player.speed = 0; setHoldBow(false); pickS.cyc = 0; pickS.got = false; pickS.gyul = gi; return; }
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
   if (!list.length) { if (trashFull()) fullToast(); return; }
   const c = list[0];
@@ -1492,6 +1495,7 @@ function startPick() {
   pickS.cyc = 0; pickS.got = false;
 }
 function takeNow() {
+  if (pickS.gyul >= 0) { const at = tut.takeGyul(pickS.gyul); pickS.gyul = -1; if (at) { save.coins += 1; persist(); updateStats(); sound.coin?.(); coinFx(at, 1); } return; } // 튜토리얼 귤 (#62) +1
   const tool = toolNow(); let room = bagRoom(), n = 0;
   // 더미는 한 곳에서 도구의 한 번 양(per)만큼 꺼냄 (#45). 튜토리얼 낱개는 하나씩
   for (const c of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
@@ -2524,8 +2528,11 @@ requestAnimationFrame(frame);
 // 튜토리얼용 낱개 쓰레기 6개 (번호 k)
 const tutTrashLeftList = () => (trash ? (spots.tut?.trash || []).filter((_, k) => !trash.store.isTutPicked(k)) : []);
 const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLeftList()) { const d = Math.hypot(t.x - player.pos.x, t.z - player.pos.z); if (d < bd) { bd = d; b = t; } } return b; };
-const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH, onDone: () => updateTrashUI(false) });
+const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH,
+  col, crossLine: NSW ? NSB.crossLine : null, addTargets: life.addTargets, sound, juice: (p, d) => life.juiceSplash(p, d), ctxIc: () => ctxTarget?.ic, shopTab: () => ($('shop').hidden ? null : shopTab), // #62 과녁·벽·눌러야 할 곳
+  onDone: () => { updateTrashUI(false); if ($('dev-tut')) $('dev-tut').hidden = true; } });
 if (NS_TUT && tut.active) document.body.classList.add('tut');
+if ($('dev-tut')) $('dev-tut').hidden = !tut.active; // 개발자 버튼 '튜토리얼 건너뛰기' (#62)
 else if (!NS_TUT && save.tut && !save.tut.done) { save.tut.done = true; persist(); }
 // ---------- 낚시 (#44) ----------
 // 보상은 F 로 당기는 순간: 물고기 = 귤 5 + 도감 '개울' 칸, 쓰레기 = 호주머니·배낭(클린하우스에서 귤), 드문 것 = 배낭 + 도감(드문 것 귤)

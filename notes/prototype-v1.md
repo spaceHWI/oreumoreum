@@ -449,3 +449,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 넘침: main.js `topFit` 이 0.2초 간격(바뀔 때만)으로 필요한 폭을 재서 `#topbar[data-fit]` 0→3 단계: 1 구역+좌표 합치기(구역 안이면 좌표 칸에 구역 아이콘), 2 업적 고리 숨김(메뉴 업적 타일), 3 배낭 용량·꽃 점·여백 줄이기. 폰은 오른쪽에 메뉴 버튼 자리(`--tb-end`)
 - 토스트·배너는 `calc(var(--tb-top) + var(--tb-h) + 10px)`, 배너가 떠 있으면(`body.banner-on`) 토스트는 그 아래. 가장자리 방향 표시(placeArrow·edge-aim·경고)는 `topFit.bottom + 72` 아래로만
 - 튜토리얼: 귤(bonus)·배낭+깨끗한 정도(pick) 차례에 나오고, 구역·좌표·업적(`data-tut="hud"`)은 끝나면. 개발용 라벨 UI-01~09 새 구성
+
+## 튜토리얼 다시 짜기 (#62) — 귤 줍기·과녁 던지기, 단계마다 꼭 해야 넘어감
+- 단계(`src/tutorial.js`, save.tut.v 3): walk → run → gyul(바닥 귤 3개, 줍기 E) → throw(과녁 3번 맞히기, F) → pick(쓰레기 6개) → dump → bonus → tongs → bag → gate. 예전 v2 저장은 step ≥ 2 면 +2(귤·과녁 건너뜀), 이미 끝낸 사람은 그대로 끝
+- 들머리 배치(`balance.js TUT`): 시작 5 → 걷기 원 14 → 달리기 원 30 → 귤 35.5·37.5·39.5(`gyulD`) → 과녁 49.5 길 오른쪽 2.2(`targetD/Lat`, 판 높이 `targetH`) → 개울 58 → 쓰레기 67.5~77.5(가게 골목 84 앞) → 클린하우스 94 → 정낭 112
+- 보이지 않는 벽(`TUT.walls` [자리, 단계]): `nsbound.crossLine(d)` 를 따라 `col.addBox`, 그 단계를 마치면 `col.setOff`. 다가가면(`wallNear`) 땅 따라 귤빛 띠가 보이고, 목표가 뒤에 있으면 #tut-arrow 가 목표를 가리킴
+- 귤 3개: 튜토리얼이 만든 메시(평소 줍기 귤과 별개). main.js `startPick` 이 `tut.gyulNear` 를 쓰레기보다 먼저 보고 웅크려 `takeNow` 에서 `tut.takeGyul` + 귤 1. 주운 번호 save.tut.gyul
+- 과녁: `life.addTargets` 로 등록 → throw 단계에만 `aimTargets` 에 들어가 자동 조준(#56 발밑 고리·세모, 가장자리 표시 ◎). 맞으면 즙·`audio.splat`·판 흔들림, save.tut.hits. 끝나면 과녁·귤 숨김
+- 눌러야 할 곳(`focusTarget`): 걷기(폰 조이스틱)·달리기 버튼·줍기 버튼(귤·쓰레기 가까이)·상호작용(던지기·버리기·상점)·상점 탭/사기 버튼. `#tut-focus`(귤색 고리 둘 맥박 + 손가락)를 그 요소 위에 놓고 `.tut-focus`, 나머지 `[data-tut]`·상점 칸은 `body.tut-dim` 으로 흐리게. 땅 목표엔 원 + 위아래로 움직이는 화살표(`bob`)
+- 남은 수 `#tut-count`(귤 n/3, 과녁 n/3), 힌트 카드 그림 `gyulKey/gyulBtn`, `throwKey/throwBtn`. UI: 줍기·귤 칸은 gyul, 상호작용은 throw, 배낭·깨끗한 정도는 pick
+- 건너뛰기 버튼(#tut-skip) 없앰 → 개발자 버튼(`?hwi=1`) `#dev-tut`. 확인 스크립트 `tools/tutrun.js [d|m]`(단계마다 dist/tut-*.jpg), `__oreum.tut`(step, hits, gyuls, walls, board, focus())

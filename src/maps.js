@@ -217,6 +217,8 @@ function namsongiSpots() {
       const st = at('approach', TUT.streamD);
       return {
         walk: at('approach', TUT.walkD), run: at('approach', TUT.runD),
+        gyul: TUT.gyulD.map((d, k) => at('approach', d, k % 2 ? 1 : -1, 0.8)), // #62 귤 3개
+        target: at('approach', TUT.targetD, 1, TUT.targetLat), // #62 과녁 (앞이 시작 쪽)
         trash: TUT.trashD.map((d, k) => { const q = at('approach', d, k % 2 ? 1 : -1, 0.9 + (k % 3) * 0.35); return { x: q.x, z: q.z, t: k % 3, r: q.x * 3.1 % 6.28 }; }),
         stream: { x: st.x, z: st.z, dir: st.dir },
         farBank: at('approach', TUT.streamD + TUT.streamW + 2.2),
