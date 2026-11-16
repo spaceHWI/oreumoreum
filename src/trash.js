@@ -1,62 +1,74 @@
-// 쓰레기: 날짜로 정해지는 배치 · 칸 단위로 가까운 것만 그리기 · 줍기 찾기 · 더미
-// 쓰레기 상태(오늘 날짜, 주운 비트셋, 배낭, 오늘·누적 수)를 읽고 쓰는 곳은 createLocalTrashStore 하나뿐.
-// 멀티가 붙으면 같은 모양(date/reset/isPicked/markPicked/pickedCount/bag/commit)의 서버 저장소로 바꿔 끼운다
+// 쓰레기 (#45): 구역마다 놓인 쓰레기 더미 · 튜토리얼용 낱개 6개 · 줍기 찾기
+// 쓰레기 상태(서버별 더미마다 남은 양, 배낭, 누적 수, 도감)를 읽고 쓰는 곳은 createLocalTrashStore 하나뿐.
+// 멀티가 붙으면 같은 모양(left/takeOne/putBack/setLeft/bag/commit …)의 서버 저장소로 바꿔 끼운다
+// 더미 자리는 고정 난수(HEAP.seed)로 정해짐. 다시 쌓이는 것(투기꾼)은 뒤 이슈
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, DEX, FISH } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH } from './balance.js';
+import { zoneAt } from './zones.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
 TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push({ id: `${t.id}:${i}`, kind: t.id, name, rare: false })); DEX.rare.filter((r) => r.kind === t.id).forEach((r, i) => DEX_LIST.push({ id: `${t.id}:r${i}`, kind: t.id, name: r.name, rare: true })); });
 // 개울 칸 (#44): 낚시로 잡는 물고기 3종 'fish:번호'. 쓰레기가 아니라 kind 'fish', sec 'stream'
 FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
-import { kstDate } from './achievements.js';
 
-const N = TRASH.total, NH = TRASH.heaps * TRASH.heapN, NS = N - NH; // 0..NS-1 흩어진 것, NS.. 더미 칸(더미 h 의 s번째 = NS + h*heapN + s)
-export const TRASH_N = N;
+// 더미 목록 (자리와 상관없이 정해지는 순서): 구역 순서대로 큰 것부터. 저장의 heaps[i] 가 이 순서
+export const HEAP_DEFS = [];
+ZONES.forEach((Z) => ['xl', 'l', 's'].forEach((k) => { for (let i = 0; i < (Z.heaps[k] || 0); i++) HEAP_DEFS.push({ zone: Z.id, k, n: Z.amt?.[k] ?? HEAP.sizes[k].n }); }));
+const HEAP_FULL = HEAP_DEFS.map((d) => d.n);
+const HEAP_SIG = 'h1:' + HEAP_DEFS.map((d) => d.zone + d.k + d.n).join(',');
+export const HEAP_TOTAL = HEAP_FULL.reduce((a, b) => a + b, 0);
 
 /* ---------- 저장소 (기기 저장) ---------- */
-const enc = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 4096) s += String.fromCharCode.apply(null, u8.subarray(i, i + 4096)); return btoa(s); };
-const dec = (s, n) => { const u = new Uint8Array(n); try { const b = atob(s || ''); for (let i = 0; i < Math.min(n, b.length); i++) u[i] = b.charCodeAt(i); } catch (e) { /* 깨진 값은 비움 */ } return u; };
-const popc = (u8) => { let c = 0; for (let i = 0; i < u8.length; i++) { let v = u8[i]; while (v) { v &= v - 1; c++; } } return c; };
 export function createLocalTrashStore({ save, persist, server = 'clean' }) {
   const T = save.trash = (save.trash && typeof save.trash === 'object') ? save.trash : {};
-  // 서버별 주운 기록 (#35): srv[서버] = { date, picked }. 예전 저장의 date·picked 는 깨끗한 오름 것으로 옮김
-  if (!T.srv || typeof T.srv !== 'object') { T.srv = { clean: { date: typeof T.date === 'string' ? T.date : '', picked: typeof T.picked === 'string' ? T.picked : '' } }; delete T.date; delete T.picked; }
-  let S = null, bits = null;
-  const slot = (id) => { const o = T.srv[id] = (T.srv[id] && typeof T.srv[id] === 'object') ? T.srv[id] : {}; if (typeof o.date !== 'string') o.date = ''; if (typeof o.picked !== 'string') o.picked = ''; return o; };
-  const load = (id) => { S = slot(id); bits = dec(S.picked, Math.ceil(N / 8)); T.today = popc(bits); };
+  // 서버별 더미 남은 양 (#35, #45): srv[서버] = { sig, heaps:[남은 수…] }. 예전(흩뿌리기) 기록 date·picked 는 버림
+  if (!T.srv || typeof T.srv !== 'object') T.srv = {};
+  delete T.date; delete T.picked; delete T.today;
+  let S = null;
+  const slot = (id) => {
+    const o = T.srv[id] = (T.srv[id] && typeof T.srv[id] === 'object') ? T.srv[id] : {};
+    delete o.date; delete o.picked;
+    if (o.sig !== HEAP_SIG || !Array.isArray(o.heaps) || o.heaps.length !== HEAP_FULL.length) { o.sig = HEAP_SIG; o.heaps = HEAP_FULL.slice(); } // 처음·더미 구성이 바뀌면 가득 찬 상태로
+    o.heaps = o.heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], Math.floor(Number(v)) || 0)));
+    return o;
+  };
   if (!T.bag || typeof T.bag !== 'object') T.bag = {};
   TRASH_TYPES.forEach((t) => { T.bag[t.id] = Math.max(0, Math.floor(Number(T.bag[t.id]) || 0)); });
   T.total = Math.max(0, Math.floor(Number(T.total) || 0));
-  if (!Array.isArray(T.tp)) T.tp = []; // 튜토리얼용 고정 쓰레기: 주운 번호(0부터). 오늘 수·누적 수엔 세지 않음
-  if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수 (예전 저장엔 없음)
-  load(server);
+  if (!Array.isArray(T.tp)) T.tp = []; // 튜토리얼용 낱개 쓰레기: 주운 번호(0부터). 누적 수엔 세지 않음
+  if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수
+  S = slot(server);
+  for (const k in T.srv) if (k !== server) slot(k);
   let dirty = false;
   return {
-    date: () => S.date,
-    // 다른 서버의 주운 기록으로 바꿔 끼움 (지금 기록은 먼저 저장). 바꾼 뒤 trash.relayout() 필요
-    setServer(id) { if (dirty) { S.picked = enc(bits); dirty = false; } load(id); persist(); },
+    server: () => server,
+    // 다른 서버의 더미 상태로 바꿔 끼움. 바꾼 뒤 trash.relayout() 필요
+    setServer(id) { server = id; S = slot(id); persist(); },
     resetTutorial() { T.tp = []; dirty = true; },
-    reset(date) { S.date = date; bits.fill(0); T.today = 0; dirty = true; this.commit(); },
-    isPicked: (i) => i >= N ? T.tp.includes(i - N) : (bits[i >> 3] >> (i & 7)) & 1,
-    markPicked(i) { if (i >= N) { if (T.tp.includes(i - N)) return false; T.tp.push(i - N); dirty = true; return true; } if ((bits[i >> 3] >> (i & 7)) & 1) return false; bits[i >> 3] |= 1 << (i & 7); T.today++; T.total++; dirty = true; return true; },
-    // 다시 흘림 (#37 멧돼지가 헤집음): 오늘 주운 수만 줄고 누적 수는 그대로
-    unmarkPicked(i) { if (i >= N || !((bits[i >> 3] >> (i & 7)) & 1)) return false; bits[i >> 3] &= ~(1 << (i & 7)); T.today = Math.max(0, T.today - 1); dirty = true; return true; },
-    pickedCount: () => T.today,
+    left: (h) => S.heaps[h],
+    full: (h) => HEAP_FULL[h],
+    // 더미 h 에서 하나 꺼냄 (누적 수 +1)
+    takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; dirty = true; return true; },
+    // 다시 쌓기 (#37 멧돼지가 흘림 · 뒤 이슈 투기꾼): 넣은 수
+    putBack(h, n) { const add = Math.max(0, Math.min(n, HEAP_FULL[h] - S.heaps[h])); S.heaps[h] += add; if (add) dirty = true; return add; },
+    setLeft(h, n) { S.heaps[h] = Math.max(0, Math.min(HEAP_FULL[h], Math.floor(n))); dirty = true; }, // 테스트용
+    isTutPicked: (k) => T.tp.includes(k),
+    markTutPicked(k) { if (T.tp.includes(k)) return false; T.tp.push(k); dirty = true; return true; },
+    pickedCount: () => HEAP_TOTAL - S.heaps.reduce((a, b) => a + b, 0), // 이 서버 오름에서 치운 수
     totalCount: () => T.total,
     bag: T.bag,
     dex: T.dex,
     dexAdd(id) { const isNew = !T.dex[id]; T.dex[id] = (T.dex[id] || 0) + 1; return isNew; },
     dexSpecies: () => DEX_LIST.reduce((n, d) => n + (T.dex[d.id] > 0 ? 1 : 0), 0),
-    commit() { if (dirty) { S.picked = enc(bits); dirty = false; } persist(); },
+    commit() { dirty = false; persist(); },
   };
 }
 
-/* ---------- 배치 ---------- */
+/* ---------- 탐방로 ---------- */
 function mulberry(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const strSeed = (str) => { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 
 function makeTrail(paths) {
   const segs = []; let L = 0;
@@ -67,50 +79,43 @@ function makeTrail(paths) {
   const dist = (x, z, lim) => { let b = lim; const r = Math.ceil(lim / TC), ci = Math.floor(x / TC), cj = Math.floor(z / TC), seen = new Set();
     for (let i = ci - r; i <= ci + r; i++) for (let j = cj - r; j <= cj + r; j++) { const a = grid.get(i * 8191 + j); if (!a) continue; for (const k of a) { if (seen.has(k)) continue; seen.add(k); const s = segs[k]; const dx = s.bx - s.ax, dz = s.bz - s.az; let t = ((x - s.ax) * dx + (z - s.az) * dz) / (s.l * s.l); t = t < 0 ? 0 : t > 1 ? 1 : t; const d = Math.hypot(x - s.ax - dx * t, z - s.az - dz * t); if (d < b) b = d; } }
     return b; };
-  // 길 위 한 점 (길이 비례로 고름): [x, z, 길 방향 x, 길 방향 z]
-  const at = (u) => { let lo = 0, hi = segs.length - 1; const c = u * L; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].c0 <= c) lo = m; else hi = m - 1; } const s = segs[lo], t = Math.min(1, (c - s.c0) / s.l); return [s.ax + (s.bx - s.ax) * t, s.az + (s.bz - s.az) * t, (s.bx - s.ax) / s.l, (s.bz - s.az) / s.l]; };
-  return { dist, at, L };
+  // 길 위 점들 (step 마다): [x, z, 길 방향 x, 길 방향 z]
+  const samples = (step) => { const o = []; for (const s of segs) { const n = Math.max(1, Math.round(s.l / step)); for (let j = 0; j < n; j++) o.push([s.ax + (s.bx - s.ax) * j / n, s.az + (s.bz - s.az) * j / n, (s.bx - s.ax) / s.l, (s.bz - s.az) / s.l]); } return o; };
+  return { dist, samples, L };
 }
 
-function genLayout(date, trail, ok, fixed) {
-  const rnd = mulberry(strSeed('trash-' + date));
-  const gauss = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
-  const M = N + fixed.length, X = new Float32Array(M), Z = new Float32Array(M), R = new Float32Array(M), TY = new Uint8Array(M);
-  // 종류: 비율대로 정확히 나눠 섞음
-  let o = 0; TRASH_TYPES.forEach((t, k) => { const n = k === TRASH_TYPES.length - 1 ? N - o : Math.round(N * t.ratio); TY.fill(k, o, o + n); o += n; });
-  for (let i = N - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = TY[i]; TY[i] = TY[j]; TY[j] = t; }
-  const D = TRASH.trailD;
-  const nearPt = () => { const [x, z, dx, dz] = trail.at(rnd()); const side = (rnd() * 2 - 1) * D * 0.96, along = (rnd() - 0.5) * 6; return [x - dz * side + dx * along, z + dx * side + dz * along]; };
-  const farPt = () => { const [x, z] = trail.at(rnd()); const a = rnd() * Math.PI * 2, r = D + 2 + (TRASH.offMax - D) * Math.pow(rnd(), 1.4); return [x + Math.cos(a) * r, z + Math.sin(a) * r]; };
-  const okNear = (x, z) => ok(x, z) && trail.dist(x, z, D + 1) <= D;
-  const okFar = (x, z) => ok(x, z) && trail.dist(x, z, D + 3) > D + 2;
-  const pickPt = (gen, test) => { for (let k = 0; k < 60; k++) { const p = gen(); if (test(p[0], p[1])) return p; } const [x, z] = trail.at(rnd()); return [x, z]; }; // 끝내 못 찾으면 탐방로 위(오름 위)
-  // 뭉치는 자리
-  const cN = [], cF = []; for (let k = 0; k < 700; k++) cN.push(pickPt(nearPt, okNear)); for (let k = 0; k < 320; k++) cF.push(pickPt(farPt, okFar));
-  // 더미 60곳: 40곳은 길 옆, 20곳은 숲·들판. 서로 40 이상 떨어지게
-  const heaps = [];
-  for (let h = 0; h < TRASH.heaps; h++) {
-    const near = h < 40; let best = null;
-    for (let k = 0; k < 40 && !best; k++) {
-      const p = near ? (() => { const [x, z, dx, dz] = trail.at(rnd()); const side = (rnd() < 0.5 ? -1 : 1) * (6 + rnd() * 12); return [x - dz * side, z + dx * side]; })() : farPt();
-      if (!(near ? okNear : okFar)(p[0], p[1])) continue;
-      if (heaps.some((q) => Math.hypot(q.x - p[0], q.z - p[1]) < 40)) continue;
-      best = p;
+/* ---------- 더미 자리 ---------- */
+// ok(x, z): 놓을 수 있는 땅(오름 위, 사물과 안 겹침). 같은 seed 면 늘 같은 자리
+function placeHeaps(trail, ok, height, origin) {
+  const far = (z, x, y) => origin && ZONES[z - 1].maxD && Math.hypot(x - origin.x, y - origin.z) > ZONES[z - 1].maxD;
+  const rnd = mulberry(HEAP.seed);
+  const tr = trail.samples(4);
+  // 구역 칸 (빈터 후보): 8 단위 격자
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; tr.forEach((p) => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); });
+  const cells = {}; ZONES.forEach((Z) => { cells[Z.id] = []; });
+  for (let z = z0 - 200; z <= z1 + 200; z += 8) for (let x = x0 - 200; x <= x1 + 200; x += 8) { const k = zoneAt(x, z); if (k && !far(k, x, z) && trail.dist(x, z, HEAP.freeMax + 1) <= HEAP.freeMax) cells[k].push([x, z]); }
+  const near = {}; ZONES.forEach((Z) => { near[Z.id] = []; }); tr.forEach((p) => { const k = zoneAt(p[0], p[1]); if (k && !far(k, p[0], p[1])) near[k].push(p); });
+  const ring = (x, z, R, fn) => { for (const rho of [0, R * 0.55, R + 0.35]) { const n = rho ? Math.max(6, Math.ceil(2 * Math.PI * rho / 0.85)) : 1; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; if (!fn(x + Math.cos(a) * rho, z + Math.sin(a) * rho)) return false; } } return true; };
+  const out = [];
+  HEAP_DEFS.forEach((d) => {
+    const R = HEAP.sizes[d.k].r; let best = null;
+    for (let t = 0; t < 900 && !best; t++) {
+      const relax = t > 600, isNear = t < 300 ? rnd() < HEAP.nearFrac : rnd() < 0.3; let x, z;
+      if (isNear && near[d.zone].length) { const p = near[d.zone][Math.floor(rnd() * near[d.zone].length)], side = rnd() < 0.5 ? -1 : 1, off = HEAP.trailMin + R + rnd() * (HEAP.trailMax - HEAP.trailMin); x = p[0] - p[3] * side * off; z = p[1] + p[2] * side * off; }
+      else { const c = cells[d.zone]; if (!c.length) continue; const p = c[Math.floor(rnd() * c.length)]; x = p[0] + (rnd() - 0.5) * 8; z = p[1] + (rnd() - 0.5) * 8; }
+      if (zoneAt(x, z) !== d.zone || far(d.zone, x, z)) continue;
+      if (!relax && [0, 1, 2, 3].some((i) => zoneAt(x + Math.cos(i * 1.57) * (R + 1), z + Math.sin(i * 1.57) * (R + 1)) !== d.zone)) continue;
+      if (trail.dist(x, z, R + HEAP.trailMin + 0.1) < R + HEAP.trailMin) continue; // 길을 막지 않게
+      if (out.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + R + HEAP.gap * (relax ? 0.5 : 1))) continue;
+      let lo = 1e9, hi = -1e9, sum = 0; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, y = height(x + Math.cos(a) * R * 0.8, z + Math.sin(a) * R * 0.8); lo = Math.min(lo, y); hi = Math.max(hi, y); sum += y; }
+      if (hi - lo > R * (relax ? 0.8 : 0.45) + 0.3) continue; // 너무 가파른 곳
+      if (!ring(x, z, R, ok)) continue;
+      best = { x, z, y: Math.min(sum / 8, lo + 0.4) - 0.1 };
     }
-    best ||= pickPt(nearPt, okNear);
-    heaps.push({ x: best[0], z: best[1], near, rot: rnd() * 6.28 });
-  }
-  const nearHeapItems = 40 * TRASH.heapN, nNear = Math.round(N * TRASH.nearTrail) - nearHeapItems; // 흩어진 것 중 길 옆
-  for (let i = 0; i < NS; i++) {
-    const near = i < nNear, cs = near ? cN : cF, test = near ? okNear : okFar, gen = near ? nearPt : farPt;
-    let p = null;
-    if (rnd() < (near ? 0.55 : 0.65)) { const c = cs[Math.floor(rnd() * cs.length)], sg = near ? 3.5 : 6; for (let k = 0; k < 4 && !p; k++) { const x = c[0] + gauss() * sg, z = c[1] + gauss() * sg; if (test(x, z)) p = [x, z]; } }
-    p ||= pickPt(gen, test);
-    X[i] = p[0]; Z[i] = p[1]; R[i] = rnd() * Math.PI * 2;
-  }
-  for (let h = 0; h < heaps.length; h++) for (let s = 0; s < TRASH.heapN; s++) { const i = NS + h * TRASH.heapN + s; X[i] = heaps[h].x; Z[i] = heaps[h].z; R[i] = 0; }
-  fixed.forEach((f, k) => { X[N + k] = f.x; Z[N + k] = f.z; R[N + k] = f.r || 0; TY[N + k] = f.t; }); // 튜토리얼용: 날짜와 상관없이 늘 그 자리
-  return { X, Z, R, TY, heaps };
+    if (!best) { const c = cells[d.zone][Math.floor(rnd() * cells[d.zone].length)] || [0, 0]; best = { x: c[0], z: c[1], y: height(c[0], c[1]) - 0.12 }; } // 끝내 못 찾으면 구역 안 아무 데나
+    out.push({ ...best, r: R, k: d.k, zone: d.zone, n: d.n, rot: rnd() * Math.PI * 2 });
+  });
+  return out;
 }
 
 /* ---------- 모양 (로우폴리 임시) ---------- */
@@ -131,132 +136,160 @@ const PAL = [
   ['#f7f7f2', '#ecebe4', '#f2efe2'], // 스티로폼
   ['#e2683a', '#3e7fc4', '#e8d24a', '#3f9a5a'], // 폐어구
 ];
-function makeHeapGeo() {
-  const parts = [piece(jitter(new THREE.IcosahedronGeometry(1.3, 0), 0.35, 11).scale(1, 0.5, 1).translate(0, 0.35, 0), '#56606a')];
-  const r = mulberry(77), cols = ['#f4f4f0', '#d8423a', '#4f86c6', '#e2683a', '#f7f7f2', '#2e2e34', '#c9ccd2'];
-  for (let k = 0; k < 14; k++) { const a = r() * 6.28, d = r() * 1.0, y = 0.45 + (1 - d) * 0.35; const g = k % 3 === 0 ? new THREE.BoxGeometry(0.5, 0.26, 0.36) : k % 3 === 1 ? new THREE.CylinderGeometry(0.13, 0.13, 0.36, 6).rotateZ(1.57) : jitter(new THREE.IcosahedronGeometry(0.28, 0), 0.12, k);
-    g.rotateY(r() * 6.28).translate(Math.cos(a) * d, y, Math.sin(a) * d); parts.push(piece(g, cols[k % cols.length])); }
+// 더미 모양: 크기 k, 단계 st(0 가득 ~ 3 거의 다 치움). 어두운 쓰레기 덩어리 위에 봉투·상자·타이어·스티로폼·그물·캔·병
+const STG_R = [1, 0.8, 0.6, 0.42], STG_H = [1, 0.72, 0.48, 0.26];
+const stageOf = (f) => { let st = 0; for (let i = 1; i < HEAP.stages.length; i++) if (f <= HEAP.stages[i]) st = i; return st; };
+function makeHeapGeo(k, st, low) {
+  const S = HEAP.sizes[k], R = S.r * STG_R[st], Hh = S.h * STG_H[st], r = mulberry(901 + st * 31 + k.length * 7), sc = { s: 0.72, l: 1.0, xl: 1.5 }[k];
+  const parts = [piece(jitter(new THREE.IcosahedronGeometry(1, 1), 0.16, 5 + st).scale(R, Hh * 0.82, R), '#5a5248'), piece(jitter(new THREE.IcosahedronGeometry(1, 0), 0.2, 9 + st).scale(R * 0.55, Hh * 0.35, R * 0.55).translate(R * 0.1, Hh * 0.62, -R * 0.08), '#3a3a40')];
+  const N = Math.round({ s: 12, l: 28, xl: 64 }[k] * [1, 0.72, 0.5, 0.3][st] * (low ? 0.7 : 1));
+  const BAG = ['#2e2e34', '#2e2e34', '#3b5ea8', '#e8e4d8', '#55606a'], BOX = ['#b8915a', '#a07a48'], NET = ['#3f9a5a', '#e2683a', '#3e7fc4'], SMALL = ['#d8423a', '#d9eef5', '#e0b23a', '#c9ccd2'];
+  for (let i = 0; i < N; i++) {
+    const kind = i % 7, s = sc * (0.8 + r() * 0.5); let g, c;
+    if (kind === 0 || kind === 4) { g = jitter(new THREE.IcosahedronGeometry(0.4, 0), 0.16, i + st).scale(1, 0.85, 1); c = BAG[Math.floor(r() * BAG.length)]; }
+    else if (kind === 1) { g = new THREE.BoxGeometry(0.58, 0.42, 0.46); c = BOX[i % 2]; }
+    else if (kind === 2) { g = new THREE.TorusGeometry(0.34, 0.14, 4, 8).rotateX(Math.PI / 2 + (r() - 0.5) * 1.2); c = '#26262a'; }
+    else if (kind === 3) { g = jitter(new THREE.BoxGeometry(0.62, 0.24, 0.42), 0.05, i); c = '#f4f4ee'; }
+    else if (kind === 5) { g = jitter(new THREE.TorusGeometry(0.42, 0.06, 3, 7), 0.12, i).rotateX(Math.PI / 2 + (r() - 0.5)); c = NET[i % 3]; }
+    else { g = new THREE.CylinderGeometry(0.12, 0.12, 0.38, 6).rotateZ(Math.PI / 2); c = SMALL[i % 4]; }
+    const top = i >= N - Math.max(1, Math.round(N * 0.12)); // 꼭대기에 몇 개 얹음
+    const rho = top ? r() * R * 0.18 : R * 0.88 * Math.sqrt(r()), a = r() * Math.PI * 2;
+    const y = Hh * 0.82 * Math.sqrt(Math.max(0, 1 - (rho / R) ** 2));
+    g.scale(s, s, s).rotateY(r() * 6.28).rotateX((r() - 0.5) * 0.8).translate(Math.cos(a) * rho, y + 0.05 * s, Math.sin(a) * rho);
+    parts.push(piece(g, c));
+  }
   return mergeGeometries(parts);
 }
 
 /* ---------- 쓰레기 세상 ---------- */
-export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], blocked = null }) {
+// paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null }) {
   const trail = makeTrail(paths);
-  const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(blocked && blocked(x, z)); // 사물 충돌 범위 안에는 놓지 않음 (#15) // 바다·맵 밖 제외
+  const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(col && col.blocked(x, z, 0.45)); // 사물과 겹치지 않게 (#15)
+  const heaps = placeHeaps(trail, ok, height, origin);
   const geos = makeGeos();
   const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
-  const CAP = low ? 900 : 1700, DRAW_R = low ? TRASH.drawRLow : TRASH.drawR;
-  const meshes = geos.map((g) => { const im = new THREE.InstancedMesh(g, mat, CAP); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.setColorAt(0, new THREE.Color()); scene.add(im); return im; });
-  const heapMesh = new THREE.InstancedMesh(makeHeapGeo(), mat, TRASH.heaps); heapMesh.frustumCulled = false; heapMesh.castShadow = !low; heapMesh.receiveShadow = !low; scene.add(heapMesh);
   const fxMats = PAL.map((p) => new THREE.MeshToonMaterial({ color: p[0], vertexColors: true, gradientMap: gradHard }));
-  let L = null, cells = null, heapLeft = null;
-  const C = TRASH.cell, ck = (cx, cz) => (cx + 2048) * 4096 + (cz + 2048);
   const listeners = [];
   const emit = (ev, d) => listeners.forEach((f) => f(ev, d));
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), col = new THREE.Color();
-  const Y = new Float32Array(N + fixed.length);
-  function layout(date) {
-    L = genLayout(date, trail, ok, fixed);
-    for (let i = 0; i < N + fixed.length; i++) Y[i] = height(L.X[i], L.Z[i]);
-    const m = new Map();
-    for (let i = 0; i < NS; i++) { const k = ck(Math.floor(L.X[i] / C), Math.floor(L.Z[i] / C)); let a = m.get(k); if (!a) m.set(k, a = []); a.push(i); }
-    cells = new Map(); for (const [k, a] of m) cells.set(k, Int32Array.from(a));
-    heapLeft = L.heaps.map((_, h) => { let n = 0; for (let s = 0; s < TRASH.heapN; s++) if (!store.isPicked(NS + h * TRASH.heapN + s)) n++; return n; });
-    // 각 쓰레기의 색 (번호로 정해짐)
-    L.col = new Uint8Array(N + fixed.length); for (let i = 0; i < N + fixed.length; i++) L.col[i] = (Math.imul(i, 2654435761) >>> 24) % PAL[L.TY[i]].length;
-    layoutHeaps(); dirty = true;
-  }
-  function layoutHeaps() {
-    L.heaps.forEach((h, k) => { const f = heapLeft[k] / TRASH.heapN, s = f > 0 ? 0.35 + 0.65 * Math.sqrt(f) : 0; e.set(0, h.rot, 0); q.setFromEuler(e); v.set(h.x, height(h.x, h.z) - 0.1, h.z); m4.compose(v, q, new THREE.Vector3(s, s, s)); heapMesh.setMatrixAt(k, m4); });
-    heapMesh.instanceMatrix.needsUpdate = true;
-  }
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), colr = new THREE.Color();
+  // 튜토리얼 낱개 (종류별 InstancedMesh)
+  const CAP = Math.max(1, fixed.length);
+  const meshes = geos.map((g) => { const im = new THREE.InstancedMesh(g, mat, CAP); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; im.setColorAt(0, new THREE.Color()); scene.add(im); return im; });
+  const FY = fixed.map((f) => height(f.x, f.z)), FC = fixed.map((f, k) => (Math.imul(k + 7, 2654435761) >>> 24) % PAL[f.t].length);
+  // 더미 (크기·단계별 InstancedMesh)
+  const HM = {}; ['s', 'l', 'xl'].forEach((k) => { const cap = Math.max(1, heaps.filter((h) => h.k === k).length); HM[k] = [0, 1, 2, 3].map((st) => { const im = new THREE.InstancedMesh(makeHeapGeo(k, st, low), mat, cap); im.count = 0; im.frustumCulled = false; im.castShadow = !low; im.receiveShadow = !low; scene.add(im); return im; }); });
+  // 더미 충돌: 단계마다 원 하나씩 등록해 두고 지금 단계 것만 켬
+  heaps.forEach((h) => { h.cols = col ? [0, 1, 2, 3].map((st) => col.add(h.x, h.z, h.r * STG_R[st] * 0.85 + HEAP.colPad)) : null; h.st = -2; });
+  const stOf = (i) => { const n = store.left(i); return n > 0 ? stageOf(n / heaps[i].n) : -1; };
+  function syncCols() { heaps.forEach((h, i) => { const st = stOf(i); if (st === h.st || !h.cols) { h.st = st; return; } h.st = st; h.cols.forEach((id, s) => col.setOff([id], s !== st)); }); }
+  const curR = (i) => heaps[i].r * STG_R[Math.max(0, heaps[i].st)];
   let dirty = true, lastX = 1e9, lastZ = 1e9;
+  const DRAW_R = low ? TRASH.drawRLow : TRASH.drawR, HDRAW = low ? TRASH.heapDrawRLow : TRASH.heapDrawR;
   function rebuild(px, pz) {
     lastX = px; lastZ = pz; dirty = false;
-    const cnt = [0, 0, 0, 0, 0], r2 = DRAW_R * DRAW_R, rc = Math.ceil(DRAW_R / C), cx = Math.floor(px / C), cz = Math.floor(pz / C);
-    for (let i = cx - rc; i <= cx + rc; i++) for (let j = cz - rc; j <= cz + rc; j++) {
-      const a = cells.get(ck(i, j)); if (!a) continue;
-      for (let n = 0; n < a.length; n++) {
-        const id = a[n], dx = L.X[id] - px, dz = L.Z[id] - pz; if (dx * dx + dz * dz > r2 || store.isPicked(id)) continue;
-        const t = L.TY[id], c = cnt[t]; if (c >= CAP) continue;
-        e.set(0, L.R[id], 0); q.setFromEuler(e); v.set(L.X[id], Y[id], L.Z[id]); m4.compose(v, q, one);
-        meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, col.set(PAL[t][L.col[id]])); cnt[t] = c + 1;
-      }
-    }
-    for (let k = 0; k < fixed.length; k++) {
-      const id = N + k, dx = L.X[id] - px, dz = L.Z[id] - pz; if (dx * dx + dz * dz > r2 || store.isPicked(id)) continue;
-      const t = L.TY[id], c = cnt[t]; if (c >= CAP) continue;
-      e.set(0, L.R[id], 0); q.setFromEuler(e); v.set(L.X[id], Y[id], L.Z[id]); m4.compose(v, q, one);
-      meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, col.set(PAL[t][L.col[id]])); cnt[t] = c + 1;
-    }
+    const cnt = [0, 0, 0, 0, 0];
+    fixed.forEach((f, k) => {
+      if (store.isTutPicked(k) || (f.x - px) ** 2 + (f.z - pz) ** 2 > DRAW_R * DRAW_R) return;
+      const t = f.t, c = cnt[t]; e.set(0, f.r || 0, 0); q.setFromEuler(e); v.set(f.x, FY[k], f.z); m4.compose(v, q, one);
+      meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, colr.set(PAL[t][FC[k]])); cnt[t] = c + 1;
+    });
     meshes.forEach((im, t) => { im.count = cnt[t]; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; });
+    const hc = { s: [0, 0, 0, 0], l: [0, 0, 0, 0], xl: [0, 0, 0, 0] };
+    heaps.forEach((h) => {
+      if (h.st < 0 || (h.x - px) ** 2 + (h.z - pz) ** 2 > HDRAW * HDRAW) return;
+      e.set(0, h.rot, 0); q.setFromEuler(e); v.set(h.x, h.y, h.z); m4.compose(v, q, one);
+      HM[h.k][h.st].setMatrixAt(hc[h.k][h.st]++, m4);
+    });
+    for (const k in HM) HM[k].forEach((im, st) => { im.count = hc[k][st]; im.instanceMatrix.needsUpdate = true; });
   }
-  // 반경 안에서 주울 수 있는 것들 (가까운 순). room: 배낭 남은 부피
-  function each(px, pz, r, room, fn) {
-    const r2 = r * r;
-    for (let i = Math.floor((px - r) / C); i <= Math.floor((px + r) / C); i++) for (let j = Math.floor((pz - r) / C); j <= Math.floor((pz + r) / C); j++) {
-      const a = cells.get(ck(i, j)); if (!a) continue;
-      for (let n = 0; n < a.length; n++) { const id = a[n], dx = L.X[id] - px, dz = L.Z[id] - pz, d2 = dx * dx + dz * dz; if (d2 > r2 || store.isPicked(id) || TRASH_TYPES[L.TY[id]].vol > room) continue; if (fn(id, d2)) return true; }
-    }
-    for (let k = 0; k < fixed.length; k++) { const id = N + k, dx = L.X[id] - px, dz = L.Z[id] - pz, d2 = dx * dx + dz * dz; if (d2 > r2 || store.isPicked(id) || TRASH_TYPES[L.TY[id]].vol > room) continue; if (fn(id, d2)) return true; }
-    const hr = r + TRASH.heapR;
-    for (let h = 0; h < L.heaps.length; h++) {
-      if (!heapLeft[h]) continue; const H = L.heaps[h], d2 = (H.x - px) ** 2 + (H.z - pz) ** 2; if (d2 > hr * hr) continue;
-      for (let s = 0; s < TRASH.heapN; s++) { const id = NS + h * TRASH.heapN + s; if (store.isPicked(id) || TRASH_TYPES[L.TY[id]].vol > room) continue; if (fn(id, Math.max(0, Math.sqrt(d2) - TRASH.heapR) ** 2)) return true; break; }
-    }
-    return false;
+  // 반경 r 안에서 주울 수 있는 것 (가까운 순): { h 더미 번호 | k 튜토리얼 번호, x, z, d 가장자리까지 거리 }. room: 배낭 남은 부피
+  function candidates(px, pz, r, room) {
+    const out = [];
+    if (room >= 1) heaps.forEach((h, i) => { if (h.st < 0) return; const d = Math.max(0, Math.hypot(h.x - px, h.z - pz) - curR(i)); if (d <= r) out.push({ h: i, x: h.x, z: h.z, d }); });
+    fixed.forEach((f, k) => { if (store.isTutPicked(k) || TRASH_TYPES[f.t].vol > room) return; const d = Math.hypot(f.x - px, f.z - pz); if (d <= r) out.push({ k, x: f.x, z: f.z, d }); });
+    return out.sort((a, b) => a.d - b.d);
   }
-  const any = (px, pz, r, room) => each(px, pz, r, room, () => true);
-  function candidates(px, pz, r, room) { const out = []; each(px, pz, r, room, (id, d2) => { out.push({ id, d2 }); return false; }); out.sort((a, b) => a.d2 - b.d2); return out.map((o) => o.id); }
-  const isHeap = (id) => id >= NS && id < N;
-  function take(id) {
-    if (!store.markPicked(id)) return null;
-    const t = L.TY[id], type = TRASH_TYPES[t];
-    store.bag[type.id] = (store.bag[type.id] || 0) + 1;
-    // 도감: 드문 것은 1/rareChance, 아니면 그 종류의 흔한 것 4개 중 무작위
+  const any = (px, pz, r, room) => candidates(px, pz, r, room).length > 0;
+  const zoneTotal = {}; heaps.forEach((h) => { zoneTotal[h.zone] = (zoneTotal[h.zone] || 0) + h.n; });
+  const zoneLeft = (z) => heaps.reduce((s, h, i) => s + (h.zone === z ? store.left(i) : 0), 0);
+  // 구역 쓰레기 종류: 그 구역 비율대로, 배낭에 들어가는 것만
+  function rollType(zone, room) {
+    const mix = ZONES[zone - 1].mix; let sum = 0; TRASH_TYPES.forEach((t, j) => { if (t.vol <= room) sum += mix[j]; });
+    let x = Math.random() * sum; for (let j = 0; j < TRASH_TYPES.length; j++) { if (TRASH_TYPES[j].vol > room) continue; x -= mix[j]; if (x <= 0) return j; }
+    return 0;
+  }
+  function rollDex(type) {
     const rares = DEX_LIST.filter((d) => d.kind === type.id && d.rare), commons = DEX_LIST.filter((d) => d.kind === type.id && !d.rare);
-    const dx = Math.random() < DEX.rareChance && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
-    const dexNew = store.dexAdd(dx.id);
-    let heapClear = false;
-    if (isHeap(id)) { const h = Math.floor((id - NS) / TRASH.heapN); heapLeft[h]--; layoutHeaps(); if (!heapLeft[h]) heapClear = true; }
+    return Math.random() < DEX.rareChance && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
+  }
+  // 하나 줍기. c: candidates 의 항목, room: 배낭 남은 부피. 못 주우면 null
+  function take(c, room = 99) {
+    let t, pos, color;
+    if (c.h != null) {
+      const h = heaps[c.h]; if (room < 1 || !store.takeOne(c.h)) return null;
+      t = rollType(h.zone, room); color = PAL[t][Math.floor(Math.random() * PAL[t].length)];
+      const R = curR(c.h) * 0.5, a = Math.random() * 6.28; pos = new THREE.Vector3(h.x + Math.cos(a) * R, h.y + HEAP.sizes[h.k].h * STG_H[Math.max(0, h.st)] * 0.7, h.z + Math.sin(a) * R);
+    } else {
+      const f = fixed[c.k]; if (!store.markTutPicked(c.k)) return null;
+      t = f.t; color = PAL[t][FC[c.k]]; pos = new THREE.Vector3(f.x, FY[c.k] + 0.15, f.z);
+    }
+    const type = TRASH_TYPES[t];
+    store.bag[type.id] = (store.bag[type.id] || 0) + 1;
+    const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
     dirty = true;
     emit('trash', { kind: type.id, dex: dx, dexNew });
-    if (heapClear) emit('heap-clear', {});
-    return { id, t, type, dex: dx, dexNew, pos: new THREE.Vector3(L.X[id], Y[id] + (isHeap(id) ? 0.6 : 0.15), L.Z[id]), color: PAL[t][L.col[id]] };
-  }
-  // 흘리기 (#37): (x, z) 둘레 r 안의 주운 쓰레기(흩어진 것) 중 가까운 n 개를 다시 놓음. 이미 더러운 곳이면 놓을 게 없어 0
-  function drop(x, z, n, r) {
-    const out = [], r2 = r * r;
-    for (let i = Math.floor((x - r) / C); i <= Math.floor((x + r) / C); i++) for (let j = Math.floor((z - r) / C); j <= Math.floor((z + r) / C); j++) {
-      const a = cells.get(ck(i, j)); if (!a) continue;
-      for (let k = 0; k < a.length; k++) { const id = a[k], d2 = (L.X[id] - x) ** 2 + (L.Z[id] - z) ** 2; if (d2 <= r2 && store.isPicked(id)) out.push({ id, d2 }); }
+    if (c.h != null) {
+      const before = heaps[c.h].st; syncCols();
+      if (heaps[c.h].st < 0) { emit('heap-clear', { h: c.h, zone: heaps[c.h].zone }); if (!zoneLeft(heaps[c.h].zone)) emit('zone-clear', { zone: heaps[c.h].zone }); }
+      else if (heaps[c.h].st !== before) emit('heap-stage', { h: c.h, st: heaps[c.h].st });
     }
-    out.sort((p, q) => p.d2 - q.d2);
-    let got = 0; for (const o of out) { if (got >= n) break; if (store.unmarkPicked(o.id)) got++; }
-    if (got) { dirty = true; store.commit(); emit('changed', {}); }
+    return { t, type, dex: dx, dexNew, pos, color };
+  }
+  // 흘리기 (#37 멧돼지가 헤집음): (x, z) 둘레 r 안 가장 가까운 덜 찬 더미에 n 개를 되돌림. 둘레에 더미가 없으면 0
+  function drop(x, z, n, r) {
+    let best = -1, bd = 1e9; heaps.forEach((h, i) => { const d = Math.hypot(h.x - x, h.z - z) - h.r; if (d <= r && d < bd && store.left(i) < h.n) { bd = d; best = i; } });
+    if (best < 0) return 0;
+    const got = store.putBack(best, n); if (got) { syncCols(); dirty = true; store.commit(); emit('changed', {}); }
     return got;
   }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
-  function ensureDay() { const d = kstDate(); if (store.date() !== d) { const first = !store.date(); store.reset(d); layout(d); emit('reset', { first }); return true; } return false; }
-  function relayout() { if (store.date() !== kstDate()) store.reset(kstDate()); layout(store.date()); emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
-  if (store.date() === kstDate()) layout(store.date()); else { store.reset(kstDate()); layout(kstDate()); }
-  let dayT = 0;
-  function update(dt, pos) {
-    const now = Date.now(); if (now - dayT > 1000) { dayT = now; ensureDay(); } // 1초마다 한국 날짜 확인 (자정이면 바로 새 배치)
-    if (dirty || Math.abs(pos.x - lastX) > 5 || Math.abs(pos.z - lastZ) > 5) rebuild(pos.x, pos.z);
+  function relayout() { syncCols(); dirty = true; emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
+  syncCols();
+  function update(dt, pos) { if (dirty || Math.abs(pos.x - lastX) > 6 || Math.abs(pos.z - lastZ) > 6) rebuild(pos.x, pos.z); }
+  const clean = () => store.pickedCount() / HEAP_TOTAL; // 오름 전체 깨끗한 정도 0~1
+  const zoneClean = (z) => (zoneTotal[z] ? 1 - zoneLeft(z) / zoneTotal[z] : 1);
+  // 권장 장비로 혼자 치우는 시간 어림 (분): 줍기 + 클린하우스 왕복. from: 클린하우스 자리 {x,z}
+  function estimate(from, { TOOLS, BAGS, SHOES, walk = 10, detour = 1.15 }) {
+    return ZONES.map((Z) => {
+      const hs = heaps.filter((h) => h.zone === Z.id), n = hs.reduce((s, h) => s + h.n, 0);
+      const tool = TOOLS[Z.rec.tool - 1], bag = BAGS[Z.rec.bag - 1], speed = walk * SHOES[Z.rec.shoes - 1].speed;
+      const vol = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0);
+      const pick = n * tool.time / tool.per, trips = Math.ceil(n * vol / bag.cap);
+      const avgD = hs.reduce((s, h) => s + h.n * Math.hypot(h.x - from.x, h.z - from.z), 0) / Math.max(1, n) * detour;
+      // 더미 사이를 한 번 도는 거리 (가까운 것부터 차례로)
+      let tour = 0; { const left = hs.slice(); let cur = left.shift(); while (cur && left.length) { let bi = 0, bd = 1e9; left.forEach((h, i) => { const d = Math.hypot(h.x - cur.x, h.z - cur.z); if (d < bd) { bd = d; bi = i; } }); tour += bd * detour; cur = left.splice(bi, 1)[0]; } }
+      const walkT = (trips * 2 * avgD + tour) / speed;
+      return { zone: Z.id, heaps: hs.length, n, trips, avgD: Math.round(avgD), tour: Math.round(tour), pickMin: +(pick / 60).toFixed(1), walkMin: +(walkT / 60).toFixed(1), min: +((pick + walkT) / 60).toFixed(1), goal: Z.min };
+    });
   }
-  const clean = () => store.pickedCount() / N;
   // 테스트용
+  const setZone = (z, full) => { heaps.forEach((h, i) => { if (!z || h.zone === z) store.setLeft(i, full ? h.n : 0); }); syncCols(); dirty = true; store.commit(); emit('changed', {}); };
   const test = {
-    fillClean(pct) { const want = Math.min(N, Math.round(N * pct / 100)); for (let i = 0; i < N && store.pickedCount() < want; i++) if (!store.isPicked(i)) store.markPicked(i); heapLeft = L.heaps.map((_, h) => { let n = 0; for (let s = 0; s < TRASH.heapN; s++) if (!store.isPicked(NS + h * TRASH.heapN + s)) n++; return n; }); layoutHeaps(); dirty = true; store.commit(); emit('changed', {}); return clean(); },
+    clearZone(z) { const had = zoneLeft(z) > 0; setZone(z, false); if (had) emit('zone-clear', { zone: z }); return zoneClean(z); }, // 구역 z 비우기 (0 이면 전부)
+    fillZone(z) { setZone(z, true); return zoneClean(z); }, // 구역 z 가득 채우기 (0 이면 전부)
+    setHeap(i, n) { store.setLeft(i, n); syncCols(); dirty = true; store.commit(); emit('changed', {}); return store.left(i); },
+    fillClean(pct) { const want = Math.round(HEAP_TOTAL * (1 - pct / 100)); let left = want; heaps.forEach((h, i) => { const n = Math.min(h.n, left); store.setLeft(i, n); left -= n; }); syncCols(); dirty = true; store.commit(); emit('changed', {}); return clean(); },
     fillBag(vol, kind = 'can') { const t = TRASH_TYPES.find((x) => x.id === kind) || TRASH_TYPES[0]; store.bag[t.id] += Math.max(0, Math.floor(vol / t.vol)); store.commit(); emit('changed', {}); return bagVol(); },
     emptyBag() { TRASH_TYPES.forEach((t) => { store.bag[t.id] = 0; }); store.commit(); emit('changed', {}); },
-    nearest(px, pz) { let b = null, bd = 1e18; for (let i = 0; i < NS; i++) { if (store.isPicked(i)) continue; const d = (L.X[i] - px) ** 2 + (L.Z[i] - pz) ** 2; if (d < bd) { bd = d; b = i; } } return b == null ? null : { id: b, x: L.X[b], z: L.Z[b], kind: TRASH_TYPES[L.TY[b]].id, d: Math.sqrt(bd) }; },
+    heaps: () => heaps.map((h, i) => ({ i, zone: h.zone, k: h.k, x: +h.x.toFixed(1), z: +h.z.toFixed(1), r: h.r, n: h.n, left: store.left(i), st: h.st })),
+    nearestHeap(px, pz) { let b = null, bd = 1e18; heaps.forEach((h, i) => { if (h.st < 0) return; const d = Math.hypot(h.x - px, h.z - pz); if (d < bd) { bd = d; b = { i, x: h.x, z: h.z, r: curR(i), zone: h.zone, k: h.k, left: store.left(i), d }; } }); return b; },
+    zoneAt, zoneClean, zoneLeft, estimate,
     dex: () => ({ ...store.dex }), dexForce(id) { const d = DEX_LIST.find((x) => x.id === id); if (!d) return false; const n = store.dexAdd(id); emit('dex-test', { dex: d, dexNew: n }); store.commit(); return n; },
-    heaps: () => L.heaps.map((h, k) => ({ x: h.x, z: h.z, left: heapLeft[k] })),
-    drawn: () => meshes.reduce((s, m) => s + m.count, 0),
+    heapBox: (k = 'xl') => HM[k].map((m) => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox; return [+b.min.y.toFixed(2), +b.max.y.toFixed(2), +(b.max.x - b.min.x).toFixed(2)]; }),
+    drawn: () => meshes.reduce((s, m) => s + m.count, 0) + Object.values(HM).flat().reduce((s, m) => s + m.count, 0),
   };
   // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
   function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
-  return { update, any, candidates, take, drop, addToBag, bagVol, clean, store, geos, fxMats, on: (f) => listeners.push(f), test, ensureDay, relayout, layout: () => L };
+  return { update, any, candidates, take, drop, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps };
 }

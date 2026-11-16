@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH } from './balance.js';
 import { createHp } from './hp.js';
 import { createStream } from './stream.js';
 import { createFishing } from './fishing.js';
@@ -360,7 +360,7 @@ if (jeong && jeong.isOpen && !save.jeong) { save.jeong = 1; persist(); }
 // 정낭이 열리는 때: 집게·배낭을 둘 다 가졌을 때, 튜토리얼을 마치거나 건너뛰었을 때. 한 번 열리면 계속 열림
 function openJeong(anim = true) { if (!jeong || !jeong.open(anim)) return; save.jeong = 1; persist(); if (anim) sound.gate?.(); }
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
-const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], blocked: col ? (x, z) => col.blocked(x, z, COLLIDE.trashPad) : null }) : null;
+const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse }) : null; // 구역마다 쓰레기 더미 (#45)
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, ic: 'dump', label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
 const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
@@ -1115,19 +1115,22 @@ function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
   if (!list.length) { if (trashFull()) fullToast(); return; }
-  const L = trash.layout(), id = list[0];
+  const c = list[0];
   player.target = null; player.onArrive = null; marker.visible = false;
-  player.heading = Math.atan2(L.X[id] - player.pos.x, L.Z[id] - player.pos.z) || player.heading;
+  player.heading = Math.atan2(c.x - player.pos.x, c.z - player.pos.z) || player.heading;
   player.pose = 'crouch'; player.poseT = 0; player.speed = 0; setHoldBow(false); // 줍기는 도구로 (#38)
   pickS.cyc = 0; pickS.got = false;
 }
 function takeNow() {
   const tool = toolNow(); let room = bagRoom(), n = 0;
-  for (const id of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
-    if (n >= tool.per) break;
-    const it = trash.take(id); if (!it) continue;
-    room -= it.type.vol; n++; flyToBag(it); sound.pick?.(it.type.id);
-    if (room < 1) break;
+  // 더미는 한 곳에서 도구의 한 번 양(per)만큼 꺼냄 (#45). 튜토리얼 낱개는 하나씩
+  for (const c of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
+    while (n < tool.per && room >= 1) {
+      const it = trash.take(c, room); if (!it) break;
+      room -= it.type.vol; n++; flyToBag(it); sound.pick?.(it.type.id);
+      if (c.h == null) break;
+    }
+    if (n >= tool.per || room < 1) break;
   }
   if (n) { trash.store.commit(); updateTrashUI(true); tut.notify('trash', n); }
   if (bagRoom() < 1) { sound.full?.(); fullToast(); }
@@ -1164,7 +1167,9 @@ function tickFly(dt) {
   }
 }
 const nearTop = () => spots.isViewpoint(player.pos) || player.pos.distanceTo(spots.sunWatch.pos) <= spots.sunWatch.r;
-let lastTrashUI = '';
+let lastTrashUI = '', lastZoneUI = '', zoneNow = 0, zoneT = 0;
+// 구역 확인 (0.3초마다): 바뀌면 HUD 갱신
+function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { zoneNow = z; updateTrashUI(false); } }
 function updateTrashUI(bump) {
   if (!trash) return;
   const vol = trash.bagVol(), cap = bagCap(), c = trash.clean() * 100;
@@ -1172,6 +1177,9 @@ function updateTrashUI(bump) {
   const key = `${vol}/${cap}/${cs}`;
   const pk = save.equip.bag === 0; if ($('bag-pill').classList.contains('pocket') !== pk) { $('bag-pill').classList.toggle('pocket', pk); $('bag-pill').title = pk ? '호주머니: 담은 양 / 용량' : '배낭: 담은 양 / 용량 (부피)'; } // 배낭이 없으면 호주머니 아이콘 (#31)
   if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('bag-pill').classList.toggle('full', vol >= cap); }
+  // 지금 구역 번호·깨끗한 정도 (#45). 들머리(0)에서는 숨김
+  const zc = zoneNow ? Math.floor(trash.zoneClean(zoneNow) * 100) : 0, zk = `${zoneNow}/${zc}`;
+  if (zk !== lastZoneUI) { lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-c').textContent = zc; $('zone-pill').classList.toggle('done', zc >= 100); }
   if (bump) { const b = $('bag-pill'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
 }
 if (trash) {
@@ -1180,7 +1188,7 @@ if (trash) {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
     else if (ev === 'heap-clear') { ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); }
-    else if (ev === 'reset') { pickS.cyc = -1; if (!d.first) toast('자정이 지나 오름에 쓰레기가 새로 쌓였어요'); }
+    else if (ev === 'zone-clear') { ach.emit('zone-clear'); ach.emit('zone-clear-' + d.zone); toast(`${d.zone}구역을 모두 치웠어요`); }
     updateTrashUI(false);
   });
   updateTrashUI(false);
@@ -1969,7 +1977,7 @@ function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
-  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } devLabels.update(dt); tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000);
@@ -2049,8 +2057,8 @@ setGait(0);
 followCam(0, true);
 requestAnimationFrame(frame);
 // ---------- 튜토리얼 (입구 마당) ----------
-// 튜토리얼용 쓰레기 6개 (번호 TRASH.total + k)
-const tutTrashLeftList = () => (trash ? (spots.tut?.trash || []).filter((_, k) => !trash.store.isPicked(TRASH.total + k)) : []);
+// 튜토리얼용 낱개 쓰레기 6개 (번호 k)
+const tutTrashLeftList = () => (trash ? (spots.tut?.trash || []).filter((_, k) => !trash.store.isTutPicked(k)) : []);
 const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLeftList()) { const d = Math.hypot(t.x - player.pos.x, t.z - player.pos.z); if (d < bd) { bd = d; b = t; } } return b; };
 const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH, onDone: () => updateTrashUI(false) });
 if (NS_TUT && tut.active) { document.body.classList.add('tut'); hideHint(); }
@@ -2104,5 +2112,5 @@ applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
-window.__oreum = { fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ date: trash.store.date(), bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), today: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };
