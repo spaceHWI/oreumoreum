@@ -405,3 +405,10 @@ export const STONE = {
   walkMax: 3, // 자리까지 걸어가다 이 초가 넘으면 바로 앉힘
   markFar: 160, markNear: 16, // 가장자리 포크·나이프 표시: 이 거리 사이일 때
 };
+
+// 캐릭터 고르기·머리 (#51): 처음엔 고른 기본 머리만, 나머지는 상점 옷 탭에서 귤로 삼 (값은 임시)
+export const HAIR = {
+  start: { m: 'hat:short', f: 'hat:bob' }, // 기본 남성 짧은 머리 · 기본 여성 단발
+  price: { 'hat:short': 150, 'hat:bob': 150, 'hat:bun': 300, 'hat:cap': 150 }, // 상점 옷 탭 순서
+  spin: 0.7, // 고르기 화면에서 카메라가 도는 빠르기 (rad/s)
+};

@@ -666,6 +666,39 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
 #stone-mark svg { width: 17px; height: 17px; }
 #stone-mark .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid rgba(255,255,255,.7); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(22px); }
 body.hp-down #stone-mark { display: none !important; }
+
+/* 캐릭터 고르기 (#51) */
+#look { position: fixed; left: var(--gut-l); right: var(--gut-r); bottom: calc(var(--safe-b) + 22px); z-index: 10; display: flex; justify-content: center; pointer-events: none; }
+#look[hidden] { display: none; }
+.look-card { pointer-events: auto; display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 28px; }
+.look-sex { display: flex; gap: 8px; }
+.look-sex button { width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255,255,255,.08); padding: 6px; display: grid; place-items: center; }
+.look-sex button svg { width: 100%; height: 100%; }
+.look-sex button[aria-pressed="true"] { background: rgba(255,255,255,.22); border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc); }
+.look-skin { display: flex; gap: 10px; padding: 0 4px; border-left: 1px solid var(--hair); border-right: 1px solid var(--hair); padding: 0 14px; }
+.look-skin button { width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); padding: 0; }
+.look-skin button[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 3px var(--acc); }
+.look-ok { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(255,138,31,.45); }
+.look-ok svg { width: 28px; height: 28px; }
+body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, body.looking #joy, body.looking #speed-label, body.looking #ach-chip, body.looking #sun-chip, body.looking #hp-bar, body.looking #ch-arrow, body.looking #shop-arrow, body.looking #stone-mark, body.looking #tut-hint, body.looking #tut-skip, body.looking #tut-arrow, body.looking #compass { visibility: hidden; }
+@media (max-width: 600px) {
+  .look-card { gap: 10px; padding: 10px; }
+  .look-sex button { width: 54px; height: 54px; }
+  .look-skin { gap: 8px; padding: 0 10px; }
+  .look-skin button { width: 28px; height: 28px; }
+  .look-ok { width: 50px; height: 50px; }
+}
+/* 상점 옷 탭 머리 줄 (#51) */
+.hair-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.hair-item { position: relative; aspect-ratio: 1; border-radius: 16px; border: 1px solid var(--hair); background: rgba(255,255,255,.06); padding: 8px 8px 18px; display: grid; place-items: center; color: #fff; }
+.hair-item svg { width: 100%; height: 100%; }
+.hair-item.on { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc); background: rgba(255,255,255,.16); }
+.hair-item:not(.has) svg { opacity: .75; }
+.hair-item .st { position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; }
+.hair-item .st svg { width: 12px; height: 12px; }
+.hair-item .pr { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 800; }
+.hair-item .pr.short { opacity: .5; }
+.hair-item .pr .g { width: 11px; height: 11px; border-radius: 50%; background: var(--gyul); display: inline-block; }
 </style>
 
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
@@ -917,6 +950,14 @@ body.hp-down #stone-mark { display: none !important; }
       <span><b>귤</b> 길에서 줍고 업적으로 받아요. 던지면 노루·말이 먹고 따라와요</span>
       <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
     </div>
+  </div>
+</div>
+<!-- 캐릭터 고르기 (#51): 가운데 캐릭터가 돌아가며 보이고, 아래 카드에서 기본 머리(성별)·피부색을 고름 -->
+<div id="look" hidden>
+  <div class="panel look-card" role="dialog" aria-label="캐릭터 고르기">
+    <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
+    <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>
+    <button type="button" class="look-ok" id="look-ok" aria-label="이 모습으로 시작"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></button>
   </div>
 </div>
 <div class="overlay dim" id="server" hidden>

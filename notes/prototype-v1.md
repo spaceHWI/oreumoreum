@@ -358,3 +358,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 버프 `src/buff.js`: `save.buff = { id, left }`, 실제 시간으로 줄어듦(1초 넘게 끊긴 동안은 안 셈, 게임을 끈 동안 그대로). `buff.mul(kind)` → speed 이동(want 에 곱함)·bag `bagCap()`·pick `toolNow().time ÷`·dmg 화살 `w.dmg`·손 귤 `life.hooks.dmgMul`·regen `createHp({ regenMul })`. 끝나서 배낭이 넘치면 그냥 가득 찬 상태
 - HUD `#buff-pill`(아이콘 + 남은 시간 고리·m:ss, 깨끗한 오름에서 전투 버프면 흐림), 가장자리 `#stone-mark` 포크·나이프(`markNear`~`markFar`). 업적 이벤트 `meal`, `meal-<id>`
 - 확인용 `__oreum.stone`: go(), open(), order(id), finish(), meal(), mul(k), cap(), tool(), buff
+
+## 캐릭터 고르기·머리 (2026-11-16, #51)
+- 머리 3종은 목 위 머리 전체(얼굴·머리카락)를 바꾸는 hat 칸 장비 `hat:short`·`hat:bob`·`hat:bun`(gear.js, `hide: ['head']`, `skinTint`). 초록 모자는 `hat:cap`(몸에 구운 그대로). 몸 셰이더는 `hideHead` 면 rest y 0.595 위를 감춤
+- 만들기: `assets` 의 `char-<이름>.glb` → `python3 model/bake-head.py 원본.glb 3000 512 out.glb`(팔 끝 폭으로 크기, 턱 앞으로 앞뒤를 지금 몸에 맞추고 y 0.565 위·|x|<0.3 만 남겨 줄이고 굽기) → `node model/extract-gear.js out.glb head-<이름>` → `src/gear/head-<이름>.js`(각 약 130KB)
+- 피부색 `runner.js SKIN_TONES` 3가지(첫째 = 텍스처 그대로). 셰이더가 텍스처 피부(색상 0.074 근처)만 골라 목표색/기본색 비율을 곱함. 몸은 머리·손·다리 영역만, 머리 장비는 전체. 값은 `outfit.skin.color` 로 다른 사람에게도 감
+- 저장: `save.look = { sex: 'm'|'f', skin }`, `save.hairs` 가진 머리, 쓰는 머리는 `outfit.gear.hat`. look 이 없으면 입장 직후(튜토리얼보다 먼저) 고르기 화면 `#look`(cam.mode 'look' 이 캐릭터 둘레를 돎, 그동안 busy·튜토리얼 멈춤). 예전부터 하던 사람은 초록 모자도 가짐
+- 상점 옷 탭 맨 위 머리 줄(가진 것 눌러 바꿔 쓰기, 없는 것 귤로 사기). 값 `balance.js HAIR`(임시: 똥머리 300, 나머지 150)
+- 확인: `__oreum.look.open()/set(sex, skin)/close()/state()/buyHair(k)`, `dist/char-motion.html?gear=hat:bun&skin=2`

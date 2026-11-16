@@ -4,13 +4,16 @@
 // - 장비 종류
 //   bone: 'head' 등 → 그 뼈에 붙는 단단한 물건 (모자·안경·배낭)
 //   skin: true      → 몸과 같은 뼈대로 휘는 옷 (바지·소매처럼 관절을 지나는 것). 가중치는 몸과 같은 규칙으로 자동 계산
-// - hide: 지금 몸 메시에 함께 구워진 부분 중 감출 곳 ('hat' 모자, 'pack' 배낭(어깨끈 빼고), 'top' 재킷, 'bottom' 반바지, 'shoes' 신발)
+// - hide: 지금 몸 메시에 함께 구워진 부분 중 감출 곳 ('head' 목 위 머리 전체(#51), 'hat' 모자, 'pack' 배낭(어깨끈 빼고), 'top' 재킷, 'bottom' 반바지, 'shoes' 신발)
 //   감춘 자리는 비어 보이므로 새 장비가 그 자리를 덮어야 한다. 몸만 있는 모델로 바꾸면 hide 없이 쓰면 된다
 // - tint: 옷장 색(outfit[tint].color)을 따라갈 재질 이름
 // - 새 디자인은 Tripo·블렌더에서 기본 자세에 맞춰 만든 glb 를 model/extract-gear.js 로 바꿔 data 로 넣는다
 import * as THREE from 'three';
 import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import HEAD_SHORT from './gear/head-short.js';
+import HEAD_BOB from './gear/head-bob.js';
+import HEAD_BUN from './gear/head-bun.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
 const dec = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
@@ -30,7 +33,11 @@ const G = (...ms) => { const g = new THREE.Group(); ms.forEach((m) => g.add(m));
 // build(mat) → Object3D (기본 자세 좌표). mat(이름, 기본색) 으로 재질을 받는다
 export const ACCESSORIES = {
   // ---- 모자 ----
-  'hat:cap': { slot: 'hat', label: '스냅백', builtin: true },
+  'hat:cap': { slot: 'hat', label: '초록 모자', builtin: true },
+  // 머리 3종 (#51): 목 위 머리 전체(얼굴·머리카락)를 바꿈. 몸에 구운 머리·모자는 감추고(hide head), 피부색은 몸과 같이 따라감(skinTint)
+  'hat:short': { slot: 'hat', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_SHORT) },
+  'hat:bob': { slot: 'hat', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BOB) },
+  'hat:bun': { slot: 'hat', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BUN) },
   'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
     build: (mat) => { const m = mat('main', '#c8553d');
       const top = M(new THREE.SphereGeometry(0.235, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.79, 0.02); top.scale.set(1.06, 0.9, 1.0);
