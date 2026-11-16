@@ -488,3 +488,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 도망 중 먼지·땀방울(작은 공 풀)·다급한 소리. DUMP.fleeT 6초 / fleeDist 40m / 길 끝(돌담 밖)이면 fadeT 1초 동안 서서히 사라짐. 도망·놀람 중엔 맞히기·버리기 없음
 - 여러 번 맞아야 하면(트럭) 맞을 때마다 움찔(flinch)
 - 확인: `__oreum.dumpers.near('walker'|'truck')` 후 `__oreum.dumpers.hit()`, `.state()`, `.dropped()`
+
+- #73 풀 눕는 효과: 풀 셰이더(`namsongi.js` grass)의 `pres`(길·마당·가게 거리·찻밭·개울 안이면 0)를 눕는 힘에 곱함. 개울 가장자리는 `smoothstep(0.9,2.6)` 으로 부드럽게 줄어든다. 길 가장자리는 `pathMask` 가 이미 부드럽다.
