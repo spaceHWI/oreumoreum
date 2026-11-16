@@ -1,12 +1,13 @@
 // 남송이오름: 실제 고도 자료로 세운 지형 + '늦은 오후' 그림체 (툰 재질, 붓질 땅, 플레이어 주변 풀, 따라다니는 그림자)
 // 좌표: x 동쪽, z 남쪽. 실제 1m = 게임 K 단위 (캐릭터 키 2.45에 맞춘 축척)
 import * as THREE from 'three';
-import { RIM, NEAR, REL, FAR, FW, FH } from './namsongidata.js';
+import { NEAR, REL, FAR, FW, FH } from './namsongidata.js';
 import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
 import { COLLIDE, BOUND } from './balance.js';
 import { STREAM_GLSL } from './streamshape.js';
+import { buildTrails } from './trailshape.js';
 
 const T = THREE, PI = Math.PI;
 export const K = 1.4;
@@ -47,23 +48,16 @@ export function nsHeight(x, z) { return bil(HG, GN, GN, (x + E) / CELL, (z + E) 
 const H = nsHeight;
 
 /* ---------- 길 ---------- */
-function dense(pts) { const o = []; for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], k = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8)); for (let j = 0; j < k; j++) o.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]); } o.push(pts[pts.length - 1]); return o; }
-function ring(cx, cz, r, n) { const o = []; for (let i = 0; i <= n; i++) o.push([cx + Math.cos(i / n * 2 * PI) * r, cz + Math.sin(i / n * 2 * PI) * r]); return o; }
-const sc = (pts) => pts.map((p) => [p[0] * K, p[1] * K]);
-const A0 = RIM[0], A1 = RIM[RIM.length - 1], CR = [36, -292], KN = [0, -442];
-// 게임 단위 선들. approach: 서남쪽 들머리 → 능선 남쪽 끝, rim: 말굽 능선(북쪽 끝 → 남쪽 끝)
-export const nsPaths = {
-  approach: sc(dense([[-620, 190], [-470, 120], [-330, 70], A1])),
-  rim: sc(dense(RIM)),
-  toCrater: sc(dense([A0, [-60, -290], [CR[0] - 62, CR[1]]])),
-  crater: sc(ring(CR[0], CR[1], 62, 48)),
-  north: sc(dense([[CR[0], CR[1] - 62], [12, -390], KN, [-10, -560], [40, -700]])),
-};
+// 게임 단위 선들 (#67 trailshape.js: 꺾인 곳 둥글게·굼부리 둘레 Y 자 갈림길). approach: 서남쪽 들머리 → 능선 남쪽 끝, rim: 말굽 능선(북쪽 끝 → 남쪽 끝)
+// toCrater·toCraterB: 굼부리 가는 길과 둘레 앞 두 갈래, crater: 굼부리 둘레, north·northB: 둘레 북쪽 두 갈래 → 소로기촐리 쪽
+export const nsPaths = buildTrails(K);
 const SEGS = Object.values(nsPaths);
 const PATH_W = 2.1; // 길 반폭
 // 길 격자(2단위): 발소리·풀·나무 배치가 같이 씀
 const SR = 2, SN = Math.ceil(2 * E / SR), surf = new Uint8Array(SN * SN);
-SEGS.forEach((s) => s.forEach(([x, z]) => { const r = Math.ceil((PATH_W + 1) / SR), ci = Math.floor((x + E) / SR), cj = Math.floor((z + E) / SR);
+// 점 사이도 1단위마다 찍어 곡선 길 전체가 빈틈없이 들어가게 (#67)
+const fillSeg = (s) => { const o = []; for (let i = 0; i < s.length - 1; i++) { const a = s[i], b = s[i + 1], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]))); for (let k = 0; k < n; k++) o.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); } o.push(s[s.length - 1]); return o; };
+SEGS.forEach((s) => fillSeg(s).forEach(([x, z]) => { const r = Math.ceil((PATH_W + 1) / SR), ci = Math.floor((x + E) / SR), cj = Math.floor((z + E) / SR);
   for (let j = cj - r; j <= cj + r; j++) for (let i = ci - r; i <= ci + r; i++) { if (i < 0 || j < 0 || i >= SN || j >= SN) continue; const px = -E + (i + 0.5) * SR, pz = -E + (j + 0.5) * SR; if (Math.hypot(px - x, pz - z) < PATH_W + 0.6) surf[j * SN + i] = 1; } }));
 function nsSurface(x, z) { const i = Math.floor((x + E) / SR), j = Math.floor((z + E) / SR); if (i < 0 || j < 0 || i >= SN || j >= SN) return 0; return surf[j * SN + i]; }
 // 길에서 d 안쪽인지 (거친 격자)
@@ -110,7 +104,11 @@ export function buildNamsongi({ scene, renderer, bound = null, clear = [], lanes
   const pathTex = (() => {
     const PN = LOW ? 2048 : 4096, c = document.createElement('canvas'); c.width = c.height = PN; const x = c.getContext('2d'), k = PN / (2 * E);
     x.fillStyle = '#000'; x.fillRect(0, 0, PN, PN); x.strokeStyle = '#fff'; x.lineCap = x.lineJoin = 'round'; x.lineWidth = Math.max(2 * PATH_W * k, LOW ? 2.2 : 0);
-    (bound ? SEGS.concat([bound.gate.path]) : SEGS).forEach((s) => { x.beginPath(); s.forEach((p, i) => { const px = (p[0] + E) * k, py = (p[1] + E) * k; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
+    // 점 사이 가운데를 잇는 2차 곡선으로 그려 꺾임 없이 매끈하게 (#67, 선과 어긋남 0.2단위 안)
+    const P = (p) => [(p[0] + E) * k, (p[1] + E) * k];
+    (bound ? SEGS.concat([bound.gate.path]) : SEGS).forEach((s) => { x.beginPath(); const q = s.map(P); x.moveTo(q[0][0], q[0][1]);
+      for (let i = 1; i < q.length - 1; i++) x.quadraticCurveTo(q[i][0], q[i][1], (q[i][0] + q[i + 1][0]) / 2, (q[i][1] + q[i + 1][1]) / 2);
+      x.lineTo(q[q.length - 1][0], q[q.length - 1][1]); x.stroke(); });
     lanes.forEach((l) => { x.lineWidth = 2 * l.w * k; x.lineCap = 'butt'; x.beginPath(); l.pts.forEach((p, i) => { const px = (p[0] + E) * k, py = (p[1] + E) * k; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
     const t = new T.CanvasTexture(c); t.format = T.RedFormat; t.flipY = false; t.minFilter = T.LinearMipmapLinearFilter; t.magFilter = T.LinearFilter; t.anisotropy = 4; return t;
   })();

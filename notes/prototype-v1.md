@@ -490,3 +490,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인: `__oreum.dumpers.near('walker'|'truck')` 후 `__oreum.dumpers.hit()`, `.state()`, `.dropped()`
 
 - #73 풀 눕는 효과: 풀 셰이더(`namsongi.js` grass)의 `pres`(길·마당·가게 거리·찻밭·개울 안이면 0)를 눕는 힘에 곱함. 개울 가장자리는 `smoothstep(0.9,2.6)` 으로 부드럽게 줄어든다. 길 가장자리는 `pathMask` 가 이미 부드럽다.
+
+## #67 길 곡선
+- `src/trailshape.js` `buildTrails(K)` 가 `nsPaths` 를 만든다(예전 `namsongi.js` 의 dense/ring 꺾은선 대신). 조절점 `TRAIL_CTRL`(실제 m) → 1m 간격으로 다시 찍고 가우스(`TRAIL.sigma` 9m)로 고름. 끝은 점대칭으로 늘여 끝점·끝 방향 그대로(들머리 시작~첫 꺾임 165m 는 곧은 채라 정낭·튜토리얼 자리·#61 입구 그대로)
+- 들머리 → 능선(남→북) → 굼부리 가는 길을 한 줄로 이어 고른 뒤 세 토막으로 나눔(이음 점 공유). 능선 북쪽 끝 머리핀은 반지름 `TRAIL.uR` 9m U 자 머리
+- Y 갈림길: 굼부리 가는 길은 둘레 `yStem` 24m 앞에서, 북쪽 길은 첫 조절점에서 두 갈래(3차 베지어)로 갈라져 둘레에 접선으로 붙음(갈림점 쪽 둘레 점 ± `yAng` 26°). 새 선 `toCraterB`·`northB` 가 `nsPaths` 에 더해짐(`for k in nsPaths` 로 도는 곳은 자동 포함)
+- 점 간격 `TRAIL.step` 4m(5.6단위, 예전 ≤8m). 길 그림(pathTex)은 점 사이 가운데를 잇는 2차 곡선으로 그림(선과 어긋남 0.2단위 안). 길 격자(surf)는 점 사이도 1단위마다 찍음
+- 그래프 노드 약 530개(예전 약 250), 한 덩어리로 다 이어짐. 화면: notes/shots/67-before-top.png, 67-after-top.png
