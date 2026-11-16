@@ -551,3 +551,19 @@ export const CLOTHES = [
 ];
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
 export const wearPrice = (c) => c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];
+
+// 배경 음악 (#64). 코드로 만드는 소리(music.js). gain 은 효과음(1)에 견준 음악 버스 크기
+export const MUSIC = {
+  gain: 0.6,         // 크기 100% 일 때 음악 버스 (효과음보다 작게). 크기 슬라이더는 제곱으로 들어감
+  tense: 1.6,        // 긴장 음악 층 크기 (평소 층 1 에 견줘)
+  vol: 0.6,          // 처음 크기 (0~1)
+  fadeIn: 2,         // 적이 다가오면 긴장 음악으로 바뀌는 시간(초)
+  holdOut: 5,        // 적이 사라지고 원래 음악으로 돌아가기까지 기다리는 시간(초)
+  fadeOut: 2.5,      // 원래 음악으로 돌아가는 시간(초)
+  near: 30,          // 이 거리 안의 몹·멧돼지·투기꾼·트럭이면 '적 근처'
+  duck: 0.45,        // 가게 안 식사·머리 손질 중 음악 배율
+  nightK: 0.35,      // setDaylight 값이 이보다 작으면 밤 분위기
+  chord: { day: 9, night: 12 },        // 화음 하나 길이(초)
+  note: { day: [2.5, 6], night: [4, 9] }, // 드문드문 음 사이 간격(초)
+  bpm: 92,           // 긴장 음악 빠르기
+};

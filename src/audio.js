@@ -1,7 +1,9 @@
 import { STEP_SAMPLES } from './stepsamples.js';
+import { Music } from './music.js';
+import { MUSIC } from './balance.js';
 // Web Audio 합성 사운드 — 외부 음원 없이 억새 바람·까마귀·말 방울·발소리·숨소리
 export class Sound {
-  constructor() { this.ctx = null; this.on = false; this.ambOn = true; this.sfxOn = true; this.forest = false; this.day = 1; }
+  constructor() { this.ctx = null; this.on = false; this.ambOn = true; this.sfxOn = true; this.forest = false; this.day = 1; this.musicOn = true; this.musicVol = MUSIC.vol; this.duck = false; this.music = null; }
 
   start() {
     if (!this.ctx) {
@@ -11,6 +13,7 @@ export class Sound {
       this.master = this.ctx.createGain(); this.master.gain.value = 0.9; this.master.connect(this.ctx.destination);
       this.amb = this.ctx.createGain(); this.amb.connect(this.master);
       this.sfx = this.ctx.createGain(); this.sfx.connect(this.master);
+      this.mus = this.ctx.createGain(); this.mus.gain.value = 0; this.mus.connect(this.master);
       this.noise = this._noiseBuffer();
       this._loadSteps();
       this._wind();
@@ -18,6 +21,7 @@ export class Sound {
       if (!this.forest) this._scheduleBell();
       this._scheduleBird();
       this._gusts();
+      this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day;
     }
     this.ctx.resume();
     this.on = true;
@@ -27,11 +31,19 @@ export class Sound {
   stop() { this.on = false; this._applyGains(); }
   setAmb(v) { this.ambOn = v; this._applyGains(); }
   setSfx(v) { this.sfxOn = v; this._applyGains(); }
+  // 배경 음악 (#64): 켜기/끄기·크기(0~1)·줄이기(가게 안 식사·머리 손질)·적 근처
+  setMusic(v) { this.musicOn = !!v; this._applyGains(); }
+  setMusicVol(v) { this.musicVol = Math.max(0, Math.min(1, v)); this._applyGains(); }
+  setDuck(v) { if (this.duck === !!v) return; this.duck = !!v; this._applyGains(); }
+  setThreat(v) { if (this.music) this.music.threat = !!v; }
   _applyGains() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.amb.gain.setTargetAtTime(this.on && this.ambOn ? 1 : 0, t, 0.3);
     this.sfx.gain.setTargetAtTime(this.on && this.sfxOn ? 1 : 0, t, 0.05);
+    const mv = this.on && this.musicOn ? MUSIC.gain * this.musicVol * this.musicVol * (this.duck ? MUSIC.duck : 1) : 0; // 크기는 제곱(귀에 고르게)
+    this.mus.gain.setTargetAtTime(mv, t, 0.4);
+    if (this.music) this.music.active = mv > 0;
   }
 
   _noiseBuffer() {
@@ -119,7 +131,7 @@ export class Sound {
       o.connect(g); g.connect(this.amb); o.start(t); o.stop(t + 0.45);
     }
   }
-  setDaylight(k) { this.day = k; }
+  setDaylight(k) { this.day = k; if (this.music) this.music.day = k; }
   _scheduleCrow() {
     const next = 14000 + Math.random() * 26000;
     setTimeout(() => { if (this.on && this.ambOn) this.crow(); this._scheduleCrow(); }, next);
@@ -170,18 +182,23 @@ export class Sound {
     const src = c.createBufferSource(); src.buffer = list[i];
     const rate = { 0: 1.05, 1: 1.0, 2: 0.82, 3: 0.92 }[surface] ?? 1;
     src.playbackRate.value = rate * (0.93 + Math.random() * 0.14) * (running ? 1.06 : 1);
-    const f = c.createBiquadFilter(); f.type = 'lowpass';
-    f.frequency.value = surface === 0 ? 2600 : surface === 2 ? 1800 : 6000;
+    // #64 거친 성분(지직거림) 빼기: 높은 대역을 낮게 자르고, 샘플을 자르는 끝을 짧게 페이드해 딸깍 소리 없앰
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 0.5;
+    f.frequency.value = surface === 0 ? 1700 : surface === 1 ? 2300 : surface === 2 ? 1500 : 2000;
+    const f2 = c.createBiquadFilter(); f2.type = 'lowpass'; f2.Q.value = 0.5; f2.frequency.value = f.frequency.value * 1.6;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 60;
     const g = c.createGain();
-    const base = surface === 0 ? 0.32 : surface === 1 ? 0.42 : 0.38;
-    g.gain.value = base * (running ? 1.25 : 0.9) * (0.85 + Math.random() * 0.3);
-    src.connect(f); f.connect(g); g.connect(this.sfx);
-    src.start(t, 0, running ? 0.3 : 0.42);
-    if (surface === 0) { // 풀잎 스치는 소리 살짝
+    const base = surface === 0 ? 0.36 : surface === 1 ? 0.4 : 0.4;
+    const v = base * (running ? 1.2 : 0.9) * (0.85 + Math.random() * 0.3);
+    const dur = running ? 0.3 : 0.42, dr = dur / src.playbackRate.value; // dr: 실제 재생 시간
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.006); g.gain.setValueAtTime(v, t + dr - 0.08); g.gain.linearRampToValueAtTime(0, t + dr - 0.005);
+    src.connect(hp); hp.connect(f); f.connect(f2); f2.connect(g); g.connect(this.sfx);
+    src.start(t, 0, dur);
+    if (surface === 0) { // 풀잎 스치는 소리 살짝 (낮고 부드럽게)
       const n = c.createBufferSource(); n.buffer = this.noise;
-      const hf = c.createBiquadFilter(); hf.type = 'bandpass'; hf.frequency.value = 5200; hf.Q.value = 0.8;
-      const ng = c.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.025, t + 0.03); ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.18);
-      n.connect(hf); hf.connect(ng); ng.connect(this.sfx); n.start(t, Math.random() * 1.5); n.stop(t + 0.2);
+      const hf = c.createBiquadFilter(); hf.type = 'bandpass'; hf.frequency.value = 1600; hf.Q.value = 0.9;
+      const ng = c.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.014, t + 0.04); ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.2);
+      n.connect(hf); hf.connect(ng); ng.connect(this.sfx); n.start(t, Math.random() * 1.5); n.stop(t + 0.22);
     }
     if (surface === 2) { // 나무 데크 울림
       const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = 150 + Math.random() * 30;
@@ -201,12 +218,12 @@ export class Sound {
     const g = c.createGain();
     const vol = (running ? 0.22 : 0.15) * (0.8 + Math.random() * 0.4);
     const jit = 0.85 + Math.random() * 0.3;
-    if (surface === 1) { f.type = 'bandpass'; f.frequency.value = 2600 * jit; f.Q.value = 0.7; }
+    if (surface === 1) { f.type = 'bandpass'; f.frequency.value = 1300 * jit; f.Q.value = 0.8; }
     else if (surface === 2) { f.type = 'bandpass'; f.frequency.value = 420 * jit; f.Q.value = 2.5; }
     else if (surface === 3) { f.type = 'lowpass'; f.frequency.value = 900 * jit; }
-    else { f.type = 'highpass'; f.frequency.value = 3500; }
+    else { f.type = 'bandpass'; f.frequency.value = 1100 * jit; f.Q.value = 0.8; }
     const dur = surface === 1 ? 0.11 : surface === 2 ? 0.07 : 0.09;
-    g.gain.setValueAtTime(vol * (surface === 0 ? 0.5 : 1), t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * (surface === 0 ? 0.5 : 1), t + 0.008); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     s.connect(f); f.connect(g); g.connect(this.sfx);
     s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.02);
     if (surface === 2) { // 나무 계단 통 울림

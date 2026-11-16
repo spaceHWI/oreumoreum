@@ -24,6 +24,7 @@ export const UI_LABELS = [
   ['UI-20', '업적', '#btn-ach'],
   ['UI-21', '메뉴', '#btn-menu'],
   ['UI-22', '손 놓기', '#btn-release'],
+  ['UI-23', '배경 음악 (메뉴 안)', '#menu-music'],
 ];
 
 export function createDevLabels({ camera, world }) {
