@@ -15,7 +15,7 @@ node build.mjs          # dist/index.html (브라우저에서 바로 열기), di
 | `release` | 실서버 소스. dev 를 합쳐 올리면 자동 게시 | https://spacehwi.github.io/oreumoreum/ |
 | `main` | 게시물만 (Actions 가 씀). 직접 고치지 않음 | |
 
-작업 규칙과 지금 상태는 `notes/handoff.md`, 구조와 결정은 `notes/prototype-v1.md`.
+작업 규칙은 `notes/auto.md`, 기획은 `notes/spec.md`, 구조와 결정은 `notes/prototype-v1.md`.
 
 ## 폴더
 - `src/` 게임 소스 (`main.js` 가 진입점, `boot.js` 가 맨 먼저)
