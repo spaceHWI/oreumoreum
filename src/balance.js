@@ -99,30 +99,30 @@ export const TRASH = {
 
 // 장비 5단계. 상점에서 다음 단계만 살 수 있고 사면 바로 착용 (#10). 저장은 save.equip.{tool,bag,shoes} = 1~5
 // rate 는 상점에 보이는 초당 개수 (= per ÷ time)
-// 값 (#49): tools/econ.js 로 맞춤. 하루 1시간씩 — 1일 끝 2~3단계, 3일 끝 4단계, 5일 안에 모두 5단계·귤 활. 옷은 계산에서 뺌
+// 값 (#49 → #53): tools/econ.js 로 맞춤. 칸 10개(도구·배낭·신발·무기 + 옷 6칸) 모두 5단계까지 — 효율적으로 4시간, 여유 25% 더 써도 5시간 안 (하루 1시간씩)
 // 흡입기는 예전(한 번 1개, 초당 4)이면 큰 갈퀴(초당 10)보다 느려 한 번 3개(초당 12)로
 export const TOOLS = [
   { tier: 1, name: '맨손', per: 1, time: 0.9, r: 1.6, price: 0 },
   { tier: 2, name: '집게', per: 1, time: 0.5, r: 2.4, price: 100 },
   { tier: 3, name: '갈퀴', per: 3, time: 0.6, r: 3.2, price: 300 },
-  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 1100 },
-  { tier: 5, name: '흡입기', per: 3, rate: 12, time: 0.25, r: 5.0, price: 3300 },
+  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 700 },
+  { tier: 5, name: '흡입기', per: 3, rate: 12, time: 0.25, r: 5.0, price: 1500 },
 ];
 // 배낭: 처음엔 배낭 없이 호주머니(POCKET)만. save.equip.bag 0 = 호주머니, 1~5 = BAGS[bag-1] (#31)
 export const POCKET = { tier: 0, name: '호주머니', cap: 6, price: 0 };
 export const BAGS = [
   { tier: 1, name: '배낭', cap: 20, price: 80 },
   { tier: 2, name: '큰 배낭', cap: 40, price: 200 },
-  { tier: 3, name: '등산 배낭', cap: 80, price: 500 },
-  { tier: 4, name: '대형 배낭', cap: 150, price: 1100 },
-  { tier: 5, name: '원정 배낭', cap: 300, price: 3600 },
+  { tier: 3, name: '등산 배낭', cap: 80, price: 450 },
+  { tier: 4, name: '대형 배낭', cap: 150, price: 800 },
+  { tier: 5, name: '원정 배낭', cap: 300, price: 1500 },
 ];
 export const SHOES = [
   { tier: 1, name: '쓰레빠', speed: 1.0, price: 0 }, // #52 처음엔 쓰레빠
   { tier: 2, name: '러닝화', speed: 1.1, price: 150 },
-  { tier: 3, name: '트레일화', speed: 1.2, price: 450 },
-  { tier: 4, name: '등산화', speed: 1.3, price: 1200 },
-  { tier: 5, name: '바람 신발', speed: 1.45, price: 3400 },
+  { tier: 3, name: '트레일화', speed: 1.2, price: 400 },
+  { tier: 4, name: '등산화', speed: 1.3, price: 800 },
+  { tier: 5, name: '바람 신발', speed: 1.45, price: 1500 },
 ];
 
 // 클린하우스(재활용장): 들머리 한 곳. 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
@@ -240,7 +240,7 @@ export const ENEMY_SPAWN = {
 // soon: 아직 없는 단계 (상점에 잠긴 그림만)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 800 },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 600 },
   { tier: 3, id: 'gun', name: '귤 총', soon: true },
   { tier: 4, id: 'mg', name: '귤 머신건', soon: true },
   { tier: 5, id: 'laser', name: '귤즙 레이저', soon: true },
@@ -479,8 +479,8 @@ export const WEAR = {
     { k: 'jacket', name: '잠바', stat: 'guard', none: true, v: [0, 0.08, 0.16, 0.24, 0.32, 0.4] },
     { k: 'socks', name: '양말', stat: 'regen', none: true, v: [1, 1.2, 1.4, 1.6, 1.8, 2] },
   ],
-  price: [0, 0, 100, 300, 900, 2500], // 단계별 값 (임시, #53 에서 다시 잡음). 모자·티셔츠·바지 1단계는 처음부터 가짐
-  priceNone1: 60, // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
+  price: [0, 0, 50, 150, 300, 650], // 단계별 값 (#53 tools/econ.js 로 맞춤, 6칸 같은 값). 모자·티셔츠·바지 1단계는 처음부터 가짐
+  priceNone1: 40, // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
   tierColor: ['#7b7b80', '#9a9a94', '#5aa55a', '#4a86c8', '#9a6ad0', '#f29a2e'], // 단계 색: 없음·회색·초록·파랑·보라·귤색
 };
 // 옷 목록: 한 줄이 옷 한 벌. 단계마다 옷을 늘리려면 여기에 줄만 더하면 됨 (같은 단계 = 같은 능력, 모양은 look)
