@@ -3,6 +3,7 @@
 // 걷기 막기·동물 범위·쓰레기 자리(오름에만)가 모두 여기 값을 쓴다
 import { relAt, nsPaths, nsAlong, nsSummit } from './namsongi.js';
 import { BOUND, TUT } from './balance.js';
+import { STREET } from './streetlayout.js';
 
 const N = 720, TAU = Math.PI * 2;
 
@@ -39,6 +40,7 @@ function must(x, z, c) {
 nsPaths.approach.forEach((p) => must(p[0], p[1], BOUND.approach));
 const plaza = [nsAlong('approach', 0), nsAlong('approach', 5), nsAlong('approach', 24), nsAlong('approach', TUT.cleanD, 1, 7.5), nsAlong('approach', TUT.cleanD, 1, 16)]; // 시작·클린하우스·가판대 (#31: 클린하우스는 개울 너머)
 plaza.forEach((p) => must(p.x, p.z, BOUND.plaza));
+STREET.must.forEach((p) => must(p.x, p.z, p.r)); // 가게 거리 터 (#57)
 for (let i = 0; i < N; i++) R[i] = Math.max(R[i], need[i]);
 // 3) 부드럽게: 여러 번 이웃 평균 → 꼭 들어야 할 곳은 다시 채움
 function blur(passes, w) {

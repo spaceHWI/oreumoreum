@@ -102,15 +102,16 @@ function blendPre(el, morning) {
 }
 
 // bound: nsbound.js (#25). 있으면 돌담 밖 나무는 줄이고 돌담 자리는 비움
-export function buildNamsongi({ scene, renderer, bound = null, clear = [] }) {
+export function buildNamsongi({ scene, renderer, bound = null, clear = [], lanes = [] }) { // lanes: [{ pts, w 반폭 }] 길 그림에 더할 골목 (#57 가게 거리)
   const ib = bound ? bound.insideBy : () => 1e9;
-  const cleared = (x, z) => clear.some((c) => Math.hypot(x - c.x, z - c.z) < c.clearR); // 건물 자리(#50 레스토랑): 나무·바위를 심지 않음
+  const cleared = (x, z) => clear.some((c) => Math.hypot(x - c.x, z - c.z) < c.clearR); // 건물 자리(가게 거리 #57): 나무·바위를 심지 않음
   const heightTex = new T.DataTexture(HG, GN, GN, T.RedFormat, T.FloatType); heightTex.magFilter = heightTex.minFilter = T.NearestFilter; heightTex.needsUpdate = true;
   const maskTex = new T.DataTexture(MK, GN, GN, T.RGBAFormat); maskTex.magFilter = maskTex.minFilter = T.LinearFilter; maskTex.needsUpdate = true;
   const pathTex = (() => {
     const PN = LOW ? 2048 : 4096, c = document.createElement('canvas'); c.width = c.height = PN; const x = c.getContext('2d'), k = PN / (2 * E);
     x.fillStyle = '#000'; x.fillRect(0, 0, PN, PN); x.strokeStyle = '#fff'; x.lineCap = x.lineJoin = 'round'; x.lineWidth = Math.max(2 * PATH_W * k, LOW ? 2.2 : 0);
     (bound ? SEGS.concat([bound.gate.path]) : SEGS).forEach((s) => { x.beginPath(); s.forEach((p, i) => { const px = (p[0] + E) * k, py = (p[1] + E) * k; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
+    lanes.forEach((l) => { x.lineWidth = 2 * l.w * k; x.lineCap = 'butt'; x.beginPath(); l.pts.forEach((p, i) => { const px = (p[0] + E) * k, py = (p[1] + E) * k; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
     const t = new T.CanvasTexture(c); t.format = T.RedFormat; t.flipY = false; t.minFilter = T.LinearMipmapLinearFilter; t.magFilter = T.LinearFilter; t.anisotropy = 4; return t;
   })();
   const GS = (LOW ? 34 : 46) * K;

@@ -3,8 +3,9 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, DUMP, STONE, HAIR, WEAR, CLOTHES, WEAR_START, wearPrice } from './balance.js';
-import { createStone, stoneSite } from './stone.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, DUMP, STONE, SHOP_ST, SHOPS, HAIR, WEAR, CLOTHES, WEAR_START, wearPrice } from './balance.js';
+import { STREET } from './streetlayout.js';
+import { createShopStreet, SHOP_BUILD, SHOP_ICON } from './shops.js';
 import { createBuff } from './buff.js';
 import { FOOD_SVG, BUFF_ICON, FORK_KNIFE, buffText } from './stoneicons.js';
 import { STONE_LOGO } from './stonelogo.js';
@@ -149,8 +150,8 @@ const scene = new THREE.Scene();
 const FOG = new THREE.Color('#cfe0dc');
 scene.background = FOG;
 scene.fog = new THREE.Fog(FOG, MAP_ID === 'gate' ? 90 : 220, MAP_ID === 'donnaeko' ? 3200 : MAP_ID === 'gate' ? 900 : 2600);
-const STONE_SITE = NSMODE ? stoneSite(NSB.crossLine(TUT.streamD), NSB.insideBy) : null; // 레스토랑 스톤 자리 (#50)
-const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: STONE_SITE ? [STONE_SITE] : [] }) : null;
+const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: STREET.clear, lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }] }) : null; // 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목
+
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 const camera = new THREE.PerspectiveCamera(50, 1, 0.5, NSW ? NSW.camFar : 14000);
 function resize() {
@@ -195,6 +196,7 @@ const motes = createMotes({ scene, height, low: LOW });
 const prints = createFootprints({ scene, height, surfaceAt, low: LOW }); // 발자국 (#21)
 if (PW && !NSW) createFlowers({ scene, height, extent: TERR_EXT, count: LOW ? 3200 : 6500, canGrow: (x, z) => (Math.abs(x) > TERR_EXT || Math.abs(z) > TERR_EXT || surfaceAt(x, z) !== 0 || groundAt(x, z) - height(x, z) > 0.05) ? 0 : 1 });
 const spots = buildSpots(MAP_ID);
+if (NSW && spots.tut?.stream) spots.lamps = [...(spots.lamps || []), ...STREET.lamps]; // 가게 거리 가로등 (#57)
 const lamps = createLamps({ scene, positions: spots.lamps || [], height });
 
 // ---------- 시간·해 (실제 제주 시각) ----------
@@ -400,8 +402,10 @@ const jeong = NS_TUT ? createCrossWall({ scene, height, line: NSB.crossLine(TUT.
 if (jeong && jeong.isOpen && !save.jeong) { save.jeong = 1; persist(); }
 // 정낭이 열리는 때: 집게·배낭을 둘 다 가졌을 때, 튜토리얼을 마치거나 건너뛰었을 때. 한 번 열리면 계속 열림
 function openJeong(anim = true) { if (!jeong || !jeong.open(anim)) return; save.jeong = 1; persist(); if (anim) sound.gate?.(); }
-// ---------- 레스토랑 스톤 (#50): 개울 건너 물가. 충돌을 쓰레기 더미보다 먼저 등록해 더미가 비켜 감 ----------
-const STN = NS_TUT && STONE_SITE ? createStone({ scene, height, site: STONE_SITE, low: LOW, col, addWalkable }) : null;
+// ---------- 가게 거리 (#57): 길 왼쪽 골목, 터 6개. 가게는 balance.js SHOPS 한 줄 + shops.js SHOP_BUILD. 충돌을 쓰레기 더미보다 먼저 등록 ----------
+const street = NS_TUT ? createShopStreet({ scene, height, street: STREET, low: LOW, col }) : null;
+const shopsBuilt = street ? SHOPS.filter((sh) => STREET.lot(sh.lot) && SHOP_BUILD[sh.id]).map((sh) => ({ ...sh, ...SHOP_BUILD[sh.id]({ scene, height, lot: STREET.lot(sh.lot), low: LOW, col, addWalkable }) })) : [];
+const STN = shopsBuilt.find((sh) => sh.id === 'stone')?.api || null; // 레스토랑 스톤 (#50)
 const buff = createBuff({ save, persist, onEnd: (m) => { if (m) toast('식사 버프가 끝났어요'); } });
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
 const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, rareMul: () => wearV('hat') }) : null; // 구역마다 쓰레기 더미 (#45)
@@ -470,7 +474,7 @@ function updateStats() {
   if (save.coins !== lastCoins) { lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; $('coins2').textContent = c; $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
-const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'stone'];
+const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -483,8 +487,8 @@ function cancelAll() {
   player.target = null; player.onArrive = null; marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['stone-close', 'stone'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['server-close', 'server'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
-['shop', 'sign', 'wishes', 'ach', 'dex', 'maps', 'feedback', 'notes', 'stone'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
+[['shoppop-close', 'shoppop'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['server-close', 'server'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+['shop', 'sign', 'wishes', 'ach', 'dex', 'maps', 'feedback', 'notes', 'shoppop'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
 const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r) });
@@ -1129,15 +1133,26 @@ function updateHandLine() {
 // ---------- 레스토랑 스톤 (#50): 메뉴판 팝업 → 귤 내고 → 테라스 자리에 앉아 먹음(건너뛰기) → 버프 ----------
 const mealS = { on: false, item: null, phase: '', t: 0, target: null };
 const stoneOpen = () => !NS_TUT || !!save.jeong; // 튜토리얼(정낭 열기 전)엔 아직 안 열림
-const stoneAct = STN && { ic: 'eat', label: '식사', pos: STN.terrace, r: STONE.r, when: stoneOpen, act: () => openStone() };
 const skipAct = { label: '건너뛰기', ic: 'skip', act: () => finishMeal() };
 const LOCK_SVG = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const buffIc = (k, cls = '') => `<svg ${cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BUFF_ICON[k]}</svg>`;
-$('stone-logo').src = STONE_LOGO;
-function openStone() { if (!STN || mealS.on) return; closePanels(); buildStoneMenu(); $('stone').hidden = false; }
-function buildStoneMenu() {
-  $('stone-coins').textContent = String(save.coins);
-  const grid = $('stone-menu'); grid.innerHTML = '';
+// 가게 팝업 (#57): 가게마다 같은 틀 #shoppop (위 로고·이름·표어, 아래 카드). head = 위 칸, fill(grid) = 카드 채우기, when = 열 수 있는 때
+const SHOP_POP = {
+  stone: { head: { logo: STONE_LOGO, name: 'Stone', tag: 'Maximize all the Pleasure', serif: true }, fill: (grid) => buildStoneMenu(grid), when: stoneOpen, can: () => !!STN && !mealS.on },
+};
+let shopPopNow = null;
+function openShopPop(key) {
+  const P = SHOP_POP[key]; if (!P || (P.can && !P.can())) return;
+  closePanels(); shopPopNow = key;
+  const h = P.head, root = $('shoppop');
+  $('shoppop-logo').src = h.logo || ''; $('shoppop-logo').alt = h.name; $('shoppop-logo').parentElement.hidden = !h.logo;
+  $('shoppop-name').textContent = h.name; $('shoppop-tag').textContent = h.tag || ''; root.classList.toggle('serif', !!h.serif); root.querySelector('.pop').setAttribute('aria-label', h.name);
+  refreshShopPop(); root.hidden = false;
+}
+function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop-coins').textContent = String(save.coins); const grid = $('shoppop-cards'); grid.innerHTML = ''; P.fill(grid); }
+const shopActs = shopsBuilt.map((sh) => ({ shop: sh.id, ic: sh.ic, label: sh.act, pos: sh.door, r: sh.r, when: SHOP_POP[sh.pop]?.when, act: () => openShopPop(sh.pop) }));
+function openStone() { openShopPop('stone'); }
+function buildStoneMenu(grid) {
   const cur = buff.now();
   for (const m of STONE.menu) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = m.id;
@@ -1201,12 +1216,15 @@ function updateBuffUI(force) {
   const off = (n.item.buff === 'dmg' || n.item.buff === 'regen') && !isBattle(); buffPill.style.opacity = off ? '.5' : '';
 }
 // 가장자리 포크·나이프: 레스토랑이 화면 밖이거나 조금 멀 때
-const stoneMark = $('stone-mark');
-function tickStoneMark() {
-  const d = STN ? Math.hypot(player.pos.x - STN.terrace.x, player.pos.z - STN.terrace.z) : 1e9;
-  const on = !!STN && stoneOpen() && d > STONE.markNear && d < STONE.markFar && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on;
-  if (!on) { if (!stoneMark.hidden) stoneMark.hidden = true; return; }
-  stoneMark.hidden = false; placeArrow(stoneMark, STN.signPos, 0.6);
+// 가장자리 가게 아이콘 (#57): 가게마다 아이콘 하나, 가장 가까운 (열 수 있는) 가게만. 화면 밖이거나 조금 멀 때
+const shopMark = $('shop-mark'); let shopMarkId = '';
+function tickShopMark() {
+  let best = null, bd = 1e9;
+  for (const sh of shopsBuilt) { const w = SHOP_POP[sh.pop]?.when; if (w && !w()) continue; const d = Math.hypot(player.pos.x - sh.door.x, player.pos.z - sh.door.z); if (d < bd) { bd = d; best = sh; } }
+  const on = !!best && bd > SHOP_ST.markNear && bd < SHOP_ST.markFar && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on;
+  if (!on) { if (!shopMark.hidden) shopMark.hidden = true; return; }
+  if (shopMarkId !== best.id) { shopMarkId = best.id; shopMark.querySelector('svg').innerHTML = SHOP_ICON[best.id] || ''; shopMark.title = best.name; }
+  shopMark.hidden = false; placeArrow(shopMark, best.signPos, 0.6);
 }
 const interactables = [
   ...(spots.tutorial ? [] : [{ label: '인증샷 찍기', ic: 'photo', pos: P.stone, r: 9, act: startPhoto }]),
@@ -1214,7 +1232,7 @@ const interactables = [
   ...(spots.sign.silent ? [] : [{ label: '안내 읽기', ic: 'sign', pos: spots.sign.pos, r: 6, act: () => openSign() }]),
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
   ...(chAct ? [chAct, shopAct] : []),
-  ...(stoneAct ? [stoneAct] : []),
+  ...shopActs,
 ];
 let ctxTarget = null, handAct = null, deerAct = null;
 let fishing = null; // 낚시 (#44) — 아래 튜토리얼 만든 뒤에 만듦
@@ -1345,7 +1363,7 @@ if (bloom) {
   syncBloomDeer();
   life.hooks.spawnBlock = (x, z) => bloom.isBloomed(trash.zoneAt(x, z));
 }
-if (STN) { const bl = life.hooks.spawnBlock; life.hooks.spawnBlock = (x, z) => Math.hypot(x - STN.center.x, z - STN.center.z) < STONE.keepR || !!bl?.(x, z); } // 레스토랑 둘레엔 몹 없음 (#50)
+if (street) { const bl = life.hooks.spawnBlock, R = STREET.radius + SHOP_ST.keepPad; life.hooks.spawnBlock = (x, z) => Math.hypot(x - STREET.center.x, z - STREET.center.z) < R || !!bl?.(x, z); } // 가게 거리 둘레엔 몹 없음 (#57)
 if (trash) life.hooks.zoneAt = (x, z) => trash.zoneAt(x, z); // 구역별 몹 (#48): 플레이어가 있는 구역의 종류가 나옴
 // ---------- 클린하우스: 배낭 비우고 귤 받기 ----------
 // 귤·저장은 누르는 순간 한 번에 처리하고, 날아가는 쓰레기와 올라가는 숫자는 연출만 한다
@@ -2208,7 +2226,7 @@ function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
-  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } if (STN) { STN.update(dt, lampNight); tickMeal(dt); tickStoneMark(); } buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); if (STN) tickMeal(dt); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
@@ -2350,5 +2368,5 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat }), buyHair, buildHairShop }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat }), buyHair, buildHairShop }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

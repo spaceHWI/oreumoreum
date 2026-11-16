@@ -381,3 +381,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 능력치 적용(`main.js wearV(칸)`): 모자 → `createTrash rareMul`, 티셔츠 → `createHp maxMul`, 바지 → `bagCap()`, 베스트 → `dumpBag` 귤, 잠바 → `hp.hit` 피해, 양말 → `regenMul`
 - 상점 옷 탭: 머리 줄 + 칸마다 한 줄(그림 `src/clothicons.js`, 단계 색 띠, 입은 것 체크, 가진 것은 눌러 갈아입기, 안 가진 것은 눌러 능력치 지금→바뀔 값과 사기). 옷장도 같은 줄(가진 것만)
 - 확인: `__oreum.clothes.state()/stats()/buy(id)/wear(칸, id)/give(id)/bagCap()/hpMax()`, `dist/char-motion.html?row`(1~5단계 다섯 명, `&wear=hat,top,bottom` 입을 칸만, `&slots=hat` 그 칸만 단계대로, `&nobag`, `view=front3|back3`), `?tier=3&one`
+
+## 가게 거리 (#57)
+- 자리 `src/streetlayout.js STREET` (계산만): 들머리 길 `SHOP_ST.d`(84) 에서 왼쪽(개울 상류 쪽)으로 갈라지는 골목. 골목 좌표 `P(s, t)` (s 골목 안쪽, t 오름 쪽 +). 클린하우스(94, 길 오른쪽)와 길을 사이에 두고 마주 봐서 가게들은 클린하우스를 등짐. 시작→골목 어귀 약 84m, 클린하우스→스톤 약 42m
+- 터 6개 `balance.js SHOP_ST.lots` (s, side 1 오름 쪽 줄·-1 시작 쪽 줄·0 골목 끝, w, d). 1 루이네미장원(#58)·2 LEAP(#59) 자리, 5 스톤, 3·4·6 빈 터. 터마다 front·rot(앞이 골목)·back
+- `nsbound` 가 터 둘레(`SHOP_ST.bound`)를 must 로 넣어 바깥 돌담이 거리를 두름. `buildNamsongi({ clear: STREET.clear, lanes })` 로 나무·바위 비우고 골목을 길 그림(pathTex)에 더해 풀 없앰
+- 그림 `src/shops.js createShopStreet`: 현무암 판석·연석, 빈 터(낮은 돌담 + 앞 트임 + '준비 중' 고깔 팻말), 벤치·화분, 어귀 간판(가게 아이콘 세로). 가로등은 `STREET.lamps` 를 들머리 가로등 목록에 더함
+- 가게 표 `balance.js SHOPS` (id, name, lot, act, ic, pop): 줄을 더하면 그 터에 `SHOP_BUILD[id]` 건물 + 상호작용(act/ic) + 팝업(main `SHOP_POP[pop]`) + 가장자리 아이콘 `SHOP_ICON[id]`. 줄 없는 터는 빈 터
+- 스톤은 개울가에서 5번 터로 옮김 (`stoneSite` 없앰). 앞(테라스)이 골목 너머 개울·서쪽 바다. 정낭이 열린 뒤에만 식사는 그대로
+- 팝업은 공용 `#shoppop` (위 로고·이름·표어 `head`, 아래 `.menu-grid` 카드 `fill(grid)`, `serif` 이면 Georgia). 가장자리 표시 `#shop-mark`: 열 수 있는 가게 중 가장 가까운 하나의 아이콘만 (`SHOP_ST.markNear`~`markFar`)
+- 몹: 거리 가운데에서 `STREET.radius + keepPad` 안엔 안 나옴. 쓰레기 더미는 오름에만이라 원래 없음, 투기꾼은 더미로만 감
+- 확인용 `__oreum.street`: layout, shops, go(lot) / go(0, s), open(pop), popNow(), mark()
