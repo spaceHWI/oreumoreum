@@ -1,21 +1,10 @@
-// 레스토랑 스톤 (#50): 들머리 개울 건너 물가의 아담한 현무암 단층 레스토랑. 로우폴리 임시 모양
-// 로컬 좌표: +Z = 앞(테라스·개울·바다 쪽), +X = 하류 쪽(탐방로 쪽). 원점 = 건물 가운데 바닥
+// 레스토랑 스톤 (#50): 아담한 현무암 단층 레스토랑. 가게 거리(#57) 안쪽 끝 터. 로우폴리 임시 모양
+// 로컬 좌표: +Z = 앞(테라스·골목 너머 개울·바다 쪽), +X = 하류 쪽(탐방로 쪽). 원점 = 건물 가운데 바닥
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
 import { STONE } from './balance.js';
-import { centerOff, halfW, streamCross } from './streamshape.js';
 import { STONE_LOGO } from './stonelogo.js';
-
-// 자리: 개울 가로선(line = crossLine(TUT.streamD))에서 상류 쪽 lat, 물 건너 가장자리 + bank 에 테라스 앞끝
-export function stoneSite(line, insideBy) {
-  const { lats } = streamCross(line, insideBy);
-  const S = STONE.site, lat = S.lat;
-  const edge = centerOff(lat) + halfW(lat, lats);
-  const al = edge + S.bank + STONE.T + STONE.D / 2;
-  const { c, fx, fz, ux, uz } = line;
-  return { x: c.x + fx * al + ux * lat, z: c.z + fz * al + uz * lat, rot: Math.atan2(-fx, -fz), clearR: STONE.clearR };
-}
 
 function piece(g, color, jit = 0, seed = 1) {
   g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals();
