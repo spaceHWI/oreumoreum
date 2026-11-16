@@ -2236,7 +2236,7 @@ function setSoundUI() {
 // 적 근처면 긴장 음악 (#64): 몹·멧돼지(enemies) + 투기꾼·투기 트럭(dumpers)
 function threatNear() {
   if (life.enemies.near(player.pos, MUSIC.near)) return true;
-  return !!dumpers && dumpers.list.some((d) => d.state !== 'flee' && d.state !== 'leave' && Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < MUSIC.near);
+  return !!dumpers && dumpers.list.some((d) => d.state !== 'flee' && d.state !== 'startle' && d.state !== 'leave' && Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < MUSIC.near);
 }
 // ---------- 서버 고르기 (#35) ----------
 let introSrv = save.server || null; // 처음 온 사람은 아직 안 고름
