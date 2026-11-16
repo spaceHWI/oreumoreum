@@ -459,3 +459,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 눌러야 할 곳(`focusTarget`): 걷기(폰 조이스틱)·달리기 버튼·줍기 버튼(귤·쓰레기 가까이)·상호작용(던지기·버리기·상점)·상점 탭/사기 버튼. `#tut-focus`(귤색 고리 둘 맥박 + 손가락)를 그 요소 위에 놓고 `.tut-focus`, 나머지 `[data-tut]`·상점 칸은 `body.tut-dim` 으로 흐리게. 땅 목표엔 원 + 위아래로 움직이는 화살표(`bob`)
 - 남은 수 `#tut-count`(귤 n/3, 과녁 n/3), 힌트 카드 그림 `gyulKey/gyulBtn`, `throwKey/throwBtn`. UI: 줍기·귤 칸은 gyul, 상호작용은 throw, 배낭·깨끗한 정도는 pick
 - 건너뛰기 버튼(#tut-skip) 없앰 → 개발자 버튼(`?hwi=1`) `#dev-tut`. 확인 스크립트 `tools/tutrun.js [d|m]`(단계마다 dist/tut-*.jpg), `__oreum.tut`(step, hits, gyuls, walls, board, focus())
+
+## #63 귤을 더 크고 환하게
+- 수치는 `balance.js` 의 `TANGERINE`(scale 1.5·color·emissive·hover/bob/spin·glow·trail). 던지는 귤·흩어지는 귤(`life.js`), 바닥에 떨어진 줍기 귤(InstancedMesh + 잎·빛 원 인스턴스), 튜토리얼 귤(`tutorial.js`)이 같이 씀. UI 귤 아이콘은 그대로
+- 색은 더 밝은 귤색 + emissive(후처리 없음). 바닥 귤은 살짝 떠서 천천히 돌고 아래에 옅은 빛 원. 줍기 귤은 가까운 것(60m)만 매 프레임 갱신
+- 던진·흩어진 귤은 날아가는 동안 꼬리(작아지며 옅어지는 점 `trailN`개), 땅에 닿으면 꼬리를 지우고 `restTangerine` 으로 떠서 돌기 + 빛 원(귤의 자식 메시라 귤과 함께 사라짐)
+- 스크린샷: `notes/shots/63-day|dusk|night.png`
