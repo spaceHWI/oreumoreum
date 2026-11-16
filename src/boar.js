@@ -33,7 +33,7 @@ function weights(pos) {
   return { si, sw };
 }
 
-let geo = null, mat = null;
+let geo = null, mat = null, matStripe = null;
 function shared() {
   if (geo) return;
   const pos = b64(BM.pos, Float32Array), nq = b64(BM.nor, Int8Array), uv = b64(BM.uv, Float32Array), idx = b64(BM.idx, Uint16Array);
@@ -47,18 +47,29 @@ function shared() {
   // 남송이오름은 캐릭터와 같은 3단 툰 명암, 다른 곳은 램버트
   mat = NSMODE ? new THREE.MeshToonMaterial({ map: tex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: tex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   mat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));'); };
+  // 아기 멧돼지 (#48): 같은 모델에 밝은 갈색 + 등 세로 줄무늬 (모델 좌표로 그림)
+  matStripe = mat.clone();
+  matStripe.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'varying vec3 vBP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBP = position;');
+    sh.fragmentShader = 'varying vec3 vBP;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      diffuseColor.rgb *= vec3(1.45, 1.15, 0.8);
+      float back = smoothstep(0.34, 0.42, vBP.y) * smoothstep(0.22, 0.12, vBP.z) * smoothstep(-0.46, -0.36, vBP.z);
+      float st = step(0.5, fract(vBP.x * 16.0 + 0.25));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.74, 0.52), back * st * 0.8);`).replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));');
+  };
 }
 
 // { root, legs[4], head, tail } — life.js 의 legs4 · 머리 숙이기 · 꼬리 흔들기가 그대로 씀
-export function buildBoarModel() {
+// opts: scale (BOAR.scale 대신), stripes (아기 멧돼지 줄무늬 재질)
+export function buildBoarModel(opts = {}) {
   shared();
   const bones = ['body', 'head', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'].map((k) => { const b = new THREE.Bone(); b.name = k; return b; });
   const [body, head, tail, ...legs] = bones;
   body.position.set(...JOINT.body);
   const rel = (b, p) => { b.position.set(p[0] - JOINT.body[0], p[1] - JOINT.body[1], p[2] - JOINT.body[2]); body.add(b); };
   rel(head, JOINT.head); rel(tail, JOINT.tail); LEGS.forEach(([x, z], i) => rel(legs[i], [x, LEG_Y, z]));
-  const mesh = new THREE.SkinnedMesh(geo, mat); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
+  const mesh = new THREE.SkinnedMesh(geo, opts.stripes ? matStripe : mat); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
   mesh.castShadow = true;
-  const root = new THREE.Group(); mesh.scale.setScalar(BOAR.scale); root.add(mesh);
+  const root = new THREE.Group(); mesh.scale.setScalar(opts.scale || BOAR.scale); root.add(mesh);
   return { root, legs, head, tail };
 }

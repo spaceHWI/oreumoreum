@@ -237,7 +237,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 임시: 들것·두 사람은 로우폴리·기존 캐릭터(흰 재킷·흰 모자). 실어 갈 때 충돌 없이 곧장 시작 지점 쪽으로 감(돌담을 지나칠 수 있음, 화면이 어두워지는 동안)
 
 ## 적: 멧돼지 쫓아내기 (#37, 전투 오름만)
-- `src/enemies.js` `createEnemies` (life.js 안에서 만듦, `life.enemies`). 종류 표는 `balance.js ENEMIES`(name·hp·walk·chase·flee·dmg·reward{gyul,rare}·sight·lose·life·rootEvery·rootT·rootTrash·rootR·size), 출현은 `ENEMY_SPAWN`, 귤 피해는 `THROW_DMG.hand`(1). 새 종류는 표 한 줄 + `MODELS` 에 모양
+- `src/enemies.js` `createEnemies` (life.js 안에서 만듦, `life.enemies`). 종류 표는 `balance.js ENEMIES`(name·hp·walk·chase·flee·dmg·reward{gyul,rare}·sight·lose·life·rootEvery·rootT·rootTrash·rootR·size), 출현은 `ENEMY_SPAWN`, 귤 피해는 `THROW_DMG.hand`(1). 새 종류는 표 한 줄 + `src/enemymodels.js` 에 모양 (#48)
 - 출현: 전투 오름에서 `every`(240초)마다 한 무리 2~3마리, 플레이어에서 40~70 사이, 맵의 `spots.enemyOk(x,z)`(남송이는 돌담 안 `nsIn(x,z,12)`, 정낭 맵은 null = 없음). 동시에 최대 4. 깨끗한 오름에선 모두 지움. 예전 `spots.boarSpawn`·life.js 의 멧돼지 한 마리 코드는 없앰
 - 상태: wander → (rootEvery 마다) root(머리 숙여 헤집기, 중간에 `enemyRoot` → `trash.drop(x,z,n,r)`) / sight 18 안에 보이면 charge(받히면 `enemyHit(dir, def)` → 넉백·귤 흩뿌리기·`hp.hit(def.dmg)`) / 귤 맞아 hp 0 → flee / life(180초) 다 되거나 플레이어가 쓰러지면 leave. 맞으면 바로 charge
 - 머리 위 기운 막대는 스프라이트 둘(맞으면 잠깐 흰색, 1/3 이하 빨강). 나타날 때 `#enemy-warn`(빨간 느낌표)이 화면 가장자리 무리 쪽에 `warnT` 초. 가까우면 머리 위 `alertMark`
@@ -337,3 +337,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티: 쓰레기 상태를 바꾸는 곳은 `trash.refill` 과 저장소 `putBack`·`seen` 뿐 (서버로 바꿀 자리)
 - 확인용 `__oreum.dumpers`: spawn(kind, heap), near(kind, dist) 플레이어 앞에 데려옴, visit(), clear(), state(), amt, perHour, api(catchUp(sec), setPlayers(n), period(), test.timer), warn
 - 임시: 투기꾼·트럭은 로우폴리 상자 모양. 길 위 충돌은 안 봄(돌담·나무를 지나침)
+
+## 구역별 몹 (#48)
+- 전투 오름에서 플레이어가 있는 구역(`hooks.zoneAt` = `trash.zoneAt`)의 몹이 2분마다 한 무리(2~3, 동시 최대 4) 나옴. 구역→종류는 `ENEMY_SPAWN.byZone` (1 아기 멧돼지 · 2 들개 · 3 멧돼지 · 4 광견병 들개 · 5 외계인). 들머리(0)·다 핀 구역(`spawnBlock`)·깨끗한 오름은 없음. 구역 없는 맵은 `ENEMY_SPAWN.kinds`
+- 수치는 `balance.js ENEMIES` (멧돼지는 기운 12·보상 20 으로 바뀜). `ranged` 칸이 있으면 거리를 지키며 광선을 쏨 (외계인): `enemies.js shoot/updateBolts`, 광선 맞으면 `enemyHit` 과 같은 넉백·피해
+- 모양은 `src/enemymodels.js` 한 곳 (`ENEMY_MODELS[kind]` → `{root, legs, head, tail, h, fx?}`). Tripo 모델로 바꿀 땐 여기 build 함수만. 아기 멧돼지는 `buildBoarModel({scale, stripes})` 줄무늬 재질
+- 확인: `__oreum.enemies.test.wave(kind?)`, `.kindHere()`, `.spawn(kind, dx, dz)`, `.bolts`

@@ -1,10 +1,11 @@
-// 적 (#37): 전투 오름에서만. 쓰러뜨리지 않고 귤을 맞혀 쫓아낸다
-// 종류별 수치는 balance.js ENEMIES 표, 출현 규칙은 ENEMY_SPAWN. 새 종류는 표에 한 줄 + 아래 MODELS 에 모양 하나
-// 상태: wander(돌아다님) · root(땅 헤집기, 쓰레기 흘림) · charge(플레이어를 보고 돌진) · flee(놀라 도망) · leave(시간이 다 돼 스스로 떠남)
+// 적 (#37, 구역별 #48): 전투 오름에서만. 쓰러뜨리지 않고 귤을 맞혀 쫓아낸다
+// 종류별 수치는 balance.js ENEMIES 표, 출현 규칙은 ENEMY_SPAWN (구역 → 종류 byZone). 새 종류는 표에 한 줄 + src/enemymodels.js 에 모양 하나
+// 상태: wander(돌아다님) · root(땅 헤집기, 쓰레기 흘림) · charge(플레이어를 보고 돌진, ranged 는 거리를 두고 광선) · flee(놀라 도망) · leave(시간이 다 돼 스스로 떠남)
+// 구역 번호는 hooks.zoneAt(x, z) 로 받음 (없으면 구역 없는 맵: ENEMY_SPAWN.kinds)
 import * as THREE from 'three';
 import { isBattle } from './server.js';
 import { height } from './world.js';
-import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
+import { buildEnemyModel, buildBolt } from './enemymodels.js';
 import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN } from './balance.js';
 
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -12,10 +13,6 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 const range = (rnd, [a, b]) => a + rnd() * (b - a);
 const irange = (rnd, [a, b]) => a + Math.floor(rnd() * (b - a + 1));
 
-// 모양: { root, legs[4], head, tail }, 키(판정 높이)
-const MODELS = {
-  boar: () => ({ ...buildBoarModel(), h: BOAR_MODEL_H * BOAR.scale }),
-};
 
 // 머리 위 기운 막대 (스프라이트 둘, 왼쪽 기준으로 줄어듦)
 const barBgMat = new THREE.SpriteMaterial({ color: '#1d1a17', transparent: true, opacity: 0.75, depthTest: false });
@@ -35,30 +32,38 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   const okAt = okMap && ((x, z) => okMap(x, z) && !hooks.spawnBlock?.(x, z)); // 다 핀 구역(#46)에는 나오지 않음
 
   function spawnOne(kind, x, z) {
-    const def = ENEMIES[kind], m = MODELS[kind]();
+    const def = ENEMIES[kind], m = buildEnemyModel(kind);
     const pos = new THREE.Vector3(x, height(x, z), z);
     m.root.position.copy(pos); group.add(m.root);
     const bar = makeBar(); bar.g.position.set(0, m.h + 0.45, 0); m.root.add(bar.g);
-    const e = { ...m, kind, def, pos, heading: rnd() * Math.PI * 2, speed: 0, phase: rnd() * 6, hp: def.hp, state: 'wander', st: 0, life: def.life, rootT: range(rnd, def.rootEvery), hitCd: 0, flash: 0, bar, chg: 0, pitch: 0, roll: 0 };
+    const e = { ...m, kind, def, pos, heading: rnd() * Math.PI * 2, speed: 0, phase: rnd() * 6, hp: def.hp, state: 'wander', st: 0, life: def.life, rootT: range(rnd, def.rootEvery), shotT: def.ranged ? def.ranged.every * 0.6 : 0, hitCd: 0, flash: 0, bar, chg: 0, pitch: 0, roll: 0 };
     list.push(e);
     return e;
   }
-  // 한 무리: 플레이어 둘레 r 안 한 점을 정하고, 그 둘레에 2~3마리
-  function spawnWave(force = false) {
+  // 플레이어가 있는 곳의 몹 종류 (#48). 구역 없는 맵이면 kinds 에서 하나, 들머리(0)면 없음
+  function kindAt(x, z) {
+    if (!hooks.zoneAt) return ENEMY_SPAWN.kinds[Math.floor(rnd() * ENEMY_SPAWN.kinds.length)];
+    const zn = hooks.zoneAt(x, z); return { kind: ENEMY_SPAWN.byZone[zn] || null, zone: zn };
+  }
+  // 한 무리: 플레이어 둘레 r 안(같은 구역) 한 점을 정하고, 그 둘레에 2~3마리
+  function spawnWave(force = false, forceKind = null) {
     if (!okAt || !player) return null;
     if (!force && (!isBattle() || !okAt(player.pos.x, player.pos.z))) return null;
     const room = ENEMY_SPAWN.max - list.length; if (room <= 0) return null;
+    const k0 = kindAt(player.pos.x, player.pos.z), zone = typeof k0 === 'object' ? k0.zone : null;
+    const kind = forceKind || (typeof k0 === 'object' ? k0.kind : k0);
+    if (!kind || !ENEMIES[kind]) return null;
+    const sameZone = (x, z) => okAt(x, z) && (zone == null || forceKind || hooks.zoneAt(x, z) === zone);
     const n = Math.min(room, irange(rnd, ENEMY_SPAWN.group));
     let c = null;
-    for (let k = 0; k < 16 && !c; k++) { const a = rnd() * Math.PI * 2, r = range(rnd, ENEMY_SPAWN.r), x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r; if (okAt(x, z)) c = [x, z]; }
+    for (const rr of [ENEMY_SPAWN.r, ENEMY_SPAWN.near]) for (let k = 0; k < 16 && !c; k++) { const a = rnd() * Math.PI * 2, r = range(rnd, rr), x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r; if (sameZone(x, z)) c = [x, z]; }
     if (!c) return null;
-    const kind = ENEMY_SPAWN.kinds[Math.floor(rnd() * ENEMY_SPAWN.kinds.length)];
     let made = 0;
     for (let i = 0; i < n; i++) {
-      for (let k = 0; k < 8; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * 4, x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r; if (okAt(x, z)) { const e = spawnOne(kind, x, z); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
+      for (let k = 0; k < 8; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * 4, x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r; if (k < 6 ? sameZone(x, z) : okAt(x, z)) { const e = spawnOne(kind, x, z); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
     }
     if (!made) return null;
-    const info = { kind, n: made, x: c[0], z: c[1] };
+    const info = { kind, n: made, x: c[0], z: c[1], zone };
     sound?.boar?.(); hooks.enemyWave?.(info);
     return info;
   }
@@ -93,6 +98,14 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       want = e.state === 'flee' ? d0.flee : d0.walk * 1.6;
       turnTo(e, Math.atan2(-to.x, -to.z) + Math.sin(time * 2 + e.phase) * 0.3, Math.min(1, dt * 3));
       if (d > ENEMY_SPAWN.goneD || e.st > 14) { remove(e); if (e.state === 'leave') hooks.enemyGone?.(e.kind); return; }
+    } else if (e.state === 'charge' && d0.ranged) { // 멀리서 쏘는 적 (#48 외계인): 거리를 지키며 옆으로 돌고, 때마다 광선
+      const R = d0.ranged, face = Math.atan2(to.x, to.z);
+      if (d > R.keep + 3) { want = d0.chase; turnTo(e, face, Math.min(1, dt * 3)); }
+      else if (d < R.keep - 3) { want = d0.walk; turnTo(e, face + Math.PI, Math.min(1, dt * 3)); }
+      else { want = d0.walk * 0.6; turnTo(e, face + Math.PI / 2 * (e.phase % 2 < 1 ? 1 : -1), Math.min(1, dt * 2)); }
+      e.shotT -= dt;
+      if (e.shotT <= 0 && d < R.range && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
+      if (d > d0.lose && e.st > 2) { e.state = 'wander'; e.st = 0; }
     } else if (e.state === 'charge') {
       want = d > 3 ? d0.chase : 2; turnTo(e, Math.atan2(to.x, to.z), Math.min(1, dt * 3));
       if (d > d0.lose && e.st > 2) { e.state = 'wander'; e.st = 0; }
@@ -118,7 +131,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (spots.inBounds(bx, bz)) e.pos.set(bx, height(bx, bz), bz);
       else { const px = player.pos.x + ux * push, pz = player.pos.z + uz * push; const cl = spots.clamp?.(px, pz); player.pos.x = cl ? cl.x : px; player.pos.z = cl ? cl.z : pz; }
     }
-    if (e.state === 'charge' && d < minD + BOAR.hitGap && e.hitCd <= 0 && player.jumpY < 0.6) { e.hitCd = BOAR.hitCd; hooks.enemyHit?.(to.clone().normalize(), e.def, e.kind); }
+    if (e.state === 'charge' && !d0.ranged && d < minD + BOAR.hitGap && e.hitCd <= 0 && player.jumpY < 0.6) { e.hitCd = BOAR.hitCd; hooks.enemyHit?.(to.clone().normalize(), e.def, e.kind); }
     // 그리기
     e.root.position.copy(e.pos); e.root.rotation.order = 'YXZ'; e.root.rotation.y = e.heading;
     { // 비탈 기울기 (#29)
@@ -134,6 +147,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const rooting = e.state === 'root' ? 0.75 + Math.sin(time * 14 + e.phase) * 0.12 : 0;
     e.head.rotation.x = 0.05 + e.chg * 0.25 + rooting + Math.sin(e.phase * 0.5) * 0.08;
     e.tail.rotation.x = Math.sin(time * 9 + e.phase) * 0.4;
+    e.fx?.(dt, time, e);
     // 막대: 맞으면 잠깐 흰색
     if (e.bar.g.visible) {
       e.flash = Math.max(0, e.flash - dt);
@@ -142,7 +156,30 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     }
   }
 
+  // 광선 (#48): 쏜 순간 플레이어 쪽(살짝 앞)으로 곧게 날아감. 뛰면 피할 수 있음
+  const bolts = [];
+  const _m = new THREE.Vector3();
+  function shoot(e) {
+    const R = e.def.ranged;
+    _m.copy(e.muzzle || new THREE.Vector3(0, e.h * 0.6, 0.4)).applyAxisAngle(new THREE.Vector3(0, 1, 0), e.heading).add(e.pos);
+    const aim = new THREE.Vector3(player.pos.x, player.pos.y + 0.9, player.pos.z);
+    const dir = aim.sub(_m).normalize();
+    const g = buildBolt(); g.position.copy(_m); g.lookAt(_m.clone().add(dir)); group.add(g);
+    bolts.push({ g, dir, v: R.speed, life: R.range / R.speed + 0.6, e, def: e.def, kind: e.kind });
+    sound?.beep?.(false);
+  }
+  function updateBolts(dt) {
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i]; b.life -= dt; b.g.position.addScaledVector(b.dir, b.v * dt);
+      const p = b.g.position, R = b.def.ranged.r;
+      const hit = player && !player.down && Math.hypot(p.x - player.pos.x, p.z - player.pos.z) < R && p.y > player.pos.y + player.jumpY - 0.2 && p.y < player.pos.y + player.jumpY + 2.0;
+      if (hit) hooks.enemyHit?.(new THREE.Vector3(b.dir.x, 0, b.dir.z).normalize(), b.def, b.kind);
+      if (hit || b.life <= 0 || p.y < height(p.x, p.z) - 0.2) { group.remove(b.g); bolts.splice(i, 1); }
+    }
+  }
+
   function update(dt, time) {
+    updateBolts(dt);
     if (!player || !okAt) return;
     if (isBattle()) {
       waveT -= dt;
@@ -164,14 +201,15 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
 
   return {
     bind(p, s) { player = p; sound = s; },
-    update, hitTest, aimTargets, list,
+    update, hitTest, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),
     // 확인용
     test: {
-      wave: () => spawnWave(true),
+      wave: (kind = null) => spawnWave(true, kind),
+      kindHere: () => (player ? kindAt(player.pos.x, player.pos.z) : null),
       spawn: (kind = 'boar', dx = 8, dz = 8) => (player ? spawnOne(kind, player.pos.x + dx, player.pos.z + dz) : null),
-      clear: () => { for (const e of list.slice()) remove(e); },
+      clear: () => { for (const e of list.slice()) remove(e); for (const b of bolts) group.remove(b.g); bolts.length = 0; },
       get timer() { return waveT; }, set timer(v) { waveT = v; },
       state: () => list.map((e) => ({ kind: e.kind, hp: e.hp, state: e.state, life: Math.round(e.life), x: Math.round(e.pos.x), z: Math.round(e.pos.z) })),
     },
