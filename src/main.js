@@ -32,7 +32,7 @@ import { useDonnaeko, buildDonnaekoDecor } from './donnaeko.js';
 import { useGate, buildGateDecor } from './gate.js';
 import { createTutorial } from './tutorial.js';
 import { createLamps } from './lamps.js';
-import { buildRunner, THROW, OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemPrice, SKIN_TONES } from './runner.js';
+import { buildRunner, THROW, OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemPrice, SKIN_TONES, setBlinkCamera } from './runner.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from './clothicons.js';
 import { Sound } from './audio.js';
 import { createNet } from './net.js';
@@ -157,6 +157,7 @@ const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: STREET.
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 const camera = new THREE.PerspectiveCamera(50, 1, 0.5, NSW ? NSW.camFar : 14000);
+setBlinkCamera(camera); // 먼 캐릭터는 깜빡임 생략 (#74)
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   const cap = quality.level === 2 ? (w < 700 ? 1.6 : 1.75) : quality.level === 1 ? 1.25 : 1;
@@ -2386,7 +2387,7 @@ function frame(now) {
   const pose = player.flail ? 'flail' : player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
-  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4 });
+  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
   fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);

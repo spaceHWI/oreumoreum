@@ -252,6 +252,14 @@ export const BOW = {
   splash: 14, splashLow: 7, // 맞으면 튀는 즙 방울 수
   life: 1.6, // 화살이 아무것도 안 맞고 날아가는 최대 시간(초)
 };
+// 눈 깜빡임 (#74)
+export const BLINK = {
+  gapMin: 3, gapMax: 6, // 다음 깜빡임까지 (초, 무작위)
+  close: 0.05, hold: 0.02, open: 0.05, // 한 번 깜빡임 ≈ 0.12초
+  twice: 0.1, twiceGap: 0.08, // 두 번 연달아 깜빡일 확률·사이 간격
+  wide: 0.22, // 놀람·받힘: 눈 둘레를 이만큼 키움
+  far: 30, // 카메라에서 이보다 먼 캐릭터는 깜빡이지 않음 (m)
+};
 // 귤 피해 (#37): 손으로 던지기. 무기 표의 손과 같음
 export const THROW_DMG = { hand: WEAPONS[0].dmg };
 
