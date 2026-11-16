@@ -129,7 +129,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
         seg.copy(tg.vel).multiplyScalar(-0.1); const l2 = seg.lengthSq();
         let u = l2 > 1e-6 ? ((c3.x - p.x) * seg.x + (c3.y - p.y) * seg.y + (c3.z - p.z) * seg.z) / l2 : 0; u = u < 0 ? 0 : u > 1 ? 1 : u;
         q.copy(p).addScaledVector(seg, u);
-        if (q.distanceTo(c3) > TUT.targetR + 0.3) return false;
+        if (q.distanceTo(c3) > TUT.targetR + 0.6) return false; // 자동 조준이라 넉넉히 (버튼만 누르면 맞게)
         const dir = tg.vel.clone().setY(0).normalize();
         tg.vel.set(-tg.vel.x * 0.18, 2.2, -tg.vel.z * 0.18);
         S.hits = Math.min(TUT.hits, S.hits + 1); persist(); wob = 1;
@@ -218,8 +218,8 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   function setFocus(el) {
     if (el !== focused) { focused?.classList.remove('tut-focus'); focused = el; el?.classList.add('tut-focus'); document.body.classList.toggle('tut-dim', !!el); }
     if (!el) { focusEl.hidden = true; return; }
-    const r = el.getBoundingClientRect(), sz = Math.max(r.width, r.height) + 14;
-    focusEl.hidden = false; focusEl.style.left = (r.left + r.width / 2) + 'px'; focusEl.style.top = (r.top + r.height / 2) + 'px'; focusEl.style.setProperty('--s', sz + 'px');
+    const r = el.getBoundingClientRect(), round = Math.abs(r.width - r.height) < 6, w = (round ? Math.max(r.width, r.height) : r.width) + 12, h = (round ? w - 12 : r.height) + 12; // 둥근 버튼은 원, 넓은 칸은 둥근 사각
+    focusEl.hidden = false; focusEl.style.left = (r.left + r.width / 2) + 'px'; focusEl.style.top = (r.top + r.height / 2) + 'px'; focusEl.style.setProperty('--w', w + 'px'); focusEl.style.setProperty('--h', h + 'px');
   }
   function update(dt) {
     if (S.done) return;
