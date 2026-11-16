@@ -423,3 +423,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 눈 크게: 정점 셰이더에서 눈 둘레 정점을 눈 가운데에서 바깥으로 밂(`eyeGrow`, DQ 스키닝 전)
 - 박자: `buildRunner` 의 `eye` 상태, `animate(..., { face, lid })`. face 'shut' 쓰러짐(감은 채), 'wide' 받힘(`player.knock`)·허우적댐(pose flail). 사람마다 처음 간격이 무작위라 박자가 다름. `setBlinkCamera(camera)` 로 카메라에서 `BLINK.far` 넘는 캐릭터는 계산·깜빡임 생략. 모델 캐릭터(나·다른 사람·들것 일꾼)만, 예전 도형 NPC 는 없음. 다른 사람의 쓰러짐은 서버로 안 와서 감은 눈은 나만
 - 확인: `dist/char-motion.html?faces&fov=12&lid=0..1`, `&face=wide|shut`, `&skin=2`. 게임에선 `__oreum.runner.eye`
+
+## 낚시 잭팟 (#55)
+- `balance.js FISH.jackpot` (`p` 1/500, `gyul` 60, `bigT` 1.6초, `first` 3). 처음 임의값 1/150·300 은 `tools/econ.js` 로 재 보니 시간당 벌이가 오름 1일차(1,414)의 절반(707)을 넘어, 평균이 700 이 되게 낮춤. econ.js 끝에 잭팟 줄이 나오고 넘으면 '넘음'
+- 잭팟은 찌가 들어가는 순간(`bite` 시작)에 굴림(`S.jack`). 걸리면 찌가 크게 흔들리고 물보라·고리가 계속, 느낌표가 금색·크게, `audio.jackBite`. 놓치기까지 `bigT`. 낚으면 species 3~5(다금바리·황금 옥돔·귤색 잉어, `fishMesh` 큰 모양) `c.jack`, 귤 `gyul` + `gyulShower` + `audio.jackpot`
+- 도감 '개울' 칸에 fish:3~5 (`dexicons.js FISHI`). 업적 이벤트 `fish`, `fish-jackpot`, `fish-<id>` (`fish-dageum`·`fish-okdom`·`fish-gcarp`). 업적 정의는 아직 없음
+- 확인용 `__oreum.fish.jack(true)` 다음 입질을 잭팟으로

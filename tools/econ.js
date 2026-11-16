@@ -169,10 +169,10 @@ async function main() {
   const WSUM = WK.reduce((s, k) => s + wearSum(k), 0);
   console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 활 ${WEAPONS[1].price} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + WEAPONS[1].price + WSUM}`);
   const short = { tool: '도구', bag: '배낭', shoes: '신발', weapon: '무기', ...Object.fromEntries(WEAR.slots.map((w) => [w.k, w.name])) };
-  const verdict = [];
+  const verdict = []; let day1Rate = 0;
   for (const mode of ['clean', 'battle']) for (const slack of SLACKS) {
     const runs = [1, 7, 42, 99, 123].map((s) => seedRun(mode, slack, s));
-    const r = runs[2];
+    const r = runs[2]; if (!day1Rate && mode === 'clean' && slack === 0) day1Rate = r.days[0].rate;
     const lasts = runs.map((x) => x.last).sort((a, b) => a - b), last = lasts[2];
     const title = `${mode === 'clean' ? '깨끗한 오름' : '전투 오름'} · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
     console.log(`\n== ${title} (투기꾼 쫓아내기 ${CHASE * 100}%) ==`);
@@ -195,5 +195,10 @@ async function main() {
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;
   const fg = F.odds.fish * F.fishGyul + F.odds.trash * 1 + F.odds.rare * (DEX.rareGyul + 2);
   console.log(`\n낚시: 한 번 ${cyc.toFixed(1)}초, 귤 ${fg.toFixed(2)} → 시간당 약 ${Math.round(fg / cyc * 3600)} (쓰레기는 클린하우스에 버려야 귤)`);
+  // 잭팟 (#55): 확률 p 로 귤 gyul. 잭팟이 걸리면 평소 대신 잭팟 한 번 (당기기 + 들어 보이기). 평균 벌이가 오름 1일차 시간당 귤의 절반 아래여야 함
+  const J = F.jackpot, jcyc = F.castT + wait + F.pullT + F.showT + F.releaseT, base = fg / cyc * 3600;
+  const avgC = (1 - J.p) * cyc + J.p * jcyc, avgG = (1 - J.p) * fg + J.p * J.gyul, tot = avgG / avgC * 3600;
+  const day1 = day1Rate, lim = day1 * 0.5;
+  console.log(`잭팟: 확률 1/${Math.round(1 / J.p)}, 귤 ${J.gyul} → 평균 시간당 약 ${Math.round(tot)} (잭팟만 +${Math.round(tot - base)}) · 시간당 잭팟 ${(3600 / avgC * J.p).toFixed(1)}번 · 오름 1일차 시간당 ${day1} 의 절반 ${Math.round(lim)} → ${tot <= lim ? '통과' : '넘음'}`);
 }
 main();

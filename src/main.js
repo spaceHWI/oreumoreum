@@ -2479,8 +2479,14 @@ fishing = createFishing({ scene, stream, player, runner, groundAt, height, sound
     if (c.type === 'fish') {
       const sp = FISH.species[c.i], dx = DEX_LIST.find((d) => d.id === `fish:${c.i}`);
       if (trash && dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
+      if (c.jack) { // 잭팟 (#55): 귤이 터지듯 흩뿌려짐
+        const G = FISH.jackpot.gyul; addCoins(G); ach.emit('earn', G);
+        setTimeout(() => { sound.jackpot?.(); gyulShower(G); coinFx(at.clone().setY(at.y + 1.2), G); }, FISH.pullT * 1000);
+        ach.emit('fish'); ach.emit('fish-jackpot'); ach.emit('fish-' + sp.id);
+      } else {
       addCoins(FISH.fishGyul); ach.emit('earn', FISH.fishGyul); setTimeout(() => coinFx(at.clone().setY(at.y + 1.2), FISH.fishGyul), FISH.pullT * 1000);
       ach.emit('fish'); ach.emit('fish-' + sp.id);
+      }
     } else if (trash) {
       const kind = c.type === 'trash' ? c.t.kind : c.kind;
       if (trash.addToBag(kind, bagCap())) setTimeout(() => updateTrashUI(true), (FISH.pullT + FISH.stowT) * 1000);

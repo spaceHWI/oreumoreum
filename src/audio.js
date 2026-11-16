@@ -412,6 +412,21 @@ export class Sound {
     const o2 = c.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(1320, t + 0.1); o2.frequency.linearRampToValueAtTime(1480, t + 0.3);
     const g2 = c.createGain(); g2.gain.setValueAtTime(0.0001, t + 0.1); g2.gain.linearRampToValueAtTime(0.06, t + 0.11); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.38); o2.connect(g2); g2.connect(this.sfx); o2.start(t + 0.1); o2.stop(t + 0.4);
   }
+  // 잭팟 입질 (#55): 평소 '퐁'보다 크고 낮은 쿵 + 떨리는 높은 소리
+  jackBite() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(300, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.25);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.3, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.32);
+    for (let i = 0; i < 5; i++) { const tt = t + 0.12 + i * 0.09, q = c.createOscillator(); q.type = 'triangle'; q.frequency.value = 1100 + (i % 2) * 330; const gg = c.createGain(); gg.gain.setValueAtTime(0.0001, tt); gg.gain.linearRampToValueAtTime(0.07, tt + 0.01); gg.gain.exponentialRampToValueAtTime(0.001, tt + 0.1); q.connect(gg); gg.connect(this.sfx); q.start(tt); q.stop(tt + 0.12); }
+  }
+  // 잭팟 성공 (#55): 위로 올라가는 반짝 음 + 동전 소리
+  jackpot() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime;
+    [523, 659, 784, 1047, 1319].forEach((f, i) => { const tt = t + i * 0.08, o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(0.06, tt + 0.01); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.35); o.connect(g); g.connect(this.sfx); o.start(tt); o.stop(tt + 0.38); });
+    for (let i = 0; i < 6; i++) setTimeout(() => this.coin?.(), 300 + i * 90);
+  }
   // 낚싯줄 감는 소리: 짧은 딸깍 여러 번
   reel(dur = 1) {
     if (!this.on || !this.sfxOn) return;

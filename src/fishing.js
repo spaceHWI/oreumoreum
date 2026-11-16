@@ -20,6 +20,14 @@ function fishMesh(i) {
     for (const s of [-1, 1]) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), leg); c.scale.set(1, 0.7, 1.4); c.position.set(s * 0.12, 0.01, 0.17); g.add(c); }
     return g;
   }
+  if (i >= 3) { // 잭팟 물고기 (#55): 다금바리(붉은 갈색 긴 몸)·황금 옥돔(금색)·귤색 잉어(주황), 평소 것보다 크고 지느러미가 큼
+    const col = ['#a8553c', '#f2c230', '#f08a1c'][i - 3], dk = ['#7d3a28', '#c9961a', '#c4650e'][i - 3], L = 0.68, H = 0.2;
+    const body = new THREE.Mesh(new THREE.OctahedronGeometry(1, 1), toon(col)); body.scale.set(0.07, H, L / 2); g.add(body);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(H, 0.2, 4), toon(dk)); tail.rotation.x = Math.PI / 2; tail.scale.x = 0.25; tail.position.z = -L / 2 - 0.05; g.add(tail);
+    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.16, 3), toon(dk)); fin.scale.z = 0.4; fin.position.set(0, H * 0.95, 0); g.add(fin);
+    for (const sd of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.022, 5, 4), toon('#22251f')); e.position.set(sd * 0.06, H * 0.25, L / 2 - 0.08); g.add(e); }
+    return g;
+  }
   const col = i === 0 ? '#a9c2b8' : '#c9a24a', L = i === 0 ? 0.46 : 0.4, H = i === 0 ? 0.1 : 0.15;
   const body = new THREE.Mesh(new THREE.OctahedronGeometry(1, 1), toon(col)); body.scale.set(0.05, H, L / 2); g.add(body);
   const tail = new THREE.Mesh(new THREE.ConeGeometry(H * 0.9, 0.14, 4), toon(i === 0 ? '#86a096' : '#b08a3a')); tail.rotation.x = Math.PI / 2; tail.scale.x = 0.25; tail.position.z = -L / 2 - 0.03; g.add(tail);
@@ -70,12 +78,12 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
     x.fillStyle = '#ff8a1f'; x.beginPath(); x.arc(32, 32, 28, 0, 7); x.fill(); x.fillStyle = '#fff'; x.fillRect(27, 11, 10, 27); x.fillRect(27, 43, 10, 10);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true })); sp.visible = false; sp.renderOrder = 6; sp.scale.setScalar(0.6); scene.add(sp); return sp; })();
   // 잡히는 것 모양 (한 번만 만들어 두고 켜고 끔)
-  const items = { fish: [0, 1, 2].map(fishMesh), trash: {}, rare: trashMesh('rare') };
+  const items = { fish: FISH.species.map((_, i) => fishMesh(i)), trash: {}, rare: trashMesh('rare') };
   F.trash.forEach((t) => { items.trash[t.id] = trashMesh(t.id); });
   [...items.fish, ...Object.values(items.trash), items.rare].forEach((m) => { m.visible = false; scene.add(m); });
 
   let S = null; // 지금 낚시 상태
-  let forceNext = null, forceWait = null; // 확인용
+  let forceNext = null, forceWait = null, forceJack = null; // 확인용
   const tip = new THREE.Vector3(), hand = new THREE.Vector3(), tv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), tq = new THREE.Quaternion();
   const showPt = new THREE.Vector3(), backPt = new THREE.Vector3();
 
@@ -106,11 +114,12 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
   // 무엇이 낚일지: 자리가 없으면 쓰레기(드문 것 포함) 대신 물고기
   function roll() {
     if (forceNext) { const f = forceNext; forceNext = null; return f; }
+    if (S && S.jack) return { type: 'fish', i: FISH.jackpot.first + Math.floor(Math.random() * (F.species.length - FISH.jackpot.first)), jack: true }; // 잭팟 (#55)
     const r = Math.random(), O = F.odds, free = room();
     const fits = (kind) => (TRASH_TYPES.find((t) => t.id === kind)?.vol ?? 99) <= free;
     if (r < O.trash) { const t = F.trash[Math.floor(Math.random() * F.trash.length)]; if (fits(t.kind)) return { type: 'trash', t }; }
     else if (r >= O.trash + O.fish) { const ok = DEX.rare.map((d, i) => ({ d, i })).filter((x) => fits(x.d.kind)); if (ok.length) { const x = ok[Math.floor(Math.random() * ok.length)]; return { type: 'rare', kind: x.d.kind, name: x.d.name }; } }
-    return { type: 'fish', i: Math.floor(Math.random() * F.species.length) };
+    return { type: 'fish', i: Math.floor(Math.random() * FISH.jackpot.first) };
   }
   const meshOf = (c) => (c.type === 'fish' ? items.fish[c.i] : c.type === 'trash' ? items.trash[c.t.id] : items.rare);
 
@@ -120,7 +129,7 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
     player.heading = Math.atan2(sp.x - player.pos.x, sp.z - player.pos.z);
     player.pose = 'fish'; player.poseT = 0;
     setHoldRod(true);
-    S = { ph: 'cast', t: 0, to: new THREE.Vector3(sp.x, sp.y, sp.z), from: new THREE.Vector3(), wait: forceWait ?? F.waitMin + Math.random() * (F.waitMax - F.waitMin), ringT: 0, catch: null, item: null, elev: 0.4, landed: false };
+    S = { ph: 'cast', t: 0, to: new THREE.Vector3(sp.x, sp.y, sp.z), from: new THREE.Vector3(), jack: false, wait: forceWait ?? F.waitMin + Math.random() * (F.waitMax - F.waitMin), ringT: 0, catch: null, item: null, elev: 0.4, landed: false };
     forceWait = null;
     rod.visible = line.visible = true; bob.visible = false;
     sound?.cast?.();
@@ -129,7 +138,7 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
   function end() {
     if (!S) return;
     if (S.item) S.item.visible = false;
-    S = null; rod.visible = line.visible = bob.visible = bang.visible = false;
+    S = null; rod.visible = line.visible = bob.visible = bang.visible = false; bang.material.color.set('#ffffff'); bang.scale.setScalar(0.6);
     if (player.pose === 'fish') player.pose = 'move';
     setHoldRod(false);
   }
@@ -141,7 +150,8 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
     if (S.ph === 'bite') {
       S.catch = roll(); S.item = meshOf(S.catch); S.from.copy(S.to);
       reward(S.catch, S.to.clone()); // 보상은 누르는 순간 확정 (연출 도중 그만둬도 받음)
-      go('pull'); bang.visible = false;
+      go('pull'); bang.visible = false; bang.material.color.set('#ffffff'); bang.scale.setScalar(0.6);
+      if (S.catch.jack) stream.splash(S.to.x, S.to.y, S.to.z, 1.2);
       stream.splash(S.to.x, S.to.y, S.to.z, 0.55); sound?.reel?.(F.pullT);
       return true;
     }
@@ -171,12 +181,13 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
       e = 0.45 + Math.sin(t * 1.3) * 0.03; bobPos = S.to.clone(); bobPos.y += Math.sin(t * 2.4) * 0.025;
       if (t > S.wait - 0.9 && t < S.wait - 0.7) bobPos.y -= 0.04; // 살짝 입질
       if ((S.ringT -= dt) <= 0) { S.ringT = 1.6; stream.ring(S.to.x, S.to.y, S.to.z); }
-      if (t >= S.wait) { go('bite'); t = 0; stream.splash(S.to.x, S.to.y, S.to.z, 0.3, false); stream.ring(S.to.x, S.to.y, S.to.z); sound?.bite?.(); bang.visible = true; }
+      if (t >= S.wait) { go('bite'); t = 0; S.jack = forceJack ?? Math.random() < F.jackpot.p; forceJack = null; if (S.jack) { sound?.jackBite?.(); bang.material.color.set('#ffd23a'); bang.scale.setScalar(1.1); } stream.splash(S.to.x, S.to.y, S.to.z, 0.3, false); stream.ring(S.to.x, S.to.y, S.to.z); sound?.bite?.(); bang.visible = true; }
     }
     if (S.ph === 'bite') {
-      e = 0.32 + Math.sin(t * 30) * 0.03; bobPos = S.to.clone(); bobPos.y -= 0.16 + Math.sin(t * 18) * 0.04; sag = 0;
+      const J = S.jack; e = 0.32 + Math.sin(t * 30) * (J ? 0.1 : 0.03); bobPos = S.to.clone(); bobPos.y -= (J ? 0.3 : 0.16) + Math.sin(t * (J ? 26 : 18)) * (J ? 0.1 : 0.04); sag = 0;
+      if (J && ((S.ringT -= dt) <= 0)) { S.ringT = 0.25; stream.ring(S.to.x, S.to.y, S.to.z); stream.splash(S.to.x, S.to.y, S.to.z, 0.5, false); }
       bang.position.set(S.to.x, S.to.y + 0.9 + Math.sin(t * 12) * 0.05, S.to.z);
-      if (t >= F.biteT) { go('miss'); t = 0; S.from.copy(bobPos); toast?.('놓쳤어요'); bang.visible = false; }
+      if (t >= (S.jack ? F.jackpot.bigT : F.biteT)) { go('miss'); t = 0; S.from.copy(bobPos); toast?.('놓쳤어요'); bang.visible = false; }
     }
     if (S.ph === 'miss') {
       const k = Math.min(1, t / F.missT); e = 0.45 + 0.8 * sm(k / 0.5) - 0.5 * sm((k - 0.6) / 0.4);
@@ -219,7 +230,7 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
         S.item.position.copy(it);
         const wig = S.ph === 'show' || S.ph === 'pull' ? Math.sin(t * 16) * 0.5 : 0;
         S.item.rotation.set(S.ph === 'release' ? t * 6 : 0, player.heading + Math.PI / 2 + wig, 0);
-        S.item.scale.setScalar(1.5 * (S.ph === 'stow' ? 1 - 0.7 * Math.min(1, t / F.stowT) : 1)); // 들어 보일 때 잘 보이게 조금 크게
+        S.item.scale.setScalar((S.catch.jack ? 1.9 : 1.5) * (S.ph === 'stow' ? 1 - 0.7 * Math.min(1, t / F.stowT) : 1)); // 들어 보일 때 잘 보이게 조금 크게
       }
     }
   }
@@ -232,6 +243,6 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
     get elev() { return S ? S.elev : 0.4; },
     get label() { return (LABEL[S ? S.ph : 'idle'] || ['낚시 중'])[0]; },
     get ic() { return (LABEL[S ? S.ph : 'idle'] || [0, 'fish'])[1]; },
-    test: { force: (c) => { forceNext = c; }, wait: (s) => { forceWait = s; if (S && S.ph === 'wait') S.wait = Math.min(S.wait, S.t + s); }, state: () => S && { ph: S.ph, t: S.t, wait: S.wait, to: S.to.toArray(), catch: S.catch }, parts: { rod, bob, line, tip, hand } },
+    test: { force: (c) => { forceNext = c; }, jack: (v = true) => { forceJack = v; }, wait: (s) => { forceWait = s; if (S && S.ph === 'wait') S.wait = Math.min(S.wait, S.t + s); }, state: () => S && { ph: S.ph, t: S.t, wait: S.wait, to: S.to.toArray(), catch: S.catch }, parts: { rod, bob, line, tip, hand } },
   };
 }

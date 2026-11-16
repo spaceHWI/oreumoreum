@@ -32,11 +32,14 @@ const RARE = {
   'gear:r0': `<ellipse cx="24" cy="29" rx="12" ry="9" fill="#d8423a" ${s()}/><path d="M12 29 H36" ${s()}/><path d="M24 20 V10 l5 -3" fill="none" ${s()}/><circle cx="29.5" cy="6.5" r="2.5" fill="${W}" ${s('stroke-width="1.8"')}/><path d="M14 33 h4 M30 24 h4" ${s('stroke="' + W + '" stroke-width="2"')}/>`,
   'gear:r1': `<path d="M6 16 H42 M6 24 H42 M6 32 H42 M12 10 V38 M20 10 V38 M28 10 V38 M36 10 V38" fill="none" ${s('stroke-width="1.8"')}/><path d="M8 38 q10 -4 14 -10 t18 -8" fill="none" ${s('stroke="#4f7a5a" stroke-width="3"')}/>`,
 };
-// 개울 칸 물고기 (#44): 은어·붕어·참게
+// 개울 칸 물고기 (#44): 은어·붕어·참게, (#55) 잭팟 다금바리·황금 옥돔·귤색 잉어
 const FISHI = [
   `<path d="M6 25 q10 -10 26 -4 l8 -6 v18 l-8 -6 q-16 6 -26 -2z" fill="#a9c2b8" ${s()}/><path d="M12 25 q10 3 20 -2" fill="none" ${s('stroke-width="1.8"')}/><path d="M18 19 l4 -4 4 4" fill="#e8c13a" ${s('stroke-width="1.8"')}/><circle cx="12" cy="23" r="1.6" fill="${K}"/>`,
   `<path d="M7 25 q9 -15 24 -8 l9 -7 v26 l-9 -7 q-15 7 -24 -4z" fill="#c9a24a" ${s()}/><path d="M20 15 q3 -5 8 -1" fill="#b08a3a" ${s('stroke-width="1.8"')}/><path d="M22 22 q3 3 0 7 M27 21 q3 4 0 8" fill="none" ${s('stroke-width="1.6"')}/><circle cx="13" cy="23" r="1.8" fill="${K}"/>`,
   `<ellipse cx="24" cy="28" rx="11" ry="8" fill="#8a5a3a" ${s()}/><path d="M13 26 l-6 -6 M13 30 l-7 0 M14 34 l-6 5 M35 26 l6 -6 M35 30 l7 0 M34 34 l6 5" fill="none" ${s()}/><path d="M16 21 q-6 -6 -2 -11 q4 2 4 6z M32 21 q6 -6 2 -11 q-4 2 -4 6z" fill="#a8693f" ${s()}/><circle cx="21" cy="22" r="1.5" fill="${K}"/><circle cx="27" cy="22" r="1.5" fill="${K}"/>`,
+  `<path d="M4 25 q12 -14 30 -6 l10 -7 v26 l-10 -7 q-18 8 -30 -6z" fill="#a8553c" ${s()}/><path d="M16 18 q4 -6 10 -2" fill="#7d3a28" ${s('stroke-width="1.8"')}/><path d="M14 25 q10 4 20 -1" fill="none" ${s('stroke-width="1.6"')}/><circle cx="10" cy="23" r="1.8" fill="${K}"/>`,
+  `<path d="M4 25 q12 -14 30 -6 l10 -7 v26 l-10 -7 q-18 8 -30 -6z" fill="#f2c230" ${s()}/><path d="M16 18 q4 -6 10 -2" fill="#c9961a" ${s('stroke-width="1.8"')}/><path d="M20 21 l2 3 -2 3 M26 21 l2 3 -2 3" fill="none" ${s('stroke-width="1.6"')}/><circle cx="10" cy="23" r="1.8" fill="${K}"/>`,
+  `<path d="M4 25 q12 -14 30 -6 l10 -7 v26 l-10 -7 q-18 8 -30 -6z" fill="#f08a1c" ${s()}/><path d="M16 18 q4 -6 10 -2" fill="#c4650e" ${s('stroke-width="1.8"')}/><path d="M22 22 q3 3 0 7 M28 21 q3 4 0 8" fill="none" ${s('stroke-width="1.6"')}/><circle cx="10" cy="23" r="1.8" fill="${K}"/>`,
 ];
 export function dexIcon(d) {
   const [kind, k] = d.id.split(':');

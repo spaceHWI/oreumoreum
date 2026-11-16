@@ -359,7 +359,10 @@ export const FISH = {
   // 떠내려온 쓰레기: kind 는 TRASH_TYPES id (호주머니·배낭에 들어가고 클린하우스에서 귤이 됨)
   trash: [{ id: 'boot', name: '장화', kind: 'vinyl' }, { id: 'tin', name: '깡통', kind: 'can' }, { id: 'bag', name: '비닐', kind: 'vinyl' }],
   // 물고기 3종 (도감 '개울' 칸, id 'fish:번호')
-  species: [{ id: 'ayu', name: '은어' }, { id: 'carp', name: '붕어' }, { id: 'crab', name: '참게' }],
+  species: [{ id: 'ayu', name: '은어' }, { id: 'carp', name: '붕어' }, { id: 'crab', name: '참게' }, { id: 'dageum', name: '다금바리' }, { id: 'okdom', name: '황금 옥돔' }, { id: 'gcarp', name: '귤색 잉어' }],
+  // 잭팟 (#55): 찌가 들어가는 순간 이 확률로 큰 것이 걸림. species 3~5 번이 잭팟 물고기 (도감 '개울' 칸). 기본 species 0~2 는 평소 물고기
+  // 처음 임의값은 1/150·귤 300 이었으나 tools/econ.js 로 재 보니 시간당 벌이가 오름 1일차의 절반을 넘어 1/500·귤 60 으로 낮춤
+  jackpot: { p: 1 / 500, gyul: 60, first: 3, bigT: 1.6, burst: 36 }, // first: 잭팟 물고기 첫 species 번호, bigT: 잭팟은 놓치기 전까지 더 길게(초), burst: 터지는 귤 알 수
 };
 
 // 귤 던지기 자동 조준 (#34): 사거리 안 가장 가까운 대상(적·하르방)을 겨눔. 손으로 던지기는 무료
