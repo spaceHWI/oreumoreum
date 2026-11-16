@@ -217,7 +217,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       for (let k = 0; k < n && !done; k++) {
         a.vel.y -= a.grav * h; p.addScaledVector(a.vel, h);
         const dummy = { vel: aStep.set(0, 0, 0) };
-        if (enemies.hitTest(p, dummy, a.dmg)) { done = true; break; }
+        if (enemies.hitTest(p, dummy, a.dmg) || extraHit(p, dummy, a.dmg)) { done = true; break; }
         for (const hb of hareubangs) {
           if (Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z) < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3) { hb.hitT = 1; sound.stone(); onToast('하르방 코를 맞혔어요. 복이 온대요'); hooks.hareubang?.(); done = true; break; }
         }
@@ -407,7 +407,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (!tg.drop && !tg.enemyHit && enemies.hitTest(p, tg, THROW_DMG.hand)) tg.enemyHit = true; // 적 (#37)
+      if (!tg.drop && !tg.enemyHit && (enemies.hitTest(p, tg, THROW_DMG.hand) || extraHit(p, tg, THROW_DMG.hand))) tg.enemyHit = true; // 적 (#37) · 투기꾼 (#47)
       for (const hb of hareubangs) {
         const hd = Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z);
         if (hd < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3 && !tg.hbHit) {
@@ -464,6 +464,10 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
 
   // ---------- 적 (#37, src/enemies.js) ----------
   const enemies = createEnemies({ group, spots, rnd, hooks, onToast, legs4 });
+  // 귤로 맞힐 수 있는 다른 것 (#47 투기꾼·트럭): { hitTest(p, tg, dmg), aimTargets(out) }
+  const extra = [];
+  const extraHit = (p, tg, dmg) => { for (const t of extra) if (t.hitTest(p, tg, dmg)) return true; return false; };
+  const addTargets = (t) => { extra.push(t); };
   function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
@@ -473,6 +477,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   function aimTargets() {
     const out = [];
     enemies.aimTargets(out);
+    for (const t of extra) t.aimTargets(out);
     for (const hb of hareubangs) { let a = aimHbs.get(hb); if (!a) { a = { kind: 'hareubang', pos: hb.pos, h: 1.9, size: 1.0, vel: null }; aimHbs.set(hb, a); } out.push(a); }
     return out;
   }
@@ -489,5 +494,5 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   }
   // 타고 있는 노루는 남김. 남은(못 지운) 목록을 돌려줌
   function removeDeer(list) { return list.filter((a) => { if (a.state === 'ridden') return true; const i = deer.indexOf(a); if (i >= 0) deer.splice(i, 1); group.remove(a.root); return false; }); }
-  return { bind, hooks, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  return { bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
 }

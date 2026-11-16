@@ -1,7 +1,7 @@
 // 쓰레기 (#45): 구역마다 놓인 쓰레기 더미 · 튜토리얼용 낱개 6개 · 줍기 찾기
 // 쓰레기 상태(서버별 더미마다 남은 양, 배낭, 누적 수, 도감)를 읽고 쓰는 곳은 createLocalTrashStore 하나뿐.
 // 멀티가 붙으면 같은 모양(left/takeOne/putBack/setLeft/bag/commit …)의 서버 저장소로 바꿔 끼운다
-// 더미 자리는 고정 난수(HEAP.seed)로 정해짐. 다시 쌓이는 것(투기꾼)은 뒤 이슈
+// 더미 자리는 고정 난수(HEAP.seed)로 정해짐. 다시 쌓이는 것은 투기꾼·트럭 (#47 src/dumpers.js → refill)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
@@ -63,6 +63,9 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
     dex: T.dex,
     dexAdd(id) { const isNew = !T.dex[id]; T.dex[id] = (T.dex[id] || 0) + 1; return isNew; },
     dexSpecies: () => DEX_LIST.reduce((n, d) => n + (T.dex[d.id] > 0 ? 1 : 0), 0),
+    // 마지막 접속 시각 (#47, 서버별 ms). 0 이면 처음
+    seen: () => Math.max(0, Number(S.seen) || 0),
+    setSeen(t) { S.seen = t; },
     commit() { dirty = false; persist(); },
   };
 }
@@ -253,6 +256,14 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     const got = store.putBack(best, n); if (got) { syncCols(); dirty = true; store.commit(); emit('changed', {}); }
     return got;
   }
+  // 다시 쌓기 (#47 투기꾼·트럭): 더미 i 에 n 개. 넘치면 같은 구역의 가까운 덜 찬 더미로. quiet 면 알리지 않음(나중에 relayout). 쌓은 수
+  function refill(i, n, quiet = false) {
+    const h0 = heaps[i]; if (!h0) return 0;
+    let got = store.putBack(i, n);
+    if (got < n) heaps.map((h, j) => j).filter((j) => j !== i && heaps[j].zone === h0.zone && store.left(j) < heaps[j].n).sort((a, b) => Math.hypot(heaps[a].x - h0.x, heaps[a].z - h0.z) - Math.hypot(heaps[b].x - h0.x, heaps[b].z - h0.z)).forEach((j) => { if (got < n) got += store.putBack(j, n - got); });
+    if (got && !quiet) { syncCols(); dirty = true; emit('changed', {}); emit('refill', { h: i, zone: h0.zone, n: got }); }
+    return got;
+  }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   function relayout() { syncCols(); dirty = true; emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
   syncCols();
@@ -291,5 +302,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   };
   // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
   function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
-  return { update, any, candidates, take, drop, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps };
+  return { update, any, candidates, take, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps };
 }

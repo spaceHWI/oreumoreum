@@ -324,3 +324,16 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 서버 바꿀 때 `bloom.resync(fn)` 로 연출 없이 맞춤
 - 확인용 `__oreum.bloom`: state() 구역별 깨끗함·마름·핀 꽃·나무, counts(), finish() 애니메이션 바로 끝, flock(x,z), deer(), api
 - 임시: 꽃·나무·나비·새는 로우폴리. 다른 노루 무리(지도 고정)는 구역과 상관없이 그대로
+
+## 쓰레기 투기꾼·투기 트럭 (#47)
+- `src/dumpers.js createDumpers`: 자정 리셋 대신 주기적으로 와서 더미를 다시 쌓음. 깨끗한 오름·전투 오름 둘 다. 수치 `balance.js DUMP`
+- 주기 = `every`(180초) ÷ `players`(지금 1, `dumpers.setPlayers(n)`), 최소 `minEvery` 20초. 한 번에 트럭(`truckP` 0.4) 또는 투기꾼. 한 명 기준 한 시간에 오름 전체(3040개)의 `hourFrac` 25% = 760개 → 투기꾼 10개, 트럭은 평균이 맞게 자동 계산(`DUMP_AMT.truck` 80)
+- 노릴 더미: 구역 무게 `zoneBase` + 깨끗한 정도(깨끗할수록 자주), 구역 안에선 비어 있을수록. 투기꾼은 작은 더미, 트럭은 큰·대형 더미 먼저. 다른 투기꾼이 노린 더미는 뺌
+- 오는 길: 투기꾼은 돌담에서 더미와 가장 가까운 곳 바깥(`outside` 14)에서 곧장. 트럭은 탐방로 그래프(`autowalk.js buildTrailGraph`)로 더미에서 거꾸로 다익스트라 → 돌담 `entryIn` 60 안 길 점으로 들어옴(비용 = 길 거리 + 돌담 거리 × `offRoad`). 길이 너무 돌면 돌담에서 곧장. 들머리 튜토리얼 쪽(정낭 안쪽)은 `avoid` 로 안 지남
+- 도착하면 `dumpT` 5초 버림(트럭 짐칸 기울임·투기꾼 봉투 내려놓음) → `trash.refill(i, n)` (넘치면 같은 구역 가까운 덜 찬 더미로) → 왔던 길 거꾸로 돌아가 사라짐. 오래 걸리면(`maxTrip`) 조용히 사라짐
+- 쫓아내기: 버리기 전에 귤(손 1·활 2 피해)로 hp(투기꾼 1·트럭 6)를 깎으면 도망, 귤 `reward`(5·30) 흩뿌림, `ach.emit('dumper-repel')` + `'dumper-repel-'+kind`. 공격하지 않음. `life.addTargets(dumpers)` 로 귤·화살 판정과 자동 조준에 들어감(귤은 지난 0.1초 선분으로 판정)
+- 나타날 때 화면 가장자리 `#dump-warn`(봉투 아이콘, `makeEdgeWarn` 공용) + 토스트. 튜토리얼 중(정낭 열기 전)엔 안 옴
+- 접속하지 않은 동안: 서버별 `save.trash.srv[id].seen`(ms, 5초마다 갱신). 다시 들어오거나 탭이 오래 숨어 있다 돌아오면(`offlineMin` 60초 넘게) 한 명 기준 속도로 한꺼번에 쌓고(`offlineMaxH` 8시간 이상이면 전부 가득) 토스트. 예전 저장(seen 없음)은 지금부터 셈
+- 멀티: 쓰레기 상태를 바꾸는 곳은 `trash.refill` 과 저장소 `putBack`·`seen` 뿐 (서버로 바꿀 자리)
+- 확인용 `__oreum.dumpers`: spawn(kind, heap), near(kind, dist) 플레이어 앞에 데려옴, visit(), clear(), state(), amt, perHour, api(catchUp(sec), setPlayers(n), period(), test.timer), warn
+- 임시: 투기꾼·트럭은 로우폴리 상자 모양. 길 위 충돌은 안 봄(돌담·나무를 지나침)

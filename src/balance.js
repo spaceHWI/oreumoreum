@@ -67,6 +67,30 @@ export const BLOOM = {
     5: { name: '철쭉', color: '#ee7fae', kind: 'flower', tree: 0.6 },
   },
 };
+// 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음. 깨끗한 오름·전투 오름 둘 다
+// 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
+// 한 명 기준 한 시간에 오름 전체 쓰레기 × hourFrac 만큼 쌓임 (3분마다 한 번 → 한 번에 평균 약 38개).
+// 투기꾼은 작은 더미 하나(amt), 트럭 양은 이 평균이 맞게 자동 계산 (src/dumpers.js DUMP_AMT, 약 80)
+// 구역 고르는 무게 = zoneBase + 그 구역 깨끗한 정도 (깨끗한 구역일수록 자주)
+// 쫓아내기: 버리기 전에 귤을 hp 만큼 맞히면(손 1, 활 2) 도망가고 귤 reward 개를 떨어뜨림. 플레이어를 공격하지 않음
+export const DUMP = {
+  players: 1,
+  every: 180, minEvery: 20,
+  hourFrac: 0.25,
+  truckP: 0.4, // 한 번 올 때 트럭일 확률
+  zoneBase: 0.3,
+  dumpT: 5, // 버리는 데 걸리는 시간(초)
+  max: 4, // 동시에 오는 최대 수
+  outside: 14, // 돌담 바깥 이만큼에서 나타남
+  entryIn: 60, // 트럭은 돌담에서 이 거리 안 탐방로 점으로 길에 오름
+  offRoad: 3, // 트럭: 돌담에서 탐방로까지 들판을 지나는 거리는 이만큼 곱해 셈 (클수록 길로만)
+  maxTrip: 300, // 한 상태가 이보다 오래 걸리면 조용히 사라짐
+  warnT: 3, // 나타날 때 화면 가장자리 방향 표시 시간(초)
+  offlineMaxH: 8, // 접속하지 않은 시간은 한 명 기준 속도로 쌓고, 이 시간 이상이면 오름 전체가 가득
+  offlineMin: 60, // 이보다 짧게 비운 건 세지 않음(초)
+  walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
+  truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
+};
 export const TRASH = {
   cell: 32, // 튜토리얼 낱개 그리기 범위 칸
   drawR: 110, drawRLow: 70,
