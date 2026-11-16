@@ -10,7 +10,7 @@ const i = page.indexOf('__BUNDLE__');
 fs.mkdirSync('dist', { recursive: true });
 const body = page.slice(0, i) + js + page.slice(i + 10);
 fs.writeFileSync('dist/oreumoreum.html', body);
-const full = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>' + body + '</body></html>';
+const full = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"></head><body>' + body + '</body></html>';
 fs.writeFileSync('dist/index.html', full);
 fs.writeFileSync('dist/test.html', full);
 console.log('ok', (fs.statSync('dist/oreumoreum.html').size / 1024).toFixed(0) + 'KB', DEV ? '(dev)' : '');
