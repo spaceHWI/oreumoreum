@@ -53,7 +53,9 @@ export const BLOOM = {
   flowerFrom: 0.7, early: 0.55,
   per: 60, perLow: 110, // 꽃 무리 하나에 땅 넓이 (작을수록 빽빽)
   treePer: 1400, treePerLow: 3200, treeOff: [0.85, 0.97], // 어린 나무 하나에 땅 넓이 · 이 아래로 떨어지면 시듦 (나무마다 다름)
-  heapRing: { s: 4, l: 7, xl: 11 }, // 치운 더미 자리에 바로 피는 꽃 무리 수
+  heapRing: { s: 6, l: 12, xl: 20 }, // 치운 더미 자리에 바로 피는 꽃 무리 수
+  heapTuft: { s: 8, l: 16, xl: 30 }, // 치운 더미 자리에 살아나는 풀 포기 수 (#65)
+  heapWave: 0.8, heapGrow: 0.45, // 더미 자리: 가운데부터 바깥까지 피는 데 걸리는 시간 · 하나가 톡 피는 시간 (#65)
   drawR: 120, drawRLow: 70, treeDrawR: 180, treeDrawRLow: 110,
   grow: 0.9, treeGrow: 2.6, wither: 6, // 피는·자라는·시드는 시간 (초)
   wave: 26, waveMax: 7, // 100% 순간 더미 자리부터 퍼지는 빠르기 (1초에) · 가장 늦게 피는 시간
@@ -66,6 +68,20 @@ export const BLOOM = {
     4: { name: '수국', color: '#7c9fe6', kind: 'ball', tree: 1 },
     5: { name: '철쭉', color: '#ee7fae', kind: 'flower', tree: 0.6 },
   },
+};
+// 더미를 다 치웠을 때·구역이 꽃밭이 될 때 효과 (#65, src/bloomfx.js). 후처리 없이 입자·메시·색만
+// 입자 수는 기기 단계로 줄임: tierMul[LOW, 중간, 높음]
+export const BLOOM_FX = {
+  tierMul: [0.35, 0.6, 1],
+  maxPetals: 520, maxSparks: 200, maxGyul: 40, // 한 번에 살아 있는 최대 수 (높음 기준)
+  heap: { // 더미 크기 3단계: 작은 10 · 큰 50 · 대형 200
+    s: { ring: 1.6, ringT: 0.8, petals: 40, sparks: 22, up: 4.2, rings: 1, shake: 0, vib: [18] },
+    l: { ring: 2.2, ringT: 0.8, petals: 95, sparks: 45, up: 5.6, rings: 2, shake: 0, vib: [20, 40, 24] },
+    xl: { ring: 3.0, ringT: 0.8, petals: 190, sparks: 90, up: 7.2, rings: 3, shake: 1, vib: [24, 40, 24, 40, 50] },
+  },
+  otherR: 60, // 다른 사람이 치운 더미는 이 거리 안이면 보임 (멀티 대비)
+  cheerT: 1.1, // 캐릭터가 기뻐하는 시간
+  zone: { camT: 1.5, camDist: 0.6, camPitch: 0.2, column: 260, colT: 2.2, colH: 26, ring: 42, ringT: 2.4, glowT: 2.4, bannerT: 3.2, vib: [30, 50, 30, 50, 90] },
 };
 // 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음. 깨끗한 오름·전투 오름 둘 다
 // 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
