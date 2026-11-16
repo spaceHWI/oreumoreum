@@ -118,7 +118,7 @@ export const BAGS = [
   { tier: 5, name: '원정 배낭', cap: 300, price: 3600 },
 ];
 export const SHOES = [
-  { tier: 1, name: '운동화', speed: 1.0, price: 0 },
+  { tier: 1, name: '쓰레빠', speed: 1.0, price: 0 }, // #52 처음엔 쓰레빠
   { tier: 2, name: '러닝화', speed: 1.1, price: 150 },
   { tier: 3, name: '트레일화', speed: 1.2, price: 450 },
   { tier: 4, name: '등산화', speed: 1.3, price: 1200 },
@@ -409,6 +409,67 @@ export const STONE = {
 // 캐릭터 고르기·머리 (#51): 처음엔 고른 기본 머리만, 나머지는 상점 옷 탭에서 귤로 삼 (값은 임시)
 export const HAIR = {
   start: { m: 'hat:short', f: 'hat:bob' }, // 기본 남성 짧은 머리 · 기본 여성 단발
-  price: { 'hat:short': 150, 'hat:bob': 150, 'hat:bun': 300, 'hat:cap': 150 }, // 상점 옷 탭 순서
+  price: { 'hat:short': 150, 'hat:bob': 150, 'hat:bun': 300 }, // 상점 옷 탭 순서. 예전 초록 모자(hat:cap)는 #52 에서 모자 칸 기본 모자로 바뀌어 귤로 돌려줌
+  capRefund: 150,
   spin: 0.7, // 고르기 화면에서 카메라가 도는 빠르기 (rad/s)
 };
+
+// 옷 (#52): 입는 것마다 능력치. 겉모습과 능력치가 묶여 있음 (입은 것이 곧 능력). 도구·배낭·신발·무기는 위 표 그대로
+// 칸마다 0(없음)~5단계. 같은 단계 옷은 능력이 같고 모양만 다름. 가진 옷은 언제든 갈아입고, 능력은 지금 입은 것만
+// stat: rare 드문 쓰레기 확률 배수 · hp 최대 HP 배수 · pocket 주머니(배낭 용량에 더함) · gyul 클린하우스 귤 더하는 비율 · guard 받는 피해 줄이는 비율 · regen HP 회복 배수
+// v: [없음(0단계), 1~5단계]. none: 처음엔 없음(베스트·잠바·양말). 저장은 save.clothes = { own: {id: 1}, wear: {칸: id} }
+export const WEAR = {
+  slots: [
+    { k: 'hat', name: '모자', stat: 'rare', v: [1, 1, 1.5, 2, 2.5, 3] },
+    { k: 'top', name: '티셔츠', stat: 'hp', v: [1, 1, 1.25, 1.5, 1.75, 2] },
+    { k: 'bottom', name: '바지', stat: 'pocket', v: [0, 0, 5, 10, 20, 40] },
+    { k: 'vest', name: '베스트', stat: 'gyul', none: true, v: [0, 0.04, 0.08, 0.12, 0.16, 0.2] },
+    { k: 'jacket', name: '잠바', stat: 'guard', none: true, v: [0, 0.08, 0.16, 0.24, 0.32, 0.4] },
+    { k: 'socks', name: '양말', stat: 'regen', none: true, v: [1, 1.2, 1.4, 1.6, 1.8, 2] },
+  ],
+  price: [0, 0, 100, 300, 900, 2500], // 단계별 값 (임시, #53 에서 다시 잡음). 모자·티셔츠·바지 1단계는 처음부터 가짐
+  priceNone1: 60, // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
+  tierColor: ['#7b7b80', '#9a9a94', '#5aa55a', '#4a86c8', '#9a6ad0', '#f29a2e'], // 단계 색: 없음·회색·초록·파랑·보라·귤색
+};
+// 옷 목록: 한 줄이 옷 한 벌. 단계마다 옷을 늘리려면 여기에 줄만 더하면 됨 (같은 단계 = 같은 능력, 모양은 look)
+// look 은 src/clothes.js 가 읽는 모양 값: kind 모양 종류, main 바탕색, acc 포인트색, 그 밖은 종류마다 (stripe 줄무늬색 등)
+export const CLOTHES = [
+  // 모자: 머리 위에 같이 씀
+  { id: 'hat:w-cap', slot: 'hat', tier: 1, name: '기본 모자', look: { kind: 'cap', main: '#5c9a3c', acc: '#4a8030' } },
+  { id: 'hat:w-straw', slot: 'hat', tier: 2, name: '밀짚모자', look: { kind: 'straw', main: '#e3c77d', acc: '#b5482f' } },
+  { id: 'hat:w-bucket', slot: 'hat', tier: 3, name: '버킷햇', look: { kind: 'bucket', main: '#3f78c0', acc: '#f2efe6' } },
+  { id: 'hat:w-hike', slot: 'hat', tier: 4, name: '챙 넓은 등산 모자', look: { kind: 'boonie', main: '#6f7f4a', acc: '#9a6ad0', cord: '#2b2b33' } },
+  { id: 'hat:w-gyul', slot: 'hat', tier: 5, name: '귤꽃 모자', look: { kind: 'flower', main: '#f6efe0', acc: '#f29a2e', leaf: '#3f9a5a', petal: '#ffffff' } },
+  // 티셔츠
+  { id: 'top:w-tee', slot: 'top', tier: 1, name: '기본 반팔', look: { kind: 'tee', main: '#e8dfc8', acc: '#d6ccb2' } },
+  { id: 'top:w-stripe', slot: 'top', tier: 2, name: '줄무늬 반팔', look: { kind: 'tee', main: '#f4f1ea', acc: '#3f78c0', stripes: 4 } },
+  { id: 'top:w-long', slot: 'top', tier: 3, name: '긴팔 티', look: { kind: 'tee', long: true, main: '#3f9a6a', acc: '#2c7550' } },
+  { id: 'top:w-tech', slot: 'top', tier: 4, name: '기능성 등산 티', look: { kind: 'tee', long: true, main: '#3d4a78', acc: '#7fd3c8', panel: true } },
+  { id: 'top:w-jersey', slot: 'top', tier: 5, name: '귤색 저지', look: { kind: 'tee', main: '#f29a2e', acc: '#ffffff', stripes: 2, collar: '#3f9a5a', panel: true } },
+  // 바지
+  { id: 'bottom:w-shorts', slot: 'bottom', tier: 1, name: '기본 반바지', look: { kind: 'shorts', main: '#8a6a3c', acc: '#74592f' } },
+  { id: 'bottom:w-cargo', slot: 'bottom', tier: 2, name: '카고 반바지', look: { kind: 'shorts', main: '#7a7a52', acc: '#5e5e3c', pockets: true } },
+  { id: 'bottom:w-long', slot: 'bottom', tier: 3, name: '긴바지', look: { kind: 'long', main: '#4a5a78', acc: '#3a4762' } },
+  { id: 'bottom:w-hike', slot: 'bottom', tier: 4, name: '등산 바지', look: { kind: 'long', main: '#4b4f57', acc: '#9a6ad0', knee: true, pockets: true } },
+  { id: 'bottom:w-gal', slot: 'bottom', tier: 5, name: '갈옷 바지', look: { kind: 'long', main: '#a5562c', acc: '#f29a2e', belt: true, knee: true } },
+  // 베스트: 티셔츠·잠바 위에 앞이 트인 조끼
+  { id: 'vest:w-old', slot: 'vest', tier: 1, name: '낡은 조끼', look: { kind: 'vest', main: '#8f8a7a', acc: '#76715f' } },
+  { id: 'vest:w-clean', slot: 'vest', tier: 2, name: '환경미화 조끼', look: { kind: 'vest', main: '#c4e04a', acc: '#e8ecef', bands: true } },
+  { id: 'vest:w-fish', slot: 'vest', tier: 3, name: '낚시 조끼', look: { kind: 'vest', main: '#a99a6a', acc: '#7d7048', pockets: 3 } },
+  { id: 'vest:w-hike', slot: 'vest', tier: 4, name: '등산 조끼', look: { kind: 'vest', main: '#2f5fa8', acc: '#f29a2e', puff: true, pockets: 1 } },
+  { id: 'vest:w-gyul', slot: 'vest', tier: 5, name: '귤 농장 조끼', look: { kind: 'vest', main: '#f29a2e', acc: '#3f9a5a', pockets: 2, bands: true, leaf: true } },
+  // 잠바: 티셔츠 위, 긴소매
+  { id: 'jacket:w-wind', slot: 'jacket', tier: 1, name: '얇은 바람막이', look: { kind: 'jacket', main: '#9fb4c4', acc: '#7f95a6' } },
+  { id: 'jacket:w-hood', slot: 'jacket', tier: 2, name: '후드 집업', look: { kind: 'jacket', main: '#8e9096', acc: '#6c6e74', hood: true } },
+  { id: 'jacket:w-fleece', slot: 'jacket', tier: 3, name: '플리스', look: { kind: 'jacket', main: '#efe6d2', acc: '#4a86c8', puff: true } },
+  { id: 'jacket:w-rain', slot: 'jacket', tier: 4, name: '방수 자켓', look: { kind: 'jacket', main: '#3a6fc0', acc: '#f2c94c', hood: true, cuffs: true } },
+  { id: 'jacket:w-gyul', slot: 'jacket', tier: 5, name: '귤색 원정 자켓', look: { kind: 'jacket', main: '#f29a2e', acc: '#2b2f3a', hood: true, cuffs: true, puff: true, bands: true } },
+  // 양말
+  { id: 'socks:w-white', slot: 'socks', tier: 1, name: '흰 양말', look: { kind: 'socks', main: '#f4f2ec', acc: '#dcd8cc', h: 0.11 } },
+  { id: 'socks:w-stripe', slot: 'socks', tier: 2, name: '줄무늬 양말', look: { kind: 'socks', main: '#f4f2ec', acc: '#3f9a5a', h: 0.13, stripes: 2 } },
+  { id: 'socks:w-hike', slot: 'socks', tier: 3, name: '등산 양말', look: { kind: 'socks', main: '#8b8d92', acc: '#c9473d', h: 0.14, thick: true } },
+  { id: 'socks:w-knee', slot: 'socks', tier: 4, name: '무릎 양말', look: { kind: 'socks', main: '#2f3f6a', acc: '#9a6ad0', h: 0.19 } },
+  { id: 'socks:w-gyul', slot: 'socks', tier: 5, name: '귤 무늬 양말', look: { kind: 'socks', main: '#f29a2e', acc: '#3f9a5a', h: 0.17, dots: '#fff4e0' } },
+];
+export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
+export const wearPrice = (c) => c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];

@@ -4,7 +4,7 @@
 // - 장비 종류
 //   bone: 'head' 등 → 그 뼈에 붙는 단단한 물건 (모자·안경·배낭)
 //   skin: true      → 몸과 같은 뼈대로 휘는 옷 (바지·소매처럼 관절을 지나는 것). 가중치는 몸과 같은 규칙으로 자동 계산
-// - hide: 지금 몸 메시에 함께 구워진 부분 중 감출 곳 ('head' 목 위 머리 전체(#51), 'hat' 모자, 'pack' 배낭(어깨끈 빼고), 'top' 재킷, 'bottom' 반바지, 'shoes' 신발)
+// - hide: 지금 몸 메시에 함께 구워진 부분 중 감출 곳 ('body' 손 빼고 몸 전체(#52 옷), 'head' 목 위 머리 전체(#51), 'hat' 모자, 'pack' 배낭(어깨끈 빼고), 'top' 재킷, 'bottom' 반바지, 'shoes' 신발)
 //   감춘 자리는 비어 보이므로 새 장비가 그 자리를 덮어야 한다. 몸만 있는 모델로 바꾸면 hide 없이 쓰면 된다
 // - tint: 옷장 색(outfit[tint].color)을 따라갈 재질 이름
 // - 새 디자인은 Tripo·블렌더에서 기본 자세에 맞춰 만든 glb 를 model/extract-gear.js 로 바꿔 data 로 넣는다
@@ -14,6 +14,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import HEAD_SHORT from './gear/head-short.js';
 import HEAD_BOB from './gear/head-bob.js';
 import HEAD_BUN from './gear/head-bun.js';
+import { addClothes, slippers } from './clothes.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
 const dec = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
@@ -25,7 +26,7 @@ export const fromData = (D, def = '#ffffff') => (mat) => {
   return new THREE.Mesh(g, m);
 };
 
-export const SLOTS = { hat: '모자', face: '얼굴', back: '등', top: '상의', bottom: '하의', shoes: '신발', hand: '손' };
+export const SLOTS = { hair: '머리', hat: '모자', face: '얼굴', back: '등', top: '상의', bottom: '하의', vest: '베스트', jacket: '잠바', socks: '양말', shoes: '신발', hand: '손' };
 
 const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
 const G = (...ms) => { const g = new THREE.Group(); ms.forEach((m) => g.add(m)); return g; };
@@ -35,9 +36,11 @@ export const ACCESSORIES = {
   // ---- 모자 ----
   'hat:cap': { slot: 'hat', label: '초록 모자', builtin: true },
   // 머리 3종 (#51): 목 위 머리 전체(얼굴·머리카락)를 바꿈. 몸에 구운 머리·모자는 감추고(hide head), 피부색은 몸과 같이 따라감(skinTint)
-  'hat:short': { slot: 'hat', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_SHORT) },
-  'hat:bob': { slot: 'hat', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BOB) },
-  'hat:bun': { slot: 'hat', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BUN) },
+  // #52 부터 머리는 모자와 다른 칸(hair). 키 이름은 예전 저장과 맞추려고 그대로 'hat:' 로 둠
+  'hair:base': { slot: 'hair', label: '구운 머리', builtin: true },
+  'hat:short': { slot: 'hair', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_SHORT) },
+  'hat:bob': { slot: 'hair', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BOB) },
+  'hat:bun': { slot: 'hair', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BUN) },
   'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
     build: (mat) => { const m = mat('main', '#c8553d');
       const top = M(new THREE.SphereGeometry(0.235, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.79, 0.02); top.scale.set(1.06, 0.9, 1.0);
@@ -159,13 +162,27 @@ const SHOE_LOOK = {
 };
 Object.entries(SHOE_LOOK).forEach(([k, L]) => { ACCESSORIES['shoes:' + k] = { slot: 'shoes', label: L.label, skin: true, hide: ['shoes'], tint: { main: 'shoes' }, build: (mat) => shoePair(mat, L)() }; });
 // 장비 단계 → 캐릭터에 보이는 장비
+// 옷 (#52): balance.js CLOTHES → clothes.js 모양. 칸마다 '없음'·'몸에 구운 것' 자리
+Object.assign(ACCESSORIES, {
+  'top:base': { slot: 'top', label: '구운 재킷', builtin: true },
+  'hat:none': { slot: 'hat', label: '없음', builtin: true },
+  'vest:none': { slot: 'vest', label: '없음', builtin: true },
+  'jacket:none': { slot: 'jacket', label: '없음', builtin: true },
+  'socks:none': { slot: 'socks', label: '없음', builtin: true },
+  'back:empty': { slot: 'back', label: '배낭 없음', builtin: true, npc: true }, // 옷을 입어 몸(배낭 포함)을 감춘 플레이어의 호주머니 단계
+  'back:bag1': { slot: 'back', label: '배낭', bone: 'chest', hide: ['pack'],
+    build: (mat) => { const m = mat('main', '#c08a4a'), p = mat('pocket', '#8a6a3c');
+      return G(M(new RoundedBoxGeometry(0.27, 0.27, 0.12, 3, 0.05), m, 0, 0.43, -0.155), M(new RoundedBoxGeometry(0.16, 0.1, 0.045, 2, 0.02), p, 0, 0.37, -0.22)); } },
+  'shoes:slip': { slot: 'shoes', label: '쓰레빠', skin: true, hide: ['shoes'], build: slippers },
+});
+addClothes(ACCESSORIES);
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];
-export const BAG_GEAR = ['back:pack', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];
-export const SHOE_GEAR = ['shoes:s1', 'shoes:s2', 'shoes:s3', 'shoes:s4', 'shoes:s5'];
-export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:none' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] });
+export const BAG_GEAR = ['back:bag1', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];
+export const SHOE_GEAR = ['shoes:slip', 'shoes:s2', 'shoes:s3', 'shoes:s4', 'shoes:s5'];
+export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:empty' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] });
 
 // 칸별 장비 목록 (옷장용)
 export const gearList = (slot) => Object.entries(ACCESSORIES).filter(([, a]) => a.slot === slot && !a.npc).map(([k]) => k);
-export const DEFAULT_GEAR = { hat: 'hat:cap', face: 'face:none', back: 'back:pack', bottom: 'bottom:shorts', shoes: 'shoes:s1', hand: 'hand:none' };
+export const DEFAULT_GEAR = { hair: 'hair:base', hat: 'hat:cap', face: 'face:none', back: 'back:pack', top: 'top:base', bottom: 'bottom:shorts', vest: 'vest:none', jacket: 'jacket:none', socks: 'socks:none', shoes: 'shoes:s1', hand: 'hand:none' };
 // 네트워크로 받은 값 검사
 export const cleanGear = (g) => { const out = {}; if (g && typeof g === 'object') Object.entries(g).forEach(([slot, k]) => { if (SLOTS[slot] && ACCESSORIES[k]?.slot === slot) out[slot] = k; }); return out; };

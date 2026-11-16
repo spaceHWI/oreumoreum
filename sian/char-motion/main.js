@@ -2,7 +2,11 @@
 import * as THREE from 'three';
 import '../../src/boot.js';
 import { buildRunner, DEFAULT_OUTFIT, SKIN_TONES } from '../../src/runner.js';
-import { ACCESSORIES } from '../../src/gear.js';
+import { ACCESSORIES, TOOL_GEAR, BAG_GEAR, SHOE_GEAR } from '../../src/gear.js';
+import { CLOTHES } from '../../src/balance.js';
+// 옷 단계 한 벌 (#52): ?row 면 1~5단계 다섯 명, ?tier=3 이면 한 명. ?slots=hat,top 이면 그 칸만 단계대로(나머지는 1단계)
+const tierSet = (t, slots) => { const g = { hair: q.get('hair') || 'hat:short' }; const worn = q.get('wear')?.split(','); CLOTHES.filter((c) => (!worn || worn.includes(c.slot)) && c.tier === (!slots || slots.includes(c.slot) ? t : 1)).forEach((c) => { g[c.slot] ||= c.id; }); // ?wear=hat,top,bottom 이면 그 칸만 입음
+  if (!slots || slots.includes('shoes')) g.shoes = SHOE_GEAR[t - 1]; else g.shoes = SHOE_GEAR[0]; g.back = q.has('nobag') ? 'back:empty' : BAG_GEAR[t - 1]; g.hand = TOOL_GEAR[t - 1]; return g; };
 
 const q = new URLSearchParams(location.search);
 const W = innerWidth, H = innerHeight;
@@ -27,18 +31,22 @@ const runners = [];
 const wearAll = (r) => state.gear.split(',').filter((k) => ACCESSORIES[k]).forEach((k) => r.setGear(ACCESSORIES[k].slot, k));
 // ?skin=0|1|2 피부색 (#51)
 const OUT = { ...DEFAULT_OUTFIT, skin: { color: SKIN_TONES[+(q.get('skin') || 0)] || SKIN_TONES[0] } };
-const add = (x, heading) => { const r = buildRunner(); r.apply(OUT); wearAll(r); scene.add(r.root); runners.push({ r, x, heading }); return r; };
-add(+(q.get('x') || 0), +(q.get('h') || 0)); // h=0 오르막을 향해, 3.14 내리막
-if (!q.has('one')) { add(-2.2, Math.PI); add(2.2, Math.PI / 2); } // 내리막, 옆으로
+const add = (x, heading, tier) => { const r = buildRunner(); r.apply(tier ? { ...OUT, gear: tierSet(tier, q.get('slots')?.split(',')) } : OUT); wearAll(r); scene.add(r.root); runners.push({ r, x, heading }); return r; };
+if (q.has('row')) for (let i = 0; i < 5; i++) add((i - 2) * 1.5, +(q.get('h') || 0), i + 1);
+else { add(+(q.get('x') || 0), +(q.get('h') || 0), +q.get('tier') || 0); // h=0 오르막을 향해, 3.14 내리막
+  if (!q.has('one')) { add(-2.2, Math.PI); add(2.2, Math.PI / 2); } } // 내리막, 옆으로
 
 const view = q.get('view') || 'side';
 function placeCam() {
   const y = 1.3;
+  const far = q.has('row') ? 2.1 : 1;
   if (view === 'side') { camera.position.set(11, y + 1.2, 0); camera.lookAt(0, y, 0); }
-  else if (view === 'front') { camera.position.set(0, y + 1.0, 11); camera.lookAt(0, y, 0); }
+  else if (view === 'front') { camera.position.set(0, y + 1.0 * far, 11 * far); camera.lookAt(0, y, 0); }
   else if (view === 'back') { camera.position.set(0, y + 1.6, -11); camera.lookAt(0, y, 0); }
   else if (view === 'shoulder') { camera.position.set(4.5, 2.4, 5.5); camera.lookAt(0, 1.3, 0); }
-  else if (view === 'quarter') { camera.position.set(6, 2.2, -6); camera.lookAt(0, 1.2, 0); }
+  else if (view === 'quarter') { camera.position.set(6 * far, 2.2 * far, -6 * far); camera.lookAt(0, 1.2, 0); }
+  else if (view === 'front3') { camera.position.set(5 * far, 2.4 * far, 9 * far); camera.lookAt(0, 1.1, 0); }
+  else if (view === 'back3') { camera.position.set(-5 * far, 2.6 * far, -9 * far); camera.lookAt(0, 1.1, 0); }
   else if (view === 'top') { camera.position.set(0.01, 12, 0.01); camera.lookAt(0, 0, 0); }
 }
 placeCam(); setSlope();
@@ -65,7 +73,7 @@ ui.innerHTML = `<label>기울기 <input id=s type=range min=-0.8 max=0.8 step=0.
 <label><input id=r type=checkbox ${state.running ? 'checked' : ''}> 달리기</label>
 <label>포즈 <select id=p>${['move', 'wave', 'sit', 'photo', 'crouch', 'eat', 'dance', 'breath'].map((p) => `<option ${p === state.pose ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
 <div>장비 ${Object.entries(ACCESSORIES).map(([k, a]) => `<button data-k=${k}>${a.label}</button>`).join(' ')}</div>
-<label>시점 <select id=c>${['side', 'front', 'back', 'shoulder', 'quarter', 'top'].map((p) => `<option ${p === view ? 'selected' : ''}>${p}</option>`).join('')}</select></label>`;
+<label>시점 <select id=c>${['side', 'front', 'back', 'shoulder', 'quarter', 'top', 'front3', 'back3'].map((p) => `<option ${p === view ? 'selected' : ''}>${p}</option>`).join('')}</select></label>`;
 if (!q.has('noui')) document.body.appendChild(ui);
 const $ = (id) => ui.querySelector('#' + id);
 $('s').oninput = (e) => { state.slope = +e.target.value; $('sv').textContent = state.slope; setSlope(); };
