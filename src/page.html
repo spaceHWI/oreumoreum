@@ -124,11 +124,15 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 #banner small { color: var(--ink-soft); }
 
 /* 팝오버 */
-.m-dev { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 2px; }
-.m-dev[hidden] { display: none; }
-.m-dev .wr { width: 16px; height: 16px; flex: none; color: var(--ink-soft); }
-.m-dev button { flex: 1; min-height: 36px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
-.m-dev button svg { width: 15px; height: 15px; }
+.m-dev { display: block; width: 100%; padding: 4px 2px; }
+.m-dev[hidden], .adm-body[hidden] { display: none; }
+.m-dev button { min-height: 34px; font-size: 13px; }
+.adm-head { width: 100%; }
+.adm-body { display: grid; gap: 6px; padding-top: 6px; }
+.adm-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; }
+.adm-btns { flex-wrap: wrap; justify-content: stretch; }
+.adm-btns button { flex: 1 1 22%; padding: 4px 6px; }
+#adm-tod { width: 100%; }
 .m-reset { display: flex; justify-content: center; width: 100%; }
 #menu-reset { --p: 0; position: relative; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; color: var(--ink-soft); background: transparent; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #menu-reset::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), rgba(128,128,128,.35) 0); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
@@ -852,11 +856,6 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
-  <div class="m-dev" id="m-dev" hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="wr"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6z"/></svg>
-    <button type="button" id="dev-reset" title="개발자: 바로 리셋" aria-label="개발자: 바로 리셋"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4"/></svg>리셋</button>
-    <button type="button" id="dev-gyul" title="개발자: 귤 +10,000" aria-label="개발자: 귤 10,000개 받기">+10,000 귤</button>
-  </div>
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
     <button type="button" id="menu-dex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7zM6.5 9h2M15.5 9h2"/></svg>도감</button>
@@ -876,6 +875,17 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
   <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4"/></svg></button></div>
+  <div class="m-dev" id="m-dev" hidden>
+    <button type="button" id="adm-toggle" class="adm-head" aria-expanded="false">어드민 설정</button>
+    <div class="adm-body" id="adm-body" hidden>
+      <div class="adm-row"><span>오름 시간</span><b id="adm-tv">실제</b></div>
+      <input type="range" id="adm-tod" min="0" max="24" step="0.25" value="12" aria-label="오름 시간대 (0~24시)">
+      <div class="adm-row adm-btns"><button type="button" data-h="6.1">해 뜰 때</button><button type="button" data-h="12">낮</button><button type="button" data-h="18.3">해 질 때</button><button type="button" data-h="23">밤</button><button type="button" id="adm-real">실제 시간으로</button></div>
+      <div class="adm-row"><span>날씨</span></div>
+      <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="fog">안개</button></div>
+      <div class="adm-row adm-btns"><button type="button" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
+    </div>
+  </div>
 </nav>
 
 <div class="panel" id="chat" hidden>
