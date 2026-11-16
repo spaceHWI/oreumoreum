@@ -482,3 +482,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - main.js `heapFx(i, {by, gyul})`: heap-clear 이벤트에서. 소리 `sound.heapClear(0|1|2, vol)`(올라가는 종소리), 폰 진동(`pointer: coarse`), 줍기 동작이 끝나면 `cheer` 동작(runner.js, 두 팔 번쩍·통통, 움직이면 끊김). `by` 가 있으면(다른 사람) `otherR` 안에서만 보이고 소리는 거리만큼 작게, 동작·진동 없음 — 멀티 때 서버 이벤트에 by 를 넣으면 됨
 - `zoneFx(z)`: zone-bloom 이벤트에서. `sound.bloomFanfare()`, 그 구역 안이면 꽃잎 기둥 + 카메라가 `camT` 1.5초 동안 물러남(`camPullT`, followCam 에서 거리·각만 더함, 조작 안 막음), `#bloom-glow` 가장자리 귤색 빛, `#bloom-banner` 구역 아이콘(번호)·화살표·구역 색 꽃 3개(글자 없음). zone-clear 글 토스트는 뺌
 - 확인용 `__oreum.bloom.test`: heap(10|50|200, {clear}) 가장 가까운 그 크기 더미 옆으로 가서 효과(clear 면 실제로 비움), zone(z) 꽃밭 효과(지금 구역), fx() 입자 수. 수치 `balance.js BLOOM_FX`
+
+## #68 투기꾼 도망 (src/dumpers.js)
+- 맞으면 상태 `startle`(DUMP.startleT 0.7초: 투기꾼 펄쩍·팔 듦, 트럭 덜컹) → `flee`. 봉투는 땅에 떨어진 모양으로 DUMP.bagStay 초 남고, 주울 쓰레기 DUMP.bagDrop(3)개가 근처 더미에 쌓임(`trash.drop`)
+- 도망 중 먼지·땀방울(작은 공 풀)·다급한 소리. DUMP.fleeT 6초 / fleeDist 40m / 길 끝(돌담 밖)이면 fadeT 1초 동안 서서히 사라짐. 도망·놀람 중엔 맞히기·버리기 없음
+- 여러 번 맞아야 하면(트럭) 맞을 때마다 움찔(flinch)
+- 확인: `__oreum.dumpers.near('walker'|'truck')` 후 `__oreum.dumpers.hit()`, `.state()`, `.dropped()`
