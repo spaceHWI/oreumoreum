@@ -429,3 +429,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 잭팟은 찌가 들어가는 순간(`bite` 시작)에 굴림(`S.jack`). 걸리면 찌가 크게 흔들리고 물보라·고리가 계속, 느낌표가 금색·크게, `audio.jackBite`. 놓치기까지 `bigT`. 낚으면 species 3~5(다금바리·황금 옥돔·귤색 잉어, `fishMesh` 큰 모양) `c.jack`, 귤 `gyul` + `gyulShower` + `audio.jackpot`
 - 도감 '개울' 칸에 fish:3~5 (`dexicons.js FISHI`). 업적 이벤트 `fish`, `fish-jackpot`, `fish-<id>` (`fish-dageum`·`fish-okdom`·`fish-gcarp`). 업적 정의는 아직 없음
 - 확인용 `__oreum.fish.jack(true)` 다음 입질을 잭팟으로
+
+## #56 타겟 표시·화면 밖 방향 표시
+- `aimTarget()`(main.js): 사거리 안에서 카메라 앞쪽에 가까운 적 우선(거리×각도 가중). 전투 오름이면 F 를 누르기 전에도 발밑 고리(`aimMark`) + 머리 위 귤색 세모(`aimTri`)를 항상 표시
+- `tickEdgeAim()`: 화면 밖 `THROW_AIM.edgeRange`(40m) 안 적을 가까운 순 최대 3개, 가장자리에 `.edge-aim`(세모+종류 아이콘, 가까울수록 크고 진함). 아이콘은 `EDGE_IC` (임시: 멧돼지 '멧', 트럭 봉투)
