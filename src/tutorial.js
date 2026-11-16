@@ -5,7 +5,7 @@
 // 건너뛰기는 개발자 버튼(?hwi=1)에만 (main.js dev-tut → skipAll). 저장 save.tut {step, done, v, gyul[], hits}
 // #44: 점프 단계를 뺌. 예전 저장(save.tut.v 없음)의 단계 번호는 하나씩 당김. #62: v2 → v3 는 귤·과녁 두 단계가 끼어 2 이상이면 둘 밀기
 import * as THREE from 'three';
-import { TUT } from './balance.js';
+import { TUT, TANGERINE as TG } from './balance.js';
 
 // 그림 (viewBox 140×85). 흰 선 + 귤색 하나
 const O = '#ff8a1f', SW = 'stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
@@ -90,13 +90,16 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   bob.renderOrder = 9; bob.visible = false; scene.add(bob);
 
   // ---------- #62 귤 3개 ----------
-  const gyulGeo = new THREE.SphereGeometry(0.26, 12, 9), gyulMat = new THREE.MeshLambertMaterial({ color: '#ff9a2a', emissive: '#5a2a00' });
-  const gLeafGeo = new THREE.PlaneGeometry(0.2, 0.11), gLeafMat = new THREE.MeshLambertMaterial({ color: '#4f8a3a', side: THREE.DoubleSide });
+  const GR = 0.26 * TG.scale; // 튜토리얼 귤도 같은 크기·색 (#63)
+  const gyulGeo = new THREE.SphereGeometry(GR, 12, 9), gyulMat = new THREE.MeshLambertMaterial({ color: TG.color, emissive: TG.emissive, emissiveIntensity: TG.emissiveI });
+  const gGlowGeo = new THREE.CircleGeometry(TG.glowR * 1.2, 14).rotateX(-Math.PI / 2), gGlowMat = new THREE.MeshBasicMaterial({ color: TG.glowColor, transparent: true, opacity: TG.glowOpacity, depthWrite: false });
+  const gLeafGeo = new THREE.PlaneGeometry(0.2 * TG.scale, 0.11 * TG.scale), gLeafMat = new THREE.MeshLambertMaterial({ color: '#4f8a3a', side: THREE.DoubleSide });
   const gyuls = (pts.gyul || []).map((p, i) => {
     const m = new THREE.Mesh(gyulGeo, gyulMat); m.castShadow = true;
-    const lf = new THREE.Mesh(gLeafGeo, gLeafMat); lf.position.y = 0.27; lf.rotation.x = -1; m.add(lf);
-    const y = height(p.x, p.z) + 0.26; m.position.set(p.x, y, p.z); m.visible = !S.done && !S.gyul.includes(i); scene.add(m);
-    return { i, x: p.x, z: p.z, y, m };
+    const lf = new THREE.Mesh(gLeafGeo, gLeafMat); lf.position.y = GR + 0.01; lf.rotation.x = -1; m.add(lf);
+    const gl = new THREE.Mesh(gGlowGeo, gGlowMat); gl.renderOrder = 1; m.add(gl);
+    const y = height(p.x, p.z) + GR; m.position.set(p.x, y, p.z); gl.position.y = -TG.hover + 0.03; m.visible = !S.done && !S.gyul.includes(i); scene.add(m);
+    return { i, x: p.x, z: p.z, y: y + TG.hover, m, gl, ph: i * 2.1 };
   });
   const gyulLeft = () => gyuls.filter((g) => g.m.visible);
   function gyulNear(pos) {
@@ -224,6 +227,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   function update(dt) {
     if (S.done) return;
     timer += dt; clock += dt;
+    for (const g of gyuls) if (g.m.visible) { g.m.rotation.y += TG.spin * dt; const b = Math.sin(clock * TG.bobSpeed + g.ph) * TG.bob; g.m.position.y = g.y + b; g.gl.position.y = -TG.hover - b + 0.03; } // 떠서 돌기 (#63)
     if (cur) { if (doneWhen[cur]()) finish(); }
     if (!cur) {
       let next = steps[S.step];

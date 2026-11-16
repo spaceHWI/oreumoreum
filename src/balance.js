@@ -263,6 +263,15 @@ export const BLINK = {
 // 귤 피해 (#37): 손으로 던지기. 무기 표의 손과 같음
 export const THROW_DMG = { hand: WEAPONS[0].dmg };
 
+// 귤 모양 (#63): 던지는 귤·떨어진 귤·흩어지는 귤·튜토리얼 귤이 같이 씀. 크기·색·빛 한곳
+export const TANGERINE = {
+  scale: 1.5, // 예전 크기에 곱함
+  color: '#ffa530', emissive: '#a24a00', emissiveI: 0.8, // 더 밝은 귤색 + 스스로 조금 빛남 (밤에도 보임)
+  hover: 0.12, bob: 0.05, bobSpeed: 2.2, spin: 0.9, // 바닥에 놓인 귤: 뜨는 높이·위아래 흔들림·돌기(rad/s)
+  glowColor: '#ffbe5a', glowOpacity: 0.32, glowR: 0.55, // 아래 빛 원
+  trailN: 5, trailEvery: 0.025, trailOpacity: 0.45, // 던진 귤 꼬리 점 수·찍는 간격(초)·시작 투명도
+};
+
 // 받혀서 흩어지는 귤 (#32)
 export const SCATTER = {
   frac: 0.1, min: 3, max: 15, // 가진 귤의 비율·최소·최대 개수 (가진 것보다 많이는 안 흩어짐)

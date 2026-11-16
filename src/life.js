@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { height, surfaceAt } from './world.js';
 import { createEnemies } from './enemies.js';
-import { SCATTER, THROW_DMG, BOW } from './balance.js';
+import { SCATTER, THROW_DMG, BOW, TANGERINE as TG } from './balance.js';
 import { LOW } from './gfx2.js';
 
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
@@ -152,17 +152,37 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   });
 
   // 귤 던지기
-  const tanGeo = new THREE.SphereGeometry(0.16, 8, 6);
-  const tanMat = new THREE.MeshLambertMaterial({ color: '#f29a2e' });
-  const leafGeo = new THREE.PlaneGeometry(0.14, 0.08);
+  const TR = 0.16 * TG.scale; // 귤 반지름 (#63)
+  const tanGeo = new THREE.SphereGeometry(TR, 8, 6);
+  const tanMat = new THREE.MeshLambertMaterial({ color: TG.color, emissive: TG.emissive, emissiveIntensity: TG.emissiveI });
+  const glowGeo = new THREE.CircleGeometry(TG.glowR, 14).rotateX(-Math.PI / 2);
+  const glowMat = new THREE.MeshBasicMaterial({ color: TG.glowColor, transparent: true, opacity: TG.glowOpacity, depthWrite: false });
+  const trailGeo = new THREE.SphereGeometry(TR * 0.7, 6, 4);
+  const trailMat = new THREE.MeshBasicMaterial({ color: TG.glowColor, transparent: true, opacity: TG.trailOpacity, depthWrite: false });
+  const leafGeo = new THREE.PlaneGeometry(0.14 * TG.scale, 0.08 * TG.scale);
   const leafMat = new THREE.MeshLambertMaterial({ color: '#4f8a3a', side: THREE.DoubleSide });
   // vy: 위로 던지는 속도(없으면 power*0.55). 자동 조준(#34)이 대상까지 닿게 정해 넘김
+  // 던진 귤 꼬리 (#63): 지나온 자리에 작아지며 옅어지는 점 몇 개. 귤마다 재질을 따로 둬 투명도를 낮춤
+  function makeTrail() {
+    const out = [];
+    for (let i = 0; i < TG.trailN; i++) { const mt = trailMat.clone(); const t = new THREE.Mesh(trailGeo, mt); t.visible = false; group.add(t); out.push(t); }
+    return out;
+  }
+  function dropTrail(tg) { if (!tg.trail) return; for (const t of tg.trail) { group.remove(t); t.material.dispose(); } tg.trail = null; }
+  // 땅에 놓인 귤: 살짝 떠서 천천히 돌고 아래에 옅은 빛 원 (#63)
+  function restTangerine(tg, time, dt) {
+    const m = tg.mesh;
+    if (!tg.glow) { tg.glow = new THREE.Mesh(glowGeo, glowMat); tg.glow.renderOrder = 1; m.add(tg.glow); m.rotation.set(0, rnd() * 6.28, 0); tg.baseY = m.position.y; tg.ph = rnd() * 6.28; }
+    m.rotation.y += TG.spin * dt;
+    m.position.y = tg.baseY + TG.hover + Math.sin(time * TG.bobSpeed + tg.ph) * TG.bob;
+    tg.glow.position.y = tg.baseY - m.position.y + 0.03; // 위로 뜬 만큼 내려 땅에 붙임
+  }
   function throwTangerine(from, dir, power, peersFn, vy) {
     const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true;
-    const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = 0.17; leaf.rotation.x = -1; m.add(leaf);
+    const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = TR + 0.01; leaf.rotation.x = -1; m.add(leaf);
     m.position.copy(from); group.add(m);
     const v = dir.clone().multiplyScalar(power); v.y += vy ?? power * 0.55;
-    tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null });
+    tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null, trail: makeTrail(), trailT: 0, hist: [] });
   }
   // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
   function scatterTangerines(center, n) {
@@ -175,11 +195,11 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
         if (spots.inBounds(tx, tz)) { x = tx; z = tz; break; }
       }
       const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true;
-      const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = 0.17; leaf.rotation.x = -1; m.add(leaf);
+      const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = TR + 0.01; leaf.rotation.x = -1; m.add(leaf);
       const y0 = center.y + 1; m.position.set(center.x, y0, center.z); group.add(m);
-      const gy = height(x, z) + 0.16, tt = T * (0.8 + rnd() * 0.4);
+      const gy = height(x, z) + TR, tt = T * (0.8 + rnd() * 0.4);
       const v = new THREE.Vector3((x - center.x) / tt, (gy - y0) / tt + 11 * tt, (z - center.z) / tt);
-      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true });
+      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true, trail: makeTrail(), trailT: 0, hist: [] });
     }
   }
   // ---------- 귤 활 화살 (#38) ----------
@@ -397,11 +417,15 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     // 귤
     for (let i = tangerines.length - 1; i >= 0; i--) {
       const tg = tangerines[i];
-      if (tg.landed) { tg.rest += dt; if (tg.rest > (tg.drop ? SCATTER.life : 45) || tg.eaten) { if (!tg.eaten) group.remove(tg.mesh); if (tg.claimedBy && tg.claimedBy.target === tg) tg.claimedBy.target = null; tangerines.splice(i, 1); } continue; }
+      if (tg.landed) { tg.rest += dt; restTangerine(tg, time, dt); if (tg.rest > (tg.drop ? SCATTER.life : 45) || tg.eaten) { if (!tg.eaten) group.remove(tg.mesh); if (tg.claimedBy && tg.claimedBy.target === tg) tg.claimedBy.target = null; tangerines.splice(i, 1); } continue; }
       tg.vel.y -= 22 * dt; tg.t += dt;
       const p = tg.mesh.position;
       p.addScaledVector(tg.vel, dt);
       tg.mesh.rotation.x += dt * 8; tg.mesh.rotation.z += dt * 5;
+      if (tg.trail) { // 꼬리 (#63): 일정 간격으로 지난 자리를 기록, 오래될수록 작고 옅게
+        tg.trailT -= dt; if (tg.trailT <= 0) { tg.trailT = TG.trailEvery; tg.hist.unshift(p.x, p.y, p.z); if (tg.hist.length > TG.trailN * 3) tg.hist.length = TG.trailN * 3; }
+        for (let k = 0; k < tg.trail.length; k++) { const t = tg.trail[k], h = k * 3; if (h >= tg.hist.length) { t.visible = false; continue; } const f = 1 - (k + 1) / (tg.trail.length + 1); t.visible = true; t.position.set(tg.hist[h], tg.hist[h + 1], tg.hist[h + 2]); t.scale.setScalar(f); t.material.opacity = TG.trailOpacity * f; }
+      }
       if (!tg.hitDone && tg.t > 0.15 && tg.peersFn) {
         for (const pe of tg.peersFn()) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
@@ -416,11 +440,11 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           hb.hitT = 1; sound.stone(); onToast('하르방 코를 맞혔어요. 복이 온대요'); hooks.hareubang?.();
         }
       }
-      const gy = height(p.x, p.z) + 0.16;
+      const gy = height(p.x, p.z) + TR;
       if (p.y <= gy) {
         p.y = gy;
         if (!tg.drop && Math.abs(tg.vel.y) > 2.5) { tg.vel.y = -tg.vel.y * 0.35; tg.vel.x *= 0.6; tg.vel.z *= 0.6; sound.step(surfaceAt(p.x, p.z), false); }
-        else { tg.landed = true; tg.vel.set(0, 0, 0); }
+        else { tg.landed = true; tg.vel.set(0, 0, 0); dropTrail(tg); }
       }
     }
     // 던진 귤 다시 줍기 (동물이 먹으러 오는 중이 아니면)
@@ -437,17 +461,24 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
 
   // ---------- 떨어진 귤 (줍기) ----------
   const PICK_N = spots.pickupCount || 80;
-  const pickGeo = new THREE.SphereGeometry(0.2, 8, 6);
-  const pickMesh = new THREE.InstancedMesh(pickGeo, new THREE.MeshLambertMaterial({ color: '#f29a2e', emissive: '#3a2000' }), PICK_N);
+  const PR = 0.2 * TG.scale; // 바닥 귤 반지름 (#63)
+  const pickGeo = new THREE.SphereGeometry(PR, 8, 6);
+  const pickMesh = new THREE.InstancedMesh(pickGeo, tanMat, PICK_N);
   pickMesh.castShadow = true; scene.add(pickMesh);
+  // 잎(같이 돌며 도는 걸 보이게)과 아래 빛 원: 같은 개수의 인스턴스
+  const pickLeaf = new THREE.InstancedMesh(leafGeo, leafMat, PICK_N); scene.add(pickLeaf);
+  const pickGlow = new THREE.InstancedMesh(glowGeo, glowMat, PICK_N); pickGlow.renderOrder = 1; scene.add(pickGlow);
+  const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), vp = new THREE.Vector3(), vs = new THREE.Vector3(1, 1, 1), yAx = new THREE.Vector3(0, 1, 0), xAx = new THREE.Vector3(1, 0, 0);
+  const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
   const picks = [];
   const mm = new THREE.Matrix4();
   function placePick(i) {
     const [x, z] = spots.pickSpot(rnd);
-    const pk = { x, z, y: height(x, z) + 0.2, t: 0, gone: false };
+    const pk = { x, z, y: height(x, z) + PR, t: 0, gone: false, ph: rnd() * 6.28 };
     picks[i] = pk;
-    mm.makeTranslation(x, pk.y, z); pickMesh.setMatrixAt(i, mm);
-    pickMesh.instanceMatrix.needsUpdate = true;
+    mm.makeTranslation(x, pk.y + TG.hover, z); pickMesh.setMatrixAt(i, mm); pickLeaf.setMatrixAt(i, mm);
+    mm.makeTranslation(x, pk.y - PR + 0.03, z); pickGlow.setMatrixAt(i, mm);
+    pickMesh.instanceMatrix.needsUpdate = true; pickLeaf.instanceMatrix.needsUpdate = true; pickGlow.instanceMatrix.needsUpdate = true;
   }
   for (let i = 0; i < PICK_N; i++) placePick(i);
   function updatePicks(dt, time) {
@@ -456,8 +487,16 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const pk = picks[i];
       if (pk.gone) { pk.t -= dt; if (pk.t <= 0) placePick(i); continue; }
       const dx = pk.x - player.pos.x, dz = pk.z - player.pos.z;
-      if (dx * dx + dz * dz < 1.8) { pk.gone = true; pk.t = 90 + rnd() * 60; mm.makeScale(0, 0, 0); pickMesh.setMatrixAt(i, mm); pickMesh.instanceMatrix.needsUpdate = true; got++; hooks.pickupAt?.(new THREE.Vector3(pk.x, pk.y, pk.z)); continue; }
-      if (i % 6 === Math.floor(time * 6) % 6) { mm.makeTranslation(pk.x, pk.y + Math.sin(time * 2 + i) * 0.08, pk.z); pickMesh.setMatrixAt(i, mm); pickMesh.instanceMatrix.needsUpdate = true; }
+      if (dx * dx + dz * dz < 1.8) { pk.gone = true; pk.t = 90 + rnd() * 60; pickMesh.setMatrixAt(i, ZERO); pickLeaf.setMatrixAt(i, ZERO); pickGlow.setMatrixAt(i, ZERO); pickMesh.instanceMatrix.needsUpdate = pickLeaf.instanceMatrix.needsUpdate = pickGlow.instanceMatrix.needsUpdate = true; got++; hooks.pickupAt?.(new THREE.Vector3(pk.x, pk.y, pk.z)); continue; }
+      // 살짝 떠서 천천히 돎. 가까운 것(60m)만 매 프레임 갱신해 저사양에서도 가볍게
+      const near = dx * dx + dz * dz < 3600;
+      if (near || i % 6 === Math.floor(time * 6) % 6) {
+        const y = pk.y + TG.hover + Math.sin(time * TG.bobSpeed + pk.ph) * TG.bob;
+        vp.set(pk.x, y, pk.z); qa.setFromAxisAngle(yAx, time * TG.spin + pk.ph);
+        mm.compose(vp, qa, vs); pickMesh.setMatrixAt(i, mm);
+        qb.setFromAxisAngle(xAx, -1); qb.premultiply(qa); vp.y = y + PR + 0.01; mm.compose(vp, qb, vs); pickLeaf.setMatrixAt(i, mm);
+        pickMesh.instanceMatrix.needsUpdate = pickLeaf.instanceMatrix.needsUpdate = true;
+      }
     }
     if (got) hooks.pickup?.(got);
   }
