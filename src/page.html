@@ -620,6 +620,52 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
   #hp-wait { width: 96px; height: 96px; } #hp-wait b { font-size: 34px; }
 }
 @media (prefers-reduced-motion: reduce) { #hp-bar.low .fill, #hp-bar.low svg, #hp-bar.hit { animation: none; } }
+/* ===== 레스토랑 스톤 (#50): 메뉴판 팝업·버프 표시·가장자리 포크 나이프 ===== */
+#stone .pop { width: min(560px, 100%); }
+#stone .stone-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 10px 14px; border-bottom: 1px solid var(--hair); }
+#stone .stone-logo { width: 62px; height: 56px; flex: none; border-radius: 14px; background: #f3ecdc; display: grid; place-items: center; }
+#stone .stone-logo img { width: 54px; height: auto; display: block; }
+#stone .stone-title { flex: 1; min-width: 0; display: grid; gap: 2px; }
+#stone .stone-title b { font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: .5px; }
+#stone .stone-title small { font-family: Georgia, serif; font-style: italic; font-size: 12px; opacity: .72; }
+#stone-close { width: 36px; height: 36px; padding: 0; border-radius: 50%; display: grid; place-items: center; } #stone-close svg { width: 18px; height: 18px; }
+.menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.menu-card { display: grid; grid-template-columns: 64px 1fr; gap: 4px 10px; align-items: center; text-align: left; border: 0; border-radius: 16px; background: rgba(255,255,255,.08); color: #fff; padding: 8px 10px 8px 8px; font: inherit; cursor: pointer; position: relative; }
+.menu-card:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+.menu-card svg.food { width: 64px; height: 64px; grid-row: span 2; }
+.menu-card .mn { min-width: 0; display: grid; gap: 1px; }
+.menu-card .mn b { font-size: 13px; font-weight: 700; line-height: 1.25; word-break: keep-all; }
+.menu-card .mn small { font-size: 10.5px; opacity: .62; line-height: 1.2; }
+.menu-card .mv { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.menu-card .price { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-weight: 800; font-size: 15px; color: #ffb672; }
+.menu-card .price i { width: 13px; height: 13px; border-radius: 50%; background: var(--gyul); box-shadow: inset -2px -2px 0 rgba(0,0,0,.12); display: inline-block; }
+.menu-card .bf { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 5px; border-radius: 999px; background: rgba(255,138,31,.18); font-family: var(--display); font-weight: 800; font-size: 12px; }
+.menu-card .bf svg { width: 14px; height: 14px; }
+.menu-card .bf em { font-style: normal; font-weight: 600; opacity: .7; font-size: 11px; }
+.menu-card.poor .price { color: rgba(255,255,255,.45); }
+.menu-card:disabled { opacity: .38; cursor: default; }
+.menu-card .lock { position: absolute; right: 8px; top: 8px; width: 16px; height: 16px; opacity: .8; }
+.menu-card.on { box-shadow: inset 0 0 0 2px var(--acc); }
+@media (max-width: 600px) {
+  #stone.overlay { place-items: end stretch; padding: 0; }
+  #stone .pop { width: 100%; max-height: 88%; border-radius: 24px 24px 0 0; padding-bottom: var(--safe-b); animation: sheetUp .22s ease-out; }
+  .menu-grid { grid-template-columns: 1fr; gap: 6px; }
+  .menu-card { grid-template-columns: 54px 1fr; } .menu-card svg.food { width: 54px; height: 54px; }
+}
+#buff-pill { gap: 7px; padding: 0 11px 0 4px; }
+#buff-pill[hidden] { display: none; }
+#buff-pill .ring { position: relative; width: 28px; height: 28px; flex: none; }
+#buff-pill .ring svg.r { position: absolute; inset: 0; width: 28px; height: 28px; transform: rotate(-90deg); }
+#buff-pill .ring svg.r circle { fill: none; stroke-width: 3; }
+#buff-pill .ring svg.r .bg { stroke: rgba(255,255,255,.18); } #buff-pill .ring svg.r .fg { stroke: var(--acc); stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
+#buff-pill .ring svg.ic { position: absolute; left: 7px; top: 7px; width: 14px; height: 14px; }
+#buff-pill b { font-size: 13px; font-variant-numeric: tabular-nums; }
+#buff-pill.end .fg { stroke: #ff5a4e; }
+#stone-mark { position: fixed; left: 0; top: 0; z-index: 14; width: 32px; height: 32px; margin: -16px 0 0 -16px; display: grid; place-items: center; pointer-events: none; padding: 0; opacity: .78; }
+#stone-mark[hidden] { display: none; }
+#stone-mark svg { width: 17px; height: 17px; }
+#stone-mark .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid rgba(255,255,255,.7); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(22px); }
+body.hp-down #stone-mark { display: none !important; }
 </style>
 
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
@@ -633,9 +679,11 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
     <div class="panel tpill" id="clean-pill" data-tut="clean" title="오름 전체가 깨끗해진 정도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
     <div class="panel tpill" id="zone-pill" title="지금 구역 · 구역이 깨끗해진 정도" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg class="zf" viewBox="0 0 24 24" aria-hidden="true"><g fill="var(--bloom, #f4d23c)" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="6.5" r="3.6"/><circle cx="17.2" cy="10.3" r="3.6"/><circle cx="15.2" cy="16.4" r="3.6"/><circle cx="8.8" cy="16.4" r="3.6"/><circle cx="6.8" cy="10.3" r="3.6"/></g><circle cx="12" cy="12" r="2.6" fill="#f6c443" stroke="currentColor" stroke-width="1.6"/></svg><b id="zone-n">1</b><small class="zc"><span id="zone-c">0</span>%</small></div>
   </div>
+  <div class="panel tpill" id="buff-pill" hidden><span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg></span><b></b></div>
   <button type="button" id="btn-release" class="panel icon-btn" hidden><span>손 놓기</span></button>
   <button type="button" id="btn-cancelreq" class="panel icon-btn" hidden><span>신청 취소</span></button>
 </div>
+<div id="stone-mark" class="panel round" hidden aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v7a2 2 0 0 0 4 0V3M9 3v18M17 21V3c-2 1-3 4-3 8h3"/></svg><i class="tip"></i></div>
 <div id="ch-arrow" class="panel round" hidden title="클린하우스로 걸어가기" role="button" aria-label="클린하우스로 걸어가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg><i class="tip"></i><small></small></div>
 <div id="shop-arrow" class="panel round" hidden aria-hidden="true"><i class="g"></i><i class="tip"></i></div>
 <button type="button" id="ach-chip" class="panel" data-tut="hud" title="오늘의 업적"><svg class="dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg><span class="label">오늘의 업적</span><span id="chip-gyul" class="ph" title="상점"><i class="g"></i><span id="coins2">0</span></span><i class="sep ph"></i><svg class="ring ph" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.22)" stroke-width="3.2"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.2" stroke-dasharray="0 56.5"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
@@ -779,6 +827,13 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
       <button type="button" data-tab="wear" aria-pressed="false" title="옷"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4l4 2 4-2 4 3-2 4-2-1v10H8V10l-2 1-2-4z"/></svg><span>옷</span></button>
     </div>
     <div id="shop-body" class="pop-body"></div>
+  </div>
+</div>
+
+<div class="overlay dim" id="stone" hidden>
+  <div class="panel pop" role="dialog" aria-label="Stone">
+    <div class="stone-head"><span class="stone-logo"><img id="stone-logo" alt="Stone"></span><span class="stone-title"><b>Stone</b><small>Maximize all the Pleasure</small></span><span class="coins-pill"><i></i><span id="stone-coins">0</span></span><button type="button" class="btn small" id="stone-close" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="stone-body" class="pop-body"><div class="menu-grid" id="stone-menu"></div></div>
   </div>
 </div>
 

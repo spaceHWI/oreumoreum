@@ -102,8 +102,9 @@ function blendPre(el, morning) {
 }
 
 // bound: nsbound.js (#25). 있으면 돌담 밖 나무는 줄이고 돌담 자리는 비움
-export function buildNamsongi({ scene, renderer, bound = null }) {
+export function buildNamsongi({ scene, renderer, bound = null, clear = [] }) {
   const ib = bound ? bound.insideBy : () => 1e9;
+  const cleared = (x, z) => clear.some((c) => Math.hypot(x - c.x, z - c.z) < c.clearR); // 건물 자리(#50 레스토랑): 나무·바위를 심지 않음
   const heightTex = new T.DataTexture(HG, GN, GN, T.RedFormat, T.FloatType); heightTex.magFilter = heightTex.minFilter = T.NearestFilter; heightTex.needsUpdate = true;
   const maskTex = new T.DataTexture(MK, GN, GN, T.RGBAFormat); maskTex.magFilter = maskTex.minFilter = T.LinearFilter; maskTex.needsUpdate = true;
   const pathTex = (() => {
@@ -374,7 +375,7 @@ vec3 groundColor(vec2 p){
       else if (oaks.length < BN && fbm(x / K * 0.004 + 5, z / K * 0.004, 3) > 0.5 && rnd() < 0.55) oaks.push({ x, z, r: rnd() * 6.28, s: rr(1.3, 2.1) * K, t: rr(0.9, 1.15), c: C(oakCols[Math.floor(rnd() * rnd() * oakCols.length)]) });
     }
     // 돌담 안은 그대로, 돌담 자리는 비우고, 밖은 일부만 남기고 아주 먼 것은 뺌 (#25). 충돌은 안쪽 나무만
-    const keep = (s) => { const d = ib(s.x, s.z); s.inside = d > 4; return s.inside || (d < -5 && d > -BOUND.outTreeFar && hash(s.x * 3.1, s.z * 2.7) < BOUND.outTrees); };
+    const keep = (s) => { if (cleared(s.x, s.z)) return false; const d = ib(s.x, s.z); s.inside = d > 4; return s.inside || (d < -5 && d > -BOUND.outTreeFar && hash(s.x * 3.1, s.z * 2.7) < BOUND.outTrees); };
     const P2 = pines.filter(keep), O2 = oaks.filter(keep);
     plant(pineGeo(true), pineGeo(false), P2); plant(oakGeo(true), oakGeo(false), O2);
     P2.forEach((s) => { if (s.inside) solids.push([s.x, s.z, s.s * COLLIDE.pine]); }); O2.forEach((s) => { if (s.inside) solids.push([s.x, s.z, s.s * COLLIDE.oak]); });
@@ -401,7 +402,7 @@ vec3 groundColor(vec2 p){
     const mat = enhance(new T.MeshToonMaterial({ color: 0xffffff, gradientMap: gradHard }), false);
     const items = [];
     allPts.forEach((q) => { if (rnd() < 0.22) { const a = rnd() * 6.28, d = rr(4.6, 11) * K; items.push({ x: q[0] + Math.cos(a) * d, z: q[1] + Math.sin(a) * d, s: rr(0.3, 1.1) * K }); } });
-    for (let i = items.length - 1; i >= 0; i--) if (ib(items[i].x, items[i].z) < 3) items.splice(i, 1); // 돌담 밖·돌담 자리 바위는 뺌 (#25)
+    for (let i = items.length - 1; i >= 0; i--) if (ib(items[i].x, items[i].z) < 3 || cleared(items[i].x, items[i].z)) items.splice(i, 1); // 돌담 밖·돌담 자리 바위는 뺌 (#25)
     const im = new T.InstancedMesh(g, mat, items.length), c = new T.Color();
     items.forEach((s, i) => {
       dummy.position.set(s.x, H(s.x, s.z), s.z); dummy.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3);
