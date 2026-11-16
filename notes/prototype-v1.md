@@ -343,3 +343,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 수치는 `balance.js ENEMIES` (멧돼지는 기운 12·보상 20 으로 바뀜). `ranged` 칸이 있으면 거리를 지키며 광선을 쏨 (외계인): `enemies.js shoot/updateBolts`, 광선 맞으면 `enemyHit` 과 같은 넉백·피해
 - 모양은 `src/enemymodels.js` 한 곳 (`ENEMY_MODELS[kind]` → `{root, legs, head, tail, h, fx?}`). Tripo 모델로 바꿀 땐 여기 build 함수만. 아기 멧돼지는 `buildBoarModel({scale, stripes})` 줄무늬 재질
 - 확인: `__oreum.enemies.test.wave(kind?)`, `.kindHere()`, `.spawn(kind, dx, dz)`, `.bolts`
+
+## 값 다시 잡기 (#49)
+- `tools/econ.js`: `balance.js` 수치로 하루 1시간씩 5일 플레이를 흉내 내 장비 단계별 도달 시각을 냄 (깨끗한 오름·전투 오름). `--log` 구매 기록, `--chase 0.3` 투기꾼 쫓아내는 비율, `--greedy` 구역을 귤/초 순으로, `--live` 더미 자리를 `dist/test.html` 에서 다시 뽑아 `tools/econ-map.json` 저장 (더미 배치가 바뀌면 다시 뽑기)
+- 모델: 클린하우스 ↔ 구역 왕복(직선 × 1.15, 달리기 10 × 신발) + 더미 사이 걷기 + 줍기(time ÷ per) + 버리기. 구역 1 부터 차례로, 버릴 때마다 살 수 있는 장비 중 (오름 한 번 치우는 귤/초 증가 ÷ 값) 이 큰 것부터. 투기꾼 3분마다(절반 쫓아냄), 몹 2분마다(전투 오름, 모두 쫓아냄·쓰러짐 안 셈). 옷 제외
+- 장비·귤 활 값은 `balance.js` 와 `notes/spec.md` 장비 표. 흡입기 한 번 3개(초당 12), 낚시 귤 5 → 1·드문 것 5% → 1%
+- 정상 구역이 가깝고 더미가 몰려 있어 귤/초로만 고르면(`--greedy`) 3일차부터 정상으로 감. 구역 순서대로 가게 하려면 지도나 몹으로 막아야 함 (지금은 안 막음)
