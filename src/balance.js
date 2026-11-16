@@ -431,14 +431,31 @@ export const SHOP_ST = {
 // 건물 모양은 src/shops.js SHOP_BUILD[id], 가장자리 아이콘은 SHOP_ICON[id]. 줄이 없는 터는 빈 터('준비 중' 팻말)
 export const SHOPS = [
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone' },
+  { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon' },
 ];
 
-// 캐릭터 고르기·머리 (#51): 처음엔 고른 기본 머리만, 나머지는 상점 옷 탭에서 귤로 삼 (값은 임시)
+// 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
+// 머리 종류를 늘리려면 list 에 한 줄 (key = gear.js 의 hair 칸 장비, id = 업적 이벤트 haircut-<id>). 순서 = 미장원 카드 순서
 export const HAIR = {
   start: { m: 'hat:short', f: 'hat:bob' }, // 기본 남성 짧은 머리 · 기본 여성 단발
-  price: { 'hat:short': 150, 'hat:bob': 150, 'hat:bun': 300 }, // 상점 옷 탭 순서. 예전 초록 모자(hat:cap)는 #52 에서 모자 칸 기본 모자로 바뀌어 귤로 돌려줌
-  capRefund: 150,
+  list: [
+    { id: 'short', key: 'hat:short', name: '짧은 머리', price: 150 },
+    { id: 'bob', key: 'hat:bob', name: '단발', price: 150 },
+    { id: 'bun', key: 'hat:bun', name: '똥머리', price: 300 },
+  ],
+  capRefund: 150, // 예전 초록 모자(hat:cap)는 #52 에서 모자 칸 기본 모자로 바뀌어 귤로 돌려줌
   spin: 0.7, // 고르기 화면에서 카메라가 도는 빠르기 (rad/s)
+};
+HAIR.price = Object.fromEntries(HAIR.list.map((h) => [h.key, h.price]));
+HAIR.byKey = Object.fromEntries(HAIR.list.map((h) => [h.key, h]));
+
+// 루이네 미장원 (#58): 가게 거리 1번 터. 건물 폭·깊이·벽 높이, 터 앞에서 건물 앞벽까지(드럼통 자리)
+export const SALON = {
+  W: 7, D: 5.6, H: 3.6, fore: 1.8,
+  r: 6, // 문 앞에서 이 거리 안이면 상호작용이 '머리'
+  walkMax: 4, // 문 앞까지 걸어가다 이 초가 넘으면 바로 앉힘
+  cutT: 3, // 가위질 연출 (건너뛸 수 있음)
+  snipHz: 3.2, // 초당 가위질
 };
 
 // 옷 (#52): 입는 것마다 능력치. 겉모습과 능력치가 묶여 있음 (입은 것이 곧 능력). 도구·배낭·신발·무기는 위 표 그대로
