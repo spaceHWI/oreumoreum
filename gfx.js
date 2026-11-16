@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
  const p = await b.newPage({viewport:{width:960,height:540}});
  p.on('pageerror',e=>console.log('ERR',e.message));
  await p.goto('file://'+process.cwd()+'/dist/test.html#darangswi'); await p.waitForTimeout(3000);
- await p.click('#enter-quiet'); await p.waitForTimeout(500);
+ await p.click('#enter'); await p.waitForTimeout(500);
  await p.evaluate(()=>{const o=window.__oreum; o.setTod(9.5); document.querySelectorAll('.hud,.pad,.dock,#ach-chip,#hint,#compass,#toast').forEach(e=>e.style.visibility='hidden');});
  const scenes = [ ()=>{const o=window.__oreum; o.tp(0,-205, Math.PI, 0.22, 7.5, 0.9);}, ()=>{const o=window.__oreum; const c=o.spots.cairns[0].pos; o.tp(c.x+6,c.z+9, Math.atan2(-6,-9), 0.3, 8);} ];
  const variants = [

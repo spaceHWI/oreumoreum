@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
  const p = await b.newPage({viewport:{width:1024,height:1024}});
  p.on('pageerror',e=>console.log('ERR',e.message));
  await p.goto('file://'+process.cwd()+'/dist/test.html#gate'); await p.waitForTimeout(4000);
- await p.click('#enter-quiet').catch(()=>{}); await p.waitForTimeout(800);
+ await p.click('#enter').catch(()=>{}); await p.waitForTimeout(800);
  await p.evaluate(()=>{ const o=window.__oreum; const st=document.createElement('style'); st.textContent='body > *:not(canvas){display:none!important}'; document.head.append(st);
   o.save.gfx='lite'; o.setTod(12);
   o.scene.children.forEach(c=>{ if(!c.isLight) c.visible=false; }); o.scene.background = new (o.scene.fog.color.constructor)('#ffffff'); o.scene.fog.near=1e5; o.scene.fog.far=2e5;

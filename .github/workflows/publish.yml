@@ -28,7 +28,7 @@ jobs:
           path: site
       - name: 게시
         run: |
-          if [ "$GITHUB_REF_NAME" = dev ]; then mkdir -p site/dev && cp dist/index.html site/dev/index.html; else cp dist/index.html site/index.html; fi
+          if [ "$GITHUB_REF_NAME" = dev ]; then D=site/dev; mkdir -p $D; else D=site; fi; cp dist/index.html dist/og.png dist/logo-sian.html $D/
           cd site
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

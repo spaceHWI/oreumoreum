@@ -14,7 +14,7 @@ const SHOTS = [
  const p = await b.newPage({viewport:{width:W,height:H}});
  p.on('pageerror',e=>console.log('ERR',e.message));
  await p.goto('file://'+process.cwd()+'/dist/test.html?hi#darangswi'); await p.waitForTimeout(5000);
- await p.click('#enter-quiet').catch(()=>{}); await p.waitForTimeout(1500);
+ await p.click('#enter').catch(()=>{}); await p.waitForTimeout(1500);
  await p.evaluate(()=>{
   const st=document.createElement('style'); st.textContent='body > *:not(canvas):not(#promo){display:none!important} #promo{position:fixed;left:0;right:0;top:13%;text-align:center;color:#fffaf0;font-family:Jua,"Noto Sans KR",sans-serif;text-shadow:0 0.04em 0.25em rgba(60,30,20,.45);pointer-events:none;opacity:0} #promo b{display:block;font-weight:400;font-size:13.5vw;letter-spacing:.04em} #promo span{display:block;font-size:4.4vw;margin-top:1.2vw;font-family:"Noto Sans KR",sans-serif;font-weight:500;letter-spacing:.08em}'; document.head.append(st);
   const d=document.createElement('div'); d.id='promo'; d.innerHTML='<b>오름오름</b><span>조용히 걷는 제주 오름</span>'; document.body.append(d);

@@ -5,7 +5,7 @@ const OUT='/tmp/claude-0/-home-claude/c2a85875-30d7-558f-b650-0d4ff72ce65f/scrat
  const p = await b.newPage({viewport:{width:1100,height:620}});
  p.on('pageerror',e=>console.log('ERR',e.message));
  await p.goto('file://'+process.cwd()+'/dist/test.html#donnaeko'); await p.waitForTimeout(3500);
- await p.click('#enter-quiet'); await p.waitForTimeout(500);
+ await p.click('#enter'); await p.waitForTimeout(500);
  await p.evaluate(()=>{const o=window.__oreum; o.setTod(10); o.tp(0, 300, Math.PI, 0.2, 8);}); await p.waitForTimeout(3500);
  await p.screenshot({path:OUT+'08-donnaeko-forest.png',timeout:90000});
  await p.evaluate(()=>{const o=window.__oreum; o.tp(0, -380, Math.PI, 0.05, 8);}); await p.waitForTimeout(3500);
