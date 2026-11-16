@@ -5022,9 +5022,11 @@ uniform vec4 uStream; uniform float uStreamW; uniform vec2 uStreamM;
       float sc=mix(0.26,0.56,aOff.z)*mix(1.0,2.4,gold)*KS;
       float ptc=texture2D(uStroke,gc/KS*0.017+0.5).r;
       sc*=0.3+0.7*smoothstep(0.34,0.6,ptc);
-      sc*=1.0-pathMask(gc);
-      sc*=1.0-teaMask(gc);
-      sc*=step(0.9,stOut(gc,uStream,uStreamW,uStreamM)); // \uAC1C\uC6B8 \uC548\uC5D4 \uD480 \uC5C6\uC74C (\uAD7D\uC774\xB7\uD3ED\uC740 streamshape.js)
+      float pres=1.0-pathMask(gc); // \uD480\uC774 \uC788\uB294 \uC815\uB3C4: \uAE38\xB7\uB9C8\uB2F9\xB7\uAC00\uAC8C \uAC70\uB9AC\xB7\uCC3B\uBC2D\xB7\uAC1C\uC6B8 \uC548\uC740 0 (\uB215\uB294 \uD6A8\uACFC\uB3C4 \uC5EC\uAE30\uC5D0 \uACF1\uD568 #73)
+      pres*=1.0-teaMask(gc);
+      float so=stOut(gc,uStream,uStreamW,uStreamM); // \uAC1C\uC6B8 \uC548\uC5D4 \uD480 \uC5C6\uC74C (\uAD7D\uC774\xB7\uD3ED\uC740 streamshape.js)
+      sc*=pres*step(0.9,so);
+      pres*=smoothstep(0.9,2.6,so);
       sc*=1.0-0.45*forestMask(gc)*(1.0-gold);
       vec2 dv=gc-uPl.xz; float dd=length(dv);
       sc*=1.0-smoothstep(GS*0.36,GS*0.5,dd);
@@ -5033,7 +5035,7 @@ uniform vec4 uStream; uniform float uStreamW; uniform vec2 uStreamM;
       vec3 transformed=vec3(gc.x+ca*position.x-sa*position.z, gh+y*sc, gc.y+sa*position.x+ca*position.z);
       float wv=sin(uTime*1.5+gc.x*0.16+gc.y*0.12)+0.5*sin(uTime*2.6+gc.x*0.5-gc.y*0.29);
       transformed.xz+=vec2(0.85,0.45)*wv*0.11*uWind*y*y*sc;
-      float push=(1.0-smoothstep(0.35,2.1,dd))*y;
+      float push=(1.0-smoothstep(0.35,2.1,dd))*y*pres;
       transformed.xz+=normalize(dv+vec2(0.0001))*push*0.7;
       transformed.y-=push*sc*0.6;
       vec3 gcol=groundColor(gc);
