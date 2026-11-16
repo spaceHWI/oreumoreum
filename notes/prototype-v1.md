@@ -286,3 +286,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 손가락 역할: 조이스틱 `joy.id`(놓침·`lostpointercapture` 도 끝으로), 시점·핀치 `ptrs`(캔버스에 닿은 손가락만 → 핀치는 조이스틱·버튼이 아닌 두 손가락일 때만), 버튼은 각자 캡처. 조이스틱을 잡은 채 화면을 톡 친 건 목적지 이동 안 함
 - 게임 화면(`#view, #joy, .pad`)에서 touchstart·touchmove 기본 동작을 막고(패널 스크롤은 그대로), iOS `gesturestart/change` 막음, viewport 에 `maximum-scale=1,user-scalable=no`. 패드 버튼 `touch-action: none`·`-webkit-touch-callout: none`
 - 확인: CDP `Input.dispatchTouchEvent` 로 조이스틱 손가락을 유지한 채 점프·달리기·시점 끌기, 줍기 누른 채 조이스틱
+
+## 개발자 버튼 (#43)
+- `?hwi=1` 로 들어오면 localStorage `oreumoreum.hwi` 에 기억(`?hwi=0` 으로 끔). 저장 키가 따로라 리셋해도 남음
+- 메뉴 맨 위 `#m-dev` 줄: 리셋(즉시, 모든 기록 삭제·튜토리얼 처음부터), 귤 +10,000 (업적·귤 벌기에 안 셈). 코드는 `main.js` 의 `menu-ach` 핸들러 바로 위
