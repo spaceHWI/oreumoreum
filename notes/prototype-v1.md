@@ -290,3 +290,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## 개발자 버튼 (#43)
 - `?hwi=1` 로 들어오면 localStorage `oreumoreum.hwi` 에 기억(`?hwi=0` 으로 끔). 저장 키가 따로라 리셋해도 남음
 - 메뉴 맨 위 `#m-dev` 줄: 리셋(즉시, 모든 기록 삭제·튜토리얼 처음부터), 귤 +10,000 (업적·귤 벌기에 안 셈). 코드는 `main.js` 의 `menu-ach` 핸들러 바로 위
+
+## 개울: 돌다리·튜토리얼 점프 빼기·낚시 (#44)
+- 돌다리(`stream.js`): 징검돌 대신 난간 없는 현무암 판 `BRIDGE.slabs`(5)장을 길 방향으로 이음. 반폭 `halfW` 1.5(둘이 지날 폭), 물 가장자리 밖 `over` 1.4 까지, 윗면 양끝 0.16 → 가운데 0.34. 판마다 네모 `addWalkable`, 이음매 밑 물속 받침돌. 옆으로 벗어나면 예전처럼 빠져서 떠내려가다 낚시꾼에게 건져짐. `stream.onBridge(x,z)`, `stream.slabs`, `stream.bridge`
+- 튜토리얼: 점프 단계를 뺌(걷기 → 달리기 → 줍기 …). 점프 버튼은 달리기 단계에 같이 나옴. `save.tut.v = 2`, v 없는 예전 저장은 단계 번호 3 이상을 하나 당김. 점프 힌트 그림(jumpKey·jumpBtn) 삭제
+- 낚시 `src/fishing.js` `createFishing`: 물가(물 가장자리에서 `FISH.bankR` 2 안)나 다리 위에서 할 일이 없으면 상호작용(F)이 '낚시하기'(`fishAct`, 아이콘 fish). cast(던지기 `castT`) → wait(2~6초, 찌가 떠 있고 물결) → bite(`biteT` 1초, 찌가 쑥 + '!' + 버튼 `.bite` 두근거림 + `audio.bite`) → F = pull(당겨 올림) → 물고기면 show(들어 보임) → release(놓아줌), 쓰레기면 stow(배낭으로). 늦으면 miss(토스트 '놓쳤어요'), 기다리는 중 F 는 그냥 거둠. 움직이기·점프·줍기·빠짐이면 그만둠
+- 보상은 당기는 순간 확정(main.js `reward`): 물고기(은어·붕어·참게) 귤 `fishGyul`(5) + 도감, 쓰레기(장화·깡통·비닐 → vinyl/can) `trash.addToBag(kind, cap)` 로 호주머니·배낭, 드문 것(DEX.rare 중 자리에 맞는 것) 배낭 + 도감(드문 것 귤). 비율 `FISH.odds`(60/35/5), 자리가 없으면 물고기만. 업적 이벤트 `fish`, `fish-<ayu|carp|crab|boot|tin|bag|rare>`
+- 도감: `DEX_LIST` 끝에 `fish:0~2`(kind 'fish', sec 'stream') → 도감 화면에 '개울' 구분 줄(`.dex-sec`), 33종. 아이콘 `dexicons.js FISHI`
+- 낚싯대는 사지 않음: 낚시 중에만 오른손 위치(armR 끝)에서 그리는 로우폴리 막대 + 줄 + 찌(fishing.js), 그동안 손 도구는 숨김(`holdRod` → `syncEquipGear`). runner pose `'fish'`(rod = 낚싯대 들린 각). 소리 `audio.cast`·`plop`(+ 기존 splash·bite·reel). `stream.splash(x,y,z,big,snd)`·`stream.ring` 재사용
+- 확인용 `__oreum.fish`(go(side, lat) 물가로 옮기기, can(), press(), state(), force({type:'fish',i}|{type:'trash',t}|{type:'rare',kind,name}), wait(초), parts)
+- 임시: 물고기·쓰레기·병·낚싯대는 로우폴리. 멀티에 낚시 모습은 안 보임(손 도구만 숨겨짐). 탐방객 NPC·노루는 여전히 개울을 그냥 지나감

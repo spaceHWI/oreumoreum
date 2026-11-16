@@ -405,6 +405,22 @@ export class Sound {
     for (let i = 0; i < n; i++) { const tt = t + i / 14; const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 4200; f.Q.value = 3;
       const g = c.createGain(); g.gain.setValueAtTime(0.08, tt); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.025); s.connect(f); f.connect(g); g.connect(this.sfx); s.start(tt, Math.random()); s.stop(tt + 0.03); }
   }
+  // 낚싯대 던지기 (#44): 바람 가르는 '휙'
+  cast() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6;
+    f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(2600, t + 0.18); f.frequency.exponentialRampToValueAtTime(1200, t + 0.32);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.09, t + 0.12); g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+    s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t, Math.random()); s.stop(t + 0.36);
+  }
+  // 찌가 물에 떨어짐: 작은 '퐁'
+  plop() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(380, t); o.frequency.exponentialRampToValueAtTime(900, t + 0.07);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.08, t + 0.008); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.12);
+  }
   // 정낭 나무 막대가 내려지는 소리: 나무 부딪는 둔탁한 두 번
   gate() {
     if (!this.on || !this.sfxOn) return;

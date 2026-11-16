@@ -352,9 +352,9 @@ export function buildRunner(opts = {}) {
   }
 
   const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
-  // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail'
+  // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail' | 'fish'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
-  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1 }) {
+  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4 }) {
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'carry');
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
@@ -392,6 +392,10 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(-1.55 * up + armL.rotation.x * (1 - up), 0, 0.12 + 0.08 * up);
       armR.rotation.set((-1.45 + 0.5 * draw - 0.25 * snap) * up + armR.rotation.x * (1 - up), 0, (0.5 + 0.4 * draw - 0.3 * snap) * up - 0.12 * (1 - up));
       torso.rotation.y += -0.22 * up; torso.rotation.x += 0.04 * up; head.rotation.y += 0.2 * up;
+    } else if (pose === 'fish') { // 낚시 (#44): 두 손으로 낚싯대를 쥠. rod = 낚싯대가 앞으로 들린 각(0 수평, 1.6 머리 위, 더 크면 뒤로 젖힘)
+      const a = -0.75 - rod * 0.95;
+      armR.rotation.set(a, 0, 0.32); armL.rotation.set(a * 0.82 + 0.1, 0, -0.38);
+      torso.rotation.x += 0.08 - Math.max(0, rod - 1.2) * 0.12; head.rotation.x = -0.12;
     } else if (pose === 'carry') { // 들것 들기 (#36): carry +1 = 앞사람(손이 뒤로), -1 = 뒷사람(손이 앞으로)
       const a = carry > 0 ? 0.32 : -0.62;
       armL.rotation.set(a, 0, 0.2); armR.rotation.set(a, 0, -0.2);
@@ -464,7 +468,7 @@ export function buildRunner(opts = {}) {
       head.rotation.x = -b * 0.15;
     }
     // 발이 비탈 아래로 들어가면 그만큼 골반을 올림 (앞발은 오르막에, 뒷발은 내리막에 걸림)
-    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw' || pose === 'bow' || pose === 'carry')) {
+    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw' || pose === 'bow' || pose === 'carry' || pose === 'fish')) {
       const L = model ? LEG_M : 0.775, base = model ? LEG_M : HIP;
       const pen = (lg) => { const th = lg.rotation.x, hy = base + hips.position.y - HIP, f = -L * Math.sin(th); return st.slope * f - (hy - L * Math.cos(th)); };
       hips.position.y += Math.max(0, pen(legL), pen(legR));
