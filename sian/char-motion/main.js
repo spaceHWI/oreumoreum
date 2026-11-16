@@ -32,7 +32,10 @@ const wearAll = (r) => state.gear.split(',').filter((k) => ACCESSORIES[k]).forEa
 // ?skin=0|1|2 피부색 (#51)
 const OUT = { ...DEFAULT_OUTFIT, skin: { color: SKIN_TONES[+(q.get('skin') || 0)] || SKIN_TONES[0] } };
 const add = (x, heading, tier) => { const r = buildRunner(); r.apply(tier ? { ...OUT, gear: tierSet(tier, q.get('slots')?.split(',')) } : OUT); wearAll(r); scene.add(r.root); runners.push({ r, x, heading }); return r; };
-if (q.has('row')) for (let i = 0; i < 5; i++) add((i - 2) * 1.5, +(q.get('h') || 0), i + 1);
+// ?faces 얼굴 비교 (#54): 기본(초록 모자)·짧은 머리·단발·똥머리를 나란히 정면 가까이
+const FACES = ['hair:base', 'hat:short', 'hat:bob', 'hat:bun'];
+if (q.has('faces')) FACES.forEach((k, i) => { const r = add((i - 1.5) * 1.25, 0); r.apply({ ...OUT, gear: { hair: k } }); }); // apply 로 입혀야 장비 발광색까지 칠해짐
+else if (q.has('row')) for (let i = 0; i < 5; i++) add((i - 2) * 1.5, +(q.get('h') || 0), i + 1);
 else { add(+(q.get('x') || 0), +(q.get('h') || 0), +q.get('tier') || 0); // h=0 오르막을 향해, 3.14 내리막
   if (!q.has('one')) { add(-2.2, Math.PI); add(2.2, Math.PI / 2); } } // 내리막, 옆으로
 
@@ -40,7 +43,8 @@ const view = q.get('view') || 'side';
 function placeCam() {
   const y = 1.3;
   const far = q.has('row') ? 2.1 : 1;
-  if (view === 'side') { camera.position.set(11, y + 1.2, 0); camera.lookAt(0, y, 0); }
+  if (q.has('faces')) { const fy = 2.05, fx = +(q.get('fx') || 0); camera.position.set(fx, fy + 0.15 + +(q.get('up') || 0), 9.5); camera.lookAt(fx, fy, 0); } // ?fx=-0.625 한 명 가운데, ?up=2 위에서
+  else if (view === 'side') { camera.position.set(11, y + 1.2, 0); camera.lookAt(0, y, 0); }
   else if (view === 'front') { camera.position.set(0, y + 1.0 * far, 11 * far); camera.lookAt(0, y, 0); }
   else if (view === 'back') { camera.position.set(0, y + 1.6, -11); camera.lookAt(0, y, 0); }
   else if (view === 'shoulder') { camera.position.set(4.5, 2.4, 5.5); camera.lookAt(0, 1.3, 0); }
