@@ -497,3 +497,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - Y 갈림길: 굼부리 가는 길은 둘레 `yStem` 24m 앞에서, 북쪽 길은 첫 조절점에서 두 갈래(3차 베지어)로 갈라져 둘레에 접선으로 붙음(갈림점 쪽 둘레 점 ± `yAng` 26°). 새 선 `toCraterB`·`northB` 가 `nsPaths` 에 더해짐(`for k in nsPaths` 로 도는 곳은 자동 포함)
 - 점 간격 `TRAIL.step` 4m(5.6단위, 예전 ≤8m). 길 그림(pathTex)은 점 사이 가운데를 잇는 2차 곡선으로 그림(선과 어긋남 0.2단위 안). 길 격자(surf)는 점 사이도 1단위마다 찍음
 - 그래프 노드 약 530개(예전 약 250), 한 덩어리로 다 이어짐. 화면: notes/shots/67-before-top.png, 67-after-top.png
+
+## 상황에 맞는 팁 (2026-11-16, #66)
+- tips.js: 표 TABLE(id·when(S)·ic·text·go) 한 곳 + createTips. 줄만 더하면 늘어남. 처음 1번, 그 뒤 하루 1번·최대 3번 드물게(TIP.rare), 팁 사이 30초(TIP.gap), 한 번에 하나. 본 횟수는 save.tips.seen(예전 저장엔 없음), 메뉴 '팁' 버튼으로 끄기(save.tips.off)
+- main.js: tipState() 가 상태(배낭 가득·살 수 있는 장비·HP 낮음·적 가까움·개울 가까움·가만히 있던 시간)를 줌. 일이 한 번 일어난 팁은 tips.event(carried·heapClear·dumper·rare·buffEnd). 튜토리얼·토스트·패널·식사·미용·쓰러짐 중엔 미룸
+- 위쪽 #tip(아이콘+한 줄, 4초). 갈 곳이 있으면 눌러서: 상점 열기·클린하우스 자동 걷기·도감·더미/개울/스톤 쪽 방향 표시(shopMark 재사용 6초)
+- 임시: 아이콘·문구 임시, 멀티 없음. 테스트: __oreum.save.tips, 배낭 가득(trash.fillBag)
