@@ -3,13 +3,18 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { SHOP_ST, SHOPS, STONE } from './balance.js';
+import { SHOP_ST, SHOPS, STONE, SALON } from './balance.js';
 import { createStone } from './stone.js';
 import { FORK_KNIFE } from './stoneicons.js';
+import { createSalon } from './salon.js';
+
+// 가위 (루이네 미장원 #58, 상호작용 '머리' 아이콘과 같음)
+export const SCISSORS = '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/>';
 
 // 가장자리 표시·입구 간판 아이콘 (24×24 선 그림)
 export const SHOP_ICON = {
   stone: FORK_KNIFE,
+  salon: SCISSORS,
 };
 
 // 가게마다 건물 하나. lot = streetlayout 의 터, 반환 { door: 상호작용 자리, signPos: 가장자리 표시 기준, update?(dt, night), api }
@@ -19,6 +24,12 @@ export const SHOP_BUILD = {
     const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
     const api = createStone({ scene, height, site, low, col, addWalkable });
     return { api, door: api.terrace, signPos: api.signPos, r: STONE.r, update: (dt, night) => api.update(dt, night) };
+  },
+  salon: ({ scene, height, lot, low, col }) => {
+    const k = SALON.fore + SALON.D / 2; // 터 앞 = 드럼통 앞, 그 뒤 건물 가운데
+    const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
+    const api = createSalon({ scene, height, site, low, col });
+    return { api, door: api.door, signPos: api.signPos, r: SALON.r, update: (dt, night) => api.update(dt, night) };
   },
 };
 

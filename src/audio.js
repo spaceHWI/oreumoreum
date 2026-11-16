@@ -453,4 +453,15 @@ export class Sound {
       s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t + dt); s.stop(t + dt + 0.05);
     });
   }
+  // 가위질 한 번 (#58): 짧고 높은 쇳소리 둘
+  snip() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx; const t = c.currentTime;
+    [0, 0.05].forEach((dt, i) => {
+      const s = c.createBufferSource(); s.buffer = this.noise;
+      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = i ? 5200 : 6800; f.Q.value = 4;
+      const g = c.createGain(); g.gain.setValueAtTime(0.16, t + dt); g.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.035);
+      s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t + dt, Math.random()); s.stop(t + dt + 0.04);
+    });
+  }
 }

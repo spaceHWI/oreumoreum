@@ -364,8 +364,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 만들기: `assets` 의 `char-<이름>.glb` → `python3 model/bake-head.py 원본.glb 3000 512 out.glb`(팔 끝 폭으로 크기, 턱 앞으로 앞뒤를 지금 몸에 맞추고 y 0.565 위·|x|<0.3 만 남겨 줄이고 굽기) → `node model/extract-gear.js out.glb head-<이름>` → `src/gear/head-<이름>.js`(각 약 130KB)
 - 피부색 `runner.js SKIN_TONES` 3가지(첫째 = 텍스처 그대로). 셰이더가 텍스처 피부(색상 0.074 근처)만 골라 목표색/기본색 비율을 곱함. 몸은 머리·손·다리 영역만, 머리 장비는 전체. 값은 `outfit.skin.color` 로 다른 사람에게도 감
 - 저장: `save.look = { sex: 'm'|'f', skin }`, `save.hairs` 가진 머리, 쓰는 머리는 `outfit.gear.hat`. look 이 없으면 입장 직후(튜토리얼보다 먼저) 고르기 화면 `#look`(cam.mode 'look' 이 캐릭터 둘레를 돎, 그동안 busy·튜토리얼 멈춤). 예전부터 하던 사람은 초록 모자도 가짐
-- 상점 옷 탭 맨 위 머리 줄(가진 것 눌러 바꿔 쓰기, 없는 것 귤로 사기). 값 `balance.js HAIR`(임시: 똥머리 300, 나머지 150)
-- 확인: `__oreum.look.open()/set(sex, skin)/close()/state()/buyHair(k)`, `dist/char-motion.html?gear=hat:bun&skin=2`
+- 머리는 루이네 미장원(#58)에서만 바꿈 (상점 옷 탭·옷장 머리 줄은 #58 에서 없앰). 값 `balance.js HAIR.list`(임시: 똥머리 300, 나머지 150)
+- 확인: `__oreum.look.open()/set(sex, skin)/close()/state()`, `dist/char-motion.html?gear=hat:bun&skin=2`
 
 ## #61 오름 입구 정렬
 - `nsbound.gate` 에 길 직각 방향 `ux,uz` 를 더함. 정낭 자리·방향·돌담 시작점이 모두 `gate`(길 가운데 점 + 방향) 한 묶음에서 나온다.
@@ -392,3 +392,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 팝업은 공용 `#shoppop` (위 로고·이름·표어 `head`, 아래 `.menu-grid` 카드 `fill(grid)`, `serif` 이면 Georgia). 가장자리 표시 `#shop-mark`: 열 수 있는 가게 중 가장 가까운 하나의 아이콘만 (`SHOP_ST.markNear`~`markFar`)
 - 몹: 거리 가운데에서 `STREET.radius + keepPad` 안엔 안 나옴. 쓰레기 더미는 오름에만이라 원래 없음, 투기꾼은 더미로만 감
 - 확인용 `__oreum.street`: layout, shops, go(lot) / go(0, s), open(pop), popNow(), mark()
+
+## 루이네 미장원 (#58)
+- 가게 거리 1번 터 (`balance.js SHOPS` 줄 salon, `SALON` 수치). 모양 `src/salon.js createSalon`: 밝은 회색 돌 타일 단층·현무암 밑단·평지붕, 어두운 틀 넓은 창(비치는 유리)·유리문, 흰 간판에 빨강·파랑 사선 줄무늬 테두리 '루이네 미장원'(`drawSalonSign`, 팝업 로고 `salonLogo()` 도 같은 그림), 창과 문 사이 삼색 회전 기둥(텍스처 offset), 문 앞 빨강·흰·파랑 드럼통 둘. 안: 나무 바닥·뒷벽 나무 판·선반·거울·빨간 미용 의자(창 안쪽, 거울을 봄). 로우폴리 임시, 나중에 Tripo 모델·실제 로고로
+- 머리 표 `balance.js HAIR.list` ({ id, key(gear.js hair 칸 장비), name, price }). 줄을 더하면 미장원 카드가 늘어남 (`HAIR.price`·`HAIR.byKey` 는 거기서 만듦). 머리 그림은 main `HEAD_SVG`
+- 흐름(main `orderCut`): 카드(가진 것 0, 지금 머리 체크) → 귤 빠짐 → 문 앞까지 걸어감(`walkMax` 넘으면 바로) → 의자에 앉음(pose 'sit', 지붕 감춤 `inside(true)`, 카메라는 창 밖에서) → 가위 연출 `cutT` 3초(머리 둘레 도는 가위 + 떨어지는 머리카락, `sound.snip`) → `wearHair`. 상호작용(건너뛰기)·이동 키·조이스틱으로 바로 끝냄. 업적 이벤트 `haircut`, `haircut-<id>`. 정낭이 열린 뒤에만 열림(스톤과 같음)
+- 공용 팝업 `#shoppop.wide`: 로고 자리가 넓은 간판 그림, 이름 글자는 숨김
+- 확인용 `__oreum.salon`: go(), open(), order(id), sit(), finish(), cut()
+
