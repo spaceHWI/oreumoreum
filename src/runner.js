@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { RM } from './runnermodel.js';
 import { patchDQS } from './dqskin.js';
 import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
-import { BOW } from './balance.js';
+import { BOW, BLINK } from './balance.js';
 
 // 가격 0 = 기본 제공. 상점에서 귤로 구매
 // 기본 캐릭터는 모델(모자 뒤로 쓴 아이)이라 지금은 색만 바꿀 수 있음. 가격 0 = 기본 제공
@@ -93,22 +93,47 @@ const skinRatio = (c, out) => { const i = SKIN_TONES.indexOf(String(c || '').toL
 const HSV_GLSL = 'vec3 rgb2hsv(vec3 c){ vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0); vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g)); vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r)); float d = q.x - min(q.w, q.y); return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x); }';
 const skinGLSL = (hsv, region) => `{ float sk = smoothstep(0.035, 0.05, ${hsv}.x) * (1.0 - smoothstep(0.088, 0.098, ${hsv}.x)) * smoothstep(0.14, 0.2, ${hsv}.y) * (1.0 - smoothstep(0.5, 0.58, ${hsv}.y)) * smoothstep(0.62, 0.72, ${hsv}.z) * (${region});
   diffuseColor.rgb *= mix(vec3(1.0), cSkin, sk); }`;
-// 머리 장비(#51)용 재질 패치: 피부색 + 몸과 같은 발광(텍스처 색 비율)
-const patchHead = (U) => (sh) => { sh.uniforms.cSkin = U.cSkin;
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 cSkin;\n' + HSV_GLSL)
+// ---------- 눈 깜빡임 (#74): 눈꺼풀은 셰이더로 그림 (후처리 없음) ----------
+// 기본 캐릭터 눈 자리(기본 자세 좌표, model/fixeyes.py 와 같은 정면 투영으로 잰 타원 + 여유): 가운데 x·y, 반폭, 반높이. 머리 3종(#54)도 같은 자리
+// face.x = 눈 감김 0..1 (위에서 피부색 눈꺼풀이 내려옴), face.y = 눈 크게 0..1 (눈 둘레 정점을 바깥으로 밂)
+const LID_PARS = `uniform vec2 face; uniform vec3 cLid;
+  const vec4 EYE_L = vec4(0.0773, 0.7188, 0.0488, 0.0777); const vec4 EYE_R = vec4(-0.0825, 0.7186, 0.0472, 0.0775);`;
+const LID_VERT = `${LID_PARS}
+  vec2 eyeGrow(vec2 p, vec4 e) { vec2 d = (p - e.xy) / e.zw; return (p - e.xy) * face.y * ${BLINK.wide.toFixed(3)} * (1.0 - smoothstep(0.8, 1.6, length(d))); }`;
+const LID_FRAG = `${LID_PARS}
+  float lidEye(vec2 p, vec4 e, float k, inout float line) {
+    vec2 d = (p - e.xy) / e.zw; if (dot(d, d) > 1.0) return 0.0;
+    float yl = 1.0 - 2.25 * k + 0.25 * k * d.x * d.x; // 눈꺼풀 끝 (가운데가 조금 더 내려온 곡선). k=1 이면 눈 전체를 덮음
+    float yline = max(yl, -0.3 + 0.35 * d.x * d.x); // 속눈썹 선: 눈꺼풀을 따라 내려오다 아래쪽 곡선(감은 눈)에서 멈춤
+    line = max(line, (1.0 - smoothstep(0.045, 0.09, abs(d.y - yline))) * (1.0 - smoothstep(0.78, 0.92, abs(d.x))));
+    return smoothstep(yl - 0.04, yl + 0.04, d.y); }`;
+// 기본 자세 위치(position) 기준. begin_vertex 바로 뒤에 넣음 (DQ 스키닝 전)
+const lidVertex = (pos) => `if (face.y > 0.001 && ${pos}.z > 0.1) transformed.xy += eyeGrow(${pos}.xy, EYE_L) + eyeGrow(${pos}.xy, EYE_R);`;
+// map_fragment 바로 뒤, 피부색 바꾸기 전에 넣음 → 눈꺼풀도 피부색(3가지)을 그대로 받음
+const lidFragment = (rest) => `if (face.x > 0.001 && ${rest}.z > 0.1) { float ln = 0.0; float c = max(lidEye(${rest}.xy, EYE_L, face.x, ln), lidEye(${rest}.xy, EYE_R, face.x, ln));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuse * cLid, c); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.1), ln * step(0.03, face.x)); }`;
+// 텍스처에 구운 피부색(눈 둘레 중간값, 0~255) → 셰이더의 텍스처 색 공간 값
+export const lidColor = (rgb, out = new THREE.Vector3()) => { if (NSMODE) return out.set(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255); const c = new THREE.Color().setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace); return out.set(c.r, c.g, c.b); };
+const LID_BASE = [232, 189, 154];
+// 머리 장비(#51)용 재질 패치: 피부색 + 몸과 같은 발광(텍스처 색 비율) + 눈꺼풀(#74). 장비 위치 = 기본 자세 좌표 (머리 뼈에 관절 위치만큼 옮겨 붙임)
+const patchHead = (U, lid) => (sh) => { sh.uniforms.cSkin = U.cSkin; sh.uniforms.face = U.face; sh.uniforms.cLid = { value: lidColor(lid || LID_BASE) };
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\n' + LID_VERT).replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;\n' + lidVertex('position'));
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cSkin;\n' + HSV_GLSL + LID_FRAG)
     .replace('#include <map_fragment>', `#include <map_fragment>
+    ${lidFragment('vRest')}
     { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); ${skinGLSL('h', '1.0')} }`)
     .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));'); };
 function buildModel() {
   const geo = getModelGeo();
-  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 }, hideHead: { value: 0 }, hideBody: { value: 0 }, cSkin: { value: new THREE.Vector3(1, 1, 1) } };
+  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 }, hideHead: { value: 0 }, hideBody: { value: 0 }, cSkin: { value: new THREE.Vector3(1, 1, 1) }, face: { value: new THREE.Vector2(0, 0) }, cLid: { value: lidColor(LID_BASE) } };
   // 남송이오름(새 그림체)에서는 3단 툰 명암
   const mat = NSMODE ? new THREE.MeshToonMaterial({ map: modelTex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: modelTex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   // 텍스처 색과 부위(기본 자세 위치)로 모자·상의·바지·신발을 가려 옷 색을 바꿈
   mat.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, U); patchDQS(sh);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack, noStrap, hideHead, hideBody; uniform vec3 cSkin;\n' + HSV_GLSL)
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\n' + LID_VERT).replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;\n' + lidVertex('position'));
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cHat, cShirt, cPants, cShoes; uniform vec4 on, hide; uniform float hidePack, noStrap, hideHead, hideBody; uniform vec3 cSkin;\n' + HSV_GLSL + LID_FRAG)
       .replace('#include <map_fragment>', `#include <map_fragment>
+      ${lidFragment('vRest')}
       { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); float y = vRest.y; float ax = abs(vRest.x);
         if (hideHead > 0.5 && y > 0.595) discard; // 머리 장비(#51)가 목 위를 덮음
         if (hideBody > 0.5 && ax < 0.37 && y < 0.6) discard; // 옷(#52)이 손 빼고 몸 전체를 덮음 (재킷·반바지·운동화·배낭 감춤)
@@ -164,7 +189,7 @@ function buildModel() {
         holder.add(obj);
       } else { obj = src; const j = JOINT[a.bone || 'chest']; obj.position.sub(new THREE.Vector3(...j)); bones[a.bone || 'chest'].add(obj); }
       obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
-      if (a.skinTint) mats.forEach((m) => { m.onBeforeCompile = patchHead(U); });
+      if (a.skinTint) mats.forEach((m) => { m.onBeforeCompile = patchHead(U, a.lid); });
       worn[slot].obj = obj; worn[slot].mats = mats;
     }
     // 감출 부분 다시 계산
@@ -179,7 +204,7 @@ function buildModel() {
     Object.values(worn).forEach((w) => { const t = ACCESSORIES[w.key]?.tint || {}; w.mats.forEach((m) => { const part = TINT[t[m.userData.name]]; const c = part && of[part]?.color; m.color.set(c && c.toLowerCase() !== MODEL_DEFAULT[part] ? c : m.userData.def);
       if (m.userData.name === 'skin') m.color.set(skinCol); else if (m.userData.name === 'foot') m.color.set(footCol); // 옷(#52)의 맨살·발
       m.emissive.copy(m.color).multiplyScalar(NSMODE ? 0.16 : 0.32); }); }); };
-  return { holder, mesh, mat, bones, set, wear };
+  return { holder, mesh, mat, bones, set, wear, U };
 }
 const qTmp = new THREE.Quaternion(), eTmp = new THREE.Euler();
 const LEG_M = (P.hipY - 0.01) * MODEL_S; // 모델 다리 길이(골반 관절 → 발바닥)
@@ -197,6 +222,10 @@ function throwKey(t) {
   const a = K[i], b = K[i + 1]; let f = (t - a[0]) / (b[0] - a[0]); f = f * f * (3 - 2 * f);
   return a.map((v, j) => v + (b[j] - v) * f);
 }
+// 깜빡임 거리 생략 (#74): 이 카메라에서 BLINK.far 보다 먼 캐릭터는 눈을 뜬 채로 둠
+let blinkCam = null;
+export const setBlinkCamera = (cam) => { blinkCam = cam; };
+const _bp = new THREE.Vector3();
 export function buildRunner(opts = {}) {
   const root = new THREE.Group();
   const SKIN_C = opts.skin || SKIN;
@@ -379,7 +408,28 @@ export function buildRunner(opts = {}) {
   const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
   // pose: 'move' | 'wave' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail' | 'fish'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
-  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4 }) {
+  // 눈 (#74): 사람마다 박자가 다름(처음 간격 무작위). face: 'shut' 감은 채(쓰러짐), 'wide' 크게(받힘·놀람). lid(0..1) 를 주면 그대로 (확인용)
+  const eye = { next: BLINK.gapMin + Math.random() * (BLINK.gapMax - BLINK.gapMin), t: -1, again: false, lid: 0, wide: 0, far: false };
+  function tickEyes(dt, face, lid, pose) {
+    const F = model.U.face.value;
+    if (blinkCam && lid == null) { root.getWorldPosition(_bp); const far = _bp.distanceToSquared(blinkCam.position) > BLINK.far * BLINK.far;
+      if (far) { if (!eye.far) { eye.far = true; F.set(0, 0); } return; } eye.far = false; }
+    if (pose === 'flail' && !face) face = 'wide';
+    eye.wide += ((face === 'wide' ? 1 : 0) - eye.wide) * Math.min(1, dt * (face === 'wide' ? 18 : 5));
+    if (lid != null) eye.lid = lid;
+    else if (face === 'shut') eye.lid = Math.min(1, eye.lid + dt / BLINK.close);
+    else if (face === 'wide') { eye.lid = 0; eye.t = -1; }
+    else {
+      if (eye.t < 0) { eye.next -= dt; if (eye.next <= 0) { eye.t = 0; eye.again = Math.random() < BLINK.twice; eye.next = BLINK.gapMin + Math.random() * (BLINK.gapMax - BLINK.gapMin); } }
+      if (eye.t >= 0) { eye.t += dt; const { close: c, hold: h, open: o } = BLINK, u = eye.t;
+        eye.lid = u < c ? u / c : u < c + h ? 1 : Math.max(0, 1 - (u - c - h) / o);
+        if (u >= c + h + o) { eye.lid = 0; if (eye.again) { eye.again = false; eye.t = -1; eye.next = BLINK.twiceGap; } else eye.t = -1; } }
+      else if (eye.lid > 0) eye.lid = Math.max(0, eye.lid - dt / BLINK.open); // 감았다가(쓰러짐) 다시 뜸
+    }
+    F.set(eye.lid, eye.wide);
+  }
+  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null }) {
+    if (model) tickEyes(dt, face, lid, pose);
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'carry');
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
@@ -511,5 +561,5 @@ export function buildRunner(opts = {}) {
   const setPhase = (ph) => { st.phase = ph; st.blend = 1; };
   // 장비 하나만 바꾸기 (확인용). 저장되는 값은 outfit.gear
   const setGear = (slot, key) => { if (model && ACCESSORIES[key]) model.wear(slot, key); };
-  return { root, apply, animate, setTint, setPhase, setGear };
+  return { root, apply, animate, setTint, setPhase, setGear, eye: model ? eye : null };
 }

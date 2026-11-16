@@ -61,7 +61,7 @@ function step(dt) {
   runners.forEach(({ r, x, heading }) => {
     const z = 0; r.root.position.set(x, heightAt(z), z); r.root.rotation.y = heading;
     const k = state.slope * Math.cos(heading); // 진행 방향 기울기
-    r.animate(dt, { speed: state.pose === 'move' ? state.speed : 0, running: state.running, pose: state.pose, t, breath: 0, air: false, jumpV: 0, slope: k, tool: +(q.get('tool') || 1), dur: +(q.get('dur') || 0.6) });
+    r.animate(dt, { speed: state.pose === 'move' ? state.speed : 0, running: state.running, pose: state.pose, t, breath: 0, air: false, jumpV: 0, slope: k, tool: +(q.get('tool') || 1), dur: +(q.get('dur') || 0.6), lid: q.has('lid') ? +q.get('lid') : null, face: q.get('face') || null }); // ?lid=0..1 눈 감김 고정, ?face=wide|shut (#74)
   });
 }
 // 고정 위상 렌더(확인용): ?phase=1.3

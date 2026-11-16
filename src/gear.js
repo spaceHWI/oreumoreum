@@ -36,11 +36,11 @@ export const ACCESSORIES = {
   // ---- 모자 ----
   'hat:cap': { slot: 'hat', label: '초록 모자', builtin: true },
   // 머리 3종 (#51): 목 위 머리 전체(얼굴·머리카락)를 바꿈. 몸에 구운 머리·모자는 감추고(hide head), 피부색은 몸과 같이 따라감(skinTint)
-  // #52 부터 머리는 모자와 다른 칸(hair). 키 이름은 예전 저장과 맞추려고 그대로 'hat:' 로 둠
+  // lid: 텍스처 피부색(눈꺼풀 색, #74). #52 부터 머리는 모자와 다른 칸(hair). 키 이름은 예전 저장과 맞추려고 그대로 'hat:' 로 둠
   'hair:base': { slot: 'hair', label: '구운 머리', builtin: true },
-  'hat:short': { slot: 'hair', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_SHORT) },
-  'hat:bob': { slot: 'hair', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BOB) },
-  'hat:bun': { slot: 'hair', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, build: fromData(HEAD_BUN) },
+  'hat:short': { slot: 'hair', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [230, 193, 157], build: fromData(HEAD_SHORT) },
+  'hat:bob': { slot: 'hair', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 152], build: fromData(HEAD_BOB) },
+  'hat:bun': { slot: 'hair', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 150], build: fromData(HEAD_BUN) },
   'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
     build: (mat) => { const m = mat('main', '#c8553d');
       const top = M(new THREE.SphereGeometry(0.235, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.79, 0.02); top.scale.set(1.06, 0.9, 1.0);
