@@ -16,7 +16,7 @@ const RING = 2 * Math.PI * 40;
 // 들것 든 사람: 지금 그림체 캐릭터, 흰 옷(조끼 대신 흰 재킷)·흰 모자
 const CREW_OUTFIT = (base) => ({ ...base, hat: { type: 'cap', color: '#ecebe4', back: false }, shirt: { type: 'tee', color: '#f4f3ee' }, pants: { ...base.pants, color: '#3d4352' }, shoes: { ...base.shoes, color: '#2a2a30' }, gear: { back: 'back:none', hand: 'hand:none' } });
 
-export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp }) {
+export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp, regenMul }) {
   let hp = HP.max, sinceHit = 99, pending = false, down = null, flashT = 0;
   if (!save.hpDown || typeof save.hpDown !== 'object') save.hpDown = {};
   const D = save.hpDown;
@@ -180,7 +180,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
   function update(dt, P) {
     if (!enabled()) { if (down) { finish(P); hideCrew(); } pending = false; hp = HP.max; ui(dt); return false; }
     sinceHit += dt;
-    if (!down && !pending && hp < HP.max && sinceHit >= HP.regenDelay) hp = Math.min(HP.max, hp + HP.regen * dt);
+    if (!down && !pending && hp < HP.max && sinceHit >= HP.regenDelay) hp = Math.min(HP.max, hp + HP.regen * (regenMul ? regenMul() : 1) * dt); // 식사 버프(#50)
     if (down) step(dt, P);
     tickLeave(dt);
     ui(dt);

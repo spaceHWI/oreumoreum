@@ -407,7 +407,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (!tg.drop && !tg.enemyHit && (enemies.hitTest(p, tg, THROW_DMG.hand) || extraHit(p, tg, THROW_DMG.hand))) tg.enemyHit = true; // 적 (#37) · 투기꾼 (#47)
+      if (!tg.drop && !tg.enemyHit && (enemies.hitTest(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1)) || extraHit(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1)))) tg.enemyHit = true; // 적 (#37) · 투기꾼 (#47)
       for (const hb of hareubangs) {
         const hd = Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z);
         if (hd < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3 && !tg.hbHit) {

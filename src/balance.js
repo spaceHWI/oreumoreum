@@ -381,3 +381,27 @@ export const HP = {
   riseT: 0.9, leaveT: 3, // 일어나는 시간, 들것 든 사람이 떠나는 시간
   poleY: 0.74, // 들고 갈 때 들것 높이
 };
+
+// 레스토랑 스톤 (#50): 들머리 개울 건너 물가. 귤을 내고 식사하면 버프 (한 번에 하나, 새로 먹으면 바뀜)
+// 귤 = 메뉴판 가격 × 10. buff: speed 이동 속도·bag 배낭 용량·dmg 귤 무기 피해·pick 줍는 속도(배)·regen HP 회복 속도(배). v 는 더하는 비율(regen 은 곱하는 배수)
+// battle: 전투 오름에서만 살 수 있음 (깨끗한 오름에선 흐리게). sec: 버프 시간(없으면 buffSec)
+export const STONE = {
+  buffSec: 600,
+  menu: [
+    { id: 'pasta', ko: '시그니처 매콤 크림 파스타', en: 'Signature Spicy Cream Sauce Pasta', price: 190, buff: 'speed', v: 0.2, food: '#f2a65a' },
+    { id: 'gnocchi', ko: '시그니처 새우 비스큐 뇨끼', en: 'Signature King Prawn Bisque Gnocchi', price: 200, buff: 'bag', v: 0.3, food: '#e0703c' },
+    { id: 'steak', ko: '시그니처 포크 스테이크', en: 'Signature Pork Steak', price: 290, buff: 'dmg', v: 0.5, battle: true, food: '#7a4a2c' },
+    { id: 'pizza', ko: '마르게리따', en: 'Pizza Margherita', price: 180, buff: 'pick', v: 0.25, food: '#e8b04a' },
+    { id: 'salad', ko: '하우스 리코타 샐러드', en: 'House Ricotta Salad', price: 100, buff: 'regen', v: 2, battle: true, food: '#7fb65a' },
+    { id: 'ade', ko: '플럼 에이드', en: 'Plum Ade', price: 50, buff: 'speed', v: 0.1, sec: 300, food: '#c2416b', drink: true },
+  ],
+  // 자리: 개울 좌표(stream.js 와 같음) lat 상류 쪽(시작에서 오름을 볼 때 왼쪽), 물 가장자리에서 bank 떨어져 테라스, 그 뒤 건물. 앞(테라스)이 개울·바다(서쪽)를 봄
+  site: { lat: -17, bank: 2.6 },
+  W: 9, D: 6, H: 3.2, T: 4, // 건물 폭·깊이·벽 높이, 테라스 깊이
+  clearR: 13, // 이 안의 나무·바위는 심지 않음
+  keepR: 30, // 이 안엔 몹이 나오지 않음 (쓰레기 더미는 충돌로 비켜 감)
+  r: 7, // 테라스 가운데에서 이 거리 안이면 상호작용이 '식사'
+  eatT: 4.5, // 먹는 연출 (건너뛸 수 있음)
+  walkMax: 3, // 자리까지 걸어가다 이 초가 넘으면 바로 앉힘
+  markFar: 160, markNear: 16, // 가장자리 포크·나이프 표시: 이 거리 사이일 때
+};

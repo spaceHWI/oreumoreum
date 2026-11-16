@@ -349,3 +349,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 모델: 클린하우스 ↔ 구역 왕복(직선 × 1.15, 달리기 10 × 신발) + 더미 사이 걷기 + 줍기(time ÷ per) + 버리기. 구역 1 부터 차례로, 버릴 때마다 살 수 있는 장비 중 (오름 한 번 치우는 귤/초 증가 ÷ 값) 이 큰 것부터. 투기꾼 3분마다(절반 쫓아냄), 몹 2분마다(전투 오름, 모두 쫓아냄·쓰러짐 안 셈). 옷 제외
 - 장비·귤 활 값은 `balance.js` 와 `notes/spec.md` 장비 표. 흡입기 한 번 3개(초당 12), 낚시 귤 5 → 1·드문 것 5% → 1%
 - 정상 구역이 가깝고 더미가 몰려 있어 귤/초로만 고르면(`--greedy`) 3일차부터 정상으로 감. 구역 순서대로 가게 하려면 지도나 몹으로 막아야 함 (지금은 안 막음)
+
+## 레스토랑 스톤 (#50)
+- 자리 `src/stone.js stoneSite(crossLine(TUT.streamD), insideBy)`: 개울 좌표 lat `STONE.site.lat`(-17, 상류 = 시작에서 오름을 볼 때 왼쪽), 물 건너 가장자리 + `bank` 에 테라스 앞끝, 그 뒤 건물. 앞(+Z)이 개울·서쪽 바다를 봄. `buildNamsongi({ clear })` 로 반경 `clearR` 안 나무·바위를 안 심음. 충돌을 쓰레기 더미보다 먼저 등록, 둘레 `keepR` 은 `life.hooks.spawnBlock` 로 몹 막음
+- 모양 `createStone`: 현무암 블록 쌓은 벽(앞 큰 창 둘 + 문), 평지붕·밝은 처마, 문 위 간판(캔버스: 로고 `src/stonelogo.js` = logo.png 200px 알파 PNG + 'Stone'), 나무 테라스(addWalkable)·탁자 셋·의자·파라솔, 전구 줄, 양옆 야자수. 밤엔 창·전구·빛웅덩이(+ LOW 아니면 PointLight). 로우폴리 임시
+- 메뉴·값·버프 `balance.js STONE.menu` (귤 = 메뉴판 × 10). 팝업 `#stone`(page.html, 폰은 아래 시트): 로고·표어 + 메뉴 카드(음식 그림 `src/stoneicons.js FOOD_SVG`, 한글·영문 이름, 귤, 버프 아이콘·수치·분). 깨끗한 오름에선 battle 메뉴(스테이크·샐러드) 흐리게·잠금
+- 주문: 귤 빠짐 → 가운데 탁자 의자로 걸어감(`walkMax` 넘으면 바로 앉힘) → pose 'sit' 으로 앉아 접시 음식이 줄어듦(`eatT`) → 버프. 상호작용(건너뛰기)·이동 키·조이스틱으로 바로 끝냄, 걷다가 움직여도 바로 버프. 정낭이 열린 뒤에만 '식사'(튜토리얼 귤 보호)
+- 버프 `src/buff.js`: `save.buff = { id, left }`, 실제 시간으로 줄어듦(1초 넘게 끊긴 동안은 안 셈, 게임을 끈 동안 그대로). `buff.mul(kind)` → speed 이동(want 에 곱함)·bag `bagCap()`·pick `toolNow().time ÷`·dmg 화살 `w.dmg`·손 귤 `life.hooks.dmgMul`·regen `createHp({ regenMul })`. 끝나서 배낭이 넘치면 그냥 가득 찬 상태
+- HUD `#buff-pill`(아이콘 + 남은 시간 고리·m:ss, 깨끗한 오름에서 전투 버프면 흐림), 가장자리 `#stone-mark` 포크·나이프(`markNear`~`markFar`). 업적 이벤트 `meal`, `meal-<id>`
+- 확인용 `__oreum.stone`: go(), open(), order(id), finish(), meal(), mul(k), cap(), tool(), buff
