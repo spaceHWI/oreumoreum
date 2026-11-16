@@ -432,6 +432,7 @@ export const SHOP_ST = {
 export const SHOPS = [
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone' },
   { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon' },
+  { id: 'leap', name: 'LEAP', lot: 2, act: '옷', ic: 'wear', pop: 'leap' },
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -456,6 +457,13 @@ export const SALON = {
   walkMax: 4, // 문 앞까지 걸어가다 이 초가 넘으면 바로 앉힘
   cutT: 3, // 가위질 연출 (건너뛸 수 있음)
   snipHz: 3.2, // 초당 가위질
+};
+
+// LEAP (#59): 가게 거리 2번 터의 러닝 편집숍. 옷(WEAR·CLOTHES)과 신발(SHOES)을 귤로 삼. 가판대에는 도구·배낭·무기만
+export const LEAP = {
+  W: 8, D: 6, H: 3.8, fore: 1.6, // 건물 폭·깊이·높이, 터 앞에서 건물 앞벽까지
+  r: 6, // 문 앞에서 이 거리 안이면 상호작용이 '옷'
+  slots: ['shoes', 'hat', 'top', 'bottom', 'vest', 'jacket', 'socks'], // 팝업 칸 순서 (신발이 맨 앞)
 };
 
 // 옷 (#52): 입는 것마다 능력치. 겉모습과 능력치가 묶여 있음 (입은 것이 곧 능력). 도구·배낭·신발·무기는 위 표 그대로

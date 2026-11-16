@@ -664,6 +664,40 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
   .menu-grid { grid-template-columns: 1fr; gap: 6px; }
   .menu-card { grid-template-columns: 54px 1fr; } .menu-card svg.food { width: 54px; height: 54px; } .hair-card .food { width: 54px; height: 54px; } #shoppop.wide .shop-logo { width: 140px; height: 40px; }
 }
+/* LEAP (#59): 콘크리트 회색 바탕에 검정 기울임 로고. 배경을 어둡게 하지 않고 오른쪽(폰은 아래 시트)에 띄워 가운데 캐릭터가 보이게 */
+#shoppop.leap.overlay { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; place-items: center end; }
+#shoppop.leap .pop { width: min(430px, 100%); max-height: calc(100% - 24px); display: flex; flex-direction: column; background: #3e3f3d; }
+#shoppop.leap .pop-body { overflow: auto; min-height: 0; }
+#shoppop.leap .shop-logo { background: #b4b5b1; border-radius: 6px; }
+#shoppop-tabs[hidden] { display: none; }
+#shoppop-tabs.shop-tabs { padding: 10px 12px 2px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+#shoppop-tabs button { flex: 1 0 auto; flex-direction: column; gap: 1px; padding: 5px 6px; border-radius: 12px; min-width: 46px; }
+#shoppop-tabs button svg { width: 24px; height: 24px; }
+#shoppop-tabs button span { font-size: 10.5px; }
+#shoppop.leap .menu-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+.leap-card .food { width: 64px; height: 64px; grid-row: span 2; border-radius: 14px; background: rgba(255,255,255,.1); display: grid; place-items: center; position: relative; overflow: hidden; }
+.leap-card .food svg { width: 50px; height: 50px; }
+.leap-card .food .tc { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--tc); }
+.leap-card .st { display: inline-flex; align-items: center; gap: 3px; font-family: var(--display); font-weight: 800; font-size: 12px; opacity: 1 !important; }
+.leap-card .st svg { width: 13px; height: 13px; opacity: .75; }
+.leap-card .st s { text-decoration: none; opacity: .55; font-weight: 600; }
+.leap-card .st em { font-style: normal; color: var(--acc); }
+.leap-card .have { width: 22px; height: 22px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; }
+.leap-card .have svg { width: 14px; height: 14px; }
+.leap-card.sel { box-shadow: inset 0 0 0 2px #fff; background: rgba(255,255,255,.16); }
+.leap-card.locked .food { opacity: .55; }
+.leap-buy { grid-column: 1 / -1; position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-radius: 18px; background: #2b2c2a; box-shadow: 0 -6px 16px rgba(0,0,0,.25); }
+.leap-buy b { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 15px; margin-bottom: 3px; }
+.leap-buy .tdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.leap-buy .tier-buy { min-height: 44px; }
+@media (max-width: 600px) {
+  #shoppop.leap.overlay { place-items: end stretch; }
+  #shoppop.leap .pop { max-height: 52%; }
+  #shoppop-tabs button { min-width: 40px; padding: 5px 3px; } #shoppop-tabs button span { display: none; }
+  #shoppop.leap .menu-grid { grid-template-columns: 1fr 1fr; }
+  .leap-card { grid-template-columns: 44px 1fr; padding: 6px; } .leap-card .food { width: 44px; height: 44px; border-radius: 10px; } .leap-card .food svg { width: 36px; height: 36px; }
+  .leap-card .mn b { font-size: 12px; }
+}
 #buff-pill { gap: 7px; padding: 0 11px 0 4px; }
 #buff-pill[hidden] { display: none; }
 #buff-pill .ring { position: relative; width: 28px; height: 28px; flex: none; }
@@ -888,6 +922,7 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 <div class="overlay dim" id="shoppop" hidden>
   <div class="panel pop" role="dialog" aria-label="가게">
     <div class="shop-head"><span class="shop-logo"><img id="shoppop-logo" alt=""></span><span class="shop-title"><b id="shoppop-name"></b><small id="shoppop-tag"></small></span><span class="coins-pill"><i></i><span id="shoppop-coins">0</span></span><button type="button" class="btn small" id="shoppop-close" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="shoppop-tabs" hidden></div>
     <div class="pop-body"><div class="menu-grid" id="shoppop-cards"></div></div>
   </div>
 </div>

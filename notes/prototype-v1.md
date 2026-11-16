@@ -400,3 +400,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 공용 팝업 `#shoppop.wide`: 로고 자리가 넓은 간판 그림, 이름 글자는 숨김
 - 확인용 `__oreum.salon`: go(), open(), order(id), sit(), finish(), cut()
 
+
+## LEAP (#59)
+- 가게 거리 2번 터 (`balance.js SHOPS` 줄 leap, `LEAP` 수치·칸 순서 `slots`). 모양 `src/leap.js createLeap`: 노출 콘크리트 판 벽(판마다 색 조금씩), 바닥부터 띠 아래까지 유리 진열창(검은 창살·유리문), 위 콘크리트 띠에 굵은 검정 기울임 'LEAP'(`drawLeapSign`, 팝업 로고 `leapLogo()` 같은 그림), 안은 뒷벽 러닝화 선반 네 단·옷걸이·마네킹·계산대, 밖에 검은 A자 입간판·화분. 로우폴리 임시, 나중에 Tripo 모델·실제 로고로. 바닥 밑 풀은 `buildNamsongi lanes` 에 건물 자리를 더해 없앰
+- 팝업은 공용 `#shoppop` + `.leap`(어둡게 안 하고 오른쪽, 폰은 아래 시트 52%) + 칸 줄 `#shoppop-tabs`(SHOP_POP 의 `tabs`). 열면 `onOpen` → 캐릭터가 골목 쪽을 보고 서고 `cam.mode 'leap'` 이 앞에서 비춤(맞은편 가게에 안 묻히게 가까이). 닫히면 `tickLeap` 이 알아채 차림·카메라를 되돌림
+- 칸: 신발(SHOES, 차례대로 사고 가장 좋은 것을 신음, 앞 단계 전엔 잠금)·모자·티셔츠·바지·베스트·잠바·양말(#52 WEAR·CLOTHES 그대로, '없음' 카드로 벗기). 안 가진 카드를 누르면 입어 보기(`leapTryOn`, 저장 안 함) + 아래 사기 바. 가진 옷은 눌러서 바로 갈아입음
+- 가판대에는 도구·배낭·무기만 (LEAP 이 있는 맵에서 신발·옷 탭 숨김, `gearKeys` 에서 신발 뺌 → 버린 뒤 가판대 화살표도 신발로는 안 뜸). 옷장의 '상점' 버튼도 숨김. LEAP 이 없는 맵은 예전 그대로
+- 업적 이벤트 `clothes-buy`, `clothes-buy-<칸>` (신발은 예전 `gear-buy`·`gear-buy-shoes` 도 그대로 나감). 옷 살 때 나가던 `gear-buy` 는 뺌
+- 확인용 `__oreum.leap`: go(), open(), slot(k), items(), pick(id), buy(id?), state()
