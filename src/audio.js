@@ -342,6 +342,20 @@ export class Sound {
       o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.75);
     });
   }
+  // 구역에 꽃이 만발 (#46): 밝게 올라가는 종소리 + 반짝임
+  bloom() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t0 = c.currentTime;
+    [587.3, 740, 880, 1174.7, 1480, 1760].forEach((fr, i) => {
+      const t = t0 + i * 0.13, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = fr; o2.type = 'triangle'; o2.frequency.value = fr * 2.01;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0008, t + 1.1);
+      o.connect(g); o2.connect(g); g.connect(this.sfx); o.start(t); o2.start(t); o.stop(t + 1.2); o2.stop(t + 1.2);
+    });
+    const n = c.createBufferSource(); n.buffer = this.noise; const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000; const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.025, t0 + 0.4); g.gain.exponentialRampToValueAtTime(0.0005, t0 + 1.8);
+    n.connect(hp); hp.connect(g); g.connect(this.sfx); n.start(t0); n.stop(t0 + 1.9);
+  }
   coin() {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

@@ -3,7 +3,7 @@
 // 경계는 지형으로: 정상 둘레 → 말굽 능선 둘레 → 굼부리(말굽 안쪽 + 북쪽 원형 굼부리) → 남·동쪽 높은 사면 → 나머지 자락
 // 위치로 구역 번호를 구하는 곳은 zoneAt 하나뿐
 import { relAt, nsPaths, nsSummit, nsDistToRim } from './namsongi.js';
-import { onOreum } from './nsbound.js';
+import { onOreum, boundLine } from './nsbound.js';
 import { ZONE_SHAPE as ZS } from './balance.js';
 
 // 말굽 굼부리: 능선 선을 북쪽 끝과 남쪽 끝을 이어 닫은 다각형
@@ -24,3 +24,7 @@ export function zoneAt(x, z) {
   return 1;
 }
 export const CRATER = { x: CRC[0], z: CRC[1], r: CRAD };
+
+// 구역 격자 범위 (#46): 돌담 선을 감싸는 정사각형. 땅·풀 셰이더의 구역 번호 격자(ZN 칸)가 씀
+export const ZONE_BOX = (() => { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; boundLine.forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); });
+  const size = Math.max(x1 - x0, z1 - z0) + 40, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2; return { x0: cx - size / 2, z0: cz - size / 2, size }; })();
