@@ -48,7 +48,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   if (!pts || !pts.walk || !stream || !jeong) { return none; }
   const steps = ['walk', 'run', 'pick', 'dump', 'bonus', 'tongs', 'bag', 'gate'];
   // 단계마다 새로 나오는 UI. 줍기 버튼(E)은 pick, 상호작용 버튼(F)은 클린하우스에 버릴 때(dump)부터 (#34)
-  const UNLOCK = { walk: ['move'], run: ['speed', 'jump'], pick: ['pick', 'bag'], dump: ['interact'], bonus: ['gyul'] };
+  const UNLOCK = { walk: ['move'], run: ['speed', 'jump'], pick: ['pick', 'bag', 'clean'], dump: ['interact'], bonus: ['gyul'] }; // 위쪽 줄 (#75): 귤·배낭·깨끗한 정도는 차례에, 구역·좌표·업적(hud)은 끝나면
   const card = document.createElement('div'); card.id = 'tut-hint'; card.hidden = true; document.body.append(card);
   const arrowEl = document.createElement('div'); arrowEl.id = 'tut-arrow'; arrowEl.className = 'panel round'; arrowEl.hidden = true; arrowEl.innerHTML = '<i class="dot"></i><i class="tip"></i>'; document.body.append(arrowEl);
   const skip = document.createElement('button'); skip.type = 'button'; skip.id = 'tut-skip'; skip.className = 'panel round'; skip.title = '튜토리얼 건너뛰기'; skip.setAttribute('aria-label', '튜토리얼 건너뛰기');
@@ -70,8 +70,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   const phone = () => isTouch;
   const show = (icon) => { card.innerHTML = svg(ICON[icon]); card.hidden = false; card.classList.remove('tut-in'); void card.offsetWidth; card.classList.add('tut-in'); };
   const hide = () => { card.hidden = true; };
-  const unlock = (name) => { document.querySelectorAll(`[data-tut="${name}"]`).forEach((el) => { if (el.classList.contains('tut-on')) return; el.classList.add('tut-on', 'tut-pop'); setTimeout(() => el.classList.remove('tut-pop'), 900); });
-    if (name === 'gyul' && matchMedia('(max-width: 600px)').matches) { const c = document.getElementById('ach-chip'); if (c && !c.classList.contains('tut-on')) c.classList.add('tut-on', 'tut-pop'); } }; // 폰은 귤이 업적 칩 안에 있음
+  const unlock = (name) => { document.querySelectorAll(`[data-tut="${name}"]`).forEach((el) => { if (el.classList.contains('tut-on')) return; el.classList.add('tut-on', 'tut-pop'); setTimeout(() => el.classList.remove('tut-pop'), 900); }); };
   const target = (v, r = TUT.ringR) => { tgt = v ? new THREE.Vector3(v.x, 0, v.z) : null; tgtR = r; if (tgt) tgt.y = height(tgt.x, tgt.z); };
   const fwd = new THREE.Vector3(Math.sin(pts.gate.dir), 0, Math.cos(pts.gate.dir));
   const pastGate = () => (player.pos.x - pts.gate.x) * fwd.x + (player.pos.z - pts.gate.z) * fwd.z > 1.5;

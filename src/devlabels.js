@@ -2,14 +2,15 @@
 import * as THREE from 'three';
 
 export const UI_LABELS = [
-  ['UI-01', '장소·닉네임 패널', '.hud-left .place, #place-name'],
-  ['UI-02', '귤 개수', '.gyul'],
-  ['UI-03', '오늘의 업적 칩', '#ach-chip'],
-  ['UI-04', '해돋이·해넘이 칩', '#sun-chip'],
-  ['UI-05', '걸음·둘레·체력', '.hud-right > .panel:first-child'],
-  ['UI-07', '소리 버튼', '#btn-sound'],
-  ['UI-08', '나침반', '#compass'],
-  ['UI-09', '조작 안내 문구', '#hint'],
+  ['UI-01', '귤', '#gyul-pill'],
+  ['UI-02', '배낭', '#bag-pill'],
+  ['UI-03', '깨끗한 정도', '#clean-pill'],
+  ['UI-04', 'HP', '#hp-bar'],
+  ['UI-05', '버프', '#buff-pill'],
+  ['UI-06', '구역', '#zone-pill'],
+  ['UI-07', '좌표·방위', '#xy-pill'],
+  ['UI-08', '오늘의 업적', '#ach-chip'],
+  ['UI-09', '소리 (메뉴 안)', '#menu-sound'],
   ['UI-10', '알림 토스트', '#toast'],
   ['UI-11', '업적 달성 배너', '#banner'],
   ['UI-12', '이동 조이스틱', '#joy'],

@@ -242,7 +242,6 @@ function applySky() {
   nsAfter(); applyWx(el);
   sunState = { el, az, k, golden: g };
   sound.setDaylight?.(k);
-  updateSunChip();
 }
 // 날씨 반영 (#18): 빛·안개·구름·하늘 회색기·풀 흔들림. 밤낮 계산이 끝난 값 위에 얹는다
 const wxGray = new THREE.Color();
@@ -259,8 +258,7 @@ function applyWx(el) {
   }
   void day;
 }
-function updateWxChip() { const k = wx.kind, el = $('wx-pill'); if (!el) return; el.hidden = false; el.innerHTML = wxIcon(k); el.title = '지금 날씨: ' + WX[k].name + (wx.forced ? ' (테스트)' : ''); }
-wx.onChange(() => { updateWxChip(); wxT = 0; });
+wx.onChange(() => { wxT = 0; });
 let wxT = 0;
 function sunEvent() {
   const t = nowDate().getTime();
@@ -268,13 +266,6 @@ function sunEvent() {
   if (r && t > r - 25 * 60000 && t < r + 30 * 60000) return 'sunrise';
   if (s && t > s - 30 * 60000 && t < s + 25 * 60000) return 'sunset';
   return null;
-}
-function updateSunChip() {
-  const ev = sunEvent(); const chip = $('sun-chip');
-  if (!ev) { chip.hidden = true; return; }
-  chip.hidden = false;
-  const tt = ev === 'sunrise' ? todayTimes.rise : todayTimes.set;
-  chip.textContent = ev === 'sunrise' ? `해돋이 ${fmtKST(tt)} · 정상에서 동쪽을 보세요` : `해넘이 ${fmtKST(tt)} · 정상에서 서쪽을 보세요`;
 }
 
 // ---------- 소품 ----------
@@ -465,21 +456,31 @@ function ease(dt, snap, k) {
 }
 
 // ---------- UI 기본 ----------
-const ui = { steps: $('steps'), laps: $('laps'), nick: $('nick'), ctx: $('btn-ctx'), toast: $('toast'), hint: $('hint') };
-ui.nick.textContent = save.nick;
-$('place-name').textContent = spots.name;
-$('laps-row').hidden = !spots.laps;
-ui.hint.textContent = isTouch ? '왼쪽 아래 조이스틱으로 이동 · 화면을 끌어 둘러보기' : 'W/S 앞뒤 · A/D 방향 · 땅 클릭 이동 · 끌어서 둘러보기 · E 상호작용 · F 줍기(누르고 있기)';
-let hintHidden = false;
-function hideHint() { if (hintHidden) return; hintHidden = true; ui.hint.classList.add('fade'); }
+const ui = { ctx: $('btn-ctx'), toast: $('toast') }; // 위쪽 줄 (#75): 장소·닉네임·걸음·날씨·나침반·조작 안내 문구는 뺌 (걸음은 메뉴에)
+// 위쪽 한 줄이 넘치면 단계적으로 줄임 (#75): 1 구역+좌표 하나로, 2 업적 고리는 메뉴로, 3 단위·여백 줄이기. 두 줄이 되지 않게
+const topFit = (() => {
+  const bar = $('topbar'), L = bar.querySelector('.tb-l'), C = bar.querySelector('.tb-c'), R = bar.querySelector('.tb-r');
+  let dirty = true, t = 0, bottom = 48, vis = '';
+  const gap = (el) => parseFloat(getComputedStyle(el).columnGap) || 0;
+  const need = () => { // HP 막대는 줄어들 수 있으니 가장 작은 폭으로 셈
+    const cs = [...C.children].filter((e) => !e.hidden && e.offsetWidth > 0);
+    const cw = cs.reduce((a, e) => a + (e.id === 'hp-bar' ? parseFloat(getComputedStyle(e).minWidth) || 56 : e.offsetWidth), 0) + Math.max(0, cs.length - 1) * gap(C);
+    return L.offsetWidth + R.offsetWidth + cw + gap(bar) * (cw > 0 ? 2 : 1);
+  };
+  function fit() {
+    dirty = false;
+    for (let k = 0; k <= 6; k++) { bar.dataset.fit = String(k); for (let i = 1; i <= 6; i++) bar.classList.toggle('f' + i, i <= k); if (need() <= bar.clientWidth + 0.5) break; }
+    bottom = bar.getBoundingClientRect().bottom || bottom;
+  }
+  addEventListener('resize', () => { dirty = true; t = 0; });
+  return { dirty: () => { dirty = true; }, tick(dt) { const v = `${$('hp-bar').hidden}${$('buff-pill').hidden}${document.body.classList.contains('tut')}`; if (v !== vis) { vis = v; dirty = true; t = 0; } t -= dt; if (dirty && t <= 0) { t = 0.2; fit(); } }, fit, get bottom() { return bottom; } };
+})();
 let toastT = 0;
 function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; toastT = sec; }
 initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () => (save.equip.bag === 0 ? '호주머니' : '배낭') } }); // #60 UI 누르면 토스트
 let lastCoins = -1;
 function updateStats() {
-  ui.steps.textContent = player.steps.toLocaleString('ko-KR');
-  ui.laps.textContent = player.laps;
-  if (save.coins !== lastCoins) { lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; $('coins2').textContent = c; $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
+  if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop'];
@@ -511,13 +512,13 @@ function onAchievement(r) {
 }
 function tickBanner(dt) {
   if (document.body.classList.contains('tut')) return; // 튜토리얼 중엔 조용히. 보상은 업적 창에 남아 있음
-  if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) $('banner').hidden = true; return; }
+  if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) { $('banner').hidden = true; document.body.classList.remove('banner-on'); } return; }
   const b = bannerQueue.shift(); if (!b) return;
   $('banner-bdg').innerHTML = iconSvg(b.icon); $('banner-bdg').style.background = b.color;
   $('banner-title').textContent = b.title; $('banner-sub').textContent = b.sub;
-  $('banner').hidden = false; bannerT = 4.5;
+  $('banner').hidden = false; document.body.classList.add('banner-on'); bannerT = 4.5;
 }
-$('banner-go').addEventListener('click', () => { $('banner').hidden = true; bannerT = 0; openAch(); });
+$('banner-go').addEventListener('click', () => { $('banner').hidden = true; document.body.classList.remove('banner-on'); bannerT = 0; openAch(); });
 function refreshAchUI() {
   const d = ach.ensureDaily();
   const done = d.items.filter((x) => x.done).length;
@@ -527,8 +528,8 @@ function refreshAchUI() {
   if (!$('ach').hidden) buildAch();
 }
 function openAch() { closePanels(); buildAch(); $('ach').hidden = false; }
-$('ach-chip').addEventListener('click', (e) => { if (e.target.closest('#chip-gyul')) openShop('gear'); else openAch(); });
-{ const g = document.querySelector('.hud-left .gyul') || document.querySelector('.gyul'); g.addEventListener('click', () => openShop('gear')); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openShop('gear'); } }); }
+$('ach-chip').addEventListener('click', openAch);
+{ const g = $('gyul-pill'); g.addEventListener('click', () => openShop('gear')); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openShop('gear'); } }); }
 $('btn-ach').addEventListener('click', openAch);
 function buildAch() {
   const d = ach.ensureDaily();
@@ -637,7 +638,7 @@ const joy = { active: false, id: null, x: 0, y: 0, cx: 0, cy: 0 };
   const el = $('joy'), knob = $('joy-knob');
   const R = 46;
   const setKnob = () => { knob.style.transform = `translate(${joy.x * R}px, ${joy.y * R}px)`; };
-  el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); const r = el.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; joy.active = true; joy.id = e.pointerId; move(e); closePanelsSoft(); hideHint(); });
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); const r = el.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; joy.active = true; joy.id = e.pointerId; move(e); closePanelsSoft(); });
   const move = (e) => { if (!joy.active || e.pointerId !== joy.id) return; let dx = (e.clientX - joy.cx) / R, dy = (e.clientY - joy.cy) / R; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } joy.x = dx; joy.y = dy; setKnob(); };
   el.addEventListener('pointermove', move);
   const end = (e) => { if (e.pointerId !== joy.id) return; joy.active = false; joy.id = null; joy.x = joy.y = 0; setKnob(); };
@@ -672,7 +673,7 @@ function tapGround(x, y) {
   setTarget(hit.point, null);
 }
 function setTarget(p, onArrive) {
-  player.target = p.clone(); player.onArrive = onArrive; hideHint();
+  player.target = p.clone(); player.onArrive = onArrive;
   marker.position.set(p.x, height(p.x, p.z) + 0.15, p.z); marker.visible = !onArrive;
 }
 const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', KeyT: 't', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
@@ -681,7 +682,7 @@ addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   const k = keyOf(e);
   keys.add(k);
-  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { hideHint(); if (k.startsWith('arrow')) e.preventDefault(); }
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { if (k.startsWith('arrow')) e.preventDefault(); }
   if (e.repeat) return;
   if (k === '1') doWave();
   if (k === '2') startBreath();
@@ -759,7 +760,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   }
 }
 $('menu-ach').addEventListener('click', () => openAch());
-$('menu-sound').addEventListener('click', () => $('btn-sound').click());
+$('menu-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
 $('act-chat').addEventListener('click', () => openChat());
 function doWave() {
   if (busy()) return;
@@ -914,7 +915,7 @@ function tickEdgeAim() {
   edgeEls.forEach((el, i) => {
     const e = list[i]; el.hidden = !e; if (!e) return;
     const k = 1 / Math.max(Math.abs(e.x), Math.abs(e.y), 1e-3), x = e.x * k, y = e.y * k;
-    const px = Math.min(W - m, Math.max(m, (x * 0.5 + 0.5) * W)), py = Math.min(H - m, Math.max(m, (-y * 0.5 + 0.5) * H));
+    const px = Math.min(W - m, Math.max(m, (x * 0.5 + 0.5) * W)), py = Math.min(H - m, Math.max(topFit.bottom + 72, (-y * 0.5 + 0.5) * H));
     const near = 1 - e.d / THROW_AIM.edgeRange, sc = 0.7 + 0.5 * near, ang = Math.atan2(-e.y, e.x) * 180 / Math.PI + 90;
     el.style.transform = `translate(${px - 22}px, ${py - 22}px) scale(${sc})`; el.style.opacity = String(0.45 + 0.55 * near);
     el.style.setProperty('--a', ang + 'deg');
@@ -1151,7 +1152,6 @@ const net = createNet({
   extra: () => social.presenceExtra(),
   onToast: (m) => toast(m),
   onPeersChanged: (n, hand) => {
-    $('peers').textContent = n > 0 ? `함께 ${n + 1}명` : '혼자';
     $('handreq').hidden = !hand.pendingFrom;
     if (hand.pendingFrom) { const e = net.peersById.get(hand.pendingFrom); $('handreq-who').textContent = e ? e.nick : '러너'; }
     $('btn-release').hidden = !hand.with;
@@ -1546,18 +1546,18 @@ function updateTrashUI(bump) {
   const cs = c > 0 && c < 10 ? c.toFixed(1) : String(Math.floor(c));
   const key = `${vol}/${cap}/${cs}`;
   const pk = save.equip.bag === 0; if ($('bag-pill').classList.contains('pocket') !== pk) { $('bag-pill').classList.toggle('pocket', pk); $('bag-pill').title = pk ? '호주머니: 담은 양 / 용량' : '배낭: 담은 양 / 용량 (부피)'; } // 배낭이 없으면 호주머니 아이콘 (#31)
-  if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('bag-pill').classList.toggle('full', vol >= cap); }
+  if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('clean-ring').setAttribute('stroke-dasharray', `${(Math.min(100, c) / 100 * 37.7).toFixed(1)} 37.7`); $('bag-pill').classList.toggle('full', vol >= cap); topFit.dirty(); }
   // 지금 구역 번호·깨끗한 정도 (#45). 들머리(0)에서는 숨김
   const zc = zoneNow ? Math.floor(trash.zoneClean(zoneNow) * 100) : 0;
   const zb = bloom ? bloom.bloomed().join('') : '', zk = `${zoneNow}/${zc}/${zb}`;
-  if (zk !== lastZoneUI) { lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-c').textContent = zc; $('zone-pill').classList.toggle('done', zc >= 100);
-    // 꽃 아이콘 (#46): 지금 구역이 다 피었으면 구역 꽃 색, 전체 표시 옆엔 다 핀 구역마다 작은 꽃
-    const bl = !!(bloom && zoneNow && bloom.isBloomed(zoneNow)); $('zone-pill').classList.toggle('bloom', bl); if (bl) $('zone-pill').style.setProperty('--bloom', BLOOM.zones[zoneNow].color);
-    const row = $('bloom-row'); row.hidden = !zb; row.innerHTML = [...zb].map((z) => `<i style="--bloom:${BLOOM.zones[z].color}" title="${z}구역 ${BLOOM.zones[z].name}"></i>`).join(''); }
+  if (zk !== lastZoneUI) { lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
+    // 꽃 아이콘 (#46): 지금 구역이 다 피었으면 꽃 모양(귤색), 깨끗한 정도 옆엔 다 핀 구역마다 작은 점. 색은 흰색·귤색만 (#75)
+    const bl = !!(bloom && zoneNow && bloom.isBloomed(zoneNow)); $('zone-pill').classList.toggle('bloom', bl);
+    const row = $('bloom-row'); row.hidden = !zb; row.innerHTML = [...zb].map((z) => `<i title="${z}구역 ${BLOOM.zones[z].name}"></i>`).join(''); topFit.dirty(); }
   if (bump) { const b = $('bag-pill'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
 }
 if (trash) {
-  $('trash-hud').hidden = false;
+  $('bag-pill').hidden = $('clean-pill').hidden = false; topFit.dirty();
   trash.on((ev, d) => {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
@@ -1660,7 +1660,7 @@ function placeArrow(el, wp, lift) {
   if (vis) { sx = (x * 0.5 + 0.5) * W; sy = (-y * 0.5 + 0.5) * H - 30; ang = Math.PI / 2; }
   else {
     // 가운데에서 그 방향으로 뻗어 화면 안쪽 테두리에 닿는 곳
-    const phone = W <= 600, mL = 40, mR = 40, mT = phone ? 110 : 90, mB = phone ? 190 : 120;
+    const phone = W <= 600, mL = 40, mR = 40, mT = topFit.bottom + 72, mB = phone ? 190 : 120; // 위쪽 줄·토스트 아래 (#75)
     let dx = x * W / 2, dy = -y * H / 2; if (Math.hypot(dx, dy) < 1e-3) dy = 1;
     const cx = W / 2, cy = H / 2;
     const tx = dx > 0 ? (W - mR - cx) / dx : dx < 0 ? (mL - cx) / dx : 1e9, ty = dy > 0 ? (H - mB - cy) / dy : dy < 0 ? (mT - cy) / dy : 1e9;
@@ -1987,7 +1987,7 @@ function closeWardrobe() { $('wardrobe').hidden = true; cam.mode = 'follow'; if 
 $('wardrobe-shop').addEventListener('click', () => { closeWardrobe(); openShop('wear'); });
 $('wardrobe-shop').hidden = !!LEAPB; // 옷은 LEAP 에서 삼 (#59)
 $('wardrobe-done').addEventListener('click', closeWardrobe);
-$('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; ui.nick.textContent = save.nick; $('nick-mirror').textContent = save.nick; persist(); });
+$('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; $('nick-mirror').textContent = save.nick; persist(); });
 
 function openSign() { closePanels(); $('sign').hidden = false; ach.emit('sign'); }
 $('sign-body').innerHTML = spots.sign.html;
@@ -2075,7 +2075,7 @@ function makeEdgeWarn(id, html, dur) {
       if (v.z > 1) { x = -x; y = -y; } // 뒤쪽이면 뒤집음
       const W = innerWidth, H = innerHeight, m = 34;
       { const k = 1 / Math.max(Math.abs(x), Math.abs(y), 1e-3); x *= k; y *= k; } // 늘 가장자리, 무리 쪽 방향
-      const px = Math.min(W - m, Math.max(m, (x * 0.5 + 0.5) * W)), py = Math.min(H - m, Math.max(m, (-y * 0.5 + 0.5) * H));
+      const px = Math.min(W - m, Math.max(m, (x * 0.5 + 0.5) * W)), py = Math.min(H - m, Math.max(topFit.bottom + 72, (-y * 0.5 + 0.5) * H));
       el.style.transform = `translate(${px - 22}px, ${py - 22}px)`; el.style.opacity = String(Math.min(1, t * 2) * (0.75 + 0.25 * Math.abs(Math.sin(t * 9))));
     },
     get t() { return t; },
@@ -2140,7 +2140,7 @@ function tickJuice(dt) {
 }
 // 귤이 화면 위에서 쏟아져 귤 알약으로 들어감 (첫 보너스 #31)
 function gyulShower(n) {
-  updateStats(); const pill = document.querySelector('.gyul'), cands = [pill.querySelector('i'), $('chip-gyul')].map((e) => e && e.getBoundingClientRect()).filter((r) => r && r.width > 0), tgt = cands[0] || { left: 24, top: 24 }, k = LOW ? 14 : 28;
+  updateStats(); const pill = $('gyul-pill'), r0 = pill.querySelector('i').getBoundingClientRect(), tgt = r0.width > 0 ? r0 : { left: 24, top: 24 }, k = LOW ? 14 : 28;
   for (let i = 0; i < k; i++) setTimeout(() => {
     const dot = document.createElement('div'); dot.className = 'fx-gyul'; const sx = innerWidth * (0.3 + Math.random() * 0.4), sy = -20 - Math.random() * 30;
     dot.style.left = sx + 'px'; dot.style.top = sy + 'px'; document.body.append(dot);
@@ -2171,8 +2171,7 @@ life.hooks.hitRunner = (who) => {
   else net.hitPeer(who);
 };
 runner.setTint(false);
-function setSoundUI() { const b = $('btn-sound'); b.setAttribute('aria-pressed', String(sound.on)); $('menu-sound').setAttribute('aria-pressed', String(sound.on)); b.querySelector('span').textContent = sound.on ? '소리 켜짐' : '소리 꺼짐'; }
-$('btn-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); setSoundUI(); });
+function setSoundUI() { $('menu-sound').setAttribute('aria-pressed', String(sound.on)); }
 // ---------- 서버 고르기 (#35) ----------
 let introSrv = save.server || null; // 처음 온 사람은 아직 안 고름
 const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -2422,7 +2421,7 @@ function adaptQuality(dt) {
 }
 if ((navigator.hardwareConcurrency || 8) <= 4 || /Android|iPhone|iPad/.test(navigator.userAgent)) { quality.level = 1; sun.shadow.mapSize.set(1024, 1024); }
 
-const tmpDir = new THREE.Vector3(); const compassDial = document.getElementById('compass-dial'); let compassRot = null;
+const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
 function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
@@ -2448,10 +2447,13 @@ function frame(now) {
   tickCairnLod(dt);
   cairns.forEach((c) => { if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
   clouds.rotation.y += dt * 0.012;
-  { // 나침반: 화면이 보는 방향 기준으로 다이얼 회전 (북쪽 = -z)
+  { // 좌표 (#75, 나침반 대신): X·Z 정수 + 화면이 보는 방향 기준 북쪽(-z) 화살표
     camera.getWorldDirection(tmpDir); const ang = Math.atan2(tmpDir.x, -tmpDir.z) * 180 / Math.PI;
-    const r = Math.round(-ang * 2) / 2; if (r !== compassRot) { compassRot = r; compassDial.setAttribute('transform', `rotate(${r})`); }
+    const r = Math.round(-ang); if (r !== compassRot) { compassRot = r; compassDial.setAttribute('transform', `rotate(${r})`); }
+    const X = Math.round(player.pos.x), Z = Math.round(player.pos.z), xs = X + ',' + Z;
+    if (xs !== xyTxt) { const dk = `${String(X).length},${String(Z).length}`; if (dk !== xyDk) { xyDk = dk; topFit.dirty(); } xyTxt = xs; xyX.textContent = X; xyZ.textContent = Z; } // 자릿수가 바뀔 때만 폭 다시 잼
   }
+  topFit.tick(dt);
   G.uT.value = now / 1000; G.uP.value.copy(player.pos); if (player.air) G.uP.value.y = 1e6;
   wx.update(dt, player.pos, wx.cur.wind); sound.setRain?.(wx.cur.snd); wxT -= dt; if (wxT <= 0 && !wx.settled) { wxT = 0.25; applySky(); }
   prints.update(dt); grass.update(player.pos, camera.position); if (save.gfx !== 'lite') motes.update(player.pos, now / 1000, dt, lampNight);
@@ -2513,7 +2515,7 @@ function frame(now) {
 addEventListener('resize', resize);
 resize();
 cairns.forEach(layoutCairn);
-applySky(); updateWxChip();
+applySky();
 refreshAchUI();
 setGait(0);
 followCam(0, true);
@@ -2523,7 +2525,7 @@ requestAnimationFrame(frame);
 const tutTrashLeftList = () => (trash ? (spots.tut?.trash || []).filter((_, k) => !trash.store.isTutPicked(k)) : []);
 const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLeftList()) { const d = Math.hypot(t.x - player.pos.x, t.z - player.pos.z); if (d < bd) { bd = d; b = t; } } return b; };
 const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH, onDone: () => updateTrashUI(false) });
-if (NS_TUT && tut.active) { document.body.classList.add('tut'); hideHint(); }
+if (NS_TUT && tut.active) document.body.classList.add('tut');
 else if (!NS_TUT && save.tut && !save.tut.done) { save.tut.done = true; persist(); }
 // ---------- 낚시 (#44) ----------
 // 보상은 F 로 당기는 순간: 물고기 = 귤 5 + 도감 '개울' 칸, 쓰레기 = 호주머니·배낭(클린하우스에서 귤), 드문 것 = 배낭 + 도감(드문 것 귤)
