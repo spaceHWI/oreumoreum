@@ -666,6 +666,20 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   b.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !t0) { e.preventDefault(); t0 = performance.now(); raf = requestAnimationFrame(tick); } });
   b.addEventListener('keyup', stop); b.addEventListener('blur', stop);
 }
+// 개발자 버튼 (#43): ?hwi=1 로 한 번 들어오면 이 기기에 기억, ?hwi=0 으로 끔. 저장 키를 따로 써서 리셋해도 남음
+{
+  const HK = 'oreumoreum.hwi'; let on = false;
+  try { const q = new URLSearchParams(location.search).get('hwi'); if (q === '1') localStorage.setItem(HK, '1'); else if (q === '0') localStorage.removeItem(HK); on = localStorage.getItem(HK) === '1'; } catch (e) { /* 저장 불가 환경 */ }
+  $('m-dev').hidden = !on;
+  if (on) {
+    $('dev-reset').addEventListener('click', () => {
+      resetting = true;
+      try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); } catch (e) { /* 무시 */ }
+      location.reload();
+    });
+    $('dev-gyul').addEventListener('click', () => { save.coins += 10000; persist(); updateStats(); sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
+  }
+}
 $('menu-ach').addEventListener('click', () => openAch());
 $('menu-sound').addEventListener('click', () => $('btn-sound').click());
 $('act-chat').addEventListener('click', () => openChat());
