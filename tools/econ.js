@@ -29,7 +29,7 @@ async function live() {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 480, height: 300 } });
   await p.goto('file://' + path.join(__dirname, '../dist/test.html') + '#namsongi'); await p.waitForTimeout(6000);
-  await p.click('#intro-srv button').catch(() => {}); await p.click('#enter-quiet').catch(() => {}); await p.waitForTimeout(5000);
+  await p.click('#enter').catch(() => {}); await p.click('#intro-srv button').catch(() => {}); await p.click('#srv-go').catch(() => {}); await p.waitForTimeout(5000);
   const r = await p.evaluate(() => { const o = window.__oreum, f = o.cleanhouse.api.front; return { front: { x: f.x, z: f.z }, heaps: o.trash.heaps().map((h) => [h.zone, h.k, h.x, h.z]) }; });
   await b.close();
   const o = { note: 'tools/econ.js 가 쓰는 남송이 더미 자리·클린하우스 앞 (node tools/econ.js --live 로 다시 뽑음)', front: { x: +r.front.x.toFixed(1), z: +r.front.z.toFixed(1) }, heaps: r.heaps.map((h) => [h[0], h[1], +h[2].toFixed(1), +h[3].toFixed(1)]) };

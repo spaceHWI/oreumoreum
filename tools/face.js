@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
  const p = await b.newPage({viewport:{width:760,height:300}});
  p.on('pageerror',e=>console.log('ERR',e.message));
  await p.goto('file://'+process.cwd()+'/dist/test.html#namsongi'); await p.waitForTimeout(6000);
- await p.click('#enter-quiet').catch(()=>{}); await p.waitForTimeout(1500);
+ await p.click('#enter').catch(()=>{}); await p.waitForTimeout(1500);
  const setup = async (offs, dist, fov, gap, lift) => { await p.evaluate(([dist,fov])=>{ const o=window.__oreum; o.setTod(11); document.body.style.visibility='hidden'; o.renderer.domElement.style.visibility='visible';
    const s=o.spots.start; o.tp(s.x, s.z, 0, 0.02, dist, 0); o.camObj.fov=fov; o.camObj.updateProjectionMatrix(); }, [dist,fov]);
   await p.waitForTimeout(2500);

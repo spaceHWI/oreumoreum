@@ -503,3 +503,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - main.js: tipState() 가 상태(배낭 가득·살 수 있는 장비·HP 낮음·적 가까움·개울 가까움·가만히 있던 시간)를 줌. 일이 한 번 일어난 팁은 tips.event(carried·heapClear·dumper·rare·buffEnd). 튜토리얼·토스트·패널·식사·미용·쓰러짐 중엔 미룸
 - 위쪽 #tip(아이콘+한 줄, 4초). 갈 곳이 있으면 눌러서: 상점 열기·클린하우스 자동 걷기·도감·더미/개울/스톤 쪽 방향 표시(shopMark 재사용 6초)
 - 임시: 아이콘·문구 임시, 멀티 없음. 테스트: __oreum.save.tips, 배낭 가득(trash.fillBag)
+
+## 첫 화면과 로고 (2026-11-16, #72)
+- logo.js: '오름오름' 로고를 글꼴 없이 둥근 선(path)으로 그림. 시안 3개(logoSvg(n, {dark})), 지금 쓰는 것은 LOGO_PICK=1(겹친 능선 위 글자, 첫 '오'의 ㅇ 이 귤). logoMark() 는 글자 없는 파비콘. 시안 비교는 빌드 때 dist/logo-sian.html (dev 게시: /dev/logo-sian.html)
+- 첫 화면 #intro: 로고 + 카드 하나(BETA·버전, 베타 안내 한 줄, 최근 릴리스 노트 TITLE.notes 줄 + 더 보기, 시작). 탐방로·서버·소리 고르기는 뺌. 서버를 아직 안 골랐으면 시작 다음 단계(#intro-step)에서 고름. 이미 골랐으면 바로 입장(서버는 메뉴에서 바꿈)
+- 소리는 기본 켬. 메뉴에서 끄면 save.soundOff=1 로 기억 (예전 저장엔 없음 → 켬)
+- 첫 화면이 떠 있는 동안 cam.mode='title': 정상 표지석 둘레를 천천히 돎(TITLE r·up·lookUp·spin). 시작하면 캐릭터 뒤로 바로 옮김. 첫 화면 위로 뜨는 화살표·표시는 CSS 로 감춤. 메뉴 '도움말'로 열면 어둡게 깔고 시작 버튼이 '닫기'
+- 파비콘(data URI)·og:image(src/og.png, tools/og.mjs 로 다시 만듦)·description 은 build.mjs 가 dist/index.html 머리에 넣음. publish.yml 이 og.png·logo-sian.html 도 함께 올림. 사진 틀 오른쪽 아래 글자 대신 로고
+- 도구 스크립트의 입장 클릭은 #enter → #intro-srv button → #srv-go

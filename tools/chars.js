@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
  const p = await b.newPage({viewport:{width:1040,height:520}});
  p.on('pageerror',e=>console.log('ERR',e.message)); let nc=0; p.on('console',m=>{ if(m.type()==='error'&&nc++<4) console.log('CON',m.text().slice(0,500)); });
  await p.goto('file://'+process.cwd()+'/dist/test.html'+(process.argv[2]?'?fov='+process.argv[2]:'')+'#darangswi'); await p.waitForTimeout(3500);
- await p.click('#enter-quiet'); await p.waitForTimeout(500);
+ await p.click('#enter'); await p.waitForTimeout(500);
  await p.evaluate(()=>{ const o=window.__oreum; o.setTod(11); o.runner.root.visible=false; document.querySelectorAll('.hud,.pad,.dock,#ach-chip,#hint,#compass,#toast').forEach(e=>e.style.visibility='hidden');
   const sx=0, sz=o.spots.start.z-6, H=o.height;
   const base=JSON.parse(JSON.stringify(o.save.outfit));

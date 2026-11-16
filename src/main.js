@@ -3,7 +3,8 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC, TITLE } from './balance.js';
+import { logoSvg, LOGO_PICK, svgUrl } from './logo.js';
 import { STREET } from './streetlayout.js';
 import { createShopStreet, SHOP_BUILD, SHOP_ICON, SCISSORS, SHIRT } from './shops.js';
 import { leapLogo } from './leap.js';
@@ -455,6 +456,17 @@ function followCam(dt, snap) {
   camTarget.pos.copy(p); camTarget.look.copy(look);
   ease(dt, snap, 8);
 }
+// 첫 화면 (#72): 정상 표지석 둘레를 천천히 돎. 시작하면 캐릭터 뒤로 바로 옮김
+let titleT = 0;
+function titleCam(dt) {
+  titleT += dt;
+  const c = P.stone, a = player.heading + Math.PI + titleT * TITLE.spin;
+  camTarget.look.set(c.x, c.y + TITLE.lookUp, c.z);
+  camTarget.pos.set(c.x + Math.sin(a) * TITLE.r, 0, c.z + Math.cos(a) * TITLE.r);
+  camTarget.pos.y = Math.max(c.y + TITLE.up, height(camTarget.pos.x, camTarget.pos.z) + 8);
+  ease(dt, titleT === dt, 3);
+}
+function endTitleCam() { if (cam.mode !== 'title') return; cam.mode = 'follow'; followCam(0, true); }
 function ease(dt, snap, k) {
   const a = snap ? 1 : 1 - Math.exp(-dt * k);
   cam.pos.lerp(camTarget.pos, a); cam.look.lerp(camTarget.look, a);
@@ -804,7 +816,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   }
 }
 $('menu-ach').addEventListener('click', () => openAch());
-$('menu-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
+$('menu-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); save.soundOff = sound.on ? 0 : 1; persist(); setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
 // 배경 음악 켜기/끄기·크기 (#64). save.music = { on, vol }
 $('menu-music').addEventListener('click', () => { save.music.on = save.music.on ? 0 : 1; sound.setMusic(save.music.on); if (save.music.on && !sound.on) sound.start(); setSoundUI(); persist(); });
 $('music-vol').addEventListener('input', (e) => { save.music.vol = Math.round(+e.target.value) / 100; sound.setMusicVol(save.music.vol); if (save.music.vol > 0 && !save.music.on) { save.music.on = 1; sound.setMusic(1); } setSoundUI(); });
@@ -992,6 +1004,9 @@ function openNotes() {
   $('notes').hidden = false;
 }
 $('intro-notes').addEventListener('click', openNotes);
+// 첫 화면 (#72): 최근 릴리스 노트 몇 줄 + 로고
+RELEASE_NOTES[0]?.items.slice(0, TITLE.notes).forEach((t) => { const li = document.createElement('li'); li.textContent = t; $('intro-rn').append(li); });
+$('intro-logo').insertAdjacentHTML('beforeend', logoSvg(LOGO_PICK));
 $('menu-notes').addEventListener('click', () => { closePanels(); openNotes(); });
 $('menu-feedback').addEventListener('click', () => { closePanels(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); });
 $('feedback-input').addEventListener('input', () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / 1000`; });
@@ -1007,7 +1022,7 @@ $('feedback-form').addEventListener('submit', async (e) => {
   else if (r === 'none') { open(`https://github.com/spaceHWI/oreumoreum/issues/new?title=${encodeURIComponent('[의견] ' + text.slice(0, 40))}&body=${encodeURIComponent(text + '\n\n---\n' + MAP_ID + ' · ' + meta.w + 'x' + meta.h)}`, '_blank'); $('feedback').hidden = true; }
   else toast('보내지 못했어요. 잠시 후 다시 보내 주세요');
 });
-$('menu-help').addEventListener('click', () => { closePanels(); $('intro').hidden = false; $('intro-help').hidden = false; });
+$('menu-help').addEventListener('click', () => { closePanels(); $('intro').classList.add('dim'); document.body.classList.add('intro-help-on'); $('enter').textContent = '닫기'; $('intro-main').hidden = false; $('intro-step').hidden = true; $('intro').hidden = false; $('intro-help').hidden = false; });
 
 // 노루 타기
 function mountDeer(d) {
@@ -1127,6 +1142,7 @@ $('wish-form').addEventListener('submit', (e) => {
 
 // 표지석 인증샷 (줄서기)
 let photoState = null, photoWaiting = false, captureNext = false;
+const logoImg = new Image(); logoImg.src = svgUrl(logoSvg(LOGO_PICK)); // 사진 틀에 넣을 로고 (#72)
 function startPhoto() {
   social.joinQueue();
   const spot = photoSpot.clone().addScaledVector(summitOut, 2.5).addScaledVector(summitTan, -2);
@@ -1183,8 +1199,8 @@ function capture() {
   const ds = kstDate().replace(/-/g, '.');
   const badges = Object.keys(ach.state.badges).length;
   g.fillText(`${save.nick} · ${ds} · ${player.steps.toLocaleString('ko-KR')}걸음 · 뱃지 ${badges}개`, pad, ph + pad + 116);
-  g.textAlign = 'right'; g.fillStyle = '#9c4a33'; g.font = '700 30px "Noto Sans KR", sans-serif';
-  g.fillText('오름오름', W + pad, ph + pad + 70);
+  if (logoImg.complete && logoImg.naturalWidth) { const lh = 92, lw = lh * logoImg.naturalWidth / logoImg.naturalHeight; g.drawImage(logoImg, W + pad - lw, ph + pad + 22, lw, lh); } // 사진 틀 로고 (#72)
+  else { g.textAlign = 'right'; g.fillStyle = '#9c4a33'; g.font = '700 30px "Noto Sans KR", sans-serif'; g.fillText('오름오름', W + pad, ph + pad + 70); }
   out.toBlob((blob) => { $('photo-img').src = URL.createObjectURL(blob); setTimeout(() => { $('photo').hidden = false; }, 350); }, 'image/png');
   ach.emit('photo');
 }
@@ -2111,7 +2127,6 @@ function leaveTo(id) {
   $('flash').hidden = false; $('flash').classList.remove('go'); $('flash').style.transition = 'opacity .5s'; $('flash').style.opacity = '0'; requestAnimationFrame(() => { $('flash').style.opacity = '1'; });
   setTimeout(() => switchMap(id), 520);
 }
-buildMapPick($('intro-pick'), false); $('intro-pick').hidden = true;
 
 // ---------- 소리·후크 ----------
 const sound = new Sound();
@@ -2293,9 +2308,8 @@ function buildSrvPick(box, sel, onPick) {
 }
 function syncIntroSrv() {
   buildSrvPick($('intro-srv'), introSrv, (id) => { introSrv = id; syncIntroSrv(); });
-  $('enter-sound').disabled = $('enter-quiet').disabled = !introSrv;
+  $('srv-go').disabled = !introSrv;
 }
-syncIntroSrv();
 // 시작 화면에서 고른 서버 적용 (아직 아무것도 시작하기 전이라 새로고침 없이 바꿔 끼움)
 function applyIntroSrv() {
   if (!introSrv) return;
@@ -2312,22 +2326,29 @@ function openServer() {
   $('server').hidden = false;
 }
 $('menu-server').addEventListener('click', openServer);
-function enter(withSound) {
-  if (!introSrv) return;
+// 첫 화면 (#72): 시작 → (서버를 아직 안 골랐으면) 서버 고르기 → 입장. 소리는 기본 켬, 메뉴에서 끄면 기억함
+function closeIntro() {
+  $('intro').hidden = true; $('intro-help').hidden = true; $('intro').classList.remove('dim'); document.body.classList.remove('intro-help-on'); $('enter').textContent = '시작';
+}
+function enter() {
+  if (sessionOn) { closeIntro(); return; } // 메뉴의 도움말에서 연 경우
+  if (!introSrv) { $('intro-main').hidden = true; $('intro-step').hidden = false; syncIntroSrv(); return; }
+  const withSound = !save.soundOff;
   applyIntroSrv(); startSession();
   if (introMap !== MAP_ID) { save.introSound = withSound ? 1 : 0; switchMap(introMap); return; }
   if (withSound) sound.start();
   setSoundUI();
   canvas.focus({ preventScroll: true });
-  $('intro').hidden = true; $('intro-help').hidden = true;
+  closeIntro(); endTitleCam();
   if (!save.entered) { save.entered = 1; persist(); awe = 5; cam.dist = 30; cam.pitch = 0.35; $('intro-help').hidden = false; }
   if (!save.look) openLook();
 }
-$('enter-sound').addEventListener('click', () => enter(true));
-$('enter-quiet').addEventListener('click', () => enter(false));
+$('enter').addEventListener('click', enter);
+$('srv-go').addEventListener('click', () => { if (introSrv) enter(); });
 document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
 if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (!save.look) openLook(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
+if ($('intro').hidden) endTitleCam(); else cam.mode = 'title'; // 첫 화면이 떠 있는 동안은 오름을 도는 카메라 (#72)
 if (prevMap && prevMap !== MAP_ID && prevMap !== 'gate' && MAP_ID !== 'gate') ach.emit('visit-other');
 if (Object.keys(ach.state.visited).length >= 2 && !ach.state.badges['b-both']) ach.emit('visit-both');
 
@@ -2579,6 +2600,7 @@ function frame(now) {
 
   if (cam.mode === 'free') { /* 디버그 */ }
   else if (cam.mode === 'follow') followCam(dt, false);
+  else if (cam.mode === 'title') titleCam(dt);
   else if (cam.mode === 'leap') { // LEAP 입어 보기 (#59): 골목 쪽 가까이에서(맞은편 가게에 안 묻히게). 폰은 아래 시트 위로 캐릭터가 오게 내려다봄
     const narrow = innerWidth <= 600, yaw = player.heading, look = player.pos.clone();
     if (narrow) look.y -= 0.35; else { look.y += 1.1; look.add(new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(1.5)); }

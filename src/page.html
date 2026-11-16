@@ -338,6 +338,24 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .beta-chip { color: var(--acc-fg); border: 0; border-radius: 999px; padding: 1px 7px; }
 .intro-notice { background: rgba(255,255,255,.08); border: 0; border-radius: 14px; } .intro-notice b { color: #fff; }
 #intro-help { border-top: 1px solid var(--hair); }
+/* 첫 화면 (#72): 천천히 도는 오름 위에 로고 + 현무암 카드 하나(베타 안내·릴리스 노트·시작) */
+#intro { place-items: stretch; padding-top: var(--safe-t); padding-bottom: var(--safe-b); }
+.intro-wrap { display: grid; grid-template-rows: 1fr auto; justify-items: center; align-items: center; gap: 16px; padding: 16px 0; min-height: 0; }
+.intro-logo { margin: 7vh 0 0; align-self: start; width: min(440px, 86vw); line-height: 0; }
+.intro-logo svg { width: 100%; height: auto; display: block; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.intro-beta { margin: 0 0 10px; font-size: 13px; color: var(--ink-soft); }
+.intro-rn { text-align: left; background: rgba(255,255,255,.08); border-radius: 14px; padding: 8px 12px 10px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.5; }
+.intro-rn ul { margin: 0 0 4px; padding-left: 16px; color: var(--ink-soft); }
+.intro-rn ul li::marker { color: var(--acc); }
+.intro-rn .linkish { font-size: 12px; color: var(--ink-soft); }
+.intro-go { width: 100%; font-size: 18px; font-weight: 800; padding: 12px 16px; }
+.intro-go:disabled { opacity: .4; pointer-events: none; }
+.intro-step-h { margin: 2px 0 0; font-family: var(--display); font-weight: 800; font-size: 17px; }
+body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #tut-skip, #tut-hint, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
+body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { display: none; }
+@media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; } }
+
 /* 서버 고르기 (#35): 그림 카드 둘 */
 .srv-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 12px; }
 .srv-pick button { position: relative; padding: 0; border: 2px solid var(--hair); border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.08); aspect-ratio: 16 / 11; cursor: pointer; transition: transform .15s, border-color .15s, opacity .15s; }
@@ -1032,21 +1050,21 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   </div>
 </div>
 
-<div class="overlay dim" id="intro">
-  <div class="panel intro-card">
-    <svg class="oreum-mark" viewBox="0 0 120 56" aria-hidden="true"><path d="M4 52 C24 50 30 14 46 12 C52 11 56 18 60 18 C64 18 68 11 74 12 C90 14 96 50 116 52 Z" fill="#4f7a36" stroke="#33402a" stroke-width="3" stroke-linejoin="round"/><path d="M40 52 C46 40 52 34 60 30" fill="none" stroke="#9c4a33" stroke-width="3" stroke-dasharray="4 3"/><path d="M80 30 l4 -6 l4 6 z" fill="#d6b864"/></svg>
-    <h1>오름오름</h1>
-    <div class="ver-line"><span class="beta-chip">BETA</span> <span id="ver-text"></span> · <button type="button" class="linkish" id="intro-notes">릴리스 노트</button></div>
-    <div class="map-pick" id="intro-pick"></div>
-    <div class="srv-pick" id="intro-srv" role="radiogroup" aria-label="서버 고르기"></div>
-    <div class="intro-actions">
-      <button type="button" class="btn primary" id="enter-sound">소리 켜고 오르기</button>
-      <button type="button" class="btn" id="enter-quiet">조용히 오르기</button>
-    </div>
-    <div class="intro-notice">
-      <p><b>베타 테스트 중이에요.</b> 기능과 밸런스가 자주 바뀌고, 업데이트 중에 기록이 초기화될 수 있어요.</p>
-      <p><b>기록은 이 브라우저에만 저장돼요.</b> 브라우저 데이터를 지우거나 다른 기기·브라우저로 들어오면 귤·업적·뱃지·옷이 이어지지 않아요.</p>
-    </div>
+<div class="overlay" id="intro">
+  <div class="intro-wrap">
+    <h1 class="intro-logo" id="intro-logo"><span class="vh">오름오름</span></h1>
+    <div class="panel intro-card">
+      <div id="intro-main">
+        <div class="ver-line"><span class="beta-chip">BETA</span> <span id="ver-text"></span></div>
+        <p class="intro-beta">베타 테스트 중이에요. 기록이 초기화될 수 있어요.</p>
+        <div class="intro-rn"><ul id="intro-rn"></ul><button type="button" class="linkish" id="intro-notes">릴리스 노트 더 보기</button></div>
+        <button type="button" class="btn primary intro-go" id="enter">시작</button>
+      </div>
+      <div id="intro-step" hidden>
+        <p class="intro-step-h">어느 오름으로 갈까요?</p>
+        <div class="srv-pick" id="intro-srv" role="radiogroup" aria-label="서버 고르기"></div>
+        <button type="button" class="btn primary intro-go" id="srv-go" disabled>들어가기</button>
+      </div>
     <div id="intro-help" hidden>
       <span class="touch-only"><b>이동</b> 왼쪽 아래 조이스틱 · 땅을 탭해도 걸어가요</span>
       <span class="desk-only"><b>이동</b> W/S 앞뒤 · A/D 방향 · 땅 클릭 · Shift 걷기·달리기·질주 · Space 점프</span>
@@ -1055,6 +1073,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
       <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가판대·돌탑·표지석·쉼터 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
       <span><b>귤</b> 길에서 줍고 업적으로 받아요. 던지면 노루·말이 먹고 따라와요</span>
       <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
+    </div>
     </div>
   </div>
 </div>

@@ -7,7 +7,7 @@ const { chromium, devices } = require('playwright');
   await p.goto('file://'+process.cwd()+'/dist/test.html#namsongi'); await p.waitForTimeout(5000);
   const n=mob?'m':'d';
   await p.screenshot({path:`dist/u-${n}0.png`,timeout:150000});
-  await p.click('#enter-quiet').catch(()=>{}); await p.waitForTimeout(1500);
+  await p.click('#enter').catch(()=>{}); await p.waitForTimeout(1500);
   await p.evaluate(()=>{ const o=window.__oreum; o.setTod(15); o.save.tut.done=true; document.body.classList.remove('tut'); const h=document.getElementById('tut-hint'); if(h) h.hidden=true; });
   await p.waitForTimeout(4000); await p.screenshot({path:`dist/u-${n}1.png`,timeout:150000});
   await p.click('#btn-menu'); await p.waitForTimeout(1200); await p.screenshot({path:`dist/u-${n}2.png`,timeout:150000});

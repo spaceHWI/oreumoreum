@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
  const p = await b.newPage({viewport:{width:1400,height:700}});
  p.on('pageerror',e=>console.log('ERR',e.message));
  await p.goto('file://'+process.cwd()+'/dist/test.html#darangswi'); await p.waitForTimeout(3000);
- await p.click('#enter-quiet'); await p.waitForTimeout(500);
+ await p.click('#enter'); await p.waitForTimeout(500);
  await p.evaluate(()=>{
   const o=window.__oreum; o.setTod(10);
   const H=o.height; const sx=0, sz=o.spots.start.z-6;
