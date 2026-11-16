@@ -769,9 +769,17 @@ function setHoldBow(v) {
   if (holdBow === v) return; holdBow = v;
   syncEquipGear(); runner.apply(save.outfit); net.send(true);
 }
+const aimFwd = new THREE.Vector3();
 function aimTarget() {
   let best = null, bd = bowArmed() ? weaponNow().range : THROW_AIM.range;
-  for (const t of life.aimTargets()) { const d = Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z); if (d < bd) { bd = d; best = t; } }
+  // 화면 가운데에 가까운 쪽을 우선: 카메라 앞쪽과 이루는 각이 클수록 거리를 더 먼 것으로 침
+  camera.getWorldDirection(aimFwd); const fl = Math.hypot(aimFwd.x, aimFwd.z) || 1;
+  let bs = Infinity;
+  for (const t of life.aimTargets()) {
+    const dx = t.pos.x - player.pos.x, dz = t.pos.z - player.pos.z, d = Math.hypot(dx, dz); if (d >= bd) continue;
+    const cos = (dx * aimFwd.x + dz * aimFwd.z) / (Math.max(d, 0.01) * fl), sc = d * (1.6 - 0.6 * cos);
+    if (sc < bs) { bs = sc; best = t; }
+  }
   return best;
 }
 const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
@@ -859,12 +867,40 @@ function updateAmmo() {
 // 겨눈 대상 발밑 표시
 const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));
 aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
+const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
+aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 function tickAimMark(time) {
-  const t = throwAim || (ctxTarget === throwAct ? aimTarget() : null);
-  aimMark.visible = !!t;
+  const t = throwAim || (!player.riding && isBattle() ? aimTarget() : null) || (ctxTarget === throwAct ? aimTarget() : null);
+  aimMark.visible = aimTri.visible = !!t;
   if (!t) return;
   const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);
   aimMark.scale.set(s, 1, s); aimMark.position.set(t.pos.x, height(t.pos.x, t.pos.z) + 0.08, t.pos.z); aimMark.rotation.y = time * 1.5;
+  aimTri.position.set(t.pos.x, t.pos.y + (t.h || 0.8) * 2 + 0.9 + Math.sin(time * 6) * 0.1, t.pos.z); aimTri.rotation.y = time * 2;
+}
+// 화면 밖 가까운 적 방향 표시 (#56): 가장자리에 귤색 세모 + 종류 아이콘, 가까울수록 크고 진하게, 최대 3개
+const EDGE_IC = () => ({ boar: '<b>멧</b>', truck: DUMP_IC });
+const edgeEls = Array.from({ length: 3 }, (_, i) => { const el = document.createElement('div'); el.className = 'edge-aim'; el.hidden = true; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); return el; });
+const edgeV = new THREE.Vector3();
+function tickEdgeAim() {
+  const list = [];
+  for (const t of life.aimTargets()) {
+    const d = Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z); if (d > THROW_AIM.edgeRange) continue;
+    edgeV.set(t.pos.x, t.pos.y + 1, t.pos.z).project(camera);
+    if (edgeV.z < 1 && Math.abs(edgeV.x) < 0.95 && Math.abs(edgeV.y) < 0.95) continue; // 화면 안
+    let x = edgeV.x, y = edgeV.y; if (edgeV.z > 1) { x = -x; y = -y; }
+    list.push({ t, d, x, y });
+  }
+  list.sort((a, b) => a.d - b.d);
+  const W = innerWidth, H = innerHeight, m = 30;
+  edgeEls.forEach((el, i) => {
+    const e = list[i]; el.hidden = !e; if (!e) return;
+    const k = 1 / Math.max(Math.abs(e.x), Math.abs(e.y), 1e-3), x = e.x * k, y = e.y * k;
+    const px = Math.min(W - m, Math.max(m, (x * 0.5 + 0.5) * W)), py = Math.min(H - m, Math.max(m, (-y * 0.5 + 0.5) * H));
+    const near = 1 - e.d / THROW_AIM.edgeRange, sc = 0.7 + 0.5 * near, ang = Math.atan2(-e.y, e.x) * 180 / Math.PI + 90;
+    el.style.transform = `translate(${px - 22}px, ${py - 22}px) scale(${sc})`; el.style.opacity = String(0.45 + 0.55 * near);
+    el.style.setProperty('--a', ang + 'deg');
+    const kind = e.t.kind || 'boar'; if (el.dataset.k !== kind) { el.dataset.k = kind; el.innerHTML = '<i></i><span>' + (EDGE_IC()[kind] || '!') + '</span>'; }
+  });
 }
 
 function openChat() { if (cam.mode === 'wardrobe') return; closePanels(); $('chat').hidden = false; $('chat-input').focus(); }
@@ -2444,7 +2480,7 @@ function frame(now) {
     ease(dt, false, 1.5);
   } else if (cam.mode === 'photo') ease(dt, false, 4);
 
-  updateContext(); tickAimMark(now / 1000);
+  updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) ui.toast.hidden = true; }
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();

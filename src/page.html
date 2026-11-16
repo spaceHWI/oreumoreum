@@ -609,6 +609,12 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
 #enemy-warn { position: fixed; left: 0; top: 0; z-index: 7; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 900 30px/1 system-ui, sans-serif; color: #fff; background: radial-gradient(circle, #ff4a3a 0 55%, rgba(255,74,58,.35) 56% 100%); box-shadow: 0 0 18px rgba(255,60,40,.7); pointer-events: none; }
 #enemy-warn[hidden] { display: none; }
 #dump-warn { position: fixed; left: 0; top: 0; z-index: 7; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--acc); background: radial-gradient(circle, #24251f 0 55%, rgba(255,138,31,.35) 56% 100%); box-shadow: 0 0 16px rgba(255,138,31,.6); pointer-events: none; }
+.edge-aim { position: fixed; left: 0; top: 0; z-index: 7; width: 44px; height: 44px; display: grid; place-items: center; pointer-events: none; color: #24251f; font: 900 15px/1 system-ui, sans-serif; }
+.edge-aim[hidden] { display: none; }
+.edge-aim span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #ff8a1f; z-index: 1; }
+.edge-aim span svg { width: 18px; height: 18px; }
+.edge-aim i { position: absolute; inset: 0; transform: rotate(var(--a)); }
+.edge-aim i::before { content: ''; position: absolute; left: 50%; top: -6px; margin-left: -9px; border: 9px solid transparent; border-bottom: 13px solid #ff8a1f; border-top: 0; }
 #dump-warn[hidden] { display: none; }
 #hp-dim { position: fixed; inset: 0; z-index: 4; background: #0b0b0e; opacity: 0; pointer-events: none; }
 #hp-wait { position: fixed; z-index: 6; left: 50%; top: 42%; transform: translate(-50%, -50%); width: 112px; height: 112px; pointer-events: none; display: grid; place-items: center; }
