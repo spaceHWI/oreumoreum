@@ -3,8 +3,10 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
+import { RIDES, CART } from './balance.js';
 import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC, TITLE, PHOTOG } from './balance.js';
 import { createPhotographer } from './photographer.js';
+import { RIDE_BY, RIDE_ICON, rideRig, rideSpeed, createCart, cartState as cartStateAt } from './rides.js'; // 탈것·마차 (#69)
 import { logoSvg, LOGO_PICK, svgUrl } from './logo.js';
 import { STREET } from './streetlayout.js';
 import { createShopStreet, SHOP_BUILD, SHOP_ICON, SCISSORS, SHIRT } from './shops.js';
@@ -82,6 +84,10 @@ if (!save.equip || typeof save.equip !== 'object') save.equip = {};
 // 배낭(#31): 0 = 호주머니(처음), 1~5 = 배낭. 예전 저장의 1단계(용량 20)는 첫 배낭(BAGS[0], 20)을 가진 것으로 그대로 둠
 if (!save.bagV) { if (freshSave || typeof save.equip.bag !== 'number') save.equip.bag = freshSave ? 0 : 1; save.bagV = 1; }
 { const v = Math.floor(Number(save.equip.weapon)), top = WEAPONS.filter((w) => !w.soon).length; save.equip.weapon = Math.max(1, Math.min(top, Number.isFinite(v) ? v : 1)); } // 무기 단계 (#38, 1 = 손)
+// 탈것 (#69): save.rides = { own: [id], cur: id }. 예전 저장엔 없음
+if (!save.rides || typeof save.rides !== 'object') save.rides = {};
+save.rides.own = Array.isArray(save.rides.own) ? save.rides.own.filter((id, i, a) => RIDE_BY[id] && a.indexOf(id) === i) : [];
+if (!save.rides.own.includes(save.rides.cur)) save.rides.cur = save.rides.own[save.rides.own.length - 1] || null;
 save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.bowAmmo)) || 0)); // 귤 하나로 남은 화살 수
 for (const k of ['tool', 'bag', 'shoes']) { const lo = k === 'bag' ? 0 : 1, v = Math.floor(Number(save.equip[k])); save.equip[k] = Math.max(lo, Math.min(5, Number.isFinite(v) ? v : 1)); } // 장비 단계 (상점에서 다음 단계만 삼)
 // 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감
@@ -417,15 +423,20 @@ const bfx = bloom ? createBloomFx({ scene, height, tier: () => (LOW ? 0 : qualit
 const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 const chAct = CH && { ch: true, ic: 'dump', label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
 const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
+// ---------- 마차 (#69): 들머리 ↔ 능선 ↔ 정상 아래. 위치는 시각에서 계산 ----------
+const cart = NS_TUT ? createCart({ scene, height, low: LOW, col }) : null;
+let cartShift = 0; // 확인용: 마차 시각을 앞당김 (__oreum.rides.cart.shift)
 
 // ---------- 러너 ----------
 const runner = buildRunner();
 runner.apply(save.outfit);
 scene.add(runner.root);
+const rig = rideRig(runner); // 탈것 모양 (#69)
 const player = {
   pos: spots.start.clone(), heading: spots.startHeading, gait: 0, running: false, speed: 0,
   target: null, onArrive: null, pose: 'move', poseT: 0, strideAcc: 0, steps: 0,
   jumpY: 0, jumpV: 0, air: false, driving: false, handSide: 1, kb: new THREE.Vector3(), yellowUntil: 0, riding: null,
+  ride: null, rideC: false, rideAuto: null, rideClear: 0, cart: null, // 탈것 (#69): ride = 타고 있는 개인 탈것 id, rideC = 스케이트보드를 들고 걸음, cart = 마차 { seat }
   visY: 0, lapAcc: 0, lapPrevA: null, laps: 0, viewSeen: false,
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
@@ -747,6 +758,7 @@ addEventListener('keydown', (e) => {
   if (k === 'r' || k === 'shift') cycleSpeed();
   if (k === 'f') doInteract(); // 상호작용 (#34). 줍기(E)는 tickPick 이 누르고 있는 동안 처리
   if (k === 'e') startPick();
+  if (k === 'q') toggleRide(); // 탈것 (#69)
   if (k === ' ') { e.preventDefault(); doJump(); }
   if (k === 'escape') cancelAll();
 });
@@ -844,7 +856,7 @@ $('act-breath').addEventListener('click', () => { closePanels(); startBreath(); 
 let throwPending = false, throwAim = null;
 // 무기 (#38): 전투 오름에서 귤 활을 샀으면 F 로 활을 쏨. 깨끗한 오름·말 탄 동안은 손 던지기
 const weaponNow = () => WEAPONS[(isBattle() ? save.equip.weapon : 1) - 1] || WEAPONS[0];
-const bowReady = () => weaponNow().id === 'bow' && !player.riding;
+const bowReady = () => weaponNow().id === 'bow' && !player.riding && !player.ride && !player.cart;
 const bowArmed = () => bowReady() && (save.bowAmmo > 0 || save.coins > 0); // 귤이 0이고 남은 화살도 없으면 손 던지기
 function setHoldBow(v) {
   if (holdBow === v) return; holdBow = v;
@@ -1025,9 +1037,188 @@ $('feedback-form').addEventListener('submit', async (e) => {
 });
 $('menu-help').addEventListener('click', () => { closePanels(); $('intro').classList.add('dim'); document.body.classList.add('intro-help-on'); $('enter').textContent = '닫기'; $('intro-main').hidden = false; $('intro-step').hidden = true; $('intro').hidden = false; $('intro-help').hidden = false; });
 
+// ---------- 탈것 (#69): 스케이트보드·스쿠터·조랑말. 버튼 하나로 타고 내림(길게 누르면 고르기), 길 밖은 느림, 개울·밟는 구조물·가게 안은 자동으로 내림 ----------
+const rideCode = () => (player.cart ? 'cart' : player.ride ? (player.rideC ? 'skate-c' : player.ride) : ''); // 다른 사람에게 보내는 값
+function syncRideLook() { rig.set(player.cart ? '' : player.ride ? (player.rideC ? 'skate-c' : player.ride) : ''); }
+// 길 위: 탐방로·들머리 길(surface) + 가게 골목
+function onRoad(x, z) {
+  if (surfaceAt(x, z) !== 0) return true;
+  if (!street) return false;
+  const [a, b] = STREET.alley, dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L));
+  return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t) < SHOP_ST.half + 0.6;
+}
+const inLot = (x, z) => !!street && STREET.lots.some((l) => { const ux = x - l.x, uz = z - l.z, al = ux * l.back.x + uz * l.back.z, lat = ux * l.back.z - uz * l.back.x; return Math.abs(al) < l.d / 2 && Math.abs(lat) < l.w / 2; });
+// 탈것을 못 타는 곳: 개울(돌다리 포함)·밟는 구조물(징검돌·디딤판·테라스)·가게 터 안
+function noRideZone(x, z) {
+  if (stream) { const [al, lat] = stream.local(x, z); if (Math.abs(al - stream.centerOff(lat)) < stream.halfW(lat) + 1.6) return 'stream'; }
+  if (groundAt(x, z) - height(x, z) > 0.06) return 'step';
+  if (inLot(x, z)) return 'shop';
+  return null;
+}
+const RIDE_ZONE_LINE = { stream: '개울에서는 내려서 건너요', step: '여기서는 내려서 걸어요', shop: '가게 안에서는 내려요' };
+const canMount = () => !busy() && !player.riding && !player.cart && !player.air && !player.knock && !player.rescue && !hp.isDown && !hp.pending && !fishing?.active && !mealS.on && !cutS.on && !photoState;
+function mountRide(id = save.rides.cur, quiet = false) {
+  if (!RIDE_BY[id] || !save.rides.own.includes(id) || !canMount()) return false;
+  const z = noRideZone(player.pos.x, player.pos.z); if (z) { if (!quiet) toast(RIDE_ZONE_LINE[z]); return false; }
+  setHoldBow(false);
+  player.ride = id; player.rideC = false; player.rideAuto = null;
+  if (save.rides.cur !== id) { save.rides.cur = id; persist(); }
+  syncRideLook(); updateRideBtn(); net.send(true);
+  if (!quiet) ach.emit('ride-' + id);
+  return true;
+}
+function dismountRide() {
+  if (!player.ride) return;
+  player.ride = null; player.rideC = false; player.rideAuto = null; player.speed = Math.min(player.speed, 5);
+  syncRideLook(); updateRideBtn(); net.send(true);
+}
+function toggleRide() {
+  if (player.cart) return;
+  if (player.ride) { dismountRide(); return; }
+  if (!save.rides.own.length) return;
+  mountRide();
+}
+// 이번 프레임 목표 속도. 기울기는 진행 방향 앞뒤 땅 높이로. 스케이트보드는 오르막이면 들고 걷고, 손을 떼도 관성으로 미끄러짐
+const _coast = new THREE.Vector3();
+function rideWant(dt, dir, slow) {
+  const p = player, R = RIDE_BY[p.ride];
+  const hx = dir ? dir.x : Math.sin(p.heading), hz = dir ? dir.z : Math.cos(p.heading);
+  const g = (height(p.pos.x + hx * 1.5, p.pos.z + hz * 1.5) - height(p.pos.x - hx * 1.5, p.pos.z - hz * 1.5)) / 3;
+  p.rideG = g;
+  if (!R.up && dir) { const c = p.rideC ? g > RIDES.carryOut : g > RIDES.carryIn; if (c !== p.rideC) { p.rideC = c; syncRideLook(); net.send(true); } }
+  const k = slow ? 0.6 : 1;
+  if (p.rideC) return { want: dir ? RIDES.carry * k : 0, acc: 8 };
+  const v = rideSpeed(p.ride, g, onRoad(p.pos.x, p.pos.z));
+  if (dir) return { want: v * k, acc: R.glide ? RIDES.glideAccel : RIDES.accel };
+  if (R.glide && p.speed > 0.3) { _coast.set(Math.sin(p.heading), 0, Math.cos(p.heading)); return g < -0.02 ? { want: v, acc: 0.5, coast: _coast } : { want: 0, acc: RIDES.glideStop, coast: _coast }; }
+  return { want: 0, acc: RIDES.accel };
+}
+// 못 타는 곳에 들어가면 내리고(rideAuto 에 기억), 벗어나 clearT 지나면 다시 탐
+let rideToastT = -1e9;
+function tickRideZone(dt) {
+  const p = player, z = noRideZone(p.pos.x, p.pos.z);
+  if (p.ride) {
+    if (z && !p.air) { const id = p.ride; dismountRide(); p.rideAuto = id; p.rideClear = 0; if (performance.now() - rideToastT > 12000) { rideToastT = performance.now(); toast(RIDE_ZONE_LINE[z]); } }
+    return;
+  }
+  if (z || p.air || !canMount()) { p.rideClear = 0; return; }
+  p.rideClear += dt; if (p.rideClear > RIDES.clearT) { const id = p.rideAuto; p.rideAuto = null; mountRide(id, true); }
+}
+const rideOffAct = { label: '내리기', ic: 'down', act: () => dismountRide() };
+// 버튼: 가진 뒤에만 보임. 짧게 누르면 타기·내리기, 길게 누르면 고르기 (가진 것만)
+const rideBtn = $('btn-ride'), ridePick = $('ride-pick');
+function updateRideBtn() {
+  const own = save.rides.own.length > 0;
+  if (rideBtn.hidden === own) rideBtn.hidden = !own;
+  if (!own) { ridePick.hidden = true; return; }
+  const id = player.ride || save.rides.cur;
+  rideBtn.classList.toggle('on', !!player.ride);
+  if (rideBtn.dataset.id !== id) { rideBtn.dataset.id = id; rideBtn.querySelector('svg').innerHTML = RIDE_ICON[id]; }
+  rideBtn.title = `${RIDE_BY[id].name} ${player.ride ? '내리기' : '타기'} (Q)${save.rides.own.length > 1 ? ' · 길게 누르면 고르기' : ''}`;
+}
+function openRidePick() {
+  ridePick.innerHTML = '';
+  for (const id of RIDES.list.map((r) => r.id).filter((x) => save.rides.own.includes(x))) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'round' + (id === (player.ride || save.rides.cur) ? ' on' : ''); b.title = RIDE_BY[id].name; b.dataset.id = id;
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RIDE_ICON[id]}</svg>`;
+    b.addEventListener('click', () => { ridePick.hidden = true; save.rides.cur = id; persist(); if (player.ride === id) { updateRideBtn(); return; } if (player.ride) dismountRide(); if (!mountRide(id)) updateRideBtn(); });
+    ridePick.append(b);
+  }
+  ridePick.hidden = false;
+}
+{
+  let holdTimer = null;
+  const clear = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
+  rideBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); clear(); holdTimer = setTimeout(() => { holdTimer = null; openRidePick(); }, RIDES.holdT * 1000); });
+  rideBtn.addEventListener('pointerup', () => { if (holdTimer) { clear(); ridePick.hidden = true; toggleRide(); } });
+  rideBtn.addEventListener('pointercancel', clear); rideBtn.addEventListener('pointerleave', clear);
+  rideBtn.addEventListener('click', (e) => { if (e.detail === 0) toggleRide(); });
+  rideBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+  addEventListener('pointerdown', (e) => { if (!ridePick.hidden && !(e.target instanceof Element && e.target.closest('#ride-pick, #btn-ride'))) ridePick.hidden = true; });
+}
+// 탈것 가게 팝업 카드 (가게 거리 3번 터). 가진 것은 눌러서 고르기
+const RIDE_LOGO = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#ff8a1f"/><g transform="translate(3.6 3.4) scale(.7)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${RIDE_ICON.scoot}</g></svg>`);
+const rideStat = (R) => `→ ×${R.flat} · ↗ ${R.up ? '×' + R.up : '들고'} · ↘ ×${R.down}`;
+function buildRideMenu(grid) {
+  for (const R of RIDES.list) {
+    const own = save.rides.own.includes(R.id), cur = own && save.rides.cur === R.id;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = R.id;
+    b.classList.toggle('poor', !own && save.coins < R.price); b.classList.toggle('on', cur); b.title = `${R.name} · 평지 ×${R.flat} · 오르막 ${R.up ? '×' + R.up : '들고 걷기'} · 내리막 ×${R.down}`;
+    b.innerHTML = `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RIDE_ICON[R.id]}</svg><span class="mn"><b>${R.name}</b><small>${rideStat(R)}</small></span>`
+      + `<span class="mv">${own ? '<span class="bf">✓</span>' : `<span class="price"><i></i>${R.price}</span>`}</span>`;
+    b.addEventListener('click', () => (own ? pickRide(R) : buyRide(R, b)));
+    grid.append(b);
+  }
+}
+function pickRide(R) { save.rides.cur = R.id; persist(); if (player.ride && player.ride !== R.id) { dismountRide(); mountRide(R.id, true); } updateRideBtn(); refreshShopPop(); }
+function buyRide(R, cell) {
+  if (save.rides.own.includes(R.id)) return;
+  if (save.coins < R.price) { toast(`귤이 ${R.price - save.coins}개 모자라요`); return; }
+  const from = save.coins; save.coins -= R.price; save.rides.own.push(R.id); save.rides.cur = R.id; persist(); updateStats(); sound.coin?.();
+  ach.emit('ride-buy'); ach.emit('ride-buy-' + R.id);
+  updateRideBtn(); refreshShopPop();
+  const c = document.querySelector(`#shoppop-cards .menu-card[data-id="${R.id}"]`) || cell;
+  if (c) { c.classList.add('tier-pop'); spendFx(c, R.price, from, document.querySelector('#shoppop .coins-pill'), $('shoppop-coins')); }
+  toast(save.rides.own.length === 1 ? `${R.name}을(를) 샀어요. 오른쪽 아래 버튼으로 타요` : `${R.name}을(를) 샀어요`);
+}
+
+// ---------- 마차 (#69): 정류장에서 상호작용으로 타고(무료), 정류장에서 내리거나 가는 중에 점프로 뛰어내림 ----------
+const cartOnAct = { label: '마차 타기', ic: 'cart', act: () => boardCart() };
+const cartOffAct = { label: '내리기', ic: 'down', act: () => leaveCart(false) };
+function boardCart() {
+  if (!cart || player.cart || hp.isDown || busy()) return;
+  if (cart.boardable(player.pos) < 0) return;
+  if (player.ride) dismountRide(); if (player.riding) dismountDeer(); stopAutoGo(); setHoldBow(false); if (fishing?.active) fishing.stop();
+  player.rideAuto = null;
+  player.cart = { seat: Math.floor(Math.random() * CART.seats) };
+  Object.assign(player, { target: null, onArrive: null, speed: 0, air: false, jumpY: 0, jumpV: 0, pose: 'move' }); marker.visible = false; player.kb.set(0, 0, 0);
+  syncRideLook(); net.send(true); ach.emit('cart');
+  if (!save.cartSeen) { save.cartSeen = 1; persist(); toast('마차에 탔어요. 점프하면 뛰어내려요'); }
+}
+function tickCartRide(dt) {
+  const p = player;
+  cart.seat(p.cart.seat, p.pos); p.pos.y -= RIDES.sitDrop; p.heading = cart.heading; p.speed = 0; p.driving = false;
+  placeRunner(dt); checkViewpoint();
+}
+function leaveCart(jump) {
+  const p = player; if (!p.cart) return;
+  const st = cart.state, h = cart.heading, rx = Math.cos(h), rz = -Math.sin(h);
+  p.cart = null;
+  if (!jump && st.stop >= 0) p.pos.copy(cart.exitAt(st.stop));
+  else {
+    let x = p.pos.x + rx * CART.jumpOff, z = p.pos.z + rz * CART.jumpOff;
+    if (col && col.blocked(x, z, 0.3)) { x = p.pos.x - rx * CART.jumpOff; z = p.pos.z - rz * CART.jumpOff; }
+    p.pos.set(x, 0, z);
+  }
+  p.pos.y = groundAt(p.pos.x, p.pos.z); p.visY = p.pos.y; p.pose = 'move';
+  if (jump) { p.air = true; p.jumpV = 6; p.jumpY = 0.9; p.kb.set(Math.sin(h) * st.speed * 0.6 + rx * 2.5, 0, Math.cos(h) * st.speed * 0.6 + rz * 2.5); sound.step(surfaceAt(p.pos.x, p.pos.z), true); }
+  syncRideLook(); net.send(true);
+}
+const jumpOffCart = () => leaveCart(true);
+// 화면 가장자리 마차 표시 (정낭이 열린 뒤, 마차가 조금 멀 때)
+const cartMark = $('cart-mark');
+function tickCartMark() {
+  if (!cart) return;
+  const d = player.pos.distanceTo(cart.pos);
+  const on = !player.cart && (!NS_TUT || !!save.jeong) && d > CART.markNear && d < CART.markFar && !panelOpen() && cam.mode === 'follow' && !mealS.on && !cutS.on;
+  if (!on) { if (!cartMark.hidden) cartMark.hidden = true; return; }
+  cartMark.hidden = false; placeArrow(cartMark, cart.pos, 3.2);
+}
+
+// 다른 사람의 탈것 (#69): presence rd 값대로 모양·자세·높이
+function peerRide(e, dt) {
+  const rd = typeof e.data.rd === 'string' ? e.data.rd : '';
+  if (!rd && !e.rig) return null;
+  if (!e.rig) e.rig = rideRig(e.runner);
+  e.rig.set(rd === 'cart' ? '' : rd); e.rig.tick(dt, e.speed);
+  if (rd === 'cart') return { pose: 'sit', lift: 1.22 * CART.scale - RIDES.sitDrop, still: true };
+  return rd && e.rig.state ? { pose: e.rig.pose(), lift: e.rig.lift(), still: e.rig.still() } : null;
+}
+updateRideBtn();
 // 노루 타기
 function mountDeer(d) {
-  if (busy() || player.riding) return;
+  if (busy() || player.riding || player.cart) return;
+  if (player.ride) dismountRide();
   life.mount(d); player.riding = d; player.target = null; marker.visible = false;
   d.heading = player.heading; d.pos.y = height(d.pos.x, d.pos.z);
   toast('노루 등에 올라탔어요. 점프 버튼으로 내려요');
@@ -1045,6 +1236,7 @@ const GRAV = 26;
 function doJump() {
   const p = player;
   if (p.riding) { dismountDeer(); return; }
+  if (p.cart) { jumpOffCart(); return; } // 마차에서 뛰어내림 (#69)
   if (busy() || p.pose === 'wave' || p.air) return;
   p.air = true; p.jumpV = 8.5; p.jumpY = 0;
   sound.step(surfaceAt(p.pos.x, p.pos.z), true);
@@ -1238,7 +1430,8 @@ $('photo-close').addEventListener('click', () => {
 // ---------- 함께 (room) ----------
 const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
-  extra: () => social.presenceExtra(),
+  extra: () => ({ ...social.presenceExtra(), rd: rideCode() }), // rd = 탈것 (#69)
+  rideHook: (e, dt) => peerRide(e, dt),
   onToast: (m) => toast(m),
   onPeersChanged: (n, hand) => {
     $('handreq').hidden = !hand.pendingFrom;
@@ -1293,6 +1486,7 @@ const buffIc = (k, cls = '') => `<svg ${cls} viewBox="0 0 24 24" fill="none" str
 const SHOP_POP = {
   stone: { head: { logo: STONE_LOGO, name: 'Stone', tag: 'Maximize all the Pleasure', serif: true }, fill: (grid) => buildStoneMenu(grid), when: stoneOpen, can: () => !!STN && !mealS.on },
   salon: { head: { logo: salonLogo(), name: '루이네 미장원', wide: true }, fill: (grid) => buildSalonMenu(grid), when: stoneOpen, can: () => !!SAL && !!save.look && !cutS.on && !mealS.on },
+  ride: { head: { logo: RIDE_LOGO, name: '탈것 가게' }, fill: (grid) => buildRideMenu(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on }, // #69
   leap: { head: { logo: leapLogo(), name: 'LEAP', wide: true, cls: 'leap' }, tabs: (el) => buildLeapTabs(el), fill: (grid) => buildLeapCards(grid), onOpen: () => startLeap(), when: stoneOpen, can: () => !!LEAPB && !cutS.on && !mealS.on },
 };
 let shopPopNow = null;
@@ -1569,10 +1763,10 @@ const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1 };
 const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick'); return k === 1 ? t : { ...t, time: t.time / k }; }; // 식사 버프(#50) 줍는 속도
 const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
 const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
-const canPick = () => !!trash && !player.riding && !player.air && (tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
+const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && (tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 들머리 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
-const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.air || !!player.rescue || hp.isDown || hp.pending;
+const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   const gi = player.riding || player.air ? -1 : tut.gyulNear(player.pos); // 튜토리얼 귤 3개 (#62): 쓰레기보다 먼저
@@ -1847,6 +2041,7 @@ function updateContext() {
   if (photoState && !photoState.shot) best = rePoseAct; // 찍기 전: 다시 누르면 포즈 바꾸기 (#70)
   else if (player.pose === 'sit') best = mealS.on ? skipAct : cutS.on ? cutSkipAct : standAct;
   else if (player.riding && !busy()) best = dismountAct;
+  else if (player.cart) best = cart.state.moving ? null : cartOffAct; // 마차 (#69): 서 있을 때만 내리기, 가는 중엔 점프로 뛰어내림
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
     const d = life.nearestDeer(player.pos, 2.6);
@@ -1858,8 +2053,9 @@ function updateContext() {
         best = handAct;
       }
     }
-    if (fishing && (fishing.active || (!best && fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
-    if (!best) best = throwAct; // 할 일이 없으면 귤 던지기
+    if (cart && !best && cart.boardable(player.pos) >= 0) best = cartOnAct; // 정류장에 마차가 서 있으면 타기 (#69)
+    if (fishing && !player.ride && (fishing.active || (!best && fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
+    if (!best) best = player.ride ? rideOffAct : throwAct; // 할 일이 없으면 귤 던지기 (탈것 위에선 내리기)
   }
   if (best !== ctxTarget) { ctxTarget = best; ui.ctx.classList.toggle('idle', !best); ui.ctx.classList.toggle('soft', best === throwAct); }
   { const bite = best === fishAct && fishing.phase === 'bite'; if (ui.ctx.classList.contains('bite') !== bite) ui.ctx.classList.toggle('bite', bite); }
@@ -1889,6 +2085,7 @@ const CTX_ICON = {
   hand: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 8v6l-2 7M17 8v6l2 7M7 10h10"/>',
   stand: '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v7M12 14l-2.5 7M12 14l2.5 7M9 10l3-2 3 2M19 12V5M16.5 7.5L19 5l2.5 2.5"/>',
   down: '<path d="M12 4v13M6 11l6 6 6-6M5 21h14"/>',
+  ride: RIDE_ICON.scoot, cart: '<path d="M3 9h11v6H3zM2 9h13M14 12l3-1"/><circle cx="7" cy="18" r="2.5"/><ellipse cx="19" cy="10.5" rx="2.6" ry="1.8"/><path d="M18 12.5v5M21 12v5"/>', // 탈것 가게·마차 (#69)
   fish: '<path d="M3 21L18 3M18 3v11a3 3 0 0 1-6 0"/><circle cx="12" cy="11" r="1.2"/><path d="M4 17c2 1 4 1 6 0"/>',
   reel: '<circle cx="9" cy="15" r="5.5"/><circle cx="9" cy="15" r="1.3"/><path d="M14.5 15H18v3M18 2v8M15 5l3-3 3 3"/>',
   eat: FORK_KNIFE, // 식사 (#50)
@@ -2166,7 +2363,9 @@ life.bind(player, sound);
 life.hooks.enemyHit = (dir, def) => {
   if (player.air && player.jumpV > 0) return;
   if (hp.isDown || hp.pending) return;
+  if (player.cart) return; // 마차 위는 안전 (#69)
   if (player.riding) dismountDeer();
+  if (player.ride) { dismountRide(); player.rideAuto = null; toast(`${RIDE_BY[save.rides.cur]?.name || '탈것'}에서 떨어졌어요`); } // 받히면 떨어짐 (#69)
   player.kb.copy(dir).multiplyScalar(BOAR.knockSpeed); player.air = true; player.jumpV = BOAR.knockV; player.jumpY = 0.01;
   player.target = null; marker.visible = false; player.pose = 'move';
   player.knock = { t: 0, land: -1, ang: 0, spin: 0, ax: -dir.z, az: dir.x };
@@ -2386,6 +2585,8 @@ function updatePlayer(dt) {
   p.poseT += dt;
   if (hp.isDown) { marker.visible = false; placeRunner(dt); return; } // 쓰러져 들것에 실려 가는 중 (#36)
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
+  if (p.cart) { tickCartRide(dt); return; } // 마차에 앉아 실려 가는 중 (#69)
+  if (p.ride || p.rideAuto) tickRideZone(dt); // 개울·밟는 구조물·가게 안이면 내리고, 벗어나면 다시 탐 (#69)
   if (p.pose === 'wave' && p.poseT > 2.2) p.pose = 'move';
   const aiming = (p.pose === 'throw' || p.pose === 'bow') && !!throwAim;
   if (aiming) p.heading += wrapA(aimHeading(throwAim) - p.heading) * Math.min(1, dt * 18); // 겨눈 대상 쪽으로 몸을 돌림
@@ -2475,8 +2676,10 @@ function updatePlayer(dt) {
     followLight(); return;
   }
   const slow = joy.active && p.joyMag < 0.6;
-  const want = dir ? (slow ? 4 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed * buff.mul('speed') : 0; // 신발 단계만큼 빨라짐
-  p.speed += (want - p.speed) * Math.min(1, dt * 8);
+  let want, acc = 8;
+  if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
+  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed * buff.mul('speed') : 0; // 신발 단계만큼 빨라짐
+  p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
     let x = p.pos.x + dir.x * p.speed * dt, z = p.pos.z + dir.z * p.speed * dt;
@@ -2517,6 +2720,10 @@ function updatePlayer(dt) {
 }
 function countSteps(moved) {
   const p = player;
+  if (p.ride && !p.rideC) { // 탈것 (#69): 걸음·발자국 대신 말은 발굽 소리
+    if (p.ride === 'horse') { p.hoofAcc = (p.hoofAcc || 0) + moved; if (p.hoofAcc > 1.6) { p.hoofAcc = 0; sound.step(surfaceAt(p.pos.x, p.pos.z), true); } }
+    return;
+  }
   p.strideAcc += moved;
   const stride = p.running ? 1.7 : 1.1;
   let n = 0;
@@ -2535,8 +2742,8 @@ function placeRunner(dt = 1) {
   { const p = player, run = Math.hypot(p.pos.x - (p.prevX ?? p.pos.x), p.pos.z - (p.prevZ ?? p.pos.z)), dyG = p.pos.y - (p.prevY ?? p.pos.y);
     p.prevX = p.pos.x; p.prevY = p.pos.y; p.prevZ = p.pos.z;
     if (Math.abs(dyG) <= run * 1.4 + 0.004) p.visY += dyG;
-    const dy = p.pos.y - p.visY; p.visY = Math.abs(dy) > 1.6 || p.riding || p.air ? p.pos.y : p.visY + dy * Math.min(1, dt * (dy > 0 ? 18 : 9)); }
-  runner.root.position.copy(player.pos); runner.root.position.y = player.visY + player.jumpY;
+    const dy = p.pos.y - p.visY; p.visY = Math.abs(dy) > 1.6 || p.riding || p.cart || p.air ? p.pos.y : p.visY + dy * Math.min(1, dt * (dy > 0 ? 18 : 9)); }
+  runner.root.position.copy(player.pos); runner.root.position.y = player.visY + player.jumpY + rig.lift(); // 탈것 판·안장 높이 (#69)
   runner.root.rotation.y = player.heading;
   { const k = player.knock; if (k && k.ang > 0.001) { runner.root.rotation.y = player.heading + k.spin; _ka.set(k.ax, 0, k.az).normalize(); _kq.setFromAxisAngle(_ka, k.ang); runner.root.quaternion.premultiply(_kq); } }
   { const L = hp.lie; if (L.ang > 0.001) { const h = player.heading; _ka.set(-Math.cos(h), 0, Math.sin(h)); _kq.setFromAxisAngle(_ka, L.ang); runner.root.quaternion.premultiply(_kq); runner.root.position.y += L.y; } } // 뒤로 누움 (#36)
@@ -2583,7 +2790,8 @@ function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
-  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (camPullT >= 0) { camPullT += dt; if (camPullT > BLOOM_FX.zone.camT) camPullT = -1; } } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  if (cart) cart.update(dt, Date.now() / 1000 + cartShift, camera.position); // 마차 (#69): 앉은 사람이 따라가게 먼저
+  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (camPullT >= 0) { camPullT += dt; if (camPullT > BLOOM_FX.zone.camT) camPullT = -1; } } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
@@ -2596,10 +2804,12 @@ function frame(now) {
   if (photog) { photog.setRain(wx.kind === 'rain'); photog.update(dt, player, { shooting: !!photoState }); } // 사진사 (#70): 비 오면 노란 우비
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
-  const pose = player.flail ? 'flail' : player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
+  if (player.ride && (player.pose === 'sit' || mealS.on || cutS.on || photoState || fishing?.active || cam.mode === 'leap' || hp.isDown || player.rescue || player.knock)) dismountRide(); // 다른 일을 시작하면 내림 (#69)
+  const pose = player.flail ? 'flail' : player.riding || player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
-  runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
+  const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
+  runner.animate(dt, { speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
   fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);
@@ -2747,5 +2957,10 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
+window.__oreum = { rides: { // 탈것·마차 (#69)
+  give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
+  state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
+  speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
+  cart: cart && { api: cart, board: () => boardCart(), leave: (j) => leaveCart(!!j), state: () => ({ ...cart.state }), mark: () => !cartMark.hidden, wait: (i) => cart.stops[i] && cart.stops[i].ring.visible, goStop: (i) => { const S = cart.stops[i]; player.pos.set(S.pos.x, groundAt(S.pos.x, S.pos.z), S.pos.z); }, shift: (v) => { cartShift = v; }, at: (stop) => { const now = Date.now() / 1000; for (let t = 0; t < CART.lap; t += 0.5) { const st = cartStateAt(now + t); if (!st.moving && st.stop === stop && st.left > 6) { cartShift = t; return t; } } return null; }, goCart: () => { player.pos.set(cart.pos.x + 3, 0, cart.pos.z); player.pos.y = groundAt(player.pos.x, player.pos.z); } },
+}, street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

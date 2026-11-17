@@ -6,7 +6,7 @@ import { height, groundAt } from './world.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
-export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName }) {
+export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook }) { // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
@@ -147,12 +147,13 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       e.speed += (sp - e.speed) * k;
       e.poseT += dt;
       const r = e.runner;
-      r.root.position.copy(e.pos); r.root.position.y += typeof e.data.jy === 'number' ? e.data.jy : 0;
+      const rh = rideHook ? rideHook(e, dt) : null;
+      r.root.position.copy(e.pos); r.root.position.y += (typeof e.data.jy === 'number' ? e.data.jy : 0) + (rh?.lift || 0);
       r.root.rotation.y = e.heading;
       if (e.label) { const d = e.pos.distanceTo(player.pos); const op = d < 10 ? 1 : d < 18 ? 1 - (d - 10) / 8 : 0; e.label.material.opacity = op; e.label.visible = op > 0.02; }
       const pose = typeof e.data.pose === 'string' ? e.data.pose : 'move';
       r.setTint(!!e.data.yl);
-      r.animate(dt, { speed: e.speed, running: !!e.data.run, pose: pose === 'photo-wait' ? 'move' : pose, t: e.poseT, breath: 0, air: (e.data.jy || 0) > 0.05, jumpV: 0 });
+      r.animate(dt, { speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, breath: 0, air: (e.data.jy || 0) > 0.05, jumpV: 0 });
     }
   }
 

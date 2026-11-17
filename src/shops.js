@@ -8,6 +8,7 @@ import { createStone } from './stone.js';
 import { FORK_KNIFE } from './stoneicons.js';
 import { createSalon } from './salon.js';
 import { createLeap } from './leap.js';
+import { createRideShop, RIDE_SHOP, RIDE_ICON } from './rides.js';
 
 // 가위 (루이네 미장원 #58, 상호작용 '머리' 아이콘과 같음)
 // 옷 (LEAP #59, 상호작용 '옷' 아이콘과 같음)
@@ -19,6 +20,7 @@ export const SHOP_ICON = {
   stone: FORK_KNIFE,
   salon: SCISSORS,
   leap: SHIRT,
+  ride: RIDE_ICON.scoot, // 탈것 가게 (#69)
 };
 
 // 가게마다 건물 하나. lot = streetlayout 의 터, 반환 { door: 상호작용 자리, signPos: 가장자리 표시 기준, update?(dt, night), api }
@@ -40,6 +42,12 @@ export const SHOP_BUILD = {
     const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
     const api = createLeap({ scene, height, site, low, col, addWalkable });
     return { api, door: api.door, signPos: api.signPos, r: LEAP.r, update: (dt, night) => api.update(dt, night) };
+  },
+  ride: ({ scene, height, lot, low, col }) => { // 탈것 가게 (#69, 임시 모양)
+    const k = RIDE_SHOP.fore + RIDE_SHOP.D / 2;
+    const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
+    const api = createRideShop({ scene, height, site, low, col });
+    return { api, door: api.door, signPos: api.signPos, r: RIDE_SHOP.r, update: () => {} };
   },
 };
 
