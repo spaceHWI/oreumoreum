@@ -11,19 +11,28 @@
 import * as THREE from 'three';
 import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import HEAD_SHORT from './gear/head-short.js';
-import HEAD_BOB from './gear/head-bob.js';
-import HEAD_BUN from './gear/head-bun.js';
+import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
 import { addClothes, slippers } from './clothes.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
-const dec = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
-export const fromData = (D, def = '#ffffff') => (mat) => {
+function dataGeo(D) {
   const g = new THREE.BufferGeometry(); const nq = dec(D.nor, Int8Array), nor = new Float32Array(nq.length); for (let i = 0; i < nq.length; i++) nor[i] = nq[i] / 127;
   g.setAttribute('position', new THREE.BufferAttribute(dec(D.pos, Float32Array), 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   if (D.uv) g.setAttribute('uv', new THREE.BufferAttribute(dec(D.uv, Float32Array), 2)); g.setIndex(new THREE.BufferAttribute(dec(D.idx, D.idx16 ? Uint16Array : Uint32Array), 1));
-  const m = mat('main', def); if (D.tex) { const t = new THREE.TextureLoader().load(D.tex); t.flipY = false; t.colorSpace = TEXCS; m.map = t; }
-  return new THREE.Mesh(g, m);
+  return g;
+}
+const geoCache = new Map();
+// name: 따로 받는 모델 이름('hair-short' 등). 받기 전에는 머리 크기의 살색 타원체(임시), 오면 같은 메시를 진짜 모양·재질로 바꿈
+// 내 캐릭터가 쓴 머리는 첫 화면에 필요해서 바로 받음(now)
+export const fromData = (name, def = '#ffffff') => (mat) => {
+  const m = mat('main', def);
+  const mesh = new THREE.Mesh(placeholderGeo(name, 'ball'), placeholderMat('#e3b995'));
+  whenAsset(name, (D) => {
+    let g = geoCache.get(name); if (!g) { g = dataGeo(D); geoCache.set(name, g); }
+    if (D.tex) { const t = new THREE.TextureLoader().load(D.tex); t.flipY = false; t.colorSpace = TEXCS; m.map = t; m.needsUpdate = true; }
+    mesh.geometry = g; mesh.material = m;
+  }, { now: true });
+  return mesh;
 };
 
 export const SLOTS = { hair: '머리', hat: '모자', face: '얼굴', back: '등', top: '상의', bottom: '하의', vest: '베스트', jacket: '잠바', socks: '양말', shoes: '신발', hand: '손' };
@@ -38,9 +47,9 @@ export const ACCESSORIES = {
   // 머리 3종 (#51): 목 위 머리 전체(얼굴·머리카락)를 바꿈. 몸에 구운 머리·모자는 감추고(hide head), 피부색은 몸과 같이 따라감(skinTint)
   // lid: 텍스처 피부색(눈꺼풀 색, #74). #52 부터 머리는 모자와 다른 칸(hair). 키 이름은 예전 저장과 맞추려고 그대로 'hat:' 로 둠
   'hair:base': { slot: 'hair', label: '구운 머리', builtin: true },
-  'hat:short': { slot: 'hair', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [230, 193, 157], build: fromData(HEAD_SHORT) },
-  'hat:bob': { slot: 'hair', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 152], build: fromData(HEAD_BOB) },
-  'hat:bun': { slot: 'hair', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 150], build: fromData(HEAD_BUN) },
+  'hat:short': { slot: 'hair', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [230, 193, 157], build: fromData('hair-short') },
+  'hat:bob': { slot: 'hair', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 152], build: fromData('hair-bob') },
+  'hat:bun': { slot: 'hair', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 150], build: fromData('hair-bun') },
   'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
     build: (mat) => { const m = mat('main', '#c8553d');
       const top = M(new THREE.SphereGeometry(0.235, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.79, 0.02); top.scale.set(1.06, 0.9, 1.0);

@@ -3,7 +3,8 @@ import { NSMODE, TEXCS } from './boot.js';
 import { gradHard } from './toon.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { RM } from './runnermodel.js';
+import { getAsset, bytesAs as b64 } from './assets.js'; // #85: 캐릭터 모델(runnermodel.js)은 따로 받는 파일 'runner'. main.js 가 게임 모듈보다 먼저 받아 둠
+const RM = getAsset('runner');
 import { patchDQS } from './dqskin.js';
 import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
 import { BOW, BLINK } from './balance.js';
@@ -45,7 +46,6 @@ const ball = (r, mat, sx = 1, sy = 1, sz = 1) => { const k = `s${r}`; let g = ge
 const box = (w, h, d, mat) => { const k = `${w},${h},${d}`; let g = geoCache.get(k); if (!g) { g = new RoundedBoxGeometry(w, h, d, 3, Math.min(w, h, d) * 0.46); geoCache.set(k, g); } return new THREE.Mesh(g, mat); };
 
 // ---------- 기본 캐릭터 모델: 한 덩어리 메시에 위치 기준으로 뼈대 가중치를 직접 계산 ----------
-const b64 = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
 const EMO_POSES = new Set(['insa', 'five', 'come', 'point', 'trash', 'follow', 'wait', 'help', 'thumb', 'no', 'thanks', 'sorry', 'clap', 'hop', 'laugh', 'wow', 'sad', 'heart', 'sitg', 'lie']); // 동작 (#76), wave·dance 는 아래 따로
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const MODEL_S = 2.5; // 모델 키 0.98 → 게임 키 약 2.45

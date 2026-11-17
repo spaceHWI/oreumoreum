@@ -6,7 +6,6 @@ import * as THREE from 'three';
 import { gradHard } from './toon.js';
 import { LEAP } from './balance.js';
 import { propMesh, svgTexture } from './propmodel.js';
-import { LEAP_M } from './model-leap.js';
 
 function piece(g, color, jit = 0, seed = 1) {
   g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals();
@@ -67,7 +66,7 @@ export function createLeap({ scene, height, site, low, col, addWalkable }) {
   const y0 = yHi + 0.12;
   const root = new THREE.Group(); root.position.set(x, y0, z); root.rotation.y = rot;
   // 건물 (Tripo 모델): 콘크리트 상자·검은 간판 띠·통유리 진열창(러닝화 선반·마네킹)·A자 입간판·디딤판
-  const model = propMesh(LEAP_M, S, { floor: M.floor, low, glow: 0.12 }); root.add(model);
+  const model = propMesh('leap', S, { floor: M.floor, low, glow: 0.12 }); root.add(model);
   // 받침: 비탈에서 디딤판 밑이 뜨지 않게
   const plH = y0 - yLo + 0.5;
   const plinth = new THREE.Mesh(piece(box(hs * 2 - 0.1, plH, hs * 2 - 0.1, 0, LY(0) + 0.05 - plH / 2, 0), '#6c6f6d'), new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard }));

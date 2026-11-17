@@ -6,7 +6,6 @@ import { gradHard } from './toon.js';
 import { STONE } from './balance.js';
 import { STONE_LOGO } from './stonelogo.js';
 import { propMesh, glowSprite } from './propmodel.js';
-import { STONE_M } from './model-stone.js';
 
 function piece(g, color, jit = 0, seed = 1) {
   g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals();
@@ -50,7 +49,7 @@ export function createStone({ scene, height, site, low, col, addWalkable }) {
   const y0 = yHi + 0.3;
   const root = new THREE.Group(); root.position.set(x, y0, z); root.rotation.y = rot;
   // 건물 (Tripo 모델): 현무암 벽·나무 처마·테라스·탁자·의자·파라솔·전구 줄·둥근 간판까지 한 덩어리
-  const model = propMesh(STONE_M, S, { floor: M.floor, low, glow: 0.12 }); root.add(model);
+  const model = propMesh('stone', S, { floor: M.floor, low, glow: 0.12 }); root.add(model);
   const parts = [];
   // 받침(현무암): 비탈에서 모델 밑이 뜨지 않게
   const plH = y0 - yLo + 0.6;

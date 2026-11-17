@@ -7,8 +7,7 @@ import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
 import { BOAR, ENEMIES } from './balance.js';
 import { LOW } from './gfx2.js';
 import { unpackProp, propGeometry, propMaterial, glowSprite } from './propmodel.js';
-import { DOG_M } from './model-dog.js';
-import { ALIEN_M } from './model-alien.js';
+import { whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 들개·외계인 모델은 따로 받음
 
 const matCache = new Map();
 const glow = (c, o = {}) => { const k = 'g' + c + JSON.stringify(o); let m = matCache.get(k); if (!m) { m = new THREE.MeshBasicMaterial({ color: c, ...o }); matCache.set(k, m); } return m; };
@@ -31,8 +30,8 @@ const DOG = {
   legY: 0.13, body: [0, 0.32, 0], head: [0, 0.42, 0.16], tail: [0, 0.5, -0.33],
   eyes: [[0.07, 0.645, 0.335], [-0.07, 0.645, 0.335]], mouth: [0, 0.47, 0.45],
 };
-let dogGeo = null;
-function dogShared() {
+let dogGeo = null, dogTmp = null;
+function dogShared(DOG_M) {
   if (dogGeo) return;
   const { pos, nor, uv, idx } = unpackProp(DOG_M), n = pos.length / 3, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
   for (let v = 0; v < n; v++) {
@@ -53,16 +52,24 @@ function dogShared() {
   dogGeo.computeBoundingSphere(); dogGeo.boundingSphere.radius *= 1.2;
 }
 const dogMat = {};
+// 받기 전 임시 모양: 모델 크기의 타원체를 몸 뼈에 붙임
+function dogTemp() {
+  if (dogTmp) return dogTmp;
+  const g = placeholderGeo('dog', 'ball'), n = g.attributes.position.count, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  for (let v = 0; v < n; v++) sw[v * 4] = 1;
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  return (dogTmp = g);
+}
 function buildDog({ rabid }) {
-  dogShared();
   const k = rabid ? 1.05 : 1, S = DOG.s * k;
-  const mat = dogMat[rabid ? 'r' : 'd'] || (dogMat[rabid ? 'r' : 'd'] = propMaterial(DOG_M, rabid ? { color: '#b4b2ae', glow: 0.12 } : {}));
+  const mat = dogMat[rabid ? 'r' : 'd'] || (dogMat[rabid ? 'r' : 'd'] = propMaterial('dog', rabid ? { color: '#b4b2ae', glow: 0.12 } : {}));
   const bones = ['body', 'head', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'].map((nm) => { const b = new THREE.Bone(); b.name = nm; return b; });
   const [body, head, tail, ...legs] = bones;
   body.position.set(...DOG.body);
   const rel = (b, p) => { b.position.set(p[0] - DOG.body[0], p[1] - DOG.body[1], p[2] - DOG.body[2]); body.add(b); };
   rel(head, DOG.head); rel(tail, DOG.tail); DOG.legs.forEach(([x, z], i) => rel(legs[i], [x, DOG.legY, z]));
-  const mesh = new THREE.SkinnedMesh(dogGeo, mat); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
+  const mesh = new THREE.SkinnedMesh(dogGeo || dogTemp(), dogGeo ? mat : placeholderMat(rabid ? '#8d8a86' : '#9b8a72')); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
+  if (!dogGeo) whenAsset('dog', (D) => { dogShared(D); mesh.geometry = dogGeo; mesh.material = mat; });
   mesh.castShadow = !LOW; mesh.scale.setScalar(S);
   const root = new THREE.Group(); root.add(mesh);
   const hp = (p) => new THREE.Vector3(p[0] - DOG.head[0], p[1] - DOG.head[1], p[2] - DOG.head[2]); // 머리 뼈 기준 자리 (모델 좌표)
@@ -90,10 +97,13 @@ function buildDog({ rabid }) {
 
 // 외계인 (#71): Tripo 비행접시(model-alien.js, 초록 생명체가 탄 접시). 땅에서 떠서 출렁이며 기우뚱, 쏠 때 아래 발사구가 빛남
 // 다리는 보이지 않는 빈 자리 (legs4 가 흔들어도 그대로)
+let alienMat = null;
 const ALIEN = { s: 2.4, hover: 0.95, port: 0.03 }; // 크기(지름 약 2.35m), 뜬 높이, 발사구 높이(모델 좌표)
 function buildAlien() {
   const root = new THREE.Group(), hover = new THREE.Group(); hover.position.y = ALIEN.hover; root.add(hover);
-  const m = new THREE.Mesh(propGeometry(ALIEN_M), propMaterial(ALIEN_M, { glow: 0.2 })); m.scale.setScalar(ALIEN.s); m.castShadow = !LOW; hover.add(m);
+  const m = new THREE.Mesh(placeholderGeo('alien', 'ball'), placeholderMat('#8fa39a')); m.scale.setScalar(ALIEN.s); m.castShadow = !LOW; hover.add(m);
+  const am = alienMat || (alienMat = propMaterial('alien', { glow: 0.2 }));
+  whenAsset('alien', (A) => { m.geometry = propGeometry(A); m.material = am; }); // #85: 받으면 진짜 모양으로
   // 발사구 빛: 아래 가운데 청록 원판 + 번짐 (쏠 때 확 밝아졌다 사그라듦)
   const portY = ALIEN.port * ALIEN.s;
   const port = new THREE.Mesh(geo('ufoPort', () => new THREE.CircleGeometry(0.2, 14).rotateX(Math.PI / 2)), glow('#8ffff0', { transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }).clone());

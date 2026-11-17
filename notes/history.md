@@ -602,3 +602,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 나누기는 문장 단위로 기계적으로 했다(acorn·eslint-scope 로 이름 추적). 동작 코드는 그대로이고, 파일 사이 이름만 import·`state.이름`·`late.이름` 으로 바뀜
 - 지운 예전 코드: 손잡기(신청·수락·손 놓기 UI, 손 잡은 사람 따라 걷기, 손 잇는 선, net.js 핸드셰이크·presence hr/hw/hd/drv, 뱃지 b-hand), 숨 고르기 포즈(runner 'breath', animate 의 breath 값), 쓰지 않던 npc.js, 귤 먹기 즙 효과(juiceBurst·tickJuice, 부르는 곳 없음), 쓰지 않던 import·값(HP·TOOL_GEAR·MOOD·wxIcon·fmtKST·colr·HAIR_LABEL)
 - 소원 돌탑은 지금 기능(돌탑 #12·#28·#82, spec "소원 글은 유지")이라 남김. 노루 타기·벤치 앉기도 업적·식사에 쓰여 남김
+
+## 내려받기 줄이기 (#85)
+- 모델 떼어 내기: 캐릭터·가게 3곳·들개·외계인·멧돼지·머리 3종·발소리를 JS 에서 빼서 `dist/a/*.bin` 으로. 캐릭터는 첫 화면에 필요해 `<link rel=preload>` 로 게임 코드와 나란히 받고, 나머지는 첫 프레임 뒤 둘씩 받음(내가 쓴 머리는 바로). 받기 전엔 회색 상자·타원체 임시 모양
+- 압축: 메시는 meshopt(정점 순서 다시 늘어놓기 + 정점·인덱스 압축, 손실 없음, `tools/assetcheck.mjs` 로 확인). 텍스처는 jpg 그대로: KTX2 는 three 의 Basis 변환기(wasm 527KB + js 57KB)가 텍스처 전체(약 1.2MB jpg)의 절반만큼이라 처음 받는 양이 오히려 늘어서 뺐다. GPU 메모리를 줄여야 할 때 다시 봄
+- 풀기: three.js meshopt 디코더(wasm). CSP 에 `'wasm-unsafe-eval'`(wasm 만, JS eval 은 그대로 막음). wasm 이 막히면 meshoptimizer 의 JS 디코더로
+- 첫 화면: 첫 프레임 뒤 `renderer.compileAsync` 로 셰이더 미리 준비, 모델이 올 때마다 다시
+- 배포: index.html 은 인라인 스크립트 대신 `main-<해시>.js`. 파일 이름에 내용 해시라 바뀐 것만 다시 받음. publish.yml 이 main-*.js·a/ 도 올리고 예전 것은 지움. test.html·oreumoreum.html 은 예전처럼 한 파일(모델도 안에)
+- `tools/modelshots.js`: 가게·머리·적 화면을 찍어 전·후 비교(모델 늦추기를 주면 임시 모양)
+- tools/perf.js: 기본으로 index.html 을 Pages 처럼(html·js 만 gzip) 열고, 처음 받는 양·전체 양·다 받은 시간·JS 힙을 같이 적음
+- main.js 의 import 목록은 `src/modules.js` 로 옮김(main.js 는 캐릭터 모델을 받은 뒤 modules.js 를 읽기만)
+
