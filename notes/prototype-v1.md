@@ -560,3 +560,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 시간대 색은 namsongi.js `PRE.<때>.hal`(새벽 분홍·낮 옅은 파랑·노을 주황·밤 짙은 남색), 앞 능선은 조금 어둡게, 구름띠는 `cl` 과 지평선 사이. `applyLight` 에서 `halla.set(cur)`, `update` 에서 `halla.update(camera)`
 - 먼 땅(150m 고도 격자)의 `HALLA.demCap`(420m) 위는 `demKeep` 만큼만 남겨 실제 한라산 덩어리가 원경과 겹치지 않게
 - 확인 `node tools/halla.js [mobile] [곳-때,...]` → `dist/halla-<곳>-<때>.png` (곳 top·ridge·trail, 때 day·dusk·night·dawn)
+
+## 돌탑 크기 순서 (#82)
+- `main.js` `cairnSizes`: 맨 아래 돌이 가장 크고 층마다 3~6%(`CAIRN.shrink`) 작아짐. 맨 위 돌은 `topSize`(0.5) 고정, 밑동은 돌 수에 맞춰 굵어짐(상한 `maxBottom` 2.2, 위/아래 비 하한 `minTaper`). 3개: 0.55→0.50, 10개: 0.76→0.50, 50·100개: 2.2→0.48, 100개 높이 약 7.9m
+- 돌을 납작하게(`CAIRN.flat`), 층마다 살짝 어긋남. 새 돌이 올라오면 이전 모양에서 새 모양으로 0.3초(`CAIRN.resize`) 보간(`stepCairn`). 저장된 돌탑도 같은 규칙. 충돌 원은 바닥 돌(반지름 1.0) 그대로, 먼 돌탑 stride 묶기 유지
