@@ -102,7 +102,7 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     // 찍는 동안엔 사진 자리를, 아니면 가까이 온 사람을 봄
     const want = shooting ? faceTo(spot) : d < PHOTOG.greetR ? faceTo(player.pos) : faceTo(spot);
     let dh = want - heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); heading += dh * Math.min(1, dt * 5); run.root.rotation.y = heading;
-    run.animate(dt, { speed: 0, running: false, pose: st.pose, t: st.t, breath: 0 });
+    run.animate(dt, { speed: 0, running: false, pose: st.pose, t: st.t });
   }
   return { pos, camPos, camLook: look, tripod, runner: run, beckon, setRain, update, get rain() { return rain; }, state: st };
 }

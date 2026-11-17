@@ -30,7 +30,6 @@ export const BADGE_ICONS = {
   // 인증샷: 카메라
   'b-photo': `<rect x="7" y="15" width="34" height="23" rx="5" fill="${W}" ${s()}/><path d="M17 15 l3 -5 h8 l3 5" fill="${W}" ${s()}/><circle cx="24" cy="26.5" r="7.5" fill="#5b8fc9" ${s()}/><circle cx="21.5" cy="24" r="2" fill="${W}"/><circle cx="35" cy="20" r="1.6" fill="${O}"/>`,
   // 함께 걷는 길: 맞잡은 두 손 + 하트
-  'b-hand': `<path d="M6 30 q4 -8 12 -8 l6 4" fill="none" ${s('stroke-width="5" stroke="' + K + '"')}/><path d="M6 30 q4 -8 12 -8 l6 4" fill="none" stroke="#f2c9a0" stroke-width="2.6" stroke-linecap="round"/><path d="M42 30 q-4 -8 -12 -8 l-6 4" fill="none" ${s('stroke-width="5"')}/><path d="M42 30 q-4 -8 -12 -8 l-6 4" fill="none" stroke="#a87650" stroke-width="2.6" stroke-linecap="round"/><circle cx="24" cy="27" r="4.5" fill="#d4a27a" ${s()}/><path d="M20 11 c0-4 5-4 4 0 c-1-4 4-4 4 0 c0 4-4 6-4 7 c0-1-4-3-4-7z" fill="${P}" ${s('stroke-width="1.8"')}/>`,
   // 사흘 개근: 달력 3
   'b-streak-3': `<rect x="9" y="11" width="30" height="28" rx="4" fill="${W}" ${s()}/><path d="M9 19 H39" ${s()}/><rect x="9" y="11" width="30" height="8" rx="3" fill="#e2683c" ${s()}/><path d="M16 8 v6 M32 8 v6" ${s()}/><text x="24" y="35" font-size="15" font-weight="900" text-anchor="middle" fill="${K}" font-family="Noto Sans KR, sans-serif">3</text>`,
   // 일주일 개근: 달력 7 + 별

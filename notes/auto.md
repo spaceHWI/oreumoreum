@@ -9,6 +9,7 @@
 
 ## 만들 때
 - 이슈에 적힌 것만 한다. 무관한 코드는 고치지 않는다
+- 게임 코드는 `src/game/` 기능별 파일에 있다 (`src/main.js` 는 순서대로 읽기만). 파일 하나는 40KB 를 넘기지 않는다. 파일 사이 값 주고받기 규칙은 `notes/prototype-v1.md` 코드 구조
 - 남송이오름 기준. 새 3D 오브젝트는 지금 그림체(`toon.js`, `namsongi.js` 재질)에 맞춘 로우폴리 임시 모양으로 만든다
 - UI 는 `src/page.html` 의 현무암 UI 토큰을 쓴다. 글자는 최소로, 아이콘 중심. 폰(폭 600 이하)과 데스크톱 둘 다
 - 저사양(LOW)에서도 프레임이 떨어지지 않게 한다
@@ -24,7 +25,7 @@
 ## 끝
 1. 커밋하고 `work/` 브랜치를 올린다: `git -c push.negotiate=true push -u origin <브랜치>`
 2. 확인이 통과했으면 `dev` 에 합쳐 올린다 (`git checkout dev && git pull --ff-only origin dev && git merge --no-ff <브랜치> && git push origin dev`). 개발 서버에 자동 게시된다
-3. `notes/prototype-v1.md` 에 새 모듈·결정 사항을 몇 줄 더한다 (2의 합치기 전에)
+3. 이슈 메모(바꾼 것·결정 사항)는 `notes/history.md` 끝에 몇 줄 더하고, 파일 구성이 바뀌었으면 `notes/prototype-v1.md` 의 코드 구조도 고친다 (2의 합치기 전에)
 4. 이슈에 결과 코멘트(바꾼 것, dev 에서 확인하는 방법, 임시로 둔 것·남은 점)를 달고 이슈를 닫는다
 5. `notes/queue.md` 에서 다음으로 열려 있는 이슈를 찾아, 그 이슈의 모델에 맞는 예약 작업을 `fire_trigger` 도구로 실행한다 (ToolSearch 로 `select:mcp__claude-code-remote__fire_trigger`, 예약 작업 ID 는 프롬프트에 있음). 남은 이슈가 없거나 도구가 없으면 넘어간다
 - 확인이 통과하지 못하고 고칠 수 없으면: `dev` 에 합치지 않고, 이슈에 막힌 점을 코멘트로 남기고, 이슈를 닫지 않고, 다음 작업도 실행하지 않는다
