@@ -1,6 +1,6 @@
 // 노루 타기, 점프, 벤치에 앉기, 돌탑 소원, 사진사 사진 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { PHOTOG } from '../balance.js';
-import { logoSvg, LOGO_PICK, svgUrl } from '../logo.js';
+import { logoSvg, svgUrl } from '../logo.js';
 import * as THREE from 'three';
 import { height, groundAt, surfaceAt } from '../world.js';
 import { kstDate } from '../achievements.js';
@@ -115,7 +115,7 @@ state.photoState = null; let photoWaiting = false; state.captureNext = false; le
 const PHOTO_POSES = ['photo', 'photo-v', 'photo-point'];
 export let photoPose = 'photo';
 const nextPhotoPose = () => { const l = PHOTO_POSES.filter((k) => k !== photoPose); photoPose = l[Math.floor(Math.random() * l.length)]; return photoPose; };
-const logoImg = new Image(); logoImg.src = svgUrl(logoSvg(LOGO_PICK)); // 사진 틀에 넣을 로고 (#72)
+const logoImg = new Image(); logoImg.src = svgUrl(logoSvg()); // 사진 틀에 넣을 로고 (#72·#87)
 export function startPhoto() {
   late.social.joinQueue();
   late.photog?.beckon();

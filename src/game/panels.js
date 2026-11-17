@@ -1,6 +1,6 @@
 // 채팅, 메뉴 항목, 릴리스 노트, 의견 보내기, 도움말 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { FEEDBACK, TITLE } from '../balance.js';
-import { logoSvg, LOGO_PICK } from '../logo.js';
+import { logoSvg } from '../logo.js';
 import { VERSION, RELEASE_NOTES } from '../version.js';
 import { MAPS } from '../maps.js';
 import { serverId } from '../server.js';
@@ -36,7 +36,7 @@ function openNotes() {
 $('intro-notes').addEventListener('click', openNotes);
 // 첫 화면 (#72): 최근 릴리스 노트 몇 줄 + 로고
 RELEASE_NOTES[0]?.items.slice(0, TITLE.notes).forEach((t) => { const li = document.createElement('li'); li.textContent = t; $('intro-rn').append(li); });
-$('intro-logo').insertAdjacentHTML('beforeend', logoSvg(LOGO_PICK));
+$('intro-logo').insertAdjacentHTML('beforeend', logoSvg({ dark: true }) /* 첫 화면: 낮·밤 장면 위라 흰 글자 + 그림자 (#87) */);
 $('menu-notes').addEventListener('click', () => { closePanels(); openNotes(); });
 // 의견 보내기 (#77): 서버가 있으면 /feedback 으로, 없으면 기기에 모아 뒀다가 서버가 붙으면 한꺼번에 (feedback.js)
 export const feedback = createFeedback({
