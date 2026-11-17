@@ -154,7 +154,7 @@ function hat(mat, L) {
   }
   return G(out);
 }
-const BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat };
+export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat };
 // 쓰레빠 (신발 1단계): 맨발(또는 양말) + 얇은 밑창 + 끈
 export const slippers = (mat) => {
   const F = mat('foot', '#e8bf99'), S = mat('sole', '#3c8fd0'), B = mat('strap', '#2f6db5');
@@ -163,7 +163,7 @@ export const slippers = (mat) => {
 // ACCESSORIES 에 옷을 붙임 (gear.js 가 부름)
 export function addClothes(ACC) {
   CLOTHES.forEach((c) => {
-    const L = c.look || {}, f = BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
+    const L = c.look || {}, f = CLOTH_BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
     const rigid = c.slot === 'hat';
     ACC[c.id] = { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head' } : { skin: true }), hide: c.slot === 'top' || c.slot === 'bottom' ? ['body'] : [], foot: c.slot === 'socks' ? L.main : undefined,
       build: (mat) => f(mat, { kind: c.slot === 'top' ? 'tee' : c.slot === 'hat' ? 'cap' : 'socks', main: '#bbbbbb', acc: '#888888', ...L }) };
