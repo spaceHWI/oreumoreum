@@ -614,3 +614,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 빌드: `PUBLIC=1`(publish.yml 의 release) 이면 `window.__oreum` 은 어드민에게만(`exposeDebug`). dist/index.html 에 meta CSP(게임 스크립트는 sha256 해시, GIS·글꼴·https/wss·로컬 주소만)
 - 확인 `node tools/sec.js` (wrangler dev 넷을 띄워 49가지 공격 흉내), `node tools/online.js` 에 보안 확인 4개 더함. loadtest 는 Origin 헤더를 붙임(`ORIGIN=` 로 바꿈)
 - 남은 위험: 구글 계정 여러 개(계정마다 몫·기기 기록 옮기기 3만 귤), 손님(기기 저장)은 마음대로, 더미 거리 판정 없음(줍기 속도·치운 양 몫으로만), 방 안 맞힘은 거리·빈도만, 끊긴 사람은 다른 채널로 갈 수 있음, 요청 수 제한은 Worker 여러 개에 퍼지면 느슨함
+
+## 전체 검수 (#16)
+- `node tools/audit.js [d|m] [단계…]`: 데스크톱 1440×900 / 폰 390×844 터치로 첫 화면 → 서버 → 캐릭터 → (튜토리얼은 어드민 버튼으로 건너뜀) → 더미·배낭·자동 걷기·클린하우스 → 가판대·LEAP·미장원·스톤·탈것 가게 → 탈것·마차·낚시·사진사·돌탑·동작 바퀴 → 투기꾼 → 꽃밭 → 정상·한라산 → 메뉴 창·어드민 → 새로 고침 → 예전 저장 → 전투 오름(몹·활·쓰러짐) 을 돌며 단계마다 `dist/audit/<d|m>-<n>-<이름>.jpg` 를 찍고, 페이지·콘솔 오류, 겹친 UI(위 한 줄·토스트·팁·가장자리 표시·버튼), 화면 밖 UI, 넘친 글자를 센다. `?tier=1&hwi=1` 로 띄움(어드민 버튼). 튜토리얼은 `tools/tutrun.js`
+- 가장자리 표시(`placeArrow`): 한 프레임에 먼저 놓인 표시와 46px 안이면 테두리를 따라 비켜 놓음(`edgeUsed`, `frame()` 맨 앞에서 비움)
+- 팁이 떠 있으면 `body.tip-on` → 토스트는 팁 아래로
+- `.toast`·`.tip-toast`·`#banner`·`.banner-bar` 는 `width: max-content`(left 50% 라 폰에서 반 폭으로 눌려 업적 배너가 한 글자씩 꺾였음)
+- 예전 저장: `save.ach` 칸(life·badges·visited·daily)과 `save.outfit` 부위가 빠지거나 객체가 아니어도 채움

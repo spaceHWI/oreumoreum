@@ -104,8 +104,11 @@ export function todaysDaily(date) {
 }
 
 export function createAchievements({ save, persist, onDone, mapId }) {
-  save.ach ||= { daily: null, life: {}, badges: {}, allDays: 0, lastAll: null, visited: {} };
-  const A = save.ach;
+  if (!save.ach || typeof save.ach !== 'object') save.ach = {};
+  const A = save.ach; // 예전 저장에 칸이 빠져 있어도 채움 (#16)
+  for (const k of ['life', 'badges', 'visited']) if (!A[k] || typeof A[k] !== 'object') A[k] = {};
+  A.daily ??= null; A.allDays ??= 0; A.lastAll ??= null;
+  if (A.daily && !Array.isArray(A.daily.items)) A.daily = null;
   function ensureDaily() {
     const d = kstDate();
     if (!A.daily || A.daily.date !== d || A.daily.items.some((x) => { const f = DAILY_POOL.find((y) => y.id === x.id); return !f || (!usable(f) && !x.done); })) {

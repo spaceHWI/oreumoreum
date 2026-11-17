@@ -75,7 +75,8 @@ let save = {};
 save = loadSave(KEY);
 const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 사람
 save.nick ||= `${pick(ADJ)} ${pick(NOUN)}`;
-save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit || {}) };
+save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit && typeof save.outfit === 'object' ? save.outfit : {}) };
+for (const k of Object.keys(DEFAULT_OUTFIT)) if (!save.outfit[k] || typeof save.outfit[k] !== 'object') save.outfit[k] = structuredClone(DEFAULT_OUTFIT[k]); // 예전·깨진 저장 (#16)
 if (!save.hatBackV) { save.outfit.hat.back = true; save.hatBackV = 1; }
 if (!save.nsV3) { save.tut = { step: 0, done: false, v: 3 }; if (save.trash) save.trash.tp = []; save.nsV1 = save.nsV2 = save.nsV3 = 1; save.jeong = 0; } // 새 튜토리얼(#31): 기존 유저도 한 번 다시 봄
 if (!save.styleV5) { save.outfit.hat.color = '#5c9a3c'; save.outfit.shirt.color = '#e8d9b5'; save.outfit.pants.color = '#8a6a3c'; save.outfit.shoes.color = '#26262b'; save.styleV5 = 1; } // 모델 캐릭터 기본 색으로 한 번만 초기화
@@ -587,6 +588,7 @@ function tickTips(dt) {
   const n = trash ? trash.store.pickedCount() : 0;
   if (n !== tipBagN) { tipBagN = n; tipIdle = 0; } else if (!panelOpen() && !tut.active) tipIdle += dt;
   if (tipT > 0) { tipT -= dt; if (tipT <= 0) tipEl.hidden = true; }
+  const tipOn = !tipEl.hidden; if (tipOn !== document.body.classList.contains('tip-on')) document.body.classList.toggle('tip-on', tipOn); // 팁이 떠 있으면 토스트는 그 아래로 (#16)
   if (tipMarkT > 0) { tipMarkT -= dt; if (tipMarkT <= 0 || (tipMarkPos && player.pos.distanceTo(tipMarkPos) < 6)) { tipMarkT = 0; tipMarkPos = null; } }
   tips.update(dt, tipState);
 }let lastCoins = -1;
@@ -1199,7 +1201,7 @@ function buildRideMenu(grid) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = R.id;
     b.classList.toggle('poor', !own && save.coins < R.price); b.classList.toggle('on', cur); b.title = `${R.name} · 평지 ×${R.flat} · 오르막 ${R.up ? '×' + R.up : '들고 걷기'} · 내리막 ×${R.down}`;
     b.innerHTML = `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RIDE_ICON[R.id]}</svg><span class="mn"><b>${R.name}</b><small>${rideStat(R)}</small></span>`
-      + `<span class="mv">${own ? '<span class="bf">✓</span>' : `<span class="price"><i></i>${R.price}</span>`}</span>`;
+      + `<span class="mv">${own ? '<span class="bf">✓</span>' : `<span class="price"><i></i>${R.price.toLocaleString()}</span>`}</span>`;
     b.addEventListener('click', () => (own ? pickRide(R) : buyRide(R, b)));
     grid.append(b);
   }
@@ -2030,6 +2032,7 @@ function tickDump(dt) {
 const chArrow = $('ch-arrow'), shopArrow = $('shop-arrow');
 let shopHintUntil = 0; // 버린 직후 살 수 있는 장비가 있으면 이때까지 가판대 쪽 표시
 // 목표가 화면 안이면 위에서 가리키고, 밖이면 가장자리에서 그 방향 화살표
+const edgeUsed = []; // 이번 프레임에 가장자리에 놓인 표시 자리 (#16: 클린하우스·마차·가게 표시가 같은 쪽이면 겹쳤음)
 function placeArrow(el, wp, lift) {
   chV.copy(wp); chV.y += lift; chV.project(camera);
   const W = innerWidth, H = innerHeight, behind = chV.z > 1;
@@ -2039,11 +2042,17 @@ function placeArrow(el, wp, lift) {
   if (vis) { sx = (x * 0.5 + 0.5) * W; sy = (-y * 0.5 + 0.5) * H - 30; ang = Math.PI / 2; }
   else {
     // 가운데에서 그 방향으로 뻗어 화면 안쪽 테두리에 닿는 곳
-    const phone = W <= 600, mL = 40, mR = 40, mT = topFit.bottom + 72, mB = phone ? 190 : 120; // 위쪽 줄·토스트 아래 (#75)
+    const phone = W <= 600, mL = 40, mR = 40, mT = topFit.bottom + 72, mB = phone ? 240 : 120; // 위쪽 줄·토스트 아래 (#75). 폰 아래쪽은 왼쪽 동작 버튼 위까지 (#16)
     let dx = x * W / 2, dy = -y * H / 2; if (Math.hypot(dx, dy) < 1e-3) dy = 1;
     const cx = W / 2, cy = H / 2;
     const tx = dx > 0 ? (W - mR - cx) / dx : dx < 0 ? (mL - cx) / dx : 1e9, ty = dy > 0 ? (H - mB - cy) / dy : dy < 0 ? (mT - cy) / dy : 1e9;
     const t = Math.min(tx, ty); sx = cx + dx * t; sy = cy + dy * t; ang = Math.atan2(dy, dx);
+    // 먼저 놓인 표시와 46px 안이면 테두리를 따라 비켜 놓음 (위·아래 테두리는 가로로, 왼쪽·오른쪽은 세로로)
+    const side = tx < ty;
+    for (let k = 0; k < 4 && edgeUsed.some((u) => Math.abs(u[0] - sx) < 46 && Math.abs(u[1] - sy) < 46); k++) {
+      if (side) sy = Math.min(H - mB, Math.max(mT, sy + (sy > cy ? -46 : 46))); else sx = Math.min(W - mR, Math.max(mL, sx + (sx > cx ? -46 : 46)));
+    }
+    edgeUsed.push([sx, sy]);
   }
   el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
   el.style.setProperty('--a', ang.toFixed(3) + 'rad');
@@ -2857,6 +2866,7 @@ applyQuality();
 const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
 function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
+  edgeUsed.length = 0; // 가장자리 표시 겹침 막기 (#16)
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + cartShift, camera.position); // 마차 (#69): 앉은 사람이 따라가게 먼저
