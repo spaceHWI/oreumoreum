@@ -18,7 +18,7 @@ FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', na
 export const HEAP_DEFS = [];
 ZONES.forEach((Z) => ['xl', 'l', 's'].forEach((k) => { for (let i = 0; i < (Z.heaps[k] || 0); i++) HEAP_DEFS.push({ zone: Z.id, k, n: Z.amt?.[k] ?? HEAP.sizes[k].n }); }));
 const HEAP_FULL = HEAP_DEFS.map((d) => d.n);
-const HEAP_SIG = 'h1:' + HEAP_DEFS.map((d) => d.zone + d.k + d.n).join(',');
+export const HEAP_SIG = 'h1:' + HEAP_DEFS.map((d) => d.zone + d.k + d.n).join(',');
 export const HEAP_TOTAL = HEAP_FULL.reduce((a, b) => a + b, 0);
 
 /* ---------- 저장소 (기기 저장) ---------- */

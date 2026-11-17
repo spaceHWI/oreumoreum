@@ -1,0 +1,29 @@
+# 오름오름 멀티 서버 (#7): Cloudflare Workers + Durable Objects
+# 배포: GitHub Actions deploy-server.yml (시크릿 CLOUDFLARE_API_TOKEN·CLOUDFLARE_ACCOUNT_ID)
+# 세션 서명 키는 시크릿: wrangler secret put SESSION_SECRET
+name = "oreumoreum"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+GOOGLE_CLIENT_ID = "185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com"
+ALLOW_ORIGINS = "https://spacehwi.github.io"
+# 로컬에서만: FAKE_AUTH=1 이면 'fake:아무거나' 로 로그인 (npm run dev 가 켬)
+FAKE_AUTH = ""
+STATS_OPEN = ""
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Accounts"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room", "Accounts"]
+
+# 날마다 한 번 (UTC 18:17 = 한국 03:17): 마지막 접속 뒤 7일 지난 계정 지우기
+[triggers]
+crons = ["17 18 * * *"]

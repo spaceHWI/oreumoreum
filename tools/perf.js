@@ -13,6 +13,7 @@ const which = args[0] || 'all';
 const SCEN_ALL = ['day', 'night', 'rain', 'clean', 'battle', 'crowd'];
 const SCEN = args[1] ? args[1].split(',') : SCEN_ALL;
 const STATION_T = +(process.env.PERF_T || 3.5); // 길목마다 재는 시간(초)
+const CROWD = +(process.env.PERF_CROWD || 30); // crowd 시나리오 인원 (#7 부하 재기)
 
 // gzip 정적 서버 (GitHub Pages 처럼 압축해서 보냄)
 const ROOT = path.join(process.cwd(), 'dist');
@@ -90,7 +91,7 @@ async function measureRoute(p, label, opts = {}) {
   for (let i = 0; i < stations.length; i++) {
     const s = stations[i], n = stations[i + 1] || stations[i - 1];
     await p.evaluate(({ s, n }) => { const o = window.__oreum, P = o.player; P.pos.set(s.x, o.groundAt(s.x, s.z), s.z); P.visY = P.pos.y; window.__perf.drive = { tx: n.x, tz: n.z, speed: 7 }; o.snap?.(); }, { s, n });
-    if (opts.each) await p.evaluate(opts.each);
+    if (opts.each) await p.evaluate(opts.each, CROWD);
     await p.waitForTimeout(900); // 채우기·LOD 가 자리 잡게
     await p.evaluate(() => { const r = window.__perf.rec; r.dts.length = r.calls.length = r.tris.length = r.cpu.length = 0; r.on = true; });
     await p.waitForTimeout(STATION_T * 1000);
@@ -118,8 +119,8 @@ const SCENARIOS = {
   clean: { name: '다 치운 뒤(꽃)', prep: async (p) => p.evaluate(() => { const o = window.__oreum; o.setTod(13); o.setWeather('clear'); o.trash.api.heaps.forEach((h, i) => o.trash.setHeap(i, 0)); o.bloom?.finish?.(); }) },
   battle: { name: '전투 오름 몹 4 + 트럭', battle: true, prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
     each: () => { const o = window.__oreum, t = o.life.enemies.test; t.clear(); o.dumpers?.clear(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; t.spawn(['boar', 'dog', 'piglet', 'alien'][k], Math.sin(a) * 9, Math.cos(a) * 9); } o.dumpers?.near('truck', 14); } },
-  crowd: { name: '다른 사람 30명', prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
-    each: () => { const o = window.__oreum, P = o.player, f = o.net.test?.fake; if (!f) return; for (let k = 0; k < 30; k++) { const a = k * 2.4, r = 4 + (k % 10) * 3.5; f({ peer: 'fake' + k, presence: { x: P.pos.x + Math.sin(a) * r, z: P.pos.z + Math.cos(a) * r, h: a, nick: '러너' + k, pose: 'move', spd: k % 3 ? 3 : 0, o: null } }); } } },
+  crowd: { name: `다른 사람 ${CROWD}명`, prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
+    each: (CROWD) => { const o = window.__oreum, P = o.player, f = o.net.test?.fake; if (!f) return; for (let k = 0; k < CROWD; k++) { const a = k * 2.4, r = 4 + (k % 10) * 3.5 + Math.floor(k / 10) * 2; f({ peer: 'fake' + k, presence: { x: P.pos.x + Math.sin(a) * r, z: P.pos.z + Math.cos(a) * r, h: a, nick: '러너' + k, pose: 'move', spd: k % 3 ? 3 : 0, o: null } }); } } },
 };
 
 async function runProfile(b, key) {
