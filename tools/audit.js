@@ -55,7 +55,8 @@ const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-hint', 'ch-arrow', 'shop-a
   });
   await S('dump', async () => {
     await O(() => { const o = window.__oreum, r = o.cleanhouse.route(); const i = o.cleanhouse.minis().findIndex((c) => c.id === r?.id); if (i >= 0) o.cleanhouse.goMini(i); else o.cleanhouse.go(); o.snap(); });
-    await W(1500); const c0 = await O(() => window.__oreum.save.coins); await key('f'); await W(3000);
+    await W(1500); await until(() => window.__oreum.aim.ctx() === 'dump', 15000); // 헤드리스는 초당 몇 프레임이라 상호작용 대상이 늦게 잡힘 (#90)
+    const c0 = await O(() => window.__oreum.save.coins); await key('f'); await until((c) => window.__oreum.save.coins > c, 20000, c0);
     const c1 = await O(() => window.__oreum.save.coins); notes.push(`[dump] 귤 ${c0} → ${c1}`); if (!(c1 > c0)) notes.push('[dump] 버려도 귤이 늘지 않음'); await shot('dump');
   });
   // 4. 가게
@@ -67,7 +68,7 @@ const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-hint', 'ch-arrow', 'shop-a
   // 5. 탈것·마차·낚시·사진사·돌탑·동작
   await S('ride', async () => { await O(() => { const o = window.__oreum; o.cleanhouse.go(); o.rides.give('horse'); o.rides.mount('horse'); o.snap(); }); await W(1800); await shot('ride-horse'); const s = await O(() => window.__oreum.rides.state()); notes.push(`[ride] ${JSON.stringify({ ride: s?.ride, zone: s?.zone })}`); await O(() => window.__oreum.rides.off()); await W(800); });
   await S('cart', async () => { const ok = await O(() => { const o = window.__oreum; if (!o.rides.cart) return 'no cart'; o.rides.cart.at(0); o.rides.cart.goStop(0); o.snap(); return 'ok'; }); await W(1500); await O(() => window.__oreum.rides.cart?.board()); await W(2000); await shot('cart'); notes.push(`[cart] ${ok} ${JSON.stringify(await O(() => window.__oreum.rides.cart?.state()))}`.slice(0, 200)); await O(() => window.__oreum.rides.cart?.leave(true)); await W(800); });
-  await S('fish', async () => { const can = await O(() => { const o = window.__oreum; o.fish.go(-1, 3); o.snap(); return o.fish.can(); }); if (!can) notes.push('[fish] 개울 옆인데 낚시 불가'); await O(() => { const o = window.__oreum; o.fish.wait(1); o.fish.press(); }); await W(2500); await shot('fish'); await O(() => window.__oreum.fish.api.stop()); await W(1000); });
+  await S('fish', async () => { await O(() => { const o = window.__oreum; o.fish.go(-1, 3); o.snap(); }); const can = await until(() => window.__oreum.fish.can(), 20000); // 마차에서 뛰어내린 직후라 땅에 닿을 때까지 기다림 if (!can) notes.push('[fish] 개울 옆인데 낚시 불가'); await O(() => { const o = window.__oreum; o.fish.wait(1); o.fish.press(); }); await W(2500); await shot('fish'); await O(() => window.__oreum.fish.api.stop()); await W(1000); });
   await S('photo', async () => { await O(() => { const o = window.__oreum, g = o.photo.photog; if (g?.pos) { o.player.pos.set(g.pos.x + 2, o.groundAt(g.pos.x + 2, g.pos.z), g.pos.z); o.snap(); } o.photo.start(); }); await W(6000); await shot('photo'); await O(() => window.__oreum.photo.close()); await W(500); await closeAll(); });
   await S('cairn', async () => { await O(() => { const o = window.__oreum, c = o.cairns[0]; o.player.pos.set(c.pos.x + 1.6, o.groundAt(c.pos.x + 1.6, c.pos.z), c.pos.z); o.player.heading = -Math.PI / 2; o.snap(); }); await W(1200); await key('f'); await W(1200); await shot('cairn'); await closeAll(); });
   await S('emote', async () => { await tap('#btn-actions'); await W(900); await shot('emote-wheel'); await closeAll(); await O(() => window.__oreum.doEmote?.('wave')); await W(1200); });

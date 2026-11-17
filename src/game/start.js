@@ -67,6 +67,7 @@ function enter() {
   if (!save.look) openLook();
 }
 $('enter').addEventListener('click', enter);
+$('enter').disabled = false; $('enter').removeAttribute('aria-busy'); // 게임을 다 받은 뒤에야 누를 수 있음 (#90, page.html)
 // 멀티 서버 계정 (#7): 서버 주소가 있을 때만. 첫 화면에 베타 안내·구글 로그인, 메뉴에 남은 날짜·로그아웃·내 기록 지우기
 if (ONLINE) {
   state.account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => state.sessionOn,

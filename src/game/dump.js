@@ -90,9 +90,17 @@ const chArrow = $('ch-arrow'), shopArrow = $('shop-arrow');
 state.shopHintUntil = 0; // 버린 직후 살 수 있는 장비가 있으면 이때까지 가판대 쪽 표시
 // 목표가 화면 안이면 위에서 가리키고, 밖이면 가장자리에서 그 방향 화살표
 const edgeAt = new Map();
+// 표시 크기(반폭·반높이). 클린하우스 표시는 아래 거리 글자까지 (#90)
+const markBox = (el) => { let b = el._box; if (!b) { const w = el.offsetWidth || 40, h = el.offsetHeight || 40; b = el._box = [w / 2 + 3, h / 2 + 3, el.querySelector('small') ? 16 : 0]; } return b; };
+const topEls = ['toast', 'tip', 'banner'].map((id) => $(id)), topAt = [-1, 0];
+// 위쪽 줄 + 그 아래 토스트·팁·배너 (보일 때) 아래로 (#90: 다시 들어올 때 긴 토스트가 가장자리 표시를 가림). 프레임마다 한 번만 잼
+const topLimit = (fr) => { if (topAt[0] !== fr) { let b = topFit.bottom + 72; for (const e of topEls) if (e && !e.hidden) b = Math.max(b, e.getBoundingClientRect().bottom + 30); topAt[0] = fr; topAt[1] = b; } return topAt[1]; };
 export function placeArrow(el, wp, lift) {
-  // 표시끼리 겹치면 비켜 놓음 (#16: 클린하우스·가판대·마차 표시가 한 자리에 겹침). 지금 보이는 다른 표시의 마지막 자리와 비교
-  const edgeUsed = []; edgeAt.forEach((v, o) => { if (o !== el && !o.hidden) edgeUsed.push(v); });
+  // 표시끼리 겹치면 비켜 놓음 (#16: 클린하우스·가판대·마차 표시가 한 자리에 겹침).
+  // #90: 이번 프레임에 이미 놓인 표시만 비교하고(지난 프레임 자리와 비교하면 순간 이동·카메라가 돌 때 겹침), 크기(거리 글자 포함)로 겹침을 잼
+  const fr = document.timeline?.currentTime ?? 0, me = markBox(el), edgeUsed = [];
+  edgeAt.forEach((v, o) => { if (o !== el && !o.hidden && v[2] === fr) edgeUsed.push(v); });
+  const hit = (x, y) => edgeUsed.some(([ux, uy, , b]) => Math.abs(ux - x) < me[0] + b[0] && (uy < y ? y - uy < me[1] + b[1] + b[2] : uy - y < me[1] + b[1] + me[2]));
   chV.copy(wp); chV.y += lift; chV.project(camera);
   const W = innerWidth, H = innerHeight, behind = chV.z > 1;
   let x = chV.x, y = chV.y; if (behind) { x = -x; y = -y; }
@@ -101,18 +109,23 @@ export function placeArrow(el, wp, lift) {
   if (vis) { sx = (x * 0.5 + 0.5) * W; sy = (-y * 0.5 + 0.5) * H - 30; ang = Math.PI / 2; }
   else {
     // 가운데에서 그 방향으로 뻗어 화면 안쪽 테두리에 닿는 곳
-    const phone = W <= 600, mL = 40, mR = 40, mT = topFit.bottom + 72, mB = phone ? 190 : 120; // 위쪽 줄·토스트 아래 (#75)
+    const phone = W <= 600, mL = 40, mR = 40, mT = Math.min(H / 2 - 40, topLimit(fr)), mB = phone ? 240 : 120; // 위쪽 줄·토스트 아래 (#75). 폰 아래는 동작 버튼 위 (#90)
     let dx = x * W / 2, dy = -y * H / 2; if (Math.hypot(dx, dy) < 1e-3) dy = 1;
     const cx = W / 2, cy = H / 2;
     const tx = dx > 0 ? (W - mR - cx) / dx : dx < 0 ? (mL - cx) / dx : 1e9, ty = dy > 0 ? (H - mB - cy) / dy : dy < 0 ? (mT - cy) / dy : 1e9;
     const t = Math.min(tx, ty); sx = cx + dx * t; sy = cy + dy * t; ang = Math.atan2(dy, dx);
-    const side = tx <= ty, G = 46;
-    for (let k = 0; k < 6 && edgeUsed.some(([ux, uy]) => Math.hypot(ux - sx, uy - sy) < G); k++) {
-      if (side) { sy += sy > cy ? -G : G; sy = Math.max(mT, Math.min(H - mB, sy)); } else { sx += sx > cx ? -G : G; sx = Math.max(mL, Math.min(W - mR, sx)); }
+    const side = tx <= ty, G = 24, bx = sx, by = sy;
+    // 테두리를 따라 가까운 빈자리: 가운데 쪽·바깥쪽을 번갈아 조금씩 넓혀 감
+    for (let k = 1; k < 24 && hit(sx, sy); k++) {
+      const off = Math.ceil(k / 2) * G * (k % 2 ? 1 : -1);
+      if (side) { sx = bx; sy = Math.max(mT, Math.min(H - mB, by + (by > cy ? -off : off))); } else { sy = by; sx = Math.max(mL, Math.min(W - mR, bx + (bx > cx ? -off : off))); }
     }
   }
-  if (vis) for (let k = 0; k < 4 && edgeUsed.some(([ux, uy]) => Math.hypot(ux - sx, uy - sy) < 40); k++) sy -= 40; // 화면 안에서 가리키는 표시는 위로 쌓음
-  edgeAt.set(el, [sx, sy]);
+  if (vis) { // 화면 안에서 가리키는 표시는 위로 쌓음. 위쪽 줄·토스트 아래로만 (#90: 멀리 있는 곳을 가리키면 토스트에 겹침), 위가 막히면 아래로
+    const minY = topLimit(fr) - 30 + me[1]; sy = Math.max(sy, minY); const by = sy;
+    for (let k = 1; k <= 12 && hit(sx, sy); k++) { const c = k <= 6 ? by - 24 * k : by + 24 * (k - 6); if (c >= minY) sy = c; }
+  }
+  edgeAt.set(el, [sx, sy, fr, me]);
   el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
   el.style.setProperty('--a', ang.toFixed(3) + 'rad');
 }

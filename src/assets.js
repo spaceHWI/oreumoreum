@@ -9,6 +9,7 @@ import { ASSETS } from './assetlist.js';
 const cache = new Map(); // 이름 → 풀린 자료 { ...meta, pos: Uint8Array, ..., tex: blob URL }
 const waiting = new Map(); // 이름 → [콜백]
 const loading = new Map(); // 이름 → Promise
+const fails = new Map(); // 이름 → 받기 실패 횟수
 let go = false; // 첫 화면이 그려지기 전에는 받지 않음
 const queue = []; // 받을 차례 (앞이 먼저)
 const ORDER = ['steps', 'boar', 'stone', 'leap', 'salon', 'hair-short', 'hair-bob', 'hair-bun', 'dog', 'alien', 'hareubang', 'lamp', 'deer']; // 한가할 때 받는 순서
@@ -60,7 +61,7 @@ function load(name) {
       for (const cb of cbs) { try { cb(d); } catch (e) { console.error(e); } }
       for (const cb of anyCbs) cb(name);
       return d;
-    }).catch((e) => { loading.delete(name); console.warn('모델을 받지 못함', name, e); setTimeout(() => want(name), 4000); return null; }));
+    }).catch((e) => { loading.delete(name); const n = fails.set(name, (fails.get(name) || 0) + 1).get(name); console.warn('모델을 받지 못함', name, e); setTimeout(() => want(name), Math.min(60000, 4000 * 2 ** (n - 1))); return null; })); // 다시 받기: 4초부터 두 배씩, 최대 1분 (#90)
   }
   return loading.get(name);
 }
