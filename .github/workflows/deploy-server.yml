@@ -1,5 +1,6 @@
 # 멀티 서버 (#7): server/ 가 바뀌어 dev 에 올라오면 Cloudflare Workers 에 배포한다.
 # 필요한 저장소 시크릿: CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID · SESSION_SECRET(세션 서명 키, 아무 긴 난수). 없으면 건너뜀
+# 의견 메일(#77, 있으면): FEEDBACK_TO(받는 개발자 메일) · FEEDBACK_FROM(Email Routing 도메인의 보내는 주소). server/wrangler.toml 의 send_email 주석도 풀어야 함
 # 배포 뒤 workers.dev 주소를 src/balance.js NET.server 에 넣어야 게임이 서버에 붙는다
 name: deploy-server
 on:
@@ -17,6 +18,8 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      FEEDBACK_TO: ${{ secrets.FEEDBACK_TO }}
+      FEEDBACK_FROM: ${{ secrets.FEEDBACK_FROM }}
     steps:
       - name: 시크릿 확인
         id: chk
@@ -38,3 +41,9 @@ jobs:
         if: steps.chk.outputs.go == '1' && env.SESSION_SECRET != ''
         working-directory: server
         run: echo "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET
+      - name: 의견 메일 주소 (#77)
+        if: steps.chk.outputs.go == '1' && env.FEEDBACK_TO != '' && env.FEEDBACK_FROM != ''
+        working-directory: server
+        run: |
+          echo "$FEEDBACK_TO" | npx wrangler secret put FEEDBACK_TO
+          echo "$FEEDBACK_FROM" | npx wrangler secret put FEEDBACK_FROM

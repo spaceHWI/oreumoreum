@@ -1,6 +1,6 @@
 // 계정 저장 (#7): Durable Object 하나(이름 'all') 안의 SQLite. 칸은 sub·닉네임·게임 저장·치운 양·접속 시각뿐
 import { DurableObject } from 'cloudflare:workers';
-import { NET } from '../../src/balance.js';
+import { NET, FEEDBACK } from '../../src/balance.js';
 import { checkSave } from './validate.js';
 
 export class Accounts extends DurableObject {
@@ -10,6 +10,8 @@ export class Accounts extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS acc (
       sub TEXT PRIMARY KEY, nick TEXT, save TEXT, rev INTEGER DEFAULT 0, cleaned INTEGER DEFAULT 0,
       credit REAL, pick_credit REAL, saved_at INTEGER, last_seen INTEGER, created INTEGER)`);
+    // 의견 (#77): 글과 같이 온 값만. ip 는 보내기 막기용 해시
+    this.sql.exec('CREATE TABLE IF NOT EXISTS fb (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, ip TEXT, item TEXT, mailed INTEGER DEFAULT 0)');
   }
   row(sub) { return this.sql.exec('SELECT * FROM acc WHERE sub = ?', sub).toArray()[0] || null; }
   // 로그인·접속: 없으면 만들고 마지막 접속 시각을 갱신
@@ -40,6 +42,17 @@ export class Accounts extends DurableObject {
     if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; }
     return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5 };
   }
+  // 의견 저장: 한 주소에서 1시간에 FEEDBACK.ipPerHour 개까지. → 저장한 글 수 (넘으면 -1)
+  feedbackAdd(ip, items) {
+    const t = Date.now();
+    const n = this.sql.exec('SELECT COUNT(*) AS n FROM fb WHERE ip = ? AND at > ?', ip, t - 3600e3).one().n;
+    if (n + items.length > FEEDBACK.ipPerHour) return -1;
+    for (const it of items) this.sql.exec('INSERT INTO fb (at, ip, item) VALUES (?, ?, ?)', t, ip, JSON.stringify(it));
+    this.sql.exec('DELETE FROM fb WHERE id <= (SELECT MAX(id) FROM fb) - ?', FEEDBACK.dbKeep);
+    return items.length;
+  }
+  feedbackMailed(k) { this.sql.exec('UPDATE fb SET mailed = 1 WHERE id > (SELECT MAX(id) FROM fb) - ?', k); }
+  feedbackList(k = 50) { return this.sql.exec('SELECT id, at, item, mailed FROM fb ORDER BY id DESC LIMIT ?', k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
   del(sub) { this.sql.exec('DELETE FROM acc WHERE sub = ?', sub); return { ok: true }; }
   purge(cutoff) { const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff); return n; }
   count() { return this.sql.exec('SELECT COUNT(*) AS n FROM acc').one().n; }

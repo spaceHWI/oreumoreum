@@ -274,6 +274,7 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .wish b { font-weight: 600; color: var(--leaf); white-space: nowrap; }
 .wish.mine b { color: var(--songi); }
 #wish-form, #chat-form { display: flex; gap: 6px; }
+#feedback.overlay { z-index: 12; } /* 첫 화면 위에서도 열리게 (#77) */
 #feedback-input { width: 100%; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 7px; padding: 10px; background: #fff; font: inherit; font-size: 15px; resize: vertical; -webkit-user-select: text; user-select: text; }
 #wish-form input, #chat-form input { flex: 1; min-width: 0; border: 2px solid var(--ink); border-radius: 7px; padding: 9px 10px; background: #fff; }
 #chat { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 74px); width: min(420px, calc(100vw - 32px)); padding: 8px; display: flex; gap: 6px; }
@@ -963,7 +964,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="menu-help">조작법</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
     <button type="button" id="menu-perf">성능: 자동</button>
-    <button type="button" id="menu-feedback">개발자에게 보내기</button>
+    <button type="button" id="menu-feedback">의견 보내기</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
@@ -1072,11 +1073,11 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 
 <div class="overlay dim" id="feedback" hidden>
   <div class="panel pop">
-    <div class="pop-head"><h2>개발자에게 보내기</h2><button type="button" class="btn small" id="feedback-close">닫기</button></div>
+    <div class="pop-head"><h2>의견 보내기</h2><button type="button" class="btn small" id="feedback-close">닫기</button></div>
     <form class="pop-body" id="feedback-form">
-      <p class="muted" style="margin:0 0 8px;font-size:13px">바라는 것, 불편한 것, 버그 무엇이든 적어 주세요. 개발자만 읽어요.</p>
-      <textarea id="feedback-input" maxlength="1000" rows="6" placeholder="예) 한라산 정상 코스도 생기면 좋겠어요"></textarea>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><small class="muted" id="feedback-len">0 / 1000</small><button type="submit" class="btn small primary" id="feedback-send">보내기</button></div>
+      <p class="muted" style="margin:0 0 8px;font-size:13px">바라는 것, 불편한 것, 버그 무엇이든 적어 주세요. 개발자 메일로 가요.<br>답장을 원하면 연락처를 글에 직접 적어 주세요.</p>
+      <textarea id="feedback-input" maxlength="500" rows="6" placeholder="예) 한라산 정상 코스도 생기면 좋겠어요"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><small class="muted" id="feedback-len">0 / 500</small><button type="submit" class="btn small primary" id="feedback-send">보내기</button></div>
     </form>
   </div>
 </div>
@@ -1094,7 +1095,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="panel intro-card">
       <div id="intro-main">
         <div class="ver-line"><span class="beta-chip">BETA</span> <span id="ver-text"></span></div>
-        <p class="intro-beta">베타 테스트 중이에요. 기록이 초기화될 수 있어요.</p>
+        <p class="intro-beta">베타 테스트 중이에요. 기록이 초기화될 수 있어요. <button type="button" class="linkish" id="intro-feedback">의견 보내기</button></p>
         <div class="intro-rn"><ul id="intro-rn"></ul><button type="button" class="linkish" id="intro-notes">릴리스 노트 더 보기</button></div>
         <div class="acct-box" id="acct-box" hidden></div>
         <button type="button" class="btn primary intro-go" id="enter">시작</button>
