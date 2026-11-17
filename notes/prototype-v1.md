@@ -594,3 +594,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 클라이언트 `src/online.js`: `saveKey`·`loadSave`(로그인하면 `<키>.acct` 사본), `createAccount`(바뀌면 15초 모아 PUT, 탭 숨김·닫기 때 바로, 다른 기기 기록이 더 새것이면 입장 전에 받아 새로고침, 서버가 바로잡은 귤 반영), `mountLogin`(첫 화면 베타 안내·구글 버튼, 시작 버튼이 '손님으로 하기'. 처음 로그인한 계정이면 기기 기록 옮길지 한 번 물음), `createWsLobby`(net.js 의 room 자리, 끊기면 다시 붙음), `linkTrash`(trash 저장소 takeOne·putBack·seen 을 방으로). 메뉴 `#m-acct` 남은 날짜·로그아웃·내 기록 지우기
 - 확인: `node tools/online.js`(로컬 서버에 브라우저 둘: 서로 보이기·더미 함께 쓰기·방장만 쌓기·가짜 로그인·옮기기·귤 바로잡기), 부하 `node tools/loadtest.js [주소] [인원들]`, 프레임 `PERF_CROWD=N node tools/perf.js desk crowd`
 - 남은 것: 몹(전투 오름)·투기꾼 모습은 아직 사람마다 따로(더미 수만 방이 주인), 귤 줍기·업적 보상은 credit 으로만 막음(하나하나 서버 판정은 아님), 손님도 방에는 들어옴
+
+## 의견 보내기 (#77)
+- 클라이언트 `src/feedback.js` `createFeedback({ key, post, meta })`: 글 하나(`FEEDBACK.max` 500자)를 기기 저장 `<키>.fb`(처음부터 다시에도 남음)의 `q` 에 넣고, 서버가 있으면(`online.js postFeedback` → `POST /feedback`, 로그인 없이) 바로 보냄. 실패하거나 서버가 없으면 모아 두고(`keep` 30) 다음 시작 때 `flush()` 로 한꺼번에(`batch` 10). 연달아 보내기 `gapMs`(1분)
+- 같이 가는 값: `ver`·`srv`(clean/battle)·`map`·`dev`(phone/tablet/desktop)·화면 크기·좌표 `x,z`·`nick`. 이메일 등은 받지 않음(창 안내: 답장을 원하면 글에 직접)
+- 버튼: 메뉴 `#menu-feedback`('의견 보내기'), 첫 화면 베타 안내 옆 `#intro-feedback`(창은 `z-index 12` 로 첫 화면 위). 예전 social.js 의 db 저장·GitHub 이슈로 열기는 뺌
+- 서버 `server/src/feedback.js`: `cleanItems` 칸 확인·길이 자름, 계정 DO 표 `fb`(id·at·ip 해시·item·mailed) 에 저장, 주소마다 1시간 `ipPerHour`(20), 최근 `dbKeep`(2000)만. 메일은 Email Routing `send_email` 바인딩 `FEEDBACK_MAIL` + 시크릿 `FEEDBACK_TO`·`FEEDBACK_FROM`, UTF-8 MIME 직접 만듦. 바인딩은 wrangler.toml 에 주석(Email Routing 켠 뒤 풂), 없으면 저장만. 로컬 `GET /feedback`(STATS_OPEN) 로 목록
+- 확인 `node tools/feedback.js [서버주소]`

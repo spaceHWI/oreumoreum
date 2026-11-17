@@ -116,23 +116,10 @@ export function createSocial({ scene, net, save, onToast, mapId }) {
     for (const e of net.peersById.values()) { const q = e.data.pq; if (typeof q === 'number' && q > 0 && q < myQueueAt) n++; }
     return n;
   }
-  // 개발자에게 보내기 (db feedback/{self}, 주인만 읽음)
-  async function sendFeedback(text, meta) {
-    const t = clean(text, 1000); if (!t) return 'empty';
-    if (!db || !uid) return 'none';
-    const ref = db.collection('feedback').doc(uid);
-    try {
-      const snap = await ref.get();
-      const items = ((snap.exists && snap.data()?.items) || []).slice(-49);
-      items.push({ at: Date.now(), text: t, ...meta });
-      await ref.set({ nick: save.nick, items });
-      return 'ok';
-    } catch (e) { return 'fail'; }
-  }
   function queueLength() { let n = 0; for (const e of net.peersById.values()) if (typeof e.data.pq === 'number' && e.data.pq > 0) n++; return n; }
 
   return {
-    start, stones, listeners, placeStone, sendFeedback, tickBubbles, say, showBubble,
+    start, stones, listeners, placeStone, tickBubbles, say, showBubble,
     joinQueue, leaveQueue, queueAhead, queueLength,
     get uid() { return uid; }, get canWrite() { return dbReady && !!uid; },
     presenceExtra: () => ({ say: mySay, pq: myQueueAt || null }),

@@ -27,3 +27,10 @@ new_sqlite_classes = ["Room", "Accounts"]
 # 날마다 한 번 (UTC 18:17 = 한국 03:17): 마지막 접속 뒤 7일 지난 계정 지우기
 [triggers]
 crons = ["17 18 * * *"]
+
+# 의견 보내기 (#77): Cloudflare Email Routing 으로 개발자 메일에 보냄
+# 켜는 법: 1) 대시보드에서 도메인의 Email Routing 켜기 2) 받는 주소(개발자 메일)를 Destination address 로 인증
+#          3) 아래 주석을 풀기 4) 시크릿: wrangler secret put FEEDBACK_TO (받는 주소) · FEEDBACK_FROM (그 도메인의 보내는 주소, 예: feedback@도메인)
+# 바인딩이나 시크릿이 없으면 서버는 글을 저장만 함(메일 없음). 받는 주소는 공개 코드에 넣지 않음
+# [[send_email]]
+# name = "FEEDBACK_MAIL"

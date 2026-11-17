@@ -3,7 +3,7 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { RIDES, CART, PERF } from './balance.js';
+import { RIDES, CART, PERF, FEEDBACK } from './balance.js';
 import { TIER, PERF_AUTO, PERF_PREF, PERF_LOCK, autoTier, createFarCull } from './quality.js';
 import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC, TITLE, PHOTOG } from './balance.js';
 import { createPhotographer } from './photographer.js';
@@ -57,7 +57,8 @@ import { isBattle, serverId, setServerId, validServer, roomFor, createAbStats, S
 import { initUiTips } from './uitips.js';
 import { createEmotes, isEmote, EMOTE_BY } from './emotes.js';
 import { createTips, TIP, TIP_ICON } from './tips.js';
-import { ONLINE, saveKey, loadSave, createAccount, mountLogin, createWsLobby, linkTrash } from './online.js';
+import { ONLINE, saveKey, loadSave, createAccount, mountLogin, createWsLobby, linkTrash, postFeedback } from './online.js';
+import { createFeedback } from './feedback.js';
 
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -1060,19 +1061,28 @@ $('intro-notes').addEventListener('click', openNotes);
 RELEASE_NOTES[0]?.items.slice(0, TITLE.notes).forEach((t) => { const li = document.createElement('li'); li.textContent = t; $('intro-rn').append(li); });
 $('intro-logo').insertAdjacentHTML('beforeend', logoSvg(LOGO_PICK));
 $('menu-notes').addEventListener('click', () => { closePanels(); openNotes(); });
-$('menu-feedback').addEventListener('click', () => { closePanels(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); });
-$('feedback-input').addEventListener('input', () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / 1000`; });
+// 의견 보내기 (#77): 서버가 있으면 /feedback 으로, 없으면 기기에 모아 뒀다가 서버가 붙으면 한꺼번에 (feedback.js)
+const feedback = createFeedback({
+  key: (__DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1') + '.fb', // '처음부터 다시' 에도 남도록 저장 키를 따로
+  post: postFeedback,
+  meta: () => ({ ver: VERSION, srv: serverId(), map: MAP_ID, dev: isTouch ? (Math.min(innerWidth, innerHeight) <= 600 ? 'phone' : 'tablet') : 'desktop', w: innerWidth, h: innerHeight, x: Math.round(player.pos.x), z: Math.round(player.pos.z), nick: save.nick }),
+});
+feedback.flush();
+const fbLen = () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / ${FEEDBACK.max}`; };
+function openFeedback(close = true) { if (close) closePanels(); $('feedback-input').maxLength = FEEDBACK.max; fbLen(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); }
+$('menu-feedback').addEventListener('click', () => openFeedback());
+$('intro-feedback').addEventListener('click', (e) => { e.stopPropagation(); openFeedback(false); }); // 첫 화면 베타 안내 옆
+$('feedback-input').addEventListener('input', fbLen);
 $('feedback-input').addEventListener('keydown', (e) => e.stopPropagation());
 $('feedback-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const text = $('feedback-input').value.trim(); if (!text) return;
-  const meta = { map: MAP_ID, ua: navigator.userAgent.slice(0, 160), w: innerWidth, h: innerHeight };
+  if (!$('feedback-input').value.trim()) return;
+  const w = feedback.wait();
+  if (w > 0) { const m = `조금 뒤에 다시 보내 주세요 (${Math.ceil(w / 1000)}초)`; toast(m); $('feedback-len').textContent = m; return; }
   $('feedback-send').disabled = true;
-  const r = await social.sendFeedback(text, meta);
+  const r = await feedback.send($('feedback-input').value);
   $('feedback-send').disabled = false;
-  if (r === 'ok') { $('feedback-input').value = ''; $('feedback-len').textContent = '0 / 1000'; $('feedback').hidden = true; toast('보냈어요. 고마워요!'); }
-  else if (r === 'none') { open(`https://github.com/spaceHWI/oreumoreum/issues/new?title=${encodeURIComponent('[의견] ' + text.slice(0, 40))}&body=${encodeURIComponent(text + '\n\n---\n' + MAP_ID + ' · ' + meta.w + 'x' + meta.h)}`, '_blank'); $('feedback').hidden = true; }
-  else toast('보내지 못했어요. 잠시 후 다시 보내 주세요');
+  if (r === 'ok' || r === 'kept') { $('feedback-input').value = ''; fbLen(); $('feedback').hidden = true; toast('고마워요! 잘 읽을게요'); if (!$('intro').hidden) { const ib = $('intro-feedback'); ib.textContent = '고마워요!'; setTimeout(() => { ib.textContent = '의견 보내기'; }, 3000); } }
 });
 $('menu-help').addEventListener('click', () => { closePanels(); $('intro').classList.add('dim'); document.body.classList.add('intro-help-on'); $('enter').textContent = '닫기'; $('intro-main').hidden = false; $('intro-step').hidden = true; $('intro').hidden = false; $('intro-help').hidden = false; });
 
@@ -3027,7 +3037,7 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { emo, doEmote, net, online: ONLINE && { account: () => account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
+window.__oreum = { feedback, emo, doEmote, net, online: ONLINE && { account: () => account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,

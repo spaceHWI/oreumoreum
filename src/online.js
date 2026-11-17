@@ -47,6 +47,8 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
   if (!r.ok) { const e = new Error(j.error || 'http ' + r.status); e.status = r.status; throw e; }
   return j;
 }
+// 의견 보내기 (#77): 서버가 있으면 글 묶음을 POST /feedback (로그인 안 해도 됨)
+export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; return o; };
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 

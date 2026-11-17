@@ -1,6 +1,7 @@
 // 오름오름 멀티 서버 (#7) 입구: 로그인·계정 저장·방 연결·날마다 정리
 import { NET } from '../../src/balance.js';
 import { verifyGoogle, signSession, readSession } from './auth.js';
+import { cleanItems, sendMail } from './feedback.js';
 export { Room } from './room.js';
 export { Accounts } from './accounts.js';
 
@@ -57,6 +58,21 @@ export default {
         const body = await req.json();
         return json(await accounts(env).put(sub, body.save, { migrate: !!body.migrate }));
       }
+      // 의견 보내기 (#77): 로그인 안 해도 됨. 저장하고 개발자 메일로 (FEEDBACK_TO 시크릿)
+      if (url.pathname === '/feedback' && req.method === 'POST') {
+        if (!origin) return json({ error: 'origin' }, 403);
+        const items = cleanItems((await req.json()).items);
+        if (!items.length) return json({ error: 'empty' }, 400);
+        const ipRaw = req.headers.get('CF-Connecting-IP') || 'local';
+        const ip = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fb:' + ipRaw)))].slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('');
+        const A = accounts(env);
+        const n = await A.feedbackAdd(ip, items);
+        if (n < 0) return json({ error: 'too many' }, 429);
+        let mailed = false;
+        try { mailed = await sendMail(env, items, !!(await who())); if (mailed) await A.feedbackMailed(n); } catch (e) { mailed = false; }
+        return json({ ok: true, n, mailed });
+      }
+      if (url.pathname === '/feedback' && req.method === 'GET' && env.STATS_OPEN === '1') return json(await accounts(env).feedbackList()); // 로컬 확인용
       return json({ error: 'not found' }, 404);
     } catch (e) {
       return json({ error: String(e && e.message || e) }, 400);
