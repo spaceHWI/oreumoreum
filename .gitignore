@@ -8,6 +8,9 @@ model/*.glb
 !model/wall-far.glb
 !model/dog.glb
 !model/alien.glb
+!model/deer.glb
+!model/hareubang.glb
+!model/lamp.glb
 !model/shop-stone.glb
 !model/shop-salon.glb
 !model/shop-leap.glb

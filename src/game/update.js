@@ -101,7 +101,8 @@ function updatePlayer(dt) {
     p.heading = d.heading; p.speed = d.speed;
     p.pos.copy(d.pos);
     checkViewpoint();
-    runner.root.position.copy(p.pos); runner.root.position.y += 0.95 + (d.speed > 4 ? Math.abs(Math.sin(d.phase * 0.5)) * 0.25 : 0);
+    runner.root.position.copy(p.pos); runner.root.position.y += (d.seatY ?? 0.95) + (d.speed > 4 ? Math.abs(Math.sin(d.phase * 0.5)) * 0.25 : 0);
+    if (d.seatZ) { runner.root.position.x += Math.sin(d.heading) * d.seatZ; runner.root.position.z += Math.cos(d.heading) * d.seatZ; } // 노루 등 (#2)
     runner.root.rotation.y = p.heading;
     followLight(); return;
   }
@@ -227,7 +228,7 @@ function frame(now) {
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
   if (player.ride && (player.pose === 'sit' || mealS.on || cutS.on || state.photoState || state.fishing?.active || cam.mode === 'leap' || hp.isDown || player.rescue || player.knock)) dismountRide(); // 다른 일을 시작하면 내림 (#69)
-  const pose = player.flail ? 'flail' : player.riding || player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
+  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)

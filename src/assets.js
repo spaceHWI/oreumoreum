@@ -11,7 +11,7 @@ const waiting = new Map(); // 이름 → [콜백]
 const loading = new Map(); // 이름 → Promise
 let go = false; // 첫 화면이 그려지기 전에는 받지 않음
 const queue = []; // 받을 차례 (앞이 먼저)
-const ORDER = ['steps', 'boar', 'stone', 'leap', 'salon', 'hair-short', 'hair-bob', 'hair-bun', 'dog', 'alien']; // 한가할 때 받는 순서
+const ORDER = ['steps', 'boar', 'stone', 'leap', 'salon', 'hair-short', 'hair-bob', 'hair-bun', 'dog', 'alien', 'hareubang', 'lamp', 'deer']; // 한가할 때 받는 순서
 export const CORE = ['runner']; // 첫 화면 전에 받아야 하는 것 (main.js 가 기다림)
 export const assetInfo = { done: 0, total: Object.keys(ASSETS).length, bytes: 0, ms: 0 };
 
@@ -65,11 +65,12 @@ function load(name) {
   return loading.get(name);
 }
 // 자료가 오면 cb(자료). 이미 받았으면 바로 부름. 받기 시작은 첫 화면 뒤 (now: 내 캐릭터 머리처럼 첫 화면에 필요하면 바로)
-export function whenAsset(name, cb, { now = false } = {}) {
+// lazy: 받기를 시작하지 않고 기다리기만 (가까이 갔을 때 쓰는 곳이 want 를 부름. #2 노루)
+export function whenAsset(name, cb, { now = false, lazy = false } = {}) {
   const d = cache.get(name); if (d) { cb(d); return; }
   if (!waiting.has(name)) waiting.set(name, []);
   waiting.get(name).push(cb);
-  want(name, now);
+  if (!lazy) want(name, now);
 }
 // 가까이 왔거나 지금 필요함 → 차례 맨 앞으로 (now 면 첫 화면 전이라도 바로 받음)
 export function want(name, now = false) {

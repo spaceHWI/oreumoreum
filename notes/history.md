@@ -649,3 +649,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 지루함: 3분 넘게 일이 없으면 하나씩 돌아가며 — 드문 쓰레기 반짝임(가까운 더미 위 반짝이 + 60초 동안 드문 것 8배), 노루 두 마리가 지나감(45초), 반딧불이 떼(밤만, 40초), 잭팟 조짐(개울 40m 안이면 다음 입질이 잭팟)
 - 지금 규칙 확인(바꾸지 않음): 받히면 가진 귤 10%가 흩어져 다시 주울 수 있음(쓰레기는 쏟지 않음), 쓰러져도 잃는 것 없이 대기 시간만
 - 확인: `node tools/pace.js` (20분 흉내 플레이 표 + notes/shots/pace-89.svg/png), `--seeds 50`, `--live`(실제 게임 깨끗한·전투 한 번씩, notes/shots/pace-89-<서버>.png)
+
+## 노루·하르방·가로등을 Tripo 모델로 (#2)
+- 원본 `assets` 브랜치 `deer.glb`·`hareubang.glb`·`lamp.glb` → `python3 model/bake-prop.py 원본.glb <삼각형> 512 <매끈 각도> model/<이름>.glb`(노루 3000·180°, 하르방 1800·50°, 가로등 1500·50°) → `node model/extract-prop.js model/<이름>.glb src/model-<이름>.js <이름_M> "<설명>" 70`. 결과 glb 는 `model/` 에 둠
+- 따로 받기(#85): `tools/packassets.mjs` 에 hareubang·lamp·deer, `assets.js ORDER` 끝. 노루는 `whenAsset(..., { lazy: true })` 로 기다리다가 노루가 `LIFE_MODELS.deer.near`(140m) 안에 오면 받음(`lifemodels.js wantDeer`). 받기 전엔 회색 타원체·상자·막대 임시 모양
+- `src/lifemodels.js`: 노루(멧돼지·들개 방식, 위치로 뼈 가중치: 몸·머리·꼬리·짧은 다리 4)와 하르방. 예전 상자 노루·하르방 코드는 life.js 에서 지움. 노루 `fx`: 걸음마다 출렁·달릴 때 숙임·풀 뜯을 때 오물오물·경계할 때 고개 돌림·도망칠 때 꼬리를 세우고 시작할 때 움츠렸다 튐. 큰 머리라 숙임은 0.62배
+- 노루 타기: 러너 자세 'ride'(조랑말과 같이 걸터앉기), 높이·뒤쪽 자리 `LIFE_MODELS.deer.seatY/seatZ`(`update.js`)
+- 하르방: 배율 3.2(키 약 3.1m, 예전과 같음), 충돌·귤 맞히기 그대로. 맞으면 받침을 축으로 흔들리고 들썩임(`shakeHareubang`)
+- 가로등 `lamps.js`: 한 InstancedMesh(모델을 돌려 귤 등이 +z, 기둥이 원점). 귤 부분 정점에 `glow` 표시 → 밤에 그 부분만 따뜻하게 빛남(`lampNight` × `LIFE_MODELS.lamp.glow`), 낮엔 텍스처 귤색 그대로. 둘레 가산 공(밤만)·바닥 빛웅덩이·가까운 3개 PointLight 는 예전처럼, 자리만 귤 등 아래로. 기둥 충돌 반지름 0.3
+- 확인: `node tools/lifeshots.js dist index.html <이름> [늦추기 ms]` (하르방·가로등·노루 낮·밤·노루 타기), `__oreum.lifeModels`(mount(i)·dismount()·lamps())
