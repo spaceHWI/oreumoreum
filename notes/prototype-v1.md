@@ -52,12 +52,12 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 지난 변경 기록(이슈별 메모)은 `notes/history.md`
 
 그 밖의 모듈 (src/)
-- 맵·그림: boot.js(맵 결정, 맨 먼저) · namsongi.js/namsongidata.js(남송이 지형) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js · retro.js · quality.js
+- 맵·그림: boot.js(맵 결정, 맨 먼저) · namsongi.js/namsongidata.js(남송이 지형) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js(가로등, model-lamp.js) · retro.js · quality.js
 - 캐릭터·장비: runner.js/runnermodel.js/dqskin.js · gear.js · clothes.js/clothicons.js · emotes.js · footprints.js
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
-- 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤)
+- 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
 - 탈것: rides.js · autowalk.js
 - 멀티·저장: online.js · net.js · social.js · server.js · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
 - UI: tutorial.js · tips.js · uitips.js · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · music.js · page.html

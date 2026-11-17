@@ -1,7 +1,7 @@
 // 소품(표지석·벤치·징검돌·하르방·돌탑), 사물 충돌, 돌담, 들머리 개울, 가게 거리, 쓰레기·오름 안 클린하우스·꽃, 마차, 러너(player), HP (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { TEXCS } from '../boot.js';
 import { createTrash, createLocalTrashStore } from '../trash.js';
-import { CLEANHOUSE, CAIRN, TUT, SHOPS } from '../balance.js';
+import { CLEANHOUSE, CAIRN, TUT, SHOPS, LIFE_MODELS } from '../balance.js';
 import { rideRig, createCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import { createShopStreet, SHOP_BUILD } from '../shops.js';
@@ -163,7 +163,7 @@ if (col) {
   NSW.solids.forEach(([x, z, r]) => col.add(x, z, r));
   spots.hareubangs.forEach((h) => col.add(h.pos.x, h.pos.z, 0.75));
   spots.cairns.forEach((c) => col.add(c.pos.x, c.pos.z, 1.0));
-  (spots.lamps || []).forEach(([x, z]) => col.add(x, z, 0.2));
+  (spots.lamps || []).forEach(([x, z]) => col.add(x, z, LIFE_MODELS.lamp.colR)); // 가로등 기둥 (#2)
   { const a = Math.atan2(P.out.x, P.out.z); col.addBox(P.stone.x, P.stone.z, a, 1.3, 0.8); }
   col.addBox(spots.bench.pos.x, spots.bench.pos.z, Math.atan2(spots.bench.out.x, spots.bench.out.z), 1.6, 0.4, 0, -0.2);
   if (!spots.sign.silent) { const r = spots.sign.rot; [-1.3, 1.3].forEach((u) => col.add(spots.sign.pos.x + Math.cos(r) * u - Math.sin(r) * 0.1, spots.sign.pos.z - Math.sin(r) * u - Math.cos(r) * 0.1, 0.25)); }

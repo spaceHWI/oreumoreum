@@ -17,6 +17,9 @@ export const ASSET_SRC = [
   ['leap', 'model-leap.js', 'LEAP_M', PROP],
   ['dog', 'model-dog.js', 'DOG_M', PROP],
   ['alien', 'model-alien.js', 'ALIEN_M', PROP],
+  ['hareubang', 'model-hareubang.js', 'HAREUBANG_M', PROP], // #2 돌하르방·가로등·노루
+  ['lamp', 'model-lamp.js', 'LAMP_M', PROP],
+  ['deer', 'model-deer.js', 'DEER_M', PROP],
   ['boar', 'boarmodel.js', 'BM', FLOAT],
   ['hair-short', 'gear/head-short.js', 'default', FLOAT],
   ['hair-bob', 'gear/head-bob.js', 'default', FLOAT],

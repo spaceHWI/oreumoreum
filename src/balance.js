@@ -825,3 +825,10 @@ export const FEEDBACK = {
   ipPerHour: 20,      // 서버: 한 주소(IP)에서 1시간에 받는 글 수
   dbKeep: 2000,       // 서버: 저장해 두는 글 수 상한
 };
+
+// 노루·돌하르방·가로등 Tripo 모델 (#2). 모델 좌표는 바닥 y=0·키 약 0.98, 크기는 배율로
+export const LIFE_MODELS = {
+  deer: { scale: 1.9, near: 140, seatY: 1.0, seatZ: -0.62 }, // 키 약 1.86m. near: 이 거리 안에 노루가 오면 모델을 받음. 탈 때 러너를 등 높이·뒤쪽으로
+  hareubang: { scale: 3.2 },                     // 키 약 3.1m (예전 임시 모양과 같음)
+  lamp: { scale: 4.0, glow: 0.8, colR: 0.3 },     // 키 약 3.9m, 귤 등은 땅에서 약 2.6m. glow: 밤에 귤 등이 빛나는 세기, colR: 기둥 충돌 반지름
+};

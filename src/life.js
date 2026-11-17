@@ -1,36 +1,15 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { height, surfaceAt } from './world.js';
 import { createEnemies } from './enemies.js';
 import { SCATTER, THROW_DMG, BOW, TANGERINE as TG } from './balance.js';
 import { LOW } from './gfx2.js';
+import { buildDeer, buildHareubang, shakeHareubang, wantDeer } from './lifemodels.js';
 
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 const box = (w, h, d, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; return m; };
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
-// ---------- 노루 ----------
-function buildDeer() {
-  const g = new THREE.Group();
-  const fur = lam('#b8865a'), dark = lam('#6b4a2e'), light = lam('#efe3d0');
-  const body = box(0.5, 0.55, 1.1, fur); body.position.y = 0.95; g.add(body);
-  const rump = box(0.45, 0.4, 0.35, light); rump.position.set(0, 0.95, -0.6); g.add(rump);
-  const neck = box(0.22, 0.5, 0.25, fur); neck.position.set(0, 1.35, 0.5); neck.rotation.x = -0.5; g.add(neck);
-  const head = new THREE.Group(); head.position.set(0, 1.62, 0.72); g.add(head);
-  const skull = box(0.26, 0.3, 0.45, fur); head.add(skull);
-  const nose = box(0.12, 0.1, 0.1, dark); nose.position.set(0, -0.06, 0.26); head.add(nose);
-  [-0.16, 0.16].forEach((x) => { const ear = box(0.08, 0.26, 0.04, fur); ear.position.set(x, 0.24, -0.05); ear.rotation.z = -x * 2; head.add(ear); });
-  [-0.09, 0.09].forEach((x) => { const eye = box(0.05, 0.06, 0.03, dark); eye.position.set(x, 0.04, 0.23); head.add(eye); });
-  const legs = [];
-  [[0.18, 0.4], [-0.18, 0.4], [0.18, -0.4], [-0.18, -0.4]].forEach(([x, z]) => {
-    const l = new THREE.Group(); l.position.set(x, 0.75, z); g.add(l);
-    const up = box(0.13, 0.45, 0.14, fur); up.position.y = -0.2; l.add(up);
-    const lo = box(0.09, 0.4, 0.1, dark); lo.position.y = -0.6; l.add(lo);
-    legs.push(l);
-  });
-  const tail = box(0.1, 0.2, 0.08, light); tail.position.set(0, 1.1, -0.78); g.add(tail);
-  return { root: g, legs, head, body };
-}
+// 노루·돌하르방 모양은 lifemodels.js (#2 Tripo 모델)
 
 // ---------- 조랑말 ----------
 function buildHorse(color) {
@@ -81,30 +60,6 @@ function buildButterfly(color) {
   return { root: g, wings: [pl, pr] };
 }
 
-// ---------- 하르방 ----------
-export function buildHareubang() {
-  const g = new THREE.Group();
-  const stone = lam('#5e5a55'), dark = lam('#4a4642');
-  const base = box(1.2, 0.5, 1.0, dark); base.position.y = 0.25; g.add(base);
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 1.6, 9), stone); body.position.y = 1.3; body.castShadow = true; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.58, 10, 8), stone); head.position.y = 2.45; head.scale.y = 1.15; head.castShadow = true; g.add(head);
-  const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, 0.35, 9), dark); hat.position.y = 2.98; hat.castShadow = true; g.add(hat);
-  [-0.22, 0.22].forEach((x) => { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), dark); eye.position.set(x, 2.5, 0.48); g.add(eye); });
-  const nose = box(0.2, 0.42, 0.22, stone); nose.position.set(0, 2.3, 0.56); g.add(nose);
-  const mouth = box(0.42, 0.08, 0.1, dark); mouth.position.set(0, 2.08, 0.5); g.add(mouth);
-  const hl = box(0.3, 0.26, 0.5, stone); hl.position.set(-0.45, 1.45, 0.4); hl.rotation.z = 0.3; g.add(hl);
-  const hr = box(0.3, 0.26, 0.5, stone); hr.position.set(0.45, 1.05, 0.4); hr.rotation.z = -0.3; g.add(hr);
-  // 움직이지 않는 조각(받침·몸·눈·코·입·손)은 재질마다 한 메시로 합침 (#79 그리기 횟수 10 → 4). 머리·모자는 맞으면 흔들려서 따로
-  for (const m of [stone, dark]) {
-    const parts = g.children.filter((o) => o.isMesh && o.material === m && o !== head && o !== hat);
-    if (parts.length < 2) continue;
-    const gs = parts.map((o) => { o.updateMatrix(); return o.geometry.clone().applyMatrix4(o.matrix); });
-    parts.forEach((o) => g.remove(o)); g.add(new THREE.Mesh(mergeGeometries(gs), m));
-  }
-  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  return { root: g, head, hat };
-}
-
 // ---------- 생태계 ----------
 // spots: maps.js의 맵별 배치(노루 무리, 말, 까마귀, 꽃, 귤 위치, 멧돼지 등장 위치, 경계)
 export function createLife({ scene, onToast, rnd, hooks, spots }) {
@@ -127,7 +82,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const home = new THREE.Vector3(hx + (rnd() - 0.5) * 20, 0, hz + (rnd() - 0.5) * 20);
       home.y = height(home.x, home.z);
       d.root.position.copy(home);
-      const heart = makeHeart(); heart.position.y = 2.3; d.root.add(heart);
+      const heart = makeHeart(); heart.position.y = 2.25; d.root.add(heart);
       group.add(d.root);
       deer.push({ ...d, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null });
     }
@@ -345,7 +300,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
         d.root.position.copy(d.pos); d.root.rotation.y = d.heading;
         legs4(d, d.speed > 0.1 ? 0.7 : 0);
         d.root.position.y += d.speed > 4 ? Math.abs(Math.sin(d.phase * 0.5)) * 0.25 : 0;
-        d.head.rotation.x = 0.1;
+        d.head.rotation.x = 0.1; d.fx?.(dt, time, d);
         continue;
       }
       seekFood(d, 30);
@@ -375,6 +330,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       d.root.position.y += d.state === 'flee' ? Math.abs(Math.sin(d.phase * 0.9)) * 0.5 : 0;
       legs4(d, d.speed > 0.1 ? 0.6 : 0);
       d.head.rotation.x = d.state === 'graze' || d.state === 'eat' ? 0.9 + Math.sin(time * (d.state === 'eat' ? 8 : 1.5) + d.phase) * 0.1 : (d.state === 'alert' ? -0.2 : 0.2);
+      d.fx?.(dt, time, d); wantDeer(Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z)); // 가까이 오면 모델을 받음 (#2)
     }
     // 조랑말
     for (const h of horses) {
@@ -463,7 +419,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < 1.6) { group.remove(tg.mesh); tangerines.splice(i, 1); hooks.reclaim?.(p.clone()); }
     }
     for (const hb of hareubangs) {
-      if (hb.hitT > 0) { hb.hitT = Math.max(0, hb.hitT - dt); hb.head.rotation.z = Math.sin(hb.hitT * 20) * 0.12 * hb.hitT; hb.hat.position.y = 2.98 + Math.sin(hb.hitT * 14) * 0.15 * hb.hitT; }
+      if (hb.hitT > 0) { hb.hitT = Math.max(0, hb.hitT - dt); shakeHareubang(hb); }
     }
   }
 
@@ -533,7 +489,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     const out = [];
     for (let i = 0; i < n; i++) {
       const d = buildDeer(), home = new THREE.Vector3(x + (rnd() - 0.5) * 8, 0, z + (rnd() - 0.5) * 8); home.y = height(home.x, home.z);
-      d.root.position.copy(home); const heart = makeHeart(); heart.position.y = 2.3; d.root.add(heart); group.add(d.root);
+      d.root.position.copy(home); const heart = makeHeart(); heart.position.y = 2.25; d.root.add(heart); group.add(d.root);
       const a = { ...d, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null, bloom: true };
       deer.push(a); out.push(a);
     }
