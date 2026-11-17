@@ -529,3 +529,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - main.js: 표지석 '인증샷 찍기' → 사진사 상호작용 '사진'(r `PHOTOG.r`). 누르면 손짓 → 사진 자리로 걸어감(막히거나 `walkMax` 넘으면 바로 자리에) → 포즈 3종(`photo` 만세·`photo-v` 브이·`photo-point` 가리키기, 지난번과 다른 것) → 찍기 전 다시 누르면 '포즈 바꾸기' → 3·2·1(`PHOTOG.count`) → 찰칵. 카메라는 삼각대 렌즈 앞(`camPos`)에서 `camLook`(표지석·사진 자리 가운데 가슴 높이)을 봄. 폴라로이드 틀은 그대로, 팝업에 저장(png 내려받기)·공유(navigator.share 파일, 안 되면 숨김)·닫기. 줄서기(presence.pq)는 그대로 둠. 업적 이벤트 `photo` 그대로, 무료
 - 다른 사람은 원래 화면에 그려지므로 가까이 있으면 함께 찍힘. 다만 남에게 보이는 포즈는 'photo'(만세) 하나 (net 은 포즈 이름만 보냄)
 - 확인용: `__oreum.photo` (photog, start, begin, state, pose, rePose, open, blob, canShare, close)
+
+## 탈것·마차 (#69)
+- `src/rides.js`: 모양(로우폴리 임시 `buildSkate`·`buildScoot`·`buildPony`, 배율 `RIDES.size` — 캐릭터 키 약 2.45), 속도 `rideSpeed(id, 기울기, 길 위)`, 러너에 붙는 탈것 `rideRig(runner)`(set: skate·skate-c(옆구리에 듦)·scoot·horse → lift·pose·still), 마차 `createCart`, 탈것 가게 `createRideShop`. 수치 `balance.js RIDES`·`CART`
+- 개인 탈것: `save.rides = { own, cur }`(예전 저장엔 없음). 가게 거리 3번 터 '탈것 가게'(SHOPS 줄 ride, 팝업 SHOP_POP.ride, 카드 눌러 사기·가진 건 고르기). `#btn-ride`(가진 뒤에만, Q)는 짧게 타기·내리기, 길게(`RIDES.holdT`) `#ride-pick` 고르기
+- 속도: 달리기 10 × 평지/오르막/내리막 배율(기울기 `RIDES.grade` 까지 섞음) × 길 밖 0.7. 신발·식사 버프는 안 곱함. 길 = surface + 가게 골목. 스케이트보드는 기울기 carryIn 넘으면 들고 걷기(5), 관성(손 떼도 미끄러짐, 내리막은 계속 붙음)
+- 자동으로 내림(`noRideZone`): 개울(돌다리 포함)·밟는 구조물(groundAt−height>0.06: 징검돌·디딤판·테라스)·가게 터 안. 벗어나 `clearT` 지나면 다시 탐(`player.rideAuto`). 받히면 떨어짐, 식사·미용·사진·낚시·LEAP 입어 보기면 내림. 타는 동안 줍기·던지기·활·낚시 없음, 상호작용 기본은 '내리기'. 걸음·발자국 안 셈(말은 발굽 소리)
+- 다른 사람: presence `rd`(skate|skate-c|scoot|horse|cart) → `net.js rideHook` 이 `rideRig` 로 모양·자세·높이. runner.js 자세 board·scoot·ride 추가
+- 마차: 들머리(approach 160) → 능선 입구(approach 600) → 능선(rim 745) → 정상 아래(rim 585)를 갔다 옴. 한 바퀴 240초, 정류장마다 10초, 구간 앞뒤 서서히. 위치는 `Date.now()` 에서 계산(`cartState`) → 모두 같은 자리. 정류장 = 팻말(마차 그림)+벤치+남은 시간 고리(가까울 때만 그림). 서 있는 마차 근처면 '마차 타기'(무료) → 벤치에 앉음, 서 있을 때 '내리기', 점프로 옆으로 뛰어내림. 마차 위에선 안 받힘. 화면 가장자리 `#cart-mark`(정낭 연 뒤, 18~260)
+- 확인용 `__oreum.rides`: give, mount, off, state, speed, zone, buy, open, cart(board, leave, state, at(정류장) — 시각을 당겨 그 정류장에 서 있게, shift, goStop, goCart)
+- `tools/econ.js`: 탈것을 싼 것부터 (왕복만 탐, 평지 35%·길 밖 30% 가정). `--norides` 로 비교
+- 임시: 모양 전부 로우폴리, 마차 충돌 없음(사람을 통과), 여러 사람이 같은 자리에 앉을 수 있음, 스쿠터 손잡이 모양 단순
