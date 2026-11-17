@@ -163,6 +163,11 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
     const a0 = Math.random() * 6.28, cy = height(px, pz) + 13;
     birds = []; for (let i = 0; i < NBIRD; i++) { const a = a0 + (i - NBIRD / 2) * 0.12, d = 110 + i * 4; birds.push({ p: new THREE.Vector3(px + Math.cos(a) * d, cy + 18 + i, pz + Math.sin(a) * d), v: new THREE.Vector3(), ph: Math.random() * 6, st: 'in', t: B.birdT + i, cx: px, cz: pz, cy: cy + (i % 3), a: a + Math.PI, r: 8 + i * 1.6 }); }
   }
+  // 조짐 (#89): (px, pz) 둘레 땅에서 새들이 한꺼번에 날아오름
+  function flushUp(px, pz) {
+    const a0 = Math.random() * 6.28, n = Math.min(NBIRD, 7); birds = [];
+    for (let i = 0; i < n; i++) { const x = px + (Math.random() - 0.5) * 10, z = pz + (Math.random() - 0.5) * 10; birds.push({ p: new THREE.Vector3(x, height(x, z) + 0.6, z), v: new THREE.Vector3(0, 6, 0), ph: Math.random() * 6, st: 'out', t: 0, cx: px, cz: pz, cy: 0, a: a0 + (Math.random() - 0.5) * 0.9, r: 0 }); }
+  }
   const wingM = (im, idx, p, yaw, flap, s, side) => { e.set(0, yaw, side * flap, 'YXZ'); q.setFromEuler(e); m4.compose(p, q, sc.set(side * s, s, s)); im.setMatrixAt(idx, m4); };
   function tickFx(dt, pos, time) {
     // 나비: 다 핀 구역 안에 있으면 둘레 꽃 사이를 팔랑팔랑
@@ -227,5 +232,5 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   }
   // 서버를 바꿀 때 (#35): 그 사이 쓰레기 변화는 연출 없이 바로 맞춤. run 안에서 쓰레기를 바꿈
   function resync(run) { mute = true; try { run?.(); } finally { mute = false; } items.forEach((it) => { it.on = false; it.cur = 0; it.wd = false; }); anim.clear(); ZONE_IDS.forEach((z) => { bloomed[z] = false; }); refresh(true); }
-  return { update, resync, replay, on: (f) => listeners.push(f), isBloomed: (z) => !!bloomed[z], bloomed: () => ZONE_IDS.filter((z) => bloomed[z]), clean: (z) => clean[z], flock, spotIn, test };
+  return { update, resync, replay, on: (f) => listeners.push(f), isBloomed: (z) => !!bloomed[z], bloomed: () => ZONE_IDS.filter((z) => bloomed[z]), clean: (z) => clean[z], flock, flushUp, spotIn, test };
 }

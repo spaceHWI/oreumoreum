@@ -1,5 +1,5 @@
 // 카메라, 첫 화면 궤도 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { BLOOM_FX, TITLE } from '../balance.js';
+import { BLOOM_FX, PACE, TITLE } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { state } from './state.js';
@@ -14,7 +14,7 @@ function camPullK() { const T = BLOOM_FX.zone.camT; if (state.camPullT < 0 || st
 export function followCam(dt, snap) {
   const look = player.pos.clone(); look.y = player.visY + 1.6 + (player.riding ? 0.9 : 0);
   const pk = camPullK(), pitch = Math.min(1.25, cam.pitch + pk * BLOOM_FX.zone.camPitch), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
-  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * (1 + pk * BLOOM_FX.zone.camDist));
+  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * (1 + pk * BLOOM_FX.zone.camDist) * (1 - PACE.camIn * (state.tension || 0))); // 긴장 때 조금 가까이 (#89)
   const p = look.clone().add(off);
   const gh = height(p.x, p.z) + 1.2;
   if (p.y < gh) { look.y += (gh - p.y) * 0.8; p.y = gh; }

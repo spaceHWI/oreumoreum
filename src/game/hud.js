@@ -69,7 +69,7 @@ let tipIdle = 0, tipBagN = -1;
 function tipState() {
   const full = !!trash && late.bagRoom() < 1, sp = tipStreamPos();
   return {
-    busy: !!(late.tut.active) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
+    busy: !!(late.tut.active) || (!!late.pace && !late.pace.canTip()) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
     bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && late.canBuyGear().length > 0,
     hpLow: isBattle() && hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
     battle: isBattle(), hasBow: late.weaponNow().id === 'bow', idle: tipIdle,

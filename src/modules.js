@@ -77,6 +77,7 @@ import './game/dump.js';
 import './game/shop.js';
 import './game/look.js';
 import './game/hooks.js';
+import './game/pace.js';
 import './game/start.js';
 import './game/update.js';
 import './game/debug.js';

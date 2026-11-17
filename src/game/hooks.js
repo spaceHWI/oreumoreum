@@ -66,9 +66,10 @@ life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(E
 life.hooks.enemyRepel = (kind, pos, def) => {
   life.scatterTangerines(pos, def.reward.gyul);
   if (trash && Math.random() < def.reward.rare) { const rares = DEX_LIST.filter((d) => d.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
-  ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind);
+  ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel');
   if (kind === 'boar') ach.emit('boar-repel');
 };
+life.hooks.paced = !!trash; life.hooks.hit = (p, dead) => late.pace?.hit(p, dead); // 몹도 연출 감독이 부름 (#89). 쓰레기 없는 맵은 예전대로
 life.hooks.enemyRoot = (kind, pos, n) => { if (trash) trash.drop(pos.x, pos.z, n, ENEMIES[kind]?.rootR || 14); };
 // 나타날 때 화면 가장자리 방향 표시 (적: 빨간 느낌표, 투기꾼 #47: 봉투 아이콘)
 function makeEdgeWarn(id, html, dur) {
@@ -99,12 +100,13 @@ export const dumpers = trash ? createDumpers({
   avoid: NS_TUT ? (() => { const L = NSB.crossLine(TUT.gateD); return (x, z) => (x - L.c.x) * L.fx + (z - L.c.z) * L.fz < 6 && Math.hypot(x - L.c.x, z - L.c.z) < 260; })() : null, // 들머리 튜토리얼 쪽 길은 트럭이 안 지남
   hooks: {
     canSpawn: () => !NS_TUT || !!save.jeong || !!save.tut?.done, // 튜토리얼 중엔 안 옴
+    paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
     appear: (d) => { tips.event('dumper'); dumpWarn.start({ x: d.pos.x, z: d.pos.z }); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
     dumped: (d, n) => { if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
     repel: (kind, pos, def) => {
       life.scatterTangerines(pos, def.reward);
       sound.beep?.(true); toast(`${iga(def.name)} 놀라 도망가요`);
-      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind);
+      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel');
     },
     offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) state.introToast = m; else toast(m); },
   },

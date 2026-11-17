@@ -71,6 +71,7 @@ function makeBar() {
 // trash: createTrash 결과, bound: { line 돌담 선, insideBy, center }, paths: 탐방로 선(nsPaths)
 // hooks: canSpawn() 지금 와도 되나(튜토리얼 중엔 안 옴), appear(d) 나타남, dumped(d, n) 쌓음, repel(kind, pos, def) 쫓아냄, offline(n, sec) 접속 안 한 동안 쌓인 양
 // avoid(x, z): 트럭이 지나지 않을 곳 (들머리 튜토리얼 쪽)
+// 연출 감독(#89)이 있으면 hooks.paced = true 로 스스로 오지 않고 come() 으로만 옴. hooks.heapW(i) 더미 고르는 무게 배율(0 이면 뺌), hit(pos, dead) 맞음
 export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, avoid = null, rnd = Math.random }) {
   const group = new THREE.Group(); scene.add(group);
   const list = [];
@@ -115,17 +116,19 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   function pickHeap(kind) {
     const taken = new Set(list.map((d) => d.heap));
     const room = (i) => trash.heaps[i].n - trash.store.left(i);
-    const zs = ZONES.map((Z) => ({ z: Z.id, w: DUMP.zoneBase + trash.zoneClean(Z.id) })).filter((o) => trash.heaps.some((h, i) => h.zone === o.z && !taken.has(i) && room(i) > 0));
+    const hw = (i) => (hooks.heapW ? hooks.heapW(i) : 1);
+    const zs = ZONES.map((Z) => ({ z: Z.id, w: DUMP.zoneBase + trash.zoneClean(Z.id) })).filter((o) => trash.heaps.some((h, i) => h.zone === o.z && !taken.has(i) && room(i) > 0 && hw(i) > 0));
     if (!zs.length) return -1;
     let x = rnd() * zs.reduce((s, o) => s + o.w, 0), zone = zs[zs.length - 1].z; for (const o of zs) { x -= o.w; if (x <= 0) { zone = o.z; break; } }
-    let cand = trash.heaps.map((h, i) => i).filter((i) => trash.heaps[i].zone === zone && !taken.has(i) && room(i) > 0);
+    let cand = trash.heaps.map((h, i) => i).filter((i) => trash.heaps[i].zone === zone && !taken.has(i) && room(i) > 0 && hw(i) > 0);
     if (kind === 'truck') { const big = cand.filter((i) => trash.heaps[i].k !== 's'); if (big.length) cand = big; } else { const sm = cand.filter((i) => trash.heaps[i].k === 's'); if (sm.length) cand = sm; }
-    const w = cand.map((i) => 1 + 2 * room(i) / trash.heaps[i].n); let y = rnd() * w.reduce((a, b) => a + b, 0);
+    const w = cand.map((i) => (1 + 2 * room(i) / trash.heaps[i].n) * hw(i)); let y = rnd() * w.reduce((a, b) => a + b, 0);
     for (let k = 0; k < cand.length; k++) { y -= w[k]; if (y <= 0) return cand[k]; }
     return cand[cand.length - 1];
   }
 
-  function spawn(kind, heapI = -1) {
+  // opts: amt 쌓을 양(없으면 DUMP_AMT), hold 이 초 동안 숨어 있다가 나타남(감독의 조짐 #89)
+  function spawn(kind, heapI = -1, opts = {}) {
     if (list.length >= DUMP.max) return null;
     const hi = heapI >= 0 ? heapI : pickHeap(kind); if (hi < 0 || !trash.heaps[hi]) return null;
     const h = trash.heaps[hi], def = DUMP[kind];
@@ -137,12 +140,12 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     }
     const m = kind === 'truck' ? buildTruck() : buildWalker();
     const [sx, sz] = route[0];
-    const d = { ...m, kind, def, heap: hi, amt: DUMP_AMT[kind], route, ri: 1, wpT: 0, pos: new THREE.Vector3(sx, height(sx, sz), sz), heading: 0, speed: 0, state: 'come', st: 0, hp: def.hp, flash: 0, phase: rnd() * 6, pitch: 0, roll: 0, bar: null };
+    const d = { ...m, kind, def, heap: hi, amt: opts.amt ?? DUMP_AMT[kind], hold: opts.hold || 0, route, ri: 1, wpT: 0, pos: new THREE.Vector3(sx, height(sx, sz), sz), heading: 0, speed: 0, state: 'come', st: 0, hp: def.hp, flash: 0, phase: rnd() * 6, pitch: 0, roll: 0, bar: null };
     d.heading = Math.atan2(route[1][0] - sx, route[1][1] - sz);
     if (def.hp > 1) { d.bar = makeBar(); d.bar.g.position.set(0, m.h + 0.8, 0); d.root.add(d.bar.g); }
     d.root.position.copy(d.pos); group.add(d.root);
     list.push(d);
-    hooks.appear?.(d);
+    if (d.hold > 0) d.root.visible = false; else hooks.appear?.(d);
     return d;
   }
   function remove(d) { const i = list.indexOf(d); if (i >= 0) list.splice(i, 1); group.remove(d.root); d.bar?.fill.material.dispose(); }
@@ -163,6 +166,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       d.hp = Math.max(0, d.hp - dmg); d.flash = 0.25;
       tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
       if (d.hp <= 0) repel(d); else { d.flinch = 0.3; sound?.beep?.(false); }
+      hooks.hit?.(d.pos, d.hp <= 0);
       return true;
     }
     return false;
@@ -216,7 +220,8 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       if (d.kind === 'truck') d.bed.rotation.x = -Math.sin(Math.min(1, u * 1.6) * Math.PI / 2) * 0.7 * (u > 0.85 ? (1 - u) / 0.15 : 1);
       else { d.arms[1].rotation.x = -1.2 * Math.sin(Math.min(1, u * 2) * Math.PI / 2); d.bag.position.y = -0.72 - Math.max(0, u - 0.6) * 1.6; }
       if (d.st >= DUMP.dumpT) {
-        const got = trash.refill(d.heap, d.amt); trash.store.commit();
+        const h2 = trash.heaps[d.heap], far = !h2 || Math.hypot(h2.x - d.pos.x, h2.z - d.pos.z) > h2.r + 6; // 서둘러 버리면(#89) 그 자리 가까운 더미에
+        const got = (d.hurried && far && trash.drop(d.pos.x, d.pos.z, d.amt, 40)) || trash.refill(d.heap, d.amt); trash.store.commit();
         hooks.dumped?.(d, got);
         d.state = 'leave'; d.st = 0; if (d.bar) d.bar.g.visible = false;
         if (d.kind === 'walker') { d.bag.visible = false; d.arms[1].rotation.x = 0; } else { d.load.visible = false; d.bed.rotation.x = 0; }
@@ -306,8 +311,12 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     wallT += dt;
     if (wallT > 5) { wallT = 0; const now = Date.now(), seen = trash.store.seen(); if (seen > 0 && now - seen > DUMP.offlineMin * 1000) { const n = catchUp((now - seen) / 1000); if (n) hooks.offline?.(n, (now - seen) / 1000); } trash.store.setSeen(now); }
     timer -= dt;
-    if (timer <= 0) { timer = period(); if (!hooks.canSpawn || hooks.canSpawn()) visit(); }
-    for (let i = list.length - 1; i >= 0; i--) { const d = list[i]; if (d) tick(d, dt, time); }
+    if (timer <= 0) { timer = period(); if (!hooks.paced && (!hooks.canSpawn || hooks.canSpawn())) visit(); }
+    for (let i = list.length - 1; i >= 0; i--) {
+      const d = list[i]; if (!d) continue;
+      if (d.hold > 0) { d.hold -= dt; if (d.hold <= 0) { d.root.visible = true; hooks.appear?.(d); } continue; } // 조짐 동안 돌담 밖에 숨어 있음
+      tick(d, dt, time);
+    }
     fx(dt);
   }
 
@@ -325,6 +334,11 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   return {
     bind(p, s) { player = p; sound = s; },
     start, update, hitTest, aimTargets, list, catchUp,
+    // 감독(#89): kind 하나 부르기 (opts: amt·hold·heap), 살아 있는(오는 중·버리는 중·숨은) 수, 시간이 다 되면 오는 중인 것은 그 자리에서 서둘러 버리고 떠남
+    come: (kind, opts = {}) => spawn(kind, opts.heap ?? -1, opts),
+    activeN: () => list.filter((d) => d.state === 'come' || d.state === 'dump').length,
+    hurryAll() { for (const d of list) if (d.state === 'come') { d.state = 'dump'; d.st = DUMP.dumpT * 0.5; d.hurried = true; if (d.hold > 0) { d.hold = 0; d.root.visible = true; } } },
+    routeLen: (d) => { let L = 0; for (let i = 1; i < d.route.length; i++) L += Math.hypot(d.route[i][0] - d.route[i - 1][0], d.route[i][1] - d.route[i - 1][1]); return L; },
     get players() { return players; }, setPlayers(n) { players = Math.max(1, Math.floor(n) || 1); timer = Math.min(timer, period()); },
     period,
     // 확인용

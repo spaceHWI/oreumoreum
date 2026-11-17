@@ -16,7 +16,7 @@ const RING = 2 * Math.PI * 40;
 // 들것 든 사람: 지금 그림체 캐릭터, 흰 옷(조끼 대신 흰 재킷)·흰 모자
 const CREW_OUTFIT = (base) => ({ ...base, hat: { type: 'cap', color: '#ecebe4', back: false }, shirt: { type: 'tee', color: '#f4f3ee' }, pants: { ...base.pants, color: '#3d4352' }, shoes: { ...base.shoes, color: '#2a2a30' }, gear: { back: 'back:none', hand: 'hand:none' } });
 
-export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp, regenMul, maxMul }) {
+export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp, regenMul, maxMul, showBar = null }) {
   const MAX = () => HP.max * (maxMul ? maxMul() : 1); // 티셔츠(#52) 최대 HP
   let hp = MAX(), sinceHit = 99, pending = false, down = null, flashT = 0;
   if (!save.hpDown || typeof save.hpDown !== 'object') save.hpDown = {};
@@ -62,7 +62,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
   let lastPct = -1, lastShow = null, lastNum = -1, lastDown = false;
   function setDim(v) { el.dim.style.opacity = v.toFixed(3); el.dim.hidden = v <= 0.002; }
   function ui(dt) {
-    const show = enabled();
+    const show = enabled() && (!showBar || down || pending || hp < MAX() - 0.5 || showBar()); // 막대는 긴장 때·다쳤을 때만 (#89)
     if (show !== lastShow) { lastShow = show; el.bar.hidden = !show; document.body.classList.toggle('hp-on', show); }
     if (!show) return;
     const pct = Math.round((hp / MAX()) * 1000) / 10;

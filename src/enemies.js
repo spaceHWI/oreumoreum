@@ -46,7 +46,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const zn = hooks.zoneAt(x, z); return { kind: ENEMY_SPAWN.byZone[zn] || null, zone: zn };
   }
   // 한 무리: 플레이어 둘레 r 안(같은 구역) 한 점을 정하고, 그 둘레에 2~3마리
-  function spawnWave(force = false, forceKind = null) {
+  // 연출 감독(#89)은 planWave 로 자리를 먼저 정하고(조짐 동안 방향 표시) PACE 조짐 뒤 spawnPlan 으로 부름. group: 구역별 마릿수 {구역: [최소, 최대]}
+  function planWave(force = false, forceKind = null, group = null) {
     if (!okAt || !player) return null;
     if (!force && (!isBattle() || !okAt(player.pos.x, player.pos.z))) return null;
     const room = ENEMY_SPAWN.max - list.length; if (room <= 0) return null;
@@ -54,19 +55,26 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const kind = forceKind || (typeof k0 === 'object' ? k0.kind : k0);
     if (!kind || !ENEMIES[kind]) return null;
     const sameZone = (x, z) => okAt(x, z) && (zone == null || forceKind || hooks.zoneAt(x, z) === zone);
-    const n = Math.min(room, irange(rnd, ENEMY_SPAWN.group));
+    const n = Math.min(room, irange(rnd, (group && group[zone]) || ENEMY_SPAWN.group));
     let c = null;
     for (const rr of [ENEMY_SPAWN.r, ENEMY_SPAWN.near]) for (let k = 0; k < 16 && !c; k++) { const a = rnd() * Math.PI * 2, r = range(rnd, rr), x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r; if (sameZone(x, z)) c = [x, z]; }
     if (!c) return null;
+    return { kind, n, x: c[0], z: c[1], zone, forceKind: !!forceKind };
+  }
+  function spawnPlan(P, quiet = false) {
+    if (!P || !player) return null;
+    const sameZone = (x, z) => okAt(x, z) && (P.zone == null || P.forceKind || hooks.zoneAt(x, z) === P.zone);
+    const n = Math.min(P.n, ENEMY_SPAWN.max - list.length);
     let made = 0;
     for (let i = 0; i < n; i++) {
-      for (let k = 0; k < 8; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * 4, x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r; if (k < 6 ? sameZone(x, z) : okAt(x, z)) { const e = spawnOne(kind, x, z); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
+      for (let k = 0; k < 8; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * 4, x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if (k < 6 ? sameZone(x, z) : okAt(x, z)) { const e = spawnOne(P.kind, x, z); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
     }
     if (!made) return null;
-    const info = { kind, n: made, x: c[0], z: c[1], zone };
-    sound?.boar?.(); hooks.enemyWave?.(info);
+    const info = { kind: P.kind, n: made, x: P.x, z: P.z, zone: P.zone };
+    sound?.boar?.(); if (!quiet) hooks.enemyWave?.(info);
     return info;
   }
+  function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
   function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); e.bar.fill.material.dispose(); }
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
@@ -74,7 +82,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     for (const e of list) {
       if (e.state === 'flee' || e.state === 'leave') continue;
       if (Math.hypot(p.x - e.pos.x, p.z - e.pos.z) >= BOAR.hitR * e.def.size || p.y > e.pos.y + e.h + BOAR.hitPad) continue;
-      e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25;
+      e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
       tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
       if (e.hp <= 0) repel(e);
       else { sound?.beep?.(false); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 돌진
@@ -133,7 +141,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     }
     if (e.state === 'charge' && !d0.ranged && d < minD + BOAR.hitGap && e.hitCd <= 0 && player.jumpY < 0.6) { e.hitCd = BOAR.hitCd; hooks.enemyHit?.(to.clone().normalize(), e.def, e.kind); }
     // 그리기
-    e.root.position.copy(e.pos); e.root.rotation.order = 'YXZ'; e.root.rotation.y = e.heading;
+    e.flinch = Math.max(0, (e.flinch || 0) - dt);
+    e.root.position.copy(e.pos); if (e.flinch > 0) { const u = e.flinch / 0.28; e.root.position.y += Math.sin(u * Math.PI) * 0.22 * e.def.size; e.root.position.x -= Math.sin(e.heading) * 0.25 * u; e.root.position.z -= Math.cos(e.heading) * 0.25 * u; } e.root.rotation.order = 'YXZ'; e.root.rotation.y = e.heading;
     { // 비탈 기울기 (#29)
       const L = 0.9, W = 0.6, sh = Math.sin(e.heading), ch = Math.cos(e.heading), px = e.pos.x, pz = e.pos.z;
       const tp = Math.atan2(height(px - sh * L, pz - ch * L) - height(px + sh * L, pz + ch * L), 2 * L);
@@ -183,7 +192,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     updateBolts(dt);
     if (!player || !okAt) return;
     if (isBattle()) {
-      waveT -= dt;
+      if (!hooks.paced) waveT -= dt; // 연출 감독(#89)이 있으면 감독이 부름
       if (waveT <= 0) { spawnWave(); waveT = ENEMY_SPAWN.every; } // 못 나오면(오름 밖·가득 참) 다음 차례까지 기다림
     } else if (list.length) { for (const e of list.slice()) remove(e); waveT = ENEMY_SPAWN.first; } // 깨끗한 오름에는 없음
     for (let i = list.length - 1; i >= 0; i--) { const e = list[i]; if (e) tick(e, dt, time); }
@@ -204,6 +213,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     bind(p, s) { player = p; sound = s; },
     update, hitTest, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
+    activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
+    planWave, spawnPlan,
+    leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave') { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),
     // 확인용
     test: {

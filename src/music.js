@@ -38,7 +38,7 @@ export class Music {
 
     this.mode = 'calm'; this.threat = false; this.lastThreat = -1e9; this.tenseUntil = 0;
     this.chordT = 0; this.chordI = 0; this.noteT = 0; this.beatT = 0; this.step = 0; this.bar = 0;
-    this.night = false; this.day = 1; this.active = false;
+    this.night = false; this.day = 1; this.active = false; this.swellUntil = 0; this.swellT = 0; this.swellI = 0;
     this._iv = setInterval(() => this.tick(), 200);
   }
 
@@ -67,6 +67,7 @@ export class Music {
       if (this.noteT < now - 0.5) this.noteT = now + 1;
       while (this.chordT < ahead) this._chord(this.chordT);
       while (this.noteT < ahead) this._note(this.noteT);
+      if (now < this.swellUntil) { if (this.swellT < now - 0.5) this.swellT = now + 0.1; while (this.swellT < Math.min(ahead, this.swellUntil)) this._swell(this.swellT); }
     }
     if (this.mode === 'tense' || now < this.tenseUntil) {
       if (this.beatT < now - 0.5) { this.beatT = now + 0.05; this.step = 0; }
@@ -107,6 +108,18 @@ export class Music {
     // 가끔 바로 이어지는 두 번째 음
     const [a, b] = night ? MUSIC.note.night : MUSIC.note.day;
     this.noteT = t + (Math.random() < 0.25 ? 0.45 + Math.random() * 0.3 : a + Math.random() * (b - a));
+  }
+
+  // 꽃이 필 때 한 겹 더 (#89): 높은 종소리 아르페지오가 sec 초 동안 (끝 4초는 점점 작게)
+  swell(sec) { const now = this.c.currentTime; this.swellUntil = Math.max(this.swellUntil, now + sec); }
+  _swell(t) {
+    const c = this.c, mel = this.night ? NIGHT_MEL : DAY_MEL, m = mel[(this.swellI++ * 2) % mel.length];
+    const fade = Math.max(0, Math.min(1, (this.swellUntil - t) / 4)), v = 0.03 * fade;
+    if (v > 0.002) {
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+      const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = hz(m + 12); o.connect(g); g.connect(this.calm); g.connect(this.echo); o.start(t); o.stop(t + 1.45);
+    }
+    this.swellT = t + (this.swellI % 4 === 0 ? 0.6 : 0.3);
   }
 
   // ── 적 근처 ──

@@ -36,6 +36,7 @@ export class Sound {
   setMusicVol(v) { this.musicVol = Math.max(0, Math.min(1, v)); this._applyGains(); }
   setDuck(v) { if (this.duck === !!v) return; this.duck = !!v; this._applyGains(); }
   setThreat(v) { if (this.music) this.music.threat = !!v; }
+  swell(sec) { if (this.music && this.on && this.musicOn) this.music.swell(sec); } // 꽃이 필 때 음악 한 겹 (#89)
   _applyGains() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
@@ -425,6 +426,22 @@ export class Sound {
       const g = c.createGain(); g.gain.setValueAtTime(0.12, tt); g.gain.exponentialRampToValueAtTime(0.001, tt + 0.06);
       s.connect(f); f.connect(g); g.connect(this.sfx); s.start(tt, Math.random()); s.stop(tt + 0.07);
     }
+  }
+  // 줍기 콤보 (#89): 이어 주울 때마다 한 칸씩 올라가는 맑은 음 (5음계)
+  combo(step) {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime + 0.02, S = [0, 2, 4, 7, 9], m = 76 + S[step % 5] + 12 * Math.floor(step / 5);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.045, t + 0.008); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.3);
+  }
+  // 맞혔을 때 (#89): 짧고 둔한 퍽 (dead 면 조금 더 크게)
+  thud(dead) {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime, o = c.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(dead ? 220 : 180, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+    const g = c.createGain(); g.gain.setValueAtTime(dead ? 0.22 : 0.16, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.18);
   }
   // 클린하우스에 다 버렸을 때: 올라가는 세 음 + 반짝
   recycle() {

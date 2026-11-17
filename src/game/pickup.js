@@ -1,5 +1,5 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST } from '../balance.js';
+import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
 import * as THREE from 'three';
@@ -16,7 +16,7 @@ import { setHoldBow } from './throw.js';
 Object.assign(late, { startPick }); // 앞 파일에서 부르는 함수
 
 // ---------- 줍기·배낭 ----------
-export const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1 }; late.pickS = pickS;
+export const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1, combo: 0, comboAt: -1e9 }; late.pickS = pickS;
 export const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick'); return k === 1 ? t : { ...t, time: t.time / k }; }; // 식사 버프(#50) 줍는 속도
 export const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
 export const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0); late.bagRoom = bagRoom;
@@ -48,7 +48,7 @@ function takeNow() {
     }
     if (n >= tool.per || room < 1) break;
   }
-  if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); }
+  if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < PACE.combo.gap ? Math.min(PACE.combo.max, pickS.combo + 1) : 0; pickS.comboAt = now; late.sound.combo?.(pickS.combo); } // 이어 주우면 음이 올라감 (#89)
   if (bagRoom() < 1) { late.sound.full?.(); fullToast(); }
 }
 export function tickPick(dt) {
@@ -107,7 +107,7 @@ if (trash) {
   trash.on((ev, d) => {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
-    else if (ev === 'heap-clear') { tips.event('heapClear'); ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
+    else if (ev === 'heap-clear') { if (!d.by) late.pace?.cleared(d.h); late.sound.swell?.(PACE.bloomLayer.heap); tips.event('heapClear'); ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
     else if (ev === 'zone-clear') { ach.emit('zone-clear'); ach.emit('zone-clear-' + d.zone); } // 글 대신 꽃밭 배너 (#65, zone-bloom)
     updateTrashUI(false);
   });
@@ -167,7 +167,7 @@ export function syncBloomDeer() {
 }
 if (bloom) {
   bloom.on((ev, d) => {
-    if (ev === 'zone-bloom') { ach.emit('zone-bloom'); zoneFx(d.zone); if (trash.zoneAt(player.pos.x, player.pos.z) === d.zone) bloom.flock(player.pos.x, player.pos.z); [1.6, 2.5, 3.6].forEach((t) => setTimeout(() => late.sound.on && late.sound.bird?.(), t * 1000)); }
+    if (ev === 'zone-bloom') { late.pace?.note('bloom'); late.sound.swell?.(PACE.bloomLayer.zone); ach.emit('zone-bloom'); zoneFx(d.zone); if (trash.zoneAt(player.pos.x, player.pos.z) === d.zone) bloom.flock(player.pos.x, player.pos.z); [1.6, 2.5, 3.6].forEach((t) => setTimeout(() => late.sound.on && late.sound.bird?.(), t * 1000)); }
     syncBloomDeer(); state.lastZoneUI = ''; updateTrashUI(false);
   });
   syncBloomDeer();

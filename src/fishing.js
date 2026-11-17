@@ -56,7 +56,7 @@ function trashMesh(id) {
   g.rotation.x = Math.PI / 2; const w = new THREE.Group(); w.add(g); return w; // 눕혀서 앞쪽(+z)으로
 }
 
-export function createFishing({ scene, stream, player, runner, groundAt, height, sound, room, reward, setHoldRod, toast }) {
+export function createFishing({ scene, stream, player, runner, groundAt, height, sound, room, reward, setHoldRod, toast, canJack = null, onJack = null }) {
   if (!stream) return null;
   const F = FISH, hw = stream.halfW, co = stream.centerOff;
   const [x0, z0] = stream.at(0, 0), [x1, z1] = stream.at(1, 0), [x2, z2] = stream.at(0, 1);
@@ -181,7 +181,7 @@ export function createFishing({ scene, stream, player, runner, groundAt, height,
       e = 0.45 + Math.sin(t * 1.3) * 0.03; bobPos = S.to.clone(); bobPos.y += Math.sin(t * 2.4) * 0.025;
       if (t > S.wait - 0.9 && t < S.wait - 0.7) bobPos.y -= 0.04; // 살짝 입질
       if ((S.ringT -= dt) <= 0) { S.ringT = 1.6; stream.ring(S.to.x, S.to.y, S.to.z); }
-      if (t >= S.wait) { go('bite'); t = 0; S.jack = forceJack ?? Math.random() < F.jackpot.p; forceJack = null; if (S.jack) { sound?.jackBite?.(); bang.material.color.set('#ffd23a'); bang.scale.setScalar(1.1); } stream.splash(S.to.x, S.to.y, S.to.z, 0.3, false); stream.ring(S.to.x, S.to.y, S.to.z); sound?.bite?.(); bang.visible = true; }
+      if (t >= S.wait) { go('bite'); t = 0; S.jack = forceJack ?? ((!canJack || canJack()) && Math.random() < F.jackpot.p); forceJack = null; if (S.jack) onJack?.(); /* 긴장 때는 잭팟 없음 (#89) */ if (S.jack) { sound?.jackBite?.(); bang.material.color.set('#ffd23a'); bang.scale.setScalar(1.1); } stream.splash(S.to.x, S.to.y, S.to.z, 0.3, false); stream.ring(S.to.x, S.to.y, S.to.z); sound?.bite?.(); bang.visible = true; }
     }
     if (S.ph === 'bite') {
       const J = S.jack; e = 0.32 + Math.sin(t * 30) * (J ? 0.1 : 0.03); bobPos = S.to.clone(); bobPos.y -= (J ? 0.3 : 0.16) + Math.sin(t * (J ? 26 : 18)) * (J ? 0.1 : 0.04); sag = 0;
