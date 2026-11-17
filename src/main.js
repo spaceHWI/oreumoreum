@@ -3,7 +3,8 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { RIDES, CART } from './balance.js';
+import { RIDES, CART, PERF } from './balance.js';
+import { TIER, PERF_AUTO, PERF_PREF, PERF_LOCK, autoTier, createFarCull } from './quality.js';
 import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC, TITLE, PHOTOG } from './balance.js';
 import { createPhotographer } from './photographer.js';
 import { RIDE_BY, RIDE_ICON, rideRig, rideSpeed, createCart, cartState as cartStateAt } from './rides.js'; // 탈것·마차 (#69)
@@ -156,7 +157,8 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const quality = { pr: 1, level: 2 };
+let farCull = null; // 멀리 있는 작은 물체 감추기 (#79), 맨 끝에서 만듦
+const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)
 const retro = createRetro(renderer);
 const post = createPost(renderer, LOW);
 if (!save.gfxV3) { save.gfx = 'smooth'; save.gfxV3 = 1; } retro.on = save.gfx === 'toon' || save.gfx === 'retro'; retro.setMode(save.gfx === 'retro' ? 'retro' : 'toon');
@@ -172,7 +174,7 @@ const camera = new THREE.PerspectiveCamera(50, 1, 0.5, NSW ? NSW.camFar : 14000)
 setBlinkCamera(camera); // 먼 캐릭터는 깜빡임 생략 (#74)
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  const cap = quality.level === 2 ? (w < 700 ? 1.6 : 1.75) : quality.level === 1 ? 1.25 : 1;
+  const cap = quality.level === 2 ? (w < 700 ? PERF.prNarrow : PERF.pr[2]) : PERF.pr[quality.level];
   quality.pr = Math.min(window.devicePixelRatio || 1, cap);
   renderer.setPixelRatio(quality.pr);
   renderer.setSize(w, h, false);
@@ -189,6 +191,14 @@ sun.shadow.camera.near = 50; sun.shadow.camera.far = 1400;
 sun.shadow.camera.left = -58; sun.shadow.camera.right = 58; sun.shadow.camera.top = 58; sun.shadow.camera.bottom = -58;
 sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.9; sun.shadow.radius = 4;
 if (NSW) NSW.setupShadow(sun);
+const SHADOW_DEF = sun.shadow.mapSize.x;
+// 성능 단계 적용 (#79): 그림자 지도 크기·그림자 켜고 끄기(낮음은 끔)·픽셀 배율
+function applyQuality() {
+  const L = quality.level, ms = PERF.shadow[L] || SHADOW_DEF, sh = L > 0;
+  if (sun.shadow.mapSize.x !== ms) { sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; sun.castShadow = sh; }
+  if (typeof resize === 'function' && camera) resize();
+}
 scene.add(sun); scene.add(sun.target);
 const fill = new THREE.DirectionalLight('#fff1d6', 1.0); scene.add(fill); scene.add(fill.target);
 // 역광(림라이트): 해 반대편에서 차갑게 살짝, 캐릭터·나무 윤곽을 땅에서 띄워 줌
@@ -812,7 +822,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
   const doReset = () => {
     resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
-    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, introSound: save.introSound, music: save.music, reset: 1 }; // reset: 처음 온 사람처럼 시작
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, introSound: save.introSound, music: save.music, reset: 1 }; // reset: 처음 온 사람처럼 시작
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
     location.reload();
@@ -1435,6 +1445,7 @@ const net = createNet({
   extra: () => ({ ...social.presenceExtra(), rd: rideCode(), ...(emo ? emo.presence() : {}) }), // rd = 탈것 (#69), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => emo?.overlayPeer(e),
+  cull: () => farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)
   onToast: (m) => toast(m),
   onPeersChanged: (n, hand) => {
     $('handreq').hidden = !hand.pendingFrom;
@@ -2798,12 +2809,13 @@ function tickSunWatch(dt) {
 
 let last = performance.now(), saveT = 0, awe = 0, aweBack = 0, skyT = 0;
 let slowT = 0, fastT = 0;
-function adaptQuality(dt) {
-  if (dt >= 0.045) { slowT += dt; fastT = 0; } else if (dt < 0.02) { fastT += dt; slowT = 0; }
-  if (slowT > 2.5 && quality.level > 0) { quality.level--; slowT = 0; resize(); if (quality.level === 0) { renderer.shadowMap.enabled = false; sun.castShadow = false; } else sun.shadow.mapSize.set(1024, 1024); }
-  if (fastT > 20 && quality.level < 2) { quality.level++; fastT = 0; resize(); }
+function adaptQuality(dt) { // 자동일 때만: 느리면 한 단계씩 내리고(픽셀 배율 → 그림자 끔), 오래 빠르면 시작 단계까지 되돌림
+  if (!quality.auto || PERF_LOCK || document.hidden) { slowT = fastT = 0; return; }
+  if (dt >= PERF.slowDt) { slowT += dt; fastT = 0; } else if (dt < PERF.fastDt) { fastT += dt; slowT = 0; }
+  if (slowT > PERF.slowT && quality.level > 0) { quality.level--; slowT = 0; applyQuality(); }
+  if (fastT > PERF.fastT && quality.level < quality.tier) { quality.level++; fastT = 0; applyQuality(); }
 }
-if ((navigator.hardwareConcurrency || 8) <= 4 || /Android|iPhone|iPad/.test(navigator.userAgent)) { quality.level = 1; sun.shadow.mapSize.set(1024, 1024); }
+applyQuality();
 
 const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
 function frame(now) {
@@ -2811,7 +2823,7 @@ function frame(now) {
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + cartShift, camera.position); // 마차 (#69): 앉은 사람이 따라가게 먼저
-  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (camPullT >= 0) { camPullT += dt; if (camPullT > BLOOM_FX.zone.camT) camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (camPullT >= 0) { camPullT += dt; if (camPullT > BLOOM_FX.zone.camT) camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); farCull?.update(dt);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
@@ -2909,6 +2921,18 @@ applySky();
 refreshAchUI();
 setGait(0);
 followCam(0, true);
+// 멀리 있는 작은 물체 감추기 (#79): 여러 메시로 된 작은 무리(하르방·NPC·가게 소품·동물 등). 지형·나무·돌담 같은 큰 것과 InstancedMesh 는 제 LOD 가 따로 있음
+farCull = createFarCull(camera, quality.tier);
+{
+  const lifeG = life.deer[0]?.root.parent || null;
+  const draws = (o) => { let n = 0; o.traverse((c) => { if ((c.isMesh && !c.isInstancedMesh) || c.isSprite) n++; }); return n; };
+  for (const o of scene.children) {
+    if (o === runner.root || o === lifeG || o.isMesh || o.isPoints || o.isSprite || o.isLight || o.name === 'halla') continue;
+    if (draws(o) < 3) continue;
+    farCull.add(o);
+  }
+  if (lifeG) for (const c of lifeG.children) if (draws(c) >= 2) farCull.add(c, { dynamic: true });
+}
 requestAnimationFrame(frame);
 // ---------- 튜토리얼 (입구 마당) ----------
 // 튜토리얼용 낱개 쓰레기 6개 (번호 k)
@@ -2971,6 +2995,17 @@ const devLabels = createDevLabels({ camera, world: () => {
 const GFX = NSW ? ['smooth', 'lite'] : ['smooth', 'lite', 'toon', 'retro']; if (NSW && !GFX.includes(save.gfx)) save.gfx = 'smooth'; const GFX_NAME = { smooth: '기본', lite: '가볍게', toon: '카툰', retro: '레트로' };
 function applyGfx() { renderer.toneMapping = !NSW && (save.gfx === 'toon' || save.gfx === 'retro') ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; applySky(); grass.set(save.gfx !== 'lite'); motes.pts.visible = save.gfx !== 'lite'; retro.on = save.gfx === 'toon' || save.gfx === 'retro'; retro.setMode(save.gfx === 'retro' ? 'retro' : 'toon'); $('menu-gfx').textContent = `그래픽: ${GFX_NAME[save.gfx]}`; sun.shadow.radius = save.gfx === 'retro' ? 1.5 : 3; }
 $('menu-gfx').addEventListener('click', () => { save.gfx = GFX[(GFX.indexOf(save.gfx) + 1) % GFX.length]; persist(); applyGfx(); toast(`${GFX_NAME[save.gfx]} 그래픽`); });
+// 성능 단계 (#79): 자동 → 낮음 → 보통 → 높음. 높음 ↔ 낮음·보통은 그려 둔 양(LOW)이 달라 새로고침
+const PERF_ORDER = ['auto', 0, 1, 2];
+const perfTierOf = (v) => (v === 'auto' ? (PERF_AUTO ? TIER : autoTier()) : v);
+function perfLabel() { const v = save.perf ?? 'auto'; return v === 'auto' ? `성능: 자동(${PERF.names[perfTierOf('auto')]})` : `성능: ${PERF.names[v]}`; }
+$('menu-perf').textContent = perfLabel();
+$('menu-perf').addEventListener('click', () => {
+  const cur = save.perf ?? 'auto', next = PERF_ORDER[(PERF_ORDER.indexOf(cur) + 1) % PERF_ORDER.length], t = perfTierOf(next);
+  save.perf = next; persist(); $('menu-perf').textContent = perfLabel();
+  if ((t < 2) !== LOW) { toast(`${perfLabel()} · 다시 불러와요`); setTimeout(() => location.reload(), 700); return; }
+  quality.auto = next === 'auto'; quality.tier = quality.level = t; applyQuality(); toast(perfLabel());
+});
 applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
@@ -2981,5 +3016,5 @@ window.__oreum = { emo, doEmote, net, rides: { // 탈것·마차 (#69)
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
   cart: cart && { api: cart, board: () => boardCart(), leave: (j) => leaveCart(!!j), state: () => ({ ...cart.state }), mark: () => !cartMark.hidden, wait: (i) => cart.stops[i] && cart.stops[i].ring.visible, goStop: (i) => { const S = cart.stops[i]; player.pos.set(S.pos.x, groundAt(S.pos.x, S.pos.z), S.pos.z); }, shift: (v) => { cartShift = v; }, at: (stop) => { const now = Date.now() / 1000; for (let t = 0; t < CART.lap; t += 0.5) { const st = cartStateAt(now + t); if (!st.moving && st.stop === stop && st.left > 6) { cartShift = t; return t; } } return null; }, goCart: () => { player.pos.set(cart.pos.x + 3, 0, cart.pos.z); player.pos.y = groundAt(player.pos.x, player.pos.z); } },
-}, street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, all: CHS, near: () => chNear(), route: () => { const b = chRoute(); return b && { id: b.ch.id || 'main', L: Math.round(b.L) }; }, goMini: (i = 0) => { const c = CH_MINI[i]; if (!c) return null; player.pos.copy(c.front); player.pos.y = height(c.front.x, c.front.z); player.heading = Math.atan2(c.center.x - c.front.x, c.center.z - c.front.z); return c.id; }, minis: () => CH_MINI.map((c) => ({ id: c.id, name: c.name, x: +c.center.x.toFixed(1), z: +c.center.z.toFixed(1), fx: +c.front.x.toFixed(1), fz: +c.front.z.toFixed(1) })), autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CHS.map((c) => c.front), { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
+}, street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, all: CHS, near: () => chNear(), route: () => { const b = chRoute(); return b && { id: b.ch.id || 'main', L: Math.round(b.L) }; }, goMini: (i = 0) => { const c = CH_MINI[i]; if (!c) return null; player.pos.copy(c.front); player.pos.y = height(c.front.x, c.front.z); player.heading = Math.atan2(c.center.x - c.front.x, c.center.z - c.front.z); return c.id; }, minis: () => CH_MINI.map((c) => ({ id: c.id, name: c.name, x: +c.center.x.toFixed(1), z: +c.center.z.toFixed(1), fx: +c.front.x.toFixed(1), fz: +c.front.z.toFixed(1) })), autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CHS.map((c) => c.front), { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, farCull: () => farCull, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

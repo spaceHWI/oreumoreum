@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export const LOW = typeof navigator !== 'undefined' && !/[?&]hi/.test(location.search) && ((navigator.hardwareConcurrency || 8) <= 4 || /Android|iPhone|iPad/.test(navigator.userAgent));
+import { TIER } from './quality.js';
+
+export const LOW = TIER < 2; // 성능 단계 낮음·보통 (#79, quality.js)
 const C = (h) => new THREE.Color(h);
 const U = (v) => ({ value: v });
 

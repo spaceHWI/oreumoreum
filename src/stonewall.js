@@ -212,7 +212,9 @@ export function createCrossWall({ scene, height, line, low, col, open: open0 = f
   const stoneM = new THREE.MeshToonMaterial({ color: new THREE.Color(0.3, 0.3, 0.32), map: mat.map, gradientMap: gradHard });
   const posts = new THREE.Mesh(mergeGeometries([post(-1), post(1)]), stoneM); posts.castShadow = !low; posts.receiveShadow = true; gate.add(posts);
   const holeM = new THREE.MeshBasicMaterial({ color: '#141416' }), holeG = new THREE.CircleGeometry(0.1, 8);
-  for (const side of [-1, 1]) for (const hy of [0.62, 1.05, 1.48]) for (const zz of [0.3, -0.3]) { const h = new THREE.Mesh(holeG, holeM); h.position.set(side * (GW + 0.05), hy + 0.1, zz); if (zz < 0) h.rotation.y = Math.PI; gate.add(h); }
+  { const hs = [], o = new THREE.Object3D(); // 구멍 12개를 한 메시로 (#79 그리기 횟수)
+    for (const side of [-1, 1]) for (const hy of [0.62, 1.05, 1.48]) for (const zz of [0.3, -0.3]) { o.position.set(side * (GW + 0.05), hy + 0.1, zz); o.rotation.set(0, zz < 0 ? Math.PI : 0, 0); o.updateMatrix(); hs.push(holeG.clone().applyMatrix4(o.matrix)); }
+    gate.add(new THREE.Mesh(mergeGeometries(hs), holeM)); }
   const woodM = new THREE.MeshToonMaterial({ color: '#8a6a48', gradientMap: gradHard });
   const BL = 2 * GW + 0.9, pivX = -(GW + 0.05), bars = [];
   [1.15, 0.72].forEach((by, i) => {

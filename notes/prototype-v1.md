@@ -572,3 +572,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 충돌은 더미 자리를 정한 뒤 등록(더미 자리·저장이 안 바뀌게), 꽃·나무(#46)보다 먼저라 나무가 안 겹침. 둘레 `CLEANHOUSE.keep`(14) 안엔 몹이 안 나옴. 투기 트럭은 길 위로만 다니고 클린하우스는 길 가장자리에서 1.5 밖
 - 경제: `tools/econ.js` 는 더미마다 가장 가까운 클린하우스까지 거리(`econ-map.json fronts`, `--one` 은 들머리만). 3~5단계 값 약 1.4배 → 깨끗한 오름 효율 3시간 12분·여유 25% 4시간 3분 (spec.md 장비 절)
 - 확인용: `__oreum.cleanhouse.minis()`·`goMini(i)`·`near()`·`route()`·`all`
+
+## 성능 재기·단계 (#79)
+- 재기 `node tools/perf.js [phone|desk|all] [day,night,rain,clean,battle,crowd] [--out x.json]`: dist 를 gzip 서버로 열고(폰은 4G 9Mbps·RTT 170ms, CPU 4배 느리게, 390×844 / 데스크톱 1440×900) 들머리 → 가게 거리 → 정낭 → 자락 → 능선 → 굼부리 → 정상 길목마다 다음 길목 쪽으로 걸으며 잼. 프레임 시간·JS ms/프레임(rAF 콜백 합)·draw call·삼각형·텍스처/지오메트리 수·JS 힙·첫 화면·파일 크기를 표로. 주소 `?tier=N&perf`(단계 고정·자동 내림 끔). 컨테이너는 swiftshader(코어 2개)라 fps 는 전·후 비교용, draw call·삼각형·JS ms 를 기준으로 봄
+- `src/quality.js`: 단계 `TIER` 0 낮음·1 보통·2 높음. `save.perf`('auto' 기본 | 0 | 1 | 2)를 맨 처음 저장소에서 직접 읽음. 자동: 코어 2개 이하·메모리 2GB 이하·약한 GPU(`PERF.weakGpu`, swiftshader 포함) → 낮음, 폰·코어 4개 이하 → 보통, 그 밖 높음. `LOW = TIER < 2`(gfx2.js). `?tier=`·`?hi` 로 강제
+- 단계별 값 `balance.js PERF`: 픽셀 배율 상한, 그림자 지도(낮음은 그림자 끔), 풀 수(9000/17000/52000), 먼 물체 감추는 거리, 다른 사람 동작·그림자 거리. 자동일 때만 느리면 한 단계씩 내림(`applyQuality`)
+- 메뉴 `#menu-perf` '성능: 자동(보통)' → 낮음 → 보통 → 높음. 높음 ↔ 낮음·보통(LOW 가 바뀜)은 새로고침, 그 밖은 바로(픽셀 배율·그림자). 처음부터 다시 하기에도 남김
+- `createFarCull(camera, tier)`: 여러 메시로 된 작은 무리(하르방·NPC·가게 소품·노루·까마귀·다른 사람)를 거리(`PERF.cull.r` + 반지름×`perRadius`, 단계 곱)보다 멀면 레이어 0 을 꺼서 그리기·그림자에서 뺌(제 코드의 visible 은 그대로, 빛은 건드리지 않음). `shadowR` 밖이면 그림자만 끔. 등록은 main.js 끝에서 scene 의 무리(그리기 3개 이상, 조각 반지름 40 이하)를 훑어서
+- 다른 사람(net.js): `animR` 밖은 동작 갱신 생략, `shadowR` 밖은 그림자 끔, farCull 등록. 확인용 `__oreum.net.test.fake(pr)`·`drop(id)`
+- 캐릭터(runner.js) 몸·옷 SkinnedMesh 가 `frustumCulled = false` 라 화면 밖·그림자 영역 밖에서도 그려지던 것을, 기본 자세 구 ×1.7 을 고정해 걸러지게
+- 가로등(lamps.js): 빛 수가 바뀌면 모든 재질 셰이더를 다시 만들어 끊기던 것 → 밤엔 3개를 늘 켜 두고 세기만 0
+- 하르방 움직이지 않는 조각을 재질별로 합침(10 → 4), 정낭 돌기둥 구멍 12개를 한 메시로
+- 남은 것: 첫 화면(폰 4G·CPU 4배 약 17초)은 대부분 스크립트 실행(약 1.2초, 실제 속도)과 첫 프레임 셰이더 컴파일·그리기. 가게 모델(스톤·미장원·LEAP 약 1.1MB)을 늦게 풀기, 셰이더 병렬 컴파일(compileAsync)이 다음 후보. 실기기 측정 못 함
