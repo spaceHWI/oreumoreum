@@ -1,7 +1,7 @@
 // 서버 고르기, 첫 화면 시작, 로그인 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { serverId, setServerId, SERVERS, SERVER_ART, SERVER_LABEL } from '../server.js';
 import { ONLINE, createAccount, mountLogin } from '../online.js';
-import { state } from './state.js';
+import { state, late } from './state.js';
 import { $, save, srvSwitched, ab, writeLocal, persist, MAP_ID, prevMap } from './save.js';
 import { canvas } from './scene.js';
 import { trash, bloom } from './place.js';
@@ -12,6 +12,8 @@ import { startSession } from './room.js';
 import { updateTrashUI, syncBloomDeer } from './pickup.js';
 import { openLook, introMap, switchMap } from './look.js';
 import { sound, setSoundUI } from './hooks.js';
+import { createRank } from '../rank.js';
+import { SKIN_TONES } from '../runner.js';
 
 // ---------- 서버 고르기 (#35) ----------
 let introSrv = save.server || null; // 처음 온 사람은 아직 안 고름
@@ -78,6 +80,13 @@ if (ONLINE) {
   state.account.start();
 }
 $('srv-go').addEventListener('click', () => { if (introSrv) enter(); });
+// ---------- 랭킹 (#11): 메뉴·클린하우스 옆 게시판에서 열기, 버린 뒤 순위 토스트 ----------
+const rankFace = (look) => { const [k, sk] = String(look).split('|'); return k ? late.HEAD_SVG(k, SKIN_TONES[Math.max(0, Math.min(SKIN_TONES.length - 1, +sk || 0))]) : '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="22" r="11" fill="rgba(255,255,255,.35)"/></svg>'; };
+export const rank = createRank({ account: state.account, store: trash?.store || null, srvNow: serverId, face: rankFace, toast, ach, save, persist, onOpen: closePanels,
+  el: { box: $('rank'), list: $('rank-list'), note: $('rank-note'), srv: $('rank-srv'), range: $('rank-range') } });
+if (state.account?.loggedIn) setTimeout(() => rank.prime(), 2500); // 오늘 순위 기준
+late.openRank = (srv) => rank.open(srv); late.rankAfterDump = () => rank.afterDump();
+$('menu-rank').addEventListener('click', () => rank.open());
 document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
 if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (!save.look) openLook(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }

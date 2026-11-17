@@ -15,7 +15,7 @@ import { TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, WSLOT, CL, wearV, persist } from './save.js';
 import { spots } from './scene.js';
-import { benchPos, cairns, NS_TUT, shopsBuilt, STN, SAL, LEAPB, buff, chActs, shopAct, runner, player, hp } from './place.js';
+import { benchPos, cairns, NS_TUT, shopsBuilt, STN, SAL, LEAPB, buff, chActs, shopAct, CH, runner, player, hp } from './place.js';
 import { cam } from './camera.js';
 import { ui, toast, tipMarkT, tipMarkPos, updateStats, panelOpen, closePanels, ach } from './hud.js';
 import { keys, joy, pressBtn, marker, setTarget } from './input.js';
@@ -291,6 +291,7 @@ export const interactables = [
   ...(spots.sign.silent ? [] : [{ label: '안내 읽기', ic: 'sign', pos: spots.sign.pos, r: 6, act: () => late.openSign() }]),
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
   ...chActs, ...(shopAct ? [shopAct] : []),
+  ...(CH ? [{ label: '랭킹', ic: 'rank', pos: CH.boardFront, r: 2.6, act: () => late.openRank?.() }] : []), // 랭킹 게시판 (#11)
   ...shopActs,
 ];
 state.ctxTarget = null, state.deerAct = null;

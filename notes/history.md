@@ -613,3 +613,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - tools/perf.js: 기본으로 index.html 을 Pages 처럼(html·js 만 gzip) 열고, 처음 받는 양·전체 양·다 받은 시간·JS 힙을 같이 적음
 - main.js 의 import 목록은 `src/modules.js` 로 옮김(main.js 는 캐릭터 모델을 받은 뒤 modules.js 를 읽기만)
 
+
+## 랭킹 (#11)
+- 치운 쓰레기 수(줍는 순간 +1 되는 `trash.total`) 순위. 오늘(한국 자정)·이번 주(한국 월요일 0시)·전체 × 깨끗한 오름·전투 오름. 길드 없음. 수치는 `balance.js RANK`, 날 번호는 `src/rankday.js`(서버·게임 같이 씀)
+- 서버: 계정 DO 표 `rkd`(sub·srv·한국 날 번호·수, `RANK.dayKeep` 9일만)·`rka`(전체)·`acc.look`(머리 키|피부색 번호, 목록 확인). `PUT /save` 에서 서버가 확인한(`validate.js` 치운 양 몫) 누적 수가 늘어난 만큼만 저장의 `server` 쪽에 더함. 줄어든 것(처음부터 다시)은 빼지 않고, 기기 기록 옮기기 몫은 전체에만. 랭킹 전 계정의 치운 양은 처음 뜰 때 전체(깨끗한 오름)로 옮김
+- `GET /rank?range=day|week|all&srv=clean|battle` → 위 `RANK.top`(50)명 {rank·n·nick·look, 내 줄 me} + `me`{rank,n} + total(치운 사람 수). 같은 수는 같은 순위, 같으면 먼저 만든 계정이 위. 위 50명은 `RANK.cacheMs`(10초) 메모리 캐시. `GET /rank/me?srv=` → 오늘·이번 주·전체 내 순위. 둘 다 로그인한 사람만(sub 는 내보내지 않음)
+- 게임 `src/rank.js createRank`: 메뉴 '랭킹' 타일, 들머리 클린하우스 왼쪽 게시판(상호작용 '랭킹', `cleanhouse.js` boardFront). 1~3위 귤색 메달, 내 줄은 귤색 테두리·`position: sticky`(화면 밖이면 위·아래에 붙음), 50위 밖이면 맨 아래 따로. 닉네임은 textContent, 머리 그림은 look.js `HEAD_SVG`
+- 손님·서버 없음: `trash.store.localRank(srv)` (저장 `trash.rk`: 날·주가 바뀌면 0, 처음엔 누적 수를 전체로) 세 칸 + '로그인하면 랭킹에 올라가요'
+- 버린 뒤(연출 끝 1.6초 뒤, `RANK.checkGapMs` 간격): 저장을 바로 보내고 `/rank/me` 로 오늘 순위가 오르면 토스트 '오늘 12위 → 9위'(처음이면 '오늘 9위'). 오늘 10위·1위 안이면 업적 이벤트 `rank-top10`·`rank-top1`(하루 한 번, `save.rankAch`) → 뱃지 '오늘의 열 명'·'오늘의 일등'
+- 확인: `node tools/online.js` 끝에 랭킹 7가지(토스트·업적·내 줄·메달·전체 탭·전투 탭·손님), 화면 `dist/rank-online.png`

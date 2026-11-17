@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH } from './balance.js';
 import { zoneAt } from './zones.js';
+import { kstDay, weekStart, SRVS } from './rankday.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
@@ -43,6 +44,17 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
   { const ok = new Set(DEX_LIST.map((d) => d.id)); Object.keys(T.dex).forEach((k) => { if (!ok.has(k)) delete T.dex[k]; }); } // #16: 도감이 'undefined' 로 쌓이던 기록 지움
   S = slot(server);
   for (const k in T.srv) if (k !== server) slot(k);
+  // 이 기기의 치운 수 (#11 랭킹, 손님·서버 없을 때 보여 줌): rk = { d: 오늘 날 번호, w: 이번 주 월요일 날 번호, day/week/all: { clean, battle } }
+  // 처음엔 그동안의 누적 수를 전체(깨끗한 오름)로
+  const rk = (() => {
+    const o = T.rk = (T.rk && typeof T.rk === 'object') ? T.rk : { all: { clean: T.total } };
+    for (const k of ['day', 'week', 'all']) { const v = o[k] = (o[k] && typeof o[k] === 'object') ? o[k] : {}; SRVS.forEach((s) => { v[s] = Math.max(0, Math.floor(Number(v[s])) || 0); }); }
+    return o;
+  })();
+  const rkRoll = () => { const d = kstDay(), w = weekStart(d); if (rk.d !== d) { rk.d = d; SRVS.forEach((s) => { rk.day[s] = 0; }); } if (rk.w !== w) { rk.w = w; SRVS.forEach((s) => { rk.week[s] = 0; }); } };
+  rkRoll();
+  const rkSrv = () => (server === 'battle' ? 'battle' : 'clean');
+  const rkAdd = (n) => { rkRoll(); const s = rkSrv(); for (const k of ['day', 'week', 'all']) rk[k][s] = Math.max(0, rk[k][s] + n); };
   let dirty = false;
   return {
     server: () => server,
@@ -52,9 +64,11 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
     left: (h) => S.heaps[h],
     full: (h) => HEAP_FULL[h],
     // 더미 h 에서 하나 꺼냄 (누적 수 +1)
-    takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; dirty = true; return true; },
+    takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; rkAdd(1); dirty = true; return true; },
     // 방이 '늦었다'고 거절한 줍기 되돌리기 (#84): 배낭에서 그 종류 하나·누적 수 하나를 뺌
-    untake(kind) { if (T.bag[kind] > 0) T.bag[kind]--; T.total = Math.max(0, T.total - 1); dirty = true; },
+    untake(kind) { if (T.bag[kind] > 0) T.bag[kind]--; T.total = Math.max(0, T.total - 1); rkAdd(-1); dirty = true; },
+    // 이 기기의 치운 수 (#11): { day, week, all } (srv 기본은 지금 서버)
+    localRank(srv = rkSrv()) { rkRoll(); return { day: rk.day[srv] || 0, week: rk.week[srv] || 0, all: rk.all[srv] || 0 }; },
     // 다시 쌓기 (#37 멧돼지가 흘림 · 뒤 이슈 투기꾼): 넣은 수
     putBack(h, n) { const add = Math.max(0, Math.min(n, HEAP_FULL[h] - S.heaps[h])); S.heaps[h] += add; if (add) dirty = true; return add; },
     setLeft(h, n) { S.heaps[h] = Math.max(0, Math.min(HEAP_FULL[h], Math.floor(n))); dirty = true; }, // 테스트용

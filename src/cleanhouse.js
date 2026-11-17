@@ -64,6 +64,22 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
     const sx = x + rt.x * SX + fw.x * SZ, sz = z + rt.z * SX + fw.z * SZ;
     stall.add(new THREE.Mesh(mergeGeometries(sp), mat)); stall.position.set(sx, height(sx, sz) - 0.05, sz); stall.rotation.y = rot;
     stall.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = !low; } }); scene.add(stall); }
+  // 랭킹 게시판 (#11): 클린하우스 왼쪽. 현무암 판에 귤색 메달과 시상대 막대 (로우폴리 임시 모양)
+  const BX = -(W / 2 + 2.2), BZ = 0.5;
+  const board = new THREE.Group();
+  { const bp = [], bw = 1.6, bh = 1.15;
+    for (const a of [-1, 1]) bp.push(piece(new THREE.BoxGeometry(0.12, 2.1, 0.12).translate(a * (bw / 2 - 0.02), 1.05, -0.02), '#3b4a42')); // 기둥
+    bp.push(piece(new THREE.BoxGeometry(bw + 0.14, bh + 0.14, 0.1).translate(0, 1.45, 0), '#2f3236')); // 테
+    bp.push(piece(new THREE.BoxGeometry(bw, bh, 0.12).translate(0, 1.45, 0.01), '#4a4f55')); // 현무암 판
+    bp.push(piece(new THREE.BoxGeometry(bw + 0.3, 0.1, 0.34).translate(0, 2.08, 0.04), '#2f7d5b')); // 작은 지붕
+    [[-0.42, 0.3], [0, 0.46], [0.42, 0.2]].forEach(([px, h]) => bp.push(piece(new THREE.BoxGeometry(0.34, h, 0.04).translate(px, 0.98 + h / 2, 0.08), '#f2efe4'))); // 시상대 막대
+    bp.push(piece(new THREE.CylinderGeometry(0.17, 0.17, 0.05, 10).rotateX(Math.PI / 2).translate(0, 1.72, 0.09), '#ff9a1f')); // 메달
+    bp.push(piece(new THREE.BoxGeometry(0.06, 0.2, 0.03).translate(-0.07, 1.92, 0.08), '#3c7fc9'), piece(new THREE.BoxGeometry(0.06, 0.2, 0.03).translate(0.07, 1.92, 0.08), '#d8423a')); // 메달 끈
+    const bx = x + rt.x * BX + fw.x * BZ, bz = z + rt.z * BX + fw.z * BZ;
+    board.add(new THREE.Mesh(mergeGeometries(bp), mat)); board.position.set(bx, height(bx, bz) - 0.05, bz); board.rotation.y = rot;
+    board.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = !low; } }); scene.add(board); }
+  const boardFront = new THREE.Vector3(x + rt.x * BX + fw.x * (BZ + 1.4), 0, z + rt.z * BX + fw.z * (BZ + 1.4)); boardFront.y = height(boardFront.x, boardFront.z);
+  const boardAt = { x: x + rt.x * BX + fw.x * BZ, z: z + rt.z * BX + fw.z * BZ };
   // 가판대 위 귤 표시: 화면에서 늘 같은 크기라 멀리서도 보임
   const markTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
     g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.arc(33, 36, 24, 0, Math.PI * 2); g.fill();
@@ -90,7 +106,7 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
     if (light) light.intensity = night * 22;
     for (let i = 0; i < 5; i++) { if (bump[i] <= 0) continue; bump[i] = Math.max(0, bump[i] - dt * 4); const k = Math.sin(bump[i] * Math.PI); lids[i].position.y = 1.37 + k * 0.18; lids[i].rotation.x = -k * 0.25; }
   }
-  return { root, binTop, front, center, shopFront, stallTop: mark.position, mark, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
+  return { root, binTop, front, center, shopFront, stallTop: mark.position, mark, boardFront, boardAt, board, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
 }
 
 // 오름 안 작은 클린하우스 (#78): 지붕 있는 통 넷(캔·페트병·비닐·스티로폼+폐어구). 가판대·실제 광원 없음

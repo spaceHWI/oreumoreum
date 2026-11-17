@@ -81,7 +81,7 @@ export function tickDump(dt) {
   chV.copy(dumpS.ch.center); chV.y += dumpS.ch.small ? 3.6 : 4.6; chV.project(camera);
   dumpS.el.style.left = ((chV.x * 0.5 + 0.5) * innerWidth) + 'px'; dumpS.el.style.top = ((-chV.y * 0.5 + 0.5) * innerHeight - Math.min(1, dumpS.t / dumpS.dur) * 26) + 'px';
   dumpS.el.style.visibility = chV.z > 1 ? 'hidden' : '';
-  if (allDone && !dumpS.end) { dumpS.end = true; late.sound.recycle?.(); toast(`클린하우스에 버렸어요 · 귤 +${dumpS.total}`); }
+  if (allDone && !dumpS.end) { dumpS.end = true; late.sound.recycle?.(); toast(`클린하우스에 버렸어요 · 귤 +${dumpS.total}`); setTimeout(() => late.rankAfterDump?.(), 1600); } // 순위가 오르면 토스트는 버린 토스트 뒤에 (#11)
   if (dumpS.t > dumpS.dur + 0.9) { if (late.canBuyGear().length) state.shopHintUntil = performance.now() + CLEANHOUSE.shopHint * 1000; dumpS.el.remove(); dumpS.el = null; dumpS.end = false; dumpS.list.forEach((f) => scene.remove(f.mesh)); dumpS.list = []; }
 }
 // 배낭이 찼을 때 클린하우스 방향: 화면 밖이면 가장자리 화살표, 보이면 위에서 가리킴
@@ -198,6 +198,7 @@ const CTX_ICON = {
   photo: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   sit: '<path d="M4 11h16M5 11V8h14v3M6 11v8M18 11v8M4 15h16"/>',
   sign: '<rect x="4" y="4" width="16" height="11" rx="1"/><path d="M12 15v6M8 8h8M8 11h5"/>',
+  rank: '<path d="M3 20h18M5 20v-6h4v6M10 20V9h4v11M15 20v-8h4v8M12 3l1 2 2 .3-1.5 1.4.4 2.1L12 7.8l-1.9 1 .4-2.1L9 5.3 11 5z"/>', // 랭킹 (#11)
   deer: '<path d="M8 3l1 3-2 1M16 3l-1 3 2 1M9 7h6l1 4-2 2v7M10 13v7M8 11l1-4"/>',
   hand: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 8v6l-2 7M17 8v6l2 7M7 10h10"/>',
   stand: '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v7M12 14l-2.5 7M12 14l2.5 7M9 10l3-2 3 2M19 12V5M16.5 7.5L19 5l2.5 2.5"/>',

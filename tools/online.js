@@ -85,5 +85,29 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     return { h, left0, took, kept: sum() - bag0, tot: st.totalCount() - tot0 };
   });
   ok(undo.took === 12 && undo.kept <= 7 && undo.kept >= 5 && undo.tot === undo.kept, `방이 거절한 줍기는 배낭에서 되돌림 (${JSON.stringify(undo)})`);
+  // 랭킹 (#11): 버리면 저장을 바로 보내고 오늘 순위가 오르면 토스트, 순위표에 내 줄, 손님은 이 기기 기록만
+  await wait(A.p, 4000); // 앞의 줍기 몫(초당 takePerSec)이 지나가게
+  const nick = await A.p.evaluate(() => { const o = window.__oreum; o.save.nick = '랭킹확인' + (Date.now() % 1000); const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); return o.save.nick; });
+  await wait(A.p, 1200);
+  const rk0 = await A.p.evaluate(() => window.__oreum.rank.state().last[window.__oreum.server.id()]?.rank ?? -1); // 들어올 때 잡은 기준 순위
+  await A.p.evaluate(() => { const o = window.__oreum; o.trash.api.store.bag.can = (o.trash.api.store.bag.can || 0) + 3; window.__toasts = []; const t = document.getElementById('toast'); new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); o.cleanhouse.dump(); });
+  for (let k = 0; k < 240 && !(await A.p.evaluate(() => window.__toasts.some((x) => /오늘 .*위/.test(x)))); k++) await wait(A.p, 250); // 소프트웨어 GL 둘이면 느림
+  const tl = await A.p.evaluate(() => window.__toasts.filter((x) => /위/.test(x)));
+  const rk1 = await A.p.evaluate(() => window.__oreum.online.account().rankMe(window.__oreum.server.id()).then((r) => r.day.rank));
+  if (!rk0 || rk1 < rk0) ok(tl.some((x) => x === (rk0 ? `오늘 ${rk0}위 → ${rk1}위` : `오늘 ${rk1}위`)), `버린 뒤 순위가 오르면 토스트 (${rk0} → ${rk1}: ${tl.join(' / ')})`);
+  else ok(!tl.length, `순위가 그대로면 토스트 없음 (${rk0} → ${rk1})`);
+  ok(await A.p.evaluate(() => { const B = window.__oreum.save.ach.badges; return !!(B['b-rank-10'] || B['b-rank-1']); }), '업적: rank-top10 / rank-top1');
+  const listed = async () => { for (let k = 0; k < 60 && (await A.p.evaluate(() => /불러오는/.test(document.getElementById('rank-note').textContent))); k++) await wait(A.p, 250); };
+  await A.p.evaluate(() => window.__oreum.rank.open('clean')); await listed();
+  const rk = await A.p.evaluate(() => { const me = document.querySelector('#rank-list .rk-row.me'); return { me: me && me.querySelector('.rk-nick').textContent, no: me && me.querySelector('.rk-no').textContent, rows: document.querySelectorAll('#rank-list .rk-row').length, medal: !!document.querySelector('#rank-list .rk-row.m1'), note: document.getElementById('rank-note').textContent }; });
+  ok(rk.me === nick && +rk.no >= 1 && rk.medal, `순위표에 내 줄·1위 메달 (${JSON.stringify(rk)})`);
+  await A.p.evaluate(() => document.querySelector('#rank-range [data-v="all"]').click()); await listed();
+  ok(await A.p.evaluate(() => !!document.querySelector('#rank-list .rk-row.me')), '전체 탭에도 내 줄');
+  await A.p.evaluate(() => document.querySelector('#rank-srv [data-v="battle"]').click()); await listed();
+  ok(await A.p.evaluate(() => { const me = document.querySelector('#rank-list .rk-row.me'); return !me || me.classList.contains('out'); }), '전투 오름 탭: 치운 적 없으면 내 줄은 아래 따로');
+  await A.p.setViewportSize({ width: 390, height: 640 }); await A.p.evaluate(() => document.querySelector('#rank-srv [data-v="clean"]').click()); await listed(); await wait(A.p, 800);
+  await A.p.screenshot({ path: 'dist/rank-online.png' });
+  await B.p.evaluate(() => window.__oreum.rank.open()); await wait(B.p, 500);
+  ok(await B.p.evaluate(() => document.querySelectorAll('#rank-list .rk-mine').length === 3 && /로그인하면/.test(document.getElementById('rank-note').textContent)), '손님: 이 기기 기록 셋과 로그인 안내');
   await A.ctx.close(); await B.ctx.close(); await b.close(); web.close();
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -7,6 +7,7 @@
 // - 어드민: 로그인 계정의 sub 가 시크릿 ADMIN_SUBS(쉼표로 여럿)에 있을 때만
 // - 로그: 아무것도 console 에 찍지 않음. IP 원문·토큰은 저장하지 않음
 import { NET } from '../../src/balance.js';
+import { RANGES, SRVS } from '../../src/rankday.js';
 import { verifyGoogle, signSession, readSession, ipKey } from './auth.js';
 import { cleanItems, sendMail } from './feedback.js';
 export { Room } from './room.js';
@@ -128,6 +129,14 @@ export default {
         const body = await readJson(req, NET.saveMax + 4096);
         if (!body || typeof body.save !== 'object') return json({ error: 'bad save' }, 400);
         return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub) }));
+      }
+      // 랭킹 (#11): 로그인한 사람만. GET /rank?range=day|week|all&srv=clean|battle → 위 RANK.top 명 + 내 순위, GET /rank/me?srv= → 내 순위 셋
+      if ((url.pathname === '/rank' || url.pathname === '/rank/me') && req.method === 'GET') {
+        const s = await who(); if (!s) return json({ error: 'login' }, 401);
+        const srv = SRVS.includes(url.searchParams.get('srv')) ? url.searchParams.get('srv') : 'clean';
+        if (url.pathname === '/rank/me') return json(await accounts(env).rankMe(s.sub, srv));
+        const range = RANGES.includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'day';
+        return json(await accounts(env).rank(s.sub, range, srv));
       }
       // 의견 보내기 (#77): 로그인 안 해도 됨. 저장하고 개발자 메일로 (FEEDBACK_TO 시크릿)
       if (url.pathname === '/feedback' && req.method === 'POST') {

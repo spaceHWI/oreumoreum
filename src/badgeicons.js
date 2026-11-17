@@ -55,6 +55,9 @@ Object.assign(BADGE_ICONS, {
   'b-kind-gear': `<circle cx="24" cy="25" r="13" fill="none" ${s('stroke-width="5" stroke="#e2683a"')}/><circle cx="24" cy="25" r="13" fill="none" ${s('stroke-dasharray="6 5"')}/><path d="M36 10 l5 -4" ${s()}/>`,
   'b-streak-30': `<rect x="9" y="11" width="30" height="28" rx="4" fill="${W}" ${s()}/><rect x="9" y="11" width="30" height="8" rx="3" fill="#d6a13b" ${s()}/><path d="M16 8 v6 M32 8 v6" ${s()}/><text x="24" y="35" font-size="14" font-weight="900" text-anchor="middle" fill="${K}" font-family="Noto Sans KR, sans-serif">30</text>`,
   'b-gear-one': `<path d="M10 38 L30 18" ${s('stroke-width="5"')}/><path d="M10 38 L30 18" stroke="#c39a4c" stroke-width="2.4" stroke-linecap="round"/><path d="M28 10 l10 0 -2 8 -8 0z M34 22 l8 -2 M32 26 l7 4" fill="${W}" ${s()}/><path d="M36 6 v4 M40 9 h-4" ${s('stroke="' + Y + '"')}/>`,
+  // 랭킹 (#11): 귤색 메달 (10·1)
+  'b-rank-10': `<path d="M17 5 l7 12 7 -12" fill="none" ${s('stroke="#3c7fc9" stroke-width="5"')}/><path d="M17 5 l7 12 7 -12" fill="none" ${s()}/><circle cx="24" cy="29" r="12" fill="${O}" ${s()}/><text x="24" y="33.5" font-size="12" font-weight="900" text-anchor="middle" fill="${W}" font-family="Noto Sans KR, sans-serif">10</text>`,
+  'b-rank-1': `<path d="M17 5 l7 12 7 -12" fill="none" ${s('stroke="#d8423a" stroke-width="5"')}/><path d="M17 5 l7 12 7 -12" fill="none" ${s()}/><circle cx="24" cy="29" r="12" fill="${Y}" ${s()}/><text x="24" y="34.5" font-size="15" font-weight="900" text-anchor="middle" fill="${K}" font-family="Noto Sans KR, sans-serif">1</text>`,
   'b-gear-all': `<path d="M24 5 l16 6 v12 q0 14 -16 20 q-16 -6 -16 -20 V11z" fill="#e8b94a" ${s()}/><path d="M24 14 l3 6 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z" fill="${W}" ${s('stroke-width="1.8"')}/>`,
 });
 
