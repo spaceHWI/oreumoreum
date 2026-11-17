@@ -78,6 +78,8 @@ BADGES.push(
   { id: 'b-kind-foam', ev: 'trash-foam', goal: 500, name: '스티로폼 박사', desc: '스티로폼 500개 줍기', color: '#c9c3a8', reward: 80 },
   { id: 'b-kind-gear', ev: 'trash-gear', goal: 500, name: '폐어구 박사', desc: '폐어구 500개 줍기', color: '#e2683a', reward: 100 },
   { id: 'b-gear-one', ev: 'gear-max-one', goal: 1, name: '장비 단련', desc: '장비 하나를 최고 단계까지', color: '#c39a4c', reward: 100 },
+  { id: 'b-rank-10', ev: 'rank-top10', goal: 1, name: '오늘의 열 명', desc: '오늘 랭킹 10위 안에 들었어요', color: '#ff9a1f', reward: 50 }, // 랭킹 (#11)
+  { id: 'b-rank-1', ev: 'rank-top1', goal: 1, name: '오늘의 일등', desc: '오늘 랭킹 1위를 했어요', color: '#e8b94a', reward: 150 },
   { id: 'b-gear-all', ev: 'gear-max-all', goal: 1, name: '완전 무장', desc: '장비를 전부 최고 단계까지', color: '#e8b94a', reward: 400 },
 );
 

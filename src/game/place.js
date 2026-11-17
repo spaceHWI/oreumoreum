@@ -193,6 +193,7 @@ export const buff = createBuff({ save, persist, onEnd: (m) => { if (m) { late.to
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
 export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, rareMul: () => wearV('hat') }) : null; // 구역마다 쓰레기 더미 (#45)
 export const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
+if (CH && col) col.addBox(CH.boardAt.x, CH.boardAt.z, spots.cleanhouse.rot, 0.9, 0.2); // 랭킹 게시판 (#11)
 // 오름 안 작은 클린하우스 (#78). 충돌은 더미 자리를 정한 뒤에 등록(더미 자리·저장이 바뀌지 않게)
 export const CH_MINI = CH ? (spots.cleanMinis || []).map((m) => { const c = createMiniCleanhouse({ scene, height, ...m, low: LOW, trashGeos: trash.geos }); c.id = m.id; c.name = m.name; if (col) { col.addBox(m.x, m.z, m.rot, 2.3, 1.05); } return c; }) : [];
 export const CHS = CH ? [CH, ...CH_MINI] : []; // 모든 클린하우스. 버리기·화살표·자동 걷기는 가장 가까운 곳

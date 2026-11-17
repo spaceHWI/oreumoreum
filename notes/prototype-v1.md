@@ -57,7 +57,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
 - 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤)
 - 탈것: rides.js · autowalk.js
-- 멀티·저장: online.js · net.js · social.js · server.js · safetext.js · feedback.js
+- 멀티·저장: online.js · net.js · social.js · server.js · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
 - UI: tutorial.js · tips.js · uitips.js · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · music.js · page.html
 
 ## 결정 사항

@@ -511,6 +511,27 @@ body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { 
 .dex-cell.locked .dex-ic svg { filter: brightness(0); opacity: .55; }
 .dex-cell.locked b { opacity: .5; }
 
+/* 랭킹 (#11): 치운 쓰레기 수. 1~3위 귤색 메달, 내 줄 강조(화면 밖이면 위·아래에 붙음) */
+.rk-tabs { display: grid; gap: 6px; padding: 10px 16px 2px; }
+.rk-seg { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.08); }
+.rk-seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 7px 6px; font-size: 13px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.rk-seg button[aria-pressed="true"] { background: rgba(255,255,255,.18); color: #fff; }
+.rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
+.rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
+.rk-row.medal .rk-no { background: var(--gyul); color: var(--acc-fg); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
+.rk-row.m2 .rk-no { filter: saturate(.75) brightness(1.08); } .rk-row.m3 .rk-no { filter: saturate(.55) brightness(.92); }
+.rk-face svg { width: 30px; height: 30px; display: block; border-radius: 50%; background: rgba(255,255,255,.14); }
+.rk-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-n { font-family: var(--display); font-weight: 800; font-variant-numeric: tabular-nums; }
+.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #3a2a18; box-shadow: inset 0 0 0 2px var(--acc); }
+.rk-row.me .rk-nick { font-weight: 700; }
+.rk-row.out { margin-top: 6px; }
+.rk-list.local { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rk-mine { display: grid; justify-items: center; gap: 4px; padding: 14px 4px 12px; border-radius: 14px; background: rgba(255,255,255,.08); font-size: 13px; color: var(--ink-soft); }
+.rk-mine b { font-family: var(--display); font-weight: 800; font-size: 24px; color: #fff; }
+.rk-note { font-size: 12px; text-align: center; margin: 10px 0 0; }
+
 /* ===== 상점 팝업 (#26): 탭 도구·배낭·신발·옷, 장비는 5단계 한 줄 ===== */
 #shop .pop { width: min(520px, 100%); }
 #shop.overlay { grid-template-rows: minmax(0, 1fr); } /* 옷 탭(#52)이 길어도 팝업이 화면 안에서 스크롤되게 (max-height % 가 먹도록) */
@@ -953,6 +974,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="menu-wardrobe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7a2 2 0 1 0-2-2M12 7v2l8 6H4l8-6"/></svg>옷장</button>
     <button type="button" id="menu-shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>상점</button>
     <button type="button" id="menu-sign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V4M12 5h7l2 2.5-2 2.5h-7M12 12H6l-2 2.5L6 17h6"/></svg>탐방 안내</button>
+    <button type="button" id="menu-rank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M5 20v-6h4v6M10 20V9h4v11M15 20v-8h4v8M12 3l1 2 2 .3-1.5 1.4.4 2.1L12 7.8l-1.9 1 .4-2.1L9 5.3 11 5z"/></svg>랭킹</button>
     <button type="button" id="menu-sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9c1.2 1.6 1.2 4.4 0 6"/></svg>소리</button>
     <button type="button" id="menu-tips" aria-pressed="true" aria-label="팁 켜기/끄기" title="팁"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.500 10.900c.6.5 1 1.200 1 2.100h5c0-.9.4-1.600 1-2.100A6 6 0 0 0 12 3z"/></svg>팁</button>
     <button type="button" id="menu-more" class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>설정</button>
@@ -1051,6 +1073,14 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <div class="panel pop">
     <div class="pop-head"><h2>쓰레기 도감</h2><span class="coins-pill"><b id="dex-count">0 / 30</b></span><button type="button" class="btn small" id="dex-close">닫기</button></div>
     <div class="pop-body"><div class="dex-grid" id="dex-grid"></div></div>
+  </div>
+</div>
+
+<div class="overlay dim" id="rank" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>랭킹</h2><button type="button" class="btn small" id="rank-close">닫기</button></div>
+    <div class="rk-tabs"><div class="rk-seg" id="rank-srv" role="group" aria-label="서버"></div><div class="rk-seg" id="rank-range" role="group" aria-label="기간"></div></div>
+    <div class="pop-body" id="rank-body"><ol class="rk-list" id="rank-list"></ol><p class="muted rk-note" id="rank-note"></p></div>
   </div>
 </div>
 

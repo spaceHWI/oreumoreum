@@ -87,7 +87,7 @@ export function updateStats() {
   if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { late.sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
-const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop'];
+const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop', 'rank'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -99,8 +99,8 @@ export function cancelAll() {
   player.target = null; player.onArrive = null; late.marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shoppop-close', 'shoppop'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['server-close', 'server'], ['chat-close', 'chat']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
-['shop', 'sign', 'wishes', 'ach', 'dex', 'maps', 'feedback', 'notes', 'shoppop'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
+[['shoppop-close', 'shoppop'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['maps-close', 'maps'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['server-close', 'server'], ['chat-close', 'chat'], ['rank-close', 'rank']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+['shop', 'sign', 'wishes', 'ach', 'dex', 'maps', 'feedback', 'notes', 'shoppop', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
 export const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r) }); late.ach = ach;
