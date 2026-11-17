@@ -14,8 +14,9 @@ async function googleKeys() {
 }
 
 export async function verifyGoogle(cred, clientId) {
-  const [h, p, s] = String(cred).split('.');
-  if (!h || !p || !s) throw new Error('bad token');
+  if (typeof cred !== 'string' || cred.length > 4096 || !clientId) throw new Error('bad token');
+  const [h, p, s, extra] = cred.split('.');
+  if (!h || !p || !s || extra != null) throw new Error('bad token');
   const head = jparse(unb64u(h)), body = jparse(unb64u(p));
   if (head.alg !== 'RS256') throw new Error('alg');
   const jwk = (await googleKeys()).find((k) => k.kid === head.kid);
@@ -25,27 +26,37 @@ export async function verifyGoogle(cred, clientId) {
   if (!ok) throw new Error('sig');
   if (!['accounts.google.com', 'https://accounts.google.com'].includes(body.iss)) throw new Error('iss');
   if (body.aud !== clientId) throw new Error('aud');
-  if (!(body.exp * 1000 > Date.now())) throw new Error('exp');
-  if (typeof body.sub !== 'string' || !body.sub) throw new Error('sub');
+  const now = Date.now(), skew = 5 * 60e3; // 시계 어긋남 5분까지
+  if (!(body.exp * 1000 > now)) throw new Error('exp');
+  if (typeof body.iat === 'number' && body.iat * 1000 > now + skew) throw new Error('iat');
+  if (typeof body.nbf === 'number' && body.nbf * 1000 > now + skew) throw new Error('nbf');
+  if (typeof body.sub !== 'string' || !/^[0-9A-Za-z_-]{1,64}$/.test(body.sub)) throw new Error('sub');
   return body.sub;
 }
 
 const hkey = (secret) => crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
-export const SESSION_DAYS = 30;
-export async function signSession(secret, sub) {
-  const exp = Date.now() + SESSION_DAYS * 864e5;
-  const pl = b64u(enc.encode(JSON.stringify({ s: sub, e: exp })));
+// 세션 토큰 (#84): v2.<{s: sub, i: 만든 시각, e: 끝 시각, j: 토큰 번호}>.<HMAC>
+// 서명이 맞아도 계정 DO 가 한 번 더 봄(accounts.js auth): 지운 계정·다시 만든 계정의 옛 토큰, 로그아웃으로 버린 토큰은 거절
+export async function signSession(secret, sub, days) {
+  const i = Date.now(), exp = i + days * 864e5, j = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  const pl = b64u(enc.encode(JSON.stringify({ s: sub, i, e: exp, j })));
   const sig = b64u(await crypto.subtle.sign('HMAC', await hkey(secret), enc.encode(pl)));
-  return { token: 'v1.' + pl + '.' + sig, exp };
+  return { token: 'v2.' + pl + '.' + sig, exp, iat: i, jti: j };
 }
+// → { sub, iat, exp, jti } 또는 null (서명·모양·만료만 봄)
 export async function readSession(secret, token) {
-  if (typeof token !== 'string') return null;
-  const [v, pl, sig] = token.split('.');
-  if (v !== 'v1' || !pl || !sig) return null;
+  if (typeof token !== 'string' || token.length > 600) return null;
+  const [v, pl, sig, extra] = token.split('.');
+  if (v !== 'v2' || !pl || !sig || extra != null) return null;
   try {
     if (!(await crypto.subtle.verify('HMAC', await hkey(secret), unb64u(sig), enc.encode(pl)))) return null;
     const o = jparse(unb64u(pl));
-    if (!(o.e > Date.now()) || typeof o.s !== 'string') return null;
-    return o.s;
+    if (!(o.e > Date.now()) || typeof o.s !== 'string' || typeof o.j !== 'string' || !(o.i > 0)) return null;
+    return { sub: o.s, iat: o.i, exp: o.e, jti: o.j };
   } catch (e) { return null; }
+}
+// 주소(IP) → 짧은 해시. 원문은 어디에도 남기지 않음 (요청 수 제한·의견 도배 막기용)
+export async function ipKey(secret, ip, salt = '') {
+  const sig = await crypto.subtle.sign('HMAC', await hkey(secret + '|ip'), enc.encode(salt + '|' + (ip || 'none')));
+  return [...new Uint8Array(sig)].slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('');
 }

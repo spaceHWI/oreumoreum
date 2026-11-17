@@ -22,6 +22,7 @@ jobs:
       - run: node build.mjs
         env:
           DEV: ${{ github.ref_name == 'dev' && '1' || '' }}
+          PUBLIC: ${{ github.ref_name == 'release' && '1' || '' }}
       - uses: actions/checkout@v4
         with:
           ref: main

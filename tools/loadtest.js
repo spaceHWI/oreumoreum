@@ -15,6 +15,8 @@ const coreOnly = args.includes('--core'); if (coreOnly) args.splice(args.indexOf
 const SRV = (args[0] || 'http://127.0.0.1:8787').replace(/\/+$/, '');
 const COUNTS = (args[1] || '10,20,30,50,80,100').split(',').map(Number);
 const WS = SRV.replace(/^http/, 'ws');
+// 서버는 게임 주소 Origin 만 받음 (#84). 로컬 서버는 로컬 주소, 배포된 서버는 ORIGIN=https://spacehwi.github.io 처럼 넘김 (요청 수 제한 RL_WS 에 걸릴 수 있음)
+const WSO = { headers: { Origin: process.env.ORIGIN || 'http://127.0.0.1:5173' } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const pct = (a, p) => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; };
 const avg = (a) => a.reduce((s, v) => s + v, 0) / Math.max(1, a.length);
@@ -30,11 +32,11 @@ const presence = (i, pos, extra) => ({ nick: '부하' + i, o: OUTFIT, ...pos, ru
 
 async function runServer(n, room) {
   const clients = []; let bytesIn = 0, msgsIn = 0, full = 0;
-  const open = (url) => new Promise((ok) => { const ws = new WebSocket(url); const c = { ws, id: null }; ws.onmessage = (e) => { bytesIn += e.data.length; msgsIn++; const m = JSON.parse(e.data); if (m.t === 'hi') { c.id = m.id; ok(c); } else if (m.t === 'full') { full++; ok(null); } }; ws.onerror = () => ok(null); });
+  const open = (url) => new Promise((ok) => { const ws = new WebSocket(url, WSO); const c = { ws, id: null }; ws.onmessage = (e) => { bytesIn += e.data.length; msgsIn++; const m = JSON.parse(e.data); if (m.t === 'hi') { c.id = m.id; ok(c); } else if (m.t === 'full') { full++; ok(null); } }; ws.onerror = () => ok(null); });
   for (let i = 0; i < n; i++) { const c = await open(`${WS}/ws?room=${room}&ch=0`); if (c) clients.push(c); if (i % 10 === 9) await sleep(50); }
   const ids = clients.map((c) => c.id);
   // 재기용
-  const rtts = []; const probe = await new Promise((ok) => { const ws = new WebSocket(`${WS}/ws?room=${room}&ch=0`); ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.t === 'hi' || m.t === 'full') ok(m.t === 'hi' ? ws : null); if (m.t === 'pong') rtts.push(performance.now() - m.c); }; });
+  const rtts = []; const probe = await new Promise((ok) => { const ws = new WebSocket(`${WS}/ws?room=${room}&ch=0`, WSO); ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.t === 'hi' || m.t === 'full') ok(m.t === 'hi' ? ws : null); if (m.t === 'pong') rtts.push(performance.now() - m.c); }; });
   if (!probe) console.error('  재기용 접속자가 방에 못 들어감 (정원)');
   await sleep(500);
   bytesIn = 0; msgsIn = 0;

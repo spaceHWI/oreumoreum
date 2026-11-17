@@ -761,6 +761,21 @@ export const NET = {
   saveMax: 200000,    // 저장 크기 상한 (바이트)
   saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
   keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
+  // 보안 (#84): 이동·줍기·폭주·요청 수 제한. 모두 서버(roomcore·index)가 봄
+  rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>(-battle)' 만. 그 밖은 거절 (방 만들기 폭주 막기)
+  maxSpeed: 32,       // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
+  moveSlack: 8,       // 이동 판정 여유 (m, 끊김·점프)
+  warpGap: 10,        // 들것 귀환·자리 앉기 같은 순간 이동은 이 초에 한 번까지 받아 줌
+  takePerSec: 6,      // 더미 줍기: 1초에 몇 번 (한꺼번에도 이만큼)
+  strikeMax: 8, strikeWin: 30, // 되돌리기·버린 메시지가 strikeWin 초 안에 strikeMax 번을 넘으면 끊음
+  dropKick: 60,       // 버린 메시지가 strikeWin 초 안에 이만큼이면 끊음 (폭주)
+  banSec: 60,         // 끊긴 사람(계정·주소)은 이 초 동안 다시 못 들어옴
+  reqPerMin: 120,     // 한 주소(IP)에서 1분에 받는 HTTP 요청 (로그인·저장·의견 모두)
+  loginPerMin: 10,    // 한 주소에서 1분에 받는 로그인
+  wsPerMin: 30,       // 한 주소에서 1분에 여는 방 연결
+  sessionDays: 14,    // 세션 토큰 수명. /me 를 부를 때 남은 날이 sessionRenew 아래면 새 토큰
+  sessionRenew: 7,
+  nickMax: 16, sayMax: 60, // 닉네임·말풍선 글자 수
 };
 
 // 의견 보내기 (#77): 게임 안 글 → 서버 /feedback → 개발자 메일 (받는 주소는 서버 시크릿 FEEDBACK_TO)

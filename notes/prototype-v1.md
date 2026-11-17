@@ -601,3 +601,16 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 버튼: 메뉴 `#menu-feedback`('의견 보내기'), 첫 화면 베타 안내 옆 `#intro-feedback`(창은 `z-index 12` 로 첫 화면 위). 예전 social.js 의 db 저장·GitHub 이슈로 열기는 뺌
 - 서버 `server/src/feedback.js`: `cleanItems` 칸 확인·길이 자름, 계정 DO 표 `fb`(id·at·ip 해시·item·mailed) 에 저장, 주소마다 1시간 `ipPerHour`(20), 최근 `dbKeep`(2000)만. 메일은 Email Routing `send_email` 바인딩 `FEEDBACK_MAIL` + 시크릿 `FEEDBACK_TO`·`FEEDBACK_FROM`, UTF-8 MIME 직접 만듦. 바인딩은 wrangler.toml 에 주석(Email Routing 켠 뒤 풂), 없으면 저장만. 로컬 `GET /feedback`(STATS_OPEN) 로 목록
 - 확인 `node tools/feedback.js [서버주소]`
+
+## 보안 점검 (#84)
+- 전제: 클라이언트 코드는 누구나 본다. 귤·장비·옷·탈것·머리·치운 양은 서버(`server/src/validate.js` 몫 방식)가 기준, 이동·줍기·맞힘은 방(`roomcore.js`)이 판정
+- 수치는 `balance.js` `NET` 아래쪽(rooms·maxSpeed·moveSlack·warpGap·takePerSec·strike*·dropKick·banSec·reqPerMin·loginPerMin·wsPerMin·sessionDays·nickMax·sayMax)
+- 글 다듬기 `src/safetext.js` `cleanText(v, max, {lines})`: 제어·방향(RLO)·폭 없는 글자·꺾쇠 빼고 코드 포인트 단위로 자름. 서버(저장 닉네임·presence nick/say·의견)와 게임(net 닉네임·말풍선)이 같이 씀. 남이 보낸 글은 늘 캔버스·textContent 로만
+- 방: 받아 준 자리에서 `(지난 시간 × maxSpeed 32 + 여유 8m)` 넘게 움직이면 `{t:'pos'}` 로 되돌림(main.js 가 자리 옮김), 순간 이동은 `warpGap` 10초에 한 번만 받아 줌(들것 귀환·앉기). 줍기는 초당 `takePerSec`, 못 주우면 `{t:'h', no:1}` → `linkTrash` 가 `trash.undoTake(h)` 로 배낭·누적 수에서 하나 뺌. 되돌리기·버린 메시지가 쌓이면 `{t:'kick'}` 후 끊고 그 계정·주소 해시는 `banSec` 동안 `{t:'ban'}` (방 DO 메모리라 채널마다 따로)
+- 입구 `index.js`: SESSION_SECRET 32자 미만이면 `/health` 말고 503. Origin 은 `ALLOW_ORIGINS` 만(로컬 주소는 FAKE_AUTH·STATS_OPEN 일 때만), Origin 없으면 거절. 방 이름은 `oreum-<NET.rooms>(-battle)` 만. 주소 해시별 요청 수(메모리 + `[[ratelimits]]` RL_API·RL_LOGIN·RL_WS). 응답 보안 헤더. 오류 내용은 내보내지 않음. console 로그 없음
+- 세션 토큰 `v2.{s,i,e,j}.HMAC` (14일, `/me` 에서 7일 아래로 남으면 새 토큰 + 옛 것 버림). 계정 DO `auth()` 가 계정 있음·만든 뒤의 토큰·버린 토큰(표 `rv`, Cron 이 만료분 지움)을 봄. `POST /logout` 은 그 토큰만 버림. WebSocket 토큰은 주소창 대신 하위 프로토콜 `['oreum', 't.<토큰>']`
+- 주소(IP)는 `ipKey`(SESSION_SECRET 으로 HMAC, 8바이트)로만. 의견 표 `fb.ip` 도 이것
+- 어드민: 시크릿 `ADMIN_SUBS`(sub 쉼표). `/me`·로그인 응답 `admin`, 어드민 저장은 몫 확인 생략(귤 채우기), `GET /feedback` 은 어드민만. 게임: 서버가 있으면 `?hwi` 무시, `account.admin` 일 때만 `enableDev()`. 서버가 없으면 예전대로 `?hwi=1`
+- 빌드: `PUBLIC=1`(publish.yml 의 release) 이면 `window.__oreum` 은 어드민에게만(`exposeDebug`). dist/index.html 에 meta CSP(게임 스크립트는 sha256 해시, GIS·글꼴·https/wss·로컬 주소만)
+- 확인 `node tools/sec.js` (wrangler dev 넷을 띄워 49가지 공격 흉내), `node tools/online.js` 에 보안 확인 4개 더함. loadtest 는 Origin 헤더를 붙임(`ORIGIN=` 로 바꿈)
+- 남은 위험: 구글 계정 여러 개(계정마다 몫·기기 기록 옮기기 3만 귤), 손님(기기 저장)은 마음대로, 더미 거리 판정 없음(줍기 속도·치운 양 몫으로만), 방 안 맞힘은 거리·빈도만, 끊긴 사람은 다른 채널로 갈 수 있음, 요청 수 제한은 Worker 여러 개에 퍼지면 느슨함

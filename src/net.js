@@ -5,6 +5,7 @@ import { cleanGear } from './gear.js';
 import { height, groundAt } from './world.js';
 import { EMOTE_BY } from './emotes.js';
 import { NET } from './balance.js';
+import { cleanText } from './safetext.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
@@ -34,7 +35,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       gear: cleanGear(c.gr),
     };
   }
-  const safeNick = (n) => (typeof n === 'string' ? n.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 16) : '') || '러너';
+  const safeNick = (n) => cleanText(n, NET.nickMax) || '러너'; // 남이 보낸 이름은 다듬어서 캔버스 글자로만 (#84)
 
   function makeLabel(text) {
     const c = document.createElement('canvas'); c.width = 256; c.height = 64;

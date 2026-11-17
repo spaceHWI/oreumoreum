@@ -2,8 +2,9 @@
 // 받는 주소는 시크릿 FEEDBACK_TO, 보내는 주소는 FEEDBACK_FROM (Email Routing 을 켠 도메인의 주소)
 // 메일은 Cloudflare Email Routing 의 Workers send_email 바인딩(이름 FEEDBACK_MAIL)으로. 바인딩·주소가 없으면 저장만
 import { FEEDBACK } from '../../src/balance.js';
+import { cleanText } from '../../src/safetext.js';
 
-const str = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim().slice(0, n) : '');
+const str = (v, n) => cleanText(v, n);
 const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
 // 받은 글 묶음 → 확인한 글들 (정해진 칸만, 길이 자름)
 export function cleanItems(items) {
@@ -11,9 +12,9 @@ export function cleanItems(items) {
   const out = [];
   for (const it of items.slice(0, FEEDBACK.batch)) {
     if (!it || typeof it !== 'object') continue;
-    const text = str(it.text, FEEDBACK.max); if (!text) continue;
+    const text = cleanText(it.text, FEEDBACK.max, { lines: true }); if (!text) continue; // 메일은 글자(text/plain)로만 보냄
     out.push({
-      at: num(it.at) || Date.now(), text,
+      at: Math.min(Date.now(), Math.max(0, num(it.at) || 0)) || Date.now(), text,
       ver: str(it.ver, 20), srv: str(it.srv, 12), map: str(it.map, 24), dev: str(it.dev, 10),
       w: num(it.w), h: num(it.h), x: num(it.x), z: num(it.z), nick: str(it.nick, 24),
     });

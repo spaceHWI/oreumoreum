@@ -11,6 +11,8 @@ export class Accounts extends DurableObject {
       sub TEXT PRIMARY KEY, nick TEXT, save TEXT, rev INTEGER DEFAULT 0, cleaned INTEGER DEFAULT 0,
       credit REAL, pick_credit REAL, saved_at INTEGER, last_seen INTEGER, created INTEGER)`);
     // 의견 (#77): 글과 같이 온 값만. ip 는 보내기 막기용 해시
+    // 버린 세션 토큰 (#84): 로그아웃한 토큰 번호와 그 토큰이 끝나는 시각 (끝나면 Cron 이 지움)
+    this.sql.exec('CREATE TABLE IF NOT EXISTS rv (j TEXT PRIMARY KEY, exp INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS fb (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, ip TEXT, item TEXT, mailed INTEGER DEFAULT 0)');
   }
   row(sub) { return this.sql.exec('SELECT * FROM acc WHERE sub = ?', sub).toArray()[0] || null; }
@@ -25,14 +27,21 @@ export class Accounts extends DurableObject {
   view(r, t = Date.now()) {
     return { nick: r.nick || '', rev: r.rev, save: r.save ? JSON.parse(r.save) : null, cleaned: r.cleaned, lastSeen: t, keepUntil: t + NET.keepDays * 864e5, isNew: !!r.isNew };
   }
+  // 세션 확인 (#84): 계정이 있고, 토큰이 계정을 만든 뒤에 나왔고(지웠다 다시 만든 계정의 옛 토큰 거절), 버린 토큰이 아니어야 함
+  auth(sub, iat, jti) {
+    const r = this.sql.exec('SELECT created FROM acc WHERE sub = ?', sub).toArray()[0];
+    if (!r || !(iat >= (r.created || 0))) return false;
+    return !this.sql.exec('SELECT 1 AS x FROM rv WHERE j = ?', jti).toArray().length;
+  }
+  revoke(jti, exp) { this.sql.exec('INSERT OR REPLACE INTO rv (j, exp) VALUES (?, ?)', jti, exp); return { ok: true }; }
   get(sub) { const r = this.row(sub); return r ? this.view(r, r.last_seen) : null; }
-  put(sub, save, { migrate = false } = {}) {
+  put(sub, save, { migrate = false, free = false } = {}) {
     const raw = JSON.stringify(save);
     if (raw.length > NET.saveMax) return { error: 'too big' };
     const t = Date.now();
     let r = this.row(sub); if (!r) { this.touch(sub); r = this.row(sub); }
     const prev = r.save ? JSON.parse(r.save) : null;
-    const { save: S, fixed, acc } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, savedAt: r.saved_at }, t, { migrate: migrate && !prev });
+    const { save: S, fixed, acc } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, savedAt: r.saved_at }, t, { migrate: migrate && !prev, free });
     const rev = (r.rev || 0) + 1;
     // 확인한 칸만 바꿔 넣고 나머지(설정·튜토리얼 등)는 받은 그대로
     const out = { ...save, ...S };
@@ -54,6 +63,6 @@ export class Accounts extends DurableObject {
   feedbackMailed(k) { this.sql.exec('UPDATE fb SET mailed = 1 WHERE id > (SELECT MAX(id) FROM fb) - ?', k); }
   feedbackList(k = 50) { return this.sql.exec('SELECT id, at, item, mailed FROM fb ORDER BY id DESC LIMIT ?', k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
   del(sub) { this.sql.exec('DELETE FROM acc WHERE sub = ?', sub); return { ok: true }; }
-  purge(cutoff) { const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff); return n; }
+  purge(cutoff) { this.sql.exec('DELETE FROM rv WHERE exp < ?', Date.now()); const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff); return n; }
   count() { return this.sql.exec('SELECT COUNT(*) AS n FROM acc').one().n; }
 }

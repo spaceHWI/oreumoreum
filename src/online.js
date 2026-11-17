@@ -55,14 +55,16 @@ function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save
 /* ---------- 계정 ---------- */
 // getSave: 지금 저장 객체, writeLocal: 이 기기에 바로 씀, onFix({coins,total}): 서버가 바로잡은 값, toast, entered(): 이미 입장했는지
 export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
-  let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '';
+  let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '', admin = false;
+  // 서버가 새 토큰을 주면 바꿔 끼움 (#84: 세션 수명 NET.sessionDays, 남은 날이 적으면 /me 가 새로 줌)
+  const renew = (r) => { if (sess && r && typeof r.token === 'string' && r.exp > Date.now()) { sess = { ...sess, t: r.token, exp: r.exp }; ls.set(SK, JSON.stringify(sess)); } };
   const listeners = [];
   const changed = () => listeners.forEach((f) => f());
   async function start() {
     if (!ONLINE || !sess) return;
     try {
       const me = await api('/me');
-      keepUntil = me.keepUntil; changed();
+      keepUntil = me.keepUntil; admin = !!me.admin; renew(me); changed();
       const s = getSave();
       if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { writeCache(me.save, me.rev, sess.sub); location.reload(); return; } // 다른 기기에서 더 해 둔 기록
       if (!me.save) push();
@@ -106,7 +108,11 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
     writeCache(me.save || { nick: localSave.nick }, me.rev, sub);
     location.reload();
   }
-  function logout() { flush(); sess = null; ls.del(SK); location.reload(); }
+  function logout() {
+    flush();
+    const t = sess?.t; if (t) fetch(SRV + '/logout', { method: 'POST', keepalive: true, headers: { authorization: 'Bearer ' + t } }).catch(() => {}); // 이 토큰은 서버에서도 버림 (#84)
+    sess = null; ls.del(SK); location.reload();
+  }
   async function deleteMe() {
     if (!sess) return false;
     await api('/me', { method: 'DELETE' });
@@ -115,7 +121,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
     return true;
   }
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; } };
+  return { start, push, dirty, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get admin() { return !!sess && admin; } };
 }
 
 /* ---------- 로그인 화면 ---------- */
@@ -170,8 +176,9 @@ export function createWsLobby({ token = () => null } = {}) {
       const emit = (joined, updated, left) => peersCb && peersCb({ peers: [me(), ...[...known].map(([peer, presence]) => ({ peer, presence, kind: 'viewer' }))], joined, updated, left });
       function connect() {
         const q = new URLSearchParams({ room: String(name).toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40), ch: String(ch) });
-        const tk = token(); if (tk) q.set('token', tk);
-        ws = new WebSocket(SRV.replace(/^http/, 'ws') + '/ws?' + q);
+        const tk = token();
+        // 토큰은 주소창(서버 로그에 남음) 대신 하위 프로토콜로 (#84). 서버는 'oreum' 으로 답함
+        ws = tk ? new WebSocket(SRV.replace(/^http/, 'ws') + '/ws?' + q, ['oreum', 't.' + tk]) : new WebSocket(SRV.replace(/^http/, 'ws') + '/ws?' + q);
         ws.onmessage = (e) => {
           let m; try { m = JSON.parse(e.data); } catch (_) { return; }
           if (m.t === 'hi') { myId = m.id; host = m.host; open = true; backoff = 1000; emit([], [], []); fire('hi', m); }
@@ -182,6 +189,7 @@ export function createWsLobby({ token = () => null } = {}) {
           } else if (m.t === 'l') { if (known.delete(m.id)) emit([], [], [{ peer: m.id }]); }
           else if (m.t === 'host') { host = m.id; fire('host', m); }
           else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; ws.onclose = null; ws.close(); connect(); } // 정원이 차면 다음 방(채널)
+          else if (m.t === 'ban' || m.t === 'kick') { backoff = Math.max(backoff, (m.sec || 60) * 1000); fire(m.t, m); } // 끊김 (#84): 풀릴 때까지 기다렸다 다시
           else fire(m.t, m);
         };
         ws.onclose = () => {
@@ -217,7 +225,7 @@ export function linkTrash(trash, room) {
     st.commit(); relayout();
   });
   const one = (h, n) => { if (st.left(h) !== n) { st.setLeft(h, n); relayout(); } };
-  room.on('h', (m) => { if (live) one(m.h, m.n); });
+  room.on('h', (m) => { if (!live) return; one(m.h, m.n); if (m.no) trash.undoTake?.(m.h); }); // no: 방이 줍기를 거절 → 배낭에서 하나 되돌림 (#84)
   room.on('hs', (m) => { if (live) for (const [h, n] of m.hs) one(h, n); });
   room.on('close', () => { live = false; });
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) room.send({ t: 'take', h }); return ok; };

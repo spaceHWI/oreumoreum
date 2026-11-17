@@ -5,9 +5,13 @@
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
+// 보안 (#84): 이동은 NET.maxSpeed 로 판정해 넘으면 {t:'pos', x, z} 로 되돌림(순간 이동은 warpGap 초에 한 번만 받아 줌),
+//   줍기는 takePerSec, 못 주우면 {t:'h', h, n, no:1} (주운 사람이 배낭에서 하나 되돌림), 닉네임·말풍선 글은 다듬어서만 돌림,
+//   되돌리기·버린 메시지가 쌓이면 {t:'kick'} 후 끊고 그 계정·주소는 banSec 초 동안 못 들어옴 ({t:'ban'})
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG } from './heaps.js';
+import { cleanText } from '../../src/safetext.js';
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -16,17 +20,34 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], v | 0))) : HEAP_FULL.slice();
   const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
   let heapsDirty = false, roomSeen = seen || 0, host = null, nextId = 1, tick = 0;
-  const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0 };
+  const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0, moveBack: 0, kicks: 0, takeNo: 0 };
+  const bans = new Map(); // 계정·주소 키 → 풀리는 시각 (ms)
 
   const out = (p, s) => { st.bytesOut += s.length; st.msgsOut++; try { p.send(s); } catch (e) { /* 끊긴 소켓 */ } };
   const all = (s, except) => { for (const p of peers.values()) if (p !== except) out(p, s); };
-  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); };
+  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); };
+  // 최근 strikeWin 초 안의 횟수 세기
+  const count = (arr, t) => { while (arr.length && t - arr[0] > NET.strikeWin * 1000) arr.shift(); return arr.length; };
+  function kick(p, why) {
+    const t = now(); st.kicks++;
+    for (const k of [p.acct && 'a:' + p.acct, p.key && 'k:' + p.key]) if (k) bans.set(k, t + NET.banSec * 1000);
+    out(p, JSON.stringify({ t: 'kick', why, sec: NET.banSec }));
+    leave(p); try { p.close?.(4003, why); } catch (e) { /* 이미 끊김 */ }
+  }
+  function strike(p, why) { p.strikes.push(now()); if (count(p.strikes, now()) > NET.strikeMax) kick(p, why); }
+  function drop(p) { st.dropped++; p.drops.push(now()); if (count(p.drops, now()) >= NET.dropKick) kick(p, 'flood'); }
+  function banned(info, t) {
+    for (const k of [info.acct && 'a:' + info.acct, info.key && 'k:' + info.key]) { if (!k) continue; const u = bans.get(k); if (u > t) return Math.ceil((u - t) / 1000); if (u) bans.delete(k); }
+    return 0;
+  }
   function pickHost() { let h = null; for (const p of peers.values()) if (!h || p.joinAt < h.joinAt) h = p; const id = h ? h.id : null; if (id !== host) { host = id; if (id) all(JSON.stringify({ t: 'host', id })); } }
 
   function join(send, info = {}) {
-    if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const t = now();
-    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0 };
+    const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
+    if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
+    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
+      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec };
     peers.set(p.id, p);
     if (!host) host = p.id;
     out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap }));
@@ -43,6 +64,19 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   function presence(p, d) {
     if (!d || typeof d !== 'object' || Array.isArray(d) || !isNum(d.x) || !isNum(d.z)) return;
     d.x = Math.max(-4000, Math.min(4000, d.x)); d.z = Math.max(-4000, Math.min(4000, d.z));
+    // 이동 판정 (#84): 마지막으로 받아 준 자리에서 (지난 시간 × maxSpeed + 여유) 안이어야 함
+    const t = now();
+    if (p.has) {
+      const dist = Math.hypot(d.x - p.mx, d.z - p.mz), allow = ((t - p.mT) / 1000) * NET.maxSpeed + NET.moveSlack;
+      if (dist > allow) {
+        if ((t - p.warpT) / 1000 >= NET.warpGap) p.warpT = t; // 들것 귀환·자리 앉기 같은 순간 이동은 가끔 받아 줌
+        else { st.moveBack++; out(p, JSON.stringify({ t: 'pos', x: p.mx, z: p.mz })); strike(p, 'move'); return; }
+      }
+    }
+    p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
+    // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
+    if ('nick' in d) d.nick = cleanText(d.nick, NET.nickMax);
+    if ('say' in d) d.say = d.say && typeof d.say === 'object' && isNum(d.say.at) ? { t: cleanText(d.say.t, NET.sayMax), at: d.say.at } : null;
     // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
     const ht = d.ht;
     if (ht != null) {
@@ -65,16 +99,16 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   function message(p, raw) {
     st.msgsIn++;
     const t = now(); refill(p, t);
-    if (p.tok < 1 || typeof raw !== 'string' || raw.length > NET.presenceMax + 64) { st.dropped++; return; }
+    if (p.tok < 1 || typeof raw !== 'string' || raw.length > NET.presenceMax + 64) { drop(p); return; }
     p.tok--;
-    let m; try { m = JSON.parse(raw); } catch (e) { st.dropped++; return; }
+    let m; try { m = JSON.parse(raw); } catch (e) { drop(p); return; }
     if (!m || typeof m !== 'object') return;
     switch (m.t) {
       case 'p': presence(p, m.d); break;
       case 'take': {
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
-        if (H[h] > 0) { H[h]--; heapsDirty = true; heapOut.set(h, H[h]); }
-        else out(p, JSON.stringify({ t: 'h', h, n: 0 }));
+        if (H[h] > 0 && p.takeTok >= 1) { p.takeTok--; H[h]--; heapsDirty = true; heapOut.set(h, H[h]); }
+        else { st.takeNo++; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: 1 })); } // 늦게 온 마지막 하나·너무 빠른 줍기: 주운 사람이 되돌림
         break;
       }
       case 'put': {

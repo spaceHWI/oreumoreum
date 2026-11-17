@@ -52,6 +52,8 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
     full: (h) => HEAP_FULL[h],
     // 더미 h 에서 하나 꺼냄 (누적 수 +1)
     takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; dirty = true; return true; },
+    // 방이 '늦었다'고 거절한 줍기 되돌리기 (#84): 배낭에서 그 종류 하나·누적 수 하나를 뺌
+    untake(kind) { if (T.bag[kind] > 0) T.bag[kind]--; T.total = Math.max(0, T.total - 1); dirty = true; },
     // 다시 쌓기 (#37 멧돼지가 흘림 · 뒤 이슈 투기꾼): 넣은 수
     putBack(h, n) { const add = Math.max(0, Math.min(n, HEAP_FULL[h] - S.heaps[h])); S.heaps[h] += add; if (add) dirty = true; return add; },
     setLeft(h, n) { S.heaps[h] = Math.max(0, Math.min(HEAP_FULL[h], Math.floor(n))); dirty = true; }, // 테스트용
@@ -188,6 +190,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   function syncCols() { heaps.forEach((h, i) => { const st = stOf(i); if (st === h.st || !h.cols) { h.st = st; return; } h.st = st; h.cols.forEach((id, s) => col.setOff([id], s !== st)); }); }
   const curR = (i) => heaps[i].r * STG_R[Math.max(0, heaps[i].st)];
   let dirty = true, lastX = 1e9, lastZ = 1e9;
+  const recent = []; // 최근 더미 줍기 { h, kind } (#84 되돌리기용)
   const DRAW_R = low ? TRASH.drawRLow : TRASH.drawR, HDRAW = low ? TRASH.heapDrawRLow : TRASH.heapDrawR;
   function rebuild(px, pz) {
     lastX = px; lastZ = pz; dirty = false;
@@ -239,6 +242,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     }
     const type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
+    if (c.h != null) { recent.push({ h: c.h, kind: type.id }); if (recent.length > 30) recent.shift(); } // 방이 거절하면 되돌릴 수 있게 (#84)
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
     dirty = true;
     emit('trash', { kind: type.id, dex: dx, dexNew });
@@ -265,6 +269,11 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     return got;
   }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
+  // 방(서버)이 더미 h 줍기를 거절했을 때 (#84): 그 더미에서 가장 최근에 주운 것 하나를 배낭에서 뺌. 뺐으면 true
+  function undoTake(h) {
+    for (let i = recent.length - 1; i >= 0; i--) if (recent[i].h === h) { store.untake(recent[i].kind); recent.splice(i, 1); dirty = true; emit('changed', {}); return true; }
+    return false;
+  }
   function relayout() { syncCols(); dirty = true; emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
   syncCols();
   function update(dt, pos) { if (dirty || Math.abs(pos.x - lastX) > 6 || Math.abs(pos.z - lastZ) > 6) rebuild(pos.x, pos.z); }
@@ -303,5 +312,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   };
   // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
   function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
-  return { update, any, candidates, take, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps };
+  return { update, any, candidates, take, undoTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps };
 }

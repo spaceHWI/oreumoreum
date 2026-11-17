@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { cleanText } from './safetext.js';
 import { TEXCS } from './boot.js';
 
 // 채팅 말풍선(presence.say), 소원 돌탑(db stones/{self}), 표지석 줄서기(presence.pq)
-const clean = (s, n) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, n) : '');
+const clean = (s, n) => cleanText(s, n); // 제어·방향 글자·꺾쇠 빼기 (#84, safetext.js)
 
 export function createSocial({ scene, net, save, onToast, mapId }) {
   let db = null, uid = null, dbReady = false;
