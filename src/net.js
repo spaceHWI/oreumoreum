@@ -14,7 +14,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
-  const hand = { with: null, req: null, pendingFrom: null, declinedBy: null, hitBy: null };
+  const hand = { hitBy: null }; // 누가 나를 귤로 맞혔나 (손잡기는 #86 에서 뺌)
   let hitOut = null;
 
   function compactOutfit(o) {
@@ -78,9 +78,6 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   function removePeer(id) {
     const e = peersById.get(id); if (!e) return;
     scene.remove(e.runner.root); cull?.()?.remove(e.runner.root); peersById.delete(id);
-    if (hand.with === id) { hand.with = null; onToast('손을 놓았어요'); }
-    if (hand.req === id) hand.req = null;
-    if (hand.pendingFrom === id) hand.pendingFrom = null;
   }
 
   async function start() {
@@ -102,28 +99,10 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       }
       // 귤 맞음: 누가 나를 맞혔다고 알려오면
       for (const e of peersById.values()) { const ht = e.data.ht; if (ht && typeof ht === 'object' && ht.p === myPeer && typeof ht.at === 'number' && Date.now() - ht.at < 5000) { if (!hand.hitBy || hand.hitBy.at !== ht.at) hand.hitBy = { at: ht.at, nick: e.nick, from: e.peer }; } }
-      // 손잡기 핸드셰이크
-      const partner = hand.with && peersById.get(hand.with);
-      if (hand.with && !partner) hand.with = null;
-      if (partner) {
-        const pw = partner.data.hw;
-        if (pw !== myPeer) { hand.with = null; onToast(`${partner.nick}이(가) 손을 놓았어요`); }
-      }
-      if (hand.req) {
-        const t = peersById.get(hand.req);
-        if (!t) hand.req = null;
-        else if (t.data.hw === myPeer) { hand.with = hand.req; hand.req = null; onToast(`${t.nick}과(와) 손을 잡았어요`); }
-        else if (t.data.hd === myPeer) { hand.req = null; hand.declinedBy = t.peer; onToast(`${t.nick}이(가) 지금은 괜찮대요`); }
-      }
-      if (!hand.with && !hand.req) {
-        let from = null;
-        for (const e of peersById.values()) if (e.data.hr === myPeer && e.tpos.distanceTo(player.pos) < 10) { from = e.peer; break; }
-        hand.pendingFrom = from;
-      } else hand.pendingFrom = null;
       ready = true;
-      onPeersChanged(peersById.size, hand);
+      onPeersChanged?.(peersById.size);
       send(!wsLobby); // 서버 방은 새로 온 사람에게 방이 내 마지막 상태를 대신 보내 줌 (#7)
-    }, () => { ready = false; onPeersChanged(0, hand); });
+    }, () => { ready = false; onPeersChanged?.(0); });
   }
 
   function send(force) {
@@ -135,7 +114,6 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       nick: save.nick, o: compactOutfit(save.outfit),
       x: +p.pos.x.toFixed(2), z: +p.pos.z.toFixed(2), h: +p.heading.toFixed(3),
       run: p.running, pose: p.pose, jy: +p.jumpY.toFixed(2), spd: +p.speed.toFixed(1),
-      hr: hand.req, hw: hand.with, hd: hand.declinedTo || null, drv: p.driving ? Date.now() : 0,
       ht: hitOut, yl: p.yellowUntil > Date.now() ? 1 : 0,
       ...(extra ? extra() : {}),
     };
@@ -166,7 +144,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       const pose = typeof e.data.pose === 'string' ? e.data.pose : 'move';
       r.setTint(!!e.data.yl);
       const ov = rh && overHook ? overHook(e) : null; // 탈것 위 손동작 (#76)
-      r.animate(dt, { speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, breath: 0, air: (e.data.jy || 0) > 0.05, jumpV: 0, edur: EMOTE_BY[pose]?.dur || 2, over: ov && { ...ov, dur: EMOTE_BY[ov.id].dur } });
+      r.animate(dt, { speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, air: (e.data.jy || 0) > 0.05, jumpV: 0, edur: EMOTE_BY[pose]?.dur || 2, over: ov && { ...ov, dur: EMOTE_BY[ov.id].dur } });
     }
   }
 
@@ -175,13 +153,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     for (const e of peersById.values()) { const d = e.pos.distanceTo(player.pos); if (d < bd) { bd = d; best = e; } }
     return best;
   }
-  function request(peerId) { hand.req = peerId; hand.declinedBy = null; send(true); onToast('손잡기를 신청했어요'); }
-  function accept() { if (!hand.pendingFrom) return; hand.with = hand.pendingFrom; hand.pendingFrom = null; send(true); const e = peersById.get(hand.with); onToast(`${e ? e.nick : '러너'}과(와) 손을 잡았어요`); }
-  function decline() { if (!hand.pendingFrom) return; hand.declinedTo = hand.pendingFrom; hand.pendingFrom = null; send(true); setTimeout(() => { hand.declinedTo = null; send(true); }, 3000); }
-  function release() { if (!hand.with) return; hand.with = null; send(true); onToast('손을 놓았어요'); }
-  function cancelRequest() { hand.req = null; send(true); }
   function hitPeer(peerId) { hitOut = { p: peerId, at: Date.now() }; send(true); setTimeout(() => { if (hitOut && hitOut.p === peerId) { hitOut = null; send(true); } }, 4000); }
 
-  return { start, send, update, nearestPeer, request, accept, decline, release, cancelRequest, hitPeer, hand, peersById, test: { fake: applyPeer, drop: removePeer }, // test: 가짜 사람 넣기·빼기 (#79 성능 재기)
+  return { start, send, update, nearestPeer, hitPeer, hand, peersById, test: { fake: applyPeer, drop: removePeer }, // test: 가짜 사람 넣기·빼기 (#79 성능 재기)
      get myPeer() { return myPeer; }, get ready() { return ready; }, get count() { return peersById.size; } };
 }

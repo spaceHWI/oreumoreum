@@ -410,7 +410,7 @@ export function buildRunner(opts = {}) {
   }
 
   const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
-  // pose: 'move' | 'wave' | 'cheer' | 'sit' | 'photo' | 'crouch' | 'breath' | 'carry' | 'flail' | 'fish'
+  // pose: 'move' | 'wave' | 'cheer' | 'sit' | 'photo' | 'crouch' | 'carry' | 'flail' | 'fish'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
   // 눈 (#74): 사람마다 박자가 다름(처음 간격 무작위). face: 'shut' 감은 채(쓰러짐), 'wide' 크게(받힘·놀람). lid(0..1) 를 주면 그대로 (확인용)
   const eye = { next: BLINK.gapMin + Math.random() * (BLINK.gapMax - BLINK.gapMin), t: -1, again: false, lid: 0, wide: 0, far: false };
@@ -496,7 +496,7 @@ export function buildRunner(opts = {}) {
         chest.scale.setScalar(1 + Math.sin(t * 1.1) * 0.025); break; }
     }
   }
-  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2 }) {
+  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2 }) {
     if (model) tickEyes(dt, face, lid, pose);
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'carry');
@@ -633,15 +633,10 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(-0.6 - up * 0.8, 0, 0.5); armR.rotation.set(-0.6 - up * 0.8, 0, -0.5);
       torso.rotation.x = 0.1 + up * 0.1;
       hips.position.y = HIP;
-    } else if (pose === 'breath') {
-      const b = breath ?? 0;
-      chest.scale.set(1 + b * 0.08, 1 + b * 0.05, 1 + b * 0.12);
-      armL.rotation.set(0, 0, 0.12 + b * 0.35); armR.rotation.set(0, 0, -0.12 - b * 0.35);
-      head.rotation.x = -b * 0.15;
     }
     if (over) emotePose(over.id, over.t, true, over.dur || 2);
     // 발이 비탈 아래로 들어가면 그만큼 골반을 올림 (앞발은 오르막에, 뒷발은 내리막에 걸림)
-    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw' || pose === 'bow' || pose === 'carry' || pose === 'fish')) {
+    if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'carry' || pose === 'fish')) {
       const L = model ? LEG_M : 0.775, base = model ? LEG_M : HIP;
       const pen = (lg) => { const th = lg.rotation.x, hy = base + hips.position.y - HIP, f = -L * Math.sin(th); return st.slope * f - (hy - L * Math.cos(th)); };
       hips.position.y += Math.max(0, pen(legL), pen(legR));

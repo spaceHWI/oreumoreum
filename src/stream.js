@@ -201,7 +201,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
     const near = !p || Math.hypot(p.pos.x - c.x, p.pos.z - c.z) < 160;
     if (near) tickLeaves(dt, t);
     if (!res) { placeRod(rodRest); bob.position.set(bobRest.x, bobRest.y + Math.sin(t * 2.2) * 0.04, bobRest.z); setLine(bob.position, 0.25); }
-    if (!p || Math.hypot(p.pos.x - nx, p.pos.z - nz) < 140) npc.animate(dt, { speed: 0, running: false, pose: 'sit', t, breath: 0, air: false, jumpV: 0 }); // 멀면 멈춰 둠
+    if (!p || Math.hypot(p.pos.x - nx, p.pos.z - nz) < 140) npc.animate(dt, { speed: 0, running: false, pose: 'sit', t, air: false, jumpV: 0 }); // 멀면 멈춰 둠
     for (const d of drops) if (d.m.visible) { d.t += dt; d.v.y -= 14 * dt; d.m.position.addScaledVector(d.v, dt); if (d.t > 0.9) d.m.visible = false; }
     for (const r of rings) { r.t += dt; const k = Math.max(0, r.t) / 0.9; r.m.material.opacity = r.t < 0 || k > 1 ? 0 : 0.7 * (1 - k); r.m.scale.setScalar(1 + k * 3); }
     if (!p) return false;

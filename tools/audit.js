@@ -6,7 +6,7 @@ const fs = require('fs');
 const mode = process.argv[2] || 'd', srv = process.argv[3] || 'clean';
 const OUT = 'dist/audit'; fs.mkdirSync(OUT, { recursive: true });
 // 겹침을 볼 HUD 요소 (보일 때만)
-const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-hint', 'ch-arrow', 'shop-arrow', 'cart-mark', 'shop-mark', 'joy', 'btn-ctx', 'btn-pick', 'btn-jump', 'btn-ride', 'btn-speed', 'btn-actions', 'btn-chat', 'btn-ach', 'btn-menu', 'hp-bar', 'buff-pill', 'zone-pill', 'bloom-banner', 'sitbar', 'ammo', 'ride-pick', 'countdown', 'hp-wait', 'btn-release', 'btn-cancelreq', 'emo-wheel'];
+const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-hint', 'ch-arrow', 'shop-arrow', 'cart-mark', 'shop-mark', 'joy', 'btn-ctx', 'btn-pick', 'btn-jump', 'btn-ride', 'btn-speed', 'btn-actions', 'btn-chat', 'btn-ach', 'btn-menu', 'hp-bar', 'buff-pill', 'zone-pill', 'bloom-banner', 'sitbar', 'ammo', 'ride-pick', 'countdown', 'hp-wait', 'btn-cancelreq', 'emo-wheel'];
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext(mode === 'm' ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } : { viewport: { width: 1440, height: 900 } });

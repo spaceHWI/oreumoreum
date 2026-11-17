@@ -53,7 +53,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
       r.root.position.set(x, height(x, z), z);
       r.root.rotation.y = holding ? hA : Math.atan2(-ux * k, -uz * k); // 놓았을 땐 들것 쪽을 봄
       const front = k === dirSign; // 걷는 쪽 앞사람은 손이 뒤로
-      r.animate(dt, { speed, running: false, pose: holding ? 'carry' : 'move', t: crew.t, breath: 0, air: false, jumpV: 0, carry: front ? 1 : -1 });
+      r.animate(dt, { speed, running: false, pose: holding ? 'carry' : 'move', t: crew.t, air: false, jumpV: 0, carry: front ? 1 : -1 });
     }
   }
   function hideCrew() { if (!crew) return; crew.a.root.visible = crew.b.root.visible = crew.st.visible = false; crew.leave = 0; }

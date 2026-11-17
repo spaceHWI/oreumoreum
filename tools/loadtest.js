@@ -28,7 +28,7 @@ function walker(i) {
   return () => { h += (Math.random() - 0.5) * 0.3; x += Math.sin(h) * 0.6; z += Math.cos(h) * 0.6; return { x: +x.toFixed(2), z: +z.toFixed(2), h: +h.toFixed(3) }; };
 }
 const OUTFIT = { hr: 'bun', hrc: '#2a221c', sk: '#ffdcbf', h: 'cap', hc: '#5c9a3c', hb: 1, g: 'none', v: 'on', vc: '#e2683c', s: '#e8d9b5', st: 'tee', p: 'shorts', pc: '#8a6a3c', sh: '#26262b', sht: 'road', gr: { hand: 'hand:tongs', back: 'back:pack1', shoes: 'shoes:road', hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' } };
-const presence = (i, pos, extra) => ({ nick: '부하' + i, o: OUTFIT, ...pos, run: false, pose: 'move', jy: 0, spd: 3.2, hr: null, hw: null, hd: null, drv: 0, ht: null, yl: 0, say: null, pq: null, rd: 0, ...extra });
+const presence = (i, pos, extra) => ({ nick: '부하' + i, o: OUTFIT, ...pos, run: false, pose: 'move', jy: 0, spd: 3.2, ht: null, yl: 0, say: null, pq: null, rd: 0, ...extra });
 
 async function runServer(n, room) {
   const clients = []; let bytesIn = 0, msgsIn = 0, full = 0;

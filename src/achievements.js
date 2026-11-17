@@ -58,7 +58,6 @@ export const BADGES = [
   { id: 'b-stones', ev: 'stone', goal: 10, name: '돌탑 쌓는 사람', desc: '소원 돌 10개', glyph: '탑', color: '#4a4744', reward: 30 },
   { id: 'b-boar', ev: 'boar-repel', goal: 5, name: '멧돼지 조련사', desc: '멧돼지를 다섯 번 쫓았어요', glyph: '멧', color: '#4a3a30', reward: 30 },
   { id: 'b-photo', ev: 'photo', goal: 5, name: '인증샷 장인', desc: '표지석 인증샷 5장', glyph: '찰', color: '#33402a', reward: 20 },
-  { id: 'b-hand', ev: 'hand', goal: 1, name: '함께 걷는 길', desc: '다른 사람과 손잡고 걸었어요', glyph: '손', color: '#e9719a', reward: 20 },
   { id: 'b-streak-3', ev: 'daily-all', goal: 3, name: '사흘 개근', desc: '오늘의 업적을 모두 마친 날 3일', glyph: '3', color: '#8f7bd6', reward: 40 },
   { id: 'b-streak-7', ev: 'daily-all', goal: 7, name: '일주일 개근', desc: '오늘의 업적을 모두 마친 날 7일', glyph: '7', color: '#7fb8e8', reward: 100, item: 'glasses:t:round' },
   { id: 'b-streak-30', ev: 'daily-all', goal: 30, name: '한 달 개근', desc: '오늘의 업적을 모두 마친 날 30일', glyph: '30', color: '#d6a13b', reward: 300 },
