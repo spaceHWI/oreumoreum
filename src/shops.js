@@ -1,5 +1,5 @@
 // 가게 거리 (#57): 골목 판석·빈 터('준비 중' 팻말)·벤치·화분·입구 간판, 그리고 가게 건물 build 함수 표
-// 가게를 더하려면: balance.js SHOPS 에 한 줄 + 여기 SHOP_BUILD[id]·SHOP_ICON[id] (+ main 의 팝업). 건물 모양은 나중에 Tripo 모델로 바꿈
+// 가게를 더하려면: balance.js SHOPS 에 한 줄 + 여기 SHOP_BUILD[id]·SHOP_ICON[id] (+ main 의 팝업). 건물은 Tripo 모델(#71, src/model-*.js + propmodel.js)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
@@ -24,21 +24,21 @@ export const SHOP_ICON = {
 // 가게마다 건물 하나. lot = streetlayout 의 터, 반환 { door: 상호작용 자리, signPos: 가장자리 표시 기준, update?(dt, night), api }
 export const SHOP_BUILD = {
   stone: ({ scene, height, lot, low, col, addWalkable }) => {
-    const k = STONE.T + STONE.D / 2; // 터 앞 = 테라스 앞끝, 그 뒤 건물 가운데
+    const k = STONE.D / 2 + 0.3; // 터 앞 = 테라스 앞끝 조금 앞, 그 뒤 모델 가운데
     const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
     const api = createStone({ scene, height, site, low, col, addWalkable });
     return { api, door: api.terrace, signPos: api.signPos, r: STONE.r, update: (dt, night) => api.update(dt, night) };
   },
   salon: ({ scene, height, lot, low, col }) => {
-    const k = SALON.fore + SALON.D / 2; // 터 앞 = 드럼통 앞, 그 뒤 건물 가운데
+    const k = SALON.fore + SALON.D / 2; // 터 앞 = 드럼통 앞, 그 뒤 모델 가운데
     const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
     const api = createSalon({ scene, height, site, low, col });
     return { api, door: api.door, signPos: api.signPos, r: SALON.r, update: (dt, night) => api.update(dt, night) };
   },
-  leap: ({ scene, height, lot, low, col }) => {
-    const k = LEAP.fore + LEAP.D / 2; // 터 앞 = 입간판 앞, 그 뒤 건물 가운데
+  leap: ({ scene, height, lot, low, col, addWalkable }) => {
+    const k = LEAP.fore + LEAP.D / 2; // 터 앞 = 디딤판 앞, 그 뒤 모델 가운데
     const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
-    const api = createLeap({ scene, height, site, low, col });
+    const api = createLeap({ scene, height, site, low, col, addWalkable });
     return { api, door: api.door, signPos: api.signPos, r: LEAP.r, update: (dt, night) => api.update(dt, night) };
   },
 };

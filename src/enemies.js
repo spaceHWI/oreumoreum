@@ -166,6 +166,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const dir = aim.sub(_m).normalize();
     const g = buildBolt(); g.position.copy(_m); g.lookAt(_m.clone().add(dir)); group.add(g);
     bolts.push({ g, dir, v: R.speed, life: R.range / R.speed + 0.6, e, def: e.def, kind: e.kind });
+    e.onShot?.(); // 모양마다 쏠 때 연출 (#71 외계인 발사구 빛)
     sound?.beep?.(false);
   }
   function updateBolts(dt) {

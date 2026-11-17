@@ -444,7 +444,8 @@ export const STONE = {
     { id: 'ade', ko: '플럼 에이드', en: 'Plum Ade', price: 50, buff: 'speed', v: 0.1, sec: 300, food: '#c2416b', drink: true },
   ],
   // 자리: 가게 거리(#57) 터 SHOPS 의 lot. 앞(테라스)이 골목 너머 개울·바다(서쪽)를 봄
-  W: 9, D: 6, H: 3.2, T: 4, // 건물 폭·깊이·벽 높이, 테라스 깊이
+  s: 8, // Tripo 모델 배율 (#71). 모델 안 자리는 stone.js M
+  W: 7.2, D: 7.8, // 테라스까지 넣은 폭·깊이 (모델 크기 × s)
   r: 7, // 테라스 가운데에서 이 거리 안이면 상호작용이 '식사'
   eatT: 4.5, // 먹는 연출 (건너뛸 수 있음)
   walkMax: 3, // 자리까지 걸어가다 이 초가 넘으면 바로 앉힘
@@ -500,7 +501,8 @@ HAIR.byKey = Object.fromEntries(HAIR.list.map((h) => [h.key, h]));
 
 // 루이네 미장원 (#58): 가게 거리 1번 터. 건물 폭·깊이·벽 높이, 터 앞에서 건물 앞벽까지(드럼통 자리)
 export const SALON = {
-  W: 7, D: 5.6, H: 3.6, fore: 1.8,
+  s: 4.8, // Tripo 모델 배율 (#71). 모델 안 자리는 salon.js M
+  W: 4.3, D: 4.7, fore: 0.3, // 드럼통까지 넣은 폭·깊이 (모델 × s), 터 앞에서 모델 앞끝까지
   r: 6, // 문 앞에서 이 거리 안이면 상호작용이 '머리'
   walkMax: 4, // 문 앞까지 걸어가다 이 초가 넘으면 바로 앉힘
   cutT: 3, // 가위질 연출 (건너뛸 수 있음)
@@ -509,7 +511,8 @@ export const SALON = {
 
 // LEAP (#59): 가게 거리 2번 터의 러닝 편집숍. 옷(WEAR·CLOTHES)과 신발(SHOES)을 귤로 삼. 가판대에는 도구·배낭·무기만
 export const LEAP = {
-  W: 8, D: 6, H: 3.8, fore: 1.6, // 건물 폭·깊이·높이, 터 앞에서 건물 앞벽까지
+  s: 6.2, // Tripo 모델 배율 (#71). 모델 안 자리는 leap.js M
+  W: 6.1, D: 6.1, fore: 0.3, // 앞 디딤판까지 넣은 폭·깊이 (모델 × s), 터 앞에서 모델 앞끝까지
   r: 6, // 문 앞에서 이 거리 안이면 상호작용이 '옷'
   slots: ['shoes', 'hat', 'top', 'bottom', 'vest', 'jacket', 'socks'], // 팝업 칸 순서 (신발이 맨 앞)
 };
