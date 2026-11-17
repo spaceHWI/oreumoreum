@@ -198,13 +198,6 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .badge .claim { margin-top: 2px; }
 
 /* 호흡·사진 */
-#breath { pointer-events: none; }
-.breath-box { display: grid; place-items: center; gap: 10px; }
-.breath-ring { width: min(56vw, 220px); aspect-ratio: 1; border-radius: 50%; border: 6px solid rgba(251, 246, 230, .95); background: rgba(214, 184, 100, .22); box-shadow: 0 0 0 3px rgba(51,64,42,.35); transition: transform .1s linear; max-width: 100%; }
-.breath-text { position: absolute; text-align: center; color: #fff; text-shadow: 0 2px 0 rgba(36,37,31,.6); }
-.breath-text b { font-family: var(--display); font-weight: 800; font-size: 32px; display: block; }
-.breath-text small { font-size: 14px; }
-#breath-stop { pointer-events: auto; position: fixed; bottom: calc(var(--safe-b) + 100px); left: 50%; transform: translateX(-50%); }
 #countdown { font-family: var(--display); font-weight: 800; font-size: 120px; color: #fff; text-shadow: 0 4px 0 var(--ink); pointer-events: none; }
 #flash { background: #fff; pointer-events: none; opacity: 0; }
 #flash.go { animation: flash .5s ease-out; }
@@ -377,7 +370,6 @@ body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { 
 .ach-item .bar { height: 7px; background: rgba(255,255,255,.18); } .ach-item .bar i { background: var(--acc); }
 .bdg { border: 0; }
 .badge { color: #fff; } .badge.locked .bdg { background: rgba(255,255,255,.12) !important; color: rgba(255,255,255,.4); }
-.breath-ring { border-color: rgba(255,255,255,.9); background: rgba(255,138,31,.18); box-shadow: none; }
 .w-nick { border-bottom: 1px solid var(--hair); } .w-row + .w-row { border-top: 1px solid var(--hair); }
 .swatch { border: 1px solid rgba(255,255,255,.5); border-radius: 50%; } .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #17171a, 0 0 0 4px var(--acc); }
 .shop-item { border: 0; background: rgba(255,255,255,.08); border-radius: 14px; color: #fff; padding: 9px 10px; }
@@ -429,6 +421,30 @@ body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { 
 #ch-arrow small { position: absolute; top: 100%; left: 50%; transform: translate(-50%, 3px); font-family: var(--display); font-weight: 800; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .fx-recycle.tick b { animation: none; } }
 #btn-ctx, #btn-pick { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* 동작 바퀴 (#76): 바깥 8칸(쪽 넘김) + 안쪽 고정 4칸 + 가운데 쪽 표시. 그림만, 누르면 이름 토스트 */
+#actions { position: fixed; z-index: 7; left: 50%; bottom: calc(var(--safe-b) + 84px); transform: translateX(-50%); --S: min(300px, 86vw, calc(100vh - 150px)); width: var(--S); height: var(--S); }
+#emo-wheel { position: absolute; inset: 0; border-radius: 50%; background: var(--glass-2); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 14px 40px rgba(0,0,0,.3); animation: emoIn .16s ease-out; touch-action: none; -webkit-touch-callout: none; }
+#emo-wheel::before { content: ''; position: absolute; inset: 29%; border-radius: 50%; background: rgba(255,138,31,.07); border: 1px dashed rgba(255,255,255,.14); }
+@keyframes emoIn { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.emo-c { position: absolute; width: 18%; height: 18%; transform: translate(-50%, -50%); padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); color: #fff; display: grid; place-items: center; touch-action: none; -webkit-touch-callout: none; transition: background .1s, transform .1s; }
+.emo-c svg { width: 56%; height: 56%; pointer-events: none; }
+.emo-c:hover, .emo-c:active { background: rgba(255,255,255,.2); transform: translate(-50%, -50%) scale(1.08); }
+.emo-c.fav { width: 15%; height: 15%; background: rgba(255,138,31,.2); color: #ffd2a8; }
+.emo-c.off { opacity: .3; }
+.emo-c.pick { background: var(--acc); color: var(--acc-fg); }
+#emo-wheel.edit .emo-c.fav { outline: 2px dashed var(--acc); outline-offset: 2px; animation: hintPulse .9s ease-in-out infinite; }
+.emo-c kbd { position: absolute; right: -2px; top: -2px; min-width: 15px; height: 15px; border-radius: 8px; font: 800 10px/15px var(--display); text-align: center; background: rgba(0,0,0,.45); color: var(--ink-soft); pointer-events: none; }
+.touch .emo-c kbd { display: none; }
+.emo-pg { position: absolute; left: 50%; top: 50%; width: 15%; height: 15%; transform: translate(-50%, -50%); border: 0; padding: 0; border-radius: 50%; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; gap: 3px; }
+.emo-pg i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.35); pointer-events: none; }
+.emo-pg i.on { background: var(--acc); }
+#act-chat { position: absolute; right: -2%; bottom: -2%; width: 16%; height: 16%; min-width: 40px; min-height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass-2); border: 1px solid var(--hair); }
+#act-chat svg { width: 52%; height: 52%; }
+/* 도와줘: 다른 사람 쪽 화면 가장자리 표시 (5초) */
+.emo-edge { position: fixed; left: 0; top: 0; z-index: 15; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; display: grid; place-items: center; background: var(--acc); color: var(--acc-fg); pointer-events: none; animation: hintPulse .9s ease-in-out infinite; }
+.emo-edge svg { width: 22px; height: 22px; }
+.emo-edge .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid var(--acc); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(28px); }
+@media (prefers-reduced-motion: reduce) { #emo-wheel, .emo-edge, #emo-wheel.edit .emo-c.fav { animation: none; } }
 @media (min-width: 601px) { .ph { display: none !important; } }
 
 /* ===== 폰(세로): 쉬는 화면에 7개만. 걸음·소리·옷장 등은 메뉴 시트로, 체력은 달리기 버튼 테두리로 ===== */
@@ -449,7 +465,7 @@ body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { 
   #btn-jump { right: 13px; bottom: 86px; } #btn-speed { right: 97px; bottom: 86px; }
   #btn-speed svg.st { display: block; }
   .pop-menu { bottom: calc(var(--safe-b) + 206px); }
-  #actions { left: var(--gut-l); transform: none; justify-content: flex-start; max-width: calc(100vw - 32px); }
+  #actions { bottom: calc(var(--safe-b) + 200px); --S: min(300px, 86vw, calc(100vh - 290px)); }
   #chat { bottom: calc(var(--safe-b) + 206px); }
   /* 메뉴: 아래에서 올라오는 유리 시트 */
   #menu { left: 0; right: 0; bottom: 0; transform: none; max-width: none; display: grid; justify-content: stretch; gap: 14px; padding: 10px 16px calc(var(--safe-b) + 22px); border-radius: 24px 24px 0 0; border-width: 1px 0 0; background: var(--glass-2); z-index: 9; animation: sheetUp .22s ease-out; }
@@ -908,11 +924,9 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   </button>
 </nav>
 
-<nav class="panel pop-menu" id="actions" hidden aria-label="동작">
-  <button type="button" id="act-wave">인사 <kbd>1</kbd></button>
-  <button type="button" id="act-breath">호흡 <kbd>2</kbd></button>
-  <button type="button" id="act-dance">춤 <kbd>3</kbd></button>
-  <button type="button" id="act-chat" class="ph">말하기</button>
+<nav id="actions" hidden aria-label="동작">
+  <div id="emo-wheel"></div>
+  <button type="button" id="act-chat" class="ph" aria-label="말하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5z"/></svg></button>
 </nav>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
@@ -959,13 +973,6 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <button type="button" class="btn small" id="chat-close">닫기</button>
 </div>
 
-<div class="overlay" id="breath" hidden>
-  <div class="breath-box">
-    <div class="breath-ring" id="breath-ring"></div>
-    <div class="breath-text"><b id="breath-label">들이쉬고</b><small id="breath-count">1 / 3</small></div>
-  </div>
-  <button type="button" class="btn small" id="breath-stop">그만하기</button>
-</div>
 <div class="overlay" id="countdown" hidden>3</div>
 <div class="overlay" id="flash" hidden></div>
 <div id="bloom-glow" aria-hidden="true"></div>

@@ -234,20 +234,13 @@ export class Sound {
   }
 
   // 숨소리: inhale=true 들숨, dur초
-  breath(inhale, dur) {
+  clap() { // 하이파이브가 맞았을 때 짝 (#76)
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;
-    const s = c.createBufferSource(); s.buffer = this.noise; s.loop = true;
-    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
-    f.frequency.setValueAtTime(inhale ? 900 : 1300, t);
-    f.frequency.linearRampToValueAtTime(inhale ? 1500 : 700, t + dur);
-    const g = c.createGain();
-    const peak = inhale ? 0.09 : 0.12;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(peak, t + dur * (inhale ? 0.6 : 0.25));
-    g.gain.linearRampToValueAtTime(0.0001, t + dur * 0.95);
-    s.connect(f); f.connect(g); g.connect(this.sfx);
-    s.start(t); s.stop(t + dur);
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.9;
+    const g = c.createGain(); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t); s.stop(t + 0.14);
   }
 
   stone() {

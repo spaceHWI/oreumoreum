@@ -540,3 +540,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인용 `__oreum.rides`: give, mount, off, state, speed, zone, buy, open, cart(board, leave, state, at(정류장) — 시각을 당겨 그 정류장에 서 있게, shift, goStop, goCart)
 - `tools/econ.js`: 탈것을 싼 것부터 (왕복만 탐, 평지 35%·길 밖 30% 가정). `--norides` 로 비교
 - 임시: 모양 전부 로우폴리, 마차 충돌 없음(사람을 통과), 여러 사람이 같은 자리에 앉을 수 있음, 스쿠터 손잡이 모양 단순
+
+## 동작(이모트) (#76)
+- `src/emotes.js`: 동작 목록 `EMOTES`(id = runner 포즈 이름, name, hand 손동작, dur 초(0 = 걸을 때까지), mark 방향 표시, icon 24×24 선 path 하나 — 바퀴 칸 SVG 와 말풍선 캔버스 Path2D 가 같이 씀). 22개라 바퀴는 8칸 × 3쪽(`PAGES`). 수치 `balance.js EMOTE`
+- 숨쉬기 동작·숨 고르기 화면(`#breath`, `#act-breath`) 뺌. 오늘의 업적 `d-breath` → `d-emote`(이벤트 `emote`). runner 의 'breath' 포즈는 NPC 쉬는 자세로 남김. `audio.breath` → `clap`(하이파이브)
+- 동작 버튼 → `#actions` 안 둥근 바퀴(`#emo-wheel`): 바깥 8칸(가운데 점 눌러·휠로 쪽 넘김) + 안쪽 고정 4칸(`save.emoFav`, 바깥 칸을 길게(`EMOTE.hold`) 또는 오른쪽 클릭 → 안쪽 칸 눌러 바꿈). 누르면 이름 토스트. 폰은 말하기 버튼이 바퀴 오른쪽 아래(`#act-chat`). 키: 바퀴가 열려 있으면 1~8 = 그 쪽, 닫혀 있으면 1~4 = 고정 칸
+- 머리 위 아이콘 말풍선 2초(나·다른 사람). 가리키기(바라보는 쪽 12m)·쓰레기 많아(60m 안 가장 가까운 더미, 없으면 바라보는 쪽)·도와줘(내 자리)는 땅 위 귤색 아이콘 표시 5초, 도와줘는 다른 사람 화면 가장자리 `.emo-edge`(8m 넘을 때). 표시 동작은 3초에 한 번
+- 하이파이브: 2.6m 안 사람 쪽으로 돌아섬. 둘이 1.6초 안에 같이 하면 짝 소리·반짝·토스트
+- 걷기(키·조이스틱·땅 누르기·자동 걷기)·점프·던지기를 하면 동작이 끊김(앉기·눕기 포함). 타고 있으면 손동작만(`over` 로 팔·머리만 겹침, 몸을 돌리지 않음), 몸 동작 칸은 흐리게
+- net: presence `em = { id, at, mx?, mz? }`(6초 뒤 null) + 원래 `pose`. 받는 쪽은 at 이 바뀔 때 한 번 보여 줌(처음 들어왔을 때 4초 넘은 건 무시). 탈것 위 손동작은 `net.js overHook`. 포즈가 바뀌면 다른 사람 poseT 를 0 으로. #7 서버 방식도 presence 를 그대로 옮기면 됨
+- runner.js `emotePose(id, t, upper, dur)`: 포즈 20종 + wave 겹치기. 골반 회전을 매 프레임 0 으로 되돌림(눕기). 놀람은 눈 크게. 동작 이름 'bow'(귤 활)와 겹치지 않게 꾸벅 인사는 'insa'
+- 확인: `dist/char-motion.html?pose=insa` 등(포즈 목록에 동작 추가), `node tools/emoposes.js front "" 0.4`(동작마다 그림), `node tools/emoshot.js`(바퀴·쪽 넘김·고정 칸 바꾸기·키·걷기로 끊기·표시·연타 막기·가짜 다른 사람 말풍선·가장자리·하이파이브·탈것). `__oreum.emo`, `__oreum.doEmote(id)`, `__oreum.net`

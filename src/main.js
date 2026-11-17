@@ -54,6 +54,7 @@ import { sunPosition, sunTimes, sunDir, fmtKST, buildSkyBodies } from './sun.js'
 import { createAchievements, BADGES, kstDate } from './achievements.js';
 import { isBattle, serverId, setServerId, validServer, roomFor, createAbStats, SERVERS, SERVER_ART, SERVER_LABEL } from './server.js';
 import { initUiTips } from './uitips.js';
+import { createEmotes, isEmote, EMOTE_BY } from './emotes.js';
 import { createTips, TIP, TIP_ICON } from './tips.js';
 
 const $ = (id) => document.getElementById(id);
@@ -443,7 +444,7 @@ player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
 // ---------- HP·쓰러짐·들것 귀환 (#36, 전투 오름만) ----------
 const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, enabled: () => isBattle() && sessionOn, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top'),
   el: { bar: $('hp-bar'), fill: $('hp-fill'), dim: $('hp-dim'), wait: $('hp-wait'), ring: $('hp-ring'), num: $('hp-num') },
-  onDown: () => { closePanels(); if (player.riding) dismountDeer(); if (player.pose === 'sit') standUp(); if (player.pose === 'breath') stopBreath(); ach.emit('down'); },
+  onDown: () => { closePanels(); if (player.riding) dismountDeer(); if (player.pose === 'sit') standUp(); emo?.stop(); ach.emit('down'); },
   onUp: () => tips.event('carried'), // 들것으로 돌아옴 (#66)
 });
 
@@ -551,12 +552,11 @@ function updateStats() {
 function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop'];
 const panelOpen = () => PANELS.some((id) => !$(id).hidden);
-const busy = () => ['sit', 'photo', 'photo-wait', 'breath', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
+const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
 function cancelAll() {
   closePanels();
-  if (player.pose === 'dance') player.pose = 'move';
-  if (player.pose === 'breath') stopBreath();
+  emo.stop(); // 동작 그만 (#76)
   if (player.pose === 'sit') standUp();
   if (cam.mode === 'wardrobe') closeWardrobe();
   player.target = null; player.onArrive = null; marker.visible = false;
@@ -743,7 +743,7 @@ function setTarget(p, onArrive) {
   player.target = p.clone(); player.onArrive = onArrive;
   marker.position.set(p.x, height(p.x, p.z) + 0.15, p.z); marker.visible = !onArrive;
 }
-const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', KeyT: 't', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
+const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8', KeyT: 't', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
 const keyOf = (e) => CODE2KEY[e.code] || e.key.toLowerCase();
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -751,9 +751,7 @@ addEventListener('keydown', (e) => {
   keys.add(k);
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { if (k.startsWith('arrow')) e.preventDefault(); }
   if (e.repeat) return;
-  if (k === '1') doWave();
-  if (k === '2') startBreath();
-  if (k === '3') doDance();
+  if (/^[1-8]$/.test(k)) emo.key(+k, !$('actions').hidden); // 동작 (#76): 바퀴가 열려 있으면 그 쪽 1~8, 닫혀 있으면 1~4 고정 칸
   if (k === 'enter') { e.preventDefault(); openChat(); }
   if (k === 'r' || k === 'shift') cycleSpeed();
   if (k === 'f') doInteract(); // 상호작용 (#34). 줍기(E)는 tickPick 이 누르고 있는 동안 처리
@@ -775,7 +773,7 @@ function cycleSpeed() { tut.notify('gait'); setGait((player.gait + 1) % 2); }
 pressBtn($('btn-speed'), cycleSpeed);
 
 // ---------- 동작 ----------
-$('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; });
+$('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) emo.opened(); });
 $('btn-menu').addEventListener('click', () => { const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
 $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'));
 // 처음부터 다시(#33): 2초 꾹 누르면 이 기기의 저장을 지움. 닉네임·그래픽·소리 설정은 남김 (돌탑의 돌은 서버에 있어 그대로)
@@ -835,21 +833,17 @@ $('menu-music').addEventListener('click', () => { save.music.on = save.music.on 
 $('music-vol').addEventListener('input', (e) => { save.music.vol = Math.round(+e.target.value) / 100; sound.setMusicVol(save.music.vol); if (save.music.vol > 0 && !save.music.on) { save.music.on = 1; sound.setMusic(1); } setSoundUI(); });
 $('music-vol').addEventListener('change', () => persist());
 $('act-chat').addEventListener('click', () => openChat());
-function doWave() {
-  if (busy()) return;
-  player.target = null; marker.visible = false;
-  player.pose = 'wave'; player.poseT = 0;
-  player.heading = Math.atan2(camera.position.x - player.pos.x, camera.position.z - player.pos.z);
+// 동작(이모트) (#76): 동작 버튼 → 바퀴 메뉴. 목록·말풍선·방향 표시는 emotes.js
+const emoRiding = () => !!(player.riding || player.ride || player.cart);
+const emoCan = () => !busy() && !player.air && !player.knock && !player.flail && !(player.pose === 'throw' || player.pose === 'bow') && !fishing?.active;
+let emo = null; // net 다음에 만듦 (아래 '함께' 쪽)
+function doEmote(id) {
+  if (!emo) return;
+  closePanels();
+  if (!emo.perform(id)) return;
+  marker.visible = false;
+  if (id === 'dance' && player.pose === 'dance' && spots.isViewpoint(player.pos)) ach.emit('dance-top');
 }
-function doDance() {
-  if (busy()) return;
-  player.target = null; marker.visible = false;
-  player.pose = player.pose === 'dance' ? 'move' : 'dance'; player.poseT = 0;
-  if (player.pose === 'dance' && spots.isViewpoint(player.pos)) ach.emit('dance-top');
-}
-$('act-wave').addEventListener('click', () => { closePanels(); doWave(); });
-$('act-dance').addEventListener('click', () => { closePanels(); doDance(); });
-$('act-breath').addEventListener('click', () => { closePanels(); startBreath(); });
 
 // 귤 던지기 (#34): 상호작용 버튼(F)으로, 할 일이 없을 때. 손으로 던지기는 무료라 가진 귤이 줄지 않음
 // 자동 조준: 사거리 안 가장 가까운 대상(적·하르방)을 겨눠 몸을 돌려 던지고, 대상 발밑에 표시. 없으면 보는 방향으로
@@ -877,7 +871,8 @@ function aimTarget() {
 }
 const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function throwTangerine() {
-  if (busy() || player.pose === 'wave' || player.pose === 'throw' || player.pose === 'bow') return;
+  if (busy() || player.pose === 'throw' || player.pose === 'bow') return;
+  emo?.stop();
   throwAim = player.riding ? null : aimTarget();
   if (player.riding) { releaseTangerine(); return; }
   player.target = null; player.onArrive = null; marker.visible = false;
@@ -915,7 +910,8 @@ function aimShot(from, t) {
 let bowPending = false;
 function fireWeapon() { if (bowArmed()) shootBow(); else throwTangerine(); }
 function shootBow() {
-  if (busy() || player.pose === 'wave' || player.pose === 'throw' || player.pose === 'bow') return;
+  if (busy() || player.pose === 'throw' || player.pose === 'bow') return;
+  emo?.stop();
   const w = weaponNow();
   if (save.bowAmmo <= 0) { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = w.perGyul; updateStats(); ammoFlash = 1; }
   save.bowAmmo -= 1; persist(); updateAmmo();
@@ -1237,7 +1233,8 @@ function doJump() {
   const p = player;
   if (p.riding) { dismountDeer(); return; }
   if (p.cart) { jumpOffCart(); return; } // 마차에서 뛰어내림 (#69)
-  if (busy() || p.pose === 'wave' || p.air) return;
+  if (busy() || p.air) return;
+  emo?.stop(); // 동작 중이면 끊고 뜀 (#76)
   p.air = true; p.jumpV = 8.5; p.jumpY = 0;
   sound.step(surfaceAt(p.pos.x, p.pos.z), true);
   ach.emit('jump'); tut.notify('jump');
@@ -1251,31 +1248,6 @@ function tickJump(dt) {
   p.airOff = off;
   p.jumpV -= GRAV * dt; p.jumpY += p.jumpV * dt;
   if (p.jumpY <= 0) { p.jumpY = 0; p.jumpV = 0; p.air = false; p.airOff = null; sound.step(surfaceAt(p.pos.x, p.pos.z), true); }
-}
-
-// 호흡
-let breathState = null;
-function startBreath() {
-  if (busy()) return;
-  player.target = null; marker.visible = false;
-  player.pose = 'breath'; player.poseT = 0;
-  breathState = { t: 0, cycle: 0, phase: -1 };
-  $('breath').hidden = false;
-}
-function stopBreath() { breathState = null; $('breath').hidden = true; if (player.pose === 'breath') player.pose = 'move'; }
-$('breath-stop').addEventListener('click', stopBreath);
-const IN = 4, OUT = 6, CYCLES = 3;
-function tickBreath(dt) {
-  if (!breathState) return 0;
-  const b = breathState; b.t += dt;
-  const ct = b.t % (IN + OUT); const cycle = Math.floor(b.t / (IN + OUT));
-  if (cycle >= CYCLES) { stopBreath(); toast('숨이 고르게 돌아왔어요'); ach.emit('breath'); return 0; }
-  const phase = ct < IN ? 0 : 1;
-  if (phase !== b.phase || cycle !== b.cycle) { b.phase = phase; b.cycle = cycle; sound.breath(phase === 0, phase === 0 ? IN : OUT); $('breath-label').textContent = phase === 0 ? '들이쉬고' : '내쉬고'; $('breath-count').textContent = `${cycle + 1} / ${CYCLES}`; }
-  const k = phase === 0 ? ct / IN : 1 - (ct - IN) / OUT;
-  const e = 0.5 - 0.5 * Math.cos(k * Math.PI);
-  $('breath-ring').style.transform = `scale(${0.55 + e * 0.45})`;
-  return e;
 }
 
 // 앉아 쉬기
@@ -1430,8 +1402,9 @@ $('photo-close').addEventListener('click', () => {
 // ---------- 함께 (room) ----------
 const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
-  extra: () => ({ ...social.presenceExtra(), rd: rideCode() }), // rd = 탈것 (#69)
+  extra: () => ({ ...social.presenceExtra(), rd: rideCode(), ...(emo ? emo.presence() : {}) }), // rd = 탈것 (#69), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
+  overHook: (e) => emo?.overlayPeer(e),
   onToast: (m) => toast(m),
   onPeersChanged: (n, hand) => {
     $('handreq').hidden = !hand.pendingFrom;
@@ -1442,6 +1415,14 @@ const net = createNet({
   },
 });
 const social = createSocial({ scene, net, save, onToast: (m) => toast(m), mapId: MAP_ID });
+emo = createEmotes({
+  scene, player, save, persist, net, toast, sound: () => sound, camera, placeArrow: (el, wp, lift) => placeArrow(el, wp, lift), ui: document.body,
+  can: emoCan, riding: emoRiding, heapPos: () => nearestHeapPos(), groundAt, myRoot: () => runner.root,
+  faceTo: (x, z) => { player.heading = Math.atan2(x - player.pos.x, z - player.pos.z); },
+  onEmote: () => ach.emit('emote'),
+});
+emo.onChoose = (id) => doEmote(id);
+emo.bindWheel($('emo-wheel'));
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
 social.start();
 // 사진사 NPC (#70): 표지석 근처, 삼각대 옆
@@ -1766,7 +1747,7 @@ const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
 const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && (tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 들머리 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
-const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait', 'breath'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
+const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   const gi = player.riding || player.air ? -1 : tut.gyulNear(player.pos); // 튜토리얼 귤 3개 (#62): 쓰레기보다 먼저
@@ -2587,7 +2568,7 @@ function updatePlayer(dt) {
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
   if (p.cart) { tickCartRide(dt); return; } // 마차에 앉아 실려 가는 중 (#69)
   if (p.ride || p.rideAuto) tickRideZone(dt); // 개울·밟는 구조물·가게 안이면 내리고, 벗어나면 다시 탐 (#69)
-  if (p.pose === 'wave' && p.poseT > 2.2) p.pose = 'move';
+  emo?.tick(dt); // 동작 시간·말풍선·방향 표시 (#76)
   const aiming = (p.pose === 'throw' || p.pose === 'bow') && !!throwAim;
   if (aiming) p.heading += wrapA(aimHeading(throwAim) - p.heading) * Math.min(1, dt * 18); // 겨눈 대상 쪽으로 몸을 돌림
   if (p.pose === 'throw') { if (throwPending && p.poseT >= THROW.release) releaseTangerine(); if (p.poseT >= THROW.total) p.pose = 'move'; }
@@ -2595,19 +2576,18 @@ function updatePlayer(dt) {
   if (p.pose === 'bow') { if (bowPending && p.poseT >= BOW.release) releaseArrow(); if (p.poseT >= BOW.total) p.pose = 'move'; } // 귤 활 (#38)
   else if (bowPending) { bowPending = false; throwAim = null; }
   if (holdBow && !bowReady()) setHoldBow(false); // 깨끗한 오름으로 바꾸면 활을 내려놓음
-  if (p.pose === 'dance' && p.poseT > 6) p.pose = 'move';
   if (cheerQ > 0) { cheerQ -= dt; if (p.pose === 'move' && !p.air && !busy()) { cheerQ = 0; p.pose = 'cheer'; p.poseT = 0; } } // 더미를 다 치우면 기뻐함 (#65), 줍던 동작이 끝난 뒤
   if (p.pose === 'cheer' && p.poseT > BLOOM_FX.cheerT) p.pose = 'move';
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';
 
   let dir = null;
-  if (!busy() && !p.knock && p.pose !== 'wave' && p.pose !== 'photo-wait') {
+  if (!busy() && !p.knock && p.pose !== 'photo-wait') {
     let fx = 0, fz = 0;
     if (keys.has('w') || keys.has('arrowup')) fz -= 1;
     if (keys.has('s') || keys.has('arrowdown')) fz += 1;
     if (keys.has('a') || keys.has('arrowleft')) fx -= 1;
     if (keys.has('d') || keys.has('arrowright')) fx += 1;
-    if ((fx || fz || joy.active) && (p.pose === 'dance' || p.pose === 'cheer')) p.pose = 'move';
+    if ((fx || fz || (joy.active && Math.hypot(joy.x, joy.y) > 0.15) || p.target) && (isEmote(p.pose) || p.pose === 'wave' || p.pose === 'cheer')) p.pose = 'move'; // 걷기 시작하면 동작이 끊김 (#76, 앉기·눕기 포함)
     const jm = Math.hypot(joy.x, joy.y);
     if (joy.active && jm > 0.15) {
       // 조이스틱: 화면 기준 방향 (카메라가 보는 쪽이 위)
@@ -2799,7 +2779,6 @@ function frame(now) {
   if (awe > 0) { awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (awe <= 0) aweBack = 2; }
   if (aweBack > 0 && !ptrs.size) { aweBack -= dt; cam.dist += (13 - cam.dist) * Math.min(1, dt * 2); cam.pitch += (0.32 - cam.pitch) * Math.min(1, dt * 2); }
   adaptQuality(rawDt);
-  const breath = tickBreath(dt);
   tickPhoto(dt);
   if (photog) { photog.setRain(wx.kind === 'rain'); photog.update(dt, player, { shooting: !!photoState }); } // 사진사 (#70): 비 오면 노란 우비
   runner.setTint(Date.now() < player.yellowUntil);
@@ -2809,7 +2788,7 @@ function frame(now) {
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
-  runner.animate(dt, { speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
+  runner.animate(dt, { speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, breath: 0, edur: EMOTE_BY[player.pose]?.dur || 2, over: emo.overlay() && { ...emo.overlay(), dur: EMOTE_BY[emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
   fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);
@@ -2957,7 +2936,7 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { rides: { // 탈것·마차 (#69)
+window.__oreum = { emo, doEmote, net, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
