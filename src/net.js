@@ -67,7 +67,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     if (nick !== e.nick) { e.nick = nick; if (e.label) e.runner.root.remove(e.label); e.label = makeLabel(nick); e.runner.root.add(e.label); }
     const ok = JSON.stringify(d.o || null);
     if (ok !== e.outfitKey) { e.outfitKey = ok; const o = expandOutfit(d.o); if (o) { e.runner.apply(o); e.shadow = null; } }
-    const x = Math.max(-600, Math.min(600, d.x)), z = Math.max(-600, Math.min(600, d.z));
+    const x = Math.max(-2000, Math.min(2000, d.x)), z = Math.max(-2000, Math.min(2000, d.z)); // 남송이는 들머리가 x -860 쯤이라 ±600 이면 잘렸음 (#79)
     if (!e.runner.root.visible) { e.pos.set(x, height(x, z), z); e.runner.root.visible = true; }
     e.tpos.set(x, groundAt(x, z), z);
     e.theading = typeof d.h === 'number' ? d.h : e.theading;
