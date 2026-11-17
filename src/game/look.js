@@ -5,7 +5,7 @@ import { MAPS } from '../maps.js';
 import { late } from './state.js';
 import { $, ADJ, NOUN, pick, save, CL, clothGear, syncEquipGear, lookS, persist, MAP_ID } from './save.js';
 import { spots } from './scene.js';
-import { LEAPB, runner, player } from './place.js';
+import { LEAPB, runner, player, col } from './place.js';
 import { cam, followCam } from './camera.js';
 import { busy, closePanels, cancelAll, ach } from './hud.js';
 import { marker } from './input.js';
@@ -58,10 +58,18 @@ function buildWardrobe() { // 옷장 (#52): 가진 머리·옷만, 눌러서 갈
   const body = $('wardrobe-body'); body.innerHTML = '';
   buildWearRows(body, false);
 }
+// 옷장 카메라는 캐릭터 앞쪽에 섬. 그 사이에 클린하우스·나무 같은 사물이 있으면 가리지 않는 쪽으로 몸을 돌림 (#90)
+function clearYaw(yaw, d) {
+  if (!col) return yaw;
+  const free = (a) => { for (let t = 1; t <= d + 1; t += 0.5) if (col.blocked(player.pos.x + Math.sin(a) * t, player.pos.z + Math.cos(a) * t, 0.9)) return false; return true; };
+  for (let k = 0; k <= 12; k++) { const a = yaw + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 6; if (free(a)) return a; }
+  return yaw;
+}
 function openWardrobe() {
   if (busy()) return;
   player.target = null; marker.visible = false;
   camBefore = { yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist };
+  player.heading = clearYaw(player.heading, innerWidth <= 600 ? 10 : 4.6);
   cam.mode = 'wardrobe'; buildWardrobe();
   $('nick-mirror').textContent = save.nick;
   $('wardrobe').hidden = false;

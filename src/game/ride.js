@@ -122,7 +122,7 @@ export function buildRideMenu(grid) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = R.id;
     b.classList.toggle('poor', !own && save.coins < R.price); b.classList.toggle('on', cur); b.title = `${R.name} · 평지 ×${R.flat} · 오르막 ${R.up ? '×' + R.up : '들고 걷기'} · 내리막 ×${R.down}`;
     b.innerHTML = `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RIDE_ICON[R.id]}</svg><span class="mn"><b>${R.name}</b><small>${rideStat(R)}</small></span>`
-      + `<span class="mv">${own ? '<span class="bf">✓</span>' : `<span class="price"><i></i>${R.price}</span>`}</span>`;
+      + `<span class="mv">${own ? '<span class="bf">✓</span>' : `<span class="price"><i></i>${R.price.toLocaleString()}</span>`}</span>`;
     b.addEventListener('click', () => (own ? pickRide(R) : buyRide(R, b)));
     grid.append(b);
   }
