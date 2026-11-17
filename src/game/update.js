@@ -1,6 +1,7 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
+import { startAssets, onAnyAsset } from '../assets.js';
 import * as THREE from 'three';
 import { height, groundAt, surfaceAt, R_RIM } from '../world.js';
 import { G } from '../gfx2.js';
@@ -308,7 +309,18 @@ function frame(now) {
   if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
   if (state.captureNext) { state.captureNext = false; capture(); }
+  if (!warmed) { warmed = true; setTimeout(warm, 30); }
   requestAnimationFrame(frame);
+}
+
+// 첫 화면 (#85): 첫 프레임이 그려지면 로고 화면이 떠 있는 동안 셰이더를 미리 준비(compileAsync)해 시작 버튼 뒤 멈칫함을 없애고,
+// 따로 받는 모델(assets.js)을 받기 시작한다. 모델이 와서 갈아 끼울 때마다 새 재질도 미리 준비
+let warmed = false;
+function warm() {
+  const prep = () => renderer.compileAsync(scene, camera).catch(() => {});
+  prep().then(() => { state.shadersReady = true; });
+  startAssets();
+  let t = 0; onAnyAsset(() => { clearTimeout(t); t = setTimeout(prep, 250); });
 }
 
 addEventListener('resize', resize);

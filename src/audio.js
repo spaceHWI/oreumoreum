@@ -1,4 +1,4 @@
-import { STEP_SAMPLES } from './stepsamples.js';
+import { whenAsset } from './assets.js'; // #85: 발소리 샘플(stepsamples.js)은 따로 받음 ('steps'). 오기 전에는 합성 발소리
 import { Music } from './music.js';
 import { MUSIC } from './balance.js';
 // Web Audio 합성 사운드 — 외부 음원 없이 억새 바람·까마귀·말 방울·발소리·숨소리
@@ -170,8 +170,8 @@ export class Sound {
 
   _loadSteps() {
     this.steps = {};
-    const dec = (b64) => { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Promise((res) => this.ctx.decodeAudioData(u.buffer, res, () => res(null))); };
-    for (const [k, list] of Object.entries(STEP_SAMPLES)) Promise.all(list.map(dec)).then((bufs) => { this.steps[k] = bufs.filter(Boolean); });
+    const dec = (u) => new Promise((res) => this.ctx.decodeAudioData(u.slice().buffer, res, () => res(null)));
+    whenAsset('steps', (S) => { for (const [k, list] of Object.entries(S.steps)) Promise.all(list.map((n) => dec(S[n]))).then((bufs) => { this.steps[k] = bufs.filter(Boolean); }); });
   }
   // 녹음 샘플 발소리. 표면마다 샘플·필터·피치를 달리하고 매번 무작위로 골라 반복감을 줄임
   _sampleStep(surface, running) {

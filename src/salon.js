@@ -7,7 +7,6 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { SALON } from './balance.js';
 import { propMesh, svgTexture } from './propmodel.js';
-import { SALON_M } from './model-salon.js';
 
 function piece(g, color, jit = 0, seed = 1) {
   g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals();
@@ -62,7 +61,7 @@ export function createSalon({ scene, height, site, low, col }) {
   const y0 = yHi + 0.15;
   const root = new THREE.Group(); root.position.set(x, y0, z); root.rotation.y = rot;
   // 건물 (Tripo 모델): 회색 돌 벽·줄무늬 테두리 간판·삼색 기둥·드럼통·안의 거울·의자까지. 안에 앉으면 cut 위를 잘라냄
-  const model = propMesh(SALON_M, S, { floor: M.floor, low, glow: 0.12, clip: true }); root.add(model);
+  const model = propMesh('salon', S, { floor: M.floor, low, glow: 0.12, clip: true }); root.add(model);
   // 받침(현무암 밑단): 비탈에서 모델 밑이 뜨지 않게
   const plH = y0 - yLo + 0.5;
   const plinth = new THREE.Mesh(piece(box(hw * 2 - 0.1, plH, zf - zb - 0.1, 0, LY(0) + 0.05 - plH / 2, (zf + zb) / 2), '#3b4044'), new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard }));
@@ -129,7 +128,7 @@ export function createSalon({ scene, height, site, low, col }) {
     glassMat.emissiveIntensity = n * 0.7; glassMat.opacity = 0.18 + n * 0.3;
   }
   // 안에 들어가 앉았을 때 창 위(간판·지붕)를 잘라 위에서 보이게
-  const cutU = model.material.userData.cut;
+  const cutU = model.userData.real.userData.cut;
   const inside = (on) => { cutU.value = on ? M.cut : 1e9; sign.visible = !on; };
   return { root, center, front, door: doorOut, seat, seatHeading, signPos, update, inside, cut, y0, get night() { return night; } };
 }

@@ -3,10 +3,8 @@
 import * as THREE from 'three';
 import { NSMODE, TEXCS } from './boot.js';
 import { gradHard } from './toon.js';
-import { BM } from './boarmodel.js';
 import { BOAR } from './balance.js';
-
-const b64 = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
+import { bytesAs as b64, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 모델은 따로 받음 ('boar')
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // 모델 좌표(키 0.77, 길이 0.98, 코가 +z) 기준 관절 위치
@@ -33,8 +31,8 @@ function weights(pos) {
   return { si, sw };
 }
 
-let geo = null, mat = null, matStripe = null;
-function shared() {
+let geo = null, mat = null, matStripe = null, tmpGeo = null;
+function shared(BM) {
   if (geo) return;
   const pos = b64(BM.pos, Float32Array), nq = b64(BM.nor, Int8Array), uv = b64(BM.uv, Float32Array), idx = b64(BM.idx, Uint16Array);
   const nor = new Float32Array(nq.length); for (let i = 0; i < nq.length; i++) nor[i] = nq[i] / 127;
@@ -43,7 +41,7 @@ function shared() {
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeBoundingSphere(); geo.boundingSphere.radius *= 1.2; // 다리·머리 움직임 여유
-  const tex = new THREE.TextureLoader().load(BM.tex); tex.colorSpace = TEXCS; tex.flipY = false;
+  const tex = new THREE.TextureLoader().load(BM.tex); tex.colorSpace = TEXCS; tex.flipY = false; // BM.tex: 받은 jpg (blob 주소)
   // 남송이오름은 캐릭터와 같은 3단 툰 명암, 다른 곳은 램버트
   mat = NSMODE ? new THREE.MeshToonMaterial({ map: tex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: tex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   mat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));'); };
@@ -61,14 +59,22 @@ function shared() {
 
 // { root, legs[4], head, tail } — life.js 의 legs4 · 머리 숙이기 · 꼬리 흔들기가 그대로 씀
 // opts: scale (BOAR.scale 대신), stripes (아기 멧돼지 줄무늬 재질)
+// 받기 전 임시 모양: 모델 크기의 갈색 타원체 (몸 뼈에 붙음)
+function temp() {
+  if (tmpGeo) return tmpGeo;
+  const g = placeholderGeo('boar', 'ball'), n = g.attributes.position.count, sw = new Float32Array(n * 4);
+  for (let v = 0; v < n; v++) sw[v * 4] = 1;
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(n * 4), 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  return (tmpGeo = g);
+}
 export function buildBoarModel(opts = {}) {
-  shared();
   const bones = ['body', 'head', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'].map((k) => { const b = new THREE.Bone(); b.name = k; return b; });
   const [body, head, tail, ...legs] = bones;
   body.position.set(...JOINT.body);
   const rel = (b, p) => { b.position.set(p[0] - JOINT.body[0], p[1] - JOINT.body[1], p[2] - JOINT.body[2]); body.add(b); };
   rel(head, JOINT.head); rel(tail, JOINT.tail); LEGS.forEach(([x, z], i) => rel(legs[i], [x, LEG_Y, z]));
-  const mesh = new THREE.SkinnedMesh(geo, opts.stripes ? matStripe : mat); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
+  const mesh = new THREE.SkinnedMesh(geo || temp(), geo ? (opts.stripes ? matStripe : mat) : placeholderMat('#7a6550')); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
+  if (!geo) whenAsset('boar', (BM) => { shared(BM); mesh.geometry = geo; mesh.material = opts.stripes ? matStripe : mat; });
   mesh.castShadow = true;
   const root = new THREE.Group(); mesh.scale.setScalar(opts.scale || BOAR.scale); root.add(mesh);
   return { root, legs, head, tail };

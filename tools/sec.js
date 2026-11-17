@@ -218,7 +218,7 @@ async function startServers() {
 
     /* ---------- 빌드 결과 ---------- */
     const html = fs.existsSync('dist/index.html') ? fs.readFileSync('dist/index.html', 'utf8') : '';
-    ok(/http-equiv="Content-Security-Policy"[^>]*script-src 'sha256-/.test(html) && /object-src 'none'/.test(html), '페이지 CSP (스크립트 해시)');
+    ok(/http-equiv="Content-Security-Policy"[^>]*script-src 'self' /.test(html) && !/<script>/.test(html) && /object-src 'none'/.test(html), '페이지 CSP (같은 곳 스크립트만, 인라인 없음 #85)');
     ok(!/ghp_[A-Za-z0-9]{20}|github_pat_|sk-[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE|@gmail\.com|SESSION_SECRET\s*[:=]\s*['"]/.test(html), '빌드 결과에 비밀 값 없음');
   } finally {
     if (!KEEP) for (const p of procs) { try { process.kill(-p.pid); } catch (e) { /* 이미 끝남 */ } }

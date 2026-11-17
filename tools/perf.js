@@ -1,5 +1,5 @@
 // 성능 재기 (#79): node tools/perf.js [phone|desk|all] [시나리오,...] [--out 파일.json]
-// 헤드리스 크롬(swiftshader 소프트웨어 GL)으로 dist/test.html 을 gzip 서버에 올려 열고, 정해진 길을 걸으며 잰다.
+// 헤드리스 크롬(swiftshader 소프트웨어 GL)으로 dist/index.html(PERF_PAGE 로 바꿈) 을 GitHub Pages 처럼 서버에 올려 열고, 정해진 길을 걸으며 잰다.
 //  - phone: 390×844(폰 UA → 게임이 LOW), CPU 4배 느리게, 첫 화면은 4G(9Mbps·RTT 170ms) 조건
 //  - desk: 1440×900, CPU 그대로
 // 재는 것: 프레임 시간(평균·1% 낮은 값 fps), draw call·삼각형(최대·평균), renderer.info 텍스처·지오메트리 수, JS 힙, 첫 화면 시간, 내려받는 크기
@@ -15,16 +15,16 @@ const SCEN = args[1] ? args[1].split(',') : SCEN_ALL;
 const STATION_T = +(process.env.PERF_T || 3.5); // 길목마다 재는 시간(초)
 const CROWD = +(process.env.PERF_CROWD || 30); // crowd 시나리오 인원 (#7 부하 재기)
 
-// gzip 정적 서버 (GitHub Pages 처럼 압축해서 보냄)
+// 정적 서버 (GitHub Pages 처럼 html·js 만 gzip 으로 보냄. 모델 .bin 은 그대로, #85)
 const ROOT = path.join(process.cwd(), 'dist');
 const sizes = {};
 const server = http.createServer((req, res) => {
   const f = path.join(ROOT, decodeURIComponent(req.url.split('?')[0].split('#')[0]));
   if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
-  const raw = fs.readFileSync(f), gz = zlib.gzipSync(raw, { level: 9 });
-  const type = f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.png') ? 'image/png' : 'application/octet-stream';
+  const raw = fs.readFileSync(f), text = /\.(html|js|json)$/.test(f), gz = text ? zlib.gzipSync(raw, { level: 9 }) : raw;
+  const type = f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.js') ? 'text/javascript; charset=utf-8' : f.endsWith('.png') ? 'image/png' : 'application/octet-stream';
   sizes[req.url] = { raw: raw.length, gz: gz.length };
-  res.writeHead(200, { 'content-type': type, 'content-encoding': 'gzip', 'content-length': gz.length, 'cache-control': 'no-store' });
+  res.writeHead(200, { 'content-type': type, ...(text ? { 'content-encoding': 'gzip' } : {}), 'content-length': gz.length, 'cache-control': 'no-store' });
   res.end(gz);
 });
 
@@ -70,7 +70,8 @@ const HELPERS = () => {
   return st.map((s) => s.name);
 };
 
-const pageUrl = (prof) => `http://127.0.0.1:${server.address().port}/test.html?${(process.env['PERF_QS_' + prof.key] ?? process.env.PERF_QS) ?? `tier=${prof.tier}&perf`}#namsongi`;
+const PAGE = process.env.PERF_PAGE || 'index.html';
+const pageUrl = (prof) => `http://127.0.0.1:${server.address().port}/${PAGE}?${(process.env['PERF_QS_' + prof.key] ?? process.env.PERF_QS) ?? `tier=${prof.tier}&perf`}#namsongi`;
 async function setup(p, prof) {
   // 처음 온 사람 → 서버 고르기·캐릭터 고르기를 지나 튜토리얼 끝낸 상태로 저장하고 다시 엶
   await p.evaluate(() => { const o = window.__oreum; o.save.server = 'clean'; o.save.entered = 1; o.save.look = { sex: 'm', skin: 0 }; o.save.hairs = o.save.hairs || {}; o.save.tut = { step: 99, done: true, v: 3 }; o.save.jeong = 1; o.save.soundOff = 1; o.save.tipsSeen = o.save.tipsSeen || {}; });
@@ -142,8 +143,11 @@ async function runProfile(b, key) {
   await p.goto(pageUrl(prof));
   const tDom = Date.now() - t0;
   await p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 0, null, { timeout: 240000, polling: 50 });
-  const tFirst = Date.now() - t0;
-  const load = { dom: tDom, first: tFirst, bytes };
+  const tFirst = Date.now() - t0, bytesFirst = bytes;
+  // 따로 받는 모델(#85)까지 다 받을 때까지 (예전 한 파일 빌드는 assets 가 없음 → 바로)
+  await p.waitForFunction(() => { const a = window.__oreum.assets; return !a || a.done >= a.total; }, null, { timeout: 240000, polling: 100 });
+  await p.waitForTimeout(300);
+  const load = { dom: tDom, first: tFirst, bytes: bytesFirst, all: Date.now() - t0, bytesAll: bytes, heap: await p.evaluate(() => (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null)) };
   if (prof.net) await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
   await setup(p, prof);
   const out = { profile: key, load, scen: [], errs };
@@ -172,7 +176,7 @@ function table(res) {
   const L = [];
   for (const r of res) {
     L.push(`\n### ${r.profile === 'phone' ? '폰 390×844 · CPU 4배 느리게' : '데스크톱 1440×900'} (단계 ${r.quality?.tier ?? r.quality?.level}, 픽셀 배율 ${r.quality?.pr})`);
-    L.push(`첫 화면 ${(r.load.first / 1000).toFixed(1)}초 (문서 ${(r.load.dom / 1000).toFixed(1)}초) · 내려받기 ${(r.load.bytes / 1048576).toFixed(2)}MB`);
+    L.push(`첫 화면 ${(r.load.first / 1000).toFixed(1)}초 (문서 ${(r.load.dom / 1000).toFixed(1)}초) · 처음 받는 양 ${(r.load.bytes / 1048576).toFixed(2)}MB · 전체 ${((r.load.bytesAll ?? r.load.bytes) / 1048576).toFixed(2)}MB (다 받음 ${((r.load.all ?? r.load.first) / 1000).toFixed(1)}초) · JS 힙 ${r.load.heap ?? '-'}MB`);
     L.push('| 상황 | 평균 fps* | 1% 낮은 fps* | JS ms/프레임 평균(상위5%) | draw call 최대(평균) | 삼각형 최대 | 텍스처·지오메트리 | JS 힙 |');
     L.push('|---|---|---|---|---|---|---|---|');
     for (const s of r.scen) L.push(`| ${s.label} | ${fmt(s.all.fps, 1)} | ${fmt(s.all.low1, 1)} | ${fmt(s.all.cpu, 1)} (${fmt(s.all.cpuMax, 1)}) | ${s.all.calls} (${fmt(s.all.callsAvg)}) | ${(s.all.tris / 1000).toFixed(0)}k | ${s.mem.tex}·${s.mem.geo} | ${s.mem.heap ?? '-'}MB |`);

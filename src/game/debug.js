@@ -1,5 +1,6 @@
 // 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, window.__oreum (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { DEX_LIST } from '../trash.js';
+import { assetInfo } from '../assets.js';
 import { CART, PERF, TOOLS, BAGS, SHOES, FISH, STONE, HAIR, WEAR } from '../balance.js';
 import { TIER, PERF_AUTO, autoTier } from '../quality.js';
 import { RIDE_BY, rideSpeed, cartState as cartStateAt } from '../rides.js';
@@ -118,7 +119,7 @@ if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌
 // 콘솔 확인 함수 (#84): 개발 빌드는 늘, 공개 빌드(release, PUBLIC=1)는 어드민에게만 (enableDev). 보안은 서버가 지키고, 이건 함부로 만지지 않게 하는 정도
 state.debugReady = false;
 function exposeDebug() { window.__oreum = debugApi(); }
-function debugApi() { return { feedback, emo: state.emo, doEmote, net, online: ONLINE && { account: () => state.account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
+function debugApi() { return { assets: assetInfo, feedback, emo: state.emo, doEmote, net, online: ONLINE && { account: () => state.account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,

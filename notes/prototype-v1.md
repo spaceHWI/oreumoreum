@@ -13,7 +13,11 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 아티팩트에서 개발·테스트 → "배포해줘" 때만 버전 올리고 릴리스 노트 정리해 Pages에 업로드
 
 ## 코드 구조 (#86)
-진입점 `src/main.js` 는 바깥 모듈을 예전 순서대로 읽어 둔 뒤(`boot.js` 맨 먼저) 기능별 파일 `src/game/*.js` 를 아래 순서대로 import 한다. 이 순서가 곧 초기화 순서다. 파일 하나는 40KB 를 넘기지 않는다.
+진입점 `src/main.js` 는 내 캐릭터 모델(`assets.js` CORE)을 먼저 받은 뒤 `src/modules.js` 를 읽는다(#85). `modules.js` 는 바깥 모듈을 예전 순서대로 읽어 둔 뒤(`boot.js` 맨 먼저) 기능별 파일 `src/game/*.js` 를 아래 순서대로 import 한다. 이 순서가 곧 초기화 순서다. 파일 하나는 40KB 를 넘기지 않는다.
+
+따로 받는 모델 (#85): 캐릭터·가게 3곳·들개·외계인·멧돼지·머리 3종·발소리 샘플은 JS 에 넣지 않고 `build.mjs` 가 `tools/packassets.mjs` 로 `dist/a/<이름>-<해시>.bin` (meshopt 압축 정점·인덱스 + jpg·mp3) 으로 묶는다. 원본 자료는 그대로 `src/model-*.js`·`runnermodel.js`·`boarmodel.js`·`gear/head-*.js`·`stepsamples.js` 에 두고 고치면 된다(게임 코드는 import 하지 않음). 게임 코드는 `assets.js` 의 `whenAsset(이름, 콜백)` 으로 받고, 받기 전에는 `placeholderGeo`(모델 크기 상자·타원체) 임시 모양을 보인다. 첫 프레임 뒤 `update.js warm()` 이 셰이더를 미리 준비하고(compileAsync) 나머지 모델을 받기 시작한다. 새 모델을 더하면 `packassets.mjs ASSET_SRC` 에 한 줄 더하고 `node tools/assetcheck.mjs` 로 원본과 같은지 본다.
+
+빌드 결과: `dist/index.html` + `main-<해시>.js` + `a/*.bin` (Pages), `dist/test.html`·`oreumoreum.html` 은 모델까지 한 파일 (tools/ 가 file:// 로 엶).
 
 | 파일 | 하는 일 |
 |---|---|
