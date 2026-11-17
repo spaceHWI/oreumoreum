@@ -6,6 +6,11 @@ model/*.glb
 !model/boar.glb
 !model/wall-near.glb
 !model/wall-far.glb
+!model/dog.glb
+!model/alien.glb
+!model/shop-stone.glb
+!model/shop-salon.glb
+!model/shop-leap.glb
 model/*.png
 reel/
 reel4/

@@ -511,3 +511,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 화면이 떠 있는 동안 cam.mode='title': 정상 표지석 둘레를 천천히 돎(TITLE r·up·lookUp·spin). 시작하면 캐릭터 뒤로 바로 옮김. 첫 화면 위로 뜨는 화살표·표시는 CSS 로 감춤. 메뉴 '도움말'로 열면 어둡게 깔고 시작 버튼이 '닫기'
 - 파비콘(data URI)·og:image(src/og.png, tools/og.mjs 로 다시 만듦)·description 은 build.mjs 가 dist/index.html 머리에 넣음. publish.yml 이 og.png·logo-sian.html 도 함께 올림. 사진 틀 오른쪽 아래 글자 대신 로고
 - 도구 스크립트의 입장 클릭은 #enter → #intro-srv button → #srv-go
+
+## 임시 모양을 Tripo 모델로: 들개·외계인·가게 3곳 (#71)
+- 원본 `assets` 브랜치 `dog.glb`·`alien.glb`·`shop-stone.glb`·`shop-salon.glb`·`shop-leap.glb` → `python3 model/bake-prop.py 원본.glb <삼각형> <텍스처> <매끈 각도> 출력.glb`(bpy, bake-boar 방식 + 금속성 끔 + 건물은 35° 넘는 모서리를 각지게) → `node model/extract-prop.js 출력.glb src/model-<이름>.js <이름_M> "<설명>" <JPEG 품질>`(위치·UV 16비트). 적 3천·512(품질 70), 건물 6천·1024(품질 62). 결과 glb 는 `model/` 에 둠
+- `src/propmodel.js`: `unpackProp`·`propGeometry`·`propMaterial`(멧돼지와 같은 툰+자체 빛, `clip` 이면 `material.userData.cut.value`(모델 y) 위를 잘라냄)·`propMesh(M, s, {floor})`(바닥이 로컬 y=0)·`glowSprite`(밤 빛 점)·`svgTexture`(간판 글자)
+- 들개(`enemymodels.js buildDog`): 모델에 위치로 뼈 가중치(몸·머리·꼬리·짧은 다리 4, 멧돼지 방식), 크기 1.3(키 약 1.07). `fx` 가 걸음마다 몸 튀기·달릴 때 숙임·받으러 달려들 때(chg) 더 숙임·꼬리 흔들기, 머리 숙임은 0.45배. 광견병 들개는 같은 모델 ×1.05·회색빛 재질 + 머리 뼈에 붉은 눈 빛(공+스프라이트) + 침 방울
+- 외계인(`buildAlien`): 모델 ×2.4, 0.95 떠서 출렁·기우뚱. 쏠 때 `enemies.js shoot` 이 `e.onShot()` → 아래 발사구 원판·번짐·빛 기둥이 밝아졌다 사그라듦, 광선은 발사구에서 나감
+- 가게 건물: 자리·크기는 각 파일의 `M`(모델 좌표로 잰 벽·탁자·의자·문·창·간판 자리)와 `balance.js` 의 `s`(배율: 스톤 8, 미장원 4.8, LEAP 6.2), `W`·`D`(모델 전체 폭·깊이)
+  - 스톤: 모델 테라스·탁자 둘·파라솔·전구 줄. 앉는 자리 = 왼쪽 탁자 건물 쪽 의자(탁자를 봄). 둥근 간판에 `stonelogo.js` 로고(크림 원판). 밤: 창 자리 더하기 판 + 전구 자리 `glowSprite` 8개. 야자수·받침은 그대로 로우폴리
+  - 미장원: 안이 비어 있는 모델 — 창 안쪽 의자에 앉음, `inside(true)` 면 모델 y 0.6 위(간판·지붕)를 잘라냄. 간판 흰 칸 위에 SVG '루이네 미장원'. 예전 삼색 기둥 돌림·안 소품은 없앰(모델에 있음)
+  - LEAP: 검은 간판 띠 위에 흰 굵은 기울임 SVG 'LEAP'(띠가 검정이라 글자를 흰색으로). 디딤판은 `addWalkable`. 밤엔 진열창 유리가 따뜻하게
+- 번들이 약 1.4MB 늘어남(2.8 → 4.2MB, 대부분 건물 셋)

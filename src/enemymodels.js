@@ -1,20 +1,20 @@
-// 적 모양 (#48): 모델을 갈아 끼우는 곳은 여기 한 곳. 나중에 Tripo 모델로 바꿀 때 이 파일의 build 함수만 바꾼다
+// 적 모양 (#48): 모델을 갈아 끼우는 곳은 여기 한 곳. 들개·외계인은 Tripo 모델(#71)
 // 모든 모양은 { root, legs[4], head, tail, h, fx? } 를 돌려준다
 //   legs: 앞왼·앞오·뒤왼·뒤오 (life.js legs4 가 rotation.x 로 흔듦), head: rotation.x 가 +면 숙임, tail: rotation.x 로 흔듦
 //   h: 판정 높이(m), fx(dt, time, e): 모양마다 따로 움직이는 것 (침 · 비행접시 흔들림 등). 코는 +z
 import * as THREE from 'three';
-import { gradHard } from './toon.js';
 import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
 import { BOAR, ENEMIES } from './balance.js';
 import { LOW } from './gfx2.js';
+import { unpackProp, propGeometry, propMaterial, glowSprite } from './propmodel.js';
+import { DOG_M } from './model-dog.js';
+import { ALIEN_M } from './model-alien.js';
 
 const matCache = new Map();
-const tm = (c, o) => { const k = c + (o ? JSON.stringify(o) : ''); let m = matCache.get(k); if (!m) { m = new THREE.MeshToonMaterial({ color: c, gradientMap: gradHard, ...o }); matCache.set(k, m); } return m; };
 const glow = (c, o = {}) => { const k = 'g' + c + JSON.stringify(o); let m = matCache.get(k); if (!m) { m = new THREE.MeshBasicMaterial({ color: c, ...o }); matCache.set(k, m); } return m; };
-const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = !LOW; return o; };
-const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const G = {}; // 도형은 한 번만 만듦
 const geo = (k, f) => G[k] || (G[k] = f());
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // 아기 멧돼지: 멧돼지 모델을 작게 + 줄무늬
 function buildPiglet() {
@@ -23,69 +23,102 @@ function buildPiglet() {
 }
 function buildBoar() { return { ...buildBoarModel(), h: BOAR_MODEL_H * BOAR.scale }; }
 
-// 들개 (광견병 들개도 같은 뼈대, 색·눈·침만 다름). 키 약 1.1
-function buildDog({ fur, belly, dark, eye, rabid }) {
-  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const k = rabid ? 1.05 : 1;
-  body.scale.setScalar(k);
-  body.add(mesh(geo('dogBody', () => box(0.46, 0.42, 1.0)), tm(fur), 0, 0.72, -0.02)); // 몸통
-  body.add(mesh(geo('dogChest', () => box(0.4, 0.36, 0.34)), tm(belly), 0, 0.66, 0.3)); // 앞가슴
-  const legs = [[0.15, 0.32], [-0.15, 0.32], [0.15, -0.38], [-0.15, -0.38]].map(([x, z]) => {
-    const p = new THREE.Group(); p.position.set(x, 0.62, z);
-    p.add(mesh(geo('dogLeg', () => box(0.13, 0.6, 0.14)), tm(fur), 0, -0.3, 0), mesh(geo('dogPaw', () => box(0.15, 0.08, 0.19)), tm(dark), 0, -0.58, 0.03));
-    body.add(p); return p;
-  });
-  const head = new THREE.Group(); head.position.set(0, 0.92, 0.48); body.add(head);
-  head.add(mesh(geo('dogHead', () => box(0.36, 0.34, 0.36)), tm(fur), 0, 0.06, 0.1));
-  head.add(mesh(geo('dogSnout', () => box(0.22, 0.18, 0.26)), tm(belly), 0, -0.02, 0.38));
-  head.add(mesh(geo('dogNose', () => box(0.1, 0.08, 0.06)), tm('#1d1a17'), 0, 0.04, 0.52));
-  const earG = geo('dogEar', () => new THREE.ConeGeometry(0.08, 0.2, 4));
-  [-0.12, 0.12].forEach((x) => { const e = mesh(earG, tm(dark), x, 0.3, 0.02); e.rotation.z = -x * 2; head.add(e); });
-  const eyeM = rabid ? glow(eye) : tm(eye);
-  [-0.1, 0.1].forEach((x) => head.add(mesh(geo('dogEye', () => box(0.06, 0.06, 0.03)), eyeM, x, 0.12, 0.28)));
-  const tail = new THREE.Group(); tail.position.set(0, 0.86, -0.5); body.add(tail);
-  const tm0 = mesh(geo('dogTail', () => box(0.08, 0.08, 0.42)), tm(fur), 0, 0.1, -0.18); tm0.rotation.x = rabid ? 0.5 : -0.5; tail.add(tm0);
-  const out = { root, legs, head, tail, h: 1.15 * k };
-  if (rabid) { // 침: 입 아래로 떨어지는 작은 방울 몇 개 (머리에 붙임)
-    const drops = [], n = LOW ? 2 : 4, dg = geo('drool', () => new THREE.SphereGeometry(0.035, 5, 4)), dm = glow('#e9f2f0', { transparent: true, opacity: 0.85 });
-    for (let i = 0; i < n; i++) { const d = new THREE.Mesh(dg, dm); d.userData.t = i / n; head.add(d); drops.push(d); }
-    out.fx = (dt) => { for (const d of drops) { d.userData.t = (d.userData.t + dt * 1.3) % 1; const t = d.userData.t; d.position.set((d.id % 2 ? 0.05 : -0.04), -0.12 - t * t * 0.55, 0.42); d.scale.setScalar(1 - t * 0.6); } };
+// 들개 (#71): Tripo 모델(model-dog.js, 3천 삼각형)에 위치로 뼈 가중치를 계산 — 멧돼지(boar.js)와 같은 방식
+// 몸·머리·꼬리·다리 4. 짧은 다리라 다리는 발목 위에서 흔들고, 걸음에 맞춰 몸이 통통 튐. 광견병 들개는 같은 모델에 회색빛 + 붉게 빛나는 눈 + 침
+const DOG = {
+  s: 1.3, // 모델 키 0.83 → 약 1.07m
+  legs: [[0.145, 0.19], [-0.145, 0.19], [0.145, -0.145], [-0.145, -0.145]], // 앞왼 · 앞오 · 뒤왼 · 뒤오 (x, z)
+  legY: 0.13, body: [0, 0.32, 0], head: [0, 0.42, 0.16], tail: [0, 0.5, -0.33],
+  eyes: [[0.07, 0.645, 0.335], [-0.07, 0.645, 0.335]], mouth: [0, 0.47, 0.45],
+};
+let dogGeo = null;
+function dogShared() {
+  if (dogGeo) return;
+  const { pos, nor, uv, idx } = unpackProp(DOG_M), n = pos.length / 3, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  for (let v = 0; v < n; v++) {
+    const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2];
+    const w = [0, 0, 0, 0, 0, 0, 0]; // 0 몸, 1 머리, 2 꼬리, 3~6 다리
+    const low = 1 - sstep(0.07, 0.13, y);
+    DOG.legs.forEach(([lx, lz], i) => { w[3 + i] = low * (1 - sstep(0.06, 0.09, Math.hypot(x - lx, z - lz))); });
+    const wLeg = Math.min(1, w[3] + w[4] + w[5] + w[6]);
+    w[1] = sstep(0.1, 0.24, z) * sstep(0.26, 0.4, y) * (1 - wLeg);
+    w[2] = sstep(-0.29, -0.35, z) * sstep(0.38, 0.45, y) * (1 - w[1]);
+    w[0] = Math.max(0, 1 - wLeg - w[1] - w[2]);
+    const order = [0, 1, 2, 3, 4, 5, 6].sort((a, b) => w[b] - w[a]).slice(0, 4); let sum = 0; order.forEach((k) => { sum += w[k]; });
+    order.forEach((k, j) => { si[v * 4 + j] = k; sw[v * 4 + j] = w[k] / (sum || 1); });
   }
+  dogGeo = new THREE.BufferGeometry();
+  dogGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); dogGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); dogGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  dogGeo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); dogGeo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); dogGeo.setIndex(new THREE.BufferAttribute(idx, 1));
+  dogGeo.computeBoundingSphere(); dogGeo.boundingSphere.radius *= 1.2;
+}
+const dogMat = {};
+function buildDog({ rabid }) {
+  dogShared();
+  const k = rabid ? 1.05 : 1, S = DOG.s * k;
+  const mat = dogMat[rabid ? 'r' : 'd'] || (dogMat[rabid ? 'r' : 'd'] = propMaterial(DOG_M, rabid ? { color: '#b4b2ae', glow: 0.12 } : {}));
+  const bones = ['body', 'head', 'tail', 'legFL', 'legFR', 'legBL', 'legBR'].map((nm) => { const b = new THREE.Bone(); b.name = nm; return b; });
+  const [body, head, tail, ...legs] = bones;
+  body.position.set(...DOG.body);
+  const rel = (b, p) => { b.position.set(p[0] - DOG.body[0], p[1] - DOG.body[1], p[2] - DOG.body[2]); body.add(b); };
+  rel(head, DOG.head); rel(tail, DOG.tail); DOG.legs.forEach(([x, z], i) => rel(legs[i], [x, DOG.legY, z]));
+  const mesh = new THREE.SkinnedMesh(dogGeo, mat); mesh.add(body); mesh.bind(new THREE.Skeleton(bones));
+  mesh.castShadow = !LOW; mesh.scale.setScalar(S);
+  const root = new THREE.Group(); root.add(mesh);
+  const hp = (p) => new THREE.Vector3(p[0] - DOG.head[0], p[1] - DOG.head[1], p[2] - DOG.head[2]); // 머리 뼈 기준 자리 (모델 좌표)
+  const out = { root, legs, head, tail, h: 0.83 * S };
+  const drops = [];
+  if (rabid) {
+    // 붉게 빛나는 눈: 눈 자리에 작은 빛 공 + 번짐
+    const eg = geo('rabidEye', () => new THREE.SphereGeometry(0.03, 8, 6)), em = glow('#ff2a1a');
+    for (const e of DOG.eyes) { const m = new THREE.Mesh(eg, em); m.position.copy(hp(e)).add(new THREE.Vector3(0, 0, 0.004)); head.add(m); const sp = glowSprite('#ff3a20', 0.16); sp.material.opacity = 0.9; sp.position.copy(m.position); head.add(sp); }
+    // 침: 입 아래로 떨어지는 방울 (머리에 붙임)
+    const dg = geo('drool', () => new THREE.SphereGeometry(0.018, 5, 4)), dm = glow('#e9f2f0', { transparent: true, opacity: 0.85 });
+    for (let i = 0, n = LOW ? 2 : 4; i < n; i++) { const d = new THREE.Mesh(dg, dm); d.userData.t = i / n; d.userData.x = (i % 2 ? 0.03 : -0.025); head.add(d); drops.push(d); }
+  }
+  const mouth = hp(DOG.mouth);
+  out.fx = (dt, time, e) => {
+    // 걸음마다 몸이 통통 튀고, 빨리 달릴수록 앞으로 숙임. 받으러 달려들 때(chg) 더 숙이고 머리를 내림
+    const run = Math.min(1, e.speed / 8), bob = Math.abs(Math.sin(e.phase)) * (0.012 + run * 0.03);
+    body.position.y = DOG.body[1] + bob; body.rotation.x = run * 0.1 + e.chg * 0.12 + Math.sin(e.phase * 2) * 0.03 * run;
+    head.rotation.x *= 0.45; head.rotation.x += e.chg * 0.15; // 짧은 목: 멧돼지보다 덜 숙임
+    tail.rotation.x = -0.4 + Math.sin(time * (rabid ? 14 : 10) + e.phase) * 0.35; tail.rotation.z = Math.sin(time * 7 + e.phase) * 0.25;
+    for (const d of drops) { d.userData.t = (d.userData.t + dt * 1.3) % 1; const t = d.userData.t; d.position.set(mouth.x + d.userData.x, mouth.y - t * t * 0.4, mouth.z); d.scale.setScalar(1 - t * 0.6); }
+  };
   return out;
 }
 
-// 외계인: 작은 비행접시를 탄 초록 생명체. 땅에서 떠서 다님. 다리는 보이지 않는 빈 자리 (legs4 가 흔들어도 그대로)
+// 외계인 (#71): Tripo 비행접시(model-alien.js, 초록 생명체가 탄 접시). 땅에서 떠서 출렁이며 기우뚱, 쏠 때 아래 발사구가 빛남
+// 다리는 보이지 않는 빈 자리 (legs4 가 흔들어도 그대로)
+const ALIEN = { s: 2.4, hover: 0.95, port: 0.03 }; // 크기(지름 약 2.35m), 뜬 높이, 발사구 높이(모델 좌표)
 function buildAlien() {
-  const root = new THREE.Group(), hover = new THREE.Group(); hover.position.y = 1.35; root.add(hover);
-  const disc = geo('ufoDisc', () => { const g = new THREE.CylinderGeometry(1.15, 0.55, 0.32, 12); return g; });
-  hover.add(mesh(disc, tm('#a9b2bc'), 0, 0, 0));
-  hover.add(mesh(geo('ufoRim', () => new THREE.CylinderGeometry(1.22, 1.22, 0.08, 12)), tm('#6e7782'), 0, 0.12, 0));
-  const lights = [];
-  const lg = geo('ufoLight', () => new THREE.SphereGeometry(0.09, 6, 4));
-  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2, l = mesh(lg, glow('#ffd84a'), Math.sin(a) * 1.0, -0.06, Math.cos(a) * 1.0); l.castShadow = false; hover.add(l); lights.push(l); }
-  // 생명체 (head 로 씀: 고개를 끄덕임)
-  const head = new THREE.Group(); head.position.y = 0.18; hover.add(head);
-  head.add(mesh(geo('alBody', () => new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8)), tm('#6fc25a'), 0, 0.2, 0));
-  const hg = geo('alHead', () => { const g = new THREE.SphereGeometry(0.34, 10, 8); g.scale(1, 1.15, 1); return g; });
-  head.add(mesh(hg, tm('#7fd468'), 0, 0.68, 0));
-  const eg = geo('alEye', () => { const g = new THREE.SphereGeometry(0.1, 8, 6); g.scale(1.3, 0.7, 0.6); return g; });
-  [-0.13, 0.13].forEach((x) => { const e = mesh(eg, tm('#141414'), x, 0.72, 0.27); e.rotation.z = x > 0 ? -0.35 : 0.35; head.add(e); });
-  [-0.12, 0.12].forEach((x) => { const a = mesh(geo('alAnt', () => box(0.03, 0.26, 0.03)), tm('#5aa648'), x, 1.08, 0); a.rotation.z = -x * 2; head.add(a); });
-  // 광선총 손: 앞쪽으로 내민 막대
-  head.add(mesh(geo('alGun', () => box(0.08, 0.08, 0.36)), tm('#3d4650'), 0.22, 0.28, 0.24));
-  // 유리 덮개
-  hover.add(mesh(geo('ufoDome', () => new THREE.SphereGeometry(0.62, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2)), new THREE.MeshToonMaterial({ color: '#bfe6ff', gradientMap: gradHard, transparent: true, opacity: 0.32, depthWrite: false }), 0, 0.14, 0));
-  // 땅 그림자 대신 아래 빛 기둥 (옅게)
-  const beam = new THREE.Mesh(geo('ufoBeam', () => new THREE.ConeGeometry(0.7, 1.3, 10, 1, true)), glow('#c9ffb8', { transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }));
-  beam.position.y = 0.65; root.add(beam);
+  const root = new THREE.Group(), hover = new THREE.Group(); hover.position.y = ALIEN.hover; root.add(hover);
+  const m = new THREE.Mesh(propGeometry(ALIEN_M), propMaterial(ALIEN_M, { glow: 0.2 })); m.scale.setScalar(ALIEN.s); m.castShadow = !LOW; hover.add(m);
+  // 발사구 빛: 아래 가운데 청록 원판 + 번짐 (쏠 때 확 밝아졌다 사그라듦)
+  const portY = ALIEN.port * ALIEN.s;
+  const port = new THREE.Mesh(geo('ufoPort', () => new THREE.CircleGeometry(0.2, 14).rotateX(Math.PI / 2)), glow('#8ffff0', { transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }).clone());
+  port.position.y = portY - 0.03; hover.add(port);
+  const halo = glowSprite('#7dffe0', 1.6); halo.position.y = portY - 0.12; hover.add(halo);
+  // 아래 빛 기둥 (옅게, 쏠 때 밝게)
+  const beamMat = glow('#c9ffb8', { transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide });
+  const beam = new THREE.Mesh(geo('ufoBeam', () => new THREE.ConeGeometry(0.6, 1, 10, 1, true)), beamMat.clone());
+  root.add(beam);
+  const head = new THREE.Object3D(); hover.add(head); // enemies.js 가 고개를 숙이는 자리 (여기선 접시 기울기로 씀)
   const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
   const tail = new THREE.Object3D(); root.add(tail);
+  let shot = 0;
   return {
-    root, legs, head, tail, h: 2.5, muzzle: new THREE.Vector3(0.22, 1.35 + 0.18 + 0.28, 0.45),
+    root, legs, head, tail, h: ALIEN.hover + 0.77 * ALIEN.s - 0.3, muzzle: new THREE.Vector3(0, ALIEN.hover + portY - 0.1, 0.1),
+    onShot: () => { shot = 1; },
     fx: (dt, time, e) => {
-      hover.position.y = 1.35 + Math.sin(time * 2.2 + e.phase) * 0.12;
-      hover.rotation.y += dt * 0.6; head.rotation.y = -hover.rotation.y; head.rotation.x *= 0.3; // 접시만 돌고 생명체는 앞을 봄, 고개는 조금만
-      lights.forEach((l, i) => { l.visible = ((time * 6 + i) | 0) % 3 !== 0; });
+      const y = ALIEN.hover + Math.sin(time * 2.2 + e.phase) * 0.14;
+      hover.position.y = y;
+      hover.rotation.x = Math.sin(time * 1.3 + e.phase) * 0.08 + Math.min(0.15, e.speed * 0.02); // 앞으로 갈수록 살짝 숙임
+      hover.rotation.z = Math.sin(time * 1.7 + e.phase * 1.3) * 0.1;
+      shot = Math.max(0, shot - dt * 2.2);
+      const k = 0.25 + shot * 0.75 + Math.sin(time * 6 + e.phase) * 0.05;
+      port.material.opacity = Math.min(1, k + 0.15); halo.material.opacity = k * 0.9; halo.scale.setScalar(1.2 + shot * 1.4);
+      beam.scale.set(1 + shot, y, 1 + shot); beam.position.y = y / 2; beam.material.opacity = 0.08 + shot * 0.3;
     },
   };
 }
@@ -93,9 +126,9 @@ function buildAlien() {
 // 종류 → 모양. 바꾸려면 여기만
 export const ENEMY_MODELS = {
   piglet: buildPiglet,
-  dog: () => buildDog({ fur: '#b88a5a', belly: '#e2c9a0', dark: '#6b4b30', eye: '#1d1a17' }),
+  dog: () => buildDog({}),
   boar: buildBoar,
-  rabid: () => buildDog({ fur: '#77736a', belly: '#a39d90', dark: '#45423c', eye: '#ff2a1a', rabid: true }),
+  rabid: () => buildDog({ rabid: true }),
   alien: buildAlien,
 };
 export function buildEnemyModel(kind) { return (ENEMY_MODELS[kind] || buildBoar)(); }
