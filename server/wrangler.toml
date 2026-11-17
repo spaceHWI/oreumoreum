@@ -12,6 +12,25 @@ ALLOW_ORIGINS = "https://spacehwi.github.io"
 FAKE_AUTH = ""
 STATS_OPEN = ""
 
+# 어드민 (#84): 시크릿 ADMIN_SUBS = 어드민 구글 계정 sub (쉼표로 여럿). 없으면 아무도 어드민이 아님 (wrangler secret put ADMIN_SUBS)
+# 세션 서명 키 SESSION_SECRET 은 32자 이상. 없거나 짧으면 서버는 /health 말고 모두 503
+
+# 요청 수 제한 (#84): 주소(IP 해시)별 1분 상한. Worker 메모리 제한과 함께 씀 (값은 src/balance.js NET 과 맞춤)
+[[ratelimits]]
+name = "RL_API"
+namespace_id = "8401"
+simple = { limit = 120, period = 60 }
+
+[[ratelimits]]
+name = "RL_LOGIN"
+namespace_id = "8402"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "RL_WS"
+namespace_id = "8403"
+simple = { limit = 30, period = 60 }
+
 [[durable_objects.bindings]]
 name = "ROOM"
 class_name = "Room"

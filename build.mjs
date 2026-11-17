@@ -1,9 +1,12 @@
 // node build.mjs → dist/oreumoreum.html (claude.ai 아티팩트용, 뼈대 없음) + dist/index.html (Pages·로컬 확인용 완성 페이지)
 // DEV=1 이면 개발 서버용: 저장 키를 따로 써서 실서버 기록과 섞이지 않게 한다
+// PUBLIC=1 이면 공개 빌드(release): 콘솔 확인 함수 window.__oreum 은 어드민에게만 (#84)
+// 코드 줄이기·이름 줄이기(minify)는 하지만 보안으로 치지 않는다. 지킬 것은 서버(server/)가 지킨다
 import * as esbuild from 'esbuild';
 import fs from 'fs';
-const DEV = !!process.env.DEV;
-const r = await esbuild.build({ entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', write: false, target: 'es2020', define: { __DEV__: String(DEV) } });
+import crypto from 'crypto';
+const DEV = !!process.env.DEV, PUBLIC = process.env.PUBLIC === '1';
+const r = await esbuild.build({ entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', write: false, target: 'es2020', legalComments: 'none', define: { __DEV__: String(DEV), __PUBLIC__: String(PUBLIC) } });
 const js = r.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 const page = fs.readFileSync('src/page.html', 'utf8');
 const i = page.indexOf('__BUNDLE__');
@@ -18,11 +21,25 @@ const meta = ''
   + '<meta name="description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임">'
   + '<meta property="og:title" content="오름오름"><meta property="og:description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임">'
   + `<meta property="og:type" content="website"><meta property="og:url" content="${SITE}"><meta property="og:image" content="${SITE}og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">`;
-const full = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">' + meta + '</head><body>' + body + '</body></html>';
+// 페이지 보안 (#84): GitHub Pages 는 응답 헤더를 못 바꾸므로 meta CSP. 게임 코드(인라인 스크립트)는 해시로만 허용,
+// 바깥은 구글 로그인(GIS)·글꼴·날씨(open-meteo)·멀티 서버(https/wss, ?server= 로 바꿔 끼울 수 있어 넓게)만
+const scriptHash = crypto.createHash('sha256').update(js, 'utf8').digest('base64');
+const CSP = [
+  "default-src 'self'",
+  `script-src 'sha256-${scriptHash}' https://accounts.google.com/gsi/client`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https: wss: data: blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*",
+  'frame-src https://accounts.google.com/gsi/',
+  "media-src 'self' data: blob:", "worker-src 'self' blob:",
+  "object-src 'none'", "base-uri 'none'", "form-action 'none'",
+].join('; ');
+const full = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' + `<meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin">` + '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">' + meta + '</head><body>' + body + '</body></html>';
 fs.copyFileSync('src/og.png', 'dist/og.png');
 fs.writeFileSync('dist/index.html', full);
 fs.writeFileSync('dist/test.html', full);
-console.log('ok', (fs.statSync('dist/oreumoreum.html').size / 1024).toFixed(0) + 'KB', DEV ? '(dev)' : '');
+console.log('ok', (fs.statSync('dist/oreumoreum.html').size / 1024).toFixed(0) + 'KB', DEV ? '(dev)' : '', PUBLIC ? '(public)' : '');
 // 로고 시안 (#72): 밝은 배경·어두운 배경에 3개 나란히 → dist/logo-sian.html
 {
   const { logoSvg, LOGO_PICK } = await import('./src/logo.js');

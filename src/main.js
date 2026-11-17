@@ -839,11 +839,15 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   b.addEventListener('keyup', stop); b.addEventListener('blur', stop);
 }
 // 개발자 버튼 (#43): ?hwi=1 로 한 번 들어오면 이 기기에 기억, ?hwi=0 으로 끔. 저장 키를 따로 써서 리셋해도 남음
-{
-  const HK = 'oreumoreum.hwi'; let on = false;
-  try { const q = new URLSearchParams(location.search).get('hwi'); if (q === '1') localStorage.setItem(HK, '1'); else if (q === '0') localStorage.removeItem(HK); on = localStorage.getItem(HK) === '1'; } catch (e) { /* 저장 불가 환경 */ }
-  $('m-dev').hidden = !on;
-  if (on) {
+// 보안 (#84): 서버가 있으면 ?hwi 는 보지 않고, 로그인 계정이 서버 어드민(시크릿 ADMIN_SUBS)일 때만 켬. 손님·다른 계정은 메뉴도 없음
+let devOn = false;
+const hwiFlag = (() => { const HK = 'oreumoreum.hwi'; try { const q = new URLSearchParams(location.search).get('hwi'); if (q === '1') localStorage.setItem(HK, '1'); else if (q === '0') localStorage.removeItem(HK); return localStorage.getItem(HK) === '1'; } catch (e) { return false; } })();
+$('m-dev').hidden = true;
+function enableDev() {
+  if (devOn) return; devOn = true;
+  $('m-dev').hidden = false;
+  if (debugReady) exposeDebug();
+  {
     const TK = 'oreumoreum.hwi.tod'; // 시간대 (이 화면에만, 새로 고쳐도 유지)
     const tv = $('adm-tv'), sl = $('adm-tod');
     const setTod = (h) => {
@@ -870,6 +874,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
     $('dev-gyul').addEventListener('click', () => { save.coins += 10000; persist(); updateStats(); sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
   }
 }
+if (!ONLINE && hwiFlag) enableDev(); // 혼자 하기(서버 주소 없음)는 예전처럼
 $('menu-ach').addEventListener('click', () => openAch());
 $('menu-sound').addEventListener('click', () => { if (sound.on) sound.stop(); else sound.start(); save.soundOff = sound.on ? 0 : 1; persist(); setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
 // 배경 음악 켜기/끄기·크기 (#64). save.music = { on, vol }
@@ -1455,7 +1460,13 @@ $('photo-close').addEventListener('click', () => {
 // ---------- 함께 (room) ----------
 const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
-  lobby: createWsLobby({ token: () => account?.token }), onRoom: (room) => { if (trash && room.on) linkTrash(trash, room); }, // 멀티 서버 (#7)
+  lobby: createWsLobby({ token: () => account?.token }), onRoom: (room) => { // 멀티 서버 (#7)
+    if (!room.on) return;
+    if (trash) linkTrash(trash, room);
+    // 서버가 이동을 되돌림 (#84): 너무 빠르거나 순간 이동이 잦으면 마지막으로 받아 준 자리로
+    room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; placeRunner(); });
+    room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
+  },
   extra: () => ({ ...social.presenceExtra(), rd: rideCode(), ...(emo ? emo.presence() : {}) }), // rd = 탈것 (#69), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => emo?.overlayPeer(e),
@@ -2623,7 +2634,7 @@ if (ONLINE) {
     onFix: (f) => { if (f.coins != null && f.coins !== save.coins) { save.coins = f.coins; updateStats(); toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; writeLocal(); } });
   document.querySelector('.intro-beta')?.setAttribute('hidden', '');
   mountLogin({ box: $('acct-box'), enterBtn: $('enter'), account, localSave: save, hasProgress: save.coins > 5 || (save.trash?.total || 0) > 0 || !!save.tut?.done, toast });
-  const syncAcct = () => { $('m-acct').hidden = !account.loggedIn; $('acct-days').textContent = `기록 보관 ${account.daysLeft()}일 남음`; };
+  const syncAcct = () => { $('m-acct').hidden = !account.loggedIn; $('acct-days').textContent = `기록 보관 ${account.daysLeft()}일 남음`; if (account.admin) enableDev(); }; // 서버 어드민이면 개발자 메뉴 (#84)
   account.on(syncAcct); syncAcct();
   $('acct-out').addEventListener('click', () => account.logout());
   $('acct-del').addEventListener('click', (e) => { const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '한 번 더 누르면 지워요'; setTimeout(() => { delete b.dataset.sure; b.textContent = '내 기록 지우기'; }, 4000); return; } resetting = true; account.deleteMe().catch(() => { resetting = false; toast('지우지 못했어요. 잠시 후 다시 해 주세요'); }); });
@@ -3037,10 +3048,15 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { feedback, emo, doEmote, net, online: ONLINE && { account: () => account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
+// 콘솔 확인 함수 (#84): 개발 빌드는 늘, 공개 빌드(release, PUBLIC=1)는 어드민에게만 (enableDev). 보안은 서버가 지키고, 이건 함부로 만지지 않게 하는 정도
+let debugReady = false;
+function exposeDebug() { window.__oreum = debugApi(); }
+function debugApi() { return { feedback, emo, doEmote, net, online: ONLINE && { account: () => account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
   cart: cart && { api: cart, board: () => boardCart(), leave: (j) => leaveCart(!!j), state: () => ({ ...cart.state }), mark: () => !cartMark.hidden, wait: (i) => cart.stops[i] && cart.stops[i].ring.visible, goStop: (i) => { const S = cart.stops[i]; player.pos.set(S.pos.x, groundAt(S.pos.x, S.pos.z), S.pos.z); }, shift: (v) => { cartShift = v; }, at: (stop) => { const now = Date.now() / 1000; for (let t = 0; t < CART.lap; t += 0.5) { const st = cartStateAt(now + t); if (!st.moving && st.stop === stop && st.left > 6) { cartShift = t; return t; } } return null; }, goCart: () => { player.pos.set(cart.pos.x + 3, 0, cart.pos.z); player.pos.y = groundAt(player.pos.x, player.pos.z); } },
 }, street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, all: CHS, near: () => chNear(), route: () => { const b = chRoute(); return b && { id: b.ch.id || 'main', L: Math.round(b.L) }; }, goMini: (i = 0) => { const c = CH_MINI[i]; if (!c) return null; player.pos.copy(c.front); player.pos.y = height(c.front.x, c.front.z); player.heading = Math.atan2(c.center.x - c.front.x, c.center.z - c.front.z); return c.id; }, minis: () => CH_MINI.map((c) => ({ id: c.id, name: c.name, x: +c.center.x.toFixed(1), z: +c.center.z.toFixed(1), fx: +c.front.x.toFixed(1), fz: +c.front.z.toFixed(1) })), autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CHS.map((c) => c.front), { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, farCull: () => farCull, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
-  tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };
+  tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } }; }
+debugReady = true;
+if (!__PUBLIC__ || devOn) exposeDebug();

@@ -16,15 +16,18 @@ export class Room extends DurableObject {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('ws only', { status: 426 });
     const pair = new WebSocketPair(); const [client, ws] = Object.values(pair);
     ws.accept();
-    const acct = req.headers.get('x-acct') || null;
+    const acct = req.headers.get('x-acct') || null, key = req.headers.get('x-ipk') || null;
+    // 브라우저가 하위 프로토콜(토큰 실어 보내기, #84)을 냈으면 'oreum' 으로 답해야 연결됨
+    const headers = req.headers.get('x-proto') ? { 'Sec-WebSocket-Protocol': 'oreum' } : {};
     const xc = parseInt(req.headers.get('x-cap'), 10); if (xc > 0) this.core.setCap(xc); // 부하 재기 방만 (index.js)
-    const p = this.core.join((s) => ws.send(s), { acct });
-    if (!p) { ws.close(4001, 'full'); return new Response(null, { status: 101, webSocket: client }); }
+    let why = 'full';
+    const p = this.core.join((s) => { if (s.startsWith('{"t":"ban"')) why = 'ban'; ws.send(s); }, { acct, key, close: (c, r) => ws.close(c, r) });
+    if (!p) { ws.close(why === 'ban' ? 4003 : 4001, why); return new Response(null, { status: 101, webSocket: client, headers }); }
     ws.addEventListener('message', (e) => this.core.message(p, typeof e.data === 'string' ? e.data : ''));
     const bye = () => { this.core.leave(p); if (!this.core.size) this.stop(); };
     ws.addEventListener('close', bye); ws.addEventListener('error', bye);
     if (!this.timer) this.timer = setInterval(() => this.tick(), NET.tickMs);
-    return new Response(null, { status: 101, webSocket: client });
+    return new Response(null, { status: 101, webSocket: client, headers });
   }
   tick() {
     this.core.step();

@@ -3,6 +3,7 @@
 // - 새로 산 것의 값을 더하고, 귤이 늘어난 몫(번 귤 = 지금 귤 + 쓴 귤 - 지난 귤)은 계정의 '벌 수 있는 몫(credit)' 안에서만
 //   credit 은 시간이 지나면 earnPerSec 씩 차고 earnBurst 에서 멈춤 (토큰 통)
 // - 치운 양(누적)도 같은 방식
+import { cleanText } from '../../src/safetext.js';
 import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR } from '../../src/balance.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
@@ -32,8 +33,7 @@ function norm(s) {
   for (const k of Object.keys(s.hairs)) if (!(HAIR.byKey[k] || START_HAIR.has(k))) delete s.hairs[k];
   if (!isObj(s.trash)) s.trash = {};
   s.trash.total = int(s.trash.total, 0, 1e9, 0);
-  if (typeof s.nick !== 'string') s.nick = '';
-  s.nick = s.nick.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 16);
+  s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   return s;
 }
 
@@ -57,7 +57,8 @@ function revertItems(P, S) {
 
 // prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, savedAt }, t: 지금(ms)
 // → { save, fixed: [바로잡은 칸], acc: 새 credit }
-export function checkSave(prev, next, acc, t, { migrate = false } = {}) {
+// free: 어드민 계정 (#84, 시크릿 ADMIN_SUBS). 귤·치운 양 몫을 보지 않음 (개발자 버튼 '귤 채우기')
+export function checkSave(prev, next, acc, t, { migrate = false, free = false } = {}) {
   if (!isObj(next)) throw new Error('bad save');
   const S = norm(JSON.parse(JSON.stringify(next)));
   const P = norm(JSON.parse(JSON.stringify(prev || FRESH)));
@@ -65,6 +66,7 @@ export function checkSave(prev, next, acc, t, { migrate = false } = {}) {
   const dt = Math.max(0, Math.min(NET.earnWindow, (t - (acc.savedAt || t)) / 1000));
   let credit = Math.min(NET.earnBurst, (acc.credit ?? NET.earnBurst) + dt * NET.earnPerSec);
   let pickCredit = Math.min(NET.pickBurst, (acc.pickCredit ?? NET.pickBurst) + dt * NET.pickPerSec);
+  if (free) return { save: S, fixed, acc: { credit, pickCredit } };
   if (migrate && !prev) {
     // 기기 기록 옮기기: 지난 기록을 확인할 길이 없어 목록 확인과 귤 상한만
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
