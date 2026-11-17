@@ -23,8 +23,6 @@ $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('
 $('menu-wardrobe').addEventListener('click', () => { closePanels(); late.openWardrobe(); });
 $('menu-shop').addEventListener('click', () => { closePanels(); late.openShop('gear'); });
 $('menu-sign').addEventListener('click', () => { closePanels(); late.openSign(); });
-if (Object.values(MAPS).filter((x) => !x.hidden).length < 2 && MAP_ID === 'namsongi') $('menu-map').hidden = true;
-$('menu-map').addEventListener('click', () => { closePanels(); if (MAP_ID === 'gate') toast('갈림길 표지판으로 가서 길을 고르면 돼요'); else late.leaveTo('gate'); });
 $('ver-text').textContent = `v${VERSION}`;
 function openNotes() {
   const box = $('notes-body'); box.innerHTML = '';

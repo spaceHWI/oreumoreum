@@ -3,7 +3,7 @@ import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import * as THREE from 'three';
-import { height, groundAt, surfaceAt, R_RIM } from '../world.js';
+import { height, groundAt, surfaceAt } from '../world.js';
 import { G } from '../gfx2.js';
 import { THROW } from '../runner.js';
 import { sunDir } from '../sun.js';
@@ -127,15 +127,6 @@ function updatePlayer(dt) {
     p.pos.set(x, gy, z);
     countSteps(moved);
     checkViewpoint();
-    if (spots.laps) {
-      const r = Math.hypot(x, z);
-      if (Math.abs(r - R_RIM) < 9) {
-        const a = Math.atan2(z, x);
-        if (p.lapPrevA !== null) p.lapAcc += wrapA(a - p.lapPrevA);
-        p.lapPrevA = a;
-        if (Math.abs(p.lapAcc) >= Math.PI * 2) { p.laps++; p.lapAcc = 0; persist(); toast(`굼부리 둘레 ${p.laps}바퀴째예요`); ach.emit('lap'); }
-      } else { p.lapPrevA = null; p.lapAcc = 0; }
-    }
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
   if (p.pose === 'sit') p.pos.y = mealS.on ? STN.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
   if (p.kb.lengthSq() > 0.01) {
