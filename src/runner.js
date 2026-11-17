@@ -494,6 +494,14 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(0, 0, 2.5); armR.rotation.set(0, 0, -2.5);
       legL.rotation.set(0, 0, 0.18); legR.rotation.set(0, 0, -0.18);
       head.rotation.z = 0.12;
+    } else if (pose === 'photo-v') { // 사진 포즈 (#70): 오른손 브이를 얼굴 옆에, 왼손은 허리
+      armR.rotation.set(-2.5, 0, -0.55); armL.rotation.set(0.1, 0, 0.75);
+      legL.rotation.set(0, 0, 0.06); legR.rotation.set(-0.12, 0, -0.1);
+      torso.rotation.z = -0.06; head.rotation.z = -0.16;
+    } else if (pose === 'photo-point') { // 사진 포즈 (#70): 한 팔을 옆으로 쭉 뻗어 가리키고, 한 발 앞으로
+      armL.rotation.set(-0.35, 0, 1.45); armR.rotation.set(0.15, 0, -0.35);
+      legL.rotation.set(-0.3, 0, 0.12); legR.rotation.set(0.12, 0, -0.08);
+      torso.rotation.y = 0.18; head.rotation.y = 0.25; head.rotation.x = -0.06;
     } else if (pose === 'crouch') {
       // 줍기: 도구 단계(tool 1~5)마다 동작이 다름. dur = 한 번 줍는 시간
       const u = Math.min(1, t / Math.max(0.1, dur)), k = Math.sin(u * Math.PI);

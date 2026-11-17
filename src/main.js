@@ -3,7 +3,8 @@ import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
-import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC, TITLE } from './balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, TRASH_TYPES, CLEANHOUSE, DEX, CAIRN, COLLIDE, TUT, BOAR, SCATTER, THROW_AIM, HP, ENEMY_SPAWN, ENEMIES, WEAPONS, BOW, FISH, BLOOM, BLOOM_FX, DUMP, STONE, SHOP_ST, SHOPS, HAIR, SALON, LEAP, WEAR, CLOTHES, WEAR_START, wearPrice, MUSIC, TITLE, PHOTOG } from './balance.js';
+import { createPhotographer } from './photographer.js';
 import { logoSvg, LOGO_PICK, svgUrl } from './logo.js';
 import { STREET } from './streetlayout.js';
 import { createShopStreet, SHOP_BUILD, SHOP_ICON, SCISSORS, SHIRT } from './shops.js';
@@ -1140,13 +1141,20 @@ $('wish-form').addEventListener('submit', (e) => {
   });
 });
 
-// 표지석 인증샷 (줄서기)
-let photoState = null, photoWaiting = false, captureNext = false;
+// 표지석 인증샷 (줄서기) → 사진사 NPC (#70): 사진사에게 가서 '사진' → 손짓 → 사진 자리에 서서 포즈(3종 무작위, 다시 누르면 바뀜) → 3·2·1 → 찰칵
+// 사진은 사진사 삼각대 카메라 자리에서 찍음(UI 없이). 가까이 있는 다른 사람도 그대로 함께 찍힘
+let photoState = null, photoWaiting = false, captureNext = false, photoBlob = null, photoUrl = '', photoGo = 0;
+const PHOTO_POSES = ['photo', 'photo-v', 'photo-point'];
+let photoPose = 'photo';
+const nextPhotoPose = () => { const l = PHOTO_POSES.filter((k) => k !== photoPose); photoPose = l[Math.floor(Math.random() * l.length)]; return photoPose; };
 const logoImg = new Image(); logoImg.src = svgUrl(logoSvg(LOGO_PICK)); // 사진 틀에 넣을 로고 (#72)
 function startPhoto() {
   social.joinQueue();
+  photog?.beckon();
   const spot = photoSpot.clone().addScaledVector(summitOut, 2.5).addScaledVector(summitTan, -2);
+  photoGo = PHOTOG.walkMax;
   setTarget(social.queueAhead() > 0 ? spot : photoSpot, () => {
+    photoGo = 0;
     if (social.queueAhead() > 0) { photoWaiting = true; player.pose = 'photo-wait'; player.poseT = 0; $('queue').hidden = false; return; }
     beginPhoto();
   });
@@ -1154,17 +1162,22 @@ function startPhoto() {
 function beginPhoto() {
   photoWaiting = false; $('queue').hidden = true;
   player.pos.copy(photoSpot);
-  player.heading = Math.atan2(summitOut.x, summitOut.z);
-  player.pose = 'photo-wait'; player.poseT = 0;
+  player.heading = photog ? Math.atan2(photog.camPos.x - photoSpot.x, photog.camPos.z - photoSpot.z) : Math.atan2(summitOut.x, summitOut.z);
+  nextPhotoPose(); player.pose = 'photo'; player.poseT = 0;
   cam.mode = 'photo';
-  const mid = P.stone.clone().lerp(photoSpot, 0.5);
-  camTarget.look.copy(mid).setY(mid.y + 1.7);
-  camTarget.pos.copy(mid).addScaledVector(summitOut, 8.5).addScaledVector(summitTan, 0.5);
-  camTarget.pos.y = Math.max(mid.y + 2.6, height(camTarget.pos.x, camTarget.pos.z) + 1.5);
+  if (photog) { camTarget.pos.copy(photog.camPos); camTarget.look.copy(photog.camLook); }
+  else {
+    const mid = P.stone.clone().lerp(photoSpot, 0.5);
+    camTarget.look.copy(mid).setY(mid.y + 1.7);
+    camTarget.pos.copy(mid).addScaledVector(summitOut, 8.5).addScaledVector(summitTan, 0.5);
+    camTarget.pos.y = Math.max(mid.y + 2.6, height(camTarget.pos.x, camTarget.pos.z) + 1.5);
+  }
   photoState = { t: 0, n: 3 };
   $('countdown').hidden = false; $('countdown').textContent = '3';
   sound.beep(false);
 }
+// 찍기 전에 다시 누르면 포즈가 바뀜
+const rePoseAct = { label: '포즈 바꾸기', ic: 'photo', act: () => { if (photoState && !photoState.shot) { nextPhotoPose(); player.poseT = 0; } } };
 $('queue-cancel').addEventListener('click', () => { photoWaiting = false; social.leaveQueue(); $('queue').hidden = true; player.pose = 'move'; });
 function tickQueue() {
   if (!photoWaiting) return;
@@ -1173,12 +1186,14 @@ function tickQueue() {
   if (n === 0) beginPhoto();
 }
 function tickPhoto(dt) {
+  // 사진 자리로 걸어가다 사진사·삼각대에 막히면(또는 너무 오래 걸리면) 바로 자리에 세움. 멀리 걸어가 버렸으면 그만둠
+  if (photoGo > 0) { photoGo -= dt; const lost = !player.onArrive; if (lost || photoGo <= 0) { photoGo = 0; player.target = null; player.onArrive = null;
+    if (!photoState && !photoWaiting && player.pos.distanceTo(photoSpot) < PHOTOG.r + 8) beginPhoto(); else social.leaveQueue(); } }
   if (!photoState) return;
   photoState.t += dt;
-  const n = 3 - Math.floor(photoState.t / 0.9);
+  const C = PHOTOG.count, n = 3 - Math.floor(photoState.t / C);
   if (n !== photoState.n && n > 0) { photoState.n = n; $('countdown').textContent = String(n); sound.beep(false); }
-  if (photoState.t > 2.0 && player.pose !== 'photo') player.pose = 'photo';
-  if (photoState.t >= 2.7 && !photoState.shot) { photoState.shot = true; $('countdown').hidden = true; captureNext = true; }
+  if (photoState.t >= C * 3 && !photoState.shot) { photoState.shot = true; $('countdown').hidden = true; captureNext = true; }
 }
 function capture() {
   sound.shutter();
@@ -1201,9 +1216,19 @@ function capture() {
   g.fillText(`${save.nick} · ${ds} · ${player.steps.toLocaleString('ko-KR')}걸음 · 뱃지 ${badges}개`, pad, ph + pad + 116);
   if (logoImg.complete && logoImg.naturalWidth) { const lh = 92, lw = lh * logoImg.naturalWidth / logoImg.naturalHeight; g.drawImage(logoImg, W + pad - lw, ph + pad + 22, lw, lh); } // 사진 틀 로고 (#72)
   else { g.textAlign = 'right'; g.fillStyle = '#9c4a33'; g.font = '700 30px "Noto Sans KR", sans-serif'; g.fillText('오름오름', W + pad, ph + pad + 70); }
-  out.toBlob((blob) => { $('photo-img').src = URL.createObjectURL(blob); setTimeout(() => { $('photo').hidden = false; }, 350); }, 'image/png');
+  out.toBlob((blob) => {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+    photoBlob = blob; photoUrl = URL.createObjectURL(blob); $('photo-img').src = photoUrl;
+    $('photo-share').hidden = !canSharePhoto();
+    setTimeout(() => { $('photo').hidden = false; }, 350);
+  }, 'image/png');
   ach.emit('photo');
 }
+const photoName = () => `oreumoreum-${kstDate().replace(/-/g, '')}.png`;
+const photoFile = () => photoBlob && new File([photoBlob], photoName(), { type: 'image/png' });
+function canSharePhoto() { try { const f = photoFile(); return !!(f && navigator.canShare && navigator.canShare({ files: [f] })); } catch (_) { return false; } }
+$('photo-save').addEventListener('click', () => { if (!photoUrl) return; const a = document.createElement('a'); a.href = photoUrl; a.download = photoName(); document.body.append(a); a.click(); a.remove(); });
+$('photo-share').addEventListener('click', async () => { const f = photoFile(); if (!f) return; try { await navigator.share({ files: [f], title: P.title }); } catch (_) { /* 취소 */ } });
 $('photo-close').addEventListener('click', () => {
   $('photo').hidden = true; photoState = null; social.leaveQueue();
   player.pose = 'move'; cam.mode = 'follow';
@@ -1226,6 +1251,8 @@ const net = createNet({
 const social = createSocial({ scene, net, save, onToast: (m) => toast(m), mapId: MAP_ID });
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
 social.start();
+// 사진사 NPC (#70): 표지석 근처, 삼각대 옆
+const photog = spots.tutorial ? null : createPhotographer({ scene, social, P, out: summitOut, tan: summitTan, spot: photoSpot, height, buildRunner, outfit: DEFAULT_OUTFIT, col, low: LOW });
 // 입장할 때 한 번: 방 접속(서버가 정해진 뒤)·서버별 접속 기록
 let sessionOn = false;
 function startSession() { if (sessionOn) return; sessionOn = true; net.start(); ab.visit(); }
@@ -1514,7 +1541,7 @@ function tickShopMark() {
   shopMark.hidden = false; placeArrow(shopMark, best.signPos, 0.6);
 }
 const interactables = [
-  ...(spots.tutorial ? [] : [{ label: '인증샷 찍기', ic: 'photo', pos: P.stone, r: 9, act: startPhoto }]),
+  ...(photog ? [{ label: '사진', ic: 'photo', pos: photog.pos, r: PHOTOG.r, act: startPhoto }] : []), // 사진사 (#70)
   { label: '앉아 쉬기', ic: 'sit', pos: benchPos, r: 8, act: sitDown },
   ...(spots.sign.silent ? [] : [{ label: '안내 읽기', ic: 'sign', pos: spots.sign.pos, r: 6, act: () => openSign() }]),
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
@@ -1817,7 +1844,8 @@ function tickChArrow() {
 }
 function updateContext() {
   let best = null, bd = 1e9;
-  if (player.pose === 'sit') best = mealS.on ? skipAct : cutS.on ? cutSkipAct : standAct;
+  if (photoState && !photoState.shot) best = rePoseAct; // 찍기 전: 다시 누르면 포즈 바꾸기 (#70)
+  else if (player.pose === 'sit') best = mealS.on ? skipAct : cutS.on ? cutSkipAct : standAct;
   else if (player.riding && !busy()) best = dismountAct;
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
@@ -2565,9 +2593,10 @@ function frame(now) {
   adaptQuality(rawDt);
   const breath = tickBreath(dt);
   tickPhoto(dt);
+  if (photog) { photog.setRain(wx.kind === 'rain'); photog.update(dt, player, { shooting: !!photoState }); } // 사진사 (#70): 비 오면 노란 우비
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
-  const pose = player.flail ? 'flail' : player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose;
+  const pose = player.flail ? 'flail' : player.riding ? 'sit' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   runner.animate(dt, { speed: player.speed, running: player.running, pose, t: player.poseT, breath, air: player.air, jumpV: player.jumpV, slope: player.riding ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: fishing ? fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
@@ -2718,5 +2747,5 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true),
+window.__oreum = { street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };
