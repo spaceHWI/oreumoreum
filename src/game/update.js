@@ -1,5 +1,5 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR } from '../balance.js';
+import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import * as THREE from 'three';
@@ -25,6 +25,7 @@ import { toolNow, tickPick, tickFly, tickZone } from './pickup.js';
 import { tickDump, tickAutoGo, tickChArrow, updateContext } from './dump.js';
 import { leaving, leaveTo } from './look.js';
 import { sound, tickKnock, _kq, _ka, enemyWarn, dumpWarn, dumpers, threatNear } from './hooks.js';
+import { tickPace, pace } from './pace.js';
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -208,7 +209,8 @@ applyQuality();
 
 const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
 function frame(now) {
-  const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt); last = now;
+  const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1); last = now; // 맞힌 순간 짧은 멈춤 (#89)
+  tickPace(Math.min(0.05, rawDt), now / 1000);
   state.camHold = Math.max(0, state.camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position); // 마차 (#69): 앉은 사람이 따라가게 먼저
@@ -293,7 +295,7 @@ function frame(now) {
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
   tickTips(dt);
-  if (sound.music) { sound.setThreat(threatNear()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
+  if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }

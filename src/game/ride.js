@@ -177,7 +177,7 @@ export const cartMark = $('cart-mark');
 export function tickCartMark() {
   if (!cart) return;
   const d = player.pos.distanceTo(cart.pos);
-  const on = !player.cart && (!NS_TUT || !!save.jeong) && d > CART.markNear && d < CART.markFar && !panelOpen() && cam.mode === 'follow' && !late.mealS.on && !late.cutS.on;
+  const on = !player.cart && (!NS_TUT || !!save.jeong) && d > CART.markNear && d < CART.markFar && !panelOpen() && cam.mode === 'follow' && !late.mealS.on && !late.cutS.on && (!late.pace || late.pace.canMark()); // 긴장 때는 적 표시만 (#89)
   if (!on) { if (!cartMark.hidden) cartMark.hidden = true; return; }
   cartMark.hidden = false; late.placeArrow(cartMark, cart.pos, 3.2);
 }

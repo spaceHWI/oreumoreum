@@ -91,7 +91,7 @@ export const BLOOM_FX = {
 // 쫓아내기: 버리기 전에 귤을 hp 만큼 맞히면(손 1, 활 2) 도망가고 귤 reward 개를 떨어뜨림. 플레이어를 공격하지 않음
 export const DUMP = {
   players: 1,
-  every: 180, minEvery: 20,
+  every: 180, // 남송이는 연출 감독(#89 PACE)이 부름. every 는 접속 안 한 동안 쌓는 양(DUMP_AMT)의 기준으로만 minEvery: 20,
   hourFrac: 0.25,
   truckP: 0.4, // 한 번 올 때 트럭일 확률
   zoneBase: 0.3,
@@ -263,7 +263,7 @@ export const ENEMIES = {
   alien: { name: '외계인', hp: 40, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 60, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 2.6, speed: 15, r: 1.0 } },
 };
 export const ENEMY_SPAWN = {
-  every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤)
+  every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤). 남송이는 연출 감독(#89 PACE.battle)이 부르고, 이 값은 쓰레기 없는 맵에서만
   group: [2, 3], // 한 무리 마릿수
   r: [26, 60], // 플레이어에서 이 거리 사이, 플레이어가 있는 구역 안 (없으면 가까운 곳 near)
   near: [12, 26],
@@ -599,15 +599,44 @@ export const MUSIC = {
   gain: 0.6,         // 크기 100% 일 때 음악 버스 (효과음보다 작게). 크기 슬라이더는 제곱으로 들어감
   tense: 1.6,        // 긴장 음악 층 크기 (평소 층 1 에 견줘)
   vol: 0.6,          // 처음 크기 (0~1)
-  fadeIn: 2,         // 적이 다가오면 긴장 음악으로 바뀌는 시간(초)
+  fadeIn: 2.5,       // 적이 다가오면 긴장 음악으로 바뀌는 시간(초)
   holdOut: 5,        // 적이 사라지고 원래 음악으로 돌아가기까지 기다리는 시간(초)
-  fadeOut: 2.5,      // 원래 음악으로 돌아가는 시간(초)
+  fadeOut: 4,        // 원래 음악으로 돌아가는 시간(초)
   near: 30,          // 이 거리 안의 몹·멧돼지·투기꾼·트럭이면 '적 근처'
   duck: 0.45,        // 가게 안 식사·머리 손질 중 음악 배율
   nightK: 0.35,      // setDaylight 값이 이보다 작으면 밤 분위기
   chord: { day: 9, night: 12 },        // 화음 하나 길이(초)
   note: { day: [2.5, 6], night: [4, 9] }, // 드문드문 음 사이 간격(초)
   bpm: 92,           // 긴장 음악 빠르기
+};
+
+// 연출 감독 (#89, src/pacing.js): 힐링 시간(줍기·꽃·낚시)이 바탕이고 공격 시간(투기꾼·트럭·몹)은 짧고 또렷한 사건
+// 한 번 공격 = 조짐(omen 초: 방향 표시·음악·새가 날아오름) → 긴장(나타나서 쫓아낼 때까지, attack 초 안) → 쉼(rest 초 동안 새 적 없음)
+// gap: 공격 시작에서 다음 공격 시작까지(초) [최소, 최대]. 꽃이 피면 bloomQuiet 초 동안 적이 끼어들지 않음
+// clean: 깨끗한 오름(투기꾼·트럭만), battle: 전투 오름(몹 물결, dumpEvery 번째마다 투기꾼도 같이). 구역이 깊을수록 무리가 큼(group)
+// 첫 공격: 튜토리얼 뒤 더미를 한 번 치워 꽃을 피운 다음 firstDelay 초 뒤, 약한 투기꾼 하나
+// 보상: 다 쫓아내면 귤 bonus(나머지는 그 1/3), 그리고 rest 초 쉼
+// 지루함: calmMax 초 넘게 아무 일이 없으면 작은 즐거움 하나 (드문 쓰레기 반짝임·노루가 지나감·반딧불이 떼·잭팟 조짐)
+// 전환(tension 0~1): riseT 초에 걸쳐 오르고 fallT 초에 걸쳐 내려감. 화면 가장자리 색 edge, 카메라 거리 camIn 만큼 가까이, 하늘 sky 만큼 어둡게
+export const PACE = {
+  omen: 3,
+  attack: [30, 90],
+  rest: 90,
+  bloomQuiet: 10,
+  calmMax: 180,
+  firstDelay: 25,
+  clean: { gap: [300, 480], bonus: 6, truckP: 0.6 },
+  battle: { gap: [180, 240], bonus: 9, dumpEvery: 2, group: { 1: [1, 2], 2: [2, 2], 3: [2, 3], 4: [2, 3], 5: [3, 3] } },
+  truckMax: 140, // 트럭 한 번에 쌓는 최대 (방금 치운 보람을 지우지 않게. 전투 오름은 투기꾼이 두 번에 한 번이라 시간당 양이 줄고 몹이 헤집는 쓰레기가 더해짐)
+  near: 140, // 투기꾼이 노릴 더미: 플레이어에서 이 거리 안을 먼저 (보이는 곳에서 사건이 일어나게)
+  protect: 600, // 방금(이 초 안에) 다 치운 더미에는 투기꾼이 다시 쌓지 않음
+  busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
+  riseT: 3, fallT: 5,
+  edge: 0.6, camIn: 0.1, sky: 0.12,
+  hitStop: 0.06, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율
+  combo: { gap: 1.6, max: 10 }, // 줍기 콤보: 이 초 안에 이어 주우면 음이 한 칸씩 올라감 (최대 칸)
+  bloomLayer: { heap: 14, zone: 32 }, // 꽃이 피면 음악에 한 겹 더해지는 시간(초)
+  delight: { luckyT: 60, luckyMul: 8, deerT: 45, flyT: 40 },
 };
 
 // 탐방로 선 모양 (#67). 길이는 실제 m. trailshape.js 가 이 값으로 nsPaths 를 만든다
