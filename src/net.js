@@ -7,7 +7,7 @@ import { EMOTE_BY } from './emotes.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
-export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook }) { // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
+export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook, cull = null, animR = 1e9, shadowR = 1e9 }) { // cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
@@ -51,7 +51,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     if (!e) {
       const r = buildRunner();
       r.root.visible = false;
-      scene.add(r.root);
+      scene.add(r.root); cull?.()?.add(r.root, { dynamic: true, shadow: false }); // 그림자는 아래 update 에서 따로
       e = { peer: pr.peer, runner: r, label: null, nick: '', outfitKey: '', pos: new THREE.Vector3(), tpos: new THREE.Vector3(), heading: 0, theading: 0, data: {}, speed: 0, lastPos: new THREE.Vector3(), lastT: 0, poseT: 0 };
       peersById.set(pr.peer, e);
     }
@@ -66,15 +66,15 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     const nick = safeNick(d.nick);
     if (nick !== e.nick) { e.nick = nick; if (e.label) e.runner.root.remove(e.label); e.label = makeLabel(nick); e.runner.root.add(e.label); }
     const ok = JSON.stringify(d.o || null);
-    if (ok !== e.outfitKey) { e.outfitKey = ok; const o = expandOutfit(d.o); if (o) e.runner.apply(o); }
-    const x = Math.max(-600, Math.min(600, d.x)), z = Math.max(-600, Math.min(600, d.z));
+    if (ok !== e.outfitKey) { e.outfitKey = ok; const o = expandOutfit(d.o); if (o) { e.runner.apply(o); e.shadow = null; } }
+    const x = Math.max(-2000, Math.min(2000, d.x)), z = Math.max(-2000, Math.min(2000, d.z)); // 남송이는 들머리가 x -860 쯤이라 ±600 이면 잘렸음 (#79)
     if (!e.runner.root.visible) { e.pos.set(x, height(x, z), z); e.runner.root.visible = true; }
     e.tpos.set(x, groundAt(x, z), z);
     e.theading = typeof d.h === 'number' ? d.h : e.theading;
   }
   function removePeer(id) {
     const e = peersById.get(id); if (!e) return;
-    scene.remove(e.runner.root); peersById.delete(id);
+    scene.remove(e.runner.root); cull?.()?.remove(e.runner.root); peersById.delete(id);
     if (hand.with === id) { hand.with = null; onToast('손을 놓았어요'); }
     if (hand.req === id) hand.req = null;
     if (hand.pendingFrom === id) hand.pendingFrom = null;
@@ -139,10 +139,11 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     room.presence(obj).catch(() => {});
   }
 
+  const prevP = new THREE.Vector3();
   function update(dt) {
     for (const e of peersById.values()) {
       const k = Math.min(1, dt * 10);
-      const prev = e.pos.clone();
+      const prev = prevP.copy(e.pos);
       e.pos.lerp(e.tpos, k);
       let dh = e.theading - e.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); e.heading += dh * k;
       const sp = typeof e.data.spd === 'number' ? e.data.spd : prev.distanceTo(e.pos) / Math.max(dt, 1e-3);
@@ -152,7 +153,10 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       const rh = rideHook ? rideHook(e, dt) : null;
       r.root.position.copy(e.pos); r.root.position.y += (typeof e.data.jy === 'number' ? e.data.jy : 0) + (rh?.lift || 0);
       r.root.rotation.y = e.heading;
-      if (e.label) { const d = e.pos.distanceTo(player.pos); const op = d < 10 ? 1 : d < 18 ? 1 - (d - 10) / 8 : 0; e.label.material.opacity = op; e.label.visible = op > 0.02; }
+      const d0 = e.pos.distanceTo(player.pos);
+      if (e.label) { const d = d0; const op = d < 10 ? 1 : d < 18 ? 1 - (d - 10) / 8 : 0; e.label.material.opacity = op; e.label.visible = op > 0.02; }
+      const sh = d0 < shadowR; if (sh !== e.shadow) { e.shadow = sh; r.root.traverse((c) => { if (c.isMesh) c.castShadow = sh; }); } // 가까운 사람만 그림자 (#79)
+      if (d0 > animR && !rh) continue; // 멀면 자리만 옮김 (#79)
       const pose = typeof e.data.pose === 'string' ? e.data.pose : 'move';
       r.setTint(!!e.data.yl);
       const ov = rh && overHook ? overHook(e) : null; // 탈것 위 손동작 (#76)
@@ -172,5 +176,6 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   function cancelRequest() { hand.req = null; send(true); }
   function hitPeer(peerId) { hitOut = { p: peerId, at: Date.now() }; send(true); setTimeout(() => { if (hitOut && hitOut.p === peerId) { hitOut = null; send(true); } }, 4000); }
 
-  return { start, send, update, nearestPeer, request, accept, decline, release, cancelRequest, hitPeer, hand, peersById, get myPeer() { return myPeer; }, get ready() { return ready; }, get count() { return peersById.size; } };
+  return { start, send, update, nearestPeer, request, accept, decline, release, cancelRequest, hitPeer, hand, peersById, test: { fake: applyPeer, drop: removePeer }, // test: 가짜 사람 넣기·빼기 (#79 성능 재기)
+     get myPeer() { return myPeer; }, get ready() { return ready; }, get count() { return peersById.size; } };
 }

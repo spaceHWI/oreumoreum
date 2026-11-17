@@ -164,7 +164,10 @@ function buildModel() {
   const rel = (k, parent) => { const a = JOINT[k], b = parent ? JOINT[parent] : [0, 0, 0]; bones[k].position.set(a[0] - b[0], a[1] - b[1], a[2] - b[2]); if (parent) bones[parent].add(bones[k]); };
   rel('hips'); rel('chest', 'hips'); rel('head', 'chest'); rel('armL', 'chest'); rel('armR', 'chest'); rel('legL', 'hips'); rel('legR', 'hips');
   const mesh = new THREE.SkinnedMesh(geo, mat); mesh.add(bones.hips); mesh.bind(new THREE.Skeleton(BONE_ORDER.map((k) => bones[k])));
-  mesh.frustumCulled = false; mesh.castShadow = true; mesh.receiveShadow = false;
+  mesh.castShadow = true; mesh.receiveShadow = false;
+  // 화면 밖·그림자 영역 밖이면 그리지 않게 (#79): 뼈가 움직여도 들어가도록 기본 자세 구를 넉넉히 키워 고정 (전엔 frustumCulled = false 로 늘 그림)
+  const padSphere = (g) => { g.computeBoundingSphere(); const sp = g.boundingSphere.clone(); sp.radius *= 1.7; return sp; };
+  mesh.boundingSphere = padSphere(geo);
   mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); mesh.customDepthMaterial.onBeforeCompile = patchDQS; // 그림자도 같은 방식으로 굽힘
   const holder = new THREE.Group(); holder.scale.setScalar(MODEL_S); holder.add(mesh);
   // 장비: 칸마다 하나. 뼈에 붙이거나(단단한 것) 같은 뼈대로 휘게(옷) 붙임
@@ -186,7 +189,7 @@ function buildModel() {
           if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(gi); });
         byMat.forEach((gs, m) => { const g = gs.length > 1 ? mergeGeometries(gs) : gs[0]; const { si, sw } = skinWeights(g.attributes.position.array);
           g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
-          m.onBeforeCompile = patchDQS; const sm = new THREE.SkinnedMesh(g, m); sm.bind(mesh.skeleton, mesh.bindMatrix); sm.frustumCulled = false; obj.add(sm); });
+          m.onBeforeCompile = patchDQS; const sm = new THREE.SkinnedMesh(g, m); sm.bind(mesh.skeleton, mesh.bindMatrix); sm.boundingSphere = padSphere(g); obj.add(sm); });
         holder.add(obj);
       } else { obj = src; const j = JOINT[a.bone || 'chest']; obj.position.sub(new THREE.Vector3(...j)); bones[a.bone || 'chest'].add(obj); }
       obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });

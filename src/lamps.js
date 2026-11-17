@@ -29,11 +29,14 @@ export function createLamps({ scene, positions, height }) {
   function update(playerPos, nightK) {
     night = nightK;
     bulbMat.emissiveIntensity = nightK * 1.4; poolMat.opacity = nightK * 0.5;
-    if (nightK < 0.02) { lights.forEach((l) => { l.visible = false; }); return; }
+    // 빛 수가 바뀌면 모든 재질 셰이더를 다시 만들어 끊기므로(#79) 밤 동안은 3개를 늘 켜 두고 멀면 세기만 0
+    const on = nightK >= 0.02 && pts.length > 0;
+    if (!on) { lights.forEach((l) => { l.visible = false; }); return; }
     // 가까운 3개
     const near = pts.map((p, i) => [p.distanceToSquared(playerPos), i]).sort((a, b) => a[0] - b[0]).slice(0, 3);
     lights.forEach((l, k) => {
-      const hit = near[k]; if (!hit || hit[0] > 60 * 60) { l.visible = false; return; }
+      l.visible = true;
+      const hit = near[k]; if (!hit || hit[0] > 60 * 60) { l.intensity = 0; return; }
       const p = pts[hit[1]]; const ry = positions[hit[1]][2] || 0;
       l.position.set(p.x + Math.sin(ry) * 0.8, p.y + 3.3, p.z + Math.cos(ry) * 0.8);
       l.intensity = 26 * nightK; l.visible = true;

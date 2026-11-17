@@ -5,6 +5,7 @@ import { NEAR, REL, FAR, FW, FH } from './namsongidata.js';
 import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
+import { TIER } from './quality.js';
 import { COLLIDE, BOUND, HALLA } from './balance.js';
 import { buildHalla } from './halla.js';
 import { STREAM_GLSL } from './streamshape.js';
@@ -220,7 +221,7 @@ vec3 groundColor(vec2 p){
 
   /* 풀: 플레이어 주변에만, 밟으면 눕는다. 능선 위는 억새처럼 길고 누렇다 */
   const grass = (() => {
-    const N = LOW ? 17000 : 52000, w = 0.055 * K;
+    const N = [9000, 17000, 52000][TIER], w = 0.055 * K; // 성능 단계 낮음은 더 적게 (#79)
     const pos = [], idx = [];
     function blade(ox, oz, ax, az, h) { const b = pos.length / 3; [[-w, 0], [w, 0], [-w * 0.62, 0.5], [w * 0.62, 0.5], [0, 1]].forEach((v) => pos.push(ox + ax * v[0], v[1] * h, oz + az * v[0])); idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2, b + 2, b + 3, b + 4); }
     blade(0, 0, 1, 0, 1); blade(0.07 * K, 0.05 * K, 0.2, 1, 0.72);

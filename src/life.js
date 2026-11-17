@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { height, surfaceAt } from './world.js';
 import { createEnemies } from './enemies.js';
 import { SCATTER, THROW_DMG, BOW, TANGERINE as TG } from './balance.js';
@@ -93,6 +94,13 @@ export function buildHareubang() {
   const mouth = box(0.42, 0.08, 0.1, dark); mouth.position.set(0, 2.08, 0.5); g.add(mouth);
   const hl = box(0.3, 0.26, 0.5, stone); hl.position.set(-0.45, 1.45, 0.4); hl.rotation.z = 0.3; g.add(hl);
   const hr = box(0.3, 0.26, 0.5, stone); hr.position.set(0.45, 1.05, 0.4); hr.rotation.z = -0.3; g.add(hr);
+  // 움직이지 않는 조각(받침·몸·눈·코·입·손)은 재질마다 한 메시로 합침 (#79 그리기 횟수 10 → 4). 머리·모자는 맞으면 흔들려서 따로
+  for (const m of [stone, dark]) {
+    const parts = g.children.filter((o) => o.isMesh && o.material === m && o !== head && o !== hat);
+    if (parts.length < 2) continue;
+    const gs = parts.map((o) => { o.updateMatrix(); return o.geometry.clone().applyMatrix4(o.matrix); });
+    parts.forEach((o) => g.remove(o)); g.add(new THREE.Mesh(mergeGeometries(gs), m));
+  }
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   return { root: g, head, hat };
 }

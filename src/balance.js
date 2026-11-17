@@ -721,3 +721,18 @@ export const HALLA = {
   demCap: 420,       // 먼 땅 고도 자료에서 이 높이(m) 위는 줄여 한라산 원경과 겹치지 않게
   demKeep: 0.18,     // 줄일 때 남기는 비율
 };
+
+// 기기 성능 단계 (#79): 0 낮음 · 1 보통 · 2 높음. 자동이면 기기로 고르고(폰·코어 4개 이하 → 보통, 약한 GPU·코어 2개 이하·메모리 2GB 이하 → 낮음, 그 밖 높음), 메뉴에서 바꿀 수 있음
+export const PERF = {
+  names: ['낮음', '보통', '높음'],
+  pr: [1, 1.25, 1.75],          // 픽셀 배율 상한 (높음이면서 폭 700 아래는 prNarrow)
+  prNarrow: 1.6,
+  shadow: [1024, 1024, 0],      // 그림자 지도 크기 (0 = 맵 기본값)
+  // 멀리 있는 작은 물체(여러 메시로 된 하르방·NPC·동물·가게 소품·다른 사람) 감추는 거리. 단계마다 곱함, 크기(반지름)만큼 더 멀리까지
+  cull: { r: 170, perRadius: 10, mul: [0.7, 1, 1.4], every: 0.2, hyst: 8, shadowR: [30, 45, 70] }, // shadowR: 이 거리 밖이면 그림자만 끔(그림자 영역이 넓어 작은 물체 그림자 패스가 많음)
+  peerAnimR: [40, 60, 90],      // 다른 사람 동작(뼈대) 갱신은 이 거리 안만, 그 밖은 자리만 옮김
+  peerShadowR: [0, 18, 35],     // 다른 사람 그림자는 이 거리 안만 (사람마다 메시 15개라 그림자 패스가 크게 늚)
+  weakGpu: /swiftshader|llvmpipe|softpipe|mali-4|mali-t[0-7]|adreno \(tm\) [2-4]\d\d|powervr sgx|intel.*hd graphics [2-5]\d\d0?\b/i,
+  // 자동일 때 느리면 한 칸씩 내림: 프레임이 slowDt 넘게 slowT 초 이어지면 (픽셀 배율 → 그림자 끔), fastDt 아래로 fastT 초면 되돌림
+  slowDt: 0.045, slowT: 2.5, fastDt: 0.02, fastT: 20,
+};
