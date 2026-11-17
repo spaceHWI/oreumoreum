@@ -682,7 +682,8 @@ function buildAch() {
     const nm = document.createElement('b'); nm.style.fontWeight = '600'; nm.textContent = b.fam ? `${b.name}${tierN ? ` ${tierN}단계` : ''}` : b.name;
     const ds = document.createElement('small'); ds.textContent = st ? b.desc : `${b.desc}${b.goal > 1 ? ` (${Math.min(b.goal, ach.state.life[b.ev] || 0).toLocaleString('ko-KR')}/${b.goal.toLocaleString('ko-KR')})` : ''}`;
     el.append(circ, nm, ds);
-    if (st && !st.claimed) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip claim'; c.textContent = `귤 ${b.reward}${b.item ? ' + 아이템' : ''} 받기`; c.addEventListener('click', () => { const got = ach.claim('badge', b.id); if (got) { addCoins(got.reward, `뱃지 ${got.name}`); if (got.item) { save.owned[got.item] = 1; persist(); toast(`뱃지 보상 아이템이 옷장에 들어왔어요`); } } refreshAchUI(); buildAch(); }); el.append(c); }
+    // #16: 예전 옷 색 보상(item)은 #52 옷장과 이어지지 않아 귤만 줌
+    if (st && !st.claimed) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip claim'; c.textContent = `귤 ${b.reward} 받기`; c.addEventListener('click', () => { const got = ach.claim('badge', b.id); if (got) addCoins(got.reward, `뱃지 ${got.name}`); refreshAchUI(); buildAch(); }); el.append(c); }
     bl.append(el);
   });
 }
@@ -2036,7 +2037,10 @@ function tickDump(dt) {
 const chArrow = $('ch-arrow'), shopArrow = $('shop-arrow');
 let shopHintUntil = 0; // 버린 직후 살 수 있는 장비가 있으면 이때까지 가판대 쪽 표시
 // 목표가 화면 안이면 위에서 가리키고, 밖이면 가장자리에서 그 방향 화살표
+const edgeAt = new Map();
 function placeArrow(el, wp, lift) {
+  // 표시끼리 겹치면 비켜 놓음 (#16: 클린하우스·가판대·마차 표시가 한 자리에 겹침). 지금 보이는 다른 표시의 마지막 자리와 비교
+  const edgeUsed = []; edgeAt.forEach((v, o) => { if (o !== el && !o.hidden) edgeUsed.push(v); });
   chV.copy(wp); chV.y += lift; chV.project(camera);
   const W = innerWidth, H = innerHeight, behind = chV.z > 1;
   let x = chV.x, y = chV.y; if (behind) { x = -x; y = -y; }
@@ -2050,7 +2054,13 @@ function placeArrow(el, wp, lift) {
     const cx = W / 2, cy = H / 2;
     const tx = dx > 0 ? (W - mR - cx) / dx : dx < 0 ? (mL - cx) / dx : 1e9, ty = dy > 0 ? (H - mB - cy) / dy : dy < 0 ? (mT - cy) / dy : 1e9;
     const t = Math.min(tx, ty); sx = cx + dx * t; sy = cy + dy * t; ang = Math.atan2(dy, dx);
+    const side = tx <= ty, G = 46;
+    for (let k = 0; k < 6 && edgeUsed.some(([ux, uy]) => Math.hypot(ux - sx, uy - sy) < G); k++) {
+      if (side) { sy += sy > cy ? -G : G; sy = Math.max(mT, Math.min(H - mB, sy)); } else { sx += sx > cx ? -G : G; sx = Math.max(mL, Math.min(W - mR, sx)); }
+    }
   }
+  if (vis) for (let k = 0; k < 4 && edgeUsed.some(([ux, uy]) => Math.hypot(ux - sx, uy - sy) < 40); k++) sy -= 40; // 화면 안에서 가리키는 표시는 위로 쌓음
+  edgeAt.set(el, [sx, sy]);
   el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
   el.style.setProperty('--a', ang.toFixed(3) + 'rad');
 }

@@ -147,7 +147,7 @@ export const SHOES = [
   { tier: 5, name: '바람 신발', speed: 1.45, price: 2100 },
 ];
 
-// 클린하우스(재활용장): 들머리 한 곳. 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
+// 클린하우스(재활용장): 들머리 한 곳 + 오름 안 작은 것 4곳(#78). 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
 export const CLEANHOUSE = {
   r: 7, // 이 거리 안이면 상호작용 버튼이 '버리기'
   shopR: 3.2, // 옆 귤 가판대 앞 이 거리 안이면 '상점'

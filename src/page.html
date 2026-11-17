@@ -89,6 +89,8 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 .toast { position: fixed; left: 50%; top: calc(var(--safe-t) + 92px); transform: translateX(-50%); padding: 8px 14px; font-size: 14px; z-index: 8; max-width: calc(100vw - 32px); text-align: center; }
 #banner { position: fixed; left: 50%; top: calc(var(--safe-t) + 64px); transform: translateX(-50%); z-index: 9; padding: 10px 14px; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); }
 #banner .bdg { flex: none; }
+/* #16: left 50% 인 고정 상자는 폭이 화면 절반으로 줄어 폰에서 글자가 한 자씩 세로로 섬. 내용 폭으로 */
+#banner, .toast, .tip-toast { width: max-content; } #banner > div { min-width: 0; } #banner-go { flex: none; white-space: nowrap; }
 #banner b { font-family: var(--display); font-weight: 800; font-size: 18px; display: block; }
 #banner small { color: var(--ink-soft); }
 
