@@ -92,3 +92,57 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
   }
   return { root, binTop, front, center, shopFront, stallTop: mark.position, mark, update, pop: (i) => { bump[i] = 1; }, types: TRASH_TYPES };
 }
+
+// 오름 안 작은 클린하우스 (#78): 지붕 있는 통 넷(캔·페트병·비닐·스티로폼+폐어구). 가판대·실제 광원 없음
+// 비탈이면 현무암 단을 높은 쪽에 맞춰 쌓아 통이 묻히지 않게 함. 돌려주는 모양은 createCleanhouse 와 같음(binTop·pop 은 쓰레기 종류 번호)
+export function createMiniCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
+  const root = new THREE.Group();
+  const W = 4.0, D = 1.7, H = 2.15, MAP = CLEANHOUSE.miniBins;
+  const fw = new THREE.Vector3(Math.sin(rot), 0, Math.cos(rot)), rt = new THREE.Vector3(Math.cos(rot), 0, -Math.sin(rot));
+  let lo = 1e9, hi = -1e9; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]]) { const y = height(x + rt.x * a * W / 2 + fw.x * b * D / 2, z + rt.z * a * W / 2 + fw.z * b * D / 2); lo = Math.min(lo, y); hi = Math.max(hi, y); }
+  const top = hi + 0.08, base = top - lo + 0.5; // 단 높이: 가장 낮은 귀퉁이 밑까지
+  root.position.set(x, top, z); root.rotation.y = rot;
+  const parts = [];
+  parts.push(piece(new THREE.BoxGeometry(W + 0.5, base, D + 0.6).translate(0, -base / 2, 0), '#5a5f63')); // 현무암 단
+  parts.push(piece(new THREE.BoxGeometry(W + 0.62, 0.1, D + 0.72).translate(0, -0.03, 0), '#4a4f53')); // 단 테
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) parts.push(piece(new THREE.BoxGeometry(0.14, H, 0.14).translate(a * (W / 2 - 0.08), H / 2, b * (D / 2 - 0.08)), '#3b4a42'));
+  const roof = new THREE.BoxGeometry(W + 0.6, 0.13, D + 0.8); roof.rotateX(-0.14); roof.translate(0, H + 0.12, 0.05);
+  parts.push(piece(roof, '#2f7d5b'));
+  parts.push(piece(new THREE.BoxGeometry(W + 0.64, 0.16, 0.1).translate(0, H + 0.26, D / 2 + 0.45), '#f2efe4')); // 앞 처마 띠
+  const BW = 0.84, gap = 0.12, x0 = -((BW + gap) * 3) / 2, cols = CLEANHOUSE.binColors, binX = [];
+  for (let i = 0; i < 4; i++) {
+    const bx = x0 + i * (BW + gap); binX.push(bx);
+    parts.push(piece(new THREE.BoxGeometry(BW, 0.95, 0.82).translate(bx, 0.475, -0.12), cols[i]));
+    parts.push(piece(new THREE.BoxGeometry(BW * 0.62, 0.34, 0.02).translate(bx, 0.6, 0.3), '#f7f5ee'));
+    parts.push(piece(new THREE.BoxGeometry(BW + 0.05, 0.07, 0.88).translate(bx, 0.04, -0.12), '#2b2f33'));
+  }
+  // 표지판 위 종류 그림: 쓰레기 모양을 납작하게 본체에 합침 (그리기 횟수 줄이기)
+  if (trashGeos) [0, 1, 2, 3].forEach((i) => { const g = trashGeos[i].clone(); g.deleteAttribute('color'); parts.push(piece(g.scale(0.42, 0.42, 0.08).translate(binX[i], 0.54, 0.32), '#4a4f55')); });
+  const mat = miniMat();
+  const body = new THREE.Mesh(mergeGeometries(parts), mat); body.castShadow = !low; body.receiveShadow = !low; root.add(body);
+  const lidY = 1.0;
+  const lids = binX.map((bx, i) => { const m = new THREE.Mesh(piece(new THREE.BoxGeometry(BW + 0.05, 0.08, 0.88), new THREE.Color(cols[i]).lerp(new THREE.Color('#ffffff'), 0.18)), mat); m.position.set(bx, lidY, -0.12); m.castShadow = !low; root.add(m); return m; });
+  // 밤: 지붕 밑 등 + 바닥 빛웅덩이만 (실제 광원은 들머리 것 하나)
+  const bulbMat = new THREE.MeshLambertMaterial({ color: '#fff3c4', emissive: '#ffd27a', emissiveIntensity: 0 });
+  const bulb = new THREE.Mesh(new THREE.BoxGeometry(W * 0.6, 0.07, 0.18), bulbMat); bulb.position.set(0, H - 0.04, 0.15); root.add(bulb);
+  const poolMat = new THREE.MeshBasicMaterial({ map: poolTexture(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(W + 3, D + 4).rotateX(-Math.PI / 2), poolMat); pool.position.set(0, 0.04, 0.9); pool.renderOrder = 2; root.add(pool);
+  scene.add(root); root.updateMatrixWorld(true);
+  const toWorld = (lx, ly, lz) => new THREE.Vector3(lx, ly, lz).applyMatrix4(root.matrixWorld);
+  const binTop = MAP.map((b) => toWorld(binX[b], lidY + 0.1, -0.12));
+  const front = toWorld(0, 0, D / 2 + 1.5); front.y = height(front.x, front.z);
+  const center = toWorld(0, 0, 0);
+  const bump = [0, 0, 0, 0];
+  function update(dt, night) {
+    bulbMat.emissiveIntensity = night * 1.5; poolMat.opacity = night * 0.5;
+    for (let i = 0; i < 4; i++) { if (bump[i] <= 0) continue; bump[i] = Math.max(0, bump[i] - dt * 4); const k = Math.sin(bump[i] * Math.PI); lids[i].position.y = lidY + k * 0.15; lids[i].rotation.x = -k * 0.25; }
+  }
+  return { root, binTop, front, center, shopFront: null, stallTop: null, update, pop: (k) => { bump[MAP[k]] = 1; }, types: TRASH_TYPES, small: true };
+}
+let poolTex = null, miniM = null;
+const miniMat = () => miniM || (miniM = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard }));
+function poolTexture() {
+  if (poolTex) return poolTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 4, 64, 64, 62); gr.addColorStop(0, 'rgba(255,215,140,1)'); gr.addColorStop(0.5, 'rgba(255,200,120,0.4)'); gr.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  poolTex = new THREE.CanvasTexture(c); poolTex.colorSpace = THREE.SRGBColorSpace; return poolTex;
+}

@@ -22,7 +22,7 @@ import { createFishing } from './fishing.js';
 import { streamCross } from './streamshape.js';
 import { createCollide } from './collide.js';
 import { equipGear, TOOL_GEAR, ACCESSORIES, SHOE_GEAR } from './gear.js';
-import { createCleanhouse } from './cleanhouse.js';
+import { createCleanhouse, createMiniCleanhouse } from './cleanhouse.js';
 import { buildTrailGraph, trailRoute } from './autowalk.js';
 import { gradHard } from './toon.js';
 import { createRetro } from './retro.js';
@@ -444,12 +444,16 @@ const LEAPB = shopsBuilt.find((sh) => sh.id === 'leap')?.api || null; // LEAP (#
 const buff = createBuff({ save, persist, onEnd: (m) => { if (m) { toast('식사 버프가 끝났어요'); tips.event('buffEnd'); } } });
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
 const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, rareMul: () => wearV('hat') }) : null; // 구역마다 쓰레기 더미 (#45)
+const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
+// 오름 안 작은 클린하우스 (#78). 충돌은 더미 자리를 정한 뒤에 등록(더미 자리·저장이 바뀌지 않게)
+const CH_MINI = CH ? (spots.cleanMinis || []).map((m) => { const c = createMiniCleanhouse({ scene, height, ...m, low: LOW, trashGeos: trash.geos }); c.id = m.id; c.name = m.name; if (col) { col.addBox(m.x, m.z, m.rot, 2.3, 1.05); } return c; }) : [];
+const CHS = CH ? [CH, ...CH_MINI] : []; // 모든 클린하우스. 버리기·화살표·자동 걷기는 가장 가까운 곳
+const chNear = (p = player.pos) => { let b = null, bd = 1e18; for (const c of CHS) { const d = (c.front.x - p.x) ** 2 + (c.front.z - p.z) ** 2; if (d < bd) { bd = d; b = c; } } return b; };
+const chActs = CHS.map((c) => ({ ch: c, ic: 'dump', label: '버리기', pos: c.front, r: CLEANHOUSE.r, act: () => dumpBag(c) }));
+const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46): 풀 색·꽃·나무·나비·새, 다 핀 구역엔 노루가 돌아오고 몹이 나오지 않음
 const bloom = trash ? createBloom({ scene, ns: NSW, trash, height, onPath: (x, z) => surfaceAt(x, z) !== 0, col, low: LOW }) : null;
 const bfx = bloom ? createBloomFx({ scene, height, tier: () => (LOW ? 0 : quality.level) }) : null; // 치웠을 때·꽃밭 효과 (#65)
-const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
-const chAct = CH && { ch: true, ic: 'dump', label: '버리기', pos: CH.front, r: CLEANHOUSE.r, act: () => dumpBag() };
-const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => openShop('gear') };
 // ---------- 마차 (#69): 들머리 ↔ 능선 ↔ 정상 아래. 위치는 시각에서 계산 ----------
 const cart = NS_TUT ? createCart({ scene, height, low: LOW, col }) : null;
 let cartShift = 0; // 확인용: 마차 시각을 앞당김 (__oreum.rides.cart.shift)
@@ -1746,7 +1750,7 @@ const interactables = [
   { label: '앉아 쉬기', ic: 'sit', pos: benchPos, r: 8, act: sitDown },
   ...(spots.sign.silent ? [] : [{ label: '안내 읽기', ic: 'sign', pos: spots.sign.pos, r: 6, act: () => openSign() }]),
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
-  ...(chAct ? [chAct, shopAct] : []),
+  ...chActs, ...(shopAct ? [shopAct] : []),
   ...shopActs,
 ];
 let ctxTarget = null, handAct = null, deerAct = null;
@@ -1772,7 +1776,7 @@ const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POC
 const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0);
 const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && (tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
-function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 들머리 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
+function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 가까운 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
 const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
 function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
@@ -1923,13 +1927,14 @@ if (bloom) {
   syncBloomDeer();
   life.hooks.spawnBlock = (x, z) => bloom.isBloomed(trash.zoneAt(x, z));
 }
+if (CH_MINI.length) { const bl = life.hooks.spawnBlock, K2 = CLEANHOUSE.keep ** 2; life.hooks.spawnBlock = (x, z) => CH_MINI.some((c) => (c.center.x - x) ** 2 + (c.center.z - z) ** 2 < K2) || !!bl?.(x, z); } // 클린하우스 둘레엔 몹 없음 (#78)
 if (street) { const bl = life.hooks.spawnBlock, R = STREET.radius + SHOP_ST.keepPad; life.hooks.spawnBlock = (x, z) => Math.hypot(x - STREET.center.x, z - STREET.center.z) < R || !!bl?.(x, z); } // 가게 거리 둘레엔 몹 없음 (#57)
 if (trash) life.hooks.zoneAt = (x, z) => trash.zoneAt(x, z); // 구역별 몹 (#48): 플레이어가 있는 구역의 종류가 나옴
 // ---------- 클린하우스: 배낭 비우고 귤 받기 ----------
 // 귤·저장은 누르는 순간 한 번에 처리하고, 날아가는 쓰레기와 올라가는 숫자는 연출만 한다
 const dumpS = { list: [], t: 0, dur: 0, total: 0, shown: 0, el: null, sndT: 0 };
-function dumpBag() {
-  if (!CH || dumpS.el) return;
+function dumpBag(ch = chNear()) {
+  if (!ch || dumpS.el) return;
   const bag = trash.store.bag, per = []; let n = 0, g = 0;
   const vk = 1 + wearV('vest'); // 베스트(#52): 받는 귤 더함
   TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });
@@ -1957,7 +1962,7 @@ function dumpBag() {
   dumpS.t = 0; dumpS.dur = CLEANHOUSE.dumpTime; dumpS.total = g; dumpS.shown = 0; dumpS.sndT = 0;
   const el = document.createElement('div'); el.className = 'fx-recycle'; el.innerHTML = '<i></i><b>+0</b>'; document.body.append(el); dumpS.el = el;
   player.target = null; player.onArrive = null; marker.visible = false; player.speed = 0;
-  player.heading = Math.atan2(CH.center.x - player.pos.x, CH.center.z - player.pos.z) || player.heading;
+  dumpS.ch = ch; player.heading = Math.atan2(ch.center.x - player.pos.x, ch.center.z - player.pos.z) || player.heading;
 }
 const chV = new THREE.Vector3();
 function tickDump(dt) {
@@ -1966,9 +1971,9 @@ function tickDump(dt) {
   for (const f of dumpS.list) {
     if (f.done) continue;
     const k = (dumpS.t - f.t0) / f.dur; if (k < 0) continue;
-    const to = CH.binTop[f.k];
+    const to = dumpS.ch.binTop[f.k];
     if (k >= 1) {
-      f.done = true; scene.remove(f.mesh); CH.pop(f.k); dumpS.shown += f.share;
+      f.done = true; scene.remove(f.mesh); dumpS.ch.pop(f.k); dumpS.shown += f.share;
       if (dumpS.sndT <= 0) { sound.pick?.(TRASH_TYPES[f.k].id); dumpS.sndT = 0.07; }
       continue;
     }
@@ -1979,7 +1984,7 @@ function tickDump(dt) {
   const allDone = dumpS.list.every((f) => f.done);
   const n = allDone ? dumpS.total : dumpS.shown;
   const b = dumpS.el.querySelector('b'), txt = `+${n}`; if (b.textContent !== txt) { b.textContent = txt; dumpS.el.classList.remove('tick'); void dumpS.el.offsetWidth; dumpS.el.classList.add('tick'); }
-  chV.copy(CH.center); chV.y += 4.6; chV.project(camera);
+  chV.copy(dumpS.ch.center); chV.y += dumpS.ch.small ? 3.6 : 4.6; chV.project(camera);
   dumpS.el.style.left = ((chV.x * 0.5 + 0.5) * innerWidth) + 'px'; dumpS.el.style.top = ((-chV.y * 0.5 + 0.5) * innerHeight - Math.min(1, dumpS.t / dumpS.dur) * 26) + 'px';
   dumpS.el.style.visibility = chV.z > 1 ? 'hidden' : '';
   if (allDone && !dumpS.end) { dumpS.end = true; sound.recycle?.(); toast(`클린하우스에 버렸어요 · 귤 +${dumpS.total}`); }
@@ -2010,12 +2015,20 @@ function placeArrow(el, wp, lift) {
 // 클린하우스 표시를 누르면 탐방로를 따라 자동으로 걸어감 (#40). 조이스틱·방향키·다시 누르기·패널 열림·쓰러짐이면 멈춤
 let autoGo = null, trailG = null;
 function stopAutoGo() { if (!autoGo) return; player.running = autoGo.run; player.gait = autoGo.gait; autoGo = null; if (player.target) { player.target = null; player.onArrive = null; marker.visible = false; } }
+// 길 거리로 가장 가까운 클린하우스 (#78)
+const routeLen = (from, r) => { let L = 0, a = from; for (const q of r) { L += Math.hypot(q.x - a.x, q.z - a.z); a = q; } return L; };
+function chRoute() {
+  if (!trailG) trailG = buildTrailGraph(nsPaths, 6);
+  let best = null;
+  for (const c of CHS) { const r = trailRoute(trailG, player.pos, c.front), L = routeLen(player.pos, r); if (!best || L < best.L) best = { ch: c, r, L }; }
+  return best;
+}
 function startAutoGo() {
   if (!CH || autoGo || busy() || player.riding || hp.isDown) return;
-  if (!trailG) trailG = buildTrailGraph(nsPaths, 6);
-  const route = trailRoute(trailG, player.pos, CH.front).map((q) => new THREE.Vector3(q.x, height(q.x, q.z), q.z));
-  if (player.pos.distanceTo(CH.front) < CLEANHOUSE.arrowNear * 0.4) return;
-  autoGo = { route, i: 0, cur: null, run: player.running, gait: player.gait }; player.running = true;
+  const b = chRoute(); if (!b) return;
+  const route = b.r.map((q) => new THREE.Vector3(q.x, height(q.x, q.z), q.z));
+  if (player.pos.distanceTo(b.ch.front) < CLEANHOUSE.arrowNear * 0.4) return;
+  autoGo = { route, i: 0, cur: null, run: player.running, gait: player.gait, ch: b.ch }; player.running = true;
   const nextWp = () => { const last = autoGo.i === autoGo.route.length - 1; setTarget(autoGo.route[autoGo.i], last ? () => { stopAutoGo(); } : null); if (!last) marker.visible = false; autoGo.cur = player.target; };
   autoGo.next = nextWp; nextWp();
 }
@@ -2030,12 +2043,13 @@ chArrow.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropa
 chArrow.addEventListener('click', (e) => { e.stopPropagation(); if (autoGo) stopAutoGo(); else startAutoGo(); });
 function tickChArrow() {
   const full = !!CH && bagRoom() < 1;
-  const on = !!CH && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen() && (player.pos.distanceTo(CH.front) > CLEANHOUSE.arrowNear || !!autoGo);
+  const ch = autoGo?.ch || chNear(); // 가는 중이면 그곳, 아니면 가장 가까운 곳 (#78)
+  const on = !!ch && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen() && (player.pos.distanceTo(ch.front) > CLEANHOUSE.arrowNear || !!autoGo);
   if (!on) { if (!chArrow.hidden) chArrow.hidden = true; }
   else {
-    chArrow.hidden = false; placeArrow(chArrow, CH.center, 4.2);
+    chArrow.hidden = false; placeArrow(chArrow, ch.center, ch.small ? 3.2 : 4.2);
     chArrow.classList.toggle('full', full); chArrow.classList.toggle('going', !!autoGo);
-    const d = Math.round(player.pos.distanceTo(CH.front)) + 'm', dn = chArrow.querySelector('small'); if (dn.textContent !== d) dn.textContent = d;
+    const d = Math.round(player.pos.distanceTo(ch.front)) + 'm', dn = chArrow.querySelector('small'); if (dn.textContent !== d) dn.textContent = d;
   }
   // 가판대 쪽 짧은 표시: 앞에 오면 끝
   if (shopHintUntil && (performance.now() > shopHintUntil || player.pos.distanceTo(CH.shopFront) < CLEANHOUSE.shopR || !canBuyGear().length)) shopHintUntil = 0;
@@ -2797,7 +2811,7 @@ function frame(now) {
   camHold = Math.max(0, camHold - dt);
   hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + cartShift, camera.position); // 마차 (#69): 앉은 사람이 따라가게 먼저
-  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (camPullT >= 0) { camPullT += dt; if (camPullT > BLOOM_FX.zone.camT) camPullT = -1; } } if (CH) { CH.update(dt, lampNight); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
+  tickAutoGo(); updatePlayer(dt); tickKnock(dt); tickJuice(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (camPullT >= 0) { camPullT += dt; if (camPullT > BLOOM_FX.zone.camT) camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); devLabels.update(dt); if (!lookS.open) tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight);
   net.update(dt); net.send(false); updateHandLine();
   if (sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
@@ -2967,5 +2981,5 @@ window.__oreum = { emo, doEmote, net, rides: { // 탈것·마차 (#69)
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
   cart: cart && { api: cart, board: () => boardCart(), leave: (j) => leaveCart(!!j), state: () => ({ ...cart.state }), mark: () => !cartMark.hidden, wait: (i) => cart.stops[i] && cart.stops[i].ring.visible, goStop: (i) => { const S = cart.stops[i]; player.pos.set(S.pos.x, groundAt(S.pos.x, S.pos.z), S.pos.z); }, shift: (v) => { cartShift = v; }, at: (stop) => { const now = Date.now() / 1000; for (let t = 0; t < CART.lap; t += 0.5) { const st = cartStateAt(now + t); if (!st.moving && st.stop === stop && st.left > 6) { cartShift = t; return t; } } return null; }, goCart: () => { player.pos.set(cart.pos.x + 3, 0, cart.pos.z); player.pos.y = groundAt(player.pos.x, player.pos.z); } },
-}, street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CH.front, { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
+}, street: street && { layout: STREET, built: street, shops: shopsBuilt, open: openShopPop, popNow: () => !$('shoppop').hidden && shopPopNow, mark: () => !shopMark.hidden && shopMarkId, go: (i = 0, s = 0) => { const p = i ? STREET.lot(i).front : STREET.P(s, 0); player.pos.set(p.x, groundAt(p.x, p.z), p.z); player.heading = i ? STREET.lot(i).rot + Math.PI : Math.atan2(STREET.ax, STREET.az); } }, clothes: { state: () => structuredClone(CL), stats: () => Object.fromEntries(WEAR.slots.map((w) => [w.stat, wearV(w.k)])), wear: (slot, id) => wearCloth(slot, id), buy: buyCloth, give: (id) => { if (CLOTH[id]) { CL.own[id] = 1; persist(); } }, bagCap: () => bagCap(), hpMax: () => hp.max, refund: () => wearRefund }, look: { open: openLook, close: closeLook, set: (sex, skin) => { if (sex) lookS.sex = sex; if (skin != null) lookS.skin = skin; lookPreview(); }, state: () => ({ open: lookS.open, sex: lookS.sex, skin: lookS.skin, look: save.look, hairs: { ...save.hairs }, hat: save.outfit.gear?.hat, hair: save.outfit.gear?.hair }) }, leap: LEAPB && { api: LEAPB, open: () => openShopPop('leap'), slot: (k) => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); }, items: (k = leapS.slot) => leapItems(k).map(({ art, cloth, ...r }) => r), pick: (id) => { const it = leapItems(leapS.slot).find((i) => i.id === id); if (it) pickLeap(it); return !!it; }, buy: (id = leapS.pick) => buyLeap(leapItems(leapS.slot).find((i) => i.id === id)), state: () => ({ on: leapS.on, slot: leapS.slot, pick: leapS.pick, tried: leapS.tried, cam: cam.mode, coins: save.coins, shoes: save.equip.shoes, wear: { ...CL.wear } }), go: () => { player.pos.copy(LEAPB.door); player.pos.y = groundAt(LEAPB.door.x, LEAPB.door.z); player.heading = LEAPB.face + Math.PI; } }, salon: SAL && { api: SAL, open: () => openShopPop('salon'), order: (id) => orderCut(HAIR.list.find((h) => h.id === id)?.key), finish: () => finishCut(), sit: () => sitCut(), cut: () => ({ on: cutS.on, phase: cutS.phase, t: cutS.t, hair: cutS.hair }), go: () => { player.pos.copy(SAL.door); player.pos.y = groundAt(SAL.door.x, SAL.door.z); player.heading = SAL.seatHeading; } }, stone: STN && { api: STN, buff, open: openStone, order: (id) => orderMeal(STONE.menu.find((m) => m.id === id)), finish: () => finishMeal(), meal: () => ({ on: mealS.on, phase: mealS.phase, t: mealS.t, item: mealS.item?.id }), go: () => { player.pos.copy(STN.terrace); player.pos.y = groundAt(STN.terrace.x, STN.terrace.z); player.heading = STN.seatHeading + Math.PI; }, mul: (k) => buff.mul(k), cap: () => bagCap(), tool: () => toolNow() }, bloom: bloom && { api: bloom, ...bloom.test, test: bloomTest, fx: bfx, deer: () => Object.fromEntries(Object.entries(bloomDeer).map(([z, l]) => [z, l ? l.length : 0])) }, fish: fishing && { api: fishing, ...fishing.test, go: (side = -1, lat = 3) => { const [x, z] = stream.at(stream.centerOff(lat) + side * (stream.halfW(lat) + 0.7), lat); player.pos.set(x, groundAt(x, z), z); player.heading = Math.atan2(-side * stream.at(1, 0)[0] + side * stream.at(0, 0)[0], -side * stream.at(1, 0)[1] + side * stream.at(0, 0)[1]); }, press: () => fishing.press(), can: () => fishing.canFish() }, weapon: { now: () => weaponNow().id, ammo: () => save.bowAmmo, armed: () => bowArmed(), hold: () => holdBow, fire: () => fireWeapon(), set: (v) => { save.equip.weapon = v; persist(); }, arrows: () => life.arrows.length }, enemies: life.enemies, enemyWarn, dumpers: dumpers && { api: dumpers, ...dumpers.test, warn: dumpWarn }, abStats: () => ab.get(), hp, server: { id: serverId, isBattle, open: openServer }, aim: { target: () => aimTarget(), mark: aimMark, throw: () => throwTangerine(), ctx: () => ctxTarget && (ctxTarget.ic || ctxTarget.label), pick: () => startPick() }, stream, jeong, tut, openJeong, gyulShower, prints, bound: NSW ? NSB : null, wall, setWeather: (k) => wx.set(k), wx, col, cairns, fillCairn, cleanhouse: CH && { api: CH, all: CHS, near: () => chNear(), route: () => { const b = chRoute(); return b && { id: b.ch.id || 'main', L: Math.round(b.L) }; }, goMini: (i = 0) => { const c = CH_MINI[i]; if (!c) return null; player.pos.copy(c.front); player.pos.y = height(c.front.x, c.front.z); player.heading = Math.atan2(c.center.x - c.front.x, c.center.z - c.front.z); return c.id; }, minis: () => CH_MINI.map((c) => ({ id: c.id, name: c.name, x: +c.center.x.toFixed(1), z: +c.center.z.toFixed(1), fx: +c.front.x.toFixed(1), fz: +c.front.z.toFixed(1) })), autoGo: () => startAutoGo(), autoStop: () => stopAutoGo(), autoState: () => autoGo && { i: autoGo.i, n: autoGo.route.length, route: autoGo.route }, dump: () => dumpBag(), go: () => { player.pos.copy(CH.front); player.pos.y = height(CH.front.x, CH.front.z); player.heading = Math.atan2(CH.center.x - CH.front.x, CH.center.z - CH.front.z); }, recycle: () => ({ ...save.recycle, coins: save.coins }), shopHint: () => shopHintUntil, openShop, buyGear, canBuyGear }, trash: trash && { ...trash.test, dexList: DEX_LIST, openDex, checkGearBadges, api: trash, state: () => ({ bag: { ...trash.store.bag }, vol: trash.bagVol(), cap: bagCap(), clean: trash.clean(), zone: zoneNow, zoneClean: zoneNow ? trash.zoneClean(zoneNow) : null, picked: trash.store.pickedCount(), total: trash.store.totalCount(), picking: pickS.cyc >= 0 }), goHeap: (i) => { const h = trash.heaps[i]; if (!h) return null; const a = Math.atan2(player.pos.x - h.x, player.pos.z - h.z), d = h.r + 1.2, x = h.x + Math.sin(a) * d, z = h.z + Math.cos(a) * d; player.pos.set(x, groundAt(x, z), z); player.heading = a + Math.PI; return { x, z }; }, estimate: () => CH && trash.test.estimate(CHS.map((c) => c.front), { TOOLS, BAGS, SHOES }) }, keys, player, sound, devLabels, buildRunner, runner, retro, trail, groundAt, height, cam, interactables, save, life, social, ach, quality, renderer, scene, spots, joy, camObj: camera, setTod: (h) => { todOverride = h; applySky(); }, sunState: () => sunState, snap: () => followCam(0, true), photo: { photog, start: () => startPhoto(), begin: () => beginPhoto(), state: () => photoState && { ...photoState }, pose: () => photoPose, rePose: () => rePoseAct.act(), open: () => !$('photo').hidden, blob: () => photoBlob, canShare: () => canSharePhoto(), close: () => $('photo-close').click() },
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; awe = 0; aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } };

@@ -126,25 +126,25 @@ export const TRASH = {
 export const TOOLS = [
   { tier: 1, name: '맨손', per: 1, time: 0.9, r: 1.6, price: 0 },
   { tier: 2, name: '집게', per: 1, time: 0.5, r: 2.4, price: 100 },
-  { tier: 3, name: '갈퀴', per: 3, time: 0.6, r: 3.2, price: 300 },
-  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 700 },
-  { tier: 5, name: '흡입기', per: 3, rate: 12, time: 0.25, r: 5.0, price: 1500 },
+  { tier: 3, name: '갈퀴', per: 3, time: 0.6, r: 3.2, price: 400 },
+  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 1000 },
+  { tier: 5, name: '흡입기', per: 3, rate: 12, time: 0.25, r: 5.0, price: 2100 },
 ];
 // 배낭: 처음엔 배낭 없이 호주머니(POCKET)만. save.equip.bag 0 = 호주머니, 1~5 = BAGS[bag-1] (#31)
 export const POCKET = { tier: 0, name: '호주머니', cap: 6, price: 0 };
 export const BAGS = [
   { tier: 1, name: '배낭', cap: 20, price: 80 },
   { tier: 2, name: '큰 배낭', cap: 40, price: 200 },
-  { tier: 3, name: '등산 배낭', cap: 80, price: 450 },
-  { tier: 4, name: '대형 배낭', cap: 150, price: 800 },
-  { tier: 5, name: '원정 배낭', cap: 300, price: 1500 },
+  { tier: 3, name: '등산 배낭', cap: 80, price: 650 },
+  { tier: 4, name: '대형 배낭', cap: 150, price: 1100 },
+  { tier: 5, name: '원정 배낭', cap: 300, price: 2100 },
 ];
 export const SHOES = [
   { tier: 1, name: '쓰레빠', speed: 1.0, price: 0 }, // #52 처음엔 쓰레빠
   { tier: 2, name: '러닝화', speed: 1.1, price: 150 },
-  { tier: 3, name: '트레일화', speed: 1.2, price: 400 },
-  { tier: 4, name: '등산화', speed: 1.3, price: 800 },
-  { tier: 5, name: '바람 신발', speed: 1.45, price: 1500 },
+  { tier: 3, name: '트레일화', speed: 1.2, price: 550 },
+  { tier: 4, name: '등산화', speed: 1.3, price: 1100 },
+  { tier: 5, name: '바람 신발', speed: 1.45, price: 2100 },
 ];
 
 // 클린하우스(재활용장): 들머리 한 곳. 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
@@ -157,6 +157,17 @@ export const CLEANHOUSE = {
   arrowNear: 14, // 배낭이 찼을 때 이보다 멀면 방향 화살표
   stallMark: 0.055, // 가판대 위 귤 표시 크기(화면 높이 비율, 멀어도 같은 크기)
   shopHint: 8, // 버린 직후 살 수 있는 장비가 있으면 가판대 쪽 표시를 띄우는 시간(초)
+  // 오름 안 작은 클린하우스 (#78): 탐방로 nsAlong(path, d, side, off) 자리. 지붕 있는 통 넷(캔·페트병·비닐·스티로폼+폐어구), 기능은 들머리 것과 같음(가판대는 없음)
+  // 자리는 어느 더미에서든 걸어서(5m/s) 1분 안(길 거리 300 안)에 하나는 닿게 고름. 지금 가장 먼 더미 약 280
+  mini: [
+    { id: 'skirt', name: '자락 숲길 갈림길', path: 'toCrater', d: 125, side: -1 },
+    { id: 'slope', name: '남쪽 사면 중턱', path: 'approach', d: 456, side: 1 },
+    { id: 'rest', name: '능선 쉼터', path: 'rim', d: 618, side: -1 },
+    { id: 'crater', name: '굼부리 들머리', path: 'crater', d: 354, side: 1 },
+  ],
+  miniOff: 6, // 길 가운데에서 작은 클린하우스 가운데까지
+  miniBins: [0, 1, 2, 3, 3], // 쓰레기 종류 → 작은 클린하우스 통 번호 (스티로폼·폐어구는 한 통)
+  keep: 14, // 클린하우스 둘레 이 거리 안엔 몹이 나오지 않음
 };
 
 // 쓰레기 도감 (#13): 종류마다 흔한 것 4개(20종) + 드문 것 2개(10종) = 30종. kind 는 TRASH_TYPES 의 id
@@ -267,7 +278,7 @@ export const ENEMY_SPAWN = {
 // soon: 아직 없는 단계 (상점에 잠긴 그림만)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 600 },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 850 },
   { tier: 3, id: 'gun', name: '귤 총', soon: true },
   { tier: 4, id: 'mg', name: '귤 머신건', soon: true },
   { tier: 5, id: 'laser', name: '귤즙 레이저', soon: true },
@@ -536,7 +547,7 @@ export const WEAR = {
     { k: 'jacket', name: '잠바', stat: 'guard', none: true, v: [0, 0.08, 0.16, 0.24, 0.32, 0.4] },
     { k: 'socks', name: '양말', stat: 'regen', none: true, v: [1, 1.2, 1.4, 1.6, 1.8, 2] },
   ],
-  price: [0, 0, 50, 150, 300, 650], // 단계별 값 (#53 tools/econ.js 로 맞춤, 6칸 같은 값). 모자·티셔츠·바지 1단계는 처음부터 가짐
+  price: [0, 0, 50, 200, 400, 900], // 단계별 값 (#53 tools/econ.js 로 맞춤, 6칸 같은 값). 모자·티셔츠·바지 1단계는 처음부터 가짐
   priceNone1: 40, // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
   tierColor: ['#7b7b80', '#9a9a94', '#5aa55a', '#4a86c8', '#9a6ad0', '#f29a2e'], // 단계 색: 없음·회색·초록·파랑·보라·귤색
 };

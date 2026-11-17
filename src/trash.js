@@ -270,14 +270,15 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   function update(dt, pos) { if (dirty || Math.abs(pos.x - lastX) > 6 || Math.abs(pos.z - lastZ) > 6) rebuild(pos.x, pos.z); }
   const clean = () => store.pickedCount() / HEAP_TOTAL; // 오름 전체 깨끗한 정도 0~1
   const zoneClean = (z) => (zoneTotal[z] ? 1 - zoneLeft(z) / zoneTotal[z] : 1);
-  // 권장 장비로 혼자 치우는 시간 어림 (분): 줍기 + 클린하우스 왕복. from: 클린하우스 자리 {x,z}
+  // 권장 장비로 혼자 치우는 시간 어림 (분): 줍기 + 클린하우스 왕복. from: 클린하우스 자리 {x,z} 또는 여럿 [{x,z}] (더미마다 가장 가까운 곳, #78)
   function estimate(from, { TOOLS, BAGS, SHOES, walk = 10, detour = 1.15 }) {
+    const fs = Array.isArray(from) ? from : [from], dOf = (h) => Math.min(...fs.map((f) => Math.hypot(h.x - f.x, h.z - f.z)));
     return ZONES.map((Z) => {
       const hs = heaps.filter((h) => h.zone === Z.id), n = hs.reduce((s, h) => s + h.n, 0);
       const tool = TOOLS[Z.rec.tool - 1], bag = BAGS[Z.rec.bag - 1], speed = walk * SHOES[Z.rec.shoes - 1].speed;
       const vol = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0);
       const pick = n * tool.time / tool.per, trips = Math.ceil(n * vol / bag.cap);
-      const avgD = hs.reduce((s, h) => s + h.n * Math.hypot(h.x - from.x, h.z - from.z), 0) / Math.max(1, n) * detour;
+      const avgD = hs.reduce((s, h) => s + h.n * dOf(h), 0) / Math.max(1, n) * detour;
       // 더미 사이를 한 번 도는 거리 (가까운 것부터 차례로)
       let tour = 0; { const left = hs.slice(); let cur = left.shift(); while (cur && left.length) { let bi = 0, bd = 1e9; left.forEach((h, i) => { const d = Math.hypot(h.x - cur.x, h.z - cur.z); if (d < bd) { bd = d; bi = i; } }); tour += bd * detour; cur = left.splice(bi, 1)[0]; } }
       const walkT = (trips * 2 * avgD + tour) / speed;

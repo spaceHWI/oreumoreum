@@ -9,6 +9,7 @@
 // 가정 (모두 어림):
 // - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
 // - 한 번 나가기 = 클린하우스 → 구역 → 배낭이 찰 때까지 더미 돌며 줍기 → 클린하우스. 거리는 직선 × 1.15 (trash.estimate 와 같음)
+//   클린하우스는 들머리 + 오름 안 4곳 (#78): 더미마다 가장 가까운 곳까지 거리 (--one: 들머리 하나만, 비교용)
 // - 더미 사이 걷기 = 구역 더미를 가까운 것부터 한 바퀴 도는 거리 ÷ 쓰레기 수 × 주운 수
 // - 구역 1 부터 차례로 다 치우고 다음 구역으로. 다 치우면 남은 쓰레기(투기꾼이 버린 것) 중 가장 낮은 구역
 //   (--greedy: 구역 귤 ÷ 다 치우는 시간이 가장 큰 구역부터. 정상이 가깝고 더미가 몰려 있어 3일차부터 정상으로 감)
@@ -33,9 +34,9 @@ async function live() {
   const p = await b.newPage({ viewport: { width: 480, height: 300 } });
   await p.goto('file://' + path.join(__dirname, '../dist/test.html') + '#namsongi'); await p.waitForTimeout(6000);
   await p.click('#enter').catch(() => {}); await p.click('#intro-srv button').catch(() => {}); await p.click('#srv-go').catch(() => {}); await p.waitForTimeout(5000);
-  const r = await p.evaluate(() => { const o = window.__oreum, f = o.cleanhouse.api.front; return { front: { x: f.x, z: f.z }, heaps: o.trash.heaps().map((h) => [h.zone, h.k, h.x, h.z]) }; });
+  const r = await p.evaluate(() => { const o = window.__oreum, f = o.cleanhouse.api.front; return { front: { x: f.x, z: f.z }, fronts: o.cleanhouse.all.map((c) => ({ x: c.front.x, z: c.front.z })), heaps: o.trash.heaps().map((h) => [h.zone, h.k, h.x, h.z]) }; });
   await b.close();
-  const o = { note: 'tools/econ.js 가 쓰는 남송이 더미 자리·클린하우스 앞 (node tools/econ.js --live 로 다시 뽑음)', front: { x: +r.front.x.toFixed(1), z: +r.front.z.toFixed(1) }, heaps: r.heaps.map((h) => [h[0], h[1], +h[2].toFixed(1), +h[3].toFixed(1)]) };
+  const o = { note: 'tools/econ.js 가 쓰는 남송이 더미 자리·클린하우스 앞 (node tools/econ.js --live 로 다시 뽑음). front 는 들머리, fronts 는 오름 안 것까지 모두 (#78)', front: { x: +r.front.x.toFixed(1), z: +r.front.z.toFixed(1) }, fronts: r.fronts.map((f) => ({ x: +f.x.toFixed(1), z: +f.z.toFixed(1) })), heaps: r.heaps.map((h) => [h[0], h[1], +h[2].toFixed(1), +h[3].toFixed(1)]) };
   fs.writeFileSync(MAP, JSON.stringify(o).replace(/\],\[/g, '],\n['));
   console.log('더미', o.heaps.length, '곳 저장');
 }
@@ -46,6 +47,7 @@ async function main() {
   const { RIDES } = B;
   const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice } = B;
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
+  const FRONTS = has('--one') || !map.fronts ? [map.front] : map.fronts; // 가장 가까운 클린하우스 기준 (#78)
   const RUN = 10, DETOUR = 1.15, HAND_T = 1.0; // 달리기 속도(main.js), 길 굽이, 손 던지기 동작 시간(runner.js THROW.total)
   const CHASE = +arg('--chase', 0.5), MOB_IN = 0.8; // 쫓아내는 투기꾼 비율, 구역 안에 있는 시간 비율(몹이 나오는)
   const TUT_MIN = 4; // 튜토리얼 걸리는 시간(분)
@@ -61,7 +63,7 @@ async function main() {
   // 구역 표: 쓰레기 수, 거리, 쓰레기 하나 귤(드문 것 빼고)·부피
   const zones = ZONES.map((Z) => {
     const hs = map.heaps.filter((h) => h[0] === Z.id).map(([, k, x, z]) => ({ k, x, z, n: (Z.amt && Z.amt[k]) || HEAP.sizes[k].n }));
-    const n = hs.reduce((s, h) => s + h.n, 0), d = (h) => Math.hypot(h.x - map.front.x, h.z - map.front.z);
+    const n = hs.reduce((s, h) => s + h.n, 0), d = (h) => Math.min(...FRONTS.map((f) => Math.hypot(h.x - f.x, h.z - f.z)));
     const avgD = hs.reduce((s, h) => s + h.n * d(h), 0) / n * DETOUR;
     let tour = 0; { const left = hs.slice(); let cur = left.shift(); while (cur && left.length) { let bi = 0, bd = 1e9; left.forEach((h, i) => { const dd = Math.hypot(h.x - cur.x, h.z - cur.z); if (dd < bd) { bd = dd; bi = i; } }); tour += bd * DETOUR; cur = left.splice(bi, 1)[0]; } }
     const g = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0);
