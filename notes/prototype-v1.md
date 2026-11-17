@@ -584,3 +584,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 가로등(lamps.js): 빛 수가 바뀌면 모든 재질 셰이더를 다시 만들어 끊기던 것 → 밤엔 3개를 늘 켜 두고 세기만 0
 - 하르방 움직이지 않는 조각을 재질별로 합침(10 → 4), 정낭 돌기둥 구멍 12개를 한 메시로
 - 남은 것: 첫 화면(폰 4G·CPU 4배 약 17초)은 대부분 스크립트 실행(약 1.2초, 실제 속도)과 첫 프레임 셰이더 컴파일·그리기. 가게 모델(스톤·미장원·LEAP 약 1.1MB)을 늦게 풀기, 셰이더 병렬 컴파일(compileAsync)이 다음 후보. 실기기 측정 못 함
+
+## 멀티플레이 서버 (#7)
+- 켜는 법: `src/balance.js NET.server` 에 Worker 주소. 비어 있으면 예전과 똑같이 혼자 하기(아티팩트에서는 room 캐퍼빌리티). 주소창 `?server=주소` 로 탭 세션 동안 바꿔 끼움(`?server=0` 지움)
+- 서버 `server/` (Cloudflare Workers + Durable Objects, SQLite). `index.js` 입구: `POST /auth/google`(구글 ID 토큰 RS256 검증 → HMAC 세션 토큰 30일), `GET/DELETE /me`, `PUT /save`, `GET /ws?room=&ch=`(WebSocket → 방 DO `방이름#채널`), 날마다 Cron 으로 7일 지난 계정 지움. 로컬 `cd server && npm run dev`(가짜 로그인 `fake:이름`·통계 켬)
+- `accounts.js` 계정 DO 하나('all')의 표 `acc`: sub·닉네임·저장 JSON·rev·치운 양(#11 랭킹용)·credit·접속 시각만. 이메일·이름·사진 없음
+- `validate.js` 저장 확인: 옷·탈것·머리·장비 단계는 목록에 있는 것만, 새로 산 것 값 + 늘어난 귤이 계정 credit(초당 `NET.earnPerSec`, 상한 `earnBurst`) 안이어야 함. 넘으면 귤을 깎고, 못 산 물건이면 물건을 되돌림(클라이언트는 서버 기록으로 새로고침). 치운 양도 같은 방식. 기기 기록 옮기기는 목록 확인·귤 상한(`migrateCoinsMax`)만
+- `roomcore.js` 방 규칙(순수 JS, Node 에서 재기 가능): 위치 등 presence 를 0.1초 틱마다 받는 사람별로 바뀐 것만 묶어 보냄. 150m 밖은 5틱마다. 옷·닉네임은 바뀔 때만, 빈 값은 뺌. 메시지 초당 15개·맞힘 알림 초당 3번·거리 45m 확인. 쓰레기 더미 남은 수는 방이 주인(`take`/`put`, 바뀐 더미는 틱마다 `hs` 로 모아 알림, 5초마다 저장). 다시 쌓기(투기꾼)는 방장(먼저 온 사람)만. 정원 `NET.roomCap`(30), 차면 `full` → 다음 채널
+- 클라이언트 `src/online.js`: `saveKey`·`loadSave`(로그인하면 `<키>.acct` 사본), `createAccount`(바뀌면 15초 모아 PUT, 탭 숨김·닫기 때 바로, 다른 기기 기록이 더 새것이면 입장 전에 받아 새로고침, 서버가 바로잡은 귤 반영), `mountLogin`(첫 화면 베타 안내·구글 버튼, 시작 버튼이 '손님으로 하기'. 처음 로그인한 계정이면 기기 기록 옮길지 한 번 물음), `createWsLobby`(net.js 의 room 자리, 끊기면 다시 붙음), `linkTrash`(trash 저장소 takeOne·putBack·seen 을 방으로). 메뉴 `#m-acct` 남은 날짜·로그아웃·내 기록 지우기
+- 확인: `node tools/online.js`(로컬 서버에 브라우저 둘: 서로 보이기·더미 함께 쓰기·방장만 쌓기·가짜 로그인·옮기기·귤 바로잡기), 부하 `node tools/loadtest.js [주소] [인원들]`, 프레임 `PERF_CROWD=N node tools/perf.js desk crowd`
+- 남은 것: 몹(전투 오름)·투기꾼 모습은 아직 사람마다 따로(더미 수만 방이 주인), 귤 줍기·업적 보상은 credit 으로만 막음(하나하나 서버 판정은 아님), 손님도 방에는 들어옴

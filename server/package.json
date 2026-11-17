@@ -1,0 +1,13 @@
+{
+  "name": "oreumoreum-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --var FAKE_AUTH:1 --var STATS_OPEN:1",
+    "deploy": "wrangler deploy",
+    "bench": "node bench.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

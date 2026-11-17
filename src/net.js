@@ -4,10 +4,12 @@ import { buildRunner } from './runner.js';
 import { cleanGear } from './gear.js';
 import { height, groundAt } from './world.js';
 import { EMOTE_BY } from './emotes.js';
+import { NET } from './balance.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
-export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook, cull = null, animR = 1e9, shadowR = 1e9 }) { // cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
+export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook, cull = null, animR = 1e9, shadowR = 1e9, lobby: wsLobby = null, onRoom = null }) { // wsLobby: 멀티 서버 로비 (#7, online.js). 있으면 room 캐퍼빌리티 대신
+ // cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
@@ -81,12 +83,15 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   }
 
   async function start() {
-    if (!window.claude?.use) return;
-    let lobby = null;
-    try { lobby = await window.claude.use('room'); } catch (e) { lobby = null; }
+    let lobby = wsLobby;
+    if (!lobby) {
+      if (!window.claude?.use) return;
+      try { lobby = await window.claude.use('room'); } catch (e) { lobby = null; }
+    }
     if (!lobby) return;
     // 오름마다 따로 모이는 방 (서버 하나에 오름 하나)
     try { room = lobby.join ? await lobby.join((typeof roomName === 'function' ? roomName() : roomName) || 'oreum') : lobby; } catch (e) { room = lobby; }
+    onRoom?.(room);
     room.onPeers((ch) => {
       for (const pr of ch.peers) if (pr.sameTab) myPeer = pr.peer;
       for (const pr of ch.left) removePeer(pr.peer);
@@ -116,14 +121,14 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       } else hand.pendingFrom = null;
       ready = true;
       onPeersChanged(peersById.size, hand);
-      send(true);
+      send(!wsLobby); // 서버 방은 새로 온 사람에게 방이 내 마지막 상태를 대신 보내 줌 (#7)
     }, () => { ready = false; onPeersChanged(0, hand); });
   }
 
   function send(force) {
     if (!room || !myPeer) return;
     const now = performance.now();
-    if (!force && now - lastSent < 90) return;
+    if (!force && now - lastSent < NET.sendMs) return; // 초당 10번 안쪽 (#7)
     const p = player;
     const obj = {
       nick: save.nick, o: compactOutfit(save.outfit),

@@ -57,6 +57,7 @@ import { isBattle, serverId, setServerId, validServer, roomFor, createAbStats, S
 import { initUiTips } from './uitips.js';
 import { createEmotes, isEmote, EMOTE_BY } from './emotes.js';
 import { createTips, TIP, TIP_ICON } from './tips.js';
+import { ONLINE, saveKey, loadSave, createAccount, mountLogin, createWsLobby, linkTrash } from './online.js';
 
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -65,12 +66,12 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // ---------- 저장 ----------
-const KEY = __DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1'; // 개발 서버는 기록을 따로
+const KEY = saveKey(__DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1'); // 개발 서버는 기록을 따로. 로그인했으면 계정 사본 (#7)
 const ADJ = ['작은', '느긋한', '고요한', '따스한', '부지런한', '수줍은', '씩씩한', '조용한'];
 const NOUN = ['억새', '까마귀', '송이', '바람', '노루', '들꽃', '조랑말', '돌담'];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 let save = {};
-try { save = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { save = {}; }
+save = loadSave(KEY);
 const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 사람
 save.nick ||= `${pick(ADJ)} ${pick(NOUN)}`;
 save.outfit = { ...structuredClone(DEFAULT_OUTFIT), ...(save.outfit || {}) };
@@ -137,7 +138,9 @@ if (!validServer(save.server)) delete save.server;
 setServerId(save.server || 'clean');
 const srvSwitched = !!save.srvSwitch && !!save.server; delete save.srvSwitch; // 메뉴에서 서버를 바꿔 새로고침한 직후
 const ab = createAbStats(KEY + '.ab'); // 서버별 접속 횟수·플레이 시간·주운 수 (기기 기록, 처음부터 다시 해도 남음)
-const persist = () => { if (resetting) return; try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
+const writeLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
+let account = null; // 멀티 서버 계정 (#7). 서버 주소가 없으면 null
+const persist = () => { if (resetting) return; writeLocal(); account?.dirty(); };
 
 const MAP_ID = pickMapId(save.map);
 const prevMap = save.prevMap || null; save.prevMap = null;
@@ -822,7 +825,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
   const doReset = () => {
     resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
-    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, introSound: save.introSound, music: save.music, reset: 1 }; // reset: 처음 온 사람처럼 시작
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, introSound: save.introSound, music: save.music, reset: 1, _rev: save._rev, _acct: save._acct }; // reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7)
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
     location.reload();
@@ -1442,6 +1445,7 @@ $('photo-close').addEventListener('click', () => {
 // ---------- 함께 (room) ----------
 const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
+  lobby: createWsLobby({ token: () => account?.token }), onRoom: (room) => { if (trash && room.on) linkTrash(trash, room); }, // 멀티 서버 (#7)
   extra: () => ({ ...social.presenceExtra(), rd: rideCode(), ...(emo ? emo.presence() : {}) }), // rd = 탈것 (#69), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => emo?.overlayPeer(e),
@@ -2603,6 +2607,18 @@ function enter() {
   if (!save.look) openLook();
 }
 $('enter').addEventListener('click', enter);
+// 멀티 서버 계정 (#7): 서버 주소가 있을 때만. 첫 화면에 베타 안내·구글 로그인, 메뉴에 남은 날짜·로그아웃·내 기록 지우기
+if (ONLINE) {
+  account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => sessionOn,
+    onFix: (f) => { if (f.coins != null && f.coins !== save.coins) { save.coins = f.coins; updateStats(); toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; writeLocal(); } });
+  document.querySelector('.intro-beta')?.setAttribute('hidden', '');
+  mountLogin({ box: $('acct-box'), enterBtn: $('enter'), account, localSave: save, hasProgress: save.coins > 5 || (save.trash?.total || 0) > 0 || !!save.tut?.done, toast });
+  const syncAcct = () => { $('m-acct').hidden = !account.loggedIn; $('acct-days').textContent = `기록 보관 ${account.daysLeft()}일 남음`; };
+  account.on(syncAcct); syncAcct();
+  $('acct-out').addEventListener('click', () => account.logout());
+  $('acct-del').addEventListener('click', (e) => { const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '한 번 더 누르면 지워요'; setTimeout(() => { delete b.dataset.sure; b.textContent = '내 기록 지우기'; }, 4000); return; } resetting = true; account.deleteMe().catch(() => { resetting = false; toast('지우지 못했어요. 잠시 후 다시 해 주세요'); }); });
+  account.start();
+}
 $('srv-go').addEventListener('click', () => { if (introSrv) enter(); });
 document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
@@ -3011,7 +3027,7 @@ $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });
 if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
-window.__oreum = { emo, doEmote, net, rides: { // 탈것·마차 (#69)
+window.__oreum = { emo, doEmote, net, online: ONLINE && { account: () => account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,

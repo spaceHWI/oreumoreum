@@ -1,0 +1,119 @@
+// 방 하나의 규칙 (#7). Cloudflare 와 상관없는 순수 JS 라 Node 에서 그대로 재 볼 수 있음 (bench.mjs, tools/loadtest.js)
+// 받는 것 (JSON 문자열):
+//   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로)
+//   {t:'take', h}         더미 h 에서 하나 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}
+//   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
+//   {t:'ping', c}         → {t:'pong', c}
+//   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
+// 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
+import { NET } from '../../src/balance.js';
+import { HEAP_FULL, HEAP_SIG } from './heaps.js';
+
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+
+export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heaps = null, seen = 0, stats = false } = {}) {
+  const peers = new Map(); // id → peer
+  let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], v | 0))) : HEAP_FULL.slice();
+  const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
+  let heapsDirty = false, roomSeen = seen || 0, host = null, nextId = 1, tick = 0;
+  const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0 };
+
+  const out = (p, s) => { st.bytesOut += s.length; st.msgsOut++; try { p.send(s); } catch (e) { /* 끊긴 소켓 */ } };
+  const all = (s, except) => { for (const p of peers.values()) if (p !== except) out(p, s); };
+  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); };
+  function pickHost() { let h = null; for (const p of peers.values()) if (!h || p.joinAt < h.joinAt) h = p; const id = h ? h.id : null; if (id !== host) { host = id; if (id) all(JSON.stringify({ t: 'host', id })); } }
+
+  function join(send, info = {}) {
+    if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
+    const t = now();
+    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0 };
+    peers.set(p.id, p);
+    if (!host) host = p.id;
+    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap }));
+    return p;
+  }
+  function leave(p) {
+    if (!peers.delete(p.id)) return;
+    for (const q of peers.values()) { q.sent.delete(p.id); q.sentSlow.delete(p.id); }
+    all(JSON.stringify({ t: 'l', id: p.id }));
+    if (host === p.id) pickHost();
+    if (!peers.size) roomSeen = now();
+  }
+
+  function presence(p, d) {
+    if (!d || typeof d !== 'object' || Array.isArray(d) || !isNum(d.x) || !isNum(d.z)) return;
+    d.x = Math.max(-4000, Math.min(4000, d.x)); d.z = Math.max(-4000, Math.min(4000, d.z));
+    // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
+    const ht = d.ht;
+    if (ht != null) {
+      const tg = ht && typeof ht === 'object' ? peers.get(ht.p) : null;
+      if (!tg || !isNum(ht.at) || !tg.d) d.ht = null;
+      else if (ht.at !== p.lastHt) {
+        if (p.hitTok < 1 || Math.hypot(tg.x - d.x, tg.z - d.z) > NET.hitRange) d.ht = null;
+        else { p.hitTok--; p.lastHt = ht.at; }
+      }
+    }
+    const pj = JSON.stringify(d);
+    if (pj.length > NET.presenceMax) { st.dropped++; return; }
+    if (pj === p.pj) return;
+    p.d = d; p.pj = pj; p.x = d.x; p.z = d.z; p.ver++;
+    // 옷·닉네임은 잘 안 바뀌므로 바뀐 때만 실어 보냄 (받는 쪽은 앞 값에 덮어씀)
+    const sj = JSON.stringify([d.o, d.nick]); if (sj !== p.sj) { p.sj = sj; p.sver++; }
+    const f = {}; for (const k in d) { const v = d[k]; if (k !== 'o' && k !== 'nick' && v !== null && v !== false && v !== '') f[k] = v; } p.fj = JSON.stringify(f); // 빈 값은 빼고 보냄
+  }
+
+  function message(p, raw) {
+    st.msgsIn++;
+    const t = now(); refill(p, t);
+    if (p.tok < 1 || typeof raw !== 'string' || raw.length > NET.presenceMax + 64) { st.dropped++; return; }
+    p.tok--;
+    let m; try { m = JSON.parse(raw); } catch (e) { st.dropped++; return; }
+    if (!m || typeof m !== 'object') return;
+    switch (m.t) {
+      case 'p': presence(p, m.d); break;
+      case 'take': {
+        const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
+        if (H[h] > 0) { H[h]--; heapsDirty = true; heapOut.set(h, H[h]); }
+        else out(p, JSON.stringify({ t: 'h', h, n: 0 }));
+        break;
+      }
+      case 'put': {
+        const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
+        if (p.id !== host) { out(p, JSON.stringify({ t: 'h', h, n: H[h] })); return; } // 방장만 쌓음
+        const want = Math.max(0, Math.min(m.n | 0, Math.floor(p.putTok), HEAP_FULL[h] - H[h]));
+        if (want) { H[h] += want; p.putTok -= want; heapsDirty = true; heapOut.set(h, H[h]); }
+        else out(p, JSON.stringify({ t: 'h', h, n: H[h] }));
+        break;
+      }
+      case 'ping': out(p, JSON.stringify({ t: 'pong', c: m.c, s: t })); break;
+      case 'stats': if (stats) out(p, JSON.stringify({ t: 'stats', n: peers.size, ...st, host })); break;
+      default: break;
+    }
+  }
+
+  // 한 틱: 받는 사람마다 바뀐 사람만 모아 한 번에. 가까운 사람(farR 안)은 매 틱, 먼 사람은 farEvery 틱마다
+  function step() {
+    tick++; st.ticks++;
+    if (peers.size) roomSeen = now();
+    if (heapOut.size) { all(JSON.stringify({ t: 'hs', hs: [...heapOut] })); heapOut.clear(); }
+    const farTick = tick % NET.farEvery === 0, R2 = NET.farR * NET.farR;
+    for (const r of peers.values()) {
+      let parts = null;
+      for (const o of peers.values()) {
+        if (o === r || !o.pj || r.sent.get(o.id) === o.ver) continue;
+        if (!farTick && r.d && (o.x - r.x) ** 2 + (o.z - r.z) ** 2 > R2) continue;
+        r.sent.set(o.id, o.ver);
+        const full = r.sentSlow.get(o.id) !== o.sver; if (full) r.sentSlow.set(o.id, o.sver);
+        (parts ||= []).push('["' + o.id + '",' + (full ? o.pj : o.fj) + ']');
+      }
+      if (parts) out(r, '{"t":"u","p":[' + parts.join(',') + ']}');
+    }
+  }
+
+  return {
+    join, leave, message, step, setCap(n) { cap = n; },
+    get size() { return peers.size; }, get host() { return host; },
+    heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },
+    get seen() { return roomSeen; }, stats: () => ({ n: peers.size, ...st }),
+  };
+}

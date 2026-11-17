@@ -736,3 +736,29 @@ export const PERF = {
   // 자동일 때 느리면 한 칸씩 내림: 프레임이 slowDt 넘게 slowT 초 이어지면 (픽셀 배율 → 그림자 끔), fastDt 아래로 fastT 초면 되돌림
   slowDt: 0.045, slowT: 2.5, fastDt: 0.02, fastT: 20,
 };
+
+// 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)
+// server: Cloudflare Worker 주소 (예 'https://oreumoreum.<계정>.workers.dev'). 주소창 ?server=… 로 바꿔 끼워 볼 수 있음 (탭 세션 동안)
+export const NET = {
+  server: '',
+  googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
+  sendMs: 100,        // 내 위치·동작 보내는 간격 (초당 10번 안쪽)
+  tickMs: 100,        // 방이 모아 보내는 간격
+  farR: 150,          // 이 거리 밖 사람은 farEvery 틱마다 한 번만 받음
+  farEvery: 5,
+  roomCap: 30,        // 방 하나 정원. 넘으면 같은 오름 다음 방(채널)으로. tools/loadtest.js 로 잰 값 (#7 코멘트)
+  maxCh: 20,          // 채널 수 상한
+  presenceMax: 1500,  // 한 번에 보내는 내 상태 크기 상한 (바이트)
+  msgPerSec: 15,      // 한 사람이 1초에 보낼 수 있는 메시지 (넘으면 버림)
+  hitPerSec: 3, hitRange: 45, // 귤·활 맞힘 알림: 1초에 몇 번, 맞힌 사람과 거리 상한(m)
+  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭, 방장만): 1분에 넣는 수, 한꺼번에(접속 안 한 동안 쌓인 몫) 넣을 수 있는 수
+  // 저장 확인: 클라이언트가 보낸 귤·장비를 그대로 믿지 않음
+  earnPerSec: 4,      // 귤이 늘 수 있는 빠르기 (지난 저장 뒤 지난 시간 × 이 값 + earnBurst)
+  earnBurst: 1500,    // 업적·뱃지 보상처럼 한꺼번에 받는 몫
+  earnWindow: 3600,   // 지난 시간은 이 초까지만 셈 (오래 꺼 뒀다고 귤이 쌓이지 않게)
+  pickPerSec: 15, pickBurst: 400, // 치운 양(누적)이 늘 수 있는 빠르기
+  migrateCoinsMax: 30000, // 기기 기록을 계정으로 옮길 때 받아 주는 귤 상한
+  saveMax: 200000,    // 저장 크기 상한 (바이트)
+  saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
+  keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
+};
