@@ -614,3 +614,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 빌드: `PUBLIC=1`(publish.yml 의 release) 이면 `window.__oreum` 은 어드민에게만(`exposeDebug`). dist/index.html 에 meta CSP(게임 스크립트는 sha256 해시, GIS·글꼴·https/wss·로컬 주소만)
 - 확인 `node tools/sec.js` (wrangler dev 넷을 띄워 49가지 공격 흉내), `node tools/online.js` 에 보안 확인 4개 더함. loadtest 는 Origin 헤더를 붙임(`ORIGIN=` 로 바꿈)
 - 남은 위험: 구글 계정 여러 개(계정마다 몫·기기 기록 옮기기 3만 귤), 손님(기기 저장)은 마음대로, 더미 거리 판정 없음(줍기 속도·치운 양 몫으로만), 방 안 맞힘은 거리·빈도만, 끊긴 사람은 다른 채널로 갈 수 있음, 요청 수 제한은 Worker 여러 개에 퍼지면 느슨함
+
+## 전체 검수 (#16)
+- `node tools/audit.js [d|m] [clean|battle]`: 첫 화면 → 서버 → 캐릭터 → (튜토리얼 건너뜀) 더미·클린하우스·가게 5곳·탈것·마차·낚시·사진사·돌탑·동작·투기꾼·(전투) 몹·활·HP·들것 → 꽃밭·정상·한라산 → 메뉴 창 모두·어드민 → 새로 고침·예전 저장. `dist/audit/` 에 화면과 `<d|m>-<srv>.json`(오류·HUD 겹침·화면 밖·글자 넘침). 튜토리얼은 `tools/tutrun.js d|m`
+- `node tools/oldsave.js`: 빈 저장·아주 예전 저장·깨진 값·중간 버전 저장 넷으로 들어가 오류·멈춤을 봄
+- 위 가운데 줄: 배너(`#banner`)·팁(`#tip`)·토스트(`#toast`)는 위에서부터 이 순서로 쌓임. `topStack()` 이 보이는 것의 높이를 `--ban-h`·`--tip-h` 로 넘기고 `body.banner-on`·`body.tip-on` 으로 민다. 셋 다 `width: max-content` (폰에서 left 50% 상자가 절반 폭으로 줄던 것)
+- 화면 가장자리 표시(`placeArrow`)는 같은 프레임에 46px 안에 겹치면 테두리를 따라 비켜 놓음
+- 첫 화면이 떠 있는 동안 HUD 는 감추고, 그사이 온 '자리를 비운 사이' 알림은 들어간 뒤 보여 줌(`introToast`)
+- 작은 클린하우스 둘레 5.5 는 나무를 심지 않음(`buildNamsongi clear`). 더미 자리는 그대로
+- 도감: `trash.js rollDex` 가 #52 때 줄 가운데 주석으로 잘려 `undefined` 로 쌓이던 것을 고침. 불러올 때 목록에 없는 도감 id 는 지움
+- 뱃지 보상 `item`(예전 옷 색)은 #52 옷장과 이어지지 않아 귤만 줌
