@@ -35,7 +35,7 @@ export const DAILY_POOL = [
   { id: 'd-boar', ev: 'boar-repel', goal: 1, name: '멧돼지 귤로 쫓기', reward: 15 },
   { id: 'd-pickup', ev: 'pickup', goal: 8, name: '떨어진 귤 8개 줍기', reward: 6 },
   { id: 'd-sit', ev: 'sit', goal: 1, name: '쉼터에서 쉬어 가기', reward: 5, ns: true },
-  { id: 'd-breath', ev: 'breath', goal: 1, name: '호흡 한 세트', reward: 5 },
+  { id: 'd-emote', ev: 'emote', goal: 5, name: '동작으로 다섯 번 말하기', reward: 5 }, // 호흡 대신 (#76)
   { id: 'd-dance-top', ev: 'dance-top', goal: 1, name: '전망 좋은 곳에서 춤추기', reward: 8 },
   { id: 'd-jump', ev: 'jump', goal: 20, name: '점프 20번', reward: 4 },
   { id: 'd-chat', ev: 'chat', goal: 1, name: '말풍선으로 인사', reward: 4 },

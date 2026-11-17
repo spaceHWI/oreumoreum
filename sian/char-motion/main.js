@@ -4,6 +4,7 @@ import '../../src/boot.js';
 import { buildRunner, DEFAULT_OUTFIT, SKIN_TONES } from '../../src/runner.js';
 import { ACCESSORIES, TOOL_GEAR, BAG_GEAR, SHOE_GEAR } from '../../src/gear.js';
 import { CLOTHES } from '../../src/balance.js';
+import { EMOTES, EMOTE_BY } from '../../src/emotes.js';
 // 옷 단계 한 벌 (#52): ?row 면 1~5단계 다섯 명, ?tier=3 이면 한 명. ?slots=hat,top 이면 그 칸만 단계대로(나머지는 1단계)
 const tierSet = (t, slots) => { const g = { hair: q.get('hair') || 'hat:short' }; const worn = q.get('wear')?.split(','); CLOTHES.filter((c) => (!worn || worn.includes(c.slot)) && c.tier === (!slots || slots.includes(c.slot) ? t : 1)).forEach((c) => { g[c.slot] ||= c.id; }); // ?wear=hat,top,bottom 이면 그 칸만 입음
   if (!slots || slots.includes('shoes')) g.shoes = SHOE_GEAR[t - 1]; else g.shoes = SHOE_GEAR[0]; g.back = q.has('nobag') ? 'back:empty' : BAG_GEAR[t - 1]; g.hand = TOOL_GEAR[t - 1]; return g; };
@@ -61,11 +62,11 @@ function step(dt) {
   runners.forEach(({ r, x, heading }) => {
     const z = 0; r.root.position.set(x, heightAt(z), z); r.root.rotation.y = heading;
     const k = state.slope * Math.cos(heading); // 진행 방향 기울기
-    r.animate(dt, { speed: state.pose === 'move' ? state.speed : 0, running: state.running, pose: state.pose, t, breath: 0, air: false, jumpV: 0, slope: k, tool: +(q.get('tool') || 1), dur: +(q.get('dur') || 0.6), lid: q.has('lid') ? +q.get('lid') : null, face: q.get('face') || null }); // ?lid=0..1 눈 감김 고정, ?face=wide|shut (#74)
+    r.animate(dt, { speed: state.pose === 'move' ? state.speed : 0, running: state.running, pose: state.pose, t, breath: 0, air: false, jumpV: 0, slope: k, tool: +(q.get('tool') || 1), dur: +(q.get('dur') || 0.6), lid: q.has('lid') ? +q.get('lid') : null, face: q.get('face') || null, edur: EMOTE_BY[state.pose]?.dur || 2 }); // ?lid=0..1 눈 감김 고정, ?face=wide|shut (#74)
   });
 }
 // 고정 위상 렌더(확인용): ?phase=1.3
-window.__char = { state, runners, step, render: () => renderer.render(scene, camera), setSlope, ACCESSORIES,
+window.__char = { state, runners, step, reset: () => { t = 0; }, EMOTES, render: () => renderer.render(scene, camera), setSlope, ACCESSORIES,
   at(phase) { for (let i = 0; i < 40; i++) step(1 / 60); runners.forEach(({ r }) => r.setPhase?.(phase)); step(0); renderer.render(scene, camera); } };
 if (q.has('phase')) window.__char.at(+q.get('phase'));
 
@@ -75,7 +76,7 @@ ui.style.cssText = 'position:fixed;left:8px;top:8px;max-width:340px;background:#
 ui.innerHTML = `<label>기울기 <input id=s type=range min=-0.8 max=0.8 step=0.05 value=${state.slope}> <b id=sv>${state.slope}</b></label>
 <label>속도 <input id=v type=range min=0 max=10 step=0.5 value=${state.speed}></label>
 <label><input id=r type=checkbox ${state.running ? 'checked' : ''}> 달리기</label>
-<label>포즈 <select id=p>${['move', 'wave', 'sit', 'photo', 'crouch', 'eat', 'dance', 'breath'].map((p) => `<option ${p === state.pose ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+<label>포즈 <select id=p>${['move', 'sit', 'photo', 'crouch', 'eat', 'breath', ...EMOTES.map((e) => e.id)].map((p) => `<option ${p === state.pose ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
 <div>장비 ${Object.entries(ACCESSORIES).map(([k, a]) => `<button data-k=${k}>${a.label}</button>`).join(' ')}</div>
 <label>시점 <select id=c>${['side', 'front', 'back', 'shoulder', 'quarter', 'top', 'front3', 'back3'].map((p) => `<option ${p === view ? 'selected' : ''}>${p}</option>`).join('')}</select></label>`;
 if (!q.has('noui')) document.body.appendChild(ui);

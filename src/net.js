@@ -3,10 +3,11 @@ import { TEXCS } from './boot.js';
 import { buildRunner } from './runner.js';
 import { cleanGear } from './gear.js';
 import { height, groundAt } from './world.js';
+import { EMOTE_BY } from './emotes.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
-export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook }) { // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
+export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook }) { // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
@@ -60,6 +61,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     const d = pr.presence || {};
     if (typeof d.x !== 'number' || typeof d.z !== 'number') return;
     const e = ensurePeer(pr);
+    if (d.pose !== e.data.pose) e.poseT = 0; // 동작이 바뀌면 처음부터 (#76)
     e.data = d;
     const nick = safeNick(d.nick);
     if (nick !== e.nick) { e.nick = nick; if (e.label) e.runner.root.remove(e.label); e.label = makeLabel(nick); e.runner.root.add(e.label); }
@@ -153,7 +155,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       if (e.label) { const d = e.pos.distanceTo(player.pos); const op = d < 10 ? 1 : d < 18 ? 1 - (d - 10) / 8 : 0; e.label.material.opacity = op; e.label.visible = op > 0.02; }
       const pose = typeof e.data.pose === 'string' ? e.data.pose : 'move';
       r.setTint(!!e.data.yl);
-      r.animate(dt, { speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, breath: 0, air: (e.data.jy || 0) > 0.05, jumpV: 0 });
+      const ov = rh && overHook ? overHook(e) : null; // 탈것 위 손동작 (#76)
+      r.animate(dt, { speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, breath: 0, air: (e.data.jy || 0) > 0.05, jumpV: 0, edur: EMOTE_BY[pose]?.dur || 2, over: ov && { ...ov, dur: EMOTE_BY[ov.id].dur } });
     }
   }
 

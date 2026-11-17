@@ -46,6 +46,7 @@ const box = (w, h, d, mat) => { const k = `${w},${h},${d}`; let g = geoCache.get
 
 // ---------- 기본 캐릭터 모델: 한 덩어리 메시에 위치 기준으로 뼈대 가중치를 직접 계산 ----------
 const b64 = (str, T) => { const bin = atob(str); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new T(u8.buffer); };
+const EMO_POSES = new Set(['insa', 'five', 'come', 'point', 'trash', 'follow', 'wait', 'help', 'thumb', 'no', 'thanks', 'sorry', 'clap', 'hop', 'laugh', 'wow', 'sad', 'heart', 'sitg', 'lie']); // 동작 (#76), wave·dance 는 아래 따로
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const MODEL_S = 2.5; // 모델 키 0.98 → 게임 키 약 2.45
 const P = RM.P; // 모델별 치수 (model/params.json)
@@ -414,7 +415,7 @@ export function buildRunner(opts = {}) {
     const F = model.U.face.value;
     if (blinkCam && lid == null) { root.getWorldPosition(_bp); const far = _bp.distanceToSquared(blinkCam.position) > BLINK.far * BLINK.far;
       if (far) { if (!eye.far) { eye.far = true; F.set(0, 0); } return; } eye.far = false; }
-    if (pose === 'flail' && !face) face = 'wide';
+    if ((pose === 'flail' || pose === 'wow') && !face) face = 'wide';
     eye.wide += ((face === 'wide' ? 1 : 0) - eye.wide) * Math.min(1, dt * (face === 'wide' ? 18 : 5));
     if (lid != null) eye.lid = lid;
     else if (face === 'shut') eye.lid = Math.min(1, eye.lid + dt / BLINK.close);
@@ -428,7 +429,71 @@ export function buildRunner(opts = {}) {
     }
     F.set(eye.lid, eye.wide);
   }
-  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null }) {
+  // 동작(이모트) (#76). upper: 탈것 위에서는 팔·머리만 (다리·골반은 탈것 포즈 그대로)
+  // in = 처음 0.18초 동안 들어오는 정도, bell = 들어왔다가 끝에 돌아가는 정도
+  function emotePose(id, t, upper, dur = 2) {
+    const k = sstep(0, 0.18, t), bell = k * (1 - sstep(dur - 0.3, dur, t));
+    const A = (a, x, z) => { a.rotation.set(a.rotation.x * (1 - bell) + x * bell, 0, a.rotation.z * (1 - bell) + z * bell); };
+    const lo = (f) => { if (!upper) f(); };
+    switch (id) {
+      case 'wave': armR.rotation.set(0, 0, -2.25 + Math.sin(t * 12) * 0.35); head.rotation.z = Math.sin(t * 3) * 0.08; break; // 탈것 위에서 겹칠 때
+      case 'insa': { const b = sstep(0.1, 0.5, t) * (1 - sstep(1.1, 1.6, t));
+        lo(() => { torso.rotation.x = 0.8 * b; hips.position.y = HIP - 0.03 * b; legL.rotation.set(-0.12 * b, 0, 0.03); legR.rotation.set(-0.12 * b, 0, -0.03); });
+        armL.rotation.set(0.1 * b, 0, 0.04); armR.rotation.set(0.1 * b, 0, -0.04); head.rotation.x = 0.25 * b; break; }
+      case 'five': { const hit = Math.max(0, 1 - Math.abs(t - 0.55) / 0.15);
+        A(armR, -2.35 - 0.25 * hit, -0.28); A(armL, 0.1, 0.12); torso.rotation.y -= 0.12 * bell; lo(() => { torso.rotation.x = -0.04 - 0.06 * hit; legR.rotation.set(-0.2 * bell, 0, -0.04); }); head.rotation.x = -0.1 * bell; break; }
+      case 'come': { const w = Math.sin(t * 9) * 0.35;
+        A(armR, -0.95 + w * 0.55, -0.75); A(armL, 0.05, 0.12); torso.rotation.y += 0.12 * bell; head.rotation.z = 0.1 * bell; head.rotation.y = Math.sin(t * 4.5) * 0.05; break; }
+      case 'point': case 'trash': { const down = id === 'trash' ? 0.45 : 0, push = Math.sin(Math.min(1, t / 0.35) * Math.PI) * 0.12;
+        A(armR, -1.6 + down - push, -0.06); A(armL, id === 'trash' ? 0.25 : 0.05, id === 'trash' ? 0.7 : 0.12);
+        torso.rotation.y -= 0.18 * bell; head.rotation.y = 0.18 * bell; head.rotation.x = (id === 'trash' ? 0.18 : -0.05) * bell;
+        lo(() => { legR.rotation.set(-0.25 * bell, 0, -0.04); torso.rotation.x = 0.08 * bell; }); break; }
+      case 'follow': { const w = Math.sin(t * 5.5);
+        A(armR, -1.35 - w * 0.8, -0.2); A(armL, 0.15, 0.12); head.rotation.y = 0.3 * bell; torso.rotation.y += 0.2 * bell;
+        lo(() => { torso.rotation.x = 0.1 * bell; legL.rotation.set(-0.3 * bell, 0, 0.04); }); break; }
+      case 'wait': { const pu = Math.sin(t * 7) * 0.06;
+        A(armR, -1.7 + pu, -0.22); A(armL, -1.7 + pu, 0.22); lo(() => { torso.rotation.x = -0.06 * bell; }); head.rotation.x = -0.04 * bell; break; }
+      case 'help': { const w = Math.sin(t * 9);
+        A(armL, -2.75 + w * 0.15, 0.55 + w * 0.5); A(armR, -2.75 - w * 0.15, -0.55 + w * 0.5); head.rotation.x = -0.15 * bell; torso.rotation.z = w * 0.06 * bell;
+        lo(() => { hips.position.y = HIP + Math.abs(Math.sin(t * 9)) * 0.05 * bell; }); break; }
+      case 'thumb': { const pu = Math.sin(Math.min(t, 1.2) * 10) * 0.08;
+        A(armR, -2.05 + pu, -0.45); A(armL, 0.25, 0.7); head.rotation.x = Math.sin(Math.min(t, 0.9) * 7) * 0.1 * bell; break; }
+      case 'no': {
+        A(armL, -1.25, -0.72); A(armR, -1.3, 0.72); head.rotation.y = Math.sin(t * 10) * 0.42 * bell * (1 - sstep(1.2, 1.5, t)); lo(() => { torso.rotation.x = -0.04 * bell; }); break; }
+      case 'thanks': { const b = sstep(0.3, 0.6, t) * (1 - sstep(1.2, 1.6, t));
+        A(armL, -1.15, -0.42); A(armR, -1.15, 0.42); head.rotation.x = 0.1 * bell + 0.18 * b; lo(() => { torso.rotation.x = 0.3 * b; }); break; }
+      case 'sorry': { const sc = Math.sin(t * 16) * 0.08;
+        A(armR, -2.4 + sc, 0.15); A(armL, 0.1, 0.12); head.rotation.z = 0.18 * bell; head.rotation.x = 0.1 * bell; lo(() => { torso.rotation.x = 0.08 * bell; torso.rotation.z = 0.05 * bell; }); break; }
+      case 'clap': { const c = 0.5 + 0.5 * Math.sin(t * 15);
+        A(armL, -1.3, 0.4 - 0.62 * c); A(armR, -1.3, -0.4 + 0.62 * c); head.rotation.x = -0.06 * bell; lo(() => { hips.position.y = HIP + Math.abs(Math.sin(t * 7.5)) * 0.03 * bell; }); break; }
+      case 'hop': { const hop = Math.abs(Math.sin(t * Math.PI * 2.2)) * (1 - sstep(dur - 0.35, dur, t));
+        A(armL, -2.6 + Math.sin(t * 14) * 0.15, 0.5); A(armR, -2.6 - Math.sin(t * 14) * 0.15, -0.5); head.rotation.x = -0.2 * bell;
+        lo(() => { hips.position.y = HIP + hop * 0.24; legL.rotation.set(-hop * 0.55, 0, 0.06); legR.rotation.set(-hop * 0.55, 0, -0.06); torso.rotation.x = -0.05 * bell; }); break; }
+      case 'laugh': { const sh = Math.sin(t * 18);
+        A(armL, -0.55, -0.3); A(armR, -0.55, 0.3); head.rotation.x = (-0.3 + sh * 0.05) * bell;
+        lo(() => { torso.rotation.x = (-0.18 + sh * 0.05) * bell; chest.scale.setScalar(1 + sh * 0.02 * bell); }); break; }
+      case 'wow': { const j = Math.max(0, 1 - t / 0.35);
+        A(armL, -0.5, 1.45); A(armR, -0.5, -1.45); head.rotation.x = -0.18 * bell;
+        lo(() => { torso.rotation.x = -0.14 * bell; hips.position.y = HIP + Math.sin(j * Math.PI) * 0.12; }); break; }
+      case 'sad': { const sw = Math.sin(t * 1.6) * 0.05;
+        A(armL, 0.12, 0.04); A(armR, 0.12, -0.04); head.rotation.x = 0.5 * bell; head.rotation.z = sw * bell;
+        lo(() => { torso.rotation.x = 0.32 * bell; hips.position.y = HIP - 0.04 * bell; }); break; }
+      case 'heart': { const p = Math.sin(t * 5) * 0.04;
+        A(armL, -2.45, -0.25 + p); A(armR, -2.45, 0.25 - p); head.rotation.z = Math.sin(t * 2.5) * 0.12 * bell; lo(() => { torso.rotation.z = Math.sin(t * 2.5) * 0.04 * bell; }); break; }
+      case 'sitg': { // 땅에 앉기: 다리를 앞으로 뻗고 두 손은 뒤를 짚음
+        if (upper) break; const s = sstep(0, 0.4, t);
+        hips.position.y = HIP + (0.2 - HIP) * s; legL.rotation.set(-1.5 * s, 0, 0.1); legR.rotation.set(-1.45 * s, 0, -0.1);
+        torso.rotation.x = -0.22 * s; armL.rotation.set(0.55 * s, 0, 0.32); armR.rotation.set(0.55 * s, 0, -0.32);
+        chest.scale.setScalar(1 + Math.sin(t * 1.2) * 0.02); head.rotation.x = 0.1 * s; break; }
+      case 'lie': { // 등을 대고 눕기: 골반째 뒤로 눕히고 팔은 머리 뒤로
+        if (upper) break; const s = sstep(0, 0.5, t);
+        hips.rotation.x = -Math.PI / 2 * s; hips.position.y = HIP + (0.24 - HIP) * s;
+        legL.rotation.set(0, 0, 0.05); legR.rotation.set(-0.35 * s, 0, -0.05);
+        armL.rotation.set(-2.9 * s, 0, 0.35 * s); armR.rotation.set(-2.9 * s, 0, -0.35 * s); head.rotation.x = 0.15 * s;
+        chest.scale.setScalar(1 + Math.sin(t * 1.1) * 0.025); break; }
+    }
+  }
+  function animate(dt, { speed, running, pose, t, breath, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2 }) {
     if (model) tickEyes(dt, face, lid, pose);
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'carry');
@@ -445,7 +510,7 @@ export function buildRunner(opts = {}) {
     hips.position.y = HIP + Math.abs(Math.cos(st.phase)) * (running ? 0.14 : 0.06) * st.blend;
     body.position.set(0, 0, 0);
     chest.scale.set(1, 1, 1);
-    head.rotation.set(0, 0, 0); hips.rotation.y = 0; torso.rotation.z = 0;
+    head.rotation.set(0, 0, 0); hips.rotation.set(0, 0, 0); torso.rotation.z = 0;
     // 어깨: 팔과 같은 박자로 가슴이 반대쪽 다리와 엇갈려 돌고(골반은 반대로 조금), 머리는 앞을 보게 되돌림
     { const tw = s * amp; hips.rotation.y = tw * 0.12; torso.rotation.y = -tw * 0.3; head.rotation.y = tw * 0.18;
       torso.rotation.z = Math.cos(st.phase) * amp * 0.035; } // 걸음마다 어깨가 살짝 기우뚱
@@ -558,6 +623,7 @@ export function buildRunner(opts = {}) {
       legL.rotation.set(-0.5 + Math.sin(b * 0.8) * 0.5, 0, 0.12); legR.rotation.set(-0.5 - Math.sin(b * 0.8) * 0.5, 0, -0.12);
       torso.rotation.x = -0.15; torso.rotation.z = Math.sin(b * 0.5) * 0.12; hips.position.y = HIP;
       head.rotation.x = -0.25; head.rotation.z = Math.sin(b * 0.5 + 1) * 0.15;
+    } else if (EMO_POSES.has(pose)) { emotePose(pose, t, false, edur);
     } else if (air) {
       const up = Math.max(-1, Math.min(1, (jumpV ?? 0) / 8.5));
       legL.rotation.set(-0.9 - up * 0.3, 0, 0.1); legR.rotation.set(0.5, 0, -0.1);
@@ -570,6 +636,7 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(0, 0, 0.12 + b * 0.35); armR.rotation.set(0, 0, -0.12 - b * 0.35);
       head.rotation.x = -b * 0.15;
     }
+    if (over) emotePose(over.id, over.t, true, over.dur || 2);
     // 발이 비탈 아래로 들어가면 그만큼 골반을 올림 (앞발은 오르막에, 뒷발은 내리막에 걸림)
     if (!air && Math.abs(st.slope) > 0.01 && (pose === 'move' || pose === 'breath' || pose === 'throw' || pose === 'bow' || pose === 'carry' || pose === 'fish')) {
       const L = model ? LEG_M : 0.775, base = model ? LEG_M : HIP;
