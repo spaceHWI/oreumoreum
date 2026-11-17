@@ -871,7 +871,7 @@ function aimTarget() {
 }
 const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function throwTangerine() {
-  if (busy() || player.pose === 'throw' || player.pose === 'bow') return;
+  if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   emo?.stop();
   throwAim = player.riding ? null : aimTarget();
   if (player.riding) { releaseTangerine(); return; }
@@ -910,7 +910,7 @@ function aimShot(from, t) {
 let bowPending = false;
 function fireWeapon() { if (bowArmed()) shootBow(); else throwTangerine(); }
 function shootBow() {
-  if (busy() || player.pose === 'throw' || player.pose === 'bow') return;
+  if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   emo?.stop();
   const w = weaponNow();
   if (save.bowAmmo <= 0) { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = w.perGyul; updateStats(); ammoFlash = 1; }
@@ -1233,7 +1233,7 @@ function doJump() {
   const p = player;
   if (p.riding) { dismountDeer(); return; }
   if (p.cart) { jumpOffCart(); return; } // 마차에서 뛰어내림 (#69)
-  if (busy() || p.air) return;
+  if (busy() || p.air || p.knock) return; // 받혀 구르는 중엔 못 뜀 (#80: 기울어진 채 뜀)
   emo?.stop(); // 동작 중이면 끊고 뜀 (#76)
   p.air = true; p.jumpV = 8.5; p.jumpY = 0;
   sound.step(surfaceAt(p.pos.x, p.pos.z), true);

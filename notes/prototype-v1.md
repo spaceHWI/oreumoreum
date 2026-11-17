@@ -551,3 +551,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - net: presence `em = { id, at, mx?, mz? }`(6초 뒤 null) + 원래 `pose`. 받는 쪽은 at 이 바뀔 때 한 번 보여 줌(처음 들어왔을 때 4초 넘은 건 무시). 탈것 위 손동작은 `net.js overHook`. 포즈가 바뀌면 다른 사람 poseT 를 0 으로. #7 서버 방식도 presence 를 그대로 옮기면 됨
 - runner.js `emotePose(id, t, upper, dur)`: 포즈 20종 + wave 겹치기. 골반 회전을 매 프레임 0 으로 되돌림(눕기). 놀람은 눈 크게. 동작 이름 'bow'(귤 활)와 겹치지 않게 꾸벅 인사는 'insa'
 - 확인: `dist/char-motion.html?pose=insa` 등(포즈 목록에 동작 추가), `node tools/emoposes.js front "" 0.4`(동작마다 그림), `node tools/emoshot.js`(바퀴·쪽 넘김·고정 칸 바꾸기·키·걷기로 끊기·표시·연타 막기·가짜 다른 사람 말풍선·가장자리·하이파이브·탈것). `__oreum.emo`, `__oreum.doEmote(id)`, `__oreum.net`
+
+- #80 받혀 구르는 중(player.knock)에는 점프·귤 던지기·활쏘기를 막는다. 착지 뒤 구르는 동안 점프하면 기울어진 채 뜨던 문제였다 (이동 입력은 원래 막혀 있음).
