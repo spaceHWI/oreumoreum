@@ -1,5 +1,5 @@
 import { NSMODE, TEXCS } from './boot.js'; // 반드시 맨 먼저
-import { useNamsongi, buildNamsongi, nsPaths } from './namsongi.js';
+import { useNamsongi, buildNamsongi, nsPaths, nsAlong } from './namsongi.js';
 import { createFootprints } from './footprints.js';
 import { createTrash, createLocalTrashStore, DEX_LIST } from './trash.js';
 import { dexIcon } from './dexicons.js';
@@ -171,7 +171,7 @@ const FOG = new THREE.Color('#cfe0dc');
 scene.background = FOG;
 scene.fog = new THREE.Fog(FOG, MAP_ID === 'gate' ? 90 : 220, MAP_ID === 'donnaeko' ? 3200 : MAP_ID === 'gate' ? 900 : 2600);
 const leapLane = (() => { const sh = SHOPS.find((r) => r.id === 'leap'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(LEAP.fore - 0.2), at(LEAP.fore + LEAP.D + 0.2)], w: LEAP.W / 2 + 0.2 }]; })(); // LEAP 바닥 밑 풀 없앰 (#59)
-const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: STREET.clear, lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane] }) : null; // 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목
+const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane] }) : null; // 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 const camera = new THREE.PerspectiveCamera(50, 1, 0.5, NSW ? NSW.camFar : 14000);
@@ -551,14 +551,20 @@ const topFit = (() => {
   return { dirty: () => { dirty = true; }, tick(dt) { const v = `${$('hp-bar').hidden}${$('buff-pill').hidden}${document.body.classList.contains('tut')}`; if (v !== vis) { vis = v; dirty = true; t = 0; } t -= dt; if (dirty && t <= 0) { t = 0.2; fit(); } }, fit, get bottom() { return bottom; } };
 })();
 let toastT = 0;
-function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; toastT = sec; }
+function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; toastT = sec; topStack(); }
+// 위 가운데 배너·팁·토스트가 겹치지 않게 (#16): 보이는 것의 높이를 CSS 변수로 넘기고 body 클래스로 아래로 밀기
+function topStack() {
+  const b = document.body, tp = document.getElementById('tip'), bn = document.getElementById('banner'), on = !!tp && !tp.hidden;
+  b.classList.toggle('tip-on', on); if (on) b.style.setProperty('--tip-h', tp.offsetHeight + 'px');
+  if (bn && !bn.hidden) b.style.setProperty('--ban-h', bn.offsetHeight + 'px');
+}
 initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () => (save.equip.bag === 0 ? '호주머니' : '배낭') } }); // #60 UI 누르면 토스트
 
 // ---------- 상황에 맞는 팁 (#66): 표는 tips.js ----------
 const tipEl = $('tip'); let tipT = 0, tipNow = null, tipMarkT = 0, tipMarkPos = null;
 function showTip(tip) {
   tipNow = tip; tipEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIP_ICON[tip.ic] || ''}</svg><span>${tip.text}</span>`;
-  tipEl.classList.toggle('go', !!tip.go); tipEl.hidden = false; tipT = TIP.sec; sound.beep?.(false);
+  tipEl.classList.toggle('go', !!tip.go); tipEl.hidden = false; tipT = TIP.sec; sound.beep?.(false); topStack();
 }
 const tips = createTips({ save, persist, show: showTip });
 function tipMark(pos) { tipMarkPos = pos; tipMarkT = 6; }
@@ -569,7 +575,7 @@ const TIP_GO = {
   stream: () => { const p = tipStreamPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
   stone: () => { if (STN?.terrace) tipMark(STN.terrace.clone()); },
 };
-tipEl.addEventListener('click', () => { const g = tipNow?.go; tipEl.hidden = true; tipT = 0; if (g && TIP_GO[g]) TIP_GO[g](); });
+tipEl.addEventListener('click', () => { const g = tipNow?.go; tipEl.hidden = true; tipT = 0; topStack(); if (g && TIP_GO[g]) TIP_GO[g](); });
 { const b = $('menu-tips'); const sync = () => b.setAttribute('aria-pressed', String(!tips.isOff())); sync(); b.addEventListener('click', () => { tips.off(!tips.isOff()); sync(); if (tips.isOff()) { tipEl.hidden = true; tipT = 0; } }); } // 메뉴에서 팁 끄기
 function tipStreamPos() { if (!stream) return null; const [al, lat] = stream.local(player.pos.x, player.pos.z); const [x, z] = stream.at(stream.centerOff(lat) + 0, Math.max(-20, Math.min(20, lat))); return { x, z, d: Math.hypot(x - player.pos.x, z - player.pos.z) }; }
 let tipIdle = 0, tipBagN = -1;
@@ -586,7 +592,7 @@ function tipState() {
 function tickTips(dt) {
   const n = trash ? trash.store.pickedCount() : 0;
   if (n !== tipBagN) { tipBagN = n; tipIdle = 0; } else if (!panelOpen() && !tut.active) tipIdle += dt;
-  if (tipT > 0) { tipT -= dt; if (tipT <= 0) tipEl.hidden = true; }
+  if (tipT > 0) { tipT -= dt; if (tipT <= 0) { tipEl.hidden = true; topStack(); } }
   if (tipMarkT > 0) { tipMarkT -= dt; if (tipMarkT <= 0 || (tipMarkPos && player.pos.distanceTo(tipMarkPos) < 6)) { tipMarkT = 0; tipMarkPos = null; } }
   tips.update(dt, tipState);
 }let lastCoins = -1;
@@ -626,7 +632,7 @@ function tickBanner(dt) {
   const b = bannerQueue.shift(); if (!b) return;
   $('banner-bdg').innerHTML = iconSvg(b.icon); $('banner-bdg').style.background = b.color;
   $('banner-title').textContent = b.title; $('banner-sub').textContent = b.sub;
-  $('banner').hidden = false; document.body.classList.add('banner-on'); bannerT = 4.5;
+  $('banner').hidden = false; document.body.classList.add('banner-on'); bannerT = 4.5; topStack();
 }
 $('banner-go').addEventListener('click', () => { $('banner').hidden = true; document.body.classList.remove('banner-on'); bannerT = 0; openAch(); });
 function refreshAchUI() {
@@ -2481,6 +2487,7 @@ const enemyWarn = makeEdgeWarn('enemy-warn', '!', ENEMY_SPAWN.warnT);
 // 쓰레기 투기꾼·투기 트럭 (#47): 주기적으로 와서 더미를 다시 쌓음. 버리기 전에 귤을 맞히면 도망. 깨끗한 오름·전투 오름 둘 다
 const DUMP_IC = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9 3h6l-1.2 3.2c3 1.2 5.2 4.3 5.2 7.8 0 4-3.1 7-7 7s-7-3-7-7c0-3.5 2.2-6.6 5.2-7.8z"/></svg>';
 const dumpWarn = makeEdgeWarn('dump-warn', DUMP_IC, DUMP.warnT);
+let introToast = null; // 첫 화면이 떠 있을 때 온 알림은 들어간 뒤 보여 줌 (#16)
 const dumpers = trash ? createDumpers({
   scene, trash, height, paths: nsPaths,
   bound: { line: NSB.boundLine, insideBy: NSB.insideBy, center: NSB.BOUND_CENTER },
@@ -2494,7 +2501,7 @@ const dumpers = trash ? createDumpers({
       sound.beep?.(true); toast(`${iga(def.name)} 놀라 도망가요`);
       ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind);
     },
-    offline: (n) => toast(`자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`),
+    offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) introToast = m; else toast(m); },
   },
 }) : null;
 if (dumpers) { dumpers.bind(player, sound); life.addTargets(dumpers); dumpers.start(); }
@@ -2613,6 +2620,7 @@ $('menu-server').addEventListener('click', openServer);
 // 첫 화면 (#72): 시작 → (서버를 아직 안 골랐으면) 서버 고르기 → 입장. 소리는 기본 켬, 메뉴에서 끄면 기억함
 function closeIntro() {
   $('intro').hidden = true; $('intro-help').hidden = true; $('intro').classList.remove('dim'); document.body.classList.remove('intro-help-on'); $('enter').textContent = '시작';
+  if (introToast) { toast(introToast, 4); introToast = null; }
 }
 function enter() {
   if (sessionOn) { closeIntro(); return; } // 메뉴의 도움말에서 연 경우

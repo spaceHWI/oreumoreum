@@ -360,6 +360,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-go:disabled { opacity: .4; pointer-events: none; }
 .intro-step-h { margin: 2px 0 0; font-family: var(--display); font-weight: 800; font-size: 17px; }
 body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-hint, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
+body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
 body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { display: none; }
 @media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; } }
 
@@ -841,7 +842,10 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 /* 줄 아래 가운데: 토스트·업적 배너 */
 .toast { top: calc(var(--tb-top) + var(--tb-h) + 10px); }
 #banner { top: calc(var(--tb-top) + var(--tb-h) + 10px); }
-body.banner-on .toast { top: calc(var(--tb-top) + var(--tb-h) + 88px); }
+body.banner-on .toast { top: calc(var(--tb-top) + var(--tb-h) + 20px + var(--ban-h, 78px)); }
+/* 팁이 떠 있을 때 토스트는 그 아래 (#16) */
+body.tip-on .toast { top: calc(var(--tb-top) + var(--tb-h) + 18px + var(--tip-h, 36px)); }
+body.banner-on.tip-on .toast { top: calc(var(--tb-top) + var(--tb-h) + 28px + var(--ban-h, 78px) + var(--tip-h, 36px)); }
 /* 손 놓기 등은 줄 아래 왼쪽 */
 .hud-sub { position: fixed; z-index: 5; top: calc(var(--tb-top) + var(--tb-h) + 8px); left: var(--tb-l); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 #tut-skip { top: calc(var(--tb-top) + var(--tb-h) + 8px); left: var(--tb-l); }
@@ -868,7 +872,7 @@ body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
 .tip-toast.go { pointer-events: auto; cursor: pointer; }
 .tip-toast svg { flex: none; width: 20px; height: 20px; color: var(--accent, #ff8a1f); }
 .tip-toast[hidden] { display: none; }
-body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h, 0px) + 88px); }
+body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h, 0px) + 20px + var(--ban-h, 78px)); }
 @keyframes tipin { from { opacity: 0; transform: translate(-50%, -6px); } }
 @media (prefers-reduced-motion: reduce) { .tip-toast { animation: none; } }
 </style>
@@ -1107,11 +1111,11 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
       </div>
     <div id="intro-help" hidden>
       <span class="touch-only"><b>이동</b> 왼쪽 아래 조이스틱 · 땅을 탭해도 걸어가요</span>
-      <span class="desk-only"><b>이동</b> W/S 앞뒤 · A/D 방향 · 땅 클릭 · Shift 걷기·달리기·질주 · Space 점프</span>
+      <span class="desk-only"><b>이동</b> W/S 앞뒤 · A/D 방향 · 땅 클릭 · Shift 걷기·달리기 · Space 점프</span>
       <span><b>시점</b> 화면을 끌어서 둘러보기 · 두 손가락이나 휠로 확대</span>
       <span><b>줍기</b> 손 버튼(E) · 누르고 있으면 계속 주워요</span>
-      <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가판대·돌탑·표지석·쉼터 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
-      <span><b>귤</b> 길에서 줍고 업적으로 받아요. 던지면 노루·말이 먹고 따라와요</span>
+      <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가판대·가게·돌탑·사진사 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
+      <span><b>귤</b> 쓰레기를 클린하우스에 버리면 받아요. 던지면 노루·말이 먹고 따라와요</span>
       <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
     </div>
     </div>

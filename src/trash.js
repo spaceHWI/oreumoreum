@@ -40,6 +40,7 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
   T.total = Math.max(0, Math.floor(Number(T.total) || 0));
   if (!Array.isArray(T.tp)) T.tp = []; // 튜토리얼용 낱개 쓰레기: 주운 번호(0부터). 누적 수엔 세지 않음
   if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수
+  { const ok = new Set(DEX_LIST.map((d) => d.id)); Object.keys(T.dex).forEach((k) => { if (!ok.has(k)) delete T.dex[k]; }); } // #16: 도감이 'undefined' 로 쌓이던 기록 지움
   S = slot(server);
   for (const k in T.srv) if (k !== server) slot(k);
   let dirty = false;
@@ -227,7 +228,8 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   }
   function rollDex(type) {
     const rares = DEX_LIST.filter((d) => d.kind === type.id && d.rare), commons = DEX_LIST.filter((d) => d.kind === type.id && !d.rare);
-    return Math.random() < DEX.rareChance * (rareMul ? rareMul() : 1) && rares.length // 모자(#52) 드문 쓰레기 확률 ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
+    // 모자(#52)가 드문 쓰레기 확률을 올림. (#16: 예전엔 이 주석이 줄 가운데 있어 뒤가 잘려 도감이 기록되지 않았음)
+    return Math.random() < DEX.rareChance * (rareMul ? rareMul() : 1) && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
   }
   // 하나 줍기. c: candidates 의 항목, room: 배낭 남은 부피. 못 주우면 null
   function take(c, room = 99) {
