@@ -353,7 +353,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-go { width: 100%; font-size: 18px; font-weight: 800; padding: 12px 16px; }
 .intro-go:disabled { opacity: .4; pointer-events: none; }
 .intro-step-h { margin: 2px 0 0; font-family: var(--display); font-weight: 800; font-size: 17px; }
-body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #tut-skip, #tut-hint, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
+body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-hint, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { display: none; }
 @media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; } }
 
@@ -683,6 +683,19 @@ body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp
 #shop-mark svg { width: 17px; height: 17px; }
 #shop-mark .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid rgba(255,255,255,.7); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(22px); }
 body.hp-down #shop-mark { display: none !important; }
+/* 탈것 (#69): 점프·달리기 위 가운데 버튼(가진 뒤에만), 길게 누르면 위로 고르기 줄. 마차 가장자리 표시 */
+.pad #btn-ride { right: 62px; bottom: 164px; }
+.pad #btn-ride[hidden], #ride-pick[hidden], #cart-mark[hidden] { display: none; }
+.pad #btn-ride.on { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
+#ride-pick { right: 0; bottom: 232px; display: flex; gap: 6px; padding: 6px; border-radius: 999px; }
+#ride-pick button { width: 46px; height: 46px; border: 1px solid var(--hair); background: transparent; color: #fff; display: grid; place-items: center; cursor: pointer; }
+#ride-pick button.on { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
+#ride-pick svg { width: 26px; height: 26px; }
+#cart-mark { position: fixed; left: 0; top: 0; z-index: 14; width: 34px; height: 34px; margin: -17px 0 0 -17px; display: grid; place-items: center; pointer-events: none; padding: 0; opacity: .85; }
+#cart-mark svg { width: 19px; height: 19px; }
+#cart-mark .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid rgba(255,255,255,.7); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(23px); }
+body.hp-down #cart-mark { display: none !important; }
+@media (max-width: 600px) { .pad #btn-ride { right: 55px; bottom: 146px; } #ride-pick { bottom: 204px; } }
 
 /* 캐릭터 고르기 (#51) */
 #look { position: fixed; left: var(--gut-l); right: var(--gut-r); bottom: calc(var(--safe-b) + 22px); z-index: 10; display: flex; justify-content: center; pointer-events: none; }
@@ -697,7 +710,7 @@ body.hp-down #shop-mark { display: none !important; }
 .look-skin button[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 3px var(--acc); }
 .look-ok { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(255,138,31,.45); }
 .look-ok svg { width: 28px; height: 28px; }
-body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, body.looking #joy, body.looking #speed-label, body.looking #ach-chip, body.looking #sun-chip, body.looking #hp-bar, body.looking #ch-arrow, body.looking #shop-arrow, body.looking #shop-mark, body.looking #tut-hint, body.looking #tut-skip, body.looking #tut-arrow, body.looking #compass { visibility: hidden; }
+body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, body.looking #joy, body.looking #speed-label, body.looking #ach-chip, body.looking #sun-chip, body.looking #hp-bar, body.looking #ch-arrow, body.looking #shop-arrow, body.looking #shop-mark, body.looking #cart-mark, body.looking #tut-hint, body.looking #tut-skip, body.looking #tut-arrow, body.looking #compass { visibility: hidden; }
 @media (max-width: 600px) {
   .look-card { gap: 10px; padding: 10px; }
   .look-sex button { width: 54px; height: 54px; }
@@ -854,6 +867,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <button type="button" id="btn-release" class="panel icon-btn" hidden><span>손 놓기</span></button>
   <button type="button" id="btn-cancelreq" class="panel icon-btn" hidden><span>신청 취소</span></button>
 </div>
+<div id="cart-mark" class="panel round" hidden aria-hidden="true" title="마차"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h11v6H3zM2 9h13M14 12l3-1"/><circle cx="7" cy="18" r="2.5"/><ellipse cx="19" cy="10.5" rx="2.6" ry="1.8"/><path d="M18 12.5v5M21 12v5"/></svg><i class="tip"></i></div>
 <div id="shop-mark" class="panel round" hidden aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><i class="tip"></i></div>
 <div id="ch-arrow" class="panel round" hidden title="클린하우스로 걸어가기" role="button" aria-label="클린하우스로 걸어가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg><i class="tip"></i><small></small></div>
 <div id="shop-arrow" class="panel round" hidden aria-hidden="true"><i class="g"></i><i class="tip"></i></div>
@@ -870,6 +884,8 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <button type="button" id="btn-jump" class="panel round sm" data-tut="jump" title="점프 (Space)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9M7 8l5-5 5 5M5 21c2-3 4-4 7-4s5 1 7 4"/></svg><span>점프</span>
   </button>
+  <button type="button" id="btn-ride" class="panel round sm" hidden title="탈것 (Q) · 길게 누르면 고르기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span>탈것</span></button>
+  <div id="ride-pick" class="panel" hidden aria-label="탈것 고르기"></div>
   <button type="button" id="btn-speed" class="panel round sm" data-tut="speed" data-g="0" title="걷기 ↔ 달리기 (Shift)">
     <svg class="g0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4" r="1.8"/><path d="M12 7v6M12 13l-2.5 8M12 13l2.5 8M9 10l3-2 3 2"/></svg>
     <svg class="g1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2 1-5.5L17 15h3M9 11l2.5-3.5 4 1.5 2 3M5 12l3-1"/></svg>

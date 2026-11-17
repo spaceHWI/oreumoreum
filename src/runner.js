@@ -490,6 +490,20 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(-0.3, 0, 0.25); armR.rotation.set(-0.3, 0, -0.25);
       torso.rotation.x = -0.08;
       chest.scale.setScalar(1 + Math.sin(t * 1.2) * 0.02);
+    } else if (pose === 'board') { // 스케이트보드 (#69): 무릎을 살짝 굽히고 두 팔을 벌려 균형
+      const w = Math.sin(st.clock * 2.2) * 0.06;
+      hips.position.y = HIP - 0.06; legL.rotation.set(-0.22, 0, 0.12); legR.rotation.set(0.12, 0, -0.12);
+      armL.rotation.set(-0.1, 0, 0.75 + w); armR.rotation.set(-0.1, 0, -0.75 + w);
+      torso.rotation.x = 0.12; torso.rotation.z = w * 0.6;
+    } else if (pose === 'scoot') { // 스쿠터 (#69): 두 손으로 손잡이, 한 발 앞
+      hips.position.y = HIP - 0.03; legL.rotation.set(-0.12, 0, 0.04); legR.rotation.set(0.1, 0, -0.04);
+      armL.rotation.set(-1.05, 0, 0.32); armR.rotation.set(-1.05, 0, -0.32);
+      torso.rotation.x = 0.16;
+    } else if (pose === 'ride') { // 조랑말 (#69): 다리를 벌려 걸터앉고 두 손은 고삐
+      hips.position.y = 0.5;
+      legL.rotation.set(-0.55, 0, 0.42); legR.rotation.set(-0.55, 0, -0.42);
+      armL.rotation.set(-0.85, 0, 0.18); armR.rotation.set(-0.85, 0, -0.18);
+      torso.rotation.x = 0.06 + Math.abs(Math.sin(st.clock * 6)) * 0.02 * Math.min(1, speed / 6);
     } else if (pose === 'photo') {
       armL.rotation.set(0, 0, 2.5); armR.rotation.set(0, 0, -2.5);
       legL.rotation.set(0, 0, 0.18); legR.rotation.set(0, 0, -0.18);
