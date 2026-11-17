@@ -5,7 +5,7 @@ import { SIGN_TEXT } from './props.js';
 import { GATE, gatePaths } from './gate.js';
 import { MAP_ID } from './boot.js';
 import { inBound as nsIn, clampBound as nsClamp, gate as nsGate } from './nsbound.js';
-import { TUT } from './balance.js';
+import { TUT, CLEANHOUSE } from './balance.js';
 import { K as NK, NS_E, nsPaths, nsAlong, nsLen, nsSummit, nsDistToRim, relAt, NS_SIGN_TEXT } from './namsongi.js';
 
 // 어떤 맵인지: 주소 해시(#donnaeko) → 저장값 → 기본 다랑쉬
@@ -227,5 +227,7 @@ function namsongiSpots() {
     })(),
     // 클린하우스(재활용장): 개울과 정낭 사이 길 오른쪽. 앞면이 길을 봄
     cleanhouse: (() => { const q = nsAlong('approach', TUT.cleanD, 1, 7.5); const c = nsAlong('approach', TUT.cleanD); return { x: q.x, z: q.z, rot: Math.atan2(c.x - q.x, c.z - q.z) }; })(),
+    // 오름 안 작은 클린하우스 (#78): 탐방로 옆, 앞면이 길을 봄
+    cleanMinis: CLEANHOUSE.mini.map((m) => { const q = nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), c = nsAlong(m.path, m.d); return { id: m.id, name: m.name, x: q.x, z: q.z, rot: Math.atan2(c.x - q.x, c.z - q.z) }; }),
   };
 }

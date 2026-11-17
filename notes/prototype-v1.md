@@ -564,3 +564,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## 돌탑 크기 순서 (#82)
 - `main.js` `cairnSizes`: 맨 아래 돌이 가장 크고 층마다 3~6%(`CAIRN.shrink`) 작아짐. 맨 위 돌은 `topSize`(0.5) 고정, 밑동은 돌 수에 맞춰 굵어짐(상한 `maxBottom` 2.2, 위/아래 비 하한 `minTaper`). 3개: 0.55→0.50, 10개: 0.76→0.50, 50·100개: 2.2→0.48, 100개 높이 약 7.9m
 - 돌을 납작하게(`CAIRN.flat`), 층마다 살짝 어긋남. 새 돌이 올라오면 이전 모양에서 새 모양으로 0.3초(`CAIRN.resize`) 보간(`stepCairn`). 저장된 돌탑도 같은 규칙. 충돌 원은 바닥 돌(반지름 1.0) 그대로, 먼 돌탑 stride 묶기 유지
+
+## 오름 안 클린하우스 (#78)
+- 자리 `balance.js CLEANHOUSE.mini`: 탐방로 `nsAlong(path, d, side, CLEANHOUSE.miniOff 6)` — 자락 숲길 갈림길(toCrater 125)·남쪽 사면 중턱(approach 456)·능선 쉼터(rim 618, 벤치 맞은편)·굼부리 들머리(crater 354). `maps.js spots.cleanMinis` 가 좌표·방향(앞면이 길)으로 바꿈. 어느 더미에서든 길 거리 300(걸어서 1분) 안에 하나: 지금 가장 먼 더미 약 282. 위에서 본 배치 `notes/shots/78-map.jpg`
+- 모양 `cleanhouse.js createMiniCleanhouse`: 지붕 있는 통 넷(스티로폼·폐어구는 한 통, `CLEANHOUSE.miniBins`), 비탈이면 현무암 단을 높은 귀퉁이에 맞춰 쌓음. 표지 그림은 본체에 합치고 뚜껑 넷은 재질 하나(그리기 6번). 밤엔 등·빛웅덩이만, 실제 광원 없음. 가판대 없음(상점은 들머리·메뉴)
+- `main.js`: `CHS`(들머리 + 작은 것), `chNear()`. 버리기 상호작용은 클린하우스마다, `dumpBag(ch)` 연출은 그 클린하우스 통으로(`dumpS.ch`). 화살표는 가장 가까운 곳(가는 중이면 그곳), 자동 걷기(#40)는 길 거리로 가장 가까운 곳(`chRoute`)
+- 충돌은 더미 자리를 정한 뒤 등록(더미 자리·저장이 안 바뀌게), 꽃·나무(#46)보다 먼저라 나무가 안 겹침. 둘레 `CLEANHOUSE.keep`(14) 안엔 몹이 안 나옴. 투기 트럭은 길 위로만 다니고 클린하우스는 길 가장자리에서 1.5 밖
+- 경제: `tools/econ.js` 는 더미마다 가장 가까운 클린하우스까지 거리(`econ-map.json fronts`, `--one` 은 들머리만). 3~5단계 값 약 1.4배 → 깨끗한 오름 효율 3시간 12분·여유 25% 4시간 3분 (spec.md 장비 절)
+- 확인용: `__oreum.cleanhouse.minis()`·`goMini(i)`·`near()`·`route()`·`all`
