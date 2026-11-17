@@ -553,3 +553,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인: `dist/char-motion.html?pose=insa` 등(포즈 목록에 동작 추가), `node tools/emoposes.js front "" 0.4`(동작마다 그림), `node tools/emoshot.js`(바퀴·쪽 넘김·고정 칸 바꾸기·키·걷기로 끊기·표시·연타 막기·가짜 다른 사람 말풍선·가장자리·하이파이브·탈것). `__oreum.emo`, `__oreum.doEmote(id)`, `__oreum.net`
 
 - #80 받혀 구르는 중(player.knock)에는 점프·귤 던지기·활쏘기를 막는다. 착지 뒤 구르는 동안 점프하면 기울어진 채 뜨던 문제였다 (이동 입력은 원래 막혀 있음).
+
+## 먼 풍경 한라산 (#81, src/halla.js)
+- 남송이 전용. `buildHalla(scene)` 을 namsongi.js 하늘·바다 다음에 부름. 후처리 없이 납작한 실루엣 메시 3겹(뒤 구름띠 → 본 산 → 앞 능선), 모양은 `PROFILE`(u -1..1 → 높이 비율). 셰이더는 높이 비율 `hn` 으로 아래쪽을 지평선 색(`cur.hor`)에 녹임
+- 수치 `balance.js HALLA`: 방향 `bearing`(북에서 시계, 40°), 층마다 거리 `d`·반폭 `w`·높이 `h`·`follow`(카메라를 따라가는 정도, 작을수록 움직일 때 더 어긋남). 고도 자료의 실제 정상 쪽은 약 75° 지만 들머리에서 남송이오름 몸체에 가려 북동쪽으로 당김
+- 시간대 색은 namsongi.js `PRE.<때>.hal`(새벽 분홍·낮 옅은 파랑·노을 주황·밤 짙은 남색), 앞 능선은 조금 어둡게, 구름띠는 `cl` 과 지평선 사이. `applyLight` 에서 `halla.set(cur)`, `update` 에서 `halla.update(camera)`
+- 먼 땅(150m 고도 격자)의 `HALLA.demCap`(420m) 위는 `demKeep` 만큼만 남겨 실제 한라산 덩어리가 원경과 겹치지 않게
+- 확인 `node tools/halla.js [mobile] [곳-때,...]` → `dist/halla-<곳>-<때>.png` (곳 top·ridge·trail, 때 day·dusk·night·dawn)

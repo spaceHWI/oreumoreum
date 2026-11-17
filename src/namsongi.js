@@ -5,7 +5,8 @@ import { NEAR, REL, FAR, FW, FH } from './namsongidata.js';
 import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
-import { COLLIDE, BOUND } from './balance.js';
+import { COLLIDE, BOUND, HALLA } from './balance.js';
+import { buildHalla } from './halla.js';
 import { STREAM_GLSL } from './streamshape.js';
 import { buildTrails } from './trailshape.js';
 
@@ -79,11 +80,11 @@ export function useNamsongi() { setMapImpl({ height: nsHeight, surface: nsSurfac
 /* ---------- 시간대 ---------- */
 const C = (h) => new T.Color(h);
 const PRE = {
-  day: { sun: C('#fff3da'), si: 0.8, sk: C('#d4e4ff'), gr: C('#a9bda0'), hi: 0.62, top: C('#3f8fe2'), hor: C('#cfe8f6'), sea: C('#2f9bc4'), cl: C('#ffffff'), cs: C('#c6d6f0'), glow: C('#fff2d0') },
-  aft: { sun: C('#ffd69a'), si: 0.84, sk: C('#b7c6ff'), gr: C('#8f86b4'), hi: 0.58, top: C('#4f8fda'), hor: C('#ffe3bd'), sea: C('#3f93b8'), cl: C('#fff1d8'), cs: C('#c3b6dc'), glow: C('#ffd9a0') },
-  set: { sun: C('#ff9458'), si: 0.9, sk: C('#a79fe2'), gr: C('#70609a'), hi: 0.54, top: C('#4458a8'), hor: C('#ffb07a'), sea: C('#5a78a8'), cl: C('#ffc49a'), cs: C('#8f7fb8'), glow: C('#ff9a58') },
-  dawn: { sun: C('#ffc9b0'), si: 0.78, sk: C('#a9b4ee'), gr: C('#5f7a9a'), hi: 0.56, top: C('#3a4a9a'), hor: C('#ffb9c4'), sea: C('#4a6a9a'), cl: C('#ffd0d8'), cs: C('#8f93c8'), glow: C('#ffc0b0') },
-  night: { sun: C('#8fa8f0'), si: 0.42, sk: C('#5068b8'), gr: C('#1f4a5a'), hi: 0.62, top: C('#070b26'), hor: C('#24407a'), sea: C('#14244e'), cl: C('#5a6aa8'), cs: C('#2c3870'), glow: C('#bcd0ff') },
+  day: { sun: C('#fff3da'), si: 0.8, sk: C('#d4e4ff'), gr: C('#a9bda0'), hi: 0.62, top: C('#3f8fe2'), hor: C('#cfe8f6'), sea: C('#2f9bc4'), cl: C('#ffffff'), cs: C('#c6d6f0'), glow: C('#fff2d0'), hal: C('#9fbcd8') },
+  aft: { sun: C('#ffd69a'), si: 0.84, sk: C('#b7c6ff'), gr: C('#8f86b4'), hi: 0.58, top: C('#4f8fda'), hor: C('#ffe3bd'), sea: C('#3f93b8'), cl: C('#fff1d8'), cs: C('#c3b6dc'), glow: C('#ffd9a0'), hal: C('#a9b2d6') },
+  set: { sun: C('#ff9458'), si: 0.9, sk: C('#a79fe2'), gr: C('#70609a'), hi: 0.54, top: C('#4458a8'), hor: C('#ffb07a'), sea: C('#5a78a8'), cl: C('#ffc49a'), cs: C('#8f7fb8'), glow: C('#ff9a58'), hal: C('#d9825e') },
+  dawn: { sun: C('#ffc9b0'), si: 0.78, sk: C('#a9b4ee'), gr: C('#5f7a9a'), hi: 0.56, top: C('#3a4a9a'), hor: C('#ffb9c4'), sea: C('#4a6a9a'), cl: C('#ffd0d8'), cs: C('#8f93c8'), glow: C('#ffc0b0'), hal: C('#d99bb6') },
+  night: { sun: C('#8fa8f0'), si: 0.42, sk: C('#5068b8'), gr: C('#1f4a5a'), hi: 0.62, top: C('#070b26'), hor: C('#24407a'), sea: C('#14244e'), cl: C('#5a6aa8'), cs: C('#2c3870'), glow: C('#bcd0ff'), hal: C('#101c42') },
 };
 const KEYS = [[-8, 'night'], [4, 'low'], [23, 'aft'], [50, 'day']];
 const cur = {}; for (const k in PRE.aft) cur[k] = PRE.aft[k].isColor ? PRE.aft[k].clone() : PRE.aft[k];
@@ -206,7 +207,7 @@ vec3 groundColor(vec2 p){
   {
     const g = new T.PlaneGeometry((41100 - 150) * K, (22050 - 150) * K, FW - 1, FH - 1); g.rotateX(-PI / 2); g.translate(5475 * K, 0, 975 * K);
     const p = g.attributes.position, col = new Float32Array(p.count * 3);
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i) / K, z = p.getZ(i) / K; let y = farH[i] * 0.1; if (y < 1.5) y = -8; if (Math.abs(x) < 1560 && Math.abs(z) < 1560) y -= 45; p.setY(i, y * K); }
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i) / K, z = p.getZ(i) / K; let y = farH[i] * 0.1; if (y < 1.5) y = -8; if (y > HALLA.demCap) y = HALLA.demCap + (y - HALLA.demCap) * HALLA.demKeep; /* 한라산 원경(#81)과 겹치지 않게 */ if (Math.abs(x) < 1560 && Math.abs(z) < 1560) y -= 45; p.setY(i, y * K); }
     g.computeVertexNormals();
     const c = new T.Color(), g1 = C('#62a64a'), g2 = C('#86c257'), fo = C('#4c8442'), rock = C('#9a9c90'), sand = C('#c9c088');
     for (let i = 0; i < p.count; i++) { const x = p.getX(i) / K, y = p.getY(i) / K, z = p.getZ(i) / K, m = fbm(x * 0.0012, z * 0.0012, 3);
@@ -440,6 +441,7 @@ vec3 groundColor(vec2 p){
     float n=sin(vWp.x*0.022+uTime*1.4)*sin(vWp.z*0.031-uTime*1.1)+0.6*sin(vWp.x*0.006-vWp.z*0.008+uTime*0.7);
     c+=uSunCol*sp*smoothstep(0.15,0.8,n)*0.85; gl_FragColor=vec4(c,1.0); }` }));
   sea.position.y = 0.7; scene.add(sea);
+  const halla = buildHalla(scene); // 먼 풍경 한라산 (#81)
   const skyMesh = new T.Mesh(new T.SphereGeometry(118000, 32, 16), new T.ShaderMaterial({ uniforms: skyU, side: T.BackSide, depthWrite: false,
     vertexShader: 'varying vec3 vD;void main(){vD=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
     fragmentShader: `varying vec3 vD;uniform vec3 uTop;uniform vec3 uHor;uniform vec3 uSun;uniform vec3 uSunCol;
@@ -476,6 +478,7 @@ vec3 groundColor(vec2 p){
     fogColor.copy(cur.hor); fog.near = 260 * K; fog.far = 30000 * K;
     skyU.uTop.value.copy(cur.top); skyU.uHor.value.copy(cur.hor); skyU.uSun.value.copy(dir); skyU.uSunCol.value.copy(cur.glow);
     skyU.uSea.value.copy(cur.sea); skyU.uCl.value.copy(cur.cl); skyU.uCs.value.copy(cur.cs);
+    halla.set(cur);
   }
   // 그림자 영역이 플레이어를 따라가되 텍셀 단위로 맞춰 가장자리가 떨리지 않게 한다
   const rightV = new T.Vector3(), upV = new T.Vector3(), tmp = new T.Vector3();
@@ -489,13 +492,13 @@ vec3 groundColor(vec2 p){
   function update(dt, pos, camera) {
     U.uTime.value += dt; U.uPl.value.copy(pos);
     U.uPlV.value.set(pos.x, pos.y + 1.25, pos.z).applyMatrix4(camera.matrixWorldInverse);
-    skyMesh.position.copy(camera.position);
+    skyMesh.position.copy(camera.position); halla.update(camera);
     for (const c of chunks) { const hi = Math.hypot(c.cx - pos.x, c.cz - pos.z) < HI_R; c.hi.visible = hi; c.lo.visible = !hi; }
   }
   // 구역 격자 채우기 (#46): fn(x, z) → 구역 번호, (x0, z0) 왼쪽 위, cell 한 칸 크기
   function setZoneGrid(fn, x0, z0, cell) { for (let j = 0; j < ZN; j++) for (let i = 0; i < ZN; i++) zoneData[j * ZN + i] = fn(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell); zoneTex.needsUpdate = true; U.uZoneB.value.set(x0, z0, cell, 0); return ZN; }
   const zoneDry = U.uDry.value; // [0..5] 구역별 마른 정도. 바꾸면 바로 반영
-  return { setZoneGrid, zoneDry, solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  return { halla, setZoneGrid, zoneDry, solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */
