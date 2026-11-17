@@ -336,29 +336,55 @@ spots.cairns.forEach((cd, ci) => {
   [1.0, 0.82, 0.66].forEach((s, i) => { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), lam(basalt[i])); m.scale.y = 0.55; m.rotation.y = i * 1.3; m.position.y = y + s * 0.5; y += s * 0.8; m.castShadow = true; m.receiveShadow = true; g.add(m); });
   const im = new THREE.InstancedMesh(stoneGeo, stoneMat, STACK_MAX);
   im.count = 0; im.castShadow = false; im.frustumCulled = false; g.add(im);
-  cairns.push({ ...cd, group: g, base: y, im, count: 0, drop: 0, lean: ci * 2.1 + 0.7, n: 0, P: new Float32Array(STACK_MAX * 3), Q: new Float32Array(STACK_MAX * 4), S: new Float32Array(STACK_MAX), C: new Uint8Array(STACK_MAX), stride: 0 });
+  cairns.push({ ...cd, group: g, base: y, im, count: 0, drop: 0, lean: ci * 2.1 + 0.7, n: 0, P: new Float32Array(STACK_MAX * 3), Q: new Float32Array(STACK_MAX * 4), S: new Float32Array(STACK_MAX), T: new Float32Array(STACK_MAX * 3), TS: new Float32Array(STACK_MAX), C: new Uint8Array(STACK_MAX), stride: 0, anim: 0, fromN: 0 });
 });
 const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), eul = new THREE.Euler(), colr = new THREE.Color(), tv = new THREE.Vector3(), ts = new THREE.Vector3();
+// 큰 돌 → 작은 돌: 맨 아래가 가장 크고 층마다 3~6% 작아진다. 돌이 많으면 맨 위 크기를 고정해 밑동을 굵게 (#82)
+function cairnSizes(n, out) {
+  const [lo, hi] = CAIRN.shrink; let p = 1; const r = [];
+  for (let i = 0; i < n - 1; i++) { r.push(1 - (lo + (hi - lo) * (0.5 + 0.5 * Math.sin(i * 2.7 + 1)))); p *= r[i]; }
+  const k = p < CAIRN.minTaper ? Math.log(CAIRN.minTaper) / Math.log(p) : 1; // 너무 가팔라지면 하한에 맞춘다
+  let s = Math.min(CAIRN.maxBottom, CAIRN.topSize / Math.pow(p, k));
+  for (let i = 0; i < n; i++) { out[i] = s; if (i < n - 1) s *= Math.pow(r[i], k); }
+}
+const cairnTmp = new Float32Array(STACK_MAX);
 function layoutCairn(c) {
   const list = social.stones.get(c.id) || [];
   const n = Math.min(STACK_MAX, list.length);
+  // 지금 보이는 모양을 기억해 두었다가 새 모양으로 0.3초에 걸쳐 바꾼다
+  const hadN = c.n; if (hadN && n) { c.fromP = c.P.slice(0, hadN * 3); c.fromS = c.S.slice(0, hadN); c.fromN = hadN; c.anim = CAIRN.resize; }
+  cairnSizes(n, cairnTmp);
   let y = c.base;
   const cx = Math.cos(c.lean), cz = Math.sin(c.lean);
   for (let i = 0; i < n; i++) {
     const e = list[list.length - n + i];
-    const s = (0.85 + ((i * 37) % 10) / 30) * CAIRN.stoneSize;
+    const s = cairnTmp[i];
     const h = y - c.base;
     // 위로 갈수록 한쪽으로 휘고 살짝 흔들림
     const bend = Math.pow(h / CAIRN.bendH, 1.5) * CAIRN.bend, sway = Math.sin(h * 0.9 + c.lean) * 0.07 * Math.min(1, h / 2);
-    const jx = Math.sin(i * 2.4) * 0.07, jz = Math.cos(i * 2.4) * 0.07;
-    eul.set(0.2 * Math.sin(i * 1.7), i * 2.1, 0.2 * Math.cos(i * 1.3)); q.setFromEuler(eul);
-    c.P[i * 3] = cx * bend - cz * sway + jx; c.P[i * 3 + 1] = y + 0.13 * s; c.P[i * 3 + 2] = cz * bend + cx * sway + jz;
+    const jx = Math.sin(i * 2.4) * 0.07 * s, jz = Math.cos(i * 2.4) * 0.07 * s; // 층마다 살짝 어긋남
+    eul.set(0.12 * Math.sin(i * 1.7), i * 2.1, 0.12 * Math.cos(i * 1.3)); q.setFromEuler(eul);
+    c.T[i * 3] = cx * bend - cz * sway + jx; c.T[i * 3 + 1] = y + 0.07 * s; c.T[i * 3 + 2] = cz * bend + cx * sway + jz;
     c.Q[i * 4] = q.x; c.Q[i * 4 + 1] = q.y; c.Q[i * 4 + 2] = q.z; c.Q[i * 4 + 3] = q.w;
-    c.S[i] = s; c.C[i] = e.mine ? 255 : i % 4;
-    y += CAIRN.step * s / CAIRN.stoneSize;
+    c.TS[i] = s; c.C[i] = e.mine ? 255 : i % 4;
+    y += CAIRN.step * s;
   }
-  c.n = n; c.stride = 0; c.top = y; c.count = list.length;
-  fillCairn(c, 1);
+  c.n = n; c.top = y; c.count = list.length;
+  if (!c.anim || !c.fromN) { c.P.set(c.T.subarray(0, n * 3)); c.S.set(c.TS.subarray(0, n)); c.anim = 0; }
+  else stepCairn(c, 0);
+  c.stride = 0; fillCairn(c, c.want || 1);
+}
+// 크기 변화 보간 (표시용 P·S 를 이전 모양에서 새 모양으로)
+function stepCairn(c, dt) {
+  c.anim = Math.max(0, c.anim - dt);
+  const t = 1 - c.anim / CAIRN.resize, e = t * t * (3 - 2 * t);
+  for (let i = 0; i < c.n; i++) {
+    const fi = i < c.fromN ? i : -1;
+    for (let k = 0; k < 3; k++) c.P[i * 3 + k] = fi < 0 ? c.T[i * 3 + k] : c.fromP[fi * 3 + k] + (c.T[i * 3 + k] - c.fromP[fi * 3 + k]) * e;
+    c.S[i] = fi < 0 ? c.TS[i] : c.fromS[fi] + (c.TS[i] - c.fromS[fi]) * e;
+  }
+  if (c.anim <= 0) c.fromN = 0;
+  c.stride = 0;
 }
 const mineCol = new THREE.Color('#c9b48a');
 const basaltCols = basalt.map((b) => new THREE.Color(b));
@@ -371,7 +397,7 @@ function fillCairn(c, stride) {
   for (let i = 0; i < c.n; i += stride) {
     q.set(c.Q[i * 4], c.Q[i * 4 + 1], c.Q[i * 4 + 2], c.Q[i * 4 + 3]);
     const s = c.S[i] * big;
-    mtx.compose(tv.set(c.P[i * 3], c.P[i * 3 + 1], c.P[i * 3 + 2]), q, ts.set(s, s * 0.6 * (stride > 1 ? stride * 0.7 : 1), s));
+    mtx.compose(tv.set(c.P[i * 3], c.P[i * 3 + 1], c.P[i * 3 + 2]), q, ts.set(s, s * CAIRN.flat * (stride > 1 ? stride * 0.7 : 1), s));
     c.im.setMatrixAt(k, mtx);
     c.im.setColorAt(k, c.C[i] === 255 ? mineCol : basaltCols[c.C[i]]); k++;
   }
@@ -380,7 +406,7 @@ function fillCairn(c, stride) {
 let cairnLodT = 0;
 function tickCairnLod(dt) {
   cairnLodT -= dt; if (cairnLodT > 0) return; cairnLodT = 0.5;
-  cairns.forEach((c) => { if (!c.n) return; const d = Math.hypot(camera.position.x - c.pos.x, camera.position.z - c.pos.z); fillCairn(c, d > CAIRN.farD ? (LOW ? 5 : 3) : 1); });
+  cairns.forEach((c) => { if (!c.n) return; const d = Math.hypot(camera.position.x - c.pos.x, camera.position.z - c.pos.z); fillCairn(c, c.want = d > CAIRN.farD ? (LOW ? 5 : 3) : 1); });
 }
 
 // ---------- 사물 충돌 (#15, 남송이만) ----------
@@ -2792,7 +2818,7 @@ function frame(now) {
   fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);
-  cairns.forEach((c) => { if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
+  cairns.forEach((c) => { if (c.anim > 0) { stepCairn(c, dt); fillCairn(c, c.want || 1); } if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
   clouds.rotation.y += dt * 0.012;
   { // 좌표 (#75, 나침반 대신): X·Z 정수 + 화면이 보는 방향 기준 북쪽(-z) 화살표
     camera.getWorldDirection(tmpDir); const ang = Math.atan2(tmpDir.x, -tmpDir.z) * 180 / Math.PI;
