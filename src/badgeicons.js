@@ -12,9 +12,7 @@ export const BADGE_ICONS = {
   // 오름 지기: 깃발 꽂힌 오름
   'b-50k': `<path d="M4 38 Q24 8 44 38z" fill="${G}" ${s()}/><path d="M24 17 V7" ${s()}/><path d="M24 7 l9 3 -9 3z" fill="${Y}" ${s()}/>${eyes(20, 28, 28)}${cheeks(16.5, 31.5, 31)}<path d="M22 31 q2 2 4 0" fill="none" ${s()}/>`,
   // 굼부리 열 바퀴: 분화구 + 도는 화살표
-  'b-lap-10': `<ellipse cx="24" cy="28" rx="17" ry="9" fill="${G}" ${s()}/><ellipse cx="24" cy="28" rx="10" ry="4.5" fill="#4f7a36" ${s()}/><path d="M9 20 q15 -12 30 0" fill="none" ${s('stroke-dasharray="3 3.5"')}/><path d="M39 20 l-5 -1 M39 20 l1 -5" ${s()}/><text x="24" y="31" font-size="9" font-weight="900" text-anchor="middle" fill="${W}" font-family="Noto Sans KR, sans-serif">10</text>`,
   // 남벽: 바위 절벽 + 작은 나무
-  'b-wall': `<path d="M6 40 L10 18 L16 22 L20 9 L27 15 L31 8 L37 17 L42 40z" fill="#9a958a" ${s()}/><path d="M16 26 l3 4 M27 20 l-2 6 M33 24 l3 5" fill="none" ${s()}/><path d="M9 40 l3 -8 3 8z M37 40 l2.5 -7 2.5 7z" fill="${G}" ${s()}/>`,
   // 해돋이: 수평선 위로 웃는 해
   'b-sunrise': `<path d="M24 6 v4 M10 12 l3 3 M38 12 l-3 3 M5 24 h4 M39 24 h4" ${s()}/><path d="M10 31 a14 14 0 0 1 28 0z" fill="${Y}" ${s()}/>${eyes(19.5, 28.5, 24)}<path d="M21 27 q3 2.5 6 0" fill="none" ${s()}/><path d="M4 31 H44" ${s()}/><path d="M9 37 h8 M22 37 h12 M14 42 h10" ${s('opacity=".8"')}/>`,
   // 노을: 바다로 지는 해
@@ -22,7 +20,6 @@ export const BADGE_ICONS = {
   // 노루 친구: 노루 얼굴 + 하트
   'b-deer-friend': `<path d="M14 14 l-4 -7 M14 14 l-6 -2 M34 14 l4 -7 M34 14 l6 -2" fill="none" ${s()}/><ellipse cx="13" cy="19" rx="5" ry="3" fill="#c9a27a" ${s()}/><ellipse cx="35" cy="19" rx="5" ry="3" fill="#c9a27a" ${s()}/><path d="M15 18 q9 -6 18 0 q2 10 -4 18 q-5 4 -10 0 q-6 -8 -4 -18z" fill="#c9a27a" ${s()}/>${eyes(20, 28, 24)}<ellipse cx="24" cy="32" rx="3" ry="2" fill="${K}"/><path d="M36 33 c0-3 4-3 4 0 c0-3 4-3 4 0 c0 3-4 5-4 6 c0-1-4-3-4-6z" fill="${P}" ${s('stroke-width="1.8"')}/>`,
   // 노루 기수: 달리는 노루 옆모습
-  'b-rider': `<path d="M10 26 q2 -6 10 -6 h10 l4 -6 q4 -2 6 1 l-1 4 -4 2 q-1 7 -6 8 H16 q-5 0 -6 -3z" fill="#c9a27a" ${s()}/><path d="M16 29 l-4 9 M22 29 l2 9 M28 29 l-2 9 M32 27 l5 8" fill="none" ${s()}/><path d="M36 14 l-1 -6 M38 14 l3 -5" fill="none" ${s()}/><circle cx="36.5" cy="17" r="1.4" fill="${K}"/><path d="M2 22 h5 M3 28 h4" ${s('opacity=".7"')}/><path d="M18 20 q4 -6 9 0" fill="${O}" ${s()}/>`,
   // 돌탑: 쌓인 돌
   'b-stones': `<ellipse cx="24" cy="37" rx="13" ry="4.5" fill="#b9b3a6" ${s()}/><ellipse cx="24" cy="29" rx="10" ry="4" fill="#cfc9bc" ${s()}/><ellipse cx="24" cy="22" rx="7.5" ry="3.5" fill="#b9b3a6" ${s()}/><ellipse cx="24" cy="15.5" rx="5" ry="3" fill="#cfc9bc" ${s()}/><path d="M24 7 l1.4 2.8 3 .4 -2.2 2 .6 3 -2.8 -1.5 -2.8 1.5 .6 -3 -2.2 -2 3 -.4z" fill="${Y}" ${s('stroke-width="1.6"')}/>${eyes(21, 27, 29)}`,
   // 멧돼지: 멧돼지 얼굴 + 귤
@@ -35,7 +32,6 @@ export const BADGE_ICONS = {
   // 일주일 개근: 달력 7 + 별
   'b-streak-7': `<rect x="9" y="11" width="30" height="28" rx="4" fill="${W}" ${s()}/><rect x="9" y="11" width="30" height="8" rx="3" fill="#2f6db5" ${s()}/><path d="M16 8 v6 M32 8 v6" ${s()}/><text x="22" y="35" font-size="15" font-weight="900" text-anchor="middle" fill="${K}" font-family="Noto Sans KR, sans-serif">7</text><path d="M36 26 l1.8 3.6 4 .6 -2.9 2.8 .7 4 -3.6 -1.9 -3.6 1.9 .7 -4 -2.9 -2.8 4 -.6z" fill="${Y}" ${s('stroke-width="1.8"')}/>`,
   // 두 길의 러너: 갈림길 이정표
-  'b-both': `<path d="M24 40 V12" ${s('stroke-width="3"')}/><path d="M24 14 H38 l4 4 -4 4 H24z" fill="${W}" ${s()}/><path d="M24 24 H10 l-4 4 4 4 H24z" fill="${Y}" ${s()}/><path d="M16 42 q8 -4 16 0" fill="none" ${s()}/>`,
 };
 
 // #13 새 뱃지: 단계형은 fam 이름(trash·recycle·heap·dex)으로 한 아이콘을 같이 씀

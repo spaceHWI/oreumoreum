@@ -77,20 +77,6 @@ $('sign-body').innerHTML = spots.sign.html;
 
 // 탐방로 고르기
 export let introMap = MAP_ID;
-function buildMapPick(box, go) {
-  box.innerHTML = '';
-  Object.values(MAPS).filter((m) => !m.hidden || m.id === MAP_ID).forEach((m) => {
-    const b = document.createElement('button'); b.type = 'button';
-    b.setAttribute('aria-pressed', String((go ? MAP_ID : introMap) === m.id));
-    const t = document.createElement('b'); t.textContent = m.name; const s = document.createElement('small'); s.textContent = m.id === 'donnaeko' ? '숲길 따라 백록담 남벽까지' : '억새 오름과 굼부리 둘레';
-    b.append(t, s);
-    b.addEventListener('click', () => {
-      if (go) { if (m.id !== MAP_ID) switchMap(m.id); else $('maps').hidden = true; }
-      else { introMap = m.id; buildMapPick(box, false); }
-    });
-    box.append(b);
-  });
-}
 export function switchMap(id) { save.prevMap = MAP_ID; save.map = id; persist(); location.hash = id; location.reload(); }
 export let leaving = false;
 export function leaveTo(id) {

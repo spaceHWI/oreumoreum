@@ -37,7 +37,7 @@ const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-hint', 'ch-arrow', 'shop-a
   const S = async (name, fn) => { step = name; try { await fn(); } catch (e) { notes.push(`[${name}] 실패 ${e.message.slice(0, 160)}`); console.log('FAIL', name, e.message.slice(0, 160)); } };
   const tap = async (sel) => { if (mode === 'm') await p.tap(sel, { timeout: 30000 }); else await p.click(sel, { timeout: 30000 }); };
   const key = async (k, ms = 90) => { await p.keyboard.down(k); await W(ms); await p.keyboard.up(k); };
-  const closeAll = () => O(() => { ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop', 'photo', 'wardrobe'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; }); });
+  const closeAll = () => O(() => { ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'server', 'shoppop', 'photo', 'wardrobe'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; }); });
   const until = async (fn, ms = 8000, arg) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await p.evaluate(fn, arg).catch(() => false)) return true; await W(250); } return false; };
 
   await S('title', async () => { await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await W(7000); await shot('title'); });
@@ -90,11 +90,11 @@ const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-hint', 'ch-arrow', 'shop-a
     for (const id of ids || []) {
       if (['menu-reset'].includes(id)) continue;
       await O(() => { document.getElementById('menu').hidden = false; }); await O((id) => document.getElementById(id).click(), id); await W(700);
-      const open = await O(() => ['shop', 'sign', 'wishes', 'chat', 'ach', 'dex', 'maps', 'feedback', 'notes', 'server', 'shoppop', 'wardrobe', 'intro'].filter((k) => { const e = document.getElementById(k); return e && !e.hidden; }));
+      const open = await O(() => ['shop', 'sign', 'wishes', 'chat', 'ach', 'dex', 'feedback', 'notes', 'server', 'shoppop', 'wardrobe', 'intro'].filter((k) => { const e = document.getElementById(k); return e && !e.hidden; }));
       notes.push(`[menu] ${id} → ${(open || []).join(',') || '-'}`);
       if (['menu-feedback', 'menu-dex', 'menu-wardrobe', 'menu-ach', 'menu-notes'].includes(id)) await shot(id);
       const u = await ui(); u.forEach((x) => notes.push(`[${id}] ${x}`));
-      await O(() => { ['shop-close', 'sign-close', 'ach-close', 'dex-close', 'maps-close', 'feedback-close', 'notes-close', 'server-close', 'shoppop-close', 'wardrobe-done'].forEach((c) => { const e = document.getElementById(c); if (e && e.offsetParent) e.click(); }); if (!document.getElementById('intro').hidden) document.getElementById('enter').click(); });
+      await O(() => { ['shop-close', 'sign-close', 'ach-close', 'dex-close', 'feedback-close', 'notes-close', 'server-close', 'shoppop-close', 'wardrobe-done'].forEach((c) => { const e = document.getElementById(c); if (e && e.offsetParent) e.click(); }); if (!document.getElementById('intro').hidden) document.getElementById('enter').click(); });
       await W(400); await closeAll();
     }
   });

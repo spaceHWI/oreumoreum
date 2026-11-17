@@ -217,7 +217,7 @@ export const player = {
   target: null, onArrive: null, pose: 'move', poseT: 0, strideAcc: 0, steps: 0,
   jumpY: 0, jumpV: 0, air: false, driving: false, kb: new THREE.Vector3(), yellowUntil: 0, riding: null,
   ride: null, rideC: false, rideAuto: null, rideClear: 0, cart: null, // 탈것 (#69): ride = 타고 있는 개인 탈것 id, rideC = 스케이트보드를 들고 걸음, cart = 마차 { seat }
-  visY: 0, lapAcc: 0, lapPrevA: null, laps: 0, viewSeen: false,
+  visY: 0, viewSeen: false,
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
 // ---------- HP·쓰러짐·들것 귀환 (#36, 전투 오름만) ----------

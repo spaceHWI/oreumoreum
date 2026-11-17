@@ -622,3 +622,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 손님·서버 없음: `trash.store.localRank(srv)` (저장 `trash.rk`: 날·주가 바뀌면 0, 처음엔 누적 수를 전체로) 세 칸 + '로그인하면 랭킹에 올라가요'
 - 버린 뒤(연출 끝 1.6초 뒤, `RANK.checkGapMs` 간격): 저장을 바로 보내고 `/rank/me` 로 오늘 순위가 오르면 토스트 '오늘 12위 → 9위'(처음이면 '오늘 9위'). 오늘 10위·1위 안이면 업적 이벤트 `rank-top10`·`rank-top1`(하루 한 번, `save.rankAch`) → 뱃지 '오늘의 열 명'·'오늘의 일등'
 - 확인: `node tools/online.js` 끝에 랭킹 7가지(토스트·업적·내 줄·메달·전체 탭·전투 탭·손님), 화면 `dist/rank-online.png`
+
+## #88 예전 뱃지·옛 UI 지우기
+- 지운 뱃지: 굼부리 열 바퀴(b-lap-10)·남벽 앞에서(b-wall)·노루 기수(b-rider)·두 길의 러너(b-both) + 아이콘. 오늘의 업적에서 다랑쉬·돈내코 전용(굼부리 바퀴·남벽·다랑쉬 정상·다른 탐방로 가 보기) 지움. 예전 저장의 받은 기록(`ach.badges` 중 없는 id, `ach.visited`)은 불러올 때 지움
+- 지운 UI·코드: 메뉴 '다른 탐방로' 버튼, `#maps` 창, `buildMapPick`, 굼부리 바퀴 세기(`update.js`·`laps`), 체력 시절 `.fx-stamina` CSS
+- 남긴 것: 다랑쉬·돈내코·입구 맵 코드(`maps.js`·`donnaeko.js`·`gate.js`)와 서버 `rooms` 목록은 주소 해시로만 열리는 상태로 그대로 둠 (튜토리얼·방 이름과 얽혀 있어 따로 안전하게 지울 것). `.stamina-track` 은 이미 없음, 손잡기 흔적은 더 없음
