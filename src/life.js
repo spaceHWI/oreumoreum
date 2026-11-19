@@ -66,6 +66,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   let player = null, sound = null;
   function bind(p, s) { player = p; sound = s; enemies.bind(p, s); }
   const deer = [], horses = [], crows = [], flies = [];
+  let L = null; // 돌려줄 객체. remote·others·leader 는 멀티 노루(#92, game/deernet.js)가 채움
   const tangerines = [];
   const group = new THREE.Group(); scene.add(group);
   const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -84,7 +85,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       d.root.position.copy(home);
       const heart = makeHeart(); heart.position.y = 2.25; d.root.add(heart);
       group.add(d.root);
-      deer.push({ ...d, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null });
+      deer.push({ ...d, id: 'h' + deer.length, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null }); // id: 멀티에서 노루를 가리키는 이름 (#92)
     }
   });
   // 조랑말
@@ -265,31 +266,53 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
         a.state = 'eat'; tg.eatT = (tg.eatT ?? 2.2) - dt;
         if (tg.eatT < 0) {
           tg.eaten = true; group.remove(tg.mesh); a.target = null;
-          a.followUntil = time + 60; a.state = 'follow'; a.heart.visible = true; a.heartT = 2.5;
-          sound.crunch?.(); hooks.fed?.(a.kind);
-          onToast(a.kind === 'deer' ? '노루가 귤을 먹고 졸졸 따라와요' : '조랑말이 귤을 먹고 따라와요');
+          a.followUntil = time + 60; a.state = 'follow'; a.heart.visible = true; a.heartT = 2.5; a.followWho = tg.feeder || null; // 다른 사람이 준 귤이면 그 사람을 따라감 (#92)
+          if (!tg.feeder) { sound.crunch?.(); hooks.fed?.(a.kind); onToast(a.kind === 'deer' ? '노루가 귤을 먹고 졸졸 따라와요' : '조랑말이 귤을 먹고 따라와요'); }
         }
         return 0;
       }
       turnTo(a, Math.atan2(to.x, to.z), Math.min(1, dt * 6));
       return a.kind === 'deer' ? 3.2 : 2.6;
     }
-    if (a.followUntil > time) {
+    const ld = a.followWho ? L.leader?.(a.followWho) : player; // 따라갈 사람: 나 또는 멀티의 다른 사람 (#92)
+    if (a.followUntil > time && ld) {
       a.state = 'follow';
-      const behind = player.pos.clone().add(new THREE.Vector3(Math.sin(player.heading + Math.PI + (a.kind === 'deer' ? 0.6 : -0.6)), 0, Math.cos(player.heading + Math.PI + (a.kind === 'deer' ? 0.6 : -0.6))).multiplyScalar(3.4));
+      const behind = ld.pos.clone().add(new THREE.Vector3(Math.sin(ld.heading + Math.PI + (a.kind === 'deer' ? 0.6 : -0.6)), 0, Math.cos(ld.heading + Math.PI + (a.kind === 'deer' ? 0.6 : -0.6))).multiplyScalar(3.4));
       const to = behind.sub(a.pos).setY(0); const dist = to.length();
       if (dist > 60) { a.followUntil = 0; return 0; }
-      if (dist < 0.8) { turnTo(a, player.heading, Math.min(1, dt * 3)); return 0; }
+      if (dist < 0.8) { turnTo(a, ld.heading, Math.min(1, dt * 3)); return 0; }
       turnTo(a, Math.atan2(to.x, to.z), Math.min(1, dt * 6));
-      return Math.min(player.speed + dist * 0.8, a.kind === 'deer' ? 13 : 11);
+      return Math.min(ld.speed + dist * 0.8, a.kind === 'deer' ? 13 : 11);
     }
-    if (a.state === 'follow') { a.state = 'graze'; a.t = 3; onToast(a.kind === 'deer' ? '노루가 제자리로 돌아가요' : '조랑말이 풀 뜯으러 가요'); }
+    if (a.state === 'follow') { a.state = 'graze'; a.t = 3; if (!a.followWho) onToast(a.kind === 'deer' ? '노루가 제자리로 돌아가요' : '조랑말이 풀 뜯으러 가요'); a.followWho = null; }
     return null;
   }
   const legs4 = (a, amp) => { a.legs[0].rotation.x = Math.sin(a.phase) * amp; a.legs[3].rotation.x = Math.sin(a.phase) * amp; a.legs[1].rotation.x = -Math.sin(a.phase) * amp; a.legs[2].rotation.x = -Math.sin(a.phase) * amp; };
   const tickHeart = (a, dt) => { if (a.heartT > 0) { a.heartT -= dt; a.heart.position.y = (a.kind === 'deer' ? 2.3 : 2.8) + (2.5 - a.heartT) * 0.4; a.heart.material.opacity = Math.min(1, a.heartT); if (a.heartT <= 0) a.heart.visible = false; } };
 
   let nearDeerToast = 0;
+  // 가장 가까운 사람: 나, 그리고 L.others()(멀티 방장일 때 다른 사람 [{ pos, fast }]) (#92)
+  const nrOut = { d: 0, pos: null, fast: false, me: true };
+  function nearRunner(at) {
+    nrOut.d = player.pos.distanceTo(at); nrOut.pos = player.pos; nrOut.fast = player.running || player.speed > 6; nrOut.me = true;
+    const os = L.others?.(); if (os) for (const o of os) { const dd = o.pos.distanceTo(at); if (dd < nrOut.d) { nrOut.d = dd; nrOut.pos = o.pos; nrOut.fast = o.fast; nrOut.me = false; } }
+    return nrOut;
+  }
+  // 방장이 알려 준 자리(d.net = { x, z, h, s, v })로 부드럽게 잇고 상태대로 움직임 (#92)
+  function remoteDeer(d, dt, time) {
+    const n = d.net;
+    if (n) {
+      const k = Math.min(1, dt * 5), nx = d.pos.x + (n.x - d.pos.x) * k, nz = d.pos.z + (n.z - d.pos.z) * k;
+      if (Math.hypot(n.x - d.pos.x, n.z - d.pos.z) > 25) d.pos.set(n.x, 0, n.z); else d.pos.set(nx, 0, nz);
+      d.pos.y = height(d.pos.x, d.pos.z); d.heading += wrapA(n.h - d.heading) * Math.min(1, dt * 6); d.speed += (n.v - d.speed) * k;
+      if (n.s !== d.state && n.s !== 'ridden') d.state = n.s;
+    }
+    d.root.position.copy(d.pos); d.root.rotation.y = d.heading;
+    d.root.position.y += d.state === 'flee' ? Math.abs(Math.sin(d.phase * 0.9)) * 0.5 : 0;
+    legs4(d, d.speed > 0.1 ? 0.6 : 0);
+    d.head.rotation.x = d.state === 'graze' || d.state === 'eat' ? 0.9 + Math.sin(time * (d.state === 'eat' ? 8 : 1.5) + d.phase) * 0.1 : (d.state === 'alert' ? -0.2 : 0.2);
+    d.fx?.(dt, time, d); wantDeer(Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z));
+  }
   function update(dt, time) {
     if (!player || !sound) return;
     // 노루
@@ -300,18 +323,19 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
         d.root.position.copy(d.pos); d.root.rotation.y = d.heading;
         legs4(d, d.speed > 0.1 ? 0.7 : 0);
         d.root.position.y += d.speed > 4 ? Math.abs(Math.sin(d.phase * 0.5)) * 0.25 : 0;
-        d.head.rotation.x = 0.1; d.fx?.(dt, time, d);
+        d.head.rotation.x = 0.1; d.fx?.(dt, time, d); wantDeer(Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z));
         continue;
       }
+      if (L.remote) { remoteDeer(d, dt, time); continue; } // 멀티에서 방장이 아니면 방장이 알려 준 대로만 (#92)
       seekFood(d, 30);
       let want = feedStep(d, dt, time);
       const friendly = d.target || d.followUntil > time;
       if (want === null) {
-        const dp = player.pos.distanceTo(d.pos);
-        const fast = player.running || player.speed > 6;
+        const nr = nearRunner(d.pos), dp = nr.d; // 가장 가까운 사람 (멀티의 방장이면 다른 사람도, #92)
+        const fast = nr.fast;
         const fleeD = fast ? 4.5 : 1.6; // 살금살금 걸으면 가까이 갈 수 있음
-        if (dp < fleeD && d.state !== 'flee') { d.state = 'flee'; d.t = 2.5 + rnd(); const away = d.pos.clone().sub(player.pos).setY(0).normalize(); d.heading = Math.atan2(away.x, away.z); sound.deerHop?.(); }
-        else if (dp < 10 && d.state === 'graze' && fast) { d.state = 'alert'; d.t = 1.5; const to = player.pos.clone().sub(d.pos).setY(0).normalize(); d.heading = Math.atan2(to.x, to.z); if (nearDeerToast < time) { nearDeerToast = time + 25; onToast('노루가 이쪽을 보고 있어요. 천천히 다가가거나 귤을 던져 보세요'); } }
+        if (dp < fleeD && d.state !== 'flee') { d.state = 'flee'; d.t = 2.5 + rnd(); const away = d.pos.clone().sub(nr.pos).setY(0).normalize(); d.heading = Math.atan2(away.x, away.z); if (nr.me) sound.deerHop?.(); }
+        else if (dp < 10 && d.state === 'graze' && fast) { d.state = 'alert'; d.t = 1.5; const to = nr.pos.clone().sub(d.pos).setY(0).normalize(); d.heading = Math.atan2(to.x, to.z); if (nr.me && nearDeerToast < time) { nearDeerToast = time + 25; onToast('노루가 이쪽을 보고 있어요. 천천히 다가가거나 귤을 던져 보세요'); } }
         want = 0;
         if (d.state === 'flee') { want = 7; if (d.t < 0) { d.state = 'walk'; d.t = 3; d.heading = Math.atan2(d.home.x - d.pos.x, d.home.z - d.pos.z) + (rnd() - 0.5); } }
         else if (d.state === 'alert') { if (d.t < 0) { d.state = 'graze'; d.t = 2 + rnd() * 3; } }
@@ -474,7 +498,16 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
-  const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000).length;
+  const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000 && !a.followWho).length;
+  const deerById = (id) => deer.find((d) => d.id === id) || null;
+  // 다른 사람이 던진 귤을 먹으러 감 (#92, 멀티 방장): 그 자리에 보이지 않는 귤을 두고, 먹으면 그 사람(from)을 따라감
+  function feedAt(d, x, z, from) {
+    if (!d || d.target || d.state === 'ridden' || d.state === 'flee' || d.followUntil > performance.now() / 1000) return false;
+    const mesh = { position: new THREE.Vector3(x, height(x, z), z), parent: group };
+    d.target = { mesh, landed: true, eaten: false, claimedBy: d, feeder: from }; d.state = 'food'; return true;
+  }
+  // 내가 던져 다른 화면의 노루가 먹은 귤을 지움 (#92)
+  function eatTangerine(tg) { if (tg.eaten) return; tg.eaten = true; group.remove(tg.mesh); }
   // 귤로 맞힐 대상 (#34 자동 조준). 새 적은 여기에 더한다. pos: 발 위치(살아 있는 Vector3), h: 겨눌 높이, size: 발밑 표시 크기, vel: 움직임
   const aimHbs = new Map();
   function aimTargets() {
@@ -485,17 +518,21 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     return out;
   }
   // 다 핀 구역에 다시 나타나는 노루 (#46): (x, z) 둘레에 n 마리. 돌려받은 목록으로 removeDeer
-  function addDeer(x, z, n) {
+  // ids: 멀티에서 가리킬 이름 (#92). 이미 있는 이름이면 새로 만들지 않고 그 노루를 씀 (방장이 바뀌었을 때)
+  function addDeer(x, z, n, ids) {
     const out = [];
     for (let i = 0; i < n; i++) {
+      const id = ids?.[i] || 'd' + Math.random().toString(36).slice(2, 9), had = deerById(id);
+      if (had) { out.push(had); continue; }
       const d = buildDeer(), home = new THREE.Vector3(x + (rnd() - 0.5) * 8, 0, z + (rnd() - 0.5) * 8); home.y = height(home.x, home.z);
       d.root.position.copy(home); const heart = makeHeart(); heart.position.y = 2.25; d.root.add(heart); group.add(d.root);
-      const a = { ...d, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null, bloom: true };
+      const a = { ...d, id, kind: 'deer', heart, home, pos: home.clone(), heading: rnd() * 6.28, state: 'graze', t: rnd() * 4, speed: 0, phase: rnd() * 6, alert: 0, followUntil: 0, target: null, bloom: true };
       deer.push(a); out.push(a);
     }
     return out;
   }
   // 타고 있는 노루는 남김. 남은(못 지운) 목록을 돌려줌
   function removeDeer(list) { return list.filter((a) => { if (a.state === 'ridden') return true; const i = deer.indexOf(a); if (i >= 0) deer.splice(i, 1); group.remove(a.root); return false; }); }
-  return { bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  L = { remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  return L;
 }

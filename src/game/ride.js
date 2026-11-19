@@ -184,6 +184,8 @@ export function tickCartMark() {
 
 // 다른 사람의 탈것 (#69): presence rd 값대로 모양·자세·높이
 export function peerRide(e, dt) {
+  const dr = typeof e.data.dr === 'string' && e.data.dr ? late.deerNet?.peerDeer(e) : null; // 노루를 탄 사람 (#92): 걸터앉아 노루 등 높이로
+  if (dr) { e.rig?.set(''); return { pose: 'ride', lift: (dr.seatY ?? 0.95) + (dr.speed > 4 ? Math.abs(Math.sin(dr.phase * 0.5)) * 0.25 : 0), fwd: dr.seatZ || 0 }; }
   const rd = typeof e.data.rd === 'string' ? e.data.rd : '';
   if (!rd && !e.rig) return null;
   if (!e.rig) e.rig = rideRig(e.runner);

@@ -10,7 +10,7 @@ import { cleanText } from './safetext.js';
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
 export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook, cull = null, animR = 1e9, shadowR = 1e9, lobby: wsLobby = null, onRoom = null }) { // wsLobby: 멀티 서버 로비 (#7, online.js). 있으면 room 캐퍼빌리티 대신
- // cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still } | null: 탈것 (#69)
+ // cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still, fwd } | null: 탈것 (#69)·노루 (#92)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
@@ -136,6 +136,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       const r = e.runner;
       const rh = rideHook ? rideHook(e, dt) : null;
       r.root.position.copy(e.pos); r.root.position.y += (typeof e.data.jy === 'number' ? e.data.jy : 0) + (rh?.lift || 0);
+      if (rh?.fwd) { r.root.position.x += Math.sin(e.heading) * rh.fwd; r.root.position.z += Math.cos(e.heading) * rh.fwd; } // 노루 등 (#92)
       r.root.rotation.y = e.heading;
       const d0 = e.pos.distanceTo(player.pos);
       if (e.label) { const d = d0; const op = d < 10 ? 1 : d < 18 ? 1 - (d - 10) / 8 : 0; e.label.material.opacity = op; e.label.visible = op > 0.02; }
