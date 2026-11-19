@@ -52,8 +52,12 @@ export function logoSvg({ dark = false, weight = LOGO_WEIGHT, halo = '', cls = '
 export function logoMark() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="29" cy="38" r="25" fill="${LOGO_COLORS.gyul}"/><path d="M31 15c2 -10 15 -16 30 -12c-5 12 -18 16 -30 12z" fill="${LOGO_COLORS.leaf}"/></svg>`;
 }
-// 앱 아이콘: 둥근 타일 안에 귤 하나
-export function logoIcon({ dark = false } = {}) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="58" fill="${dark ? '#24251f' : LOGO_COLORS.paper}"/><circle cx="124" cy="146" r="78" fill="${LOGO_COLORS.gyul}"/><path d="M130 70c10 -26 42 -38 76 -28c-12 28 -44 38 -76 28z" fill="${LOGO_COLORS.leaf}"/></svg>`;
+// 앱 아이콘: 둥근 타일 안에 귤 하나. opts.square: 모서리 없이 꽉 찬 네모(iOS 는 스스로 둥글림, 투명 없음),
+// opts.safe: 귤을 가운데로 줄여 가장자리가 잘려도 되게(maskable, 귤이 가운데 60% 안)
+export function logoIcon({ dark = false, square = false, safe = false } = {}) {
+  const bg = dark ? '#24251f' : LOGO_COLORS.paper, k = safe ? 0.8 : 1;
+  const art = `<circle cx="124" cy="146" r="78" fill="${LOGO_COLORS.gyul}"/><path d="M130 70c10 -26 42 -38 76 -28c-12 28 -44 38 -76 28z" fill="${LOGO_COLORS.leaf}"/>`;
+  const body = safe ? `<g transform="translate(128 128) scale(${k}) translate(-128 -128)">${art}</g>` : art;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256"${square || safe ? '' : ' rx="58"'} fill="${bg}"/>${body}</svg>`;
 }
 export const svgUrl = (svg) => 'data:image/svg+xml,' + encodeURIComponent(svg);
