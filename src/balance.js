@@ -768,6 +768,14 @@ export const PERF = {
 
 // 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)
 // server: Cloudflare Worker 주소 (예 'https://oreumoreum.<계정>.workers.dev'). 주소창 ?server=… 로 바꿔 끼워 볼 수 있음 (탭 세션 동안)
+// 노루 (#92): 타고 가는 빠르기(걷기·달리기, 신발 영향 없음), 멀티에서 노루 무리를 방장이 알리는 간격·귤 먹이 요청
+export const DEER = {
+  rideWalk: 9, rideRun: 15,
+  netMs: 330,        // 방장이 노루 자리를 방에 알리는 간격 (초당 3번). 받는 쪽은 부드럽게 이음
+  feedR: 30,         // 방장이 아닌 사람이 던진 귤: 이 거리 안 노루에게 먹으러 오라고 방장에게 부탁
+  feedRetry: 8,      // 부탁한 노루가 이 초 안에 안 오면 다시 부탁할 수 있음
+};
+
 export const NET = {
   server: '',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
@@ -792,7 +800,7 @@ export const NET = {
   keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
   // 보안 (#84): 이동·줍기·폭주·요청 수 제한. 모두 서버(roomcore·index)가 봄
   rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>(-battle)' 만. 그 밖은 거절 (방 만들기 폭주 막기)
-  maxSpeed: 32,       // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
+  maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
   moveSlack: 8,       // 이동 판정 여유 (m, 끊김·점프)
   warpGap: 10,        // 들것 귀환·자리 앉기 같은 순간 이동은 이 초에 한 번까지 받아 줌
   takePerSec: 6,      // 더미 줍기: 1초에 몇 번 (한꺼번에도 이만큼)
@@ -805,6 +813,8 @@ export const NET = {
   sessionDays: 14,    // 세션 토큰 수명. /me 를 부를 때 남은 날이 sessionRenew 아래면 새 토큰
   sessionRenew: 7,
   nickMax: 16, sayMax: 60, // 닉네임·말풍선 글자 수
+  deerMax: 4000,      // 방장이 보내는 노루 무리 메시지 크기 상한 (바이트, #92)
+  deerPerSec: 5,      // 노루 메시지(무리·타기·먹이 부탁)는 따로 1초에 이만큼
 };
 
 // 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체, 깨끗한 오름·전투 오름 따로

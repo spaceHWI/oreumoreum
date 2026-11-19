@@ -669,3 +669,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `tools/audit.js`: 헤드리스가 초당 1~2프레임이라 버리기·낚시 확인이 거짓 실패하던 것 → 상호작용 대상이 잡힐 때까지·귤이 늘 때까지 기다림
 - `notes/spec.md` 장비 도달 시각·5일 곡선·하루 끝 표를 `econ.js --table` 결과로 맞춤(값은 그대로)
 - 홈 화면 추가 (#91): `tools/icons.mjs`(playwright, `og.mjs` 방식)가 `logoIcon()` 을 `src/icons/` 에 PNG 4장으로 굽는다 — apple-touch-icon 180(네모 꽉 참)·icon-192·icon-512·icon-maskable-512(`safe`: 귤을 0.8배로 줄여 가운데에). CI 에 playwright 가 없어 PNG 는 커밋하고 `build.mjs` 가 dist 로 복사 + `manifest.webmanifest`(이름·짧은 이름 '오름오름', standalone, orientation any, 바탕·테마 #24251f, 상대 주소 `./` 라 dev/실서버 모두 맞음) 를 씀. `<head>` 에 apple-touch-icon·manifest·theme-color·apple-mobile-web-app-* 메타, CSP 에 `manifest-src 'self'`, `publish.yml` 이 manifest·PNG 를 함께 올림. 아이콘 4장은 `logo-sian.html` 에도 나란히. 로고를 바꾸면 `node tools/icons.mjs` 다시
+
+## 멀티에서 노루와 노루 타기 (#92)
+- 서버 방이 있을 때만(`src/game/deernet.js`, 혼자 하기는 그대로). 노루마다 이름 `id`: 무리 `h<n>`(만든 순서), 다 핀 구역 `b<구역>-<n>`, 지나감 `d<무작위>`. `life.addDeer(x, z, n, ids)` 는 이미 있는 이름이면 그 노루를 씀
+- 노루 무리는 방장(먼저 온 사람) 화면이 움직이고 `DEER.netMs`(0.33초)마다 `{t:'deer', d:[[id,x,z,방향,상태,빠르기,따라가는 사람]…]}` → 다른 사람은 `life.remote` 로 시뮬레이션을 멈추고 받은 자리로 부드럽게 이음(25m 넘게 벌어지면 바로 옮김). 방장은 다른 사람도 피함(`life.others`, 가장 가까운 사람). 방장이 나가면 다음 방장이 지금 자리에서 이어감(`takeOver`: 먹이·따라가기 풀고, 다 핀 구역 노루는 이름으로 이어 받고, 앞 방장의 지나감 노루는 `deerT` 뒤 떠남)
+- 다 핀 구역 노루·'노루가 지나감'(#89)은 방장 화면에서만 생김. 받는 쪽의 지나감은 방장에게 `{t:'dv', k:'visit'}` 부탁(방장은 동시에 3무리까지)
+- 귤 먹이: 받는 쪽이 던진 귤이 노루 `DEER.feedR` 안에 떨어지면 `{t:'dv', k:'feed', i}` → 방장 화면 노루가 보이지 않는 귤(`life.feedAt`)을 먹고 그 사람을 따라감(`followWho`). 받는 쪽은 따라오기 시작하면 귤을 지우고 토스트·소리·`fed` 업적 그대로. `DEER.feedRetry` 초 안에 안 오면 다시 부탁
+- 노루 타기: `mountDeer` 가 방에 `{t:'mount', i}` 를 묻고 `{t:'rides'}` 에 내 이름이 오면 탐. 누가 타고 있으면 화면에서 바로, 방도 `{t:'mount', no:1}` 로 거절 → '다른 사람이 타고 있어요'. 내리면 `{t:'unmount'}`, 끊기면 방이 풀고 내 화면도 내림. presence `dr`(탄 노루) → 다른 사람 화면은 그 노루를 탄 사람 자리로 옮기고 `ride.js peerRide` 가 걸터앉은 자세·노루 등 높이(`seatY`)·앞뒤(`seatZ`, `net.js` rideHook `fwd`)
+- 서버 `roomcore.js`: `deer`(방장만, `NET.deerMax` 4000바이트·80마리)·`dv`(보낸 사람 60m 안, 방장에게만 `from` 붙여)·`mount`·`unmount`, `hi` 에 `rides`. 노루 메시지는 따로 초당 `NET.deerPerSec`(5)
+- 노루 타기 빠르기 `DEER.rideWalk`·`rideRun`(9·15)을 `balance.js` 로, `NET.maxSpeed` 는 `max(32, rideRun × 2)`
+- 확인: `node tools/online.js [주소] [deer]` 에 노루 9가지(방장·위치 같음·타기·A 화면 걸터앉음·둘이 못 탐 화면/방·내리면 풀림·지나감 같이·귤 먹이·끊기면 풀림(deer 만 돌릴 때)), 화면 `dist/deer-ride-a.png`·`deer-ride-b.png`. `__oreum.deerNet()`

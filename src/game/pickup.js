@@ -158,10 +158,10 @@ export const bloomTest = {
 // 다 핀 구역 (#46): 소리·새 떼·노루. 노루는 구역마다 한 무리, 시들면 떠남
 export const bloomDeer = {};
 export function syncBloomDeer() {
-  if (!bloom) return;
+  if (!bloom || life.remote) return; // 멀티에서 방장이 아니면 방장이 알려 준 노루만 (#92)
   for (const z of ZONE_IDS) {
     const on = bloom.isBloomed(z);
-    if (on && !bloomDeer[z]) { const p = bloom.spotIn(z, spots.deerZone); if (p) bloomDeer[z] = life.addDeer(p.x, p.z, BLOOM.deer); }
+    if (on && !bloomDeer[z]) { const p = bloom.spotIn(z, spots.deerZone); if (p) bloomDeer[z] = life.addDeer(p.x, p.z, BLOOM.deer, Array.from({ length: BLOOM.deer }, (_, k) => `b${z}-${k}`)); }
     else if (!on && bloomDeer[z]) { const left = life.removeDeer(bloomDeer[z]); bloomDeer[z] = left.length ? left : null; }
   }
 }

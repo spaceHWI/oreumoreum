@@ -1,5 +1,5 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE } from '../balance.js';
+import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import * as THREE from 'three';
@@ -26,6 +26,7 @@ import { tickDump, tickAutoGo, tickChArrow, updateContext } from './dump.js';
 import { leaving, leaveTo } from './look.js';
 import { sound, tickKnock, _kq, _ka, enemyWarn, dumpWarn, dumpers, threatNear } from './hooks.js';
 import { tickPace, pace } from './pace.js';
+import { deerNet } from './deernet.js';
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -85,7 +86,7 @@ function updatePlayer(dt) {
   if (dir && state.fishing?.active) state.fishing.stop(); // 움직이면 낚시를 그만둠 (#44)
   if (p.riding) {
     const d = p.riding;
-    const want = dir ? (p.running ? 15 : 9) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) : 0;
+    const want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) : 0;
     d.speed += (want - d.speed) * Math.min(1, dt * 5);
     if (dir && (joy.active || p.target)) d.heading += wrapA(Math.atan2(dir.x, dir.z) - d.heading) * Math.min(1, dt * 6);
     if (d.speed > 0.05) {
@@ -218,6 +219,7 @@ function frame(now) {
   tickAutoGo(); updatePlayer(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); state.farCull?.update(dt);
   net.update(dt); net.send(false);
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
+  deerNet.tick(dt); // 멀티 노루 (#92)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
   if (state.awe > 0) { state.awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (state.awe <= 0) state.aweBack = 2; }

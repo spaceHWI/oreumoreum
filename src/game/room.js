@@ -25,11 +25,12 @@ export const net = createNet({
   lobby: createWsLobby({ token: () => state.account?.token }), onRoom: (room) => { // 멀티 서버 (#7)
     if (!room.on) return;
     if (trash) linkTrash(trash, room);
+    late.deerNet?.link(room); // 노루 무리·노루 타기 (#92, deernet.js)
     // 서버가 이동을 되돌림 (#84): 너무 빠르거나 순간 이동이 잦으면 마지막으로 받아 준 자리로
-    room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; late.placeRunner(); });
+    room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
   },
-  extra: () => ({ ...social.presenceExtra(), rd: rideCode(), ...(state.emo ? state.emo.presence() : {}) }), // rd = 탈것 (#69), em = 동작 (#76)
+  extra: () => ({ ...social.presenceExtra(), rd: rideCode(), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}) }), // rd = 탈것 (#69), dr = 탄 노루 (#92), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)

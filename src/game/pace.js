@@ -94,6 +94,7 @@ function delight(kind) {
     for (let k = 0; k < 8; k++) {
       const a = player.heading + (Math.random() - 0.5) * 2, r = 18 + Math.random() * 10, x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r;
       if (spots.inBounds && !spots.inBounds(x, z)) continue;
+      if (life.remote) return late.deerNet.askVisit(x, z); // 멀티에서 방장이 아니면 방장에게 부탁해 모두에게 같이 보이게 (#92)
       deerVisit = { list: life.addDeer(x, z, 2), t: PACE.delight.deerT }; return true;
     }
     return false;
