@@ -38,6 +38,8 @@ const { logoMark } = await import('./src/logo.js');
 const SITE = 'https://spacehwi.github.io/oreumoreum/' + (DEV ? 'dev/' : '');
 const meta = ''
   + `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(logoMark())}">`
+  + '<link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#24251f">'
+  + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="오름오름"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
   + '<meta name="description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임">'
   + '<meta property="og:title" content="오름오름"><meta property="og:description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임">'
   + `<meta property="og:type" content="website"><meta property="og:url" content="${SITE}"><meta property="og:image" content="${SITE}og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">`;
@@ -54,10 +56,23 @@ const csp = (scriptSrc) => [
   "connect-src 'self' https: wss: data: blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*",
   'frame-src https://accounts.google.com/gsi/',
   "media-src 'self' data: blob:", "worker-src 'self' blob:",
-  "object-src 'none'", "base-uri 'none'", "form-action 'none'",
+  "manifest-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'",
 ].join('; ');
 const wrap = (CSP, b) => '<!doctype html><html lang="ko"><head><meta charset="utf-8">' + `<meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin">` + '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">' + meta + '</head><body>' + b + '</body></html>';
 fs.copyFileSync('src/og.png', 'dist/og.png');
+// 홈 화면 추가 (#91): 앱 아이콘 PNG(tools/icons.mjs 로 구워 src/icons 에 커밋)와 manifest. 주소는 상대 경로라 /oreumoreum/ 과 /oreumoreum/dev/ 어디서나 맞음
+for (const f of fs.readdirSync('src/icons')) fs.copyFileSync('src/icons/' + f, 'dist/' + f);
+fs.writeFileSync('dist/manifest.webmanifest', JSON.stringify({
+  name: '오름오름', short_name: '오름오름', description: '제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임',
+  lang: 'ko', start_url: './', scope: './', id: './', display: 'standalone', orientation: 'any',
+  background_color: '#24251f', theme_color: '#24251f',
+  icons: [
+    { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    { src: 'apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+  ],
+}, null, 2));
 // 내 캐릭터 모델은 게임 코드와 나란히 받게 미리 알림 (main.js 가 fetch 로 씀)
 const pre = packed.filter((a) => a.core).map((a) => `<link rel="preload" href="${listSplit[a.name].url}" as="fetch" crossorigin>`).join('');
 fs.writeFileSync('dist/index.html', wrap(csp("'self'"), bodySplit).replace('</head>', pre + '</head>'));
@@ -71,5 +86,5 @@ console.log('ok', kb(fs.statSync('dist/oreumoreum.html').size), '· Pages:', mai
   const NAME = { bold: '굵게', heavy: '아주 굵게' };
   const col = (wt) => `<section><h2>${NAME[wt]}${wt === LOGO_WEIGHT ? ' · 지금 쓰는 것' : ''}</h2><div class="c">${logoSvg({ weight: wt })}</div><div class="c dk">${logoSvg({ weight: wt, dark: true })}</div></section>`;
   const fav = (dark) => `<div class="m${dark ? ' dk' : ''}">${[16, 24, 32, 48, 64].map((s) => `<span><img src="data:image/svg+xml,${encodeURIComponent(logoMark())}" width="${s}" height="${s}" alt=""><small>${s}</small></span>`).join('')}</div>`;
-  fs.writeFileSync('dist/logo-sian.html', `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오름오름 로고</title><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(logoMark())}"><style>body{margin:0;padding:16px;font-family:system-ui,sans-serif;background:#eee9da;color:#211f1c}h1{font-size:20px}h2{font-size:15px;margin:18px 0 8px}.r{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{background:#fbf6e6;border-radius:14px;padding:24px;display:grid;place-items:center;margin-bottom:12px}.c.dk,.m.dk{background:#24251f;color:#fff}.c svg{width:100%;max-width:360px;height:auto}.m{display:flex;gap:18px;align-items:end;background:#fbf6e6;border-radius:14px;padding:16px;margin-bottom:12px}.m span{display:grid;justify-items:center;gap:4px}.m small{font-size:11px;opacity:.6}.ic{display:flex;gap:16px}.ic svg{width:96px;height:96px}@media(max-width:600px){.r{grid-template-columns:1fr}}</style></head><body><h1>오름오름 로고</h1><p>획 굵기가 고른 고딕 글자, 두 '오'의 ㅇ 은 귤. 글자는 밝은 배경에서 먹색, 어두운 배경에서 흰색. 굵기는 <code>src/logo.js</code> 의 LOGO_WEIGHT.</p><div class="r">${col('bold')}${col('heavy')}</div><section><h2>파비콘 (귤 하나)</h2>${fav(false)}${fav(true)}</section><section><h2>앱 아이콘</h2><div class="ic">${logoIcon()}${logoIcon({ dark: true })}</div></section></body></html>`);
+  fs.writeFileSync('dist/logo-sian.html', `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오름오름 로고</title><link rel="icon" href="data:image/svg+xml,${encodeURIComponent(logoMark())}"><style>body{margin:0;padding:16px;font-family:system-ui,sans-serif;background:#eee9da;color:#211f1c}h1{font-size:20px}h2{font-size:15px;margin:18px 0 8px}.r{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{background:#fbf6e6;border-radius:14px;padding:24px;display:grid;place-items:center;margin-bottom:12px}.c.dk,.m.dk{background:#24251f;color:#fff}.c svg{width:100%;max-width:360px;height:auto}.m{display:flex;gap:18px;align-items:end;background:#fbf6e6;border-radius:14px;padding:16px;margin-bottom:12px}.m span{display:grid;justify-items:center;gap:4px}.m small{font-size:11px;opacity:.6}.ic{display:flex;gap:16px}.ic svg{width:96px;height:96px}@media(max-width:600px){.r{grid-template-columns:1fr}}</style></head><body><h1>오름오름 로고</h1><p>획 굵기가 고른 고딕 글자, 두 '오'의 ㅇ 은 귤. 글자는 밝은 배경에서 먹색, 어두운 배경에서 흰색. 굵기는 <code>src/logo.js</code> 의 LOGO_WEIGHT.</p><div class="r">${col('bold')}${col('heavy')}</div><section><h2>파비콘 (귤 하나)</h2>${fav(false)}${fav(true)}</section><section><h2>앱 아이콘</h2><div class="ic">${logoIcon()}${logoIcon({ dark: true })}</div></section><section><h2>홈 화면 아이콘 4장 (#91)</h2><div class="ic">${['apple-touch-icon 180','icon-192 192','icon-512 512','icon-maskable-512 512'].map((t) => { const [n, z] = t.split(' '); return `<figure style="margin:0;text-align:center"><img src="${n}.png" width="96" height="96" alt="${n}"><figcaption style="font-size:11px">${n}<br>${z}px</figcaption></figure>`; }).join('')}</div></section></body></html>`);
 }
