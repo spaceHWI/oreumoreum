@@ -17,7 +17,7 @@ import { $, wrapA, save, lookS, ab, persist, MAP_ID } from './save.js';
 import { renderer, quality, retro, post, scene, NSW, camera, resize, sun, applyQuality, fill, rim, SUN_DIR, clouds, wx, eoksaeMat, grass, motes, prints, spots, lamps, sunState, lampNight, applySky, sunEvent } from './scene.js';
 import { benchPos, benchOut, life, cairns, layoutCairn, stepCairn, fillCairn, tickCairnLod, col, wallPl, wall, stream, jeongReady, jeong, openJeong, shopsBuilt, STN, SAL, LEAPB, buff, trash, CH, CHS, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, camTarget, followCam, titleCam, ease } from './camera.js';
-import { ui, topFit, toast, tickTips, updateStats, busy, ach, tickBanner, refreshAchUI } from './hud.js';
+import { ui, topFit, toast, tickTips, tickPickMsg, updateStats, busy, ach, tickBanner, refreshAchUI } from './hud.js';
 import { keys, ptrs, joy, marker, setGait } from './input.js';
 import { bowReady, setHoldBow, aimHeading, releaseTangerine, releaseArrow, tickAimMark, tickEdgeAim } from './throw.js';
 import { dismountRide, rideWant, tickRideZone, tickCartRide, tickCartMark } from './ride.js';
@@ -315,7 +315,7 @@ function step(now) {
 
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
-  tickTips(dt);
+  tickTips(dt); tickPickMsg(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();

@@ -38,6 +38,15 @@ export const topFit = (() => {
 })();
 state.toastT = 0;
 export function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; state.toastT = sec; topStack(); }
+// 줍기 메시지 (#116): 따로 작은 한 줄. 새로 주우면 바꿔 쓰고, 같은 것을 이어 주우면 ×N. 다른 토스트는 건드리지 않음
+const pm = { name: '', n: 0, t: 0 };
+export function pickMsg(name) {
+  const el = $('pickmsg'); if (!el || !name) return;
+  pm.n = pm.t > 0 && pm.name === name ? pm.n + 1 : 1; pm.name = name; pm.t = 2;
+  const c = name.charCodeAt(name.length - 1) - 0xac00, jong = c >= 0 && c <= 11171 ? c % 28 !== 0 : false;
+  el.textContent = pm.n > 1 ? `${name} ×${pm.n}` : `${name}${jong ? '을' : '를'} 주웠어요`; el.hidden = false;
+}
+export function tickPickMsg(dt) { if (pm.t > 0) { pm.t -= dt; if (pm.t <= 0) { const el = $('pickmsg'); if (el) el.hidden = true; } } }
 // 위 가운데 배너·팁·토스트가 겹치지 않게 (#16): 보이는 것의 높이를 CSS 변수로 넘기고 body 클래스로 아래로 밀기
 export function topStack() {
   const b = document.body, bn = document.getElementById('banner'), tp = [document.getElementById('tip'), document.getElementById('tut-toast')].find((e) => e && !e.hidden), on = !!tp; // #100 튜토리얼 토스트도 같은 자리
@@ -84,7 +93,7 @@ export function tickTips(dt) {
   tips.update(dt, tipState);
 }let lastCoins = -1;
 export function updateStats() {
-  if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
+  if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; late.shopCoinsChanged?.(); }
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { late.sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank', 'inbox'];
