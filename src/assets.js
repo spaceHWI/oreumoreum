@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { MeshoptDecoder as WasmDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { MeshoptDecoder as JsDecoder } from 'meshoptimizer/meshopt_decoder_reference.js';
 import { ASSETS } from './assetlist.js';
+import { crashNote } from './crash.js'; // #108 마지막 한 일
 
 const cache = new Map(); // 이름 → 풀린 자료 { ...meta, pos: Uint8Array, ..., tex: blob URL }
 const waiting = new Map(); // 이름 → [콜백]
@@ -56,7 +57,7 @@ function load(name) {
   if (cache.has(name)) return Promise.resolve(cache.get(name));
   if (!loading.has(name)) {
     loading.set(name, unpack(name).then((d) => {
-      cache.set(name, d); assetInfo.done++;
+      cache.set(name, d); assetInfo.done++; crashNote('모델 받음 ' + name);
       const cbs = waiting.get(name) || []; waiting.delete(name);
       for (const cb of cbs) { try { cb(d); } catch (e) { console.error(e); } }
       for (const cb of anyCbs) cb(name);

@@ -430,6 +430,8 @@ export const FISH = {
 // 귤 던지기 자동 조준 (#34): 사거리 안 가장 가까운 대상(적·하르방)을 겨눔. 손으로 던지기는 무료
 // 줍기 버튼으로 가까운 쓰레기까지 걸어가기 (#104): range 안에서 가장 가까운 쓰레기(낱개·더미)를 찾아 감. stand: 도착 자리(가장자리에서 도구 반경의 이 비율)
 export const PICK_SEEK = { range: 25, stand: 0.5, color: '#4fe3c1', retry: 0.3 };
+// 꽃 피는 동안 자동 줍기 이어가기를 쉬는 시간(초, 임의값) (#110): 더미 하나 · 구역 전체
+export const BLOOM_HOLD = { heap: 2.5, zone: 4 };
 export const THROW_AIM = {
   range: 16, // 이 거리(수평) 안 대상을 겨눔
   power: 11, runBonus: 3, // 대상이 없을 때 보는 방향으로 던지는 힘 (달리면 더)
@@ -845,6 +847,14 @@ export const FEEDBACK = {
   batch: 10,          // 한 번에 서버로 보내는 글 수
   ipPerHour: 20,      // 서버: 한 주소(IP)에서 1시간에 받는 글 수
   dbKeep: 2000,       // 서버: 저장해 두는 글 수 상한
+};
+
+// 오류 알림·안전장치 (#108): src/crash.js · update.js(매 프레임 오류에도 계속) · scene.js(WebGL 화면 잃음)
+export const CRASH = {
+  perDay: 3,          // 같은 오류는 기기당 하루 이만큼만 서버로
+  perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
+  acts: 6,            // '마지막 한 일' 기억하는 수
+  glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
 };
 
 // 노루·돌하르방·가로등 Tripo 모델 (#2). 모델 좌표는 바닥 y=0·키 약 0.98, 크기는 배율로

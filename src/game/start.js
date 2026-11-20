@@ -86,7 +86,7 @@ onestore.connect({
       return false;
     }
     if (lookS.open) return false; // 캐릭터 고르기는 꼭 거치는 화면이라 닫지 않음 → 앱의 종료 확인
-    if (panelOpen() || !$('ride-pick').hidden || cam.mode === 'wardrobe' || ['sit', 'photo'].includes(player.pose) || !$('photo').hidden) { $('ride-pick').hidden = true; cancelAll(); return true; }
+    if (panelOpen() || cam.mode === 'wardrobe' || ['sit', 'photo'].includes(player.pose) || !$('photo').hidden) { cancelAll(); return true; }
     return false;
   },
 });

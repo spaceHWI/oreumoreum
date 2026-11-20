@@ -6,13 +6,13 @@ import * as THREE from 'three';
 import { height, groundAt, surfaceAt } from '../world.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
-import { col, NS_TUT, stream, street, cart, rig, player, hp } from './place.js';
+import { col, NS_TUT, stream, street, cart, rig, player, hp, shopsBuilt } from './place.js';
 import { cam } from './camera.js';
-import { toast, updateStats, panelOpen, busy, ach } from './hud.js';
+import { toast, updateStats, panelOpen, busy, ach, closePanels, tipMark } from './hud.js';
 import { marker } from './input.js';
 import { setHoldBow } from './throw.js';
 
-Object.assign(late, { toggleRide }); // 앞 파일에서 부르는 함수
+Object.assign(late, { toggleRide, openRideWin }); // 앞 파일에서 부르는 함수
 
 // ---------- 탈것 (#69): 스케이트보드·스쿠터·조랑말. 버튼 하나로 타고 내림(길게 누르면 고르기), 길 밖은 느림, 개울·밟는 구조물·가게 안은 자동으로 내림 ----------
 export const rideCode = () => (player.cart ? 'cart' : player.ride ? (player.rideC ? 'skate-c' : player.ride) : ''); // 다른 사람에게 보내는 값
@@ -39,7 +39,7 @@ export function mountRide(id = save.rides.cur, quiet = false) {
   const z = noRideZone(player.pos.x, player.pos.z); if (z) { if (!quiet) toast(RIDE_ZONE_LINE[z]); return false; }
   setHoldBow(false);
   player.ride = id; player.rideC = false; player.rideAuto = null;
-  if (save.rides.cur !== id) { save.rides.cur = id; persist(); }
+  if (save.rides.cur !== id || save.rides.walk) { save.rides.cur = id; save.rides.walk = 0; persist(); }
   syncRideLook(); updateRideBtn(); late.net.send(true);
   if (!quiet) ach.emit('ride-' + id);
   return true;
@@ -53,6 +53,7 @@ export function toggleRide() {
   if (player.cart) return;
   if (player.ride) { dismountRide(); return; }
   if (!save.rides.own.length) return;
+  if (save.rides.walk) { openRideWin(); return; } // 걸어 다니기를 골라 둔 때는 고르는 창 (#109)
   mountRide();
 }
 // 이번 프레임 목표 속도. 기울기는 진행 방향 앞뒤 땅 높이로. 스케이트보드는 오르막이면 들고 걷고, 손을 떼도 관성으로 미끄러짐
@@ -82,36 +83,60 @@ export function tickRideZone(dt) {
   p.rideClear += dt; if (p.rideClear > RIDES.clearT) { const id = p.rideAuto; p.rideAuto = null; mountRide(id, true); }
 }
 export const rideOffAct = { label: '내리기', ic: 'down', act: () => dismountRide() };
-// 버튼: 가진 뒤에만 보임. 짧게 누르면 타기·내리기, 길게 누르면 고르기 (가진 것만)
-const rideBtn = $('btn-ride'), ridePick = $('ride-pick');
+// 버튼: 가진 뒤에만 보임. 짧게 누르면 타기·내리기, 길게 누르거나 옆 ▾ 를 누르면 탈것 창 (#109)
+const rideBtn = $('btn-ride'), rideMore = $('ride-more'), rideWin = $('ridewin'), rideCards = $('ridewin-cards');
 export function updateRideBtn() {
   const own = save.rides.own.length > 0;
   if (rideBtn.hidden === own) rideBtn.hidden = !own;
-  if (!own) { ridePick.hidden = true; return; }
+  if (rideMore.hidden === own) rideMore.hidden = !own;
+  if (!own) return;
   const id = player.ride || save.rides.cur;
   rideBtn.classList.toggle('on', !!player.ride);
   if (rideBtn.dataset.id !== id) { rideBtn.dataset.id = id; rideBtn.querySelector('svg').innerHTML = RIDE_ICON[id]; }
-  rideBtn.title = `${RIDE_BY[id].name} ${player.ride ? '내리기' : '타기'} (Q)${save.rides.own.length > 1 ? ' · 길게 누르면 고르기' : ''}`;
+  rideBtn.title = `${RIDE_BY[id].name} ${player.ride ? '내리기' : '타기'} (Q) · 길게 누르면 바꾸기`;
+  if (!rideWin.hidden) buildRideWin();
 }
-export function openRidePick() {
-  ridePick.innerHTML = '';
-  for (const id of RIDES.list.map((r) => r.id).filter((x) => save.rides.own.includes(x))) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'round' + (id === (player.ride || save.rides.cur) ? ' on' : ''); b.title = RIDE_BY[id].name; b.dataset.id = id;
-    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RIDE_ICON[id]}</svg>`;
-    b.addEventListener('click', () => { ridePick.hidden = true; save.rides.cur = id; persist(); if (player.ride === id) { updateRideBtn(); return; } if (player.ride) dismountRide(); if (!mountRide(id)) updateRideBtn(); });
-    ridePick.append(b);
+const WALK_ICON = '<circle cx="13" cy="4.5" r="1.8"/><path d="M12 8l-2 5 3 2 1 5M10 13l-3 2M12 8l4 3 2-1M13 15l-2 5"/>';
+function buildRideWin() {
+  rideCards.innerHTML = '';
+  const card = (cls, icon, name, sub, right, on, click) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card ' + cls + (on ? ' on' : ''); b.title = name;
+    b.innerHTML = `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg><span class="mn"><b>${name}</b><small>${sub}</small></span><span class="mv">${right}</span>`;
+    b.addEventListener('click', click); rideCards.append(b);
+  };
+  const sel = player.ride || (save.rides.walk ? '' : save.rides.cur);
+  card('walk', WALK_ICON, '걸어 다니기', '탈것 없이', sel ? '' : '<span class="bf">✓</span>', !sel, () => chooseRide(''));
+  for (const R of RIDES.list) {
+    const own = save.rides.own.includes(R.id), cur = own && sel === R.id;
+    card(own ? '' : 'off', RIDE_ICON[R.id], R.name, rideStat(R), own ? (cur ? '<span class="bf">✓</span>' : '') : `<span class="price"><i></i>${R.price.toLocaleString()}</span>`, cur, () => (own ? chooseRide(R.id) : showRideShop(R)));
   }
-  ridePick.hidden = false;
+}
+export function openRideWin() { if (cam.mode === 'wardrobe') return; closePanels(); buildRideWin(); rideWin.hidden = false; }
+// 고르기. '' = 걸어 다니기. 타고 있으면 내렸다가 새 탈것으로 탐 (못 타는 곳이면 고르기만)
+function chooseRide(id) {
+  const was = player.ride;
+  if (!id) { save.rides.walk = 1; persist(); if (was) dismountRide(); updateRideBtn(); return; }
+  if (!RIDE_BY[id] || !save.rides.own.includes(id)) return;
+  save.rides.cur = id; save.rides.walk = 0; persist();
+  if (was === id) { updateRideBtn(); return; }
+  if (was) { rideWin.hidden = true; dismountRide(); mountRide(id, true); }
+  updateRideBtn();
+}
+// 아직 안 산 탈것: 가게 거리 방향 표시 (옆 가장자리 표시가 6초 동안 탈것 가게를 가리킴)
+function showRideShop(R) {
+  const sh = shopsBuilt.find((x) => x.id === 'ride');
+  rideWin.hidden = true;
+  if (sh?.signPos) { tipMark(sh.signPos); toast(`${R.name}은(는) 가게 거리의 탈것 가게에서 살 수 있어요`); } else toast('탈것 가게는 가게 거리에 있어요');
 }
 {
   let holdTimer = null;
   const clear = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } };
-  rideBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); clear(); holdTimer = setTimeout(() => { holdTimer = null; openRidePick(); }, RIDES.holdT * 1000); });
-  rideBtn.addEventListener('pointerup', () => { if (holdTimer) { clear(); ridePick.hidden = true; toggleRide(); } });
+  rideBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); clear(); holdTimer = setTimeout(() => { holdTimer = null; openRideWin(); }, RIDES.holdT * 1000); });
+  rideBtn.addEventListener('pointerup', () => { if (holdTimer) { clear(); toggleRide(); } });
   rideBtn.addEventListener('pointercancel', clear); rideBtn.addEventListener('pointerleave', clear);
   rideBtn.addEventListener('click', (e) => { if (e.detail === 0) toggleRide(); });
   rideBtn.addEventListener('contextmenu', (e) => e.preventDefault());
-  addEventListener('pointerdown', (e) => { if (!ridePick.hidden && !(e.target instanceof Element && e.target.closest('#ride-pick, #btn-ride'))) ridePick.hidden = true; });
+  rideMore.addEventListener('click', (e) => { e.stopPropagation(); openRideWin(); });
 }
 // 탈것 가게 팝업 카드 (가게 거리 3번 터). 가진 것은 눌러서 고르기
 export const RIDE_LOGO = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#ff8a1f"/><g transform="translate(3.6 3.4) scale(.7)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${RIDE_ICON.scoot}</g></svg>`);
@@ -127,11 +152,11 @@ export function buildRideMenu(grid) {
     grid.append(b);
   }
 }
-function pickRide(R) { save.rides.cur = R.id; persist(); if (player.ride && player.ride !== R.id) { dismountRide(); mountRide(R.id, true); } updateRideBtn(); late.refreshShopPop(); }
+function pickRide(R) { save.rides.cur = R.id; save.rides.walk = 0; persist(); if (player.ride && player.ride !== R.id) { dismountRide(); mountRide(R.id, true); } updateRideBtn(); late.refreshShopPop(); }
 export function buyRide(R, cell) {
   if (save.rides.own.includes(R.id)) return;
   if (save.coins < R.price) { toast(`귤이 ${R.price - save.coins}개 모자라요`); return; }
-  const from = save.coins; save.coins -= R.price; save.rides.own.push(R.id); save.rides.cur = R.id; persist(); updateStats(); late.sound.coin?.();
+  const from = save.coins; save.coins -= R.price; save.rides.own.push(R.id); save.rides.cur = R.id; save.rides.walk = 0; persist(); updateStats(); late.sound.coin?.();
   ach.emit('ride-buy'); ach.emit('ride-buy-' + R.id);
   updateRideBtn(); late.refreshShopPop();
   const c = document.querySelector(`#shoppop-cards .menu-card[data-id="${R.id}"]`) || cell;

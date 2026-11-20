@@ -6,6 +6,7 @@ import { MAPS } from '../maps.js';
 import { serverId } from '../server.js';
 import { postFeedback } from '../online.js';
 import { createFeedback } from '../feedback.js';
+import { setCrashSink } from '../crash.js';
 import { late } from './state.js';
 import { $, isTouch, save, MAP_ID } from './save.js';
 import { canvas } from './scene.js';
@@ -45,6 +46,8 @@ export const feedback = createFeedback({
   meta: () => ({ ver: VERSION, srv: serverId(), map: MAP_ID, dev: isTouch ? (Math.min(innerWidth, innerHeight) <= 600 ? 'phone' : 'tablet') : 'desktop', w: innerWidth, h: innerHeight, x: Math.round(player.pos.x), z: Math.round(player.pos.z), nick: save.nick }),
 });
 feedback.flush();
+// 오류 알림 (#108): 같은 의견함에 kind 'crash' 로 (좌표·닉네임 없이)
+setCrashSink(postFeedback, () => ({ ver: VERSION, srv: serverId(), map: MAP_ID, dev: isTouch ? (Math.min(innerWidth, innerHeight) <= 600 ? 'phone' : 'tablet') : 'desktop', w: innerWidth, h: innerHeight }));
 const fbLen = () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / ${FEEDBACK.max}`; };
 function openFeedback(close = true) { if (close) closePanels(); $('feedback-input').maxLength = FEEDBACK.max; fbLen(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); }
 $('menu-feedback').addEventListener('click', () => openFeedback());

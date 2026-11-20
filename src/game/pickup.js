@@ -1,5 +1,5 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT } from '../balance.js';
+import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
 import * as THREE from 'three';
@@ -10,7 +10,7 @@ import { scene, wx, spots, sunEvent } from './scene.js';
 import { life, street, buff, trash, CH, CH_MINI, bloom, bfx, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
 import { topFit, toast, tips, updateStats, panelOpen, busy, ach, onDexGet } from './hud.js';
-import { keys, marker, setTarget } from './input.js';
+import { keys, marker, setTarget, joy } from './input.js';
 import { setHoldBow } from './throw.js';
 
 Object.assign(late, { startPick, pressPick }); // 앞 파일에서 부르는 함수
@@ -24,6 +24,22 @@ export const canPick = () => !!trash && !player.riding && !player.ride && !playe
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast(force) { if (!force && performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭이' : '호주머니가'; toast(CH ? `${w} 가득 찼어요 · 가까운 클린하우스에 버려요` : `${w} 가득 찼어요`); }
 const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
+// 꽃 피는 동안 잠깐 멈춤 (#110): 더미·구역 마지막 쓰레기를 주워 꽃 연출이 시작되면 BLOOM_HOLD 초 동안 자동 이어가기를 쉼.
+// 직접 움직이거나(조이스틱·방향키·땅 탭), 적이 가깝거나 맞는 중이면 바로 풀림
+const bloomHold = { t: 0, x: 0, z: 0 };
+function holdBloom(sec, x, z) { if (sec > bloomHold.t) bloomHold.t = sec; bloomHold.x = x; bloomHold.z = z; if (cam.mode === 'follow') state.camPullT = 0; }
+function bloomHolding() {
+  if (bloomHold.t <= 0) return false;
+  const moved = joy.active || ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].some((k) => keys.has(k)) || !!player.target || !!player.knock || (life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)));
+  if (moved) { bloomHold.t = 0; return false; }
+  return true;
+}
+function tickBloomHold(dt) {
+  if (bloomHold.t <= 0) return;
+  if (!bloomHolding()) return;
+  bloomHold.t -= dt;
+  if (!seekS.on && pickS.cyc < 0 && !player.air) player.heading = Math.atan2(bloomHold.x - player.pos.x, bloomHold.z - player.pos.z) || player.heading; // 꽃 쪽을 바라봄
+}
 export function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   stopSeek();
@@ -54,8 +70,8 @@ function takeNow() {
 }
 export function tickPick(dt) {
   if (!trash) return;
-  tickSeek(); tickPickMark(performance.now() / 1000);
-  const holding = pickS.held || keys.has('e');
+  tickBloomHold(dt); tickSeek(); tickPickMark(performance.now() / 1000);
+  const holding = (pickS.held || keys.has('e')) && !bloomHolding();
   if (pickS.cyc < 0) {
     if (holding && state.holdBow && !pickBlocked()) setHoldBow(false); // 줍기를 누르면 활을 내리고 도구를 듦 (#38)
     if (holding && !pickBlocked() && player.pose !== 'crouch') { if (canPick()) startPick(); else if (trashFull()) fullToast(); }
@@ -110,8 +126,8 @@ function seekNextWp() { const s = seekS.on; setTarget(s.route[s.i], null); marke
 function tickSeek() {
   const s = seekS.on; if (!s) return;
   if (busy() || hp.isDown || player.riding || player.ride || player.cart || player.target !== s.cur) { stopSeek(); return; }
-  if (!seekAlive(s.t)) { stopSeek(); if (pickS.held || keys.has('e')) startSeek(true); return; } // 다른 데서 치워짐
-  if (canPick()) { startPick(); return; } // 닿으면 바로 주움
+  if (!seekAlive(s.t)) { stopSeek(); if ((pickS.held || keys.has('e')) && !bloomHolding()) startSeek(true); return; } // 다른 데서 치워짐
+  if (canPick() && !bloomHolding()) { startPick(); return; } // 닿으면 바로 주움
   const last = s.i === s.route.length - 1, dc = Math.hypot(s.cur.x - player.pos.x, s.cur.z - player.pos.z);
   if (!last && dc < 2.4) { s.i++; seekNextWp(); }
 }
@@ -174,8 +190,8 @@ if (trash) {
   trash.on((ev, d) => {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
-    else if (ev === 'heap-clear') { if (!d.by) late.pace?.cleared(d.h); late.sound.swell?.(PACE.bloomLayer.heap); tips.event('heapClear'); ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
-    else if (ev === 'zone-clear') { ach.emit('zone-clear'); ach.emit('zone-clear-' + d.zone); } // 글 대신 꽃밭 배너 (#65, zone-bloom)
+    else if (ev === 'heap-clear') { if (!d.by) { late.pace?.cleared(d.h); const hh = trash.heaps[d.h]; if (hh) holdBloom(BLOOM_HOLD.heap, hh.x, hh.z); } late.sound.swell?.(PACE.bloomLayer.heap); tips.event('heapClear'); ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
+    else if (ev === 'zone-clear') { ach.emit('zone-clear'); ach.emit('zone-clear-' + d.zone); if (!d.by) holdBloom(BLOOM_HOLD.zone, bloomHold.x, bloomHold.z); } // 글 대신 꽃밭 배너 (#65, zone-bloom)
     updateTrashUI(false);
   });
   updateTrashUI(false);
