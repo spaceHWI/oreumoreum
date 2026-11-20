@@ -70,6 +70,7 @@ const TIP_GO = {
   heap: () => { const p = nearestHeapPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
   stream: () => { const p = tipStreamPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
   stone: () => { if (STN?.terrace) tipMark(STN.terrace.clone()); },
+  map: () => late.openMap?.(), // 오름 지도 (#136)
 };
 tipEl.addEventListener('click', () => { const g = tipNow?.go; tipEl.hidden = true; tipT = 0; topStack(); if (g && TIP_GO[g]) TIP_GO[g](); });
 { const b = $('menu-tips'); const sync = () => b.setAttribute('aria-pressed', String(!tips.isOff())); sync(); b.addEventListener('click', () => { tips.off(!tips.isOff()); sync(); if (tips.isOff()) { tipEl.hidden = true; tipT = 0; } }); } // 메뉴에서 팁 끄기
@@ -142,7 +143,7 @@ export function updateScore() {
   late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank', 'inbox'];
+const PANELS = ['shop', 'omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank', 'inbox'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -154,8 +155,8 @@ export function cancelAll() {
   player.target = null; player.onArrive = null; late.marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shoppop-close', 'shoppop'], ['ridewin-close', 'ridewin'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
-['shop', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
+[['shoppop-close', 'shoppop'], ['ridewin-close', 'ridewin'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['omap-close', 'omap'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+['shop', 'omap', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
 export const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r) }); late.ach = ach;

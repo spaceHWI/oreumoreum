@@ -169,7 +169,7 @@ export function tickFly(dt) {
 const nearTop = () => spots.isViewpoint(player.pos) || player.pos.distanceTo(spots.sunWatch.pos) <= spots.sunWatch.r;
 let lastTrashUI = ''; state.lastZoneUI = ''; let zoneNow = 0; let zoneT = 0; export { zoneNow };
 // 구역 확인 (0.3초마다): 바뀌면 HUD 갱신
-export function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { zoneNow = z; updateTrashUI(false); } }
+export function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { const prev = zoneNow; zoneNow = z; updateTrashUI(false); late.zoneEnter?.(z, prev); } } // #136 구역 이름 배너·소리 (area.js)
 export function updateTrashUI(bump) {
   if (!trash) return;
   const vol = trash.bagVol(), cap = bagCap(), c = trash.clean() * 100;

@@ -51,7 +51,7 @@ const wingGeo = (w, h) => { const g = new THREE.BufferGeometry().setAttribute('p
 
 /* ---------- 꽃 세상 ---------- */
 // ns: buildNamsongi 결과(setZoneGrid, zoneDry), trash: createTrash 결과, onPath(x,z): 길 위인가, col: 사물 충돌
-export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
+export function createBloom({ scene, ns, trash, height, onPath, col, low, ambFly = null }) { // ambFly(구역): 다 피지 않아도 늘 있는 나비 수 (#136)
   const listeners = [], emit = (ev, d) => listeners.forEach((f) => f(ev, d));
   const zoneAt = trash.zoneAt;
   // 1) 땅·풀 셰이더에 구역 격자
@@ -171,10 +171,10 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low }) {
   const wingM = (im, idx, p, yaw, flap, s, side) => { e.set(0, yaw, side * flap, 'YXZ'); q.setFromEuler(e); m4.compose(p, q, sc.set(side * s, s, s)); im.setMatrixAt(idx, m4); };
   function tickFx(dt, pos, time) {
     // 나비: 다 핀 구역 안에 있으면 둘레 꽃 사이를 팔랑팔랑
-    const here = zoneAt(pos.x, pos.z), on = here && bloomed[here];
-    let n = 0;
+    const here = zoneAt(pos.x, pos.z), on = here && bloomed[here], want = on ? NB : Math.min(NB, ambFly ? ambFly(here) : 0);
+    let n = 0, fi = 0;
     for (const f of flies) {
-      f.k = Math.max(0, Math.min(1, f.k + (on ? dt : -dt) * 0.8));
+      f.k = Math.max(0, Math.min(1, f.k + (fi++ < want ? dt : -dt) * 0.8));
       if (f.k <= 0) { f.p.set(pos.x, -1e3, pos.z); continue; }
       if (f.p.y < -100 || f.p.distanceTo(pos) > 26) { const a = Math.random() * 6.28, d = 6 + Math.random() * 12, x = pos.x + Math.cos(a) * d, z = pos.z + Math.sin(a) * d; f.p.set(x, height(x, z) + 0.6 + Math.random(), z); f.t = 0; }
       if ((f.t -= dt) <= 0 || f.p.distanceTo(f.to) < 0.4) { const a = Math.random() * 6.28, d = 3 + Math.random() * 9, x = pos.x + Math.cos(a) * d, z = pos.z + Math.sin(a) * d; f.to.set(x, height(x, z) + 0.5 + Math.random() * 1.3, z); f.t = 3 + Math.random() * 3; }

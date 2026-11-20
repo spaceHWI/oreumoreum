@@ -842,6 +842,35 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 #xy-pill.inzone[data-tone]::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--tone); }
 #xy-pill[data-tone="r"] { --tone: #ff5a4a; } #xy-pill[data-tone="y"] { --tone: #ffd23f; } #xy-pill[data-tone="g"] { --tone: #5fd36a; }
 .topbar:not(.f1) #xy-pill::before { display: none; }
+/* 구역 묶음 (#136): 초보·중수·고수 색 밑줄. 누르면 오름 지도 */
+#zone-pill[data-tier], #xy-pill.inzone[data-tier] { box-shadow: inset 0 -3px 0 var(--tier); }
+:is(#zone-pill, #xy-pill)[data-tier="1"] { --tier: #8fd16a; } :is(#zone-pill, #xy-pill)[data-tier="2"] { --tier: #f2b544; } :is(#zone-pill, #xy-pill)[data-tier="3"] { --tier: #b07ce0; }
+#zone-pill, #xy-pill.inzone { cursor: pointer; }
+/* 구역 이름 배너 (#136): 넘는 순간 화면 가운데에 크게 잠깐 */
+#zone-title { position: fixed; z-index: 6; left: 50%; top: 30%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; color: #fff; font-family: var(--display); white-space: nowrap; text-shadow: 0 2px 0 rgba(0,0,0,.45), 0 0 18px rgba(0,0,0,.35); }
+#zone-title[hidden] { display: none; }
+#zone-title b { display: block; font-weight: 800; font-size: 46px; letter-spacing: .04em; line-height: 1.1; }
+#zone-title small { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; letter-spacing: .12em; color: var(--tier, #fff); }
+#zone-title small::before, #zone-title small::after { content: ""; width: 34px; height: 2px; background: currentColor; opacity: .8; }
+#zone-title.go { animation: zoneTitle var(--zt, 2.8s) ease-out forwards; }
+@keyframes zoneTitle { 0% { opacity: 0; transform: translate(-50%, -40%) scale(.96); } 14% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -54%); } }
+@media (max-width: 600px) { #zone-title b { font-size: 34px; } #zone-title small { font-size: 14px; } #zone-title small::before, #zone-title small::after { width: 20px; } }
+@media (prefers-reduced-motion: reduce) { #zone-title.go { animation-name: zoneTitleFade; } @keyframes zoneTitleFade { 0%, 100% { opacity: 0; } 12%, 80% { opacity: 1; } } }
+/* 오름 지도 (#136): 구역을 세 묶음 색으로, 지금 자리 */
+#omap .pop { width: min(420px, 100%); }
+#omap-now { margin: 0 0 8px; font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+#omap-now b { font-family: var(--display); font-weight: 800; font-size: 17px; }
+#omap-now i { font-style: normal; color: var(--ink-soft); }
+#omap-now .tone { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+#omap-c { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; background: rgba(0,0,0,.25); touch-action: none; }
+.omap-rows { display: grid; gap: 4px; margin-top: 10px; }
+.omap-rows div { display: grid; grid-template-columns: 12px 22px 1fr 30px 54px; align-items: center; gap: 6px; font-size: 14px; padding: 2px 4px; border-radius: 8px; }
+.omap-rows div.now { background: rgba(255,255,255,.12); }
+.omap-rows .sw { width: 12px; height: 12px; border-radius: 3px; }
+.omap-rows b { font-family: var(--display); font-weight: 800; text-align: center; }
+.omap-rows svg { width: 30px; height: 30px; }
+.omap-rows .rec { text-align: right; font-weight: 800; font-family: var(--display); }
+.omap-rows .rec[data-tone="r"] { color: #ff7a6a; } .omap-rows .rec[data-tone="y"] { color: #ffd23f; } .omap-rows .rec[data-tone="g"] { color: #6fe07a; }
 /* 좌표 + 작은 방위 화살표(나침반 대신, 귤색 끝이 북쪽) */
 #xy-pill .zm { display: none; }
 #xy-pill .na { width: 14px; height: 14px; }
@@ -1092,6 +1121,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 <div class="overlay" id="flash" hidden></div>
 <div id="bloom-glow" aria-hidden="true"></div>
 <div id="bloom-banner" role="status" hidden></div>
+<div id="zone-title" role="status" hidden><b></b><small></small></div>
 <div id="hp-dim" hidden></div>
 <div id="hp-wait" hidden aria-live="polite"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="rgba(20,20,24,.5)" stroke="rgba(255,255,255,.18)" stroke-width="7"/><circle id="hp-ring" cx="50" cy="50" r="40" fill="none" stroke="#ff8a1f" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="0"/></svg><b id="hp-num">5</b></div>
 <div class="panel banner-bar" id="queue" hidden><span id="queue-n">앞에 1명이 있어요</span><button type="button" class="btn small" id="queue-cancel">그만두기</button></div>
@@ -1166,6 +1196,12 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   </div>
 </div>
 
+<div class="overlay dim" id="omap" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>오름 지도</h2><button type="button" class="btn small" id="omap-close">닫기</button></div>
+    <div class="pop-body"><p id="omap-now"></p><canvas id="omap-c" width="440" height="440" aria-label="오름 지도: 구역과 지금 자리"></canvas><div class="omap-rows" id="omap-rows"></div></div>
+  </div>
+</div>
 <div class="overlay dim" id="sign" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>탐방 안내</h2><button type="button" class="btn small" id="sign-close">닫기</button></div>

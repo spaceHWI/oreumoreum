@@ -18,7 +18,8 @@ export class Music {
     this.c = ctx; this.noise = noise;
     this.calm = ctx.createGain(); this.calm.gain.value = 1;
     this.tense = ctx.createGain(); this.tense.gain.value = 0;
-    this.calm.connect(out); this.tense.connect(out);
+    this.zoneG = ctx.createGain(); this.zoneG.connect(out); this.zoneLP = 1; // 구역마다 평소 음악 크기·밝기 (#136)
+    this.calm.connect(this.zoneG); this.tense.connect(out);
     // 패드 필터 (밤엔 더 어둡게)
     this.padLP = ctx.createBiquadFilter(); this.padLP.type = 'lowpass'; this.padLP.frequency.value = 1500; this.padLP.Q.value = 0.3;
     this.padLP.connect(this.calm);
@@ -42,6 +43,7 @@ export class Music {
     this._iv = setInterval(() => this.tick(), 200);
   }
 
+  setZone(vol = 1, lp = 1) { const t = this.c.currentTime; this.zoneLP = lp; this.zoneG.gain.setTargetAtTime(vol, t, 2); this.padLP.frequency.setTargetAtTime((this.night ? 850 : 1500) * lp, t, 2); }
   _ramp(g, v, dur) {
     const p = g.gain, t = this.c.currentTime;
     p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); p.linearRampToValueAtTime(v, t + dur);
@@ -81,7 +83,7 @@ export class Music {
     const prog = night ? NIGHT : DAY;
     const [bass, notes] = prog[this.chordI++ % prog.length];
     const len = night ? MUSIC.chord.night : MUSIC.chord.day, att = 3, rel = 4.5;
-    this.padLP.frequency.setTargetAtTime(night ? 850 : 1500, t, 2);
+    this.padLP.frequency.setTargetAtTime((night ? 850 : 1500) * this.zoneLP, t, 2);
     this.echo.delayTime.setTargetAtTime(night ? 0.62 : 0.48, t, 1);
     const v = night ? 0.034 : 0.036;
     for (const m of notes) this._pad(t, hz(m), v, att, len, rel);

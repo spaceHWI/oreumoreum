@@ -4,7 +4,7 @@
 //  when  : (S) => 참이면 지금 보여 줄 만한 상황. S 는 main.js 가 주는 상태 (아래 snapshot 참고). 일이 한 번 일어났을 때만 쓰는 팁은 S.ev.<이름>
 //  ic    : TIP_ICON 의 아이콘 이름
 //  text  : 한 줄 문구
-//  go    : 눌렀을 때 갈 곳 (main.js 의 go 핸들러 이름): shop · cleanhouse · dex · heap(가까운 더미 쪽 표시) · stream · stone
+//  go    : 눌렀을 때 갈 곳 (main.js 의 go 핸들러 이름): shop · cleanhouse · dex · heap(가까운 더미 쪽 표시) · stream · stone · map(오름 지도, #136)
 export const TIP = { sec: 4, gap: 30, rare: { max: 3, chance: 0.4 }, evLife: 25, idleSec: 120, eventsMax: 12 };
 
 const P = (d) => `<path d="${d}"/>`;
@@ -20,6 +20,7 @@ export const TIP_ICON = {
   fish: P('M3 12c3-5 9-6 13-2l5-3v10l-5-3c-4 4-10 3-13-2zM8.500 11.500h.01'),
   fork: P('M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-3 5-3 8h3v10'),
   arrow: P('M12 4v13M6 12l6 6 6-6'),
+  peak: P('M3 20l6.500-11 4 6 2.500-3.500L21 20zM9.500 9V3.500l4 1.600-4 1.600'),
 };
 
 export const TABLE = [
@@ -35,6 +36,7 @@ export const TABLE = [
   { id: 'rareFirst', when: (S) => S.ev.rare, ic: 'book', text: '드문 것은 도감에 실려요', go: 'dex' },
   { id: 'nearStream', when: (S) => S.nearStream, ic: 'fish', text: '개울가에서는 낚시를 할 수 있어요', go: 'stream' },
   { id: 'buffEnd', when: (S) => S.ev.buffEnd, ic: 'fork', text: '버프가 끝났어요. 스톤에서 다시 식사해요', go: 'stone' },
+  { id: 'zoneUp', when: (S) => S.ev.zoneUp, ic: 'peak', text: '위로 갈수록 어려워져요', go: 'map' }, // #136 튜토리얼 뒤 처음 정낭(초보→중수)을 지날 때
   { id: 'idle', when: (S) => S.idle >= TIP.idleSec, ic: 'arrow', text: '가까운 쓰레기 더미는 이쪽이에요', go: 'heap' },
 ];
 
@@ -71,6 +73,6 @@ export function createTips({ save, persist, show, state, today = () => new Date(
     }
     return null;
   }
-  const tipEvName = (id) => ({ carried: 'carried', firstHeap: 'heapClear', dumper: 'dumper', rareFirst: 'rare', buffEnd: 'buffEnd' })[id];
+  const tipEvName = (id) => ({ carried: 'carried', firstHeap: 'heapClear', dumper: 'dumper', rareFirst: 'rare', buffEnd: 'buffEnd', zoneUp: 'zoneUp' })[id];
   return { event, update, off: (v) => { T().off = v ? 1 : 0; persist(); }, isOff: () => !!T().off, seen: () => structuredClone(T().seen), reset: () => { T().seen = {}; last = -1e9; persist(); }, TABLE };
 }
