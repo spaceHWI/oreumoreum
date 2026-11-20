@@ -110,7 +110,7 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 .acct-box { display: grid; justify-items: center; gap: 8px; margin-bottom: 10px; }
 .acct-beta { margin: 0; font-size: 13px; color: var(--ink-soft); text-align: center; }
 .acct-who { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
-.onestore .acct-gis { display: none; } /* 원스토어 앱 안: 구글 로그인 대신 손님으로 (#97) */
+.onestore .acct-gis, .onestore #fs-chip, .onestore #menu-fs { display: none !important; } /* 원스토어 앱 안: 구글 로그인 대신 손님으로 (#97) */
 .acct-gis { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
 .acct-gis .gbtn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 18px; font-weight: 800; padding: 12px 16px; background: #fff; color: #1f1f1f; border: 1px solid #dadce0; box-sizing: border-box; }
 .acct-gis .gbtn svg { flex: none; }
@@ -371,7 +371,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
 body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #intro .ver-line) { display: none; }
-@media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; } }
+@media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; box-sizing: border-box; } #shoppop .pop { box-sizing: border-box; } } /* border-box: 폰에서 카드·가게 창이 화면 옆으로 몇 px 넘치던 것 (#105) */
 
 .intro-actions .btn:disabled { opacity: .4; pointer-events: none; }
 .ach-item { border: 0; border-radius: 14px; background: rgba(255,255,255,.08); padding: 10px 12px; }
@@ -848,6 +848,7 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .topbar.f1 #zone-pill { display: none; }
 .topbar.f1 #xy-pill.inzone .na { display: none; } .topbar.f1 #xy-pill.inzone .zm { display: block; }
 #fb-chip { padding: 0 9px; } #fb-chip svg { width: 16px; height: 16px; }
+#fs-chip { padding: 0 9px; } #fs-chip svg { width: 16px; height: 16px; } #fs-chip .fs-out, #fs-chip[aria-pressed="true"] .fs-in { display: none; } #fs-chip[aria-pressed="true"] .fs-out { display: inline; } .topbar.f5 #fs-chip { padding: 0 6px; } /* 전체 화면 (#105) */
 .topbar.f5 #fb-chip { padding: 0 6px; }
 .pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: #fff; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
 .topbar.f2 #ach-chip { display: none; }
@@ -894,6 +895,27 @@ body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
 body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h, 0px) + 20px + var(--ban-h, 78px)); }
 @keyframes tipin { from { opacity: 0; transform: translate(-50%, -6px); } }
 @media (prefers-reduced-motion: reduce) { .tip-toast { animation: none; } }
+
+/* ===== 낮은 가로 화면 (#105): 폰을 가로로 돌렸을 때 (높이 500 이하). 창은 화면 안에서 스크롤, 버튼은 좌우 아래 ===== */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --ll-h: calc(100dvh - var(--safe-t) - var(--safe-b) - 16px); }
+  /* 첫 화면: 로고 왼쪽, 카드 오른쪽 */
+  #intro .intro-wrap { grid-template-rows: 100%; grid-template-columns: 1fr minmax(0, 380px); align-items: center; padding: 8px 0; gap: 20px; height: 100%; box-sizing: border-box; }
+  #intro .intro-logo { margin: 0; align-self: center; justify-self: center; width: min(320px, 38vw); }
+  #intro .intro-card { width: 100%; max-height: var(--ll-h); box-sizing: border-box; padding: 14px 16px 12px; }
+  #intro .intro-rn { font-size: 12px; }
+  /* 창: 화면 높이 안에서, 안쪽이 스크롤 */
+  .overlay { padding-top: calc(var(--safe-t) + 8px); padding-bottom: calc(var(--safe-b) + 8px); box-sizing: border-box; }
+  .pop, #shoppop .pop, #shoppop.leap .pop { max-height: var(--ll-h); box-sizing: border-box; }
+  .pop-head { padding-top: 8px; padding-bottom: 6px; }
+  #intro .intro-rn ul { display: none; } /* 릴리스 노트는 "더 보기" 로 */
+  /* 메뉴(넓은 화면 모양): 위로 넘치지 않게 */
+  .pop-menu { max-height: calc(100dvh - var(--safe-b) - 74px - var(--tb-top, 8px) - var(--tb-h, 36px) - 8px); overflow-y: auto; }
+  /* 사진: 사진 왼쪽, 버튼 오른쪽 세로로 */
+  .photo-card { grid-template-columns: auto auto; width: auto; max-width: 100%; max-height: var(--ll-h); box-sizing: border-box; align-items: end; }
+  .photo-card img { width: auto; max-width: calc(100vw - var(--gut-l) - var(--gut-r) - 150px); max-height: calc(var(--ll-h) - 28px); }
+  .photo-acts { flex-direction: column; align-items: stretch; } .photo-acts #photo-save { margin: 0 0 auto; }
+}
 </style>
 
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
@@ -913,6 +935,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg class="zm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg class="zf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="6.5" r="3.4"/><circle cx="17.2" cy="10.3" r="3.4"/><circle cx="15.2" cy="16.4" r="3.4"/><circle cx="8.8" cy="16.4" r="3.4"/><circle cx="6.8" cy="10.3" r="3.4"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg><b id="zone-n">1</b></div>
     <div class="panel tpill" id="xy-pill" data-tut="hud" title="좌표"><svg class="zm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="xy"><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
     <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 업적"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
+    <button type="button" class="panel tpill" id="fs-chip" title="전체 화면" aria-label="전체 화면" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="fs-in"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></g><g class="fs-out"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></g></svg></button>
     <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg></button>
   </div>
 </div>
@@ -984,6 +1007,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   </div>
   <div class="m-more">
     <button type="button" id="menu-help">조작법</button>
+    <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
     <button type="button" id="menu-perf">성능: 자동</button>
     <button type="button" id="menu-notes">릴리스 노트</button>

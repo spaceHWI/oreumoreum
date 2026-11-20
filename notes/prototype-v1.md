@@ -32,6 +32,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 |
 | panels.js | 채팅, 메뉴 항목, 릴리스 노트, 의견 보내기, 도움말 |
+| screen.js | 전체 화면 버튼·메뉴 항목(안 되는 곳은 홈 화면 추가 안내), 돌릴 때 바로 맞추기 (#105) |
 | ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차 |
 | moves.js | 노루 타기, 점프, 벤치에 앉기, 돌탑 소원, 사진사 사진 |
 | room.js | 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 |

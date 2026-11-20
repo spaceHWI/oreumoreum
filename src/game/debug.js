@@ -20,6 +20,7 @@ import { $, isTouch, save, CLOTH, CL, wearRefund, wearV, syncEquipGear, lookS, a
 import { renderer, quality, retro, scene, NSW, camera, sun, applyQuality, wx, grass, motes, prints, spots, sunState, applySky, lamps } from './scene.js';
 import { P, photoSpot, benchPos, life, cairns, fillCairn, col, wall, NS_TUT, stream, jeong, openJeong, street, shopsBuilt, STN, SAL, LEAPB, buff, trash, CH, CH_MINI, CHS, chNear, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
+import { screenInfo, toggleFullscreen } from './screen.js';
 import { toast, addCoins, closePanels, ach, openDex, onDexGet, topStack, updateStats } from './hud.js';
 import { keys, joy } from './input.js';
 import { devOn, doEmote } from './menu.js';
@@ -121,7 +122,7 @@ if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌
 // 콘솔 확인 함수 (#84): 개발 빌드는 늘, 공개 빌드(release, PUBLIC=1)는 어드민에게만 (enableDev). 보안은 서버가 지키고, 이건 함부로 만지지 않게 하는 정도
 state.debugReady = false;
 function exposeDebug() { window.__oreum = debugApi(); }
-function debugApi() { return { assets: assetInfo, lifeModels: { mount: (i = 0) => mountDeer(life.deer[i]), dismount: () => dismountDeer(), lamps: () => lamps.points.length }, deerNet: () => late.deerNet, feedback, rank, emo: state.emo, doEmote, net, online: ONLINE && { account: () => state.account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
+function debugApi() { return { screen: () => ({ ...screenInfo(), fov: camera.fov, w: innerWidth, h: innerHeight }), toggleFullscreen, assets: assetInfo, lifeModels: { mount: (i = 0) => mountDeer(life.deer[i]), dismount: () => dismountDeer(), lamps: () => lamps.points.length }, deerNet: () => late.deerNet, feedback, rank, emo: state.emo, doEmote, net, online: ONLINE && { account: () => state.account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
