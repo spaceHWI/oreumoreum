@@ -150,7 +150,7 @@ export function boardCart() {
   player.cart = { seat: Math.floor(Math.random() * CART.seats) };
   Object.assign(player, { target: null, onArrive: null, speed: 0, air: false, jumpY: 0, jumpV: 0, pose: 'move' }); marker.visible = false; player.kb.set(0, 0, 0);
   syncRideLook(); late.net.send(true); ach.emit('cart');
-  if (!save.cartSeen) { save.cartSeen = 1; persist(); toast('마차에 탔어요. 점프하면 뛰어내려요'); }
+  if (!save.cartSeen) { save.cartSeen = 1; persist(); toast('마차는 정해진 길만 다녀요. 점프하면 뛰어내려요'); }
 }
 export function tickCartRide(dt) {
   const p = player;
