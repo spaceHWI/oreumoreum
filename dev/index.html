@@ -1200,7 +1200,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <div class="panel pop">
     <div class="pop-head"><h2>의견 보내기</h2><button type="button" class="btn small" id="feedback-close">닫기</button></div>
     <form class="pop-body" id="feedback-form">
-      <p class="muted" style="margin:0 0 8px;font-size:13px">바라는 것, 불편한 것, 버그 무엇이든 적어 주세요. 개발자 메일로 가요.<br>답장을 원하면 연락처를 글에 직접 적어 주세요.</p>
+      <p class="muted" style="margin:0 0 8px;font-size:13px">바라는 것, 불편한 것, 버그 무엇이든 적어 주세요. 개발자 메일로 가요.<br>답장을 원하면 연락처를 글에 직접 적어 주세요.<br>베타 테스트 중이라 기록이 초기화될 수 있어요.</p>
       <textarea id="feedback-input" maxlength="500" rows="6" placeholder="예) 한라산 정상 코스도 생기면 좋겠어요"></textarea>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><small class="muted" id="feedback-len">0 / 500</small><button type="submit" class="btn small primary" id="feedback-send">보내기</button></div>
     </form>
@@ -1221,7 +1221,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
       <div id="intro-main">
         <div class="ver-line"><span class="beta-chip">BETA</span> <span id="ver-text"></span></div>
         <p class="intro-beta" id="intro-expired" hidden>7일 동안 오지 않아 기록이 지워졌어요</p>
-        <p class="intro-beta">베타 테스트 중이에요. 기록이 초기화될 수 있어요. <button type="button" class="linkish" id="intro-feedback">의견 보내기</button></p>
+        <p class="intro-beta">베타 테스트 중이라 부족한 점이 있어요.<br><button type="button" class="linkish" id="intro-feedback">의견 보내기</button>로 많이 알려 주세요!</p>
         <div class="intro-rn"><ul id="intro-rn"></ul><button type="button" class="linkish" id="intro-notes">릴리스 노트 더 보기</button></div>
         <div class="acct-box" id="acct-box" hidden></div>
         <button type="button" class="btn primary intro-go" id="enter" disabled aria-busy="true">시작</button>
