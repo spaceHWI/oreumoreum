@@ -23,7 +23,7 @@ export function uaShort(ua = navigator.userAgent || '') {
 export function crashText(err, where = '') {
   const msg = String(err?.message || err || '?').replace(/\s+/g, ' ').slice(0, 160);
   const at = String(err?.stack || '').split('\n').map((l) => l.trim()).find((l) => /:\d+:\d+/.test(l) && !l.startsWith(msg.slice(0, 20))) || '';
-  const spot = at.replace(/^at /, '').replace(/https?:\/\/[^\s)]*\//g, '').slice(0, 80);
+  const spot = at.replace(/^at /, '').replace(/https?:\/\/[^\s)]*\//g, '').slice(0, 120); // 함수 이름·파일 이름·줄·칸이 다 들어가게 (#122)
   return { key: (where + '|' + (err?.name || '') + msg).slice(0, 120), text: `[오류${where ? ' ' + where : ''}] ${err?.name && err.name !== 'Error' ? err.name + ': ' : ''}${msg}${spot ? ' @ ' + spot : ''}` };
 }
 // 기기당 하루 perDay 번
@@ -51,7 +51,8 @@ export function reportCrash(err, where = '') {
     if (sent >= CRASH.perRun || !allow(key)) return;
     sent++;
     const last = acts.length ? ' · 마지막: ' + acts.slice(-3).join(' / ') : '';
-    q.push({ at: Date.now(), kind: 'crash', text: (text + last + ' · ' + uaShort()).slice(0, 500), ...meta() });
+    const ua = ' · ' + uaShort(); // 글이 길어도 브라우저/OS 이름은 끝에 남게 (#122: 서버가 끝 칸으로 나눔)
+    q.push({ at: Date.now(), kind: 'crash', text: (text + last).slice(0, 500 - ua.length) + ua, ...meta() });
     pump();
   } catch (e) { /* 알림이 또 오류를 내지 않게 */ }
 }

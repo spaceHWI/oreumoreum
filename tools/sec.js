@@ -207,6 +207,18 @@ async function startServers() {
     ok(ug.j.fixed.includes('coins') && !bg.j.fixed.length, '귤 채우기는 어드민 계정만 서버가 받아 줌');
 
     /* ---------- 의견 도배·요청 수 ---------- */
+    { // 오류 알림 묶어 보기 (#122): 로그인·Origin 없이 읽지만 의견 글·닉네임·좌표·IP 는 새지 않음
+      const SECRET = '비밀의견글-' + Date.now();
+      await req('dev', '/feedback', { method: 'POST', body: { items: [
+        { kind: 'crash', text: "[오류 frame] TypeError: x is null @ main-0123abcd45.js:1:2345 · 마지막: 3s 시작 · Android 14 Chrome 120", ver: '9.9.9', dev: 'phone', nick: '닉네임새면안됨', x: 123, z: 456 },
+        { text: SECRET, ver: '9.9.9', dev: 'phone', nick: '닉네임새면안됨', x: 1, z: 2 },
+      ] } });
+      const cr = await req('dev', '/crashes?days=3', { origin: null });
+      const raw = JSON.stringify(cr.j || {});
+      const g = cr.j?.groups?.find((o) => o.ver === '9.9.9');
+      ok(cr.status === 200 && g && g.n === 1 && g.dev.phone === 1 && g.ua[0] === 'Android 14 Chrome 120', `/crashes 는 Origin·로그인 없이 묶음을 줌 (${cr.status})`);
+      ok(!raw.includes(SECRET) && !raw.includes('닉네임새면안됨') && !/"(nick|x|z|ip|srv|map|w|h)"/.test(raw), '/crashes 로 의견 글·닉네임·좌표·IP 가 새지 않음');
+    }
     let fbNo = 0; for (let j = 0; j < 4; j++) { const r = await req('dev', '/feedback', { method: 'POST', body: { items: Array.from({ length: 10 }, (_, i) => ({ text: '<b>도배</b> ' + j + i })) } }); if (r.status === 429) fbNo++; }
     ok(fbNo >= 1, `의견 도배 막음 (429 ${fbNo}번)`);
     const list = (await req('dev', '/feedback')).j;
