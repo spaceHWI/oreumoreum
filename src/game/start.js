@@ -63,7 +63,7 @@ export const rank = createRank({ account: state.account, store: trash?.store || 
 if (state.account?.loggedIn) setTimeout(() => rank.prime(), 2500); // 오늘 순위 기준
 late.openRank = () => rank.open(); late.rankAfterDump = () => rank.afterDump();
 $('menu-rank').addEventListener('click', () => rank.open());
-document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
+document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.wake(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
 if (prevMap && prevMap !== MAP_ID && save.entered) { $('intro').hidden = true; startSession(); if (!save.look) openLook(); if (save.introSound && !onestore.silent) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
 if ($('intro').hidden) endTitleCam(); else cam.mode = 'title'; // 첫 화면이 떠 있는 동안은 오름을 도는 카메라 (#72)
@@ -76,7 +76,7 @@ onestore.connect({
   resume({ ringerSilent } = {}) {
     state.osPaused = false;
     if (ringerSilent && sound.on) { sound.stop(); setSoundUI(); }
-    if (osHeld && sound.ctx && sound.on) sound.ctx.resume();
+    if (osHeld && sound.ctx && sound.on) sound.wake();
     osHeld = false;
   },
   exit() { try { writeLocal(); ab.flush(); state.account?.push?.(true); } catch (e) { /* 앱이 닫히는 중 */ } }, // 기기 저장 + 서버는 keepalive
