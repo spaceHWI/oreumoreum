@@ -679,3 +679,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 서버 `roomcore.js`: `deer`(방장만, `NET.deerMax` 4000바이트·80마리)·`dv`(보낸 사람 60m 안, 방장에게만 `from` 붙여)·`mount`·`unmount`, `hi` 에 `rides`. 노루 메시지는 따로 초당 `NET.deerPerSec`(5)
 - 노루 타기 빠르기 `DEER.rideWalk`·`rideRun`(9·15)을 `balance.js` 로, `NET.maxSpeed` 는 `max(32, rideRun × 2)`
 - 확인: `node tools/online.js [주소] [deer]` 에 노루 9가지(방장·위치 같음·타기·A 화면 걸터앉음·둘이 못 탐 화면/방·내리면 풀림·지나감 같이·귤 먹이·끊기면 풀림(deer 만 돌릴 때)), 화면 `dist/deer-ride-a.png`·`deer-ride-b.png`. `__oreum.deerNet()`
+
+- #95 메뉴 계정 칸에 "계정 번호 복사" 버튼. `account.sub` 만 노출(토큰 아님). 클립보드가 막히면 읽기 전용 글 상자(`acct-box-id`)로 보여 줌. 손님은 계정 칸 자체가 없음.
