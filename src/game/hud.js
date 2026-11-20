@@ -38,6 +38,15 @@ export const topFit = (() => {
 })();
 state.toastT = 0;
 export function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; state.toastT = sec; topStack(); }
+// 줍기 메시지 (#116): 따로 작은 한 줄. 새로 주우면 바꿔 쓰고, 같은 것을 이어 주우면 ×N. 다른 토스트는 건드리지 않음
+const pm = { name: '', n: 0, t: 0 };
+export function pickMsg(name) {
+  const el = $('pickmsg'); if (!el || !name) return;
+  pm.n = pm.t > 0 && pm.name === name ? pm.n + 1 : 1; pm.name = name; pm.t = 2;
+  const c = name.charCodeAt(name.length - 1) - 0xac00, jong = c >= 0 && c <= 11171 ? c % 28 !== 0 : false;
+  el.textContent = pm.n > 1 ? `${name} ×${pm.n}` : `${name}${jong ? '을' : '를'} 주웠어요`; el.hidden = false;
+}
+export function tickPickMsg(dt) { if (pm.t > 0) { pm.t -= dt; if (pm.t <= 0) { const el = $('pickmsg'); if (el) el.hidden = true; } } }
 // 위 가운데 배너·팁·토스트가 겹치지 않게 (#16): 보이는 것의 높이를 CSS 변수로 넘기고 body 클래스로 아래로 밀기
 export function topStack() {
   const b = document.body, bn = document.getElementById('banner'), tp = [document.getElementById('tip'), document.getElementById('tut-toast')].find((e) => e && !e.hidden), on = !!tp; // #100 튜토리얼 토스트도 같은 자리
