@@ -193,7 +193,8 @@ function namsongiSpots() {
       { pos: at('approach', LA - 14, -1, 4.4), heading: at('approach', LA - 14).dir + Math.PI + 0.4 },
       { pos: V(stone.x - smOut.z * 6, stone.z + smOut.x * 6), heading: Math.atan2(-smOut.x, -smOut.z) },
     ],
-    sign: { pos: at('approach', G0 + 9, -1, 5), rot: at('approach', G0 + 9).dir + Math.PI + 0.35, html: NS_SIGN_TEXT, board: { title: '남송이오름 탐방로', sub: '서귀포시 안덕면 서광리', l1: '능선 · 정상(339m)', go: '▲ 정상까지 솔숲길' } },
+    sign: { pos: at('approach', G0 + 12, 1, 5), rot: at('approach', G0 + 12).dir + Math.PI - 0.35, // #114 하르방(왼쪽)에 가리지 않게 맞은편으로
+       html: NS_SIGN_TEXT, board: { title: '남송이오름 탐방로', sub: '서귀포시 안덕면 서광리', l1: '능선 · 정상(339m)', go: '▲ 정상까지 솔숲길' } },
     // 걸을 수 있는 범위(#25): 돌담(충돌)이 먼저 막고, 이건 돌담 바로 뒤의 안전망. 안내 문구 없음(돌담이 보이니까)
     clamp(x, z) { const c = nsClamp(x, z, -0.3); return c ? { x: c.x, z: c.z, hit: '' } : null; },
     inBounds: (x, z) => nsIn(x, z, 6),
