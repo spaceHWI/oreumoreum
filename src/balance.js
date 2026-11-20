@@ -428,6 +428,8 @@ export const FISH = {
 };
 
 // 귤 던지기 자동 조준 (#34): 사거리 안 가장 가까운 대상(적·하르방)을 겨눔. 손으로 던지기는 무료
+// 줍기 버튼으로 가까운 쓰레기까지 걸어가기 (#104): range 안에서 가장 가까운 쓰레기(낱개·더미)를 찾아 감. stand: 도착 자리(가장자리에서 도구 반경의 이 비율)
+export const PICK_SEEK = { range: 25, stand: 0.5, color: '#4fe3c1', retry: 0.3 };
 export const THROW_AIM = {
   range: 16, // 이 거리(수평) 안 대상을 겨눔
   power: 11, runBonus: 3, // 대상이 없을 때 보는 방향으로 던지는 힘 (달리면 더)
