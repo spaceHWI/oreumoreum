@@ -111,7 +111,14 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 .acct-beta { margin: 0; font-size: 13px; color: var(--ink-soft); text-align: center; }
 .acct-who { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
 .onestore .acct-gis { display: none; } /* 원스토어 앱 안: 구글 로그인 대신 손님으로 (#97) */
-.acct-gis { min-height: 44px; display: grid; place-items: center; color: var(--ink-soft); font-size: 12px; }
+.acct-gis { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
+.acct-gis .gbtn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 18px; font-weight: 800; padding: 12px 16px; background: #fff; color: #1f1f1f; border: 1px solid #dadce0; box-sizing: border-box; }
+.acct-gis .gbtn svg { flex: none; }
+.acct-gis.busy .gbtn { opacity: .6; }
+.acct-gis .gov { position: absolute; inset: 0; overflow: hidden; opacity: .01; z-index: 1; transform-origin: 0 0; transform: scaleY(1.2); } /* GSI 큰 버튼 40px → 보이는 버튼 높이에 맞춰 늘림 */
+.acct-gis .gov > div, .acct-gis .gov iframe { max-width: 100%; }
+.guest-go { margin-top: 0; }
+.acct-box { gap: 10px; }
 .m-acct { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; width: 100%; font-size: 12.5px; color: var(--ink-soft); }
 .m-acct span { flex: 1 1 100%; text-align: center; }
 .m-acct textarea { flex: 1 1 100%; font-size: 12px; padding: 6px; border-radius: 8px; resize: none; }
@@ -1148,5 +1155,5 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="pop-body" id="notes-body"></div>
   </div>
 </div>
-<script src="main-bf564c3b2c.js"></script>
+<script src="main-26cb4d787b.js"></script>
 </body></html>
