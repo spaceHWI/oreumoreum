@@ -33,12 +33,23 @@ const ACCT_KEY = BASE + '.acct';
 
 // main.js 저장 키: 로그인했으면 계정 사본
 export const saveKey = (base) => (sess ? ACCT_KEY : base);
+export let guestExpired = false; // 손님 기록이 7일 넘어 지워진 채로 열림 (#94)
+const KEEP_SET = ['gfx', 'gfxV3', 'perf', 'introSound', 'music']; // 지워도 남기는 설정(소리·그래픽)
 export function loadSave(key) {
   let s = {};
   try { s = JSON.parse(ls.get(key) || '{}') || {}; } catch (e) { s = {}; }
   if (sess && s._acct && s._acct !== sess.sub) s = {}; // 다른 계정 사본
+  if (!sess) { // 손님 (#94): 마지막 접속에서 keepDays 일이 지났으면 지우고 처음부터. 값이 없던 예전 저장은 지금으로 채움(바로 지우지 않음)
+    const t = Number(s.lastSeen);
+    if (Number.isFinite(t) && t > 0 && Date.now() - t > NET.keepDays * 864e5) {
+      const keep = {}; for (const k of KEEP_SET) if (s[k] !== undefined) keep[k] = s[k];
+      s = keep; guestExpired = Object.keys(JSON.parse(ls.get(key) || '{}') || {}).some((k) => !KEEP_SET.includes(k));
+    }
+    s.lastSeen = Date.now();
+  }
   return s;
 }
+export const stampGuest = (s) => { if (!sess) s.lastSeen = Date.now(); }; // 저장할 때마다 마지막 접속 갱신
 
 const subOf = (token) => { try { const p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(atob(p + '==='.slice((p.length + 3) % 4))).s; } catch (e) { return null; } };
 async function api(path, { method = 'GET', body, keepalive = false, token = sess?.t } = {}) {
@@ -49,7 +60,7 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 }
 // 의견 보내기 (#77): 서버가 있으면 글 묶음을 POST /feedback (로그인 안 해도 됨)
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
-const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; return o; };
+const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 
 /* ---------- 계정 ---------- */

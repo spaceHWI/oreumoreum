@@ -9,7 +9,7 @@ import { useGate } from '../gate.js';
 import { OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemPrice, SKIN_TONES } from '../runner.js';
 import { pickMapId } from '../maps.js';
 import { setServerId, validServer, createAbStats } from '../server.js';
-import { saveKey, loadSave } from '../online.js';
+import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
 
 export const $ = (id) => document.getElementById(id);
@@ -90,7 +90,7 @@ if (!validServer(save.server)) delete save.server;
 setServerId(save.server || 'clean');
 export const srvSwitched = !!save.srvSwitch && !!save.server; delete save.srvSwitch; // 메뉴에서 서버를 바꿔 새로고침한 직후
 export const ab = createAbStats(KEY + '.ab'); // 서버별 접속 횟수·플레이 시간·주운 수 (기기 기록, 처음부터 다시 해도 남음)
-export const writeLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
+export const writeLocal = () => { stampGuest(save); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
 state.account = null; // 멀티 서버 계정 (#7). 서버 주소가 없으면 null
 export const persist = () => { if (state.resetting) return; writeLocal(); state.account?.dirty(); };
 

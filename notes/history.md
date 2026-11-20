@@ -686,3 +686,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `save.mealFree`(1 = 썼음). `orderMeal` 이 첫 주문엔 귤을 받지 않고 플래그를 세움(어떤 메뉴든, 버프는 같음). 안 썼으면 메뉴 값 자리에 "첫 식사 무료"(`.price.free`), 다 쓰면 값. 가게 근처(22m)에 처음 가면 팁 `stoneFree`(#66)
 - 서버 `validate.js`: `mealFree` 는 한 번 1이 되면 되돌릴 수 없음(`fixed: 'mealFree'`, `accounts.js` 가 `fix.mealFree` 로 알려 `onFix` 가 로컬에 반영). 어드민(`free`)은 확인 안 거쳐 '모두 리셋' 뒤 다시 받음. 모두 리셋·처음 시작은 로컬 저장이 지워져 다시 받음
 - 확인: `econ.js`·`sec.js` 49/49·`err.js` 오류 없음, `checkSave` 직접 호출, `__oreum.stone.order` 로 첫 주문 귤 그대로·두 번째는 값 받음
+
+## 손님 기록도 7일 안 오면 지우기 (#94)
+- `online.js` `loadSave`: 손님(세션 없음)은 `save.lastSeen`(마지막 접속)이 `NET.keepDays` 일보다 오래됐으면 소리·그래픽 설정(`gfx·gfxV3·perf·introSound·music`)만 남기고 지움. 값이 없던 예전 저장은 지금으로 채워 바로 지우지 않음. `writeLocal` 이 저장마다 `lastSeen` 갱신(`stampGuest`). 서버로 보내는 `strip` 에선 `lastSeen` 뺌
+- 지웠으면 `guestExpired` → 첫 화면 `#intro-expired` "7일 동안 오지 않아 기록이 지워졌어요". 메뉴에 손님용 `#m-guest` "기록 보관 N일 남음"(`start.js`). `privacy.html` 손님 문장에 7일 안내
+- 확인: `build.mjs`, `tools/oldsave.js`(8일 지난 `old8` 추가: 귤 777 → 5 로 초기화, 설정 유지) 통과

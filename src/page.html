@@ -362,7 +362,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-step-h { margin: 2px 0 0; font-family: var(--display); font-weight: 800; font-size: 17px; }
 body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-hint, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
-body.intro-help-on :is(.intro-logo, .intro-beta, .intro-rn, #intro .ver-line) { display: none; }
+body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #intro .ver-line) { display: none; }
 @media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; } }
 
 /* 서버 고르기 (#35): 그림 카드 둘 */
@@ -994,6 +994,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
+  <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
   <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-out">로그아웃</button><button type="button" id="acct-del">내 기록 지우기</button></div>
   <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4"/></svg></button></div>
   <div class="m-dev" id="m-dev" hidden>
@@ -1121,6 +1122,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="panel intro-card">
       <div id="intro-main">
         <div class="ver-line"><span class="beta-chip">BETA</span> <span id="ver-text"></span></div>
+        <p class="intro-beta" id="intro-expired" hidden>7일 동안 오지 않아 기록이 지워졌어요</p>
         <p class="intro-beta">베타 테스트 중이에요. 기록이 초기화될 수 있어요. <button type="button" class="linkish" id="intro-feedback">의견 보내기</button></p>
         <div class="intro-rn"><ul id="intro-rn"></ul><button type="button" class="linkish" id="intro-notes">릴리스 노트 더 보기</button></div>
         <div class="acct-box" id="acct-box" hidden></div>
