@@ -857,3 +857,18 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 줍기 되돌림: 방은 메시지의 n 을 takeMax 로 먼저 잘라서, 넘친 몫을 '되돌려라'(no)로 알리지 않았음(주운 수 부풀리기 구멍). 이제 적힌 수(NET.takeAsk 64까지)를 세고 받은 것 말고는 모두 no. 클라이언트는 takeMax 씩 나눠 보냄, 되돌리기 기록 30→80
 - 낡은 검사: sec.js 인라인 스크립트 검사는 원스토어 로더 + 인앱 안내(#118) 둘 다 CSP 해시 확인. online.js 'A 가 B 를 봄'·tutrun '1칸 정낭' 은 조건이 될 때까지 기다림. online.js 되돌림 검사는 배낭 합에 xv 가 섞여 틀렸음 → 종류만 셈, 60개를 한 번에 주워 takePerSec 만 남는지. 번 몫 검사(주운 만큼은 받아 줌·10만 부풀리기 바로잡힘) 더함
 - notes/auto.md: 수치를 바꾸는 이슈는 online.js·sec.js 를 끝까지 통과시킴
+
+## #123 무기 3~6단계: 귤 총·귤 머신건·귤즙 레이저·귤 폭탄
+- 수치(balance.js `WEAPONS`, 연출 `WEAPON_FX`): 피해는 growth-loop 4절, 값은 #137 곡선 `GROWTH.price`
+  - 귤 총 7 · 40m · 0.7초마다 한 발 · 귤 1개 8발 · 800 / 귤 머신건 초당 16(초당 6발) · 35m · 퍼짐 0.035 · 귤 1개 30발 · 3,200
+  - 귤즙 레이저 초당 40(0.2초마다 나눠 줌) · 45m · 초당 귤 0.5 · 13,000 / 귤 폭탄 90 · 반경 6m · 2초 재사용 · 한 번에 귤 2 · 30,000
+- 새 파일: src/game/arms.js(쏘기·누르고 있기·탄 표시·고르는 창·멀티), src/weaponfx.js(탄·줄기·폭탄·터짐·젖음), src/weaponmodels.js(손에 든 모양), src/weaponsound.js(Sound 에 붙는 소리). tools/arms.js(무기마다 적 쫓아내기 시간)
+- 저장: `save.weaponUse`(골라 쓰는 단계, 가진 것 안. 예전 저장은 가진 최고), `save.ammo`({gun, mg: 남은 발, laser: 남은 귤 몫 0~1}). 활은 예전대로 `bowAmmo`. 상점에서 사면 바로 그 무기를 씀
+- 조작: F·상호작용 버튼. 총·폭탄은 한 번 누르면 한 발, 머신건·레이저는 누르고 있는 동안(버튼은 그 순간 할 일이 던지기일 때만 잡음). 탈것·마차·노루 위는 손 던지기(활 규칙). 자동 조준·대상 표시는 무기 사거리로
+- 동작: runner 'aim'(왼손 무기를 앞으로, 오른손 받침, kick 반동). 폭탄은 던지기 동작(오른손에 귤 폭탄)으로 `throw.js releaseTangerine` 이 `state.lobPending` 이면 `late.releaseBomb`
+- 적 맞힘: enemies.js `hurt`/`hitArea`, life.js `hitAt`/`hitArea`. 잦은 맞힘(머신건·레이저·폭탄 둘째부터)은 quiet: 소리·멈칫(pace.hit)은 쫓아낼 때만. dumpers.hitTest 도 quiet. 폭탄은 플레이어·다른 사람을 다치게 하지 않음
+- 탄 표시(#ammo): 총은 점 8개, 머신건·레이저는 남은 몫 막대, 폭탄은 다시 쥐는 막대
+- 무기 창 `#armwin`: 던지기·줍기 버튼 사이 아래 ▾(`#arm-more`, 손 말고 무기를 가졌을 때만). 안 가진 것은 흐리게 값, 누르면 가판대 안내
+- 멀티: presence `wf` = [무기, x, y, z, 번호(, 1 = 누르는 중)]. 총·폭탄은 한 발마다 번호가 바뀌고 1.5초 뒤 뺌, 머신건·레이저는 누르는 동안만. 받는 쪽은 보이기만(맞힘 없음). 손에 든 모양은 옷 묶음(hand 칸)
+- 업적: b-arm-bow·gun·mg·laser·bomb (weapon-buy-<id>, 아이콘 badgeicons.js)
+- tools/econ.js 몹 시간: 무기마다 쏘는 간격(초당 피해·폭탄은 무리에 나눔), 쓰는 귤을 뺌

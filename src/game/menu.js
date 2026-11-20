@@ -87,7 +87,7 @@ $('music-vol').addEventListener('change', () => persist());
 $('act-chat').addEventListener('click', () => late.openChat());
 // 동작(이모트) (#76): 동작 버튼 → 바퀴 메뉴. 목록·말풍선·방향 표시는 emotes.js
 export const emoRiding = () => !!(player.riding || player.ride || player.cart);
-export const emoCan = () => !busy() && !player.air && !player.knock && !player.flail && !(player.pose === 'throw' || player.pose === 'bow') && !state.fishing?.active;
+export const emoCan = () => !busy() && !player.air && !player.knock && !player.flail && !(player.pose === 'throw' || player.pose === 'bow' || player.pose === 'aim') && !state.fishing?.active;
 state.emo = null; // net 다음에 만듦 (아래 '함께' 쪽)
 export function doEmote(id) {
   if (!state.emo) return;

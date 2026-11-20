@@ -54,7 +54,7 @@ const STAT_ICON = {
 const SCORE_IC = '<path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/>';
 export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 점수 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
 export function scoreChip(sc, d) { return `<span class="gs" title="장비 점수">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
-const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
+const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
   : k === 'bag' ? [['cap', String(t.cap)]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
 // 순서 없이 사기 (#111): 귤만 충분하면 어느 단계든 바로 산다. 산 단계 아래는 '가짐'
 // 튜토리얼 집게·배낭 단계에서는 그 물건(바로 다음 단계)만
@@ -95,9 +95,9 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); return; }
   if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= next.price; save.equip[k] = i + 1;
+  save.coins -= next.price; save.equip[k] = i + 1; if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
-  if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); } // 무기 (#38)
+  if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
   toast(`${next.name} · 바로 착용했어요`);
   shopPick = null; buildShop();

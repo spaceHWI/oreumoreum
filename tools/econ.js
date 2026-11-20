@@ -116,9 +116,16 @@ async function main() {
   const rateOf = (e) => value(e) / zones.reduce((s, z) => s + clearT(z, e), 0);
   // 몹 한 마리 쫓아내는 시간·귤
   const weaponOf = (st) => WEAPONS[st.weapon - 1];
+  // 한 마리 쫓아내는 시간(초)·쓴 귤 (#123: 무기마다 쏘는 간격. 머신건·레이저는 초당 피해, 폭탄은 무리(평균 2.5마리)에 나눠 셈)
+  const killOf = (hp, w) => {
+    if (w.dps) { const t = hp / w.dmg; return { t, gy: w.gyulPerSec ? t * w.gyulPerSec : t * w.rate / w.perGyul }; }
+    if (w.id === 'bomb') { const n = Math.ceil(hp / w.dmg), share = 1 / Math.min(2.5, ENEMY_SPAWN.group[1]); return { t: n * Math.max(w.cd, HAND_T) * share, gy: n * w.cost * share }; }
+    const n = Math.ceil(hp / w.dmg), each = w.id === 'bow' ? BOW.total : w.cd || HAND_T;
+    return { t: n * each, gy: w.perGyul ? n / w.perGyul : 0 };
+  };
   function mobFight(kind, st) {
-    const E = ENEMIES[kind], w = weaponOf(st), shots = Math.ceil(E.hp / w.dmg), each = w.id === 'bow' ? BOW.total : HAND_T;
-    return { t: 3 + shots * each, gy: E.reward.gyul + E.reward.rare * DEX.rareGyul - (w.perGyul ? Math.ceil(shots / w.perGyul) : 0) };
+    const E = ENEMIES[kind], w = weaponOf(st), k = killOf(E.hp, w);
+    return { t: 3 + k.t, gy: E.reward.gyul + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
   }
 
   const fmt = (sec) => `${Math.floor(sec / 3600) + 1}일 ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}분`;
@@ -172,7 +179,7 @@ async function main() {
         dumpT += r.t * S;
         while (dumpT >= DUMP.every) {
           dumpT -= DUMP.every; const truck = Math.random() < DUMP.truckP, def = truck ? DUMP.truck : DUMP.walker;
-          if (Math.random() < CHASE) { const w = weaponOf(st), dmg = battle ? w.dmg : WEAPONS[0].dmg, each = battle && w.id === 'bow' ? BOW.total : HAND_T; add(6 + Math.ceil(def.hp / dmg) * each); st.coins += def.reward; earned += def.reward; }
+          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); st.coins += def.reward - Math.ceil(k.gy); earned += def.reward - Math.ceil(k.gy); }
           else { const wts = zones.map((z, i) => DUMP.zoneBase + zoneClean(i)), sum = wts.reduce((a, c) => a + c, 0); let x = Math.random() * sum, i = 0; while (i < 4 && x > wts[i]) { x -= wts[i]; i++; } st.left[i] = Math.min(zones[i].n, st.left[i] + (truck ? 80 : DUMP.walker.amt)); }
         }
         // 몹
@@ -199,7 +206,7 @@ async function main() {
   const wearSum = (k) => CLOTHES.filter((c) => c.slot === k && c.tier > START_W[k]).reduce((s, c) => s + wearPrice(c), 0);
   const WSUM = WK.reduce((s, k) => s + wearSum(k), 0);
   console.log(`권장 점수 ${ZONES.map((Z) => `${Z.id}:${Z.rec}`).join(' ')} · 단계 점수 ${GROWTH.score.join('/')} · 귤 배수 ${ZONES.map((Z) => Z.gv).join('/')}`);
-  console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 활 ${WEAPONS[1].price} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + WEAPONS[1].price + WSUM}`);
+  console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 무기 ${sum(WEAPONS)} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + sum(WEAPONS) + WSUM}`);
   const short = { tool: '도구', bag: '배낭', shoes: '신발', weapon: '무기', ride: '탈것', ...Object.fromEntries(WEAR.slots.map((w) => [w.k, w.name])) };
   const verdict = []; let day1Rate = 0;
   const FLOW_ONLY = has('--flow');

@@ -57,6 +57,16 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   const d = await B.p.evaluate(() => { const e = [...window.__oreum.net.peersById.values()][0]; return e ? e.tpos.x : null; });
   const ax = await A.p.evaluate(() => window.__oreum.player.pos.x);
   ok(d != null && Math.abs(d - ax) < 0.5, `위치 이어 받기 (A ${ax.toFixed(1)} / B 가 본 A ${d?.toFixed(1)})`);
+  { // 무기 3~6단계 (#123): A 가 쏜 탄·던진 폭탄이 B 화면에 보임 (presence wf 사건만, 보내는 양은 그대로)
+    await B.p.evaluate(() => { const f = window.__oreum.weapon.fx; window.__vis = { shot: 0, lob: 0 }; const s0 = f.shoot, l0 = f.lob; f.shoot = function (...a) { if (a[2]?.vis) window.__vis.shot++; return s0.apply(this, a); }; f.lob = function (...a) { if (a[2]?.vis) window.__vis.lob++; return l0.apply(this, a); }; });
+    await A.p.evaluate(() => { const o = window.__oreum; o.save.coins += 20; o.save.equip.weapon = 6; o.weapon.use(3); o.weapon.fire(); });
+    const gotShot = await until(B, () => window.__vis.shot > 0, null, 15000);
+    await A.p.evaluate(() => { const o = window.__oreum; o.weapon.use(6); o.weapon.fire(); });
+    const gotLob = await until(B, () => window.__vis.lob > 0, null, 15000);
+    const wf = await A.p.evaluate(() => JSON.stringify(window.__oreum.net.test?.last?.wf ?? null));
+    ok(gotShot && gotLob, `A 의 귤 총 탄·귤 폭탄이 B 화면에 보임 (탄 ${gotShot}, 폭탄 ${gotLob}${wf !== 'null' ? ', ' + wf : ''})`);
+    await A.p.evaluate(() => { const o = window.__oreum; o.save.equip.weapon = 1; o.weapon.use(1); });
+  }
   // 더미 줍기: A 가 0번 더미에서 하나 → B 의 0번 더미도 하나 줄어듦
   const before = await B.p.evaluate(() => window.__oreum.trash.api.store.left(0));
   await A.p.evaluate(() => { const t = window.__oreum.trash.api; t.store.takeOne(0); });

@@ -19,7 +19,7 @@ import { benchPos, cairns, NS_TUT, shopsBuilt, STN, SAL, LEAPB, buff, chActs, sh
 import { cam } from './camera.js';
 import { ui, toast, tipMarkT, tipMarkPos, updateStats, panelOpen, closePanels, ach } from './hud.js';
 import { keys, joy, pressBtn, marker, setTarget } from './input.js';
-import { bowArmed, setHoldBow, fireWeapon } from './throw.js';
+import { bowArmed, setHoldBow, fireWeapon, weaponNow } from './throw.js';
 import { RIDE_LOGO, buildRideMenu } from './ride.js';
 import { dismountDeer, sitDown, standUp, openWishes, startPhoto } from './moves.js';
 import { photog } from './room.js';
@@ -297,7 +297,8 @@ export const fishAct = { get label() { return state.fishing.label; }, get ic() {
 export const dismountAct = { label: '노루에서 내리기', ic: 'down', act: () => dismountDeer() };
 export const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
 // 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
-export const throwAct = { get label() { return bowArmed() ? '귤 활 쏘기' : '귤 던지기'; }, get ic() { return bowArmed() ? 'bow' : 'throw'; }, act: () => fireWeapon() }; late.throwAct = throwAct;
+const ARM_VERB = { bow: '귤 활 쏘기', gun: '귤 총 쏘기', mg: '머신건 쏘기', laser: '레이저 쏘기', bomb: '폭탄 던지기' }; // #123
+export const throwAct = { get label() { return bowArmed() ? ARM_VERB[weaponNow().id] || '귤 던지기' : '귤 던지기'; }, get ic() { return bowArmed() ? weaponNow().id : 'throw'; }, act: () => fireWeapon() }; late.throwAct = throwAct;
 function doInteract() { if (state.ctxTarget && !hp.isDown && !hp.pending) state.ctxTarget.act(); }
 pressBtn(ui.ctx, () => doInteract());
 // 줍기 (E·줍기 버튼): 누르고 있는 동안 계속

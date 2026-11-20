@@ -157,7 +157,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   function visit() { return spawn(rnd() < DUMP.truckP ? 'truck' : 'walker'); }
 
   // 귤 맞음 (life.js 가 귤·화살 날아가는 중에 부름). 맞혔으면 true
-  function hitTest(p, tg, dmg) {
+  function hitTest(p, tg, dmg, quiet = false) { // quiet (#123): 잦은 맞힘은 소리·멈칫을 쫓아낼 때만
     for (const d of list) {
       if (d.state !== 'come' && d.state !== 'dump') continue;
       // 귤은 한 프레임에 멀리 가므로 지난 0.1초 동안 지나온 선분으로 봄 (화살은 vel 0, 이미 잘게 나눠 옴)
@@ -166,8 +166,8 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       if (Math.hypot(p.x - vx * (1 - u) - d.pos.x, p.z - vz * (1 - u) - d.pos.z) >= d.def.hitR || p.y > d.pos.y + d.h + 0.1 || p.y < d.pos.y - 0.3) continue;
       d.hp = Math.max(0, d.hp - dmg); d.flash = 0.25;
       tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
-      if (d.hp <= 0) repel(d); else { d.flinch = 0.3; sound?.beep?.(false); }
-      hooks.hit?.(d.pos, d.hp <= 0);
+      if (d.hp <= 0) repel(d); else { d.flinch = 0.3; if (!quiet) sound?.beep?.(false); }
+      if (!quiet || d.hp <= 0) hooks.hit?.(d.pos, d.hp <= 0);
       return true;
     }
     return false;

@@ -30,7 +30,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
-| throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 |
+| throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향. 골라 쓰는 무기(`save.weaponUse`), 3~6단계면 `late.fireArm` |
+| arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르는 창(`#armwin`·던지기 버튼 옆 ▾), 멀티 presence `wf`. 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
 | panels.js | 채팅, 메뉴 항목, 릴리스 노트, 의견 보내기, 도움말 |
 | screen.js | 전체 화면 버튼·메뉴 항목(안 되는 곳은 홈 화면 추가 안내), 돌릴 때 바로 맞추기 (#105) |
 | ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차 |

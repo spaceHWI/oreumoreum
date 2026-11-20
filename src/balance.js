@@ -320,18 +320,31 @@ export const ENEMY_SPAWN = {
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
 };
-// 무기 (#38): 전투 오름에서만. 상점 무기 탭에서 다음 단계만 삼. 저장은 save.equip.weapon = 1(손)~
-// dmg 적에게 주는 피해, range 자동 조준 사거리(수평 m), speed 화살 속도(m/s), grav 화살에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
-// soon: 아직 없는 단계 (상점에 잠긴 그림만)
+// 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
+// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
+// cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
+// r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 5, price: GROWTH.price[2] },
-  // 3~6단계는 #123 에서 만듦. 값·피해만 미리 (#137): 머신건·레이저는 초당 피해, 폭탄은 광역
-  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, price: GROWTH.price[3], soon: true },
-  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, price: GROWTH.price[4], soon: true },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, price: GROWTH.price[5], soon: true },
-  { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, price: GROWTH.price[6], soon: true },
+  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
+  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
+  { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
+// 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
+// aimT 총을 겨눈 채로 있는 시간(초), kick 반동 시간, life 탄이 아무것도 안 맞고 날아가는 최대 시간은 range / speed
+// laser: w 줄기 굵기, wet 맞은 적이 젖어 보이는 시간(초), drip 초당 떨어지는 방울 수
+// bomb: grav 포물선 중력, vMin·vMax 수평 속도, k 위로 던지는 비율, boom 터지는 빛 시간(초), fuse 땅에 닿고 터지기까지(초)
+// low: 저사양 단계에서 효과를 이 비율로
+export const WEAPON_FX = {
+  aimT: 0.55, kick: 0.09,
+  splash: 6, splashLow: 3, // 총알이 맞으면 튀는 즙 방울 수
+  laser: { w: 0.07, wet: 1.6, drip: 14 },
+  bomb: { grav: 22, vMin: 6, vMax: 22, k: 0.75, boom: 0.5, fuse: 0.12, splashN: 3 },
+  low: 0.5,
+  peerSeq: 1.5, // 다른 사람에게 보내는 한 발 사건을 이 초 동안 실어 둠 (그 뒤 빼서 보내는 양을 줄임)
+};
 // 귤 활 연출 (#38)
 export const BOW = {
   release: 0.3, total: 0.62, // 당겨서 놓는 순간·동작 전체 (초)

@@ -5,6 +5,12 @@ const eyes = (x1, x2, y) => `<circle cx="${x1}" cy="${y}" r="1.7" fill="${K}"/><
 const cheeks = (x1, x2, y) => `<circle cx="${x1}" cy="${y}" r="2" fill="${P}" opacity=".7"/><circle cx="${x2}" cy="${y}" r="2" fill="${P}" opacity=".7"/>`;
 
 export const BADGE_ICONS = {
+  // 무기 첫 구매 (#123): 귤 활·귤 총·머신건·레이저·폭탄
+  'b-arm-bow': `<path d="M14 6 Q36 12 30 42" fill="none" stroke="${W}" stroke-width="4" stroke-linecap="round"/><path d="M14 6 Q36 12 30 42" fill="none" ${s()}/><path d="M14 6 L30 42" ${s()}/><path d="M12 28 L38 16" ${s()}/><circle cx="38" cy="16" r="4" fill="${O}" ${s()}/>`,
+  'b-arm-gun': `<path d="M8 18 h24 l4 4 v6 H22 l-2 10 h-7 l2-10 H8z" fill="${O}" ${s()}/><path d="M36 22 h6" ${s()}/><circle cx="42" cy="22" r="3" fill="${Y}" ${s()}/>${eyes(16, 22, 23)}`,
+  'b-arm-mg': `<path d="M5 18 h28 l4 4 v6 H20 l-2 10 h-7 l2-10 H5z" fill="${O}" ${s()}/><circle cx="20" cy="13" r="6" fill="${Y}" ${s()}/><path d="M37 20 h6 M37 24 h6 M37 28 h6" ${s()}/>`,
+  'b-arm-laser': `<path d="M6 19 h18 v9 H6z" fill="${W}" ${s()}/><path d="M9 28 l-2 9 h6 l2-9" fill="${W}" ${s()}/><path d="M24 23.5 H44" stroke="${O}" stroke-width="5" stroke-linecap="round"/><path d="M24 23.5 H44" stroke="${Y}" stroke-width="2" stroke-linecap="round"/><rect x="9" y="13" width="12" height="6" rx="3" fill="${O}" ${s()}/>`,
+  'b-arm-bomb': `<circle cx="22" cy="28" r="13" fill="${O}" ${s()}/><path d="M27 15 q4-6 9-5" fill="none" ${s()}/><path d="M36 10 l3-3 M38 12 l4 0 M36 6 l0-3" stroke="${Y}" stroke-width="2.4" stroke-linecap="round"/><path d="M18 14 q-4-5 0-8 q3 3 0 8z" fill="${G}" ${s()}/>${eyes(18, 26, 27)}`,
   // 첫 발: 발자국
   'b-first': `<ellipse cx="24" cy="29" rx="8" ry="10" fill="${W}" ${s()}/><circle cx="16" cy="15" r="3" fill="${W}" ${s()}/><circle cx="22" cy="12" r="3.2" fill="${W}" ${s()}/><circle cx="28.5" cy="12.5" r="3" fill="${W}" ${s()}/><circle cx="33.5" cy="16.5" r="2.6" fill="${W}" ${s()}/>${eyes(21, 27, 28)}<path d="M21.5 32 q2.5 2 5 0" fill="none" ${s()}/>`,
   // 만 보: 운동화
