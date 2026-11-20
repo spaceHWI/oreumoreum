@@ -23,10 +23,22 @@ export class Sound {
       this._gusts();
       this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day;
     }
-    this.ctx.resume();
+    this.wake();
     this.on = true;
     this._applyGains();
     return true;
+  }
+  // 소리 장치 깨우기 (#143): iOS 는 전화·다른 앱이 소리 장치를 잡고 있으면 resume() 이 거절된다(InvalidStateError: Failed to start the audio device).
+  // 게임은 그대로 되므로 오류로 올리지 않고, 다음에 화면을 누를 때 한 번 더 켜 본다
+  wake() {
+    if (!this.ctx) return;
+    let p; try { p = this.ctx.resume(); } catch (e) { p = Promise.reject(e); }
+    if (!p || !p.catch) return;
+    p.catch(() => {
+      if (this._wakeWait) return;
+      this._wakeWait = true;
+      addEventListener('pointerdown', () => { this._wakeWait = false; if (this.on && !document.hidden) this.wake(); }, { once: true });
+    });
   }
   stop() { this.on = false; this._applyGains(); }
   setAmb(v) { this.ambOn = v; this._applyGains(); }
