@@ -793,6 +793,7 @@ export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
   sendMs: 100,        // 내 위치·동작 보내는 간격 (초당 10번 안쪽)
+  identMs: 10000,     // 옷·닉네임은 바뀔 때만 보내되, 이 간격마다 한 번 더 (#115: 서버가 버린 메시지에 실렸을 때 대비)
   tickMs: 100,        // 방이 모아 보내는 간격
   farR: 150,          // 이 거리 밖 사람은 farEvery 틱마다 한 번만 받음
   farEvery: 5,
