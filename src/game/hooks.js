@@ -96,11 +96,11 @@ export const dumpers = trash ? createDumpers({
   hooks: {
     canSpawn: () => !NS_TUT || !!save.tut?.done, // 튜토리얼 중엔 안 옴 (#100: 마지막 정낭 단계도)
     paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
-    appear: (d) => { tips.event('dumper'); dumpWarn.start({ x: d.pos.x, z: d.pos.z }); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
-    dumped: (d, n) => { if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
-    repel: (kind, pos, def) => {
+    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
+    dumped: (d, n) => { if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
+    repel: (kind, pos, def, d) => {
       life.scatterTangerines(pos, def.reward);
-      sound.beep?.(true); toast(`${iga(def.name)} 놀라 도망가요`);
+      sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
       ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel');
     },
     offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) state.introToast = m; else toast(m); },

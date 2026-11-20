@@ -814,3 +814,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 튜토리얼·창·전투·쓰러짐·입장 전엔 미뤘다가 끝나면 띄움. 닫으면 15~30분 뒤 다시. 새로고침은 persist·서버 저장(최대 3초 기다림) 뒤 reload
 - 모델 받다 404(assets.js `assetHooks.stale`) 도 같은 알림. 서버 hi 에 `minVer`(roomcore.js `MIN_VER`, 지금 비움)를 실을 수 있고, 클라 버전이 낮으면 닫기 없는 알림(deernet.js 가 late.newver 로 넘김)
 - 수치는 newver.js 맨 위 NEWVER. 버전 0.23.6
+
+## #135 첫 투기꾼 안내
+- 새 파일 src/game/guide.js (createGuide). 튜토리얼을 마친 뒤 첫 투기꾼은 `game/pace.js` 가 들어온 뒤 60~120초(임의)에 부름(`pacing.test.soon`, 꽃을 안 피워도). 자리는 `guide.spot()`: 카메라 앞 약 40° 안, 노릴 더미 35~75m, 플레이어에서 25~35m 지점에서 시작(`dumpers.come` 의 `start` 옵션). 못 찾으면 평소 자리
+- 나타나면 카메라가 1.5초 그쪽을 슬쩍 봄(`state.glance`, camera.js followCam, 조작은 안 막음), 머리 위 '!' 표시, 토스트 '무단투기꾼이에요! 귤을 던져 쫓아내요', 던지기 버튼(#btn-ctx.lit) 빛남. 쫓아내면 '잘했어요! 떨어진 귤을 주워요', 버리고 가면(첫 안내 때만) '다음엔 귤로 쫓아내요' 하고 다음 걷는 투기꾼 때 한 번 더(최대 2번). 트럭은 처음 한 번 '트럭은 여러 번 맞혀야 해요'
+- 저장 save.pace.hint {w,t}. 어드민 '들어오기 다시'(menu.js)가 hint 를 0 으로. 투기꾼 repel 훅에 4번째 인자 d 추가. 임시: 길가 정렬은 안 맞춤(시야 앞 25~35m 자리)

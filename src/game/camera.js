@@ -21,6 +21,8 @@ export function followCam(dt, snap) {
   let lift = 0;
   for (let i = 1; i <= 8; i++) { const t = i / 9; const sx = p.x + (look.x - p.x) * t, sz = p.z + (look.z - p.z) * t; const need = height(sx, sz) + 1.0 - (p.y + (look.y - p.y) * t); if (need > 0) lift = Math.max(lift, need); }
   if (lift > 0) { p.y += lift; look.y += lift * 0.9; }
+  const g = state.glance; // #135 첫 투기꾼이 나타나면 카메라가 잠깐 그쪽을 봄 (조작은 막지 않음)
+  if (g) { g.t += dt; if (g.t >= g.T) state.glance = null; else { const k = Math.sin(g.t / g.T * Math.PI); look.x += (g.x - look.x) * 0.5 * k; look.z += (g.z - look.z) * 0.5 * k; } }
   const fx = player.pos.x + Math.sin(player.heading) * 6, fz = player.pos.z + Math.cos(player.heading) * 6;
   const rise = height(fx, fz) - player.pos.y;
   if (rise > 0) look.y += Math.min(6, rise * 0.9);

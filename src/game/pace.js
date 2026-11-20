@@ -12,6 +12,7 @@ import { life, NS_TUT, trash, player, hp, bloom, stream } from './place.js';
 import { cam } from './camera.js';
 import { toast, panelOpen, updateStats } from './hud.js';
 import { sound, dumpers, enemyWarn, dumpWarn, gyulShower } from './hooks.js';
+import { createGuide } from './guide.js';
 
 state.tension = 0; state.hitStop = 0; state.paceRare = 1;
 // 저장: pace.first 첫 공격을 겪음, pace.bloomed 꽃을 한 번 피움. 예전 저장은 더미를 치운 적이 있으면 둘 다 된 것으로
@@ -29,9 +30,11 @@ const pacing = createPacing({
     threats,
     omen(plan) {
       cur = { dumpers: [], mob: null };
+      if (plan.first && dumpers) { const s = guide.spot(); if (s) { const o = dumpers.come('walker', { amt: plan.dumpers[0].amt, hold: PACE.omen, heap: s.heap, start: s.start }); if (o) cur.dumpers.push(o); } } // #135 첫 투기꾼은 보이는 곳에서
       if (plan.mob) cur.mob = life.enemies.planWave(false, null, plan.group);
       if (plan.mob && !cur.mob && !plan.dumpers.length) plan.dumpers.push({ kind: 'walker', amt: pacing.test.dumpAmts().walker }); // 몹이 못 나오는 곳(들머리·다 핀 구역)이면 투기꾼이라도
       for (const d of plan.dumpers) {
+        if (cur.dumpers.length && plan.first) break;
         let o = dumpers?.come(d.kind, { amt: d.amt, hold: PACE.omen });
         if (!o && dumpers) { loose = true; o = dumpers.come(d.kind, { amt: d.amt, hold: PACE.omen }); loose = false; } // 빈 자리가 방금 치운 더미뿐이면 거기라도
         if (o) cur.dumpers.push(o);
@@ -49,7 +52,6 @@ const pacing = createPacing({
       let n = 0, eta = 0;
       if (cur.mob) { const w = life.enemies.spawnPlan(cur.mob); if (w) n += w.n; }
       for (const d of cur.dumpers) if (dumpers.list.includes(d)) { n++; eta = Math.max(eta, dumpers.routeLen(d) / d.def.speed); }
-      if (plan.first && cur.dumpers[0]) toast('쓰레기를 버리러 누가 와요! 귤을 던져 쫓아내요');
       return n ? { n, eta } : false;
     },
     forceEnd() { life.enemies.leaveAll(); dumpers?.hurryAll(); },
@@ -66,6 +68,7 @@ const pacing = createPacing({
     delight,
   },
 });
+const guide = createGuide({ dumpers, trash, player, cam, spots, save, persist, toast, state, scene, height });
 // 다 치운 더미 (pickup.js heap-clear, 내가 치운 것만)
 function onCleared(h) { cleared.set(h, pacing.t); pacing.note('bloom'); if (!save.pace.bloomed) { save.pace.bloomed = 1; persist(); } }
 // 투기꾼이 노릴 더미 무게: 방금 치운 더미는 0, 플레이어 가까운 더미(PACE.near)를 먼저
@@ -139,7 +142,8 @@ const EXPO = renderer.toneMappingExposure;
 let lastEdge = -1;
 export function tickPace(dt, now) {
   if (!trash) return; // 남송이(쓰레기가 있는 맵)만
-  pacing.update(dt);
+  if (!first.done && state.sessionOn && !tutBusy() && !Number.isFinite(pacing.nextIn)) pacing.test.soon(60 + Math.random() * 60); // #135 튜토리얼을 마치고 들어온 뒤 1~2분 안에 첫 투기꾼
+  pacing.update(dt); guide.tick(dt);
   const k = pacing.tension; state.tension = k;
   const e = Math.round(k * PACE.edge * 100) / 100; if (e !== lastEdge) { lastEdge = e; edge.style.opacity = String(e); }
   renderer.toneMappingExposure = EXPO * (1 - PACE.sky * k);
@@ -149,7 +153,7 @@ export function tickPace(dt, now) {
 // 맞혔을 때 짧은 멈춤·소리 (dumpers·enemies hooks.hit)
 function onHit(pos, dead) { state.hitStop = PACE.hitStop; sound.thud?.(dead); }
 export const pace = {
-  note: (k) => pacing.note(k), cleared: onCleared, heapW, hit: onHit,
+  guide, note: (k) => pacing.note(k), cleared: onCleared, heapW, hit: onHit,
   canTip: () => pacing.canTip(), canJack: () => pacing.canJack(), canMark: () => pacing.canMark(),
   threat: () => pacing.phase === 'omen' || pacing.phase === 'tense',
   get phase() { return pacing.phase; }, get tension() { return pacing.tension; },
