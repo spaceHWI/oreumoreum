@@ -793,6 +793,7 @@ export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
   sendMs: 100,        // 내 위치·동작 보내는 간격 (초당 10번 안쪽)
+  identMs: 10000,     // 옷·닉네임은 바뀔 때만 보내되, 이 간격마다 한 번 더 (#115: 서버가 버린 메시지에 실렸을 때 대비)
   tickMs: 100,        // 방이 모아 보내는 간격
   farR: 150,          // 이 거리 밖 사람은 farEvery 틱마다 한 번만 받음
   farEvery: 5,
@@ -855,6 +856,17 @@ export const CRASH = {
   perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
   acts: 6,            // '마지막 한 일' 기억하는 수
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
+};
+
+// 오류 알림 묶어 보기 (#122): 서버 GET /crashes?days= (로그인 없이). server/src/crashes.js
+export const CRASHES = {
+  days: 3,            // 기본으로 보는 날 수
+  maxDays: 7,         // 최근 이만큼까지만
+  groups: 50,         // 많은 순 이만큼 묶음까지
+  rows: 2000,         // 묶기 전에 읽는 오류 알림 수 상한
+  textMax: 300,       // 오류 글 길이 상한
+  acts: 3,            // '마지막 한 일' 내보내는 수
+  cacheMs: 60000,     // 같은 days 결과를 이만큼 다시 씀
 };
 
 // 노루·돌하르방·가로등 Tripo 모델 (#2). 모델 좌표는 바닥 y=0·키 약 0.98, 크기는 배율로

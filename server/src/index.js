@@ -6,10 +6,11 @@
 // - 세션: 서명·만료 + 계정 DO 확인(지운 계정·버린 토큰 거절). WebSocket 은 주소창 대신 하위 프로토콜로 토큰을 받음 (로그에 안 남게)
 // - 어드민: 로그인 계정의 sub 가 시크릿 ADMIN_SUBS(쉼표로 여럿)에 있을 때만
 // - 로그: 아무것도 console 에 찍지 않음. IP 원문·토큰은 저장하지 않음
-import { NET } from '../../src/balance.js';
+import { NET, CRASHES } from '../../src/balance.js';
 import { RANGES, SRVS } from '../../src/rankday.js';
 import { verifyGoogle, signSession, readSession, ipKey } from './auth.js';
 import { cleanItems, sendMail } from './feedback.js';
+import { groupCrashes } from './crashes.js';
 export { Room } from './room.js';
 export { Accounts } from './accounts.js';
 
@@ -32,6 +33,7 @@ const SEC_HEADERS = {
   'Strict-Transport-Security': 'max-age=31536000', 'Cross-Origin-Resource-Policy': 'cross-origin',
 };
 
+const crashCache = new Map(); // /crashes 결과 (#122): days → { t, o }
 // 주소별 요청 수 (Worker 한 개 안의 메모리. 여러 곳에 퍼지면 느슨해지므로 바인딩 RL_* 이 있으면 그것도 봄)
 const hits = new Map();
 function overLocal(key, perMin) {
@@ -71,6 +73,19 @@ export default {
     if (url.pathname === '/' || url.pathname === '/health') return json({ ok: true, game: 'oreumoreum', cap: NET.roomCap, ready: !!secret(env) });
     const S = secret(env);
     if (!S) return json({ error: 'server not configured' }, 503); // SESSION_SECRET 없이는 뜨지 않음
+    // 오류 알림 묶어 보기 (#122): 로그인·Origin 없이 읽기 (예약 작업이 주기적으로 읽음). 내보내는 칸은 server/src/crashes.js
+    if (url.pathname === '/crashes' && (req.method === 'GET' || req.method === 'OPTIONS')) {
+      if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...SEC_HEADERS, ...cors } });
+      if (await limited(env, 'RL_API', await ipKey(S, req.headers.get('CF-Connecting-IP') || 'local'), NET.reqPerMin)) return json({ error: 'too many' }, 429);
+      const days = Math.max(1, Math.min(CRASHES.maxDays, Math.floor(Number(url.searchParams.get('days'))) || CRASHES.days));
+      const c = crashCache.get(days);
+      if (c && Date.now() - c.t < CRASHES.cacheMs) return json(c.o);
+      try {
+        const o = { days, at: Date.now(), groups: groupCrashes(await accounts(env).crashRows(Date.now() - days * 864e5, CRASHES.rows)) };
+        crashCache.set(days, { t: Date.now(), o });
+        return json(o);
+      } catch (e) { return json({ error: 'crashes' }, 500); }
+    }
     // 게임 주소가 아닌 곳에서 온 요청은 모두 거절 (브라우저가 아닌 도구는 Origin 을 꾸밀 수 있으므로 이것만 믿지는 않음)
     if (!origin) return json({ error: 'origin' }, 403);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...SEC_HEADERS, ...cors } });

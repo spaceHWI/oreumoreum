@@ -1,6 +1,6 @@
 // 방 하나의 규칙 (#7). Cloudflare 와 상관없는 순수 JS 라 Node 에서 그대로 재 볼 수 있음 (bench.mjs, tools/loadtest.js)
 // 받는 것 (JSON 문자열):
-//   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로)
+//   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로). o·nick 은 바뀔 때만 와도 됨 (#115)
 //   {t:'take', h}         더미 h 에서 하나 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
 //   {t:'ping', c}         → {t:'pong', c}
@@ -86,6 +86,8 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
     if ('nick' in d) d.nick = cleanText(d.nick, NET.nickMax);
+    // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
+    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; }
     if ('say' in d) d.say = d.say && typeof d.say === 'object' && isNum(d.say.at) ? { t: cleanText(d.say.t, NET.sayMax), at: d.say.at } : null;
     // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
     const ht = d.ht;
