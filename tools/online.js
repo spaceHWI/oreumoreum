@@ -10,6 +10,8 @@ const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) pro
 const wait = (p, ms) => p.waitForTimeout(ms);
 (async () => {
   await new Promise((r) => web.listen(0, '127.0.0.1', r));
+  const { NET } = await import('../src/balance.js'); const { ZONE_GYUL, HEAP_DEFS } = await import('../server/src/heaps.js'); // 몫·줍기 한도는 balance.js 값으로 (#144)
+  const until = async (X, fn, arg, ms = 30000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await X.p.evaluate(fn, arg).catch(() => false)) return true; await wait(X.p, 250); } return false; }; // 느린 환경: 고정 시간 대신 조건이 될 때까지
   const URL0 = `http://127.0.0.1:${web.address().port}/test.html?server=${encodeURIComponent(SRV)}#namsongi`;
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const open = async (name) => {
@@ -30,17 +32,18 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   ok(await A.p.evaluate(() => document.getElementById('enter').textContent === '손님으로 하기' && !document.getElementById('acct-box').hidden), '첫 화면: 손님으로 하기·베타 안내');
   ok(await A.p.evaluate(() => /7일/.test(document.getElementById('acct-box').textContent)), '베타 안내 문구');
   for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
-  await wait(A.p, 2500);
-  ok(await A.p.evaluate(() => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
-  ok(await B.p.evaluate(() => window.__oreum.net.count === 1), 'B 가 A 를 봄');
+  ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
+  ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
   { // 옷·닉네임은 바뀔 때만 보냄 (#115): A 가 보내는 것을 세고, 옷을 바꾸면 B 화면에 바로
-    await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; });
+    await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; window.__sent0 = performance.now(); });
     for (let k = 0; k < 6; k++) { await A.p.evaluate(() => { window.__oreum.player.pos.x += 0.5; }); await wait(A.p, 200); }
-    const s1 = await A.p.evaluate(() => ({ n: __sent.length, withO: __sent.filter((d) => d.includes('"o":')).length }));
+    const s1 = await A.p.evaluate(() => ({ n: __sent.length, withO: __sent.filter((d) => d.includes('"o":')).length, ms: performance.now() - __sent0 }));
     const hat = await A.p.evaluate(() => { const o = window.__oreum.save.outfit; o.hat.type = o.hat.type === 'straw' ? 'bucket' : 'straw'; window.__oreum.player.pos.x += 0.5; return o.hat.type; });
     await wait(A.p, 1200);
-    const s2 = await A.p.evaluate(() => ({ n: __sent.length, withO: __sent.filter((d) => d.includes('"o":')).length }));
-    ok(s1.n >= 3 && s1.withO === 0 && s2.withO === 1, `옷·닉네임은 바뀔 때만 실음 (자리만 ${s1.n}번, 옷 바꾼 뒤 ${s2.withO}번)`);
+    const s2 = await A.p.evaluate(() => ({ n: __sent.length, withO: __sent.filter((d) => d.includes('"o":')).length, ms: performance.now() - __sent0 }));
+    // NET.identMs 마다 한 번 더 싣는 것(#115)은 느린 환경에서 이 사이에 들어올 수 있음 (#144): 지난 시간만큼은 봐줌
+    const per = (ms) => Math.ceil(ms / NET.identMs);
+    ok(s1.n >= 3 && s1.withO <= per(s1.ms) && s1.withO < s1.n && s2.withO >= 1 && s2.withO <= 1 + per(s2.ms), `옷·닉네임은 바뀔 때만 실음 (자리만 ${s1.n}번·그중 옷 ${s1.withO}번, 옷 바꾼 뒤 ${s2.withO}번, ${(s2.ms / 1000).toFixed(1)}초)`);
     ok(await B.p.evaluate((h) => [...window.__oreum.net.peersById.values()][0]?.data.o?.h === h, hat), `옷 바꾸면 B 화면에 바로 (${hat})`);
     const C = await open('C'); await C.p.click('#enter'); await wait(C.p, 3000);
     const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
@@ -132,7 +135,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.evaluate(() => { const o = window.__oreum; o.save.coins = 999999; return o.online.account().push(); });
   await wait(A.p, 500);
   const c = await A.p.evaluate(() => window.__oreum.save.coins);
-  ok(c < 999999 && c <= 40 + 1500 + 10, `귤 부풀리기 바로잡힘 (${c})`);
+  ok(c < 999999 && c <= 40 + NET.earnBurst + NET.earnPerSec * 60, `귤 부풀리기 바로잡힘 (999999 → ${c})`);
   // 보안 (#84)
   if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.click('#enter').catch(() => {}); }
   for (let k = 0; k < 30 && !(await A.p.evaluate(() => window.__oreum.net.ready)); k++) await wait(A.p, 1000);
@@ -145,17 +148,29 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 300; }); await wait(A.p, 1500);
   const x1 = await A.p.evaluate(() => window.__oreum.player.pos.x);
   ok(Math.abs(x1 - x0) < 30, `잦은 순간 이동은 서버가 되돌림 (${x0.toFixed(0)} → ${x1.toFixed(0)})`);
-  // 너무 빠른 줍기(초당 NET.takePerSec 넘게) → 방이 거절 → 배낭·누적 수에서 되돌림
+  // 너무 빠른 줍기(초당 NET.takePerSec 넘게) → 방이 거절 → 배낭·누적 수에서 되돌림. 한 틱에 60개면 takeMax 씩 나눠 보내고 takePerSec 만 받힘 (#144)
+  await wait(A.p, 1500); // 앞의 줍기 몫이 다시 차게
   const undo = await A.p.evaluate(async () => {
     const t = window.__oreum.trash.api, st = t.store, n = t.heaps.length;
     let h = 0; for (let i = 1; i < n; i++) if (st.left(i) > st.left(h)) h = i;
-    const sum = () => Object.values(st.bag).reduce((a, b) => a + b, 0);
+    const sum = () => ['can', 'pet', 'vinyl', 'foam', 'gear'].reduce((a, k) => a + (st.bag[k] || 0), 0);
     const bag0 = sum(), tot0 = st.totalCount(), left0 = st.left(h);
-    let took = 0; for (let k = 0; k < 12; k++) if (t.take({ h }, 99)) took++;
-    await new Promise((ok) => setTimeout(ok, 1500));
-    return { h, left0, took, kept: sum() - bag0, tot: st.totalCount() - tot0 };
+    let took = 0; for (let k = 0; k < 60; k++) if (t.take({ h }, 99)) took++;
+    await new Promise((ok) => setTimeout(ok, 2000));
+    return { h, left0, took, kept: sum() - bag0, tot: st.totalCount() - tot0, left: st.left(h) };
   });
-  ok(undo.took === 12 && undo.kept <= 7 && undo.kept >= 5 && undo.tot === undo.kept, `방이 거절한 줍기는 배낭에서 되돌림 (${JSON.stringify(undo)})`);
+  ok(undo.took === 60 && undo.kept >= NET.takePerSec - 1 && undo.kept <= NET.takePerSec + 3 && undo.tot === undo.kept && undo.left === undo.left0 - undo.kept, `방이 거절한 줍기는 배낭에서 되돌림 (${JSON.stringify(undo)})`);
+  { // 번 몫 (#144): 방이 받아 준 줍기만큼은 버린 귤로 받아 주고, 그보다 많이 부풀리면 바로잡힘
+    await wait(A.p, 2000); // 방 → 계정으로 번 몫이 넘어가게 (earnFlushMs)
+    const per = ZONE_GYUL[HEAP_DEFS[undo.h].zone - 1], legit = Math.floor(undo.kept * per * 0.9);
+    const c0 = await A.p.evaluate(() => window.__oreum.save.coins);
+    await A.p.evaluate((g) => { const o = window.__oreum; o.save.coins += g; return o.online.account().push(); }, legit); await wait(A.p, 800);
+    const c1 = await A.p.evaluate(() => window.__oreum.save.coins);
+    ok(c1 === c0 + legit, `주운 만큼 번 귤은 받아 줌 (${undo.kept}개 × ${per.toFixed(0)} 의 90% = +${legit}: ${c0} → ${c1})`);
+    await A.p.evaluate(() => { const o = window.__oreum; o.save.coins += 100000; return o.online.account().push(); }); await wait(A.p, 800);
+    const c2 = await A.p.evaluate(() => window.__oreum.save.coins);
+    ok(c2 <= c1 + NET.earnBurst + Math.ceil(undo.kept * per * 0.1) + NET.earnPerSec * 30, `10만 귤 부풀리기 바로잡힘 (${c1} + 100000 → ${c2})`);
+  }
   // 랭킹 (#11): 버리면 저장을 바로 보내고 오늘 순위가 오르면 토스트, 순위표에 내 줄, 손님은 이 기기 기록만
   await wait(A.p, 4000); // 앞의 줍기 몫(초당 takePerSec)이 지나가게
   const nick = await A.p.evaluate(() => { const o = window.__oreum; o.save.nick = '랭킹확인' + (Date.now() % 1000); const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); return o.save.nick; });

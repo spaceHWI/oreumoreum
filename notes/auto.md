@@ -21,6 +21,7 @@
 - `npm ci` 후 `node build.mjs` 통과
 - `tools/err.js` 를 남송이 기준으로 돌려 페이지 오류가 없는지 확인 (필요하면 스크립트의 주소 해시를 고쳐 쓴다). 스크린샷은 꼭 필요할 때만, 작게
 - 새 기능은 `window.__oreum` 으로 값을 넣어 보며 동작을 확인한다
+- 수치(`src/balance.js`, `NET` 한도 포함)를 바꾸는 이슈는 `node tools/online.js`(로컬 서버 `cd server && npm run dev`)·`node tools/sec.js` 를 끝까지 돌려 통과시킨다. 실패를 '관계없음' 으로 남기지 않는다: 낡은 검사면 검사를 고치고, 진짜 구멍이면 코드를 고친다 (#144)
 
 ## 오류 알림 이슈
 제목이 `[오류]` 로 시작하는 이슈 (실서버 오류 알림 `GET <서버>/crashes?days=3` 에서 온 것)

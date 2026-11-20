@@ -6,7 +6,7 @@ import { createRoomCore } from './roomcore.js';
 export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.core = null; this.timer = null; this.saveT = 0;
+    this.core = null; this.timer = null; this.saveT = 0; this.earnT = 0;
     ctx.blockConcurrencyWhile(async () => {
       const [heaps, seen] = await Promise.all([ctx.storage.get('heaps'), ctx.storage.get('seen')]);
       this.core = createRoomCore({ heaps, seen: seen || 0, stats: env.STATS_OPEN === '1' });
@@ -32,8 +32,14 @@ export class Room extends DurableObject {
   tick() {
     this.core.step();
     if (++this.saveT >= 50) { this.saveT = 0; this.persist(); } // 5초마다 더미 상태 저장
+    if (++this.earnT >= NET.earnFlushMs / NET.tickMs) { this.earnT = 0; this.flushEarn(); }
   }
-  stop() { clearInterval(this.timer); this.timer = null; this.persist(); }
+  stop() { clearInterval(this.timer); this.timer = null; this.persist(); this.flushEarn(); }
+  // 받아 준 줍기로 번 몫을 계정에 넘김 (#144): 저장 확인(validate.js)이 버린 귤을 이 몫 안에서만 받아 줌
+  flushEarn() {
+    const list = this.core.takeEarned(); if (!list || !this.env?.ACCOUNTS) return;
+    this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('all')).earn(list).catch(() => {});
+  }
   persist() {
     const p = [this.ctx.storage.put('seen', this.core.seen)];
     if (this.core.takeDirty()) p.push(this.ctx.storage.put('heaps', this.core.heaps().slice()));
