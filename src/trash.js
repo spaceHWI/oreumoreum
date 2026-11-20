@@ -5,8 +5,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD } from './balance.js';
 import { zoneAt } from './zones.js';
+import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
+import { zoneLoops, placeSide } from './fieldplan.js';
+export { HEAP_DEFS, HEAP_SIG, HEAP_TOTAL };
 import { kstDay, weekStart, SRVS } from './rankday.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
@@ -14,13 +17,10 @@ export const DEX_LIST = [];
 TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push({ id: `${t.id}:${i}`, kind: t.id, name, rare: false })); DEX.rare.filter((r) => r.kind === t.id).forEach((r, i) => DEX_LIST.push({ id: `${t.id}:r${i}`, kind: t.id, name: r.name, rare: true })); });
 // 개울 칸 (#44): 낚시로 잡는 물고기 3종 'fish:번호'. 쓰레기가 아니라 kind 'fish', sec 'stream'
 FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
+// 볼거리 칸 (#138): 오름 들판의 전망 바위·샘·산담·방사탑 'sight:번호' (FIELD.sight.list 순서). 처음 찾으면 등록
+FIELD.sight.list.forEach((s, i) => DEX_LIST.push({ id: `sight:${i}`, kind: 'sight', sk: s[1], name: s[2], rare: false, sec: 'sight' }));
 
-// 더미 목록 (자리와 상관없이 정해지는 순서): 구역 순서대로 큰 것부터. 저장의 heaps[i] 가 이 순서
-export const HEAP_DEFS = [];
-ZONES.forEach((Z) => ['xl', 'l', 's'].forEach((k) => { for (let i = 0; i < (Z.heaps[k] || 0); i++) HEAP_DEFS.push({ zone: Z.id, k, n: Z.amt?.[k] ?? HEAP.sizes[k].n }); }));
-const HEAP_FULL = HEAP_DEFS.map((d) => d.n);
-export const HEAP_SIG = 'h1:' + HEAP_DEFS.map((d) => d.zone + d.k + d.n).join(',');
-export const HEAP_TOTAL = HEAP_FULL.reduce((a, b) => a + b, 0);
+// 더미 목록 (자리와 상관없이 정해지는 순서)은 src/heapdefs.js (서버와 같이 씀). 저장의 heaps[i] 가 이 순서
 
 /* ---------- 저장소 (기기 저장) ---------- */
 export function createLocalTrashStore({ save, persist }) {
@@ -95,9 +95,9 @@ export function createLocalTrashStore({ save, persist }) {
 }
 
 /* ---------- 탐방로 ---------- */
-function mulberry(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+export function mulberry(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-function makeTrail(paths) {
+export function makeTrail(paths) {
   const segs = []; let L = 0;
   for (const pts of paths) for (let i = 0; i < pts.length - 1; i++) { const a = pts[i], b = pts[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]); if (l < 1e-3) continue; segs.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], l, c0: L }); L += l; }
   const TC = 25, grid = new Map();
@@ -113,7 +113,7 @@ function makeTrail(paths) {
 
 /* ---------- 더미 자리 ---------- */
 // ok(x, z): 놓을 수 있는 땅(오름 위, 사물과 안 겹침). 같은 seed 면 늘 같은 자리
-function placeHeaps(trail, ok, height, origin) {
+function placeHeaps(trail, ok, height, origin, chs = []) {
   const far = (z, x, y) => origin && ZONES[z - 1].maxD && Math.hypot(x - origin.x, y - origin.z) > ZONES[z - 1].maxD;
   const rnd = mulberry(HEAP.seed);
   const tr = trail.samples(4);
@@ -125,12 +125,14 @@ function placeHeaps(trail, ok, height, origin) {
   const ring = (x, z, R, fn) => { for (const rho of [0, R * 0.55, R + 0.35]) { const n = rho ? Math.max(6, Math.ceil(2 * Math.PI * rho / 0.85)) : 1; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; if (!fn(x + Math.cos(a) * rho, z + Math.sin(a) * rho)) return false; } } return true; };
   const out = [];
   HEAP_DEFS.forEach((d) => {
+    if (d.field) return; // 들판 더미 (#138) 는 아래에서 따로 (길가 더미 자리가 예전과 같게 난수 순서를 그대로 둠)
     const R = HEAP.sizes[d.k].r; let best = null;
     for (let t = 0; t < 900 && !best; t++) {
       const relax = t > 600, isNear = t < 300 ? rnd() < HEAP.nearFrac : rnd() < 0.3; let x, z;
       if (isNear && near[d.zone].length) { const p = near[d.zone][Math.floor(rnd() * near[d.zone].length)], side = rnd() < 0.5 ? -1 : 1, off = HEAP.trailMin + R + rnd() * (HEAP.trailMax - HEAP.trailMin); x = p[0] - p[3] * side * off; z = p[1] + p[2] * side * off; }
       else { const c = cells[d.zone]; if (!c.length) continue; const p = c[Math.floor(rnd() * c.length)]; x = p[0] + (rnd() - 0.5) * 8; z = p[1] + (rnd() - 0.5) * 8; }
       if (zoneAt(x, z) !== d.zone || far(d.zone, x, z)) continue;
+      const chMax = ZONES[d.zone - 1].chMax; if (chMax && chs.length && t < 800 && !chs.some((c) => Math.hypot(c.x - x, c.z - z) < chMax)) continue; // #138 배낭이 찰 때 클린하우스가 가깝게 (7-1절)
       if (!relax && [0, 1, 2, 3].some((i) => zoneAt(x + Math.cos(i * 1.57) * (R + 1), z + Math.sin(i * 1.57) * (R + 1)) !== d.zone)) continue;
       if (trail.dist(x, z, R + HEAP.trailMin + 0.1) < R + HEAP.trailMin) continue; // 길을 막지 않게
       if (out.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + R + HEAP.gap * (relax ? 0.5 : 1))) continue;
@@ -140,8 +142,22 @@ function placeHeaps(trail, ok, height, origin) {
       best = { x, z, y: Math.min(sum / 8, lo + 0.4) - 0.1 };
     }
     if (!best) { const c = cells[d.zone][Math.floor(rnd() * cells[d.zone].length)] || [0, 0]; best = { x: c[0], z: c[1], y: height(c[0], c[1]) - 0.12 }; } // 끝내 못 찾으면 구역 안 아무 데나
-    out.push({ ...best, r: R, k: d.k, zone: d.zone, n: d.n, rot: rnd() * Math.PI * 2 });
+    out.push({ ...best, r: R, k: d.k, zone: d.zone, n: d.n, gv: d.gv, rot: rnd() * Math.PI * 2 });
   });
+  // 들판 더미·쓰레기 산 (#138): 8자 고리의 왼쪽 들판(구역 클린하우스보다 낮은 길의 왼쪽), 길에서 FIELD.heapD. 고정 난수 FIELD.seed
+  const fr = mulberry(FIELD.seed), farF = (z, x, y) => origin && ZONES[z - 1].maxD && Math.hypot(x - origin.x, y - origin.z) > ZONES[z - 1].maxD;
+  const loops = zoneLoops({ samples: tr, zoneAt, height, chs, far: farF });
+  const taken = [...out.map((o) => ({ x: o.x, z: o.z, r: o.r })), ...chs.map((c) => ({ x: c.x, z: c.z, r: 6 }))];
+  HEAP_DEFS.forEach((d) => {
+    if (!d.field) return;
+    const R = HEAP.sizes[d.k].r, L = loops[d.zone];
+    const q = L && (placeSide({ pool: L.lower, side: L.edge ? 0 : -1, d: FIELD.heapD, R, rnd: fr, zone: d.zone, zoneAt, ok, height, trailDist: trail.dist, taken, gap: FIELD.gap })
+      || placeSide({ pool: L.all, side: 0, d: FIELD.heapD, R, rnd: fr, zone: d.zone, zoneAt, ok, height, trailDist: trail.dist, taken, gap: FIELD.gap * 0.5, flat: 0.8 }));
+    const best = q ? { x: q.x, z: q.z, y: q.y - 0.12 } : (() => { const c = cells[d.zone][Math.floor(fr() * cells[d.zone].length)] || [0, 0]; return { x: c[0], z: c[1], y: height(c[0], c[1]) - 0.12 }; })();
+    taken.push({ x: best.x, z: best.z, r: R });
+    out.push({ ...best, r: R, k: d.k, zone: d.zone, n: d.n, gv: d.gv, field: true, rot: fr() * Math.PI * 2 });
+  });
+  out.loops = loops;
   return out;
 }
 
@@ -167,9 +183,9 @@ const PAL = [
 const STG_R = [1, 0.8, 0.6, 0.42], STG_H = [1, 0.72, 0.48, 0.26];
 const stageOf = (f) => { let st = 0; for (let i = 1; i < HEAP.stages.length; i++) if (f <= HEAP.stages[i]) st = i; return st; };
 function makeHeapGeo(k, st, low) {
-  const S = HEAP.sizes[k], R = S.r * STG_R[st], Hh = S.h * STG_H[st], r = mulberry(901 + st * 31 + k.length * 7), sc = { s: 0.72, l: 1.0, xl: 1.5 }[k];
+  const S = HEAP.sizes[k], R = S.r * STG_R[st], Hh = S.h * STG_H[st], r = mulberry(901 + st * 31 + k.length * 7 + (k === 'mt' ? 5 : 0)), sc = { s: 0.72, l: 1.0, xl: 1.5, mt: 1.9 }[k];
   const parts = [piece(jitter(new THREE.IcosahedronGeometry(1, 1), 0.16, 5 + st).scale(R, Hh * 0.82, R), '#5a5248'), piece(jitter(new THREE.IcosahedronGeometry(1, 0), 0.2, 9 + st).scale(R * 0.55, Hh * 0.35, R * 0.55).translate(R * 0.1, Hh * 0.62, -R * 0.08), '#3a3a40')];
-  const N = Math.round({ s: 12, l: 28, xl: 64 }[k] * [1, 0.72, 0.5, 0.3][st] * (low ? 0.7 : 1));
+  const N = Math.round({ s: 12, l: 28, xl: 64, mt: 96 }[k] * [1, 0.72, 0.5, 0.3][st] * (low ? 0.7 : 1));
   const BAG = ['#2e2e34', '#2e2e34', '#3b5ea8', '#e8e4d8', '#55606a'], BOX = ['#b8915a', '#a07a48'], NET = ['#3f9a5a', '#e2683a', '#3e7fc4'], SMALL = ['#d8423a', '#d9eef5', '#e0b23a', '#c9ccd2'];
   for (let i = 0; i < N; i++) {
     const kind = i % 7, s = sc * (0.8 + r() * 0.5); let g, c;
@@ -190,10 +206,11 @@ function makeHeapGeo(k, st, low) {
 
 /* ---------- 쓰레기 세상 ---------- */
 // paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
-export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null }) {
+// chs: 클린하우스 자리 [{x, z}…] (들머리 + 오름 안, #138 고리 기준·들판 더미가 비켜 감)
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null, chs = [] }) {
   const trail = makeTrail(paths);
   const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(col && col.blocked(x, z, 0.45)); // 사물과 겹치지 않게 (#15)
-  const heaps = placeHeaps(trail, ok, height, origin);
+  const heaps = placeHeaps(trail, ok, height, origin, chs);
   const geos = makeGeos();
   const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
   const fxMats = PAL.map((p) => new THREE.MeshToonMaterial({ color: p[0], vertexColors: true, gradientMap: gradHard }));
@@ -205,7 +222,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   const meshes = geos.map((g) => { const im = new THREE.InstancedMesh(g, mat, CAP); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; im.setColorAt(0, new THREE.Color()); scene.add(im); return im; });
   const FY = fixed.map((f) => height(f.x, f.z)), FC = fixed.map((f, k) => (Math.imul(k + 7, 2654435761) >>> 24) % PAL[f.t].length);
   // 더미 (크기·단계별 InstancedMesh)
-  const HM = {}; ['s', 'l', 'xl'].forEach((k) => { const cap = Math.max(1, heaps.filter((h) => h.k === k).length); HM[k] = [0, 1, 2, 3].map((st) => { const im = new THREE.InstancedMesh(makeHeapGeo(k, st, low), mat, cap); im.count = 0; im.frustumCulled = false; im.castShadow = !low; im.receiveShadow = !low; scene.add(im); return im; }); });
+  const HM = {}; ['s', 'l', 'xl', 'mt'].forEach((k) => { const cap = Math.max(1, heaps.filter((h) => h.k === k).length); HM[k] = [0, 1, 2, 3].map((st) => { const im = new THREE.InstancedMesh(makeHeapGeo(k, st, low), mat, cap); im.count = 0; im.frustumCulled = false; im.castShadow = !low; im.receiveShadow = !low; scene.add(im); return im; }); });
   // 더미 충돌: 단계마다 원 하나씩 등록해 두고 지금 단계 것만 켬
   heaps.forEach((h) => { h.cols = col ? [0, 1, 2, 3].map((st) => col.add(h.x, h.z, h.r * STG_R[st] * 0.85 + HEAP.colPad)) : null; h.st = -2; });
   const stOf = (i) => { const n = store.left(i); return n > 0 ? stageOf(n / heaps[i].n) : -1; };
@@ -223,7 +240,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
       meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, colr.set(PAL[t][FC[k]])); cnt[t] = c + 1;
     });
     meshes.forEach((im, t) => { im.count = cnt[t]; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; });
-    const hc = { s: [0, 0, 0, 0], l: [0, 0, 0, 0], xl: [0, 0, 0, 0] };
+    const hc = { s: [0, 0, 0, 0], l: [0, 0, 0, 0], xl: [0, 0, 0, 0], mt: [0, 0, 0, 0] };
     heaps.forEach((h) => {
       if (h.st < 0 || (h.x - px) ** 2 + (h.z - pz) ** 2 > HDRAW * HDRAW) return;
       e.set(0, h.rot, 0); q.setFromEuler(e); v.set(h.x, h.y, h.z); m4.compose(v, q, one);
@@ -265,7 +282,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     }
     const type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
-    const xv = c.h != null ? type.gyul * ((ZONES[heaps[c.h].zone - 1]?.gv || 1) - 1) : 0; // #137 구역마다 쓰레기 귤 배수
+    const xv = c.h != null ? type.gyul * ((heaps[c.h].gv || ZONES[heaps[c.h].zone - 1]?.gv || 1) - 1) : 0; // #137 구역마다 쓰레기 귤 배수 (#138 쓰레기 산은 × HEAP.sizes.mt.gv)
     if (xv > 0) store.bag.xv = (store.bag.xv || 0) + xv;
     if (c.h != null) { recent.push({ h: c.h, kind: type.id, xv }); if (recent.length > 80) recent.shift(); } // 방이 한 번에 되돌리라는 수(NET.takeAsk 64)보다 넉넉히 // 방이 거절하면 되돌릴 수 있게 (#84)
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
@@ -328,7 +345,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     fillClean(pct) { const want = Math.round(HEAP_TOTAL * (1 - pct / 100)); let left = want; heaps.forEach((h, i) => { const n = Math.min(h.n, left); store.setLeft(i, n); left -= n; }); syncCols(); dirty = true; store.commit(); emit('changed', {}); return clean(); },
     fillBag(vol, kind = 'can') { const t = TRASH_TYPES.find((x) => x.id === kind) || TRASH_TYPES[0]; store.bag[t.id] += Math.max(0, Math.floor(vol / t.vol)); store.commit(); emit('changed', {}); return bagVol(); },
     emptyBag() { TRASH_TYPES.forEach((t) => { store.bag[t.id] = 0; }); store.bag.xv = 0; store.commit(); emit('changed', {}); },
-    heaps: () => heaps.map((h, i) => ({ i, zone: h.zone, k: h.k, x: +h.x.toFixed(1), z: +h.z.toFixed(1), r: h.r, n: h.n, left: store.left(i), st: h.st })),
+    heaps: () => heaps.map((h, i) => ({ i, zone: h.zone, k: h.k, x: +h.x.toFixed(1), z: +h.z.toFixed(1), r: h.r, n: h.n, left: store.left(i), st: h.st, field: !!h.field, gv: h.gv })),
     nearestHeap(px, pz) { let b = null, bd = 1e18; heaps.forEach((h, i) => { if (h.st < 0) return; const d = Math.hypot(h.x - px, h.z - pz); if (d < bd) { bd = d; b = { i, x: h.x, z: h.z, r: curR(i), zone: h.zone, k: h.k, left: store.left(i), d }; } }); return b; },
     zoneAt, zoneClean, zoneLeft, estimate,
     dex: () => ({ ...store.dex }), dexForce(id) { const d = DEX_LIST.find((x) => x.id === id); if (!d) return false; const n = store.dexAdd(id); emit('dex-test', { dex: d, dexNew: n }); store.commit(); return n; },
@@ -337,5 +354,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   };
   // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
   function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
-  return { update, any, candidates, take, undoTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps };
+  return { update, any, candidates, take, undoTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps, trail, loops: heaps.loops, ok };
 }

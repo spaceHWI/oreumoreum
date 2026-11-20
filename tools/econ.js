@@ -26,6 +26,9 @@
 // - 탈것 (#69): RIDES.list 를 싼 것부터 차례로 (장비처럼 귤/초 이득 ÷ 값). 클린하우스 ↔ 구역 왕복만 탐 (더미 사이는 줍느라 걸음)
 //   갈 때 오르막·올 때 내리막, 왕복 거리의 RIDE_FLAT 만큼은 평지. RIDE_OFF 만큼은 길 밖(×RIDES.off). 타고 내리기 한 번에 2초. 신발보다 느리면 걸음
 // - 낚시는 따로 시간당 귤만 보여 줌 (자유 기능)
+// - 들판 (#138): 들판 더미·쓰레기 산은 구역 쓰레기에 더함(쓰레기 산 귤 × HEAP.sizes.mt.gv, 길 밖이라 걷는 거리를 FIELD.off 로 늘림). 소굴은 일하는 구역에서
+//   열린 것 하나를 나가기마다 닫음(다가가기 20초 + 무리 쫓아내기, FIELD.den.reopen 마다 다시), 숨은 보물은 일하는 구역 것을 하루 한 번(25초씩), 볼거리는 처음 한 번(20초)
+//   (--nofield: 들판 없이, --nospots: 들판 더미만 두고 소굴·보물·볼거리 없이, 비교용)
 // - 흐름 (#137, notes/growth-loop.md 4절): 하루 끝 장비 단계(도구·배낭·신발 가장 낮은 것)와 그때까지 다 치운 구역이
 //   1일 구역 1·2단계, 2일 구역 3까지·3단계, 3일 4단계, 4일 구역 4, 5일 5단계·구역 5 인지 봄 (단계는 빠르지도 늦지도 않게)
 const fs = require('fs'), path = require('path');
@@ -39,9 +42,9 @@ async function live() {
   const p = await b.newPage({ viewport: { width: 480, height: 300 } });
   await p.goto('file://' + path.join(__dirname, '../dist/test.html') + '#namsongi'); await p.waitForTimeout(6000);
   await p.click('#enter').catch(() => {}); await p.waitForTimeout(5000);
-  const r = await p.evaluate(() => { const o = window.__oreum, f = o.cleanhouse.api.front; return { front: { x: f.x, z: f.z }, fronts: o.cleanhouse.all.map((c) => ({ x: c.front.x, z: c.front.z })), heaps: o.trash.heaps().map((h) => [h.zone, h.k, h.x, h.z]) }; });
+  const r = await p.evaluate(() => { const o = window.__oreum, f = o.cleanhouse.api.front; return { front: { x: f.x, z: f.z }, fronts: o.cleanhouse.all.map((c) => ({ x: c.front.x, z: c.front.z })), heaps: o.trash.heaps().map((h) => [h.zone, h.k, h.x, h.z, h.field ? 1 : 0]) }; });
   await b.close();
-  const o = { note: 'tools/econ.js 가 쓰는 남송이 더미 자리·클린하우스 앞 (node tools/econ.js --live 로 다시 뽑음). front 는 들머리, fronts 는 오름 안 것까지 모두 (#78)', front: { x: +r.front.x.toFixed(1), z: +r.front.z.toFixed(1) }, fronts: r.fronts.map((f) => ({ x: +f.x.toFixed(1), z: +f.z.toFixed(1) })), heaps: r.heaps.map((h) => [h[0], h[1], +h[2].toFixed(1), +h[3].toFixed(1)]) };
+  const o = { note: 'tools/econ.js 가 쓰는 남송이 더미 자리·클린하우스 앞 (node tools/econ.js --live 로 다시 뽑음). front 는 들머리, fronts 는 오름 안 것까지 모두 (#78)', front: { x: +r.front.x.toFixed(1), z: +r.front.z.toFixed(1) }, fronts: r.fronts.map((f) => ({ x: +f.x.toFixed(1), z: +f.z.toFixed(1) })), heaps: r.heaps.map((h) => [h[0], h[1], +h[2].toFixed(1), +h[3].toFixed(1), h[4]]) };
   fs.writeFileSync(MAP, JSON.stringify(o).replace(/\],\[/g, '],\n['));
   console.log('더미', o.heaps.length, '곳 저장');
 }
@@ -50,7 +53,8 @@ async function main() {
   if (has('--live')) await live();
   const B = await import('../src/balance.js');
   const { RIDES } = B;
-  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH } = B;
+  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD } = B;
+  const NOFIELD = has('--nofield');
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
   const FRONTS = has('--one') || !map.fronts ? [map.front] : map.fronts; // 가장 가까운 클린하우스 기준 (#78)
   const RUN = 10, DETOUR = 1.15, HAND_T = 1.0; // 달리기 속도(main.js), 길 굽이, 손 던지기 동작 시간(runner.js THROW.total)
@@ -67,11 +71,11 @@ async function main() {
 
   // 구역 표: 쓰레기 수, 거리, 쓰레기 하나 귤(드문 것 빼고)·부피
   const zones = ZONES.map((Z) => {
-    const hs = map.heaps.filter((h) => h[0] === Z.id).map(([, k, x, z]) => ({ k, x, z, n: (Z.amt && Z.amt[k]) || HEAP.sizes[k].n }));
-    const n = hs.reduce((s, h) => s + h.n, 0), d = (h) => Math.min(...FRONTS.map((f) => Math.hypot(h.x - f.x, h.z - f.z)));
+    const hs = map.heaps.filter((h) => h[0] === Z.id && !(NOFIELD && h[4])).map(([, k, x, z, fd]) => ({ k, x, z, fd, n: (!fd && Z.amt && Z.amt[k]) || HEAP.sizes[k].n, gv: HEAP.sizes[k].gv || 1 }));
+    const n = hs.reduce((s, h) => s + h.n, 0), d = (h) => Math.min(...FRONTS.map((f) => Math.hypot(h.x - f.x, h.z - f.z))) * (h.fd ? 1 + 0.4 * (1 / FIELD.off[Z.gear.shoes - 1] - 1) : 1); // 들판은 걷는 길 일부가 풀밭
     const avgD = hs.reduce((s, h) => s + h.n * d(h), 0) / n * DETOUR;
     let tour = 0; { const left = hs.slice(); let cur = left.shift(); while (cur && left.length) { let bi = 0, bd = 1e9; left.forEach((h, i) => { const dd = Math.hypot(h.x - cur.x, h.z - cur.z); if (dd < bd) { bd = dd; bi = i; } }); tour += bd * DETOUR; cur = left.splice(bi, 1)[0]; } }
-    const g = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0) * (Z.gv || 1);
+    const g = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0) * (Z.gv || 1) * hs.reduce((s, h) => s + h.n * h.gv, 0) / n; // 쓰레기 산은 귤 × gv
     const v = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0);
     return { id: Z.id, name: Z.name, n, avgD, step: tour / n, g, v, rec: Z.rec };
   });
@@ -133,7 +137,7 @@ async function main() {
   const GEAR = ['tool', 'bag', 'shoes'], WK = WEAR.slots.map((w) => w.k);
   function run(mode, slack) {
     const battle = mode === 'battle', S = 1 + slack; // 모든 행동 시간에 여유를 곱함 (벌지 않는 시간이 고르게 섞임)
-    const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0 };
+    const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0, denAt: {}, trDay: -1, trGot: new Set(), sights: new Set() };
     const buys = [], days = [], LIST = { tool: TOOLS, bag: BAGS, shoes: SHOES };
     // 다음 단계: 도구·배낭·신발·무기는 순서대로. 옷은 순서 없이 살 수 있지만 계산은 한 단계씩 다 산다고 봄 (값을 넉넉히 셈)
     // --skip (#111): 튜토리얼 뒤 장비는 최고 단계만 (건너뛴 단계 값은 안 냄)
@@ -186,6 +190,15 @@ async function main() {
         if (battle) {
           mobT += r.t * S * MOB_IN; const kind = ENEMY_SPAWN.byZone[zones[b.i].id];
           while (mobT >= ENEMY_SPAWN.every) { mobT -= ENEMY_SPAWN.every; const cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, f = mobFight(kind, st); add(f.t * cnt); st.coins += f.gy * cnt; earned += f.gy * cnt; }
+        }
+        // 들판 (#138): 일하는 구역의 열린 소굴 하나 · 오늘 안 연 보물 · 처음 보는 볼거리
+        if (!NOFIELD && !has('--nospots') && battle) {
+          const z = zones[b.i].id, DN = FIELD.den.n[z] || 0;
+          for (let k = 0; k < DN; k++) { const id = z + '-' + k; if (st.tAll - (st.denAt[id] ?? -1e9) < FIELD.den.reopen) continue; st.denAt[id] = st.tAll;
+            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st); add(20 + f.t * cnt); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; break; }
+          if (st.trDay !== d) { st.trDay = d; st.trGot = new Set(); }
+          for (let k = 0; k < (FIELD.treasure.n[z] || 0); k++) { const id = z + '-' + k; if (st.trGot.has(id)) continue; st.trGot.add(id); add(25); const g = FIELD.treasure.gyul[z] + FIELD.treasure.rare * DEX.rareGyul; st.coins += g; earned += g; }
+          FIELD.sight.list.forEach((x, k) => { if (x[0] !== z || st.sights.has(k)) return; st.sights.add(k); add(20); st.coins += FIELD.sight.gyul[z]; earned += FIELD.sight.gyul[z]; });
         }
         shop();
       }

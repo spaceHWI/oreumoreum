@@ -239,12 +239,12 @@ function buildDex() {
   $('dex-count').textContent = `${got} / ${DEX_LIST.length}`;
   const g = $('dex-grid'); g.innerHTML = ''; let sec = '';
   DEX_LIST.forEach((d) => {
-    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : ''; g.append(h); } // 개울 칸 (#44)
+    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : ''; g.append(h); } // 개울 칸 (#44)
     const n = dx[d.id] || 0, el = document.createElement('div'); el.className = 'dex-cell' + (n ? '' : ' locked') + (d.rare ? ' rare' : '');
     el.dataset.id = d.id;
     const ic = document.createElement('span'); ic.className = 'dex-ic'; ic.innerHTML = iconSvg(dexIcon(d));
     const nm = document.createElement('b'); nm.textContent = n ? d.name : '???';
-    const sm = document.createElement('small'); sm.textContent = n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
+    const sm = document.createElement('small'); sm.textContent = d.kind === 'sight' ? (n ? '찾음' : '') : n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
     el.append(ic, nm, sm); g.append(el);
   });
 }
