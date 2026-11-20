@@ -705,3 +705,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 임의 결정: 앱 안(`html.onestore`)에서는 구글 로그인 버튼을 숨기고 손님으로. playerId 로 계정 만들기는 안 함
 - `?onestore=mock`(+`&silent=1`): 가짜 SDK, 콘솔 `__onestoreMock.pause()/resume()/exit()/back()`. 확인 `node tools/onestore.js` 15/15, `tools/sec.js` 50/50(인라인은 SDK 로더 하나·해시 허용 검사 추가), `tools/err.js`, `tools/perf.js phone day`
 - 공식 가이드(gitbook) 페이지는 이 실행에서 읽지 못해 이슈에 적힌 SDK 요약대로 만듦
+
+## #107 적에게 맞으면 누워 버림
+- 원인: placeRunner 가 `root.rotation.y` 만 바꾸고 넉백·누움 기울기를 quaternion 에 곱했다. 곱한 결과가 Euler x·z 로 남아 다음 프레임에 또 곱해지고, 넉백이 끝나도 지워지지 않아 누운 채로 남았다(노루 타기·되살아남 뒤도 같음)
+- `src/bodytilt.js`: `orientBody` 가 heading 에서 다시 시작해 움찔(player.knock)·누움(hp.lie)을 축×각 벡터로 합쳐 한 번만 기울임(최대 1.6rad). 노루 위·멀티의 남도 같은 함수
+- 맞음 모양: 날아가 구르고 일어나던 것(#32) 대신 짧게 뒤로 밀리고(`BOAR.knockSpeed 10·knockV 4·knockDrag 7`, 약 1.3m) 움찔(`flinchAng 0.38` 을 `flinchPeak 0.08` 초에 젖히고 `flinchT 0.45` 초 안에 바로 섬). 그동안 조작 잠금. 연달아 맞으면 처음부터. 맞는 동안 비탈 숙임(뼈)은 줄임
+- 체력 0: 밀림이 땅에 닿으면 바로 쓰러짐 시작(`hp.tryBegin(P)`, rollT 인자 없앰)
+- 멀티: presence 에 `kn: [번호, 축x, 축z]`(맞는 동안만). 받는 쪽은 새 번호면 받은 때부터 같은 움찔·놀란 눈, 처음 보는 사람의 지난 번호는 무시
+- 확인 `node tools/hittilt.js` (전투 오름): 평지·비탈·연달아·달리기·#80 움직임·던지기·줍기·동작·탈것·노루·쓰러졌다 되살아남, 게임 시간 2초 뒤 몸 기울기 5° 안
+- `tools/audit.js` 71줄 낚시 단계 주석이 뒤 코드를 삼켜 문법 오류였던 것을 `/* */` 로 고침

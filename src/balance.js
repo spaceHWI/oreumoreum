@@ -247,8 +247,8 @@ export const BOAR = {
   jumpClear: 0.9,
   hitGap: 0.2, // 몸이 닿은 뒤 이만큼 안이면 받힘
   hitCd: 3, // 받힌 뒤 이 초 동안은 다시 안 받힘
-  knockSpeed: 28, knockV: 11, // 튕겨 나가는 속도·떠오르는 속도 (예전 14·9, 거리 약 2배)
-  rollT: 0.55, getUpT: 0.5, // 착지 뒤 구르는 시간·일어나는 시간 (이 동안 조작 못 함)
+  knockSpeed: 10, knockV: 4, knockDrag: 7, // 맞으면 짧게 뒤로 밀림 (#107: 예전엔 28·11 로 날아가 구르고 일어남). 속도·뜨는 속도·밀림이 줄어드는 빠르기(초당)
+  flinchT: 0.45, flinchPeak: 0.08, flinchAng: 0.38, // 움찔: 이 초 안에 바로 섬(이 동안 조작 못 함), 가장 젖히는 때, 그때 몸 기울기(rad, 약 22°)
 };
 // 적 (#37, 구역별 #48): 쓰러뜨리지 않고 귤을 맞혀 쫓아냄. 전투 오름에서만. 새 종류는 여기에 한 줄 + src/enemymodels.js 에 모양
 // hp 기운, walk·chase·flee 속도, dmg 받힐 때 플레이어 HP 피해(#36), reward 쫓아냈을 때 귤 개수·드문 쓰레기 확률
