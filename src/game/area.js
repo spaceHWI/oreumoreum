@@ -55,8 +55,8 @@ late.zoneEnter = (z, prev) => {
 /* ---------- 오름 지도 ---------- */
 const MAP_N = 220; // 구역 칠하기 격자
 let mapBase = null;
-const mapXY = (x, z, W) => [(x - ZONE_BOX.x0) / ZONE_BOX.size * W, (z - ZONE_BOX.z0) / ZONE_BOX.size * W]; // 위 = 북쪽(-z)
-function buildMapBase(W) {
+export const mapXY = (x, z, W) => [(x - ZONE_BOX.x0) / ZONE_BOX.size * W, (z - ZONE_BOX.z0) / ZONE_BOX.size * W]; // 위 = 북쪽(-z)
+export function buildMapBase(W, labels = true) { // labels: 구역 번호 (#138 미니맵은 뺌)
   const c = document.createElement('canvas'); c.width = c.height = W; const x = c.getContext('2d');
   const img = x.createImageData(MAP_N, MAP_N), cs = ZONE_BOX.size / MAP_N, rgb = [null, ...ZL.tiers.slice(1).map((t) => [1, 3, 5].map((i) => parseInt(t.color.slice(i, i + 2), 16)))];
   const grid = new Uint8Array(MAP_N * MAP_N);
@@ -78,6 +78,7 @@ function buildMapBase(W) {
     x.restore(); }
   // 클린하우스
   for (const h of CHS) { const [u, v] = mapXY(h.front.x, h.front.z, W); x.fillStyle = '#fff'; x.strokeStyle = '#20180c'; x.lineWidth = W / 220; x.beginPath(); x.rect(u - W / 110, v - W / 110, W / 55, W / 55); x.fill(); x.stroke(); }
+  if (!labels) return c;
   // 구역 번호
   x.font = `800 ${Math.round(W / 15)}px "Gothic A1", sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
   // 구역 번호는 그 구역 안 가장 깊은 칸(둘레 R 칸이 모두 같은 구역)에. 없으면 가장 많이 같은 칸
@@ -92,6 +93,7 @@ function drawMap() {
   const cv = $('omap-c'), W = cv.width, x = cv.getContext('2d');
   if (!mapBase) mapBase = buildMapBase(W);
   x.clearRect(0, 0, W, W); x.drawImage(mapBase, 0, 0);
+  late.fieldMap?.(x, W); // #138 가 본 곳·더미·소굴·보물·볼거리 아이콘
   // 나: 귤색 화살표
   const [u, v] = mapXY(player.pos.x, player.pos.z, W), h = player.heading, s = W / 30;
   x.save(); x.translate(u, v); x.rotate(Math.atan2(Math.sin(h), Math.cos(h)) * -1 + Math.PI); x.beginPath(); x.moveTo(0, -s); x.lineTo(s * 0.62, s * 0.7); x.lineTo(0, s * 0.35); x.lineTo(-s * 0.62, s * 0.7); x.closePath();
