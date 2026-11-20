@@ -161,18 +161,32 @@ export function mountLogin({ box, enterBtn, account, localSave, hasProgress, toa
   box.hidden = false;
   const note = '<p class="acct-beta">베타 서비스예요. 7일 안에 다시 접속하지 않으면 기록이 사라져요.</p>';
   if (account.loggedIn) { box.innerHTML = note + '<p class="acct-who">구글 계정으로 저장 중</p>'; return; }
-  box.innerHTML = note + (NET.googleClientId ? '<div class="acct-gis" id="acct-gis"></div>' : '');
+  box.innerHTML = note + (NET.googleClientId ? '<div class="acct-gis" id="acct-gis"><div class="btn gbtn" aria-hidden="true"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span class="gtxt">Google 계정으로 로그인</span></div><div class="gov" id="acct-gov"></div></div>' : '');
   enterBtn.textContent = '손님으로 하기';
+  enterBtn.classList.add('guest-go');
   enterBtn.dataset.guest = '1';
   const doLogin = async (cred) => {
-    try { await account.login(cred, { localSave, hasProgress, ask: askMigrate }); } catch (e) { toast('로그인하지 못했어요. 잠시 후 다시 해 주세요'); }
+    const gt = box.querySelector('.gtxt'), gb = box.querySelector('#acct-gis');
+    if (gt) gt.textContent = '로그인 중…'; gb?.classList.add('busy');
+    try { await account.login(cred, { localSave, hasProgress, ask: askMigrate }); } catch (e) { toast('로그인하지 못했어요. 잠시 후 다시 해 주세요'); if (gt) gt.textContent = '로그인하지 못했어요. 다시 눌러 보세요'; gb?.classList.remove('busy'); setTimeout(() => { if (gt && gb && !gb.classList.contains('busy')) gt.textContent = 'Google 계정으로 로그인'; }, 3000); }
   };
   mountLogin.fake = (name = 'tester') => doLogin('fake:' + name); // 확인용 (서버 FAKE_AUTH=1 일 때만 통함)
   if (!NET.googleClientId) return;
   loadGis().then((g) => {
     if (!g?.accounts?.id) return;
     g.accounts.id.initialize({ client_id: NET.googleClientId, callback: (r) => doLogin(r.credential), ux_mode: 'popup' });
-    g.accounts.id.renderButton(box.querySelector('#acct-gis'), { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ko', width: 260 });
+    const gis = box.querySelector('#acct-gis'), ov = box.querySelector('#acct-gov'), gtxt = box.querySelector('.gtxt');
+    if (!gis || !ov) return;
+    // 보이는 건 직접 그린 버튼, 그 위에 투명한 GSI 버튼을 같은 너비로 덮어 누름만 받는다 (#102). 너비가 바뀌면 다시 그림
+    let lastW = 0;
+    const draw = () => {
+      const w = Math.max(200, Math.min(400, Math.round(gis.clientWidth)));
+      if (w === lastW) return; lastW = w; ov.textContent = '';
+      g.accounts.id.renderButton(ov, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ko', width: w, logo_alignment: 'left' });
+    };
+    draw();
+    if (window.ResizeObserver) new ResizeObserver(draw).observe(gis); else addEventListener('resize', draw);
+    ov.addEventListener('pointerdown', () => { gtxt.textContent = '로그인 중…'; gis.classList.add('busy'); });
   }).catch(() => { const g = box.querySelector('#acct-gis'); if (g) g.textContent = '구글 로그인을 불러오지 못했어요'; });
 }
 
