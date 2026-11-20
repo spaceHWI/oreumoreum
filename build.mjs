@@ -26,6 +26,8 @@ const js = (await bundle(listOne)).replace(/<\/script/gi, '<\\/script'); // 한 
 const jsSplit = await bundle(listSplit);
 const mainName = `main-${hash(jsSplit)}.js`;
 fs.writeFileSync('dist/' + mainName, jsSplit);
+const { VERSION } = await import('./src/version.js');
+fs.writeFileSync('dist/version.json', JSON.stringify({ v: VERSION, main: mainName })); // 새 버전 알림 (#134): 게임이 5분마다 받아 지금 main 과 비교
 const inapp = fs.readFileSync('src/inapp.js', 'utf8').trim(); // 인앱 브라우저 안내 (#118): 게임 코드보다 먼저 도는 작은 인라인 스크립트
 const inappHash = crypto.createHash('sha256').update(inapp, 'utf8').digest('base64');
 const page0 = fs.readFileSync('src/page.html', 'utf8');
