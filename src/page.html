@@ -367,6 +367,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-rn { text-align: left; background: rgba(255,255,255,.08); border-radius: 14px; padding: 8px 12px 10px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.5; }
 .intro-rn ul { margin: 0 0 4px; padding-left: 16px; color: var(--ink-soft); }
 .intro-rn ul li::marker { color: var(--acc); }
+#intro-feedback { color: var(--acc); font-weight: 800; }
 .intro-rn .linkish { font-size: 12px; color: var(--ink-soft); }
 .intro-go { width: 100%; font-size: 18px; font-weight: 800; padding: 12px 16px; }
 .intro-go:disabled { opacity: .4; pointer-events: none; }
@@ -852,10 +853,17 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
    4 버프는 고리만·HP 막대 짧게 5 여백·글자 줄이기 6 (아주 좁은 폰 + HP·버프) 좌표 숨김 — 두 줄이 되지 않게 */
 .topbar.f1 #zone-pill { display: none; }
 .topbar.f1 #xy-pill.inzone .na { display: none; } .topbar.f1 #xy-pill.inzone .zm { display: block; }
-#fb-chip { padding: 0 9px; } #fb-chip svg { width: 16px; height: 16px; }
+#fb-chip { position: relative; padding: 0 12px 0 9px; background: var(--acc); color: var(--acc-fg); border-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; font-weight: 800; font-size: 13px; line-height: 1; }
+#fb-chip svg { width: 16px; height: 16px; } #fb-chip .fbs { display: none; }
+.topbar.f3 #fb-chip .fbl { display: none; } .topbar.f3 #fb-chip .fbs { display: inline; }
+.topbar.f5 #fb-chip .fbs { display: none; } .topbar.f5 #fb-chip { padding: 0 8px; }
+#fb-chip .fb-bub { position: absolute; top: calc(100% + 8px); right: 0; padding: 7px 12px; border-radius: 12px; background: var(--acc); color: var(--acc-fg); font-style: normal; font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.35); pointer-events: none; z-index: 9; }
+#fb-chip .fb-bub[hidden] { display: none; }
+#fb-chip.hop { animation: fbhop .9s ease-in-out 3; }
+@keyframes fbhop { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); } 55% { transform: translateY(0); } 72% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { #fb-chip.hop { animation: none; } }
 #fs-chip { padding: 0 9px; } #fs-chip svg { width: 16px; height: 16px; } #fs-chip .fs-out, #fs-chip[aria-pressed="true"] .fs-in { display: none; } #fs-chip[aria-pressed="true"] .fs-out { display: inline; } .topbar.f5 #fs-chip { padding: 0 6px; } /* 전체 화면 (#105) */
-.topbar.f5 #fb-chip { padding: 0 6px; }
-.pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: #fff; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
+.pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: var(--acc-fg); font-weight: 800; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
 .topbar.f2 #ach-chip { display: none; }
 .topbar.f3 #bag-pill small, .topbar.f3 #bloom-row { display: none; }
 .topbar.f4 #buff-pill { padding: 0 3px; } .topbar.f4 #buff-pill b { display: none; }
@@ -941,7 +949,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="panel tpill" id="xy-pill" data-tut="hud" title="좌표"><svg class="zm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="xy"><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
     <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 업적"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
     <button type="button" class="panel tpill" id="fs-chip" title="전체 화면" aria-label="전체 화면" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="fs-in"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></g><g class="fs-out"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></g></svg></button>
-    <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg></button>
+    <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg><span class="fbl">의견 보내기</span><span class="fbs">의견</span><i class="fb-bub" id="fb-bub" hidden>불편한 점을 알려 주세요</i></button>
   </div>
 </div>
 <div class="hud hud-sub">
