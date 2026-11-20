@@ -847,6 +847,14 @@ export const FEEDBACK = {
   dbKeep: 2000,       // 서버: 저장해 두는 글 수 상한
 };
 
+// 오류 알림·안전장치 (#108): src/crash.js · update.js(매 프레임 오류에도 계속) · scene.js(WebGL 화면 잃음)
+export const CRASH = {
+  perDay: 3,          // 같은 오류는 기기당 하루 이만큼만 서버로
+  perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
+  acts: 6,            // '마지막 한 일' 기억하는 수
+  glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
+};
+
 // 노루·돌하르방·가로등 Tripo 모델 (#2). 모델 좌표는 바닥 y=0·키 약 0.98, 크기는 배율로
 export const LIFE_MODELS = {
   deer: { scale: 1.9, near: 140, seatY: 1.0, seatZ: -0.62 }, // 키 약 1.86m. near: 이 거리 안에 노루가 오면 모델을 받음. 탈 때 러너를 등 높이·뒤쪽으로

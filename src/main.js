@@ -3,5 +3,7 @@
 // 원스토어 앱 안이면 (#97) 단계마다 로딩 진행률을 알린다. 첫 화면 준비 끝(startGameAsync)은 update.js 가 알림
 import { onestore } from './onestore.js';
 import { loadCore } from './assets.js';
+import { listenCrashes, reportCrash } from './crash.js';
+listenCrashes(); // #108: 처리 못 한 오류를 의견함으로 (보낼 곳은 panels.js 가 붙임)
 onestore.progress(10);
-loadCore().then(() => { onestore.progress(60); return import('./modules.js'); }).then(() => onestore.progress(85));
+loadCore().then(() => { onestore.progress(60); return import('./modules.js'); }).then(() => onestore.progress(85)).catch((e) => reportCrash(e, 'load'));

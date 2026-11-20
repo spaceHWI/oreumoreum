@@ -7,6 +7,7 @@ import { buildBoarModel, BOAR_MODEL_H } from './boar.js';
 import { BOAR, ENEMIES } from './balance.js';
 import { LOW } from './gfx2.js';
 import { unpackProp, propGeometry, propMaterial, glowSprite } from './propmodel.js';
+import { reportCrash } from './crash.js';
 import { whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 들개·외계인 모델은 따로 받음
 
 const matCache = new Map();
@@ -46,10 +47,11 @@ function dogShared(DOG_M) {
     const order = [0, 1, 2, 3, 4, 5, 6].sort((a, b) => w[b] - w[a]).slice(0, 4); let sum = 0; order.forEach((k) => { sum += w[k]; });
     order.forEach((k, j) => { si[v * 4 + j] = k; sw[v * 4 + j] = w[k] / (sum || 1); });
   }
-  dogGeo = new THREE.BufferGeometry();
-  dogGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); dogGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); dogGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  dogGeo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); dogGeo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); dogGeo.setIndex(new THREE.BufferAttribute(idx, 1));
-  dogGeo.computeBoundingSphere(); dogGeo.boundingSphere.radius *= 1.2;
+  const g = new THREE.BufferGeometry(); // 다 만든 뒤에 dogGeo 에 넣음 (#108: 도중에 오류가 나면 반쯤 만든 모양을 쓰지 않게)
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.computeBoundingSphere(); g.boundingSphere.radius *= 1.2;
+  dogGeo = g;
 }
 const dogMat = {};
 // 받기 전 임시 모양: 모델 크기의 타원체를 몸 뼈에 붙임
@@ -141,7 +143,19 @@ export const ENEMY_MODELS = {
   rabid: () => buildDog({ rabid: true }),
   alien: buildAlien,
 };
-export function buildEnemyModel(kind) { return (ENEMY_MODELS[kind] || buildBoar)(); }
+// #108: 모양을 만들다 오류가 나면(받은 자료가 깨짐 등) 대신할 모양으로 계속
+export function buildEnemyModel(kind) {
+  try { return (ENEMY_MODELS[kind] || buildBoar)(); } catch (e) { reportCrash(e, 'model ' + kind); return buildFallback(kind); }
+}
+function buildFallback(kind) {
+  const root = new THREE.Group(), s = (ENEMIES[kind]?.size || 1);
+  const m = new THREE.Mesh(geo('fallback', () => new THREE.SphereGeometry(0.5, 10, 7).scale(0.9, 0.8, 1.4).translate(0, 0.45, 0)), placeholderMat('#8d8478'));
+  m.scale.setScalar(s); m.castShadow = !LOW; root.add(m);
+  const head = new THREE.Object3D(); head.position.set(0, 0.5 * s, 0.6 * s); root.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  return { root, legs, head, tail, h: 0.9 * s };
+}
 
 // 외계인 광선 (멀리서 쏨). 길쭉하게 빛나는 막대
 export function buildBolt() {

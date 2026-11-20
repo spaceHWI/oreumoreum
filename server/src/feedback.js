@@ -17,6 +17,7 @@ export function cleanItems(items) {
       at: Math.min(Date.now(), Math.max(0, num(it.at) || 0)) || Date.now(), text,
       ver: str(it.ver, 20), srv: str(it.srv, 12), map: str(it.map, 24), dev: str(it.dev, 10),
       w: num(it.w), h: num(it.h), x: num(it.x), z: num(it.z), nick: str(it.nick, 24),
+      ...(it.kind === 'crash' ? { kind: 'crash' } : {}), // #108 게임이 보낸 오류 알림 (메일은 보내지 않음)
     });
   }
   return out;
@@ -47,6 +48,7 @@ export function mailRaw(from, to, items, who) {
 
 export async function sendMail(env, items, who) {
   if (!env.FEEDBACK_MAIL || !env.FEEDBACK_TO || !env.FEEDBACK_FROM) return false;
+  items = items.filter((it) => it.kind !== 'crash'); if (!items.length) return false; // 오류 알림은 어드민 '받은 의견'에서만 (#108)
   const { EmailMessage } = await import('cloudflare:email');
   await env.FEEDBACK_MAIL.send(new EmailMessage(env.FEEDBACK_FROM, env.FEEDBACK_TO, mailRaw(env.FEEDBACK_FROM, env.FEEDBACK_TO, items, who)));
   return true;
