@@ -867,6 +867,10 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 @media (max-width: 600px) { #zone-title b { font-size: 34px; } #zone-title small { font-size: 14px; } #zone-title small::before, #zone-title small::after { width: 20px; } }
 @media (prefers-reduced-motion: reduce) { #zone-title.go { animation-name: zoneTitleFade; } @keyframes zoneTitleFade { 0%, 100% { opacity: 0; } 12%, 80% { opacity: 1; } } }
 /* 오름 지도 (#136): 구역을 세 묶음 색으로, 지금 자리 */
+/* 미니맵 (#138): 위 줄 오른쪽 아래, 둥근 창. 가 본 곳·더미·소굴·보물·볼거리. 누르면 오름 지도 */
+#minimap { position: fixed; z-index: 4; top: calc(var(--tb-top) + var(--tb-h) + 10px); right: var(--tb-r); width: 148px; height: 148px; border-radius: 50%; border: 2px solid var(--hair); background: rgba(20,24,18,.55); box-shadow: 0 4px 14px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; }
+#minimap[hidden] { display: none; }
+@media (max-width: 600px), (max-height: 500px) { #minimap { width: 104px; height: 104px; } }
 #omap .pop { width: min(420px, 100%); }
 #omap-now { margin: 0 0 8px; font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 #omap-now b { font-family: var(--display); font-weight: 800; font-size: 17px; }
@@ -1002,7 +1006,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-4c58be4beb.js">(function () {
+<script data-main="main-daae9248fb.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1055,6 +1059,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg><span class="fbl">의견 보내기</span><span class="fbs">의견</span><i class="fb-bub" id="fb-bub" hidden>불편한 점을 알려 주세요</i></button>
   </div>
 </div>
+<canvas id="minimap" role="button" tabindex="0" title="미니맵 · 누르면 오름 지도" aria-label="미니맵: 누르면 오름 지도" hidden></canvas>
 <div class="hud hud-sub">
 </div>
 <div id="cart-mark" class="panel round" hidden aria-hidden="true" title="마차"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h11v6H3zM2 9h13M14 12l3-1"/><circle cx="7" cy="18" r="2.5"/><ellipse cx="19" cy="10.5" rx="2.6" ry="1.8"/><path d="M18 12.5v5M21 12v5"/></svg><i class="tip"></i></div>
