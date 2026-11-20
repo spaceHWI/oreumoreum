@@ -65,6 +65,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
+- 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만
 - 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
 - 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
 - 마차 부딪힘 (#117): collide.js 의 움직이는 부딪힘 `setDyn([x,z,r,...])` — 마차(rides.js createCart)가 매 프레임 자리를 넣음(모양은 balance.js CART.block). `col.move(..., dyn=true)` 와 서 있을 때 `col.nudge()` 는 플레이어(걷기·탈것·노루 타기)만 씀. 적·노루 AI 는 안 막힘. 확인 `node tools/cartblock.js`

@@ -31,9 +31,11 @@ export function dumpBag(ch = chNear()) {
   if (!ch || dumpS.el) return;
   const bag = trash.store.bag, per = []; let n = 0, g = 0;
   const vk = 1 + wearV('vest'); // 베스트(#52): 받는 귤 더함
-  TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });
+  // 구역 귤 배수 (#137): 주울 때 모아 둔 bag.xv 를 종류별 귤에 비례해 나눠 더함
+  const base = TRASH_TYPES.reduce((s, t) => s + (bag[t.id] || 0) * t.gyul, 0), zk = base > 0 ? 1 + (bag.xv || 0) / base : 1;
+  TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * zk * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });
   if (!n) { toast('배낭이 비었어요. 쓰레기를 주워 와요'); return; }
-  TRASH_TYPES.forEach((t) => { bag[t.id] = 0; });
+  TRASH_TYPES.forEach((t) => { bag[t.id] = 0; }); bag.xv = 0;
   save.recycle.visits++; save.recycle.gyul += g;
   trash.store.commit();
   late.gyulExpect?.(g); addCoins(g); late.tut.notify('dump'); // 귤 숫자는 쏟아지는 연출 뒤에 올라감 (#133)

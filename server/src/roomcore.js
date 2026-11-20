@@ -1,7 +1,7 @@
 // 방 하나의 규칙 (#7). Cloudflare 와 상관없는 순수 JS 라 Node 에서 그대로 재 볼 수 있음 (bench.mjs, tools/loadtest.js)
 // 받는 것 (JSON 문자열):
 //   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로). o·nick 은 바뀔 때만 와도 됨 (#115)
-//   {t:'take', h}         더미 h 에서 하나 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}
+//   {t:'take', h, n?}     더미 h 에서 n(없으면 1)개 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
@@ -88,7 +88,8 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
     if ('nick' in d) d.nick = cleanText(d.nick, NET.nickMax);
     // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
-    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; }
+    if ('gs' in d) d.gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0; // 장비 점수 (#137, 이름표 옆 숫자. 보여 주기만)
+    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; if (!('gs' in d) && 'gs' in p.d) d.gs = p.d.gs; }
     if ('say' in d) d.say = d.say && typeof d.say === 'object' && isNum(d.say.at) ? { t: cleanText(d.say.t, NET.sayMax), at: d.say.at } : null;
     // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
     const ht = d.ht;
@@ -140,10 +141,11 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       }
       case 'unmount': if (unride(p)) all(ridesMsg()); break;
       case 'p': presence(p, m.d); break;
-      case 'take': {
+      case 'take': { // n: 한 번에 주운 수 (#137 묶어 보냄, 없으면 1)
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
-        if (H[h] > 0 && p.takeTok >= 1) { p.takeTok--; H[h]--; heapsDirty = true; heapOut.set(h, H[h]); }
-        else { st.takeNo++; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: 1 })); } // 늦게 온 마지막 하나·너무 빠른 줍기: 주운 사람이 되돌림
+        const n = Math.max(1, Math.min(NET.takeMax, m.n | 0 || 1)), got = Math.max(0, Math.min(n, H[h], Math.floor(p.takeTok)));
+        if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); }
+        if (got < n) { st.takeNo += n - got; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: n - got })); } // 늦게 온 마지막 것·너무 빠른 줍기: 주운 사람이 그만큼 되돌림
         break;
       }
       case 'put': {

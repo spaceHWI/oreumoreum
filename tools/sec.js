@@ -118,11 +118,13 @@ async function startServers() {
     ok(rn.status === 200 && rn.j.token && rn.j.token !== old && (await req('dev', '/me', { token: old })).status === 401, '수명이 얼마 안 남은 토큰은 새로 주고 옛 것은 버림');
 
     /* ---------- 저장 (서버가 판정) ---------- */
+    const { NET } = await import('../src/balance.js'); // 몫·줍기 한도는 balance.js 값으로 (#137 에서 커짐)
     const S0 = { coins: 5, equip: { tool: 1, bag: 0, shoes: 1, weapon: 1 }, clothes: { own: {}, wear: {} }, rides: { own: [], cur: null }, hairs: {}, trash: { total: 0 }, nick: 'a' };
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: S0 } });
     const inflate = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 999999 } } });
     const me1 = (await req('dev', '/me', { token: A.token })).j;
-    ok(inflate.j.fixed.includes('coins') && me1.save.coins <= 5 + 1500, `귤 부풀리기 바로잡힘 (${me1.save.coins})`);
+    ok(inflate.j.fixed.includes('coins') && me1.save.coins <= 5 + NET.earnBurst + NET.earnPerSec * 5, `귤 부풀리기 바로잡힘 (${me1.save.coins})`);
+    await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0 } } }); // 위에서 받아 준 몫을 비움 (귤이 줄어드는 건 늘 받아 줌)
     const buyAll = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, rides: { own: ['skate', 'scoot', 'horse'], cur: 'horse' }, equip: { tool: 5, bag: 5, shoes: 5, weapon: 3 } } } });
     const me2 = (await req('dev', '/me', { token: A.token })).j;
     ok(buyAll.j.fixed.includes('items') && me2.save.rides.own.length === 0 && me2.save.equip.tool === 1, '돈 없이 탈것·장비 사기 되돌림');
@@ -134,10 +136,11 @@ async function startServers() {
     // 여러 탭·기기: 같은 계정 토큰 둘로 번갈아 부풀려도 몫은 계정 하나
     const A2 = await login('dev', 'alice');
     let c = (await req('dev', '/me', { token: A.token })).j.save.coins;
-    for (let i = 0; i < 6; i++) { const tk = i % 2 ? A.token : A2.token; c += 1000; await req('dev', '/save', { method: 'PUT', token: tk, body: { save: { ...S0, coins: c, trash: { total: 0 } } } }); c = (await req('dev', '/me', { token: tk })).j.save.coins; }
-    ok(c <= me3.save.coins + 1600, `여러 탭으로 몫 늘리기 막힘 (6번 +1000 → ${c})`);
+    const step = Math.ceil(NET.earnBurst * 0.4), t0 = Date.now(); // 6번이면 몫(earnBurst)의 2.4배
+    for (let i = 0; i < 6; i++) { const tk = i % 2 ? A.token : A2.token; c += step; await req('dev', '/save', { method: 'PUT', token: tk, body: { save: { ...S0, coins: c, trash: { total: 0 } } } }); c = (await req('dev', '/me', { token: tk })).j.save.coins; }
+    ok(c <= me3.save.coins + NET.earnBurst + NET.earnPerSec * ((Date.now() - t0) / 1000 + 5), `여러 탭으로 몫 늘리기 막힘 (6번 +${step} → ${c})`);
     // 저장 되돌리기: 산 뒤 옛 저장(귤 많은 때)을 다시 보내면 늘어난 귤로 셈
-    const big = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: c + 100000 } } });
+    const big = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: c + NET.earnBurst * 2 } } });
     ok(big.j.fixed.includes('coins'), '옛 저장 되돌리기도 몫 안에서만');
     ok((await req('dev', '/save', { method: 'PUT', token: A.token, body: '{"save":' + '"' + 'x'.repeat(260000) + '"}' })).status >= 400, '아주 큰 저장 거절');
     // 닉네임·말 넣기
@@ -187,9 +190,13 @@ async function startServers() {
     const no = [W, X].reduce((n, s) => n + s.msgs.filter((m) => m.t === 'h' && m.h === h && m.no).length, 0);
     ok(sent - no === full, `동시 줍기: 더미 ${full}개에 ${sent}번 → 받아 준 줍기 ${sent - no} (나머지는 되돌리라고 알림)`);
     const fast = await sock('dev', 'oreum-namsongi-battle', { ch: 5 });
-    const h2 = fast.msgs[0].heaps.findIndex((n) => n >= 20);
-    for (let j = 0; j < 14; j++) fast.send({ t: 'take', h: h2 }); await sleep(400);
-    ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 14 - 6 - 1, '빠른 줍기(초당 6번 넘게) 되돌림');
+    // #137: 줍기는 더미마다 묶어 {t:'take', h, n} 으로 옴. 한 번에 takeMax 개씩 4번 = takePerSec 넘게
+    const h2 = fast.msgs[0].heaps.findIndex((n) => n >= NET.takeMax * 4), want = NET.takeMax * 4;
+    for (let j = 0; j < 4; j++) fast.send({ t: 'take', h: h2, n: NET.takeMax }); await sleep(400);
+    const noN = fast.msgs.filter((m) => m.t === 'h' && m.no).reduce((a, m) => a + (m.no | 0), 0);
+    ok(noN >= want - NET.takePerSec - 1, `빠른 줍기(초당 ${NET.takePerSec}개 넘게) 되돌림 (${want}개 중 ${noN}개)`);
+    fast.send({ t: 'take', h: h2, n: 9999 }); await sleep(300);
+    ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 2, '한 번에 아주 많이 줍기도 한도 안에서만');
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });
@@ -202,8 +209,8 @@ async function startServers() {
     const U = await login('plain', 'user1'); const Bs = await login('plain', 'boss');
     ok(!U.admin && (await req('plain', '/me', { token: U.token })).j.admin === false && (await req('plain', '/feedback', { token: U.token })).status === 403, '다른 계정은 어드민 아님');
     ok(Bs.admin && (await req('plain', '/me', { token: Bs.token })).j.admin === true && (await req('plain', '/feedback', { token: Bs.token })).status === 200, 'ADMIN_SUBS 계정만 어드민');
-    const ug = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...S0, coins: 50000 } } });
-    const bg = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: 50000 } } });
+    const ug = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
+    const bg = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     ok(ug.j.fixed.includes('coins') && !bg.j.fixed.length, '귤 채우기는 어드민 계정만 서버가 받아 줌');
 
     /* ---------- 의견 도배·요청 수 ---------- */

@@ -8,6 +8,7 @@ import { groundAt } from '../world.js';
 import { MAPS } from '../maps.js';
 import { createAchievements, BADGES } from '../achievements.js';
 import { initUiTips } from '../uitips.js';
+import { gearScore } from '../gearscore.js';
 import { createTips, TIP, TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
 import { $, isTouch, save, lookS, persist, MAP_ID } from './save.js';
@@ -53,7 +54,7 @@ export function topStack() {
   b.classList.toggle('tip-on', on); if (on) b.style.setProperty('--tip-h', tp.offsetHeight + 'px');
   if (bn && !bn.hidden) b.style.setProperty('--ban-h', bn.offsetHeight + 'px');
 }
-initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () => (save.equip.bag === 0 ? '호주머니' : '배낭') } }); // #60 UI 누르면 토스트
+initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () => (save.equip.bag === 0 ? '호주머니' : '배낭'), score: () => gearScore(save) } }); // #60 UI 누르면 토스트
 
 // ---------- 상황에 맞는 팁 (#66): 표는 tips.js ----------
 const tipEl = $('tip'); let tipT = 0, tipNow = null, tipMarkT = 0, tipMarkPos = null; export { tipMarkT }; export { tipMarkPos };
@@ -125,6 +126,20 @@ export function updateStats() {
     else if (d < 0) { let v = shown + d; if (v < 0) { held = Math.max(0, held + v); v = 0; } shown = Math.min(v, Math.max(0, save.coins - held)); COUNT.on = false; paintCoins(shown); }
   }
   gyulTick();
+  updateScore();
+}
+// 장비 점수 (#137): 위 줄 귤 옆. 바뀌면 숫자가 튀고 '+n' (처음 그릴 때는 조용히)
+let lastScore = -1;
+export function updateScore() {
+  const g = gearScore(save); if (g.total === lastScore) return;
+  const d = lastScore < 0 ? 0 : g.total - lastScore; lastScore = g.total; state.gearScore = g.total;
+  const pill = $('score-pill'); $('gscore').textContent = String(g.total); topFit.dirty();
+  if (!d) return;
+  pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump');
+  const r = pill.getBoundingClientRect(); if (!r.width) return;
+  const el = document.createElement('div'); el.className = 'fx-score' + (d < 0 ? ' down' : ''); el.textContent = `${d > 0 ? '+' : ''}${d}`;
+  el.style.left = (r.left + r.width / 2) + 'px'; el.style.top = (r.bottom + 14) + 'px'; document.body.append(el); setTimeout(() => el.remove(), 1000);
+  late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank', 'inbox'];
