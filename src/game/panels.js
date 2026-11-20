@@ -7,7 +7,7 @@ import { serverId } from '../server.js';
 import { postFeedback } from '../online.js';
 import { createFeedback } from '../feedback.js';
 import { setCrashSink } from '../crash.js';
-import { late } from './state.js';
+import { late, state } from './state.js';
 import { $, isTouch, save, MAP_ID } from './save.js';
 import { canvas } from './scene.js';
 import { runner, player } from './place.js';
@@ -52,6 +52,9 @@ const fbLen = () => { $('feedback-len').textContent = `${$('feedback-input').val
 function openFeedback(close = true) { if (close) closePanels(); $('feedback-input').maxLength = FEEDBACK.max; fbLen(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); }
 $('menu-feedback').addEventListener('click', () => openFeedback());
 $('fb-chip').addEventListener('click', () => openFeedback()); // 위쪽 줄 말풍선 (#103)
+// 처음 들어온 뒤 한 번: 버튼이 통통 튀고 말풍선 3초 (기기당 한 번, #112)
+{ const K = (__DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1') + '.fbhint'; let seen = false; try { seen = !!localStorage.getItem(K); } catch (e) { /* 저장 불가 */ }
+  if (!seen) { const iv = setInterval(() => { if (!state.sessionOn || !$('intro').hidden) return; clearInterval(iv); try { localStorage.setItem(K, '1'); } catch (e) { /* */ } setTimeout(() => { const c = $('fb-chip'), b = $('fb-bub'); c.classList.add('hop'); b.hidden = false; setTimeout(() => { c.classList.remove('hop'); b.hidden = true; }, 3000); }, 1500); }, 500); } }
 $('intro-feedback').addEventListener('click', (e) => { e.stopPropagation(); openFeedback(false); }); // 첫 화면 베타 안내 옆
 $('feedback-input').addEventListener('input', fbLen);
 $('feedback-input').addEventListener('keydown', (e) => e.stopPropagation());
