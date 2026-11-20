@@ -1,6 +1,7 @@
 // 서버 고르기, 첫 화면 시작, 로그인 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { serverId, setServerId, SERVERS, SERVER_ART, SERVER_LABEL } from '../server.js';
-import { ONLINE, createAccount, mountLogin } from '../online.js';
+import { ONLINE, createAccount, mountLogin, guestExpired, loggedIn } from '../online.js';
+import { NET } from '../balance.js';
 import { state, late } from './state.js';
 import { $, save, srvSwitched, ab, writeLocal, persist, MAP_ID, prevMap } from './save.js';
 import { canvas } from './scene.js';
@@ -68,6 +69,9 @@ function enter() {
 }
 $('enter').addEventListener('click', enter);
 $('enter').disabled = false; $('enter').removeAttribute('aria-busy'); // 게임을 다 받은 뒤에야 누를 수 있음 (#90, page.html)
+// 손님 기록 7일 (#94): 지워졌으면 첫 화면에 한 줄, 메뉴에 남은 날짜 (열 때마다 마지막 접속이 갱신돼 NET.keepDays 로 돌아감)
+if (guestExpired) $('intro-expired').hidden = false;
+if (!loggedIn()) { const left = Math.max(0, Math.ceil(((Number(save.lastSeen) || Date.now()) + NET.keepDays * 864e5 - Date.now()) / 864e5)); $('guest-days').textContent = `기록 보관 ${left}일 남음`; $('m-guest').hidden = false; }
 // 멀티 서버 계정 (#7): 서버 주소가 있을 때만. 첫 화면에 베타 안내·구글 로그인, 메뉴에 남은 날짜·로그아웃·내 기록 지우기
 if (ONLINE) {
   state.account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => state.sessionOn,
