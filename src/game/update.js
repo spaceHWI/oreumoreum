@@ -4,6 +4,7 @@ import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
 import * as THREE from 'three';
+import { orientBody, flinchK } from '../bodytilt.js';
 import { height, groundAt, surfaceAt } from '../world.js';
 import { G } from '../gfx2.js';
 import { THROW } from '../runner.js';
@@ -25,7 +26,7 @@ import { mealS, tickMeal, cutS, tickCut, tickLeap, updateBuffUI, tickShopMark } 
 import { toolNow, tickPick, tickFly, tickZone } from './pickup.js';
 import { tickDump, tickAutoGo, tickChArrow, updateContext } from './dump.js';
 import { leaving, leaveTo } from './look.js';
-import { sound, tickKnock, _kq, _ka, enemyWarn, dumpWarn, dumpers, threatNear } from './hooks.js';
+import { sound, tickKnock, enemyWarn, dumpWarn, dumpers, threatNear } from './hooks.js';
 import { tickPace, pace } from './pace.js';
 import { deerNet } from './deernet.js';
 
@@ -105,7 +106,7 @@ function updatePlayer(dt) {
     checkViewpoint();
     runner.root.position.copy(p.pos); runner.root.position.y += (d.seatY ?? 0.95) + (d.speed > 4 ? Math.abs(Math.sin(d.phase * 0.5)) * 0.25 : 0);
     if (d.seatZ) { runner.root.position.x += Math.sin(d.heading) * d.seatZ; runner.root.position.z += Math.cos(d.heading) * d.seatZ; } // 노루 등 (#2)
-    runner.root.rotation.y = p.heading;
+    orientBody(runner.root, p.heading); // 노루 위: 기울기 없이 (#107)
     followLight(); return;
   }
   const slow = joy.active && p.joyMag < 0.6;
@@ -138,7 +139,7 @@ function updatePlayer(dt) {
     const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
     if (col) { const r = col.move(p.pos.x, p.pos.z, nx, nz); nx = r.x; nz = r.z; }
     p.pos.set(nx, height(nx, nz), nz);
-    p.kb.multiplyScalar(Math.max(0, 1 - dt * 2.2));
+    p.kb.multiplyScalar(Math.max(0, 1 - dt * (p.knock ? BOAR.knockDrag : 2.2))); // 맞음 밀림은 짧게 (#107)
   }
   tickJump(dt); placeRunner(dt);
 }
@@ -159,6 +160,7 @@ function checkViewpoint() {
   player.viewSeen = true; state.awe = 4; toast(spots.viewpointLine);
   ach.emit('view-' + MAP_ID);
 }
+const _tk = [0, 0, 0], _tl = [0, 0, 0], _tilts = [_tk, _tl];
 export function placeRunner(dt = 1) {
   // 계단·턱: 논리 위치는 땅에 딱 붙이고, 보이는 높이만 부드럽게 따라가 덜그럭거림을 없앰 (큰 낙차는 바로 반영)
   // 비탈처럼 걸음에 비례해 이어지는 높이 변화는 바로 따라가고(늦게 따라가면 오르막에서 하반신이 땅에 묻힘), 계단처럼 툭 끊기는 변화만 부드럽게.
@@ -168,9 +170,12 @@ export function placeRunner(dt = 1) {
     if (Math.abs(dyG) <= run * 1.4 + 0.004) p.visY += dyG;
     const dy = p.pos.y - p.visY; p.visY = Math.abs(dy) > 1.6 || p.riding || p.cart || p.air ? p.pos.y : p.visY + dy * Math.min(1, dt * (dy > 0 ? 18 : 9)); }
   runner.root.position.copy(player.pos); runner.root.position.y = player.visY + player.jumpY + rig.lift(); // 탈것 판·안장 높이 (#69)
-  runner.root.rotation.y = player.heading;
-  { const k = player.knock; if (k && k.ang > 0.001) { runner.root.rotation.y = player.heading + k.spin; _ka.set(k.ax, 0, k.az).normalize(); _kq.setFromAxisAngle(_ka, k.ang); runner.root.quaternion.premultiply(_kq); } }
-  { const L = hp.lie; if (L.ang > 0.001) { const h = player.heading; _ka.set(-Math.cos(h), 0, Math.sin(h)); _kq.setFromAxisAngle(_ka, L.ang); runner.root.quaternion.premultiply(_kq); runner.root.position.y += L.y; } } // 뒤로 누움 (#36)
+  // 몸 방향은 매번 처음부터 (#107): 맞음 움찔 + 쓰러져 누움(#36)을 bodytilt.js 한 곳에서 합침. 남는 기울기 없음
+  { const k = player.knock, L = hp.lie, h = player.heading;
+    _tk[0] = k ? k.ax : 0; _tk[1] = k ? k.az : 0; _tk[2] = k ? k.ang : 0;
+    _tl[0] = -Math.cos(h); _tl[1] = Math.sin(h); _tl[2] = L.ang;
+    orientBody(runner.root, h, _tilts);
+    if (L.ang > 0.001) runner.root.position.y += L.y; }
   followLight();
 }
 const shadowFocus = new THREE.Vector3(), camFwd = new THREE.Vector3();
@@ -216,7 +221,7 @@ function frame(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1); last = now; // 맞힌 순간 짧은 멈춤 (#89)
   tickPace(Math.min(0.05, rawDt), now / 1000);
   state.camHold = Math.max(0, state.camHold - dt);
-  hp.tryBegin(player, BOAR.rollT); hp.update(dt, player); player.down = hp.isDown || hp.pending;
+  hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position); // 마차 (#69): 앉은 사람이 따라가게 먼저
   tickAutoGo(); updatePlayer(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); state.farCull?.update(dt);
   net.update(dt); net.send(false);
@@ -232,11 +237,12 @@ function frame(now) {
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
   if (player.ride && (player.pose === 'sit' || mealS.on || cutS.on || state.photoState || state.fishing?.active || cam.mode === 'leap' || hp.isDown || player.rescue || player.knock)) dismountRide(); // 다른 일을 시작하면 내림 (#69)
-  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.knock && !player.air ? 'crouch' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
+  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
-  runner.animate(dt, { speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, edur: EMOTE_BY[player.pose]?.dur || 2, over: state.emo.overlay() && { ...state.emo.overlay(), dur: EMOTE_BY[state.emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)), tool: save.equip.tool, dur: toolNow().time, rod: state.fishing ? state.fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
+  // 비탈 숙임(뼈)은 맞는 동안 줄여 움찔 기울기(root)와 겹쳐 눕지 않게 (#107)
+  runner.animate(dt, { speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, edur: EMOTE_BY[player.pose]?.dur || 2, over: state.emo.overlay() && { ...state.emo.overlay(), dur: EMOTE_BY[state.emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)) * (player.knock ? 1 - flinchK(player.knock.t) : 1), tool: save.equip.tool, dur: toolNow().time, rod: state.fishing ? state.fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
   state.fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);

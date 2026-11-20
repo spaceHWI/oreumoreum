@@ -103,13 +103,13 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
     hideCrew();
     onDown?.(down.wait);
   }
-  // 넉백(#32)이 끝나고 땅에 누운 뒤에 쓰러짐을 시작. 넉백이 없으면 바로
-  function tryBegin(P, rollT) {
+  // 맞음 밀림(#107)이 땅에 닿은 뒤 쓰러짐을 시작 (움찔하던 기울기에서 이어 눕고, 움찔 값은 begin 에서 지움). 밀림이 없으면 바로
+  function tryBegin(P) {
     if (!pending || down) return;
     if (!enabled()) { pending = false; hp = MAX(); return; }
     const k = P.knock;
     if (P.air) return;
-    if (k) { if (k.land < 0 || k.t - k.land < rollT) return; begin(P, Math.atan2(k.az, -k.ax), k.ang); return; }
+    if (k) { begin(P, Math.atan2(k.az, -k.ax), k.ang); return; }
     begin(P);
   }
 
