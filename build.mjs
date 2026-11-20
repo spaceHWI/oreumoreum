@@ -60,6 +60,7 @@ const csp = (scriptSrc) => [
 ].join('; ');
 const wrap = (CSP, b) => '<!doctype html><html lang="ko"><head><meta charset="utf-8">' + `<meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="strict-origin-when-cross-origin">` + '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">' + meta + '</head><body>' + b + '</body></html>';
 fs.copyFileSync('src/og.png', 'dist/og.png');
+fs.copyFileSync('src/privacy.html', 'dist/privacy.html'); // 개인정보처리방침 (구글 로그인 앱 게시에 필요)
 // 홈 화면 추가 (#91): 앱 아이콘 PNG(tools/icons.mjs 로 구워 src/icons 에 커밋)와 manifest. 주소는 상대 경로라 /oreumoreum/ 과 /oreumoreum/dev/ 어디서나 맞음
 for (const f of fs.readdirSync('src/icons')) fs.copyFileSync('src/icons/' + f, 'dist/' + f);
 fs.writeFileSync('dist/manifest.webmanifest', JSON.stringify({

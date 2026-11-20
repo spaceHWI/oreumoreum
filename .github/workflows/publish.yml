@@ -32,7 +32,7 @@ jobs:
           if [ "$GITHUB_REF_NAME" = dev ]; then D=site/dev; mkdir -p $D; else D=site; fi
           # #85: 게임 코드(main-해시.js)·모델(a/*.bin)은 내용 해시 이름. 예전 것은 지우고 새로 넣음 (dev 폴더는 건드리지 않게 $D 바로 아래만)
           rm -f $D/main-*.js; rm -rf $D/a
-          cp dist/index.html dist/og.png dist/logo-sian.html dist/manifest.webmanifest dist/*.png dist/main-*.js $D/; cp -r dist/a $D/a
+          cp dist/index.html dist/privacy.html dist/og.png dist/logo-sian.html dist/manifest.webmanifest dist/*.png dist/main-*.js $D/; cp -r dist/a $D/a
           cd site
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
