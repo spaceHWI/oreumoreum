@@ -7,10 +7,11 @@ import { wx, spots, applySky } from './scene.js';
 import { player } from './place.js';
 import { toast, updateStats, busy, closePanels, ach, openAch } from './hud.js';
 import { marker } from './input.js';
+import { initInbox, inboxCheck } from './inbox.js';
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });
-$('btn-menu').addEventListener('click', () => { const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
+$('btn-menu').addEventListener('click', () => { inboxCheck(); const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
 $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'));
 // 처음부터 다시(#33): 2초 꾹 누르면 이 기기의 저장을 지움. 닉네임·그래픽·소리 설정은 남김 (돌탑의 돌은 서버에 있어 그대로)
 {
@@ -39,6 +40,7 @@ export function enableDev() {
   if (devOn) return; devOn = true;
   $('m-dev').hidden = false;
   if (state.debugReady) late.exposeDebug();
+  if (ONLINE) initInbox(); // 받은 의견 (#96): 서버 어드민에게만
   {
     const TK = 'oreumoreum.hwi.tod'; // 시간대 (이 화면에만, 새로 고쳐도 유지)
     const tv = $('adm-tv'), sl = $('adm-tod');

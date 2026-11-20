@@ -152,7 +152,8 @@ export default {
       if (url.pathname === '/feedback' && req.method === 'GET') { // 받은 의견 보기: 어드민(또는 로컬 확인)만
         const s = await who();
         if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
-        return json(await accounts(env).feedbackList());
+        const before = Math.max(0, Math.floor(Number(url.searchParams.get('before'))) || 0); // 이어 받기: 이 id 보다 오래된 50개 (#96)
+        return json(await accounts(env).feedbackList(50, before));
       }
       return json({ error: 'not found' }, 404);
     } catch (e) {

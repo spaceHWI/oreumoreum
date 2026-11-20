@@ -60,6 +60,8 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 }
 // 의견 보내기 (#77): 서버가 있으면 글 묶음을 POST /feedback (로그인 안 해도 됨)
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
+// 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
+export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 

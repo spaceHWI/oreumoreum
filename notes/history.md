@@ -691,3 +691,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `online.js` `loadSave`: 손님(세션 없음)은 `save.lastSeen`(마지막 접속)이 `NET.keepDays` 일보다 오래됐으면 소리·그래픽 설정(`gfx·gfxV3·perf·introSound·music`)만 남기고 지움. 값이 없던 예전 저장은 지금으로 채워 바로 지우지 않음. `writeLocal` 이 저장마다 `lastSeen` 갱신(`stampGuest`). 서버로 보내는 `strip` 에선 `lastSeen` 뺌
 - 지웠으면 `guestExpired` → 첫 화면 `#intro-expired` "7일 동안 오지 않아 기록이 지워졌어요". 메뉴에 손님용 `#m-guest` "기록 보관 N일 남음"(`start.js`). `privacy.html` 손님 문장에 7일 안내
 - 확인: `build.mjs`, `tools/oldsave.js`(8일 지난 `old8` 추가: 귤 777 → 5 로 초기화, 설정 유지) 통과
+
+## 어드민 메뉴에서 받은 의견 보기 (#96)
+- `src/game/inbox.js`: 서버 어드민(`enableDev`)일 때만 개발자 메뉴에 "받은 의견" 항목. 패널에 최신순 목록(한국 시각·글·닉네임/버전/기기), 글은 `cleanText` 후 `textContent` 로만 그림. 누르거나 길게 누르면 글 복사, "새로 고침"·"더 보기"(`?before=<id>`)
+- 마지막으로 본 id 는 기기 `oreumoreum.inbox.seen`. 새 글 수는 개발자 메뉴 항목·"어드민 설정"·메뉴 버튼의 점으로. 확인은 게임 열 때 1번 + 메뉴 열 때(30초 안 다시 열면 건너뜀)
+- 서버 `GET /feedback?before=<id>` 이어 받기(어드민만). `online.js` `getFeedback`
+- 확인: `build.mjs`, `tools/err.js`, `tools/sec.js` 49/49 통과. 화면 확인은 어드민 로그인이 필요해 하지 못함

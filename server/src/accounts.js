@@ -76,7 +76,7 @@ export class Accounts extends DurableObject {
     return items.length;
   }
   feedbackMailed(k) { this.sql.exec('UPDATE fb SET mailed = 1 WHERE id > (SELECT MAX(id) FROM fb) - ?', k); }
-  feedbackList(k = 50) { return this.sql.exec('SELECT id, at, item, mailed FROM fb ORDER BY id DESC LIMIT ?', k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
+  feedbackList(k = 50, before = 0) { return this.sql.exec('SELECT id, at, item, mailed FROM fb WHERE (? = 0 OR id < ?) ORDER BY id DESC LIMIT ?', before, before, k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
   /* ---------- 랭킹 (#11) ---------- */
   // onlyAll: 기기 기록을 옮긴 몫은 오늘·이번 주에 넣지 않음
   rankAdd(sub, srv, n, t = Date.now(), onlyAll = false) {
