@@ -681,9 +681,9 @@ export const PHOTOG = {
 // up 0 = 오르막은 못 탐 (옆구리에 들고 걷기 carry 속도). glide = 관성(손을 떼도 미끄러짐, 천천히 붙고 천천히 멎음)
 export const RIDES = {
   list: [
-    { id: 'skate', name: '스케이트보드', price: 600, flat: 1.3, up: 0, down: 2.0, glide: true },
-    { id: 'scoot', name: '스쿠터', price: 2000, flat: 1.6, up: 1.3, down: 1.8 },
-    { id: 'horse', name: '조랑말', price: 5000, flat: 1.9, up: 1.7, down: 1.9 },
+    { id: 'skate', name: '스케이트보드', price: 1500, flat: 1.3, up: 0, down: 2.0, glide: true },
+    { id: 'scoot', name: '스쿠터', price: 4000, flat: 1.6, up: 1.3, down: 1.8 },
+    { id: 'horse', name: '조랑말', price: 8000, flat: 1.9, up: 1.7, down: 1.9 },
   ],
   base: 10,       // 달리기 속도 (main.js)
   off: 0.7,       // 길(탐방로·들머리 길·가게 골목) 밖 풀밭·숲
