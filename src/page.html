@@ -935,6 +935,19 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 }
 </style>
 
+<!-- 인앱 브라우저 안내 (#118): 카카오톡·인스타그램 등 안 브라우저면 바깥 브라우저로 열도록 이끈다. 큰 파일을 받기 전에 먼저 본다 -->
+<div id="inapp" hidden style="position:fixed;inset:0;z-index:2147483000;background:#24251f;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Gothic A1','Apple SD Gothic Neo','Malgun Gothic',sans-serif">
+  <div style="max-width:340px;width:100%;text-align:center">
+    <div style="font-size:44px;line-height:1">🍊</div>
+    <h2 style="margin:14px 0 8px;font-weight:800;font-size:19px;line-height:1.35">여기서는 잘 안 돼요<br>크롬이나 사파리에서 열어 주세요</h2>
+    <p id="inapp-ios" hidden style="margin:0 0 16px;font-size:13px;font-weight:500;color:rgba(255,255,255,.68)">오른쪽 아래 ⋯ → 다른 브라우저로 열기</p>
+    <button type="button" id="inapp-open" style="display:block;width:100%;margin:12px 0 8px;padding:13px;border:0;border-radius:999px;background:#ff8a1f;color:#201000;font-weight:800;font-size:15px">바깥 브라우저로 열기</button>
+    <button type="button" id="inapp-copy" style="display:block;width:100%;margin:0 0 18px;padding:12px;border:1px solid rgba(255,255,255,.16);border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-weight:800;font-size:14px">주소 복사</button>
+    <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
+  </div>
+</div>
+<script>__INAPP__</script>
+
 <canvas id="view" tabindex="0" aria-label="오름 3D 탐방로. 러너를 움직여 길을 따라 오를 수 있어요."></canvas>
 
 <!-- 위쪽 한 줄 (#75): 왼쪽 귤·배낭·깨끗한 정도 | 가운데 HP·버프 | 오른쪽 구역·좌표·오늘의 업적. 이름 대신 숫자만, 누르면 토스트(#60) -->

@@ -780,3 +780,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 귤이 모자란 것은 `.poor` 흑백: 장비 단계 칸·사기 버튼, 옷 탭, LEAP(신발도 순서 없이 `buyGear('shoes', i)`), 미장원·스톤·탈것 카드. 귤 수가 바뀌면(`updateStats` → `late.shopCoinsChanged`) 열린 상점·가게 팝업을 다시 그림
 - 서버 `validate.js spentOf`: 장비는 올라간 단계 값만 셈 (여러 단계 건너뛴 저장도 통과)
 - `tools/econ.js --skip`(튜토리얼 뒤 최고 단계만 사는 길), `tools/anyorder.js`(브라우저 확인)
+
+## #118 카카오톡 안 브라우저 안내
+- `src/inapp.js`: 페이지 맨 앞 인라인 스크립트(빌드가 `page.html` 의 `__INAPP__` 자리에 넣고 CSP 해시에 더함). userAgent 에 KAKAOTALK(자동 `kakaotalk://web/openExternal?url=` + 안드로이드는 1.2초 뒤 크롬 `intent://`) 또는 Instagram·FBAN|FBAV·NAVER(inapp·Line/ (안내 화면만)이면 `#inapp` 안내 화면(바깥 브라우저로 열기·주소 복사·아이폰은 ⋯ 안내·작은 '그냥 여기서 하기')
+- Pages 빌드(`index.html`)는 게임 코드(`main-*.js`)를 이 스크립트가 불러옴(`data-main`). 인앱이면 '그냥 여기서 하기' 를 누를 때까지 안 받음. 한 파일 빌드(test.html)는 코드가 인라인이라 안내가 위에 덮기만 함
+- 실제 기기 확인은 사용자가

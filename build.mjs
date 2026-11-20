@@ -26,12 +26,15 @@ const js = (await bundle(listOne)).replace(/<\/script/gi, '<\\/script'); // 한 
 const jsSplit = await bundle(listSplit);
 const mainName = `main-${hash(jsSplit)}.js`;
 fs.writeFileSync('dist/' + mainName, jsSplit);
-const page = fs.readFileSync('src/page.html', 'utf8');
+const inapp = fs.readFileSync('src/inapp.js', 'utf8').trim(); // 인앱 브라우저 안내 (#118): 게임 코드보다 먼저 도는 작은 인라인 스크립트
+const inappHash = crypto.createHash('sha256').update(inapp, 'utf8').digest('base64');
+const page0 = fs.readFileSync('src/page.html', 'utf8');
+const page = page0.replace('<script>__INAPP__</script>', `<script>${inapp}</script>`);
 const i = page.indexOf('__BUNDLE__');
 const body = page.slice(0, i) + js + page.slice(i + 10);
 // Pages 용: 인라인 스크립트 대신 해시 붙은 main-*.js 를 부름
 const sTag = page.lastIndexOf('<script>', i), eTag = page.indexOf('</script>', i) + 9;
-const bodySplit = page.slice(0, sTag) + `<script src="${mainName}"></script>` + page.slice(eTag);
+const bodySplit = (page.slice(0, sTag) + page.slice(eTag)).replace(`<script>${inapp}</script>`, () => `<script data-main="${mainName}">${inapp}</script>`); // 게임 코드는 인앱 안내(src/inapp.js)가 불러옴
 fs.writeFileSync('dist/oreumoreum.html', body);
 // 파비콘·공유 이미지 (#72). og:image 는 게시할 때 함께 올리는 og.png (src/og.png, tools/og.mjs 로 만듦)
 const { logoMark } = await import('./src/logo.js');
@@ -49,7 +52,7 @@ const meta = ''
 const scriptHash = crypto.createHash('sha256').update(js, 'utf8').digest('base64');
 const csp = (scriptSrc) => [
   "default-src 'self'",
-  `script-src ${scriptSrc} 'wasm-unsafe-eval' https://accounts.google.com/gsi/client`, // wasm: 모델 풀기(meshopt, #85). JS eval 은 여전히 막음
+  `script-src ${scriptSrc} 'sha256-${inappHash}' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client`, // wasm: 모델 풀기(meshopt, #85). JS eval 은 여전히 막음
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
