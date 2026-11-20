@@ -1,4 +1,4 @@
-// 랭킹 (#11): 치운 쓰레기 수. 오늘·이번 주·전체 × 깨끗한 오름·전투 오름
+// 랭킹 (#11): 치운 쓰레기 수. 오늘·이번 주·전체. 서버는 전투 오름 하나 (#98, 예전 깨끗한 오름 기록은 합쳐서 한 줄)
 // - 로그인했으면 서버(GET /rank) 위 50명과 내 순위. 내 줄은 강조하고 화면 밖이면 맨 아래(위)에 붙어 있음
 // - 서버가 없거나 손님이면 이 기기의 내 기록(오늘·이번 주·전체)만 + '로그인하면 랭킹에 올라가요'
 // - 버린 뒤 오늘 순위가 오르면 작은 토스트, 오늘 10위·1위 안이면 업적 이벤트 rank-top10·rank-top1 (하루 한 번)
@@ -7,12 +7,12 @@ import { RANK } from './balance.js';
 import { kstDay } from './rankday.js';
 
 const RANGE_LABEL = { day: '오늘', week: '이번 주', all: '전체' };
-const SRV_LABEL = { clean: '깨끗한 오름', battle: '전투 오름' };
 
-// account: online.js createAccount (없으면 null), store: 쓰레기 저장소(없으면 null), srvNow(): 지금 서버,
-// face(look): 머리 아이콘 svg 문자열, el: { box, list, note, srv, range }
-export function createRank({ account, store, srvNow, face, toast, ach, save, persist, el, onOpen }) {
-  const st = { srv: 'clean', range: 'day', seq: 0, last: {}, lastCheck: 0, open: false };
+// account: online.js createAccount (없으면 null), store: 쓰레기 저장소(없으면 null),
+// face(look): 머리 아이콘 svg 문자열, el: { box, list, note, range }
+const SRV = 'battle';
+export function createRank({ account, store, face, toast, ach, save, persist, el, onOpen }) {
+  const st = { srv: SRV, range: 'day', seq: 0, last: {}, lastCheck: 0, open: false };
   const online = () => !!account?.loggedIn;
   if (!save.rankAch || typeof save.rankAch !== 'object') save.rankAch = {};
 
@@ -24,7 +24,6 @@ export function createRank({ account, store, srvNow, face, toast, ach, save, per
     }
   }
   function tabs() {
-    seg(el.srv, Object.entries(SRV_LABEL), st.srv, (id) => { st.srv = id; render(); });
     seg(el.range, Object.entries(RANGE_LABEL), st.range, (id) => { st.range = id; render(); });
     el.range.hidden = !online(); // 손님: 세 기록을 한꺼번에 보여 줌
   }
@@ -63,9 +62,9 @@ export function createRank({ account, store, srvNow, face, toast, ach, save, per
       if (seq === st.seq) el.note.textContent = '랭킹을 불러오지 못했어요';
     }
   }
-  function open(srv = srvNow()) {
+  function open() {
     onOpen?.();
-    st.srv = srv === 'battle' ? 'battle' : 'clean'; st.range = 'day';
+    st.range = 'day';
     el.box.hidden = false; render();
   }
   // 오늘 순위 기록 → 업적 (하루 한 번)
@@ -78,14 +77,14 @@ export function createRank({ account, store, srvNow, face, toast, ach, save, per
   // 기준 순위: 들어올 때 한 번. 버린 뒤에는 지난번(들어올 때·지난 버리기) 순위와 비교 (줍는 동안 저장이 먼저 올라가도 오른 것을 놓치지 않게)
   async function prime() {
     if (!online()) return;
-    const srv = srvNow() === 'battle' ? 'battle' : 'clean';
+    const srv = SRV;
     try { const me = (await account.rankMe(srv)).day; if (!st.last[srv]) st.last[srv] = { d: kstDay(), rank: me.rank || 0 }; if (me.rank) noteDay(srv, me); } catch (e) { /* 다음 버리기 때 */ }
   }
   // 버린 뒤: 저장을 바로 보내고 오늘 순위가 오르면 토스트
   async function afterDump() {
     if (!online()) return;
     const t = performance.now(); if (t - st.lastCheck < RANK.checkGapMs) return; st.lastCheck = t;
-    const srv = srvNow() === 'battle' ? 'battle' : 'clean', d = kstDay();
+    const srv = SRV, d = kstDay();
     try {
       let prev = st.last[srv]?.d === d ? st.last[srv].rank : null;
       if (prev == null) prev = (await account.rankMe(srv)).day.rank || 0; // 처음이면 보내기 전 순위를 먼저

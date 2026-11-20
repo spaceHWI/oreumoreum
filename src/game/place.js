@@ -22,7 +22,6 @@ import { createBloomFx } from '../bloomfx.js';
 import { buildSign } from '../props.js';
 import * as NSB from '../nsbound.js';
 import { createStoneWall, createCrossWall } from '../stonewall.js';
-import { isBattle, serverId } from '../server.js';
 import { state, late } from './state.js';
 import { $, save, wearV, persist, rnd } from './save.js';
 import { quality, scene, NSW, camera, spots } from './scene.js';
@@ -191,7 +190,7 @@ export const SAL = shopsBuilt.find((sh) => sh.id === 'salon')?.api || null; // �
 export const LEAPB = shopsBuilt.find((sh) => sh.id === 'leap')?.api || null; // LEAP (#59): 있으면 옷·신발은 여기서만 삼
 export const buff = createBuff({ save, persist, onEnd: (m) => { if (m) { late.toast('식사 버프가 끝났어요'); late.tips.event('buffEnd'); } } });
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
-export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist, server: serverId() }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, rareMul: () => wearV('hat') * (state.paceRare || 1) }) : null; // 구역마다 쓰레기 더미 (#45)
+export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, rareMul: () => wearV('hat') * (state.paceRare || 1) }) : null; // 구역마다 쓰레기 더미 (#45)
 export const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 if (CH && col) col.addBox(CH.boardAt.x, CH.boardAt.z, spots.cleanhouse.rot, 0.9, 0.2); // 랭킹 게시판 (#11)
 // 오름 안 작은 클린하우스 (#78). 충돌은 더미 자리를 정한 뒤에 등록(더미 자리·저장이 바뀌지 않게)
@@ -220,8 +219,8 @@ export const player = {
   visY: 0, viewSeen: false,
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
-// ---------- HP·쓰러짐·들것 귀환 (#36, 전투 오름만) ----------
-export const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, enabled: () => isBattle() && state.sessionOn, showBar: () => (state.tension || 0) > 0.02, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top'),
+// ---------- HP·쓰러짐·들것 귀환 (#36) ----------
+export const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, enabled: () => state.sessionOn, showBar: () => (state.tension || 0) > 0.02, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top'),
   el: { bar: $('hp-bar'), fill: $('hp-fill'), dim: $('hp-dim'), wait: $('hp-wait'), ring: $('hp-ring'), num: $('hp-num') },
   onDown: () => { late.closePanels(); if (player.riding) late.dismountDeer(); if (player.pose === 'sit') late.standUp(); state.emo?.stop(); late.ach.emit('down'); },
   onUp: () => late.tips.event('carried'), // 들것으로 돌아옴 (#66)

@@ -47,7 +47,7 @@ function updatePlayer(dt) {
   else if (state.throwPending) { state.throwPending = false; state.throwAim = null; }
   if (p.pose === 'bow') { if (state.bowPending && p.poseT >= BOW.release) releaseArrow(); if (p.poseT >= BOW.total) p.pose = 'move'; } // 귤 활 (#38)
   else if (state.bowPending) { state.bowPending = false; state.throwAim = null; }
-  if (state.holdBow && !bowReady()) setHoldBow(false); // 깨끗한 오름으로 바꾸면 활을 내려놓음
+  if (state.holdBow && !bowReady()) setHoldBow(false); // 활이 준비 안 되면 내려놓음
   if (state.cheerQ > 0) { state.cheerQ -= dt; if (p.pose === 'move' && !p.air && !busy()) { state.cheerQ = 0; p.pose = 'cheer'; p.poseT = 0; } } // 더미를 다 치우면 기뻐함 (#65), 줍던 동작이 끝난 뒤
   if (p.pose === 'cheer' && p.poseT > BLOOM_FX.cheerT) p.pose = 'move';
   if (p.pose === 'crouch' && p.poseT > 1.0) p.pose = 'move';

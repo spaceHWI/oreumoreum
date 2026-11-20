@@ -1,7 +1,6 @@
 // 연출 감독 연결 (#89): src/pacing.js 가 정한 차례대로 투기꾼·트럭·몹을 부르고, 긴장(tension 0~1)을 화면·소리·카메라에 옮긴다
 // 힐링 시간이 바탕이고 공격 시간은 조짐 3초 → 짧은 공격 → 보상·쉼. 수치는 balance.js PACE (파일 순서는 src/modules.js, 규칙은 notes/prototype-v1.md)
 import { PACE } from '../balance.js';
-import { isBattle } from '../server.js';
 import { createPacing } from '../pacing.js';
 import { DUMP_PER_HOUR } from '../dumpers.js';
 import * as THREE from 'three';
@@ -24,7 +23,7 @@ const tutBusy = () => !!NS_TUT && !save.jeong && !save.tut?.done;
 let cur = null; // 지금 공격: { dumpers: [투기꾼], mob: 몹 자리 계획 }
 const threats = () => (dumpers ? dumpers.activeN() : 0) + life.enemies.activeN();
 const pacing = createPacing({
-  isBattle, perHour: DUMP_PER_HOUR, first,
+  perHour: DUMP_PER_HOUR, first,
   hooks: {
     busy: () => !state.sessionOn || document.hidden || tutBusy() || !!state.fishing?.busy || !!state.fishing?.active || late.mealS?.on || late.cutS?.on || !!player.cart || panelOpen() || cam.mode !== 'follow' || hp.isDown || hp.pending || !!player.rescue,
     threats,

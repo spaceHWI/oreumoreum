@@ -723,3 +723,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `balance.js RIDES.list` 값: 스케이트보드 600→1500, 스쿠터 2000→4000, 조랑말 5000→8000. 이미 산 탈것은 그대로
 - `tools/econ.js` 로 장비 10칸 맞추는 시간은 여유 25% 기준 놀이 4시간 13분(5시간 안 통과), 효율 4시간 6~7분(탈것 안 사는 기준과 같음) — 비율 조정 필요 없었음
 - 마차는 그대로. 첫 탑승 토스트(`src/game/ride.js`)를 "마차는 정해진 길만 다녀요. 점프하면 뛰어내려요" 로
+
+## #98 서버는 전투 오름 하나 (깨끗한 오름 삭제)
+- 들어오기: 첫 화면 → (로그인/손님) → 캐릭터 고르기 → 튜토리얼. 서버 고르기 단계(`#intro-step`)·메뉴의 서버 바꾸기(`#menu-server`, `#server` 창)·그림 카드(`SERVER_ART`) 지움
+- `src/server.js`: 서버는 `battle` 하나. `isBattle()` 갈래를 걷어 냄(적·HP·귤 활 무기 탭·스톤 스테이크·샐러드·버프 흐림·타겟 표시·팁). `isBattle` 은 도구 호환용으로만 남김
+- 예전 저장: `save.server` 가 clean 이면 battle 로(장비·귤·치운 양 그대로). 쓰레기 칸 `trash.srv.clean` 은 battle 칸이 없을 때만 옮기고 지움. 기기 랭킹 `trash.rk` 의 clean 수는 battle 에 더해 한 줄로. `tools/oldsave.js` 에 `clean` 경우 더함
+- 연출 박자 `PACE.clean` 지움, `createPacing` 의 `isBattle` 인자 없앰 (battle 값 그대로)
+- 멀티 방: `oreum-<맵>-battle` 하나. 서버 `index.js` 는 예전 `oreum-<맵>` 접속을 battle 방으로 보냄 (`tools/sec.js` 가 두 이름이 같은 방인지 봄)
+- 랭킹: `SRVS = ['battle']`. 서버 DB(`rka`·`rkd`)의 clean 줄은 계정 DO 가 뜰 때 battle 에 더하고 지움(한 번만). `/rank?srv=clean` 도 battle. 랭킹 화면 서버 탭 지움
+- 도구: `econ.js`·`pace.js`·`audit.js` 는 battle 만. `pace.js --live` 는 로그인 상자 때문에 작은 창에서 시작 버튼이 화면 밖이라 evaluate 로 누름

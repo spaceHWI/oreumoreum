@@ -64,7 +64,7 @@ export function enableDev() {
       try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); localStorage.removeItem(TK); } catch (e) { /* 무시 */ }
       location.reload();
     });
-    // 들어오기 다시 (#99): 들어오기를 본 표시·서버 고른 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
+    // 들어오기 다시 (#99): 들어오기를 본 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
     $('dev-intro').addEventListener('click', () => {
       state.resetting = true;
       const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server;

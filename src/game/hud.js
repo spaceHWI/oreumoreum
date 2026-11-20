@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { groundAt } from '../world.js';
 import { MAPS } from '../maps.js';
 import { createAchievements, BADGES } from '../achievements.js';
-import { isBattle } from '../server.js';
 import { initUiTips } from '../uitips.js';
 import { createTips, TIP, TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
@@ -71,8 +70,8 @@ function tipState() {
   return {
     busy: !!(late.tut.active) || (!!late.pace && !late.pace.canTip()) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
     bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && late.canBuyGear().length > 0,
-    hpLow: isBattle() && hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
-    battle: isBattle(), hasBow: late.weaponNow().id === 'bow', idle: tipIdle,
+    hpLow: hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
+    hasBow: late.weaponNow().id === 'bow', idle: tipIdle,
     stoneFree: !save.mealFree && !!STN?.terrace && Math.hypot(STN.terrace.x - player.pos.x, STN.terrace.z - player.pos.z) < 22 && (!NS_TUT || !!save.jeong),
     nearStream: !!sp && sp.d < 8 && !state.fishing?.busy && !stream.onBridge(player.pos.x, player.pos.z),
   };
@@ -88,7 +87,7 @@ export function updateStats() {
   if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { late.sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
-const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'server', 'shoppop', 'rank', 'inbox'];
+const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -100,7 +99,7 @@ export function cancelAll() {
   player.target = null; player.onArrive = null; late.marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shoppop-close', 'shoppop'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['server-close', 'server'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+[['shoppop-close', 'shoppop'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
 ['shop', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------

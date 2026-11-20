@@ -3,7 +3,6 @@
 // 상태: wander(돌아다님) · root(땅 헤집기, 쓰레기 흘림) · charge(플레이어를 보고 돌진, ranged 는 거리를 두고 광선) · flee(놀라 도망) · leave(시간이 다 돼 스스로 떠남)
 // 구역 번호는 hooks.zoneAt(x, z) 로 받음 (없으면 구역 없는 맵: ENEMY_SPAWN.kinds)
 import * as THREE from 'three';
-import { isBattle } from './server.js';
 import { height } from './world.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
 import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN } from './balance.js';
@@ -49,7 +48,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   // 연출 감독(#89)은 planWave 로 자리를 먼저 정하고(조짐 동안 방향 표시) PACE 조짐 뒤 spawnPlan 으로 부름. group: 구역별 마릿수 {구역: [최소, 최대]}
   function planWave(force = false, forceKind = null, group = null) {
     if (!okAt || !player) return null;
-    if (!force && (!isBattle() || !okAt(player.pos.x, player.pos.z))) return null;
+    if (!force && !okAt(player.pos.x, player.pos.z)) return null;
     const room = ENEMY_SPAWN.max - list.length; if (room <= 0) return null;
     const k0 = kindAt(player.pos.x, player.pos.z), zone = typeof k0 === 'object' ? k0.zone : null;
     const kind = forceKind || (typeof k0 === 'object' ? k0.kind : k0);
@@ -191,10 +190,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function update(dt, time) {
     updateBolts(dt);
     if (!player || !okAt) return;
-    if (isBattle()) {
-      if (!hooks.paced) waveT -= dt; // 연출 감독(#89)이 있으면 감독이 부름
-      if (waveT <= 0) { spawnWave(); waveT = ENEMY_SPAWN.every; } // 못 나오면(오름 밖·가득 참) 다음 차례까지 기다림
-    } else if (list.length) { for (const e of list.slice()) remove(e); waveT = ENEMY_SPAWN.first; } // 깨끗한 오름에는 없음
+    if (!hooks.paced) waveT -= dt; // 연출 감독(#89)이 있으면 감독이 부름
+    if (waveT <= 0) { spawnWave(); waveT = ENEMY_SPAWN.every; } // 못 나오면(오름 밖·가득 참) 다음 차례까지 기다림
     for (let i = list.length - 1; i >= 0; i--) { const e = list[i]; if (e) tick(e, dt, time); }
   }
 
