@@ -242,7 +242,7 @@ export function createCrossWall({ scene, height, line, low, col, open: open0 = f
 
 // 튜토리얼 칸(#100): 들머리 마당을 낮은 돌담으로 나눈 우리. runs = 담 선들 [[x,z], ...], gates = 정낭 [{ c:{x,z}, ux, uz, open }]
 // 담은 WALL.seg 마다 조각, 높이 hk 배. remove() 하면 담·정낭·충돌이 모두 사라짐 (튜토리얼이 끝나면)
-export function createPens({ scene, height, runs, gates, low, col, hk = 0.6 }) {
+export function createPens({ scene, height, runs, gates, low, col, hk = 0.6, hideR = Infinity }) { // hideR: 이보다 멀면 담을 안 그림 (#136 구역 문턱)
   const rnd = mulberry(9001), tex = poreTex(), pieces = [];
   for (const line of runs) for (let i = 1; i < line.length; i++) {
     const p0 = line[i - 1], p1 = line[i], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.round(L / WALL.seg));
@@ -251,7 +251,7 @@ export function createPens({ scene, height, runs, gates, low, col, hk = 0.6 }) {
   const chunks = []; for (let k = 0; k < pieces.length; k += WALL.chunk) chunks.push(pieceMeshes(scene, pieces.slice(k, k + WALL.chunk), height, rnd, low, col, hk));
   const js = gates.map((g) => { const J = jeongGate({ scene, height, c: g.c, ux: g.ux, uz: g.uz, low, col, tex }); if (g.open) J.open(false); return J; });
   const NR1 = low ? WALL.lodRLow : WALL.lodR;
-  function lod(pos) { for (const ch of chunks) { ch.near.visible = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r < NR1; ch.far.visible = !ch.near.visible; } }
+  function lod(pos) { for (const ch of chunks) { const d = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r; ch.near.visible = d < NR1; ch.far.visible = !ch.near.visible && d < hideR; } }
   function update(dt, pos) { for (const J of js) J.update(dt); if (pos) lod(pos); }
   function remove() {
     for (const ch of chunks) { scene.remove(ch.near, ch.far); ch.near.dispose(); ch.far.dispose(); if (col) col.setOff(ch.ids, true); }

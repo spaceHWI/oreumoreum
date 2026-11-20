@@ -74,6 +74,7 @@ import './game/moves.js';
 import './game/room.js';
 import './game/stores.js';
 import './game/pickup.js';
+import './game/area.js';
 import './game/deernet.js';
 import './game/dump.js';
 import './game/shop.js';

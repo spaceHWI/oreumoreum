@@ -38,6 +38,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | room.js | 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 |
 | stores.js | 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 |
 | pickup.js | 줍기·배낭(줍기 버튼으로 가까운 쓰레기까지 걷기 #104), 구역 확인, 더미·꽃밭 효과 |
+| area.js | 구역 구분(#136): 문턱·구역 소품(`src/zonelook.js`) 만들기, 구역이 바뀌면(`late.zoneEnter`) 이름 배너·권장 점수 경고·첫 정낭 팁·구역 소리·안개, 오름 지도(위 구역 칸을 누르면) |
 | deernet.js | 멀티 노루 (#92): 노루 무리는 방장이 알림, 노루 타기는 방이 관리, 다른 사람 귤 먹이 부탁 |
 | dump.js | 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 |
 | shop.js | 상점 팝업(장비 탭)·사는 연출, 옷 |
@@ -70,6 +71,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
 - 마차 부딪힘 (#117): collide.js 의 움직이는 부딪힘 `setDyn([x,z,r,...])` — 마차(rides.js createCart)가 매 프레임 자리를 넣음(모양은 balance.js CART.block). `col.move(..., dyn=true)` 와 서 있을 때 `col.nudge()` 는 플레이어(걷기·탈것·노루 타기)만 씀. 적·노루 AI 는 안 막힘. 확인 `node tools/cartblock.js`
 - 몸 방향 (#107): bodytilt.js — `orientBody(root, heading, 기울기들)` 이 캐릭터 root 방향을 매번 처음부터 만들고 맞음 움찔·쓰러져 누움을 한 번에 합침, `flinchK(t)` 움찔 곡선. 내 캐릭터(update.js placeRunner·노루 타기)·멀티의 남(net.js)이 같이 씀. root 에 `rotation.y` 만 쓰지 말 것(지난 기울기가 남음). 확인 `node tools/hittilt.js`
+- 구역 구분 (#136): zonelook.js — `findGates`(탐방로가 초보·중수·고수 경계를 넘는 곳), 문턱(초보→중수 열린 정낭+낮은 돌담 `stonewall.js createPens`, 중수→고수 바위 문+방사탑)·안내판(구역·적 그림·권장 점수, 한 메시), 구역 소품(들꽃·억새·돌무더기·쓰러진 나무·그을린 자국·까마귀: 플레이어 둘레만 한 메시에 다시 씀, 부딪힘 없음), 땅·풀 색 `namsongi.js uMood`. 수치는 balance.js ZONE_LOOK. 게임 연결은 game/area.js
 - 탈것: rides.js · autowalk.js
 - 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`

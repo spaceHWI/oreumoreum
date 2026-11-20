@@ -154,12 +154,16 @@ export function applySky() {
   sunState = { el, az, k, golden: g };
   late.sound.setDaylight?.(k);
 }
+// 구역 안개 (#136): 날씨까지 얹은 안개(fogBase)에 구역 배율. area.js 가 setZoneFog 로 천천히 바꿈
+const fogBase = { n: 1, f: 1 }, zoneFog = { n: 1, f: 1 };
+function applyZoneFog() { scene.fog.near = fogBase.n * zoneFog.n; scene.fog.far = fogBase.f * zoneFog.f; G.fogN.value = scene.fog.near; G.fogF.value = scene.fog.far; }
+export function setZoneFog(n, f) { if (zoneFog.n === n && zoneFog.f === f) return; zoneFog.n = n; zoneFog.f = f; applyZoneFog(); }
 // 날씨 반영 (#18): 빛·안개·구름·하늘 회색기·풀 흔들림. 밤낮 계산이 끝난 값 위에 얹는다
 const wxGray = new THREE.Color();
 function applyWx(el) {
   const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8);
   sun.intensity *= c.light; hemi.intensity *= 0.55 + 0.45 * c.light; fill.intensity *= c.light;
-  scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; G.fogN.value = scene.fog.near; G.fogF.value = scene.fog.far;
+  scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; fogBase.n = scene.fog.near; fogBase.f = scene.fog.far; applyZoneFog();
   const gr = (col, a) => { const l = (col.r + col.g + col.b) / 3; col.lerp(wxGray.setRGB(l * 0.97, l, l * 1.04), a); };
   gr(FOG, c.gray * 0.8); G.fogC.value.copy(FOG);
   if (NSW) {
