@@ -48,6 +48,7 @@ feedback.flush();
 const fbLen = () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / ${FEEDBACK.max}`; };
 function openFeedback(close = true) { if (close) closePanels(); $('feedback-input').maxLength = FEEDBACK.max; fbLen(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); }
 $('menu-feedback').addEventListener('click', () => openFeedback());
+$('fb-chip').addEventListener('click', () => openFeedback()); // 위쪽 줄 말풍선 (#103)
 $('intro-feedback').addEventListener('click', (e) => { e.stopPropagation(); openFeedback(false); }); // 첫 화면 베타 안내 옆
 $('feedback-input').addEventListener('input', fbLen);
 $('feedback-input').addEventListener('keydown', (e) => e.stopPropagation());
