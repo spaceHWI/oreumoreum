@@ -42,11 +42,11 @@ const shared = () => SHARED || (SHARED = { near: pieceGeo(WM_NEAR), far: pieceGe
 // 조각 하나 [p, q](경계선 위 두 점)의 행렬: 길이 방향은 땅 기울기만큼 비스듬히(세로는 곧게 = 기울이지 않고 밀기),
 // 끝을 WALL.overlap 만큼 겹치고, 반은 180° 돌려(앞뒤 바꿈) 반복이 티 나지 않게. 바닥은 조각 아래 땅에서 가장 낮은 곳보다 WALL.bury 묻음
 const _m = new THREE.Matrix4(), _c = new THREE.Color();
-function placePiece(im, i, p, q, height, rnd) {
+function placePiece(im, i, p, q, height, rnd, hk = 1) {
   const L = WM_NEAR.size[0], H = WM_NEAR.size[1], D = WM_NEAR.size[2];
   const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l, nx = -uz, nz = ux;
   const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2, yp = height(p[0], p[1]), yq = height(q[0], q[1]), slope = (yq - yp) / l, yc = (yp + yq) / 2;
-  const len = l + WALL.overlap * (0.8 + rnd() * 0.4), hgt = WALL.height * (0.93 + rnd() * 0.14), thk = WALL.width * (0.92 + rnd() * 0.16);
+  const len = l + WALL.overlap * (0.8 + rnd() * 0.4), hgt = WALL.height * hk * (0.93 + rnd() * 0.14), thk = WALL.width * (0.92 + rnd() * 0.16);
   // 조각 밑 땅이 기울기 선보다 낮은 곳을 찾아 그만큼 내림 (길이 5곳 × 두께 3곳)
   let off = 0;
   for (let a = -0.5; a <= 0.5; a += 0.25) for (const b of [-0.5, 0, 0.5]) {
@@ -65,16 +65,16 @@ function placePiece(im, i, p, q, height, rnd) {
 }
 
 // 조각 여러 개를 가까이용·멀리용 InstancedMesh 두 벌로 (같은 행렬)
-function pieceMeshes(scene, pieces, height, rnd, low, col) {
+function pieceMeshes(scene, pieces, height, rnd, low, col, hk = 1) { // hk: 높이 배율 (튜토리얼 칸 낮은 돌담 #100)
   const S = shared(), near = new THREE.InstancedMesh(S.near, S.nearM, pieces.length), far = new THREE.InstancedMesh(S.far, S.farM, pieces.length);
-  let cx = 0, cz = 0;
-  const info = pieces.map(([p, q], i) => { const it = placePiece(near, i, p, q, height, rnd); cx += it.mx / pieces.length; cz += it.mz / pieces.length; if (col) col.addBox(it.mx, it.mz, it.rot, it.hl, WALL.thick); return it; });
+  let cx = 0, cz = 0; const ids = [];
+  const info = pieces.map(([p, q], i) => { const it = placePiece(near, i, p, q, height, rnd, hk); cx += it.mx / pieces.length; cz += it.mz / pieces.length; if (col) ids.push(...col.addBox(it.mx, it.mz, it.rot, it.hl, WALL.thick)); return it; });
   far.instanceMatrix.copy(near.instanceMatrix); far.instanceColor = near.instanceColor;
   near.name = 'wall-near'; far.name = 'wall-far';
   for (const m of [near, far]) { m.computeBoundingSphere(); m.receiveShadow = true; m.visible = false; scene.add(m); }
   near.castShadow = !low;
   const r = Math.max(...info.map((it) => Math.hypot(it.mx - cx, it.mz - cz) + it.hl)) + 1;
-  return { near, far, cx, cz, r };
+  return { near, far, cx, cz, r, ids };
 }
 
 // 개울이 돌담 밑을 지나는 곳 (#41): 낮은 돌 수문. 담은 이어지고 물은 아치 구멍(창살) 밑으로 흐른다. 사람은 못 지나감
@@ -188,28 +188,13 @@ export function createStoneWall({ scene, height, line, gate, low, col, uPl, arch
   return { update, arches: archMeshes, length: LEN, chunks: chunks.length, modules: n, nearR: NR, lodR: NR1, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
 }
 
-// 들머리와 오름 사이를 가로막는 안쪽 돌담 + 정낭(#31). line = nsbound.crossLine(TUT.gateD)
-// 정주석(구멍 뚫린 돌기둥) 둘 사이에 긴 나무 막대(정낭) 둘이 걸쳐 길을 막는다. open() 하면 막대가 한쪽으로 내려지고 그 뒤로는 계속 열림
-export function createCrossWall({ scene, height, line, low, col, open: open0 = false }) {
-  const GW = WALL.gateW, { a, b, c } = line;
-  const mat = { map: poreTex() }, rnd = mulberry(4417);
-  // 정낭 양옆 두 토막 (a → 정낭 왼쪽, 정낭 오른쪽 → b)
-  const la = Math.hypot(c.x - a[0], c.z - a[1]), lb = Math.hypot(b[0] - c.x, b[1] - c.z), g0 = GW + 0.35;
-  const pieces = [];
-  const run = (p0, p1) => { const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.round(L / WALL.seg)); for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n; pieces.push([[p0[0] + (p1[0] - p0[0]) * t0, p0[1] + (p1[1] - p0[1]) * t0], [p0[0] + (p1[0] - p0[0]) * t1, p0[1] + (p1[1] - p0[1]) * t1]]); } };
-  run(a, [c.x + (a[0] - c.x) * g0 / la, c.z + (a[1] - c.z) * g0 / la]);
-  run([c.x + (b[0] - c.x) * g0 / lb, c.z + (b[1] - c.z) * g0 / lb], b);
-  const chunks = []; for (let k = 0; k < pieces.length; k += WALL.chunk) chunks.push(pieceMeshes(scene, pieces.slice(k, k + WALL.chunk), height, rnd, low, col));
-  const NR1 = low ? WALL.lodRLow : WALL.lodR;
-  // 가까우면 가까이용, 아니면 멀리용 (바깥 돌담과 달리 띠가 없어 늘 보임)
-  function lod(pos) { for (const ch of chunks) { ch.near.visible = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r < NR1; ch.far.visible = !ch.near.visible; } }
-  lod({ x: c.x, z: c.z });
-
-  // 정낭: 돌기둥 둘(막대 꽂는 구멍 셋) + 막대 둘
-  const rot = Math.atan2(-line.uz, line.ux), ys = height(c.x, c.z) - 0.1, r = mulberry(77);
+// 정낭 하나: 돌기둥 둘(막대 꽂는 구멍 셋) + 막대 둘. c = 가운데, (ux, uz) = 담 방향. open() 하면 막대가 한쪽으로 내려짐
+const GW = WALL.gateW;
+function jeongGate({ scene, height, c, ux, uz, low, col, tex = poreTex() }) {
+  const rot = Math.atan2(-uz, ux), ys = height(c.x, c.z) - 0.1, r = mulberry(77);
   const gate = new THREE.Group(); gate.position.set(c.x, ys, c.z); gate.rotation.y = rot; scene.add(gate);
   const post = (side) => { const g = new THREE.BoxGeometry(0.62, 1.9, 0.58, 1, 3, 1); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (r() - 0.5) * 0.1, p.getY(i), p.getZ(i) + (r() - 0.5) * 0.1); g.translate(side * (GW + 0.05), 0.85, 0); return g.toNonIndexed(); };
-  const stoneM = new THREE.MeshToonMaterial({ color: new THREE.Color(0.3, 0.3, 0.32), map: mat.map, gradientMap: gradHard });
+  const stoneM = new THREE.MeshToonMaterial({ color: new THREE.Color(0.3, 0.3, 0.32), map: tex, gradientMap: gradHard });
   const posts = new THREE.Mesh(mergeGeometries([post(-1), post(1)]), stoneM); posts.castShadow = !low; posts.receiveShadow = true; gate.add(posts);
   const holeM = new THREE.MeshBasicMaterial({ color: '#141416' }), holeG = new THREE.CircleGeometry(0.1, 8);
   { const hs = [], o = new THREE.Object3D(); // 구멍 12개를 한 메시로 (#79 그리기 횟수)
@@ -226,7 +211,52 @@ export function createCrossWall({ scene, height, line, low, col, open: open0 = f
   let isOpen = false, t = -1;
   const pose = (k) => { const e = k * k * (3 - 2 * k); bars.forEach((B) => { B.piv.position.y = B.by + (B.yEnd - B.by) * e + Math.sin(k * Math.PI) * 0.35; B.piv.rotation.y = B.rEnd * e; B.piv.rotation.z = Math.sin(k * Math.PI) * 0.25; }); };
   function open(anim = true) { if (isOpen) return false; isOpen = true; if (col) col.setOff(barrier, true); if (anim) t = 0; else pose(1); return true; }
-  if (open0) open(false);
   function update(dt) { if (t < 0) return; t += dt / 1.4; if (t >= 1) { pose(1); t = -1; } else pose(t); }
-  return { open, update, lod, get isOpen() { return isOpen; }, center: new THREE.Vector3(c.x, height(c.x, c.z), c.z), modules: pieces.length, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
+  function remove() { scene.remove(gate); if (col) col.setOff(barrier, true); }
+  return { gate, open, update, remove, get isOpen() { return isOpen; } };
+}
+
+// 들머리와 오름 사이를 가로막는 안쪽 돌담 + 정낭(#31). line = nsbound.crossLine(TUT.gateD)
+// 정주석(구멍 뚫린 돌기둥) 둘 사이에 긴 나무 막대(정낭) 둘이 걸쳐 길을 막는다. open() 하면 막대가 한쪽으로 내려지고 그 뒤로는 계속 열림
+export function createCrossWall({ scene, height, line, low, col, open: open0 = false }) {
+  const { a, b, c } = line;
+  const mat = { map: poreTex() }, rnd = mulberry(4417);
+  // 정낭 양옆 두 토막 (a → 정낭 왼쪽, 정낭 오른쪽 → b)
+  const la = Math.hypot(c.x - a[0], c.z - a[1]), lb = Math.hypot(b[0] - c.x, b[1] - c.z), g0 = GW + 0.35;
+  const pieces = [];
+  const run = (p0, p1) => { const L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.round(L / WALL.seg)); for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n; pieces.push([[p0[0] + (p1[0] - p0[0]) * t0, p0[1] + (p1[1] - p0[1]) * t0], [p0[0] + (p1[0] - p0[0]) * t1, p0[1] + (p1[1] - p0[1]) * t1]]); } };
+  run(a, [c.x + (a[0] - c.x) * g0 / la, c.z + (a[1] - c.z) * g0 / la]);
+  run([c.x + (b[0] - c.x) * g0 / lb, c.z + (b[1] - c.z) * g0 / lb], b);
+  const chunks = []; for (let k = 0; k < pieces.length; k += WALL.chunk) chunks.push(pieceMeshes(scene, pieces.slice(k, k + WALL.chunk), height, rnd, low, col));
+  const NR1 = low ? WALL.lodRLow : WALL.lodR;
+  // 가까우면 가까이용, 아니면 멀리용 (바깥 돌담과 달리 띠가 없어 늘 보임)
+  function lod(pos) { for (const ch of chunks) { ch.near.visible = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r < NR1; ch.far.visible = !ch.near.visible; } }
+  lod({ x: c.x, z: c.z });
+
+  // 정낭 (#100: 튜토리얼 칸 문에서도 씀)
+  const J = jeongGate({ scene, height, c, ux: line.ux, uz: line.uz, low, col, tex: mat.map });
+  const open = J.open, update = J.update;
+  if (open0) open(false);
+  return { open, update, lod, get isOpen() { return J.isOpen; }, center: new THREE.Vector3(c.x, height(c.x, c.z), c.z), modules: pieces.length, tris: () => chunks.reduce((t, ch) => t + (ch.near.visible ? ch.near.count * ch.near.geometry.index.count / 3 : 0) + (ch.far.visible ? ch.far.count * ch.far.geometry.index.count / 3 : 0), 0) };
+}
+
+// 튜토리얼 칸(#100): 들머리 마당을 낮은 돌담으로 나눈 우리. runs = 담 선들 [[x,z], ...], gates = 정낭 [{ c:{x,z}, ux, uz, open }]
+// 담은 WALL.seg 마다 조각, 높이 hk 배. remove() 하면 담·정낭·충돌이 모두 사라짐 (튜토리얼이 끝나면)
+export function createPens({ scene, height, runs, gates, low, col, hk = 0.6 }) {
+  const rnd = mulberry(9001), tex = poreTex(), pieces = [];
+  for (const line of runs) for (let i = 1; i < line.length; i++) {
+    const p0 = line[i - 1], p1 = line[i], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), n = Math.max(1, Math.round(L / WALL.seg));
+    for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n; pieces.push([[p0[0] + (p1[0] - p0[0]) * t0, p0[1] + (p1[1] - p0[1]) * t0], [p0[0] + (p1[0] - p0[0]) * t1, p0[1] + (p1[1] - p0[1]) * t1]]); }
+  }
+  const chunks = []; for (let k = 0; k < pieces.length; k += WALL.chunk) chunks.push(pieceMeshes(scene, pieces.slice(k, k + WALL.chunk), height, rnd, low, col, hk));
+  const js = gates.map((g) => { const J = jeongGate({ scene, height, c: g.c, ux: g.ux, uz: g.uz, low, col, tex }); if (g.open) J.open(false); return J; });
+  const NR1 = low ? WALL.lodRLow : WALL.lodR;
+  function lod(pos) { for (const ch of chunks) { ch.near.visible = Math.hypot(ch.cx - pos.x, ch.cz - pos.z) - ch.r < NR1; ch.far.visible = !ch.near.visible; } }
+  function update(dt, pos) { for (const J of js) J.update(dt); if (pos) lod(pos); }
+  function remove() {
+    for (const ch of chunks) { scene.remove(ch.near, ch.far); ch.near.dispose(); ch.far.dispose(); if (col) col.setOff(ch.ids, true); }
+    for (const J of js) J.remove();
+    chunks.length = 0; js.length = 0;
+  }
+  return { gates: js, update, lod, remove, modules: pieces.length };
 }

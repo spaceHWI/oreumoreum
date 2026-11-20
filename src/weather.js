@@ -76,7 +76,9 @@ export function createWeather({ scene, low }) {
     geo.attributes.position.needsUpdate = true;
   }
 
-  function resolve() { const t = forced || real; if (t !== target) { target = t; listeners.forEach((f) => f(t)); } }
+  let calmOn = false; // #100 튜토리얼 동안은 맑음 (어드민이 정한 날씨는 그대로)
+  function resolve() { const t = forced || (calmOn ? 'clear' : real); if (t !== target) { target = t; listeners.forEach((f) => f(t)); } }
+  function calm(v) { calmOn = !!v; resolve(); }
   function set(k) { if (k && !WX[k]) return false; forced = k || null; resolve(); return true; }
   function setReal(k) { real = WX[k] ? k : 'clear'; resolve(); }
 
@@ -92,5 +94,5 @@ export function createWeather({ scene, low }) {
   fetchNow(); setInterval(fetchNow, WEATHER.pollMin * 60000);
 
   const settled = () => NUM.every((n) => Math.abs(cur[n] - WX[target][n]) < 0.003);
-  return { cur, update, get settled() { return settled(); }, set, setReal, onChange: (f) => listeners.push(f), get kind() { return target; }, get real() { return real; }, get forced() { return forced; } };
+  return { cur, update, get settled() { return settled(); }, set, setReal, calm, onChange: (f) => listeners.push(f), get kind() { return target; }, get real() { return real; }, get forced() { return forced; } };
 }

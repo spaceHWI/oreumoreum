@@ -277,7 +277,7 @@ export function tickShopMark() {
   if (tipMarkT > 0 && tipMarkPos) { shopMarkId = '*tip'; shopMark.querySelector('svg').innerHTML = TIP_ICON.arrow; shopMark.hidden = false; late.placeArrow(shopMark, tipMarkPos, 0.6); return; }
   let best = null, bd = 1e9;
   for (const sh of shopsBuilt) { const w = SHOP_POP[sh.pop]?.when; if (w && !w()) continue; const d = Math.hypot(player.pos.x - sh.door.x, player.pos.z - sh.door.z); if (d < bd) { bd = d; best = sh; } }
-  const on = !!best && bd > SHOP_ST.markNear && bd < SHOP_ST.markFar && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on && !cutS.on;
+  const on = !!best && bd > SHOP_ST.markNear && bd < SHOP_ST.markFar && !late.tut?.active && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on && !cutS.on;
   if (!on) { if (!shopMark.hidden) shopMark.hidden = true; return; }
   if (shopMarkId !== best.id) { shopMarkId = best.id; shopMark.querySelector('svg').innerHTML = SHOP_ICON[best.id] || ''; shopMark.title = best.name; }
   shopMark.hidden = false; late.placeArrow(shopMark, best.signPos, 0.6);

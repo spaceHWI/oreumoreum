@@ -39,8 +39,8 @@ export const topFit = (() => {
 state.toastT = 0;
 export function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; state.toastT = sec; topStack(); }
 // 위 가운데 배너·팁·토스트가 겹치지 않게 (#16): 보이는 것의 높이를 CSS 변수로 넘기고 body 클래스로 아래로 밀기
-function topStack() {
-  const b = document.body, tp = document.getElementById('tip'), bn = document.getElementById('banner'), on = !!tp && !tp.hidden;
+export function topStack() {
+  const b = document.body, bn = document.getElementById('banner'), tp = [document.getElementById('tip'), document.getElementById('tut-toast')].find((e) => e && !e.hidden), on = !!tp; // #100 튜토리얼 토스트도 같은 자리
   b.classList.toggle('tip-on', on); if (on) b.style.setProperty('--tip-h', tp.offsetHeight + 'px');
   if (bn && !bn.hidden) b.style.setProperty('--ban-h', bn.offsetHeight + 'px');
 }
