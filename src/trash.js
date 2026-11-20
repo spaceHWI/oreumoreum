@@ -267,7 +267,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
     const xv = c.h != null ? type.gyul * ((ZONES[heaps[c.h].zone - 1]?.gv || 1) - 1) : 0; // #137 구역마다 쓰레기 귤 배수
     if (xv > 0) store.bag.xv = (store.bag.xv || 0) + xv;
-    if (c.h != null) { recent.push({ h: c.h, kind: type.id, xv }); if (recent.length > 30) recent.shift(); } // 방이 거절하면 되돌릴 수 있게 (#84)
+    if (c.h != null) { recent.push({ h: c.h, kind: type.id, xv }); if (recent.length > 80) recent.shift(); } // 방이 한 번에 되돌리라는 수(NET.takeAsk 64)보다 넉넉히 // 방이 거절하면 되돌릴 수 있게 (#84)
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
     dirty = true;
     emit('trash', { kind: type.id, dex: dx, dexNew });

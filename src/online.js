@@ -255,12 +255,12 @@ export function linkTrash(trash, room) {
     st.commit(); relayout();
   });
   const one = (h, n) => { if (st.left(h) !== n) { st.setLeft(h, n); relayout(); } };
-  room.on('h', (m) => { if (!live) return; one(m.h, m.n); const k = Math.min(64, m.no === true ? 1 : m.no | 0); for (let i = 0; i < k; i++) trash.undoTake?.(m.h); }); // no: 방이 거절한 수 → 배낭에서 그만큼 되돌림 (#84, #137 여럿)
+  room.on('h', (m) => { if (!live) return; one(m.h, m.n); const k = Math.min(NET.takeAsk, m.no === true ? 1 : m.no | 0); for (let i = 0; i < k; i++) trash.undoTake?.(m.h); }); // no: 방이 거절한 수 → 배낭에서 그만큼 되돌림 (#84, #137 여럿)
   room.on('hs', (m) => { if (live) for (const [h, n] of m.hs) one(h, n); });
   room.on('close', () => { live = false; });
   // 한 번에 여러 개 줍는 도구(#137 흡입기 초당 32개)를 위해 같은 틱 안의 줍기는 더미마다 묶어 {t:'take', h, n} 하나로 보냄
   const pend = new Map(); let flushQ = false;
-  const flush = () => { flushQ = false; if (live) for (const [h, n] of pend) room.send(n > 1 ? { t: 'take', h, n } : { t: 'take', h }); pend.clear(); };
+  const flush = () => { flushQ = false; if (live) for (const [h, n0] of pend) for (let n = n0; n > 0; n -= NET.takeMax) { const k = Math.min(n, NET.takeMax); room.send(k > 1 ? { t: 'take', h, n: k } : { t: 'take', h }); } pend.clear(); }; // 방이 한 메시지에 takeMax 개까지만 받으므로 나눠 보냄 (#144)
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) { pend.set(h, (pend.get(h) || 0) + 1); if (!flushQ) { flushQ = true; queueMicrotask(flush); } } return ok; };
   st.putBack = (h, n) => {
     if (!live) return o.putBack(h, n);

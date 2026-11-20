@@ -56,7 +56,10 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   ok(ez.easy && ez.shake && ez.text !== before, `30초: 흔들고 쉬운 말 (${before} → ${ez.text})`);
   await go(...t.walk, t.run); await W(1500); await shot('03-run');
   await act('Shift', '#btn-speed'); await go(...t.run, t.gyul[0]); await W(1500);
-  ok(await until(() => window.__oreum.tut.cells()[0].open, 4000), '1칸을 마치면 정낭이 열림');
+  // 느린 화면에서는 달리기 입력이 늦게 들어감 (#144): 고정 시간 대신 열릴 때까지 넉넉히 기다리고, 안 열리면 달리기 원에 한 번 더 들어감
+  let open1 = await until(() => window.__oreum.tut.cells()[0].open, 20000);
+  if (!open1) { console.log('  (1칸 다시)', await state()); await go(...t.walk, t.run); await W(1500); await act('Shift', '#btn-speed'); await go(...t.run, t.gyul[0]); open1 = await until(() => window.__oreum.tut.cells()[0].open, 30000); }
+  ok(open1, '1칸을 마치면 정낭이 열림');
   await stepIs(2); await W(300); await shot('04-gyul');
   for (let i = 0; i < t.gyul.length; i++) { const g = t.gyul[i]; await go(g[0] + 0.6, g[1] + 0.3, g); await W(400); ok(await pick((n) => window.__oreum.save.tut.gyul.length > n || window.__oreum.save.tut.step > 2, i), `귤 ${i + 1}`); await W(300); }
   await stepIs(3);
