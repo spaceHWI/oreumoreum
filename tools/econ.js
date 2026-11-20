@@ -5,6 +5,7 @@
 //   node tools/econ.js --slack 0.4  여유 비율 하나만 (기본은 0 과 0.25 둘 다)
 //   node tools/econ.js --chase 0.3  투기꾼을 쫓아내는 비율 (기본 0.5)
 //   node tools/econ.js --norides   탈것(#69) 없이 (비교용)
+//   node tools/econ.js --skip      장비(도구·배낭·신발·무기)를 순서 없이 (#111): 튜토리얼 뒤에는 최고 단계 하나만 귤을 모아 바로 삼
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
 // 가정 (모두 어림):
 // - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
@@ -75,7 +76,7 @@ async function main() {
   const gOf = (z, e) => z.g * (1 + wv(e, 'vest')) + DEX.rareChance * wv(e, 'hat') * DEX.rareGyul;
   const value = (e) => zones.reduce((s, z) => s + z.n * gOf(z, e), 0);
 
-  const NORIDE = has('--norides'), RIDE_FLAT = 0.35, RIDE_OFF = 0.3, RIDE_T = 2;
+  const NORIDE = has('--norides'), SKIP = has('--skip'), RIDE_FLAT = 0.35, RIDE_OFF = 0.3, RIDE_T = 2;
   // 클린하우스 ↔ 구역 왕복 시간 (편도 d)
   function travel(e, d) {
     const walk = 2 * d / spdOf(e), R = e.ride ? RIDES.list[e.ride - 1] : null; if (!R) return walk;
@@ -120,19 +121,24 @@ async function main() {
     const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0 };
     const buys = [], days = [], LIST = { tool: TOOLS, bag: BAGS, shoes: SHOES };
     // 다음 단계: 도구·배낭·신발·무기는 순서대로. 옷은 순서 없이 살 수 있지만 계산은 한 단계씩 다 산다고 봄 (값을 넉넉히 셈)
+    // --skip (#111): 튜토리얼 뒤 장비는 최고 단계만 (건너뛴 단계 값은 안 냄)
+    const topOf = (k) => k === 'weapon' ? WEAPONS.filter((w) => !w.soon).length - 1 : LIST[k].length - 1;
+    const skipK = (k) => SKIP && st.tutDone && (k === 'weapon' || GEAR.includes(k));
+    const cur = (k) => (k === 'weapon' ? st.weapon : e[k]);
     const next = (k) => {
+      if (skipK(k)) { const L = k === 'weapon' ? (battle ? WEAPONS : []) : LIST[k], i = topOf(k); return cur(k) <= i && L[i] ? { ...L[i], tier: L[i].tier ?? i + 1 } : null; }
       if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon ? WEAPONS[st.weapon] : null;
       if (WS[k]) { const c = clothOf(k, e[k] + 1); return c && { tier: c.tier, name: c.name, price: wearPrice(c) }; }
       if (k === 'ride') return NORIDE ? null : RIDES.list[e.ride] && { tier: e.ride + 1, ...RIDES.list[e.ride] };
       return LIST[k][k === 'bag' ? e.bag : e[k]];
     };
     const kinds = [...GEAR, ...WK, ...(battle ? ['weapon'] : []), ...(NORIDE ? [] : ['ride'])];
-    const buy = (k) => { const n = next(k); const at = Math.min(st.tAll, dayEnd); st.coins -= n.price; if (k === 'weapon') st.weapon++; else e[k]++; buys.push({ at, when: fmt(at), k, tier: n.tier, name: n.name, price: n.price }); };
+    const buy = (k) => { const n = next(k); const at = Math.min(st.tAll, dayEnd); st.coins -= n.price; if (skipK(k)) { if (k === 'weapon') st.weapon = topOf(k) + 1; else e[k] = topOf(k) + 1; } else if (k === 'weapon') st.weapon++; else e[k]++; buys.push({ at, when: fmt(at), k, tier: n.tier, name: n.name, price: n.price }); };
     // 이득 = 귤/초 늘어나는 양 ÷ 값. 무기는 몹 쫓아내는 시간 차이로 어림
     const gain = (k) => {
       const n = next(k); if (!n) return -1;
-      if (k === 'weapon') { const kind = ENEMY_SPAWN.byZone[3], a = mobFight(kind, st), b = (st.weapon++, mobFight(kind, st)); st.weapon--; return Math.max(1e-6, (a.t - b.t) / ENEMY_SPAWN.every * rateOf(e)) / n.price; }
-      const e2 = { ...e }; e2[k]++;
+      if (k === 'weapon') { const kind = ENEMY_SPAWN.byZone[3], w0 = st.weapon, a = mobFight(kind, st), b = (st.weapon = skipK(k) ? topOf(k) + 1 : w0 + 1, mobFight(kind, st)); st.weapon = w0; return Math.max(1e-6, (a.t - b.t) / ENEMY_SPAWN.every * rateOf(e)) / n.price; }
+      const e2 = { ...e }; if (skipK(k)) e2[k] = topOf(k) + 1; else e2[k]++;
       return Math.max(1e-6, rateOf(e2) - rateOf(e)) / n.price;
     };
     // 벌이에 안 드는 옷(티셔츠·잠바·양말)은 장비를 따라 삼: 다음 단계가 도구·배낭·신발 가장 낮은 단계 이하일 때 (장비가 다 5단계면 언제든)
@@ -147,7 +153,7 @@ async function main() {
       let t = 0; const t0 = st.tAll; dayEnd = t0 + 3599; // 하루 1시간을 넘긴 마지막 나가기에서 산 건 그날 끝으로 셈
       const add = (dt) => { t += dt * S; st.tAll += dt * S; };
       if (d === 0) { // 튜토리얼: 쓰레기 6개 → 첫 보너스 → 집게·배낭
-        t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag');
+        t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag'); st.tutDone = true;
       }
       while (t < 3600) {
         const b = best(st, e, cleanSeen) || (st.cur = null, best(st, e, new Set())); if (!b) { add(30); continue; }
