@@ -1,6 +1,9 @@
 // 버전·릴리스 노트 (새 버전은 맨 위에 추가)
-export const VERSION = '0.23.4';
+export const VERSION = '0.23.5';
 export const RELEASE_NOTES = [
+  { v: '0.23.5', date: '2026-11-20', items: [
+    '새 버전이 나오면 위쪽에 새로고침 알림이 떠요',
+  ] },
   { v: '0.23.4', date: '2026-11-20', items: [
     '여럿이 함께 할 때 주고받는 양을 줄여 더 가볍게 했어요',
   ] },

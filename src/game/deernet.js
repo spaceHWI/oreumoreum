@@ -26,7 +26,7 @@ const isHost = () => live && !!room?.isHost;
 function link(r) {
   if (!r.on) return;
   room = r;
-  r.on('hi', (m) => { live = true; setRides(m.rides); setMode(); });
+  r.on('hi', (m) => { late.newver?.checkMinVer(m.minVer); live = true; setRides(m.rides); setMode(); });
   r.on('host', () => setMode());
   r.on('close', () => { live = false; pending = null; if (player.riding) dismountDeer(); setRides([]); freePeers(); setMode(); }); // 끊기면 내림 → 방에서도 풀림
   r.on('rides', (m) => setRides(m.r));
