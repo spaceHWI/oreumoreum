@@ -36,9 +36,9 @@ export function dumpBag(ch = chNear()) {
   TRASH_TYPES.forEach((t) => { bag[t.id] = 0; });
   save.recycle.visits++; save.recycle.gyul += g;
   trash.store.commit();
-  addCoins(g); late.tut.notify('dump');
+  late.gyulExpect?.(g); addCoins(g); late.tut.notify('dump'); // 귤 숫자는 쏟아지는 연출 뒤에 올라감 (#133)
   // 첫 보너스(#31): 처음 버릴 때 한 번만 귤이 TUT.firstBonus(200)가 되도록 채움. 연출은 버리기가 끝난 뒤 귤이 쏟아짐
-  if (!save.firstBonus) { save.firstBonus = 1; const b = Math.max(0, TUT.firstBonus - save.coins); save.coins += b; persist(); late.tut.notify('bonus');
+  if (!save.firstBonus) { save.firstBonus = 1; const b = Math.max(0, TUT.firstBonus - save.coins); if (b > 0) late.gyulExpect?.(b); save.coins += b; persist(); late.tut.notify('bonus');
     if (b > 0) setTimeout(() => late.gyulShower(b), CLEANHOUSE.dumpTime * 1000 + 150); }
   ach.emit('recycle'); ach.emit('earn', g);
   updateTrashUI(true);
