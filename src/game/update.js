@@ -95,13 +95,14 @@ function updatePlayer(dt) {
     if (d.speed > 0.05) {
       let nx = d.pos.x + Math.sin(d.heading) * d.speed * dt, nz = d.pos.z + Math.cos(d.heading) * d.speed * dt;
       const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
-      if (col) { const r = col.move(d.pos.x, d.pos.z, nx, nz, 0.9); nx = r.x; nz = r.z; }
+      if (col) { const r = col.move(d.pos.x, d.pos.z, nx, nz, 0.9, true); nx = r.x; nz = r.z; }
       const moved = Math.hypot(nx - d.pos.x, nz - d.pos.z);
       d.pos.set(nx, height(nx, nz), nz);
       d.phase += dt * d.speed * 1.4;
       p.hoofAcc = (p.hoofAcc || 0) + d.speed * dt; if (p.hoofAcc > 1.6) { p.hoofAcc = 0; sound.step(surfaceAt(nx, nz), true); }
       p.rideAcc = (p.rideAcc || 0) + moved * 1.9; if (p.rideAcc >= 10) { ach.emit('ride-dist', Math.floor(p.rideAcc)); p.rideAcc %= 1; p.rideAcc = 0; }
     }
+    if (col) { const r = col.nudge(d.pos.x, d.pos.z, 0.9); if (r) d.pos.set(r.x, height(r.x, r.z), r.z); } // 다가오는 마차에 밀림 (#117)
     p.heading = d.heading; p.speed = d.speed;
     p.pos.copy(d.pos);
     checkViewpoint();
@@ -121,7 +122,7 @@ function updatePlayer(dt) {
     const cl = spots.clamp(x, z);
     if (cl) { x = cl.x; z = cl.z; if (cl.hit && (!p.wallToast || performance.now() - p.wallToast > 8000)) { p.wallToast = performance.now(); toast(cl.hit); } }
     { const g = spots.gateHint; if (g && Math.hypot(x - g.x, z - g.z) < g.r && (!p.wallToast || performance.now() - p.wallToast > 8000)) { p.wallToast = performance.now(); toast(g.line); } }
-    if (col && p.pose !== 'sit') { const want = p.speed * dt, r = col.move(p.pos.x, p.pos.z, x, z); x = r.x; z = r.z;
+    if (col && p.pose !== 'sit') { const want = p.speed * dt, r = col.move(p.pos.x, p.pos.z, x, z, undefined, true); x = r.x; z = r.z;
       // 탭 이동 중 사물에 막혀 못 나아가면 멈춤 (도착 콜백이 있고 거의 다 왔으면 도착으로 침)
       if (p.target && want > 0.01 && Math.hypot(x - p.pos.x, z - p.pos.z) < want * 0.3) { p.stuckT = (p.stuckT || 0) + dt;
         if (p.stuckT > COLLIDE.stuckT) { p.stuckT = 0; const cb = p.onArrive, near = Math.hypot(p.target.x - p.pos.x, p.target.z - p.pos.z) < 3; p.target = null; p.onArrive = null; marker.visible = false; if (cb && near) cb(); }
@@ -138,10 +139,11 @@ function updatePlayer(dt) {
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
     const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
-    if (col) { const r = col.move(p.pos.x, p.pos.z, nx, nz); nx = r.x; nz = r.z; }
+    if (col) { const r = col.move(p.pos.x, p.pos.z, nx, nz, undefined, true); nx = r.x; nz = r.z; }
     p.pos.set(nx, height(nx, nz), nz);
     p.kb.multiplyScalar(Math.max(0, 1 - dt * (p.knock ? BOAR.knockDrag : 2.2))); // 맞음 밀림은 짧게 (#107)
   }
+  if (col && p.pose !== 'sit') { const r = col.nudge(p.pos.x, p.pos.z); if (r) p.pos.set(r.x, groundAt(r.x, r.z), r.z); } // 서 있어도 다가오는 마차에 옆으로 밀림 (#117). 높이는 땅에 붙임
   tickJump(dt); placeRunner(dt);
 }
 function countSteps(moved) {

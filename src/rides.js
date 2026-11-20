@@ -246,6 +246,7 @@ export function createCart({ scene, height, low = false, col = null }) {
   });
   const st = { now: 0, s: 0, heading: 0, moving: false, stop: -1, speed: 0, wheel: 0, phase: 0 };
   const pos = new THREE.Vector3(), _a = new THREE.Vector3();
+  const blk = new Array(CART.block.length * 3).fill(0); if (col) col.setDyn(blk); // 움직이는 부딪힘 (#117)
   function place(now) {
     const c = cartState(now, R); Object.assign(st, c, { now });
     const p = R.at(c.s), h = p.dir + (c.dir < 0 ? Math.PI : 0);
@@ -255,6 +256,10 @@ export function createCart({ scene, height, low = false, col = null }) {
     // 방향은 부드럽게 (꺾인 곳·되돌아가는 곳)
     let dh = h - st.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); st.heading += st.inited ? dh * Math.min(1, 0.12 + (c.moving ? 0.1 : 0.05)) : dh; st.inited = true;
     C.g.position.copy(pos); C.g.rotation.set(-Math.atan2(y1 - y0, 4.6) * 0.8, st.heading, 0, 'YXZ');
+    if (col) { // 부딪힘 자리도 함께 (#117)
+      const s = Math.sin(st.heading), c = Math.cos(st.heading);
+      CART.block.forEach(([lx, lz, r], k) => { blk[k * 3] = pos.x + c * lx + s * lz; blk[k * 3 + 1] = pos.z - s * lx + c * lz; blk[k * 3 + 2] = r; });
+    }
   }
   function update(dt, now, eye) {
     place(now);
@@ -277,7 +282,7 @@ export function createCart({ scene, height, low = false, col = null }) {
   // 정류장 쪽 내릴 자리 (팻말 앞 길가)
   const exitAt = (i) => { const q = nsAlong(CART.stops[i].path, CART.stops[i].d, CART.stops[i].path === 'approach' ? 1 : -1, CART.side - 1.6); return _a.set(q.x, height(q.x, q.z), q.z).clone(); };
   update(0, Date.now() / 1000);
-  return { update, seat, boardable, exitAt, stops, pos, state: st, get heading() { return st.heading; }, mesh: C.g, route: R };
+  return { update, seat, boardable, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R };
 }
 
 // ---------- 탈것 가게 (가게 거리 빈 터, 임시 모양) ----------
