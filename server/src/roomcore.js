@@ -13,21 +13,35 @@
 // 보안 (#84): 이동은 NET.maxSpeed 로 판정해 넘으면 {t:'pos', x, z} 로 되돌림(순간 이동은 warpGap 초에 한 번만 받아 줌),
 //   줍기는 takePerSec, 못 주우면 {t:'h', h, n, no:1} (주운 사람이 배낭에서 하나 되돌림), 닉네임·말풍선 글은 다듬어서만 돌림,
 //   되돌리기·버린 메시지가 쌓이면 {t:'kick'} 후 끊고 그 계정·주소는 banSec 초 동안 못 들어옴 ({t:'ban'})
-// 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
-import { NET } from '../../src/balance.js';
-import { HEAP_FULL, HEAP_SIG, HEAP_GYUL } from './heaps.js';
+// 구역 지킴이 돌하르방 (#119): 줍기로 한 구역 더미가 모두 0 이 된 순간(지킴이가 없거나 ZONE_GUARD.holdSec 이 지났으면) 그 시각을 기억하고 방 전체에 {t:'zg', z, at}.
+//   hi 의 zg = [[구역, 세운 시각 ms]…] (아직 서 있는 것만). 다시 쌓여도 지우지 않음(시간으로만). 옛 클라이언트는 모르는 메시지·칸이라 그냥 넘김
+// 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
+import { NET, ZONE_GUARD } from '../../src/balance.js';
+import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText } from '../../src/safetext.js';
 
 const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134). 지금은 비워 둠 → 예: '0.24.0'
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isDeerId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,12}$/.test(v); // 노루 이름 (#92)
 
-export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heaps = null, seen = 0, stats = false } = {}) {
+export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heaps = null, seen = 0, stats = false, guards = null } = {}) {
   const peers = new Map(); // id → peer
   let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], v | 0))) : HEAP_FULL.slice();
   const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
   const earned = new Map(); // 계정 → 받아 준 줍기로 번 몫 (#144). room.js 가 earnFlushMs 마다 꺼내 계정(Accounts.earn)에 넘김
   let heapsDirty = false, roomSeen = seen || 0, host = null, nextId = 1, tick = 0;
+  // 구역 지킴이 (#119): 구역 → 세운 시각(ms). room.js 가 저장·불러옴
+  const ZH = {}; HEAP_DEFS.forEach((d, i) => { (ZH[d.zone] ||= []).push(i); });
+  const G = new Map(); let guardsDirty = false;
+  if (Array.isArray(guards)) for (const a of guards) if (Array.isArray(a) && ZH[a[0]] && isNum(a[1]) && a[1] > 0) G.set(a[0], a[1]);
+  const holdMs = () => ZONE_GUARD.holdSec * 1000;
+  const guardList = (t) => { for (const [z, at] of G) if (t - at >= holdMs() || at > t + 60000) { G.delete(z); guardsDirty = true; } return [...G]; };
+  const guardOut = []; // 이번 틱에 선 것 → hs 뒤에 알림 (꽃이 먼저 피게)
+  function zoneEmptied(z, t) {
+    if (!ZH[z] || ZH[z].some((i) => H[i] > 0)) return;
+    const at = G.get(z); if (at && t - at < holdMs()) return; // 서 있는 동안은 그대로
+    G.set(z, t); guardsDirty = true; guardOut.push([z, t]);
+  }
   const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0, moveBack: 0, kicks: 0, takeNo: 0 };
   const bans = new Map(); // 계정·주소 키 → 풀리는 시각 (ms)
   const rides = new Map(); // 노루 이름 → 탄 사람 id (#92). 한 마리에 한 사람
@@ -61,7 +75,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec };
     peers.set(p.id, p);
     if (!host) host = p.id;
-    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER }));
+    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t) }));
     return p;
   }
   function leave(p) {
@@ -146,7 +160,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
         // 보낸 수(ask)는 그대로 세고 받는 수만 takeMax·남은 수·초당 몫으로 자름 (#144: 예전엔 takeMax 로 먼저 잘라 넘친 몫을 되돌리라고 알리지 않았음)
         const ask = Math.max(1, Math.min(NET.takeAsk, m.n | 0 || 1)), got = Math.max(0, Math.min(ask, NET.takeMax, H[h], Math.floor(p.takeTok)));
-        if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); }
+        if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); if (!H[h]) zoneEmptied(HEAP_DEFS[h].zone, t); }
         if (got < ask) { st.takeNo += ask - got; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: ask - got })); } // 늦게 온 마지막 것·너무 빠른 줍기: 주운 사람이 그만큼 되돌림
         break;
       }
@@ -169,6 +183,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     tick++; st.ticks++;
     if (peers.size) roomSeen = now();
     if (heapOut.size) { all(JSON.stringify({ t: 'hs', hs: [...heapOut] })); heapOut.clear(); }
+    for (const [z, at] of guardOut) all(JSON.stringify({ t: 'zg', z, at })); guardOut.length = 0;
     const farTick = tick % NET.farEvery === 0, R2 = NET.farR * NET.farR;
     for (const r of peers.values()) {
       let parts = null;
@@ -188,6 +203,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     get size() { return peers.size; }, get host() { return host; },
     takeEarned() { if (!earned.size) return null; const a = [...earned]; earned.clear(); return a; },
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },
+    guards: () => guardList(now()), guardsDirty() { const d = guardsDirty; guardsDirty = false; return d; },
     get seen() { return roomSeen; }, stats: () => ({ n: peers.size, ...st }),
   };
 }

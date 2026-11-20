@@ -26,6 +26,7 @@ export const net = createNet({
     if (!room.on) return;
     if (trash) linkTrash(trash, room);
     late.deerNet?.link(room); // 노루 무리·노루 타기 (#92, deernet.js)
+    late.guardNet?.link(room); // 구역 지킴이 돌하르방 세운 시각 (#119, guard.js)
     // 서버가 이동을 되돌림 (#84): 너무 빠르거나 순간 이동이 잦으면 마지막으로 받아 준 자리로
     room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
