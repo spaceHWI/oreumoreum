@@ -6,6 +6,9 @@ import { COLLIDE } from './balance.js';
 export function createCollide() {
   const C = COLLIDE.cell, cells = new Map();
   const X = [], Z = [], R = [], OFF = []; // OFF[i] 이면 잠시 꺼 둔 것 (열린 정낭 #31)
+  // 움직이는 부딪힘(#117: 마차). 칸에 넣지 않고 매 프레임 자리를 통째로 바꿈. D = [x, z, r, x, z, r, ...]
+  let D = [];
+  const setDyn = (list) => { D = list || []; };
   const key = (cx, cz) => cx * 73856093 ^ cz * 19349663;
   function add(x, z, r) {
     const i = X.length; X.push(x); Z.push(z); R.push(r); OFF.push(0);
@@ -30,8 +33,19 @@ export function createCollide() {
     return false;
   }
   const out = { x: 0, z: 0, hit: false };
-  function push(pr) {
-    const l = cells.get(key(Math.floor(out.x / C), Math.floor(out.z / C))); if (!l) return;
+  // 움직이는 것에서 밀어냄. 겹친 쪽 바깥으로만 (위·아래로는 안 밈)
+  function pushDyn(pr) {
+    let any = false;
+    for (let j = 0; j < D.length; j += 3) {
+      const dx = out.x - D[j], dz = out.z - D[j + 1], m = D[j + 2] + pr, d2 = dx * dx + dz * dz;
+      if (d2 >= m * m) continue;
+      const d = Math.sqrt(d2) || 1e-4; out.x = D[j] + dx / d * m; out.z = D[j + 1] + dz / d * m; any = true; out.hit = true;
+    }
+    return any;
+  }
+  function push(pr, dyn) {
+    const l = cells.get(key(Math.floor(out.x / C), Math.floor(out.z / C)));
+    if (!l) { if (dyn) for (let it = 0; it < 3 && pushDyn(pr); it++); return; }
     for (let it = 0; it < 3; it++) {
       let any = false;
       for (let j = 0; j < l.length; j++) {
@@ -39,15 +53,25 @@ export function createCollide() {
         if (d2 >= m * m || OFF[i]) continue;
         const d = Math.sqrt(d2) || 1e-4; out.x = X[i] + dx / d * m; out.z = Z[i] + dz / d * m; any = true; out.hit = true;
       }
+      if (dyn && pushDyn(pr)) any = true;
       if (!any) break;
     }
+    if (dyn) pushDyn(pr); // 마지막은 움직이는 쪽: 나무와 마차 사이에 끼어도 마차 속에는 남지 않게
   }
   // (ox,oz) → (nx,nz) 로 가되 사물에 겹치지 않게 밀어낸 결과(재사용 객체). 빨리 움직여도 뚫지 않게 잘게 나눈다
-  function move(ox, oz, nx, nz, pr = COLLIDE.player) {
+  // dyn 이면 움직이는 부딪힘(마차)도 막음 — 플레이어만 (#117)
+  function move(ox, oz, nx, nz, pr = COLLIDE.player, dyn = false) {
     const dx = nx - ox, dz = nz - oz, n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / COLLIDE.sub));
     out.x = ox; out.z = oz; out.hit = false;
-    for (let k = 1; k <= n; k++) { out.x = ox + dx * k / n; out.z = oz + dz * k / n; push(pr); }
+    for (let k = 1; k <= n; k++) { out.x = ox + dx * k / n; out.z = oz + dz * k / n; push(pr, dyn); }
     return out;
   }
-  return { add, addBox, setOff, blocked, move, count: () => X.length };
+  // 가만히 서 있어도 움직이는 것이 다가오면 밀려남. 안 밀렸으면 null
+  function nudge(x, z, pr = COLLIDE.player) {
+    if (!D.length) return null;
+    out.x = x; out.z = z; out.hit = false;
+    if (!pushDyn(pr)) return null;
+    push(pr, true); return out;
+  }
+  return { add, addBox, setOff, blocked, move, nudge, setDyn, count: () => X.length };
 }

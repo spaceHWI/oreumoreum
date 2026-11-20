@@ -66,6 +66,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
 - 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
+- 마차 부딪힘 (#117): collide.js 의 움직이는 부딪힘 `setDyn([x,z,r,...])` — 마차(rides.js createCart)가 매 프레임 자리를 넣음(모양은 balance.js CART.block). `col.move(..., dyn=true)` 와 서 있을 때 `col.nudge()` 는 플레이어(걷기·탈것·노루 타기)만 씀. 적·노루 AI 는 안 막힘. 확인 `node tools/cartblock.js`
 - 몸 방향 (#107): bodytilt.js — `orientBody(root, heading, 기울기들)` 이 캐릭터 root 방향을 매번 처음부터 만들고 맞음 움찔·쓰러져 누움을 한 번에 합침, `flinchK(t)` 움찔 곡선. 내 캐릭터(update.js placeRunner·노루 타기)·멀티의 남(net.js)이 같이 씀. root 에 `rotation.y` 만 쓰지 말 것(지난 기울기가 남음). 확인 `node tools/hittilt.js`
 - 탈것: rides.js · autowalk.js
 - 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
