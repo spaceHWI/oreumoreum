@@ -22,27 +22,29 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | 파일 | 하는 일 |
 |---|---|
 | state.js | 파일 사이에 주고받는 값. `state` = 여러 파일이 읽고 바꾸는 값(예전 let), `late` = 앞 파일이 부르는 뒤 파일의 함수·객체 |
-| save.js | 공용 도구($·isTouch·clamp·wrapA), 저장 불러오기·예전 저장 고치기·persist, 맵·서버 결정, 장비→겉모습 |
+| save.js | 공용 도구($·isTouch·clamp·wrapA), 저장 불러오기·예전 저장 고치기(예전 server clean → battle, #98)·persist, 맵 결정, 장비→겉모습 |
 | scene.js | 렌더러·장면·빛·성능 단계 적용, 실제 제주 시각의 해·하늘, 날씨 반영 |
 | place.js | 소품(표지석·벤치·징검돌·하르방·돌탑), 사물 충돌, 돌담, 들머리 개울, 가게 거리, 쓰레기·오름 안 클린하우스·꽃, 마차, 러너(player), HP |
 | camera.js | 카메라, 첫 화면 궤도 |
 | hud.js | 위 한 줄·토스트·배너 자리, 상황 팁, 패널 닫기, 업적, 도감 |
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
+| inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 |
 | panels.js | 채팅, 메뉴 항목, 릴리스 노트, 의견 보내기, 도움말 |
+| screen.js | 전체 화면 버튼·메뉴 항목(안 되는 곳은 홈 화면 추가 안내), 돌릴 때 바로 맞추기 (#105) |
 | ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차 |
 | moves.js | 노루 타기, 점프, 벤치에 앉기, 돌탑 소원, 사진사 사진 |
 | room.js | 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 |
 | stores.js | 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 |
-| pickup.js | 줍기·배낭, 구역 확인, 더미·꽃밭 효과 |
+| pickup.js | 줍기·배낭(줍기 버튼으로 가까운 쓰레기까지 걷기 #104), 구역 확인, 더미·꽃밭 효과 |
 | deernet.js | 멀티 노루 (#92): 노루 무리는 방장이 알림, 노루 타기는 방이 관리, 다른 사람 귤 먹이 부탁 |
 | dump.js | 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 |
 | shop.js | 상점 팝업(장비 탭)·사는 연출, 옷 |
 | look.js | 캐릭터 고르기·머리·옷장, 표지판, 탐방로 고르기 |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
-| start.js | 서버 고르기, 첫 화면 시작, 로그인 |
+| start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 
@@ -59,8 +61,10 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
 - 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
+- 몸 방향 (#107): bodytilt.js — `orientBody(root, heading, 기울기들)` 이 캐릭터 root 방향을 매번 처음부터 만들고 맞음 움찔·쓰러져 누움을 한 번에 합침, `flinchK(t)` 움찔 곡선. 내 캐릭터(update.js placeRunner·노루 타기)·멀티의 남(net.js)이 같이 씀. root 에 `rotation.y` 만 쓰지 말 것(지난 기울기가 남음). 확인 `node tools/hittilt.js`
 - 탈것: rides.js · autowalk.js
-- 멀티·저장: online.js · net.js · social.js · server.js · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
+- 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
+- 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - UI: tutorial.js · tips.js · uitips.js · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · music.js · page.html
 
 ## 결정 사항

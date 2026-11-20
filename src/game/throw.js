@@ -2,7 +2,6 @@
 import { THROW_AIM, WEAPONS } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
-import { isBattle } from '../server.js';
 import { state, late } from './state.js';
 import { $, save, syncEquipGear, persist } from './save.js';
 import { scene, camera } from './scene.js';
@@ -13,8 +12,8 @@ import { marker } from './input.js';
 // 귤 던지기 (#34): 상호작용 버튼(F)으로, 할 일이 없을 때. 손으로 던지기는 무료라 가진 귤이 줄지 않음
 // 자동 조준: 사거리 안 가장 가까운 대상(적·하르방)을 겨눠 몸을 돌려 던지고, 대상 발밑에 표시. 없으면 보는 방향으로
 state.throwPending = false, state.throwAim = null;
-// 무기 (#38): 전투 오름에서 귤 활을 샀으면 F 로 활을 쏨. 깨끗한 오름·말 탄 동안은 손 던지기
-export const weaponNow = () => WEAPONS[(isBattle() ? save.equip.weapon : 1) - 1] || WEAPONS[0]; late.weaponNow = weaponNow;
+// 무기 (#38): 귤 활을 샀으면 F 로 활을 쏨. 말 탄 동안은 손 던지기
+export const weaponNow = () => WEAPONS[save.equip.weapon - 1] || WEAPONS[0]; late.weaponNow = weaponNow;
 export const bowReady = () => weaponNow().id === 'bow' && !player.riding && !player.ride && !player.cart;
 export const bowArmed = () => bowReady() && (save.bowAmmo > 0 || save.coins > 0); // 귤이 0이고 남은 화살도 없으면 손 던지기
 export function setHoldBow(v) {
@@ -50,7 +49,7 @@ export function releaseTangerine() {
   let dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
   let from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
   if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
-  const peers = () => [...[...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))];
+  const peers = () => (late.net.solo ? [] : [...[...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]); // #100 튜토리얼 중엔 혼자
   const shot = t && aimShot(from, t);
   if (shot) life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy);
   else life.throwTangerine(from, dir, THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0), peers);
@@ -124,7 +123,7 @@ aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
 const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
 aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 export function tickAimMark(time) {
-  const t = state.throwAim || (!player.riding && isBattle() ? aimTarget() : null) || (state.ctxTarget === late.throwAct ? aimTarget() : null);
+  const t = state.throwAim || (!player.riding ? aimTarget() : null) || (state.ctxTarget === late.throwAct ? aimTarget() : null);
   aimMark.visible = aimTri.visible = !!t;
   if (!t) return;
   const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);

@@ -83,7 +83,7 @@ export const BLOOM_FX = {
   cheerT: 1.1, // 캐릭터가 기뻐하는 시간
   zone: { camT: 1.5, camDist: 0.6, camPitch: 0.2, column: 260, colT: 2.2, colH: 26, ring: 42, ringT: 2.4, glowT: 2.4, bannerT: 3.2, vib: [30, 50, 30, 50, 90] },
 };
-// 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음. 깨끗한 오름·전투 오름 둘 다
+// 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음
 // 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
 // 한 명 기준 한 시간에 오름 전체 쓰레기 × hourFrac 만큼 쌓임 (3분마다 한 번 → 한 번에 평균 약 38개).
 // 투기꾼은 작은 더미 하나(amt), 트럭 양은 이 평균이 맞게 자동 계산 (src/dumpers.js DUMP_AMT, 약 80)
@@ -247,8 +247,8 @@ export const BOAR = {
   jumpClear: 0.9,
   hitGap: 0.2, // 몸이 닿은 뒤 이만큼 안이면 받힘
   hitCd: 3, // 받힌 뒤 이 초 동안은 다시 안 받힘
-  knockSpeed: 28, knockV: 11, // 튕겨 나가는 속도·떠오르는 속도 (예전 14·9, 거리 약 2배)
-  rollT: 0.55, getUpT: 0.5, // 착지 뒤 구르는 시간·일어나는 시간 (이 동안 조작 못 함)
+  knockSpeed: 10, knockV: 4, knockDrag: 7, // 맞으면 짧게 뒤로 밀림 (#107: 예전엔 28·11 로 날아가 구르고 일어남). 속도·뜨는 속도·밀림이 줄어드는 빠르기(초당)
+  flinchT: 0.45, flinchPeak: 0.08, flinchAng: 0.38, // 움찔: 이 초 안에 바로 섬(이 동안 조작 못 함), 가장 젖히는 때, 그때 몸 기울기(rad, 약 22°)
 };
 // 적 (#37, 구역별 #48): 쓰러뜨리지 않고 귤을 맞혀 쫓아냄. 전투 오름에서만. 새 종류는 여기에 한 줄 + src/enemymodels.js 에 모양
 // hp 기운, walk·chase·flee 속도, dmg 받힐 때 플레이어 HP 피해(#36), reward 쫓아냈을 때 귤 개수·드문 쓰레기 확률
@@ -350,12 +350,22 @@ export const TUT = {
   walkD: 14, runD: 30, // 걷기·달리기 원 자리 (#62: 단계 사이는 걸어서 5초 안)
   ringR: 2.4, // 원에 이만큼 들어오면 도착
   gyulD: [35.5, 37.5, 39.5], gyulR: 1.7, // #62 바닥에 놓인 귤 3개 (길 양옆 번갈아), 이 안에서 줍기(E)
-  targetD: 49.5, targetLat: 2.2, targetH: 1.25, targetR: 0.8, hits: 3, // #62 과녁: 자리·길에서 옆으로·판 가운데 높이·맞는 반지름, 맞힐 횟수
+  targetD: 44, targetLat: 2.2, targetH: 1.25, targetR: 1.1, hits: 3, // #62 과녁: 자리·길에서 옆으로·판 가운데 높이·맞는 반지름, 맞힐 횟수 (#100: 귤 줍는 곳 바로 앞, 크게)
   streamD: 58, streamW: 6.6, // 개울 가운데 자리, 길 방향 반폭 (돌다리로 건넘)
-  trashD: [67.5, 69.5, 71.5, 73.5, 75.5, 77.5], // 쓰레기 6개 (#62: 가게 골목 SHOP_ST.d 앞에서 끝나게)
-  // #62 단계를 마치기 전엔 다음 구역으로 못 가게 길을 가로막는 보이지 않는 벽: [자리, 이 단계를 마치면 열림]
-  walls: [[19, 'walk'], [34, 'run'], [42.5, 'gyul'], [45.5, 'throw'], [79.8, 'pick']],
-  wallNear: 4, // 벽에 이만큼 다가가면 빛 띠가 보이고 목표 쪽 화살표가 뜸
+  trashD: [69, 72.5, 76], // 쓰레기 3개 (#100: 6 → 3, 임의값. 가게 골목 SHOP_ST.d 앞에서 끝나게)
+  // #100 단계마다 격리된 칸: 들머리 마당을 낮은 돌담으로 나눈 우리. to = 칸 끝(다음 칸과의 정낭) 자리, steps = 이 칸에서 하는 단계(다 하면 정낭이 열림)
+  // l·r = 길 가운데에서 왼쪽·오른쪽 담까지. 마지막 칸 끝은 들머리·오름 사이 정낭(gateD). 왼쪽 4칸 담이 가게 골목(SHOP_ST.d) 입구를 막음
+  cellBack: -4, // 첫 칸 뒷담 (시작 지점 뒤)
+  cells: [
+    { to: 33, steps: ['walk', 'run'], l: 7, r: 7 },
+    { to: 46.5, steps: ['gyul', 'throw'], l: 7, r: 7 },
+    { to: 80, steps: ['pick'], l: 7, r: 7 },
+    { to: 112, steps: ['dump', 'bonus', 'tongs', 'bag'], l: 6, r: 22 },
+  ],
+  penH: 0.6, // 칸 돌담 높이 배율 (바깥 돌담 WALL.height 의 이만큼 = 무릎~허리)
+  laneLen: [6, 9], laneW: 1.3, laneT: 10, // 정낭이 열리면 정낭 앞뒤로 빛나는 길 (m, 반폭, 이 초 뒤 사라짐)
+  // #100 쉽게: 진행이 없으면 손가락(초), 더 없으면 토스트를 흔들고 더 쉬운 말로(초). 잘했어요 토스트 시간(초)
+  fingerT: 10, easyT: 30, okT: 1.1,
   cleanD: 94, // 클린하우스(길 오른쪽 7.5)
   gateD: 112, // 안쪽 돌담·정낭
   firstBonus: 200, // 클린하우스에 처음 버릴 때 귤이 이만큼이 되도록 채워 줌 (집게 100 + 배낭 80)
@@ -418,6 +428,8 @@ export const FISH = {
 };
 
 // 귤 던지기 자동 조준 (#34): 사거리 안 가장 가까운 대상(적·하르방)을 겨눔. 손으로 던지기는 무료
+// 줍기 버튼으로 가까운 쓰레기까지 걸어가기 (#104): range 안에서 가장 가까운 쓰레기(낱개·더미)를 찾아 감. stand: 도착 자리(가장자리에서 도구 반경의 이 비율)
+export const PICK_SEEK = { range: 25, stand: 0.5, color: '#4fe3c1', retry: 0.3 };
 export const THROW_AIM = {
   range: 16, // 이 거리(수평) 안 대상을 겨눔
   power: 11, runBonus: 3, // 대상이 없을 때 보는 방향으로 던지는 힘 (달리면 더)
@@ -448,15 +460,15 @@ export const HP = {
 
 // 레스토랑 스톤 (#50): 들머리 개울 건너 물가. 귤을 내고 식사하면 버프 (한 번에 하나, 새로 먹으면 바뀜)
 // 귤 = 메뉴판 가격 × 10. buff: speed 이동 속도·bag 배낭 용량·dmg 귤 무기 피해·pick 줍는 속도(배)·regen HP 회복 속도(배). v 는 더하는 비율(regen 은 곱하는 배수)
-// battle: 전투 오름에서만 살 수 있음 (깨끗한 오름에선 흐리게). sec: 버프 시간(없으면 buffSec)
+// sec: 버프 시간(없으면 buffSec). 모든 메뉴는 늘 살 수 있음 (#98: 깨끗한 오름이 없어져 battle 갈래를 뺌)
 export const STONE = {
   buffSec: 600,
   menu: [
     { id: 'pasta', ko: '시그니처 매콤 크림 파스타', en: 'Signature Spicy Cream Sauce Pasta', price: 190, buff: 'speed', v: 0.2, food: '#f2a65a' },
     { id: 'gnocchi', ko: '시그니처 새우 비스큐 뇨끼', en: 'Signature King Prawn Bisque Gnocchi', price: 200, buff: 'bag', v: 0.3, food: '#e0703c' },
-    { id: 'steak', ko: '시그니처 포크 스테이크', en: 'Signature Pork Steak', price: 290, buff: 'dmg', v: 0.5, battle: true, food: '#7a4a2c' },
+    { id: 'steak', ko: '시그니처 포크 스테이크', en: 'Signature Pork Steak', price: 290, buff: 'dmg', v: 0.5, food: '#7a4a2c' },
     { id: 'pizza', ko: '마르게리따', en: 'Pizza Margherita', price: 180, buff: 'pick', v: 0.25, food: '#e8b04a' },
-    { id: 'salad', ko: '하우스 리코타 샐러드', en: 'House Ricotta Salad', price: 100, buff: 'regen', v: 2, battle: true, food: '#7fb65a' },
+    { id: 'salad', ko: '하우스 리코타 샐러드', en: 'House Ricotta Salad', price: 100, buff: 'regen', v: 2, food: '#7fb65a' },
     { id: 'ade', ko: '플럼 에이드', en: 'Plum Ade', price: 50, buff: 'speed', v: 0.1, sec: 300, food: '#c2416b', drink: true },
   ],
   // 자리: 가게 거리(#57) 터 SHOPS 의 lot. 앞(테라스)이 골목 너머 개울·바다(서쪽)를 봄
@@ -613,7 +625,7 @@ export const MUSIC = {
 // 연출 감독 (#89, src/pacing.js): 힐링 시간(줍기·꽃·낚시)이 바탕이고 공격 시간(투기꾼·트럭·몹)은 짧고 또렷한 사건
 // 한 번 공격 = 조짐(omen 초: 방향 표시·음악·새가 날아오름) → 긴장(나타나서 쫓아낼 때까지, attack 초 안) → 쉼(rest 초 동안 새 적 없음)
 // gap: 공격 시작에서 다음 공격 시작까지(초) [최소, 최대]. 꽃이 피면 bloomQuiet 초 동안 적이 끼어들지 않음
-// clean: 깨끗한 오름(투기꾼·트럭만), battle: 전투 오름(몹 물결, dumpEvery 번째마다 투기꾼도 같이). 구역이 깊을수록 무리가 큼(group)
+// battle: 전투 오름(몹 물결, dumpEvery 번째마다 투기꾼도 같이). 구역이 깊을수록 무리가 큼(group). 깨끗한 오름(clean)은 #98 에서 없앰
 // 첫 공격: 튜토리얼 뒤 더미를 한 번 치워 꽃을 피운 다음 firstDelay 초 뒤, 약한 투기꾼 하나
 // 보상: 다 쫓아내면 귤 bonus(나머지는 그 1/3), 그리고 rest 초 쉼
 // 지루함: calmMax 초 넘게 아무 일이 없으면 작은 즐거움 하나 (드문 쓰레기 반짝임·노루가 지나감·반딧불이 떼·잭팟 조짐)
@@ -625,9 +637,8 @@ export const PACE = {
   bloomQuiet: 10,
   calmMax: 180,
   firstDelay: 25,
-  clean: { gap: [300, 480], bonus: 6, truckP: 0.6 },
   battle: { gap: [180, 240], bonus: 9, dumpEvery: 2, group: { 1: [1, 2], 2: [2, 2], 3: [2, 3], 4: [2, 3], 5: [3, 3] } },
-  truckMax: 140, // 트럭 한 번에 쌓는 최대 (방금 치운 보람을 지우지 않게. 전투 오름은 투기꾼이 두 번에 한 번이라 시간당 양이 줄고 몹이 헤집는 쓰레기가 더해짐)
+  truckMax: 140, // 트럭 한 번에 쌓는 최대 (방금 치운 보람을 지우지 않게. 투기꾼이 두 번에 한 번이라 시간당 양이 줄고 몹이 헤집는 쓰레기가 더해짐)
   near: 140, // 투기꾼이 노릴 더미: 플레이어에서 이 거리 안을 먼저 (보이는 곳에서 사건이 일어나게)
   protect: 600, // 방금(이 초 안에) 다 치운 더미에는 투기꾼이 다시 쌓지 않음
   busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
@@ -681,9 +692,9 @@ export const PHOTOG = {
 // up 0 = 오르막은 못 탐 (옆구리에 들고 걷기 carry 속도). glide = 관성(손을 떼도 미끄러짐, 천천히 붙고 천천히 멎음)
 export const RIDES = {
   list: [
-    { id: 'skate', name: '스케이트보드', price: 600, flat: 1.3, up: 0, down: 2.0, glide: true },
-    { id: 'scoot', name: '스쿠터', price: 2000, flat: 1.6, up: 1.3, down: 1.8 },
-    { id: 'horse', name: '조랑말', price: 5000, flat: 1.9, up: 1.7, down: 1.9 },
+    { id: 'skate', name: '스케이트보드', price: 1500, flat: 1.3, up: 0, down: 2.0, glide: true },
+    { id: 'scoot', name: '스쿠터', price: 4000, flat: 1.6, up: 1.3, down: 1.8 },
+    { id: 'horse', name: '조랑말', price: 8000, flat: 1.9, up: 1.7, down: 1.9 },
   ],
   base: 10,       // 달리기 속도 (main.js)
   off: 0.7,       // 길(탐방로·들머리 길·가게 골목) 밖 풀밭·숲
@@ -799,7 +810,7 @@ export const NET = {
   saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
   keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
   // 보안 (#84): 이동·줍기·폭주·요청 수 제한. 모두 서버(roomcore·index)가 봄
-  rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>(-battle)' 만. 그 밖은 거절 (방 만들기 폭주 막기)
+  rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>-battle' 만 (#98: 서버는 전투 오름 하나. 예전 'oreum-<이름>' 접속은 battle 방으로 보냄). 그 밖은 거절 (방 만들기 폭주 막기)
   maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
   moveSlack: 8,       // 이동 판정 여유 (m, 끊김·점프)
   warpGap: 10,        // 들것 귀환·자리 앉기 같은 순간 이동은 이 초에 한 번까지 받아 줌
@@ -817,7 +828,7 @@ export const NET = {
   deerPerSec: 5,      // 노루 메시지(무리·타기·먹이 부탁)는 따로 1초에 이만큼
 };
 
-// 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체, 깨끗한 오름·전투 오름 따로
+// 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체. 서버는 전투 오름 하나 (#98, 예전 깨끗한 오름 기록은 합침)
 export const RANK = {
   top: 50,            // 서버가 돌려주는 위 몇 명
   cacheMs: 10000,     // 서버: 같은 순위표는 이만큼 메모리에 두고 다시 셈 (계정 DO 부하)
@@ -841,4 +852,11 @@ export const LIFE_MODELS = {
   deer: { scale: 1.9, near: 140, seatY: 1.0, seatZ: -0.62 }, // 키 약 1.86m. near: 이 거리 안에 노루가 오면 모델을 받음. 탈 때 러너를 등 높이·뒤쪽으로
   hareubang: { scale: 3.2 },                     // 키 약 3.1m (예전 임시 모양과 같음)
   lamp: { scale: 4.0, glow: 0.8, colR: 0.3 },     // 키 약 3.9m, 귤 등은 땅에서 약 2.6m. glow: 밤에 귤 등이 빛나는 세기, colR: 기둥 충돌 반지름
+};
+
+// 화면 방향 (#105): 낮은 가로 화면(폰을 가로로)에서는 세로 화각을 넓혀 캐릭터가 너무 크게 보이지 않게
+export const SCREEN = {
+  fov: 50,       // 기본 세로 화각(도)
+  fovLow: 62,    // 낮은 가로 화면 세로 화각
+  lowH: 500,     // 이 높이(px) 이하이면서 가로가 더 길면 낮은 가로 화면 (page.html 의 같은 media query 와 맞춤)
 };

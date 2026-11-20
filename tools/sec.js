@@ -87,9 +87,9 @@ async function startServers() {
     const gm = await req('prod', '/me', { origin: GAME });
     ok(gm.status === 401 && gm.h.get('access-control-allow-origin') === GAME, `게임 주소는 통과 (로그인 없으면 401: ${gm.status})`);
     ok(gm.h.get('x-content-type-options') === 'nosniff' && /frame-ancestors 'none'/.test(gm.h.get('content-security-policy') || '') && gm.h.get('referrer-policy') === 'no-referrer', '서버 응답 보안 헤더');
-    const wsEvil = await sock('prod', 'oreum-namsongi', { origin: EVIL });
+    const wsEvil = await sock('prod', 'oreum-namsongi-battle', { origin: EVIL });
     ok(!wsEvil.msgs.some((m) => m.t === 'hi'), `WebSocket 다른 Origin 거절 (${wsEvil.closed})`);
-    const wsNone = await sock('dev', 'oreum-namsongi', { origin: null });
+    const wsNone = await sock('dev', 'oreum-namsongi-battle', { origin: null });
     ok(!wsNone.msgs.some((m) => m.t === 'hi'), 'WebSocket Origin 없으면 거절');
     const wsRoom = await sock('dev', 'zzz-flood-1');
     ok(!wsRoom.msgs.some((m) => m.t === 'hi'), '정해진 방 이름이 아니면 거절 (방 만들기 폭주)');
@@ -147,8 +147,8 @@ async function startServers() {
     ok(!/[<>‮\u0000]/.test(nk2) && [...nk2].length <= 16, `저장 닉네임 다듬음 (${JSON.stringify(nk2)})`);
 
     /* ---------- 방 (이동·줍기·폭주·맞힘) ---------- */
-    const P = await sock('dev', 'oreum-namsongi', { ch: 3, token: A.token });
-    const Q = await sock('dev', 'oreum-namsongi', { ch: 3 });
+    const P = await sock('dev', 'oreum-namsongi-battle', { ch: 3, token: A.token });
+    const Q = await sock('dev', 'oreum-namsongi', { ch: 3 }); // 예전 깨끗한 오름 방 이름 → battle 방으로 (#98): P 와 같은 방이어야 함
     ok(P.msgs[0]?.t === 'hi' && P.proto === 'oreum', `하위 프로토콜로 토큰 보내고 연결 (${P.proto})`);
     P.send(presence(-860, 0, { nick: bad, say: { t: '<script>alert(1)</script>' + 'ㅋ'.repeat(200), at: Date.now() } }));
     Q.send(presence(-860, 5));
@@ -171,27 +171,27 @@ async function startServers() {
     let x = -300; for (let i = 0; i < 20; i++) { x += 20; P.send(presence(x, 0)); await sleep(100); }
     await sleep(300);
     ok(P.msgs.some((m) => m.t === 'kick') && P.closed, `속도 조작을 되풀이하면 끊음 (${P.closed})`);
-    const P2 = await sock('dev', 'oreum-namsongi', { ch: 3, token: A.token, origin: LOCAL });
+    const P2 = await sock('dev', 'oreum-namsongi-battle', { ch: 3, token: A.token, origin: LOCAL });
     ok(P2.msgs.some((m) => m.t === 'ban') && !P2.msgs.some((m) => m.t === 'hi'), '끊긴 계정은 잠시 다시 못 들어옴');
     // 보통 걷기·달리기·말은 되돌리지 않음
-    const W = await sock('dev', 'oreum-namsongi', { ch: 4 });
+    const W = await sock('dev', 'oreum-namsongi-battle', { ch: 4 });
     let wx = -860; for (let i = 0; i < 30; i++) { wx += 1.9; W.send(presence(wx, 0)); await sleep(100); }
     await sleep(200);
     ok(!W.last('pos'), '말 속도(19m/s)는 그대로 둠');
     // 줍기: 같은 더미 마지막 하나 동시 줍기·빠른 줍기
     const hi = W.msgs[0], h = hi.heaps.indexOf(Math.min(...hi.heaps.filter((n) => n > 0))), full = hi.heaps[h];
-    const X = await sock('dev', 'oreum-namsongi', { ch: 4 });
+    const X = await sock('dev', 'oreum-namsongi-battle', { ch: 4 });
     let sent = 0;
     for (let r = 0; r < Math.ceil(full / 4) + 2; r++) { for (const s of [W, X]) { for (let j = 0; j < 3; j++) { s.send({ t: 'take', h }); sent++; } } await sleep(1100); }
     await sleep(300);
     const no = [W, X].reduce((n, s) => n + s.msgs.filter((m) => m.t === 'h' && m.h === h && m.no).length, 0);
     ok(sent - no === full, `동시 줍기: 더미 ${full}개에 ${sent}번 → 받아 준 줍기 ${sent - no} (나머지는 되돌리라고 알림)`);
-    const fast = await sock('dev', 'oreum-namsongi', { ch: 5 });
+    const fast = await sock('dev', 'oreum-namsongi-battle', { ch: 5 });
     const h2 = fast.msgs[0].heaps.findIndex((n) => n >= 20);
     for (let j = 0; j < 14; j++) fast.send({ t: 'take', h: h2 }); await sleep(400);
     ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 14 - 6 - 1, '빠른 줍기(초당 6번 넘게) 되돌림');
     // 폭주
-    const F = await sock('dev', 'oreum-namsongi', { ch: 6 });
+    const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });
     await sleep(500);
     ok(F.msgs.some((m) => m.t === 'kick' && m.why === 'flood') && F.closed, '메시지 폭주는 끊음');
@@ -213,12 +213,17 @@ async function startServers() {
     ok(Array.isArray(list) && list.every((it) => !/[<>]/.test(it.text)) && list.every((it) => !('ip' in it)), '의견 글 다듬음·주소 원문 없음');
     let lim = 0; for (let j = 0; j < 140; j++) { const r = await fetch(url('prod', '/me'), { headers: { Origin: GAME } }); if (r.status === 429) lim++; }
     ok(lim > 0, `주소별 요청 수 제한 (140번 중 429 ${lim}번)`);
-    let lw = 0; for (let j = 0; j < 40; j++) { const s = await sock('prod', 'oreum-namsongi', { origin: GAME, ch: 7 }); if (!s.msgs.some((m) => m.t === 'hi')) lw++; s.close(); }
+    let lw = 0; for (let j = 0; j < 40; j++) { const s = await sock('prod', 'oreum-namsongi-battle', { origin: GAME, ch: 7 }); if (!s.msgs.some((m) => m.t === 'hi')) lw++; s.close(); }
     ok(lw > 0, `방 연결 폭주 제한 (40번 중 거절 ${lw}번)`);
 
     /* ---------- 빌드 결과 ---------- */
     const html = fs.existsSync('dist/index.html') ? fs.readFileSync('dist/index.html', 'utf8') : '';
     ok(/http-equiv="Content-Security-Policy"[^>]*script-src 'self' /.test(html) && !/<script>/.test(html) && /object-src 'none'/.test(html), '페이지 CSP (같은 곳 스크립트만, 인라인 없음 #85)');
+    { // 원스토어 SDK 로더 (#97): 인라인은 이 한 줄뿐이고 CSP 에 그 해시가 있어야 함
+      const inl = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+      const hashOk = inl.every((c) => html.includes(`'sha256-${crypto.createHash('sha256').update(c, 'utf8').digest('base64')}'`));
+      ok(inl.length === 1 && /^import\{createSDK\}from"https:\/\/h5sdk\.onestore\.net\//.test(inl[0]) && hashOk, '인라인 스크립트는 원스토어 SDK 로더 하나뿐, CSP 해시로만 허용 (#97)');
+    }
     ok(!/ghp_[A-Za-z0-9]{20}|github_pat_|sk-[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE|@gmail\.com|SESSION_SECRET\s*[:=]\s*['"]/.test(html), '빌드 결과에 비밀 값 없음');
   } finally {
     if (!KEEP) for (const p of procs) { try { process.kill(-p.pid); } catch (e) { /* 이미 끝남 */ } }

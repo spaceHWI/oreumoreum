@@ -1,4 +1,4 @@
-# 멀티 서버 (#7): server/ 가 바뀌어 dev 에 올라오면 Cloudflare Workers 에 배포한다.
+# 멀티 서버 (#7): server/ 가 바뀌어 dev 에 올라오면 Cloudflare Workers 에 배포한다. ADMIN_SUBS 넣음(2026-11-20)
 # 필요한 저장소 시크릿: CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID · SESSION_SECRET(세션 서명 키, 32자 이상 난수. 없으면 서버가 503). 없으면 건너뜀
 # 어드민(#84, 있으면): ADMIN_SUBS(어드민 구글 계정 sub, 쉼표로 여럿)
 # 의견 메일(#77, 있으면): FEEDBACK_TO(받는 개발자 메일) · FEEDBACK_FROM(Email Routing 도메인의 보내는 주소). server/wrangler.toml 의 send_email 주석도 풀어야 함

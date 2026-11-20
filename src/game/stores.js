@@ -10,7 +10,6 @@ import * as THREE from 'three';
 import { groundAt } from '../world.js';
 import { SKIN_TONES } from '../runner.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
-import { isBattle } from '../server.js';
 import { TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, WSLOT, CL, wearV, persist } from './save.js';
@@ -31,7 +30,6 @@ Object.assign(late, { refreshShopPop, finishMeal, finishCut, doInteract }); // �
 export const mealS = { on: false, item: null, phase: '', t: 0, target: null }; late.mealS = mealS;
 const stoneOpen = () => !NS_TUT || !!save.jeong; // 튜토리얼(정낭 열기 전)엔 아직 안 열림
 export const skipAct = { label: '건너뛰기', ic: 'skip', act: () => finishMeal() };
-const LOCK_SVG = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const buffIc = (k, cls = '') => `<svg ${cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BUFF_ICON[k]}</svg>`;
 // 가게 팝업 (#57): 가게마다 같은 틀 #shoppop (위 로고·이름·표어, 아래 카드). head = 위 칸, fill(grid) = 카드 채우기, when = 열 수 있는 때
 const SHOP_POP = {
@@ -57,19 +55,19 @@ function buildStoneMenu(grid) {
   const cur = buff.now();
   for (const m of STONE.menu) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = m.id;
-    const lockd = m.battle && !isBattle(), min = Math.round((m.sec || STONE.buffSec) / 60);
-    b.disabled = lockd; b.classList.toggle('poor', save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
+    const min = Math.round((m.sec || STONE.buffSec) / 60);
+    b.classList.toggle('poor', !!save.mealFree && save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
     b.title = `${m.ko} · ${m.en}`;
     b.innerHTML = `<svg class="food" viewBox="0 0 64 64" aria-hidden="true">${FOOD_SVG[m.id]}</svg><span class="mn"><b>${m.ko}</b><small>${m.en}</small></span>`
-      + `<span class="mv"><span class="price"><i></i>${m.price}</span><span class="bf">${buffIc(m.buff)}${buffText(m)}<em>${min}′</em></span></span>${lockd ? LOCK_SVG : ''}`;
+      + `<span class="mv">${save.mealFree ? `<span class="price"><i></i>${m.price}</span>` : '<span class="price free">첫 식사 무료</span>'}<span class="bf">${buffIc(m.buff)}${buffText(m)}<em>${min}′</em></span></span>`;
     b.addEventListener('click', () => orderMeal(m));
     grid.appendChild(b);
   }
 }
 export function orderMeal(m) {
-  if (!STN || mealS.on || (m.battle && !isBattle())) return;
-  if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; }
-  save.coins -= m.price; persist(); updateStats(); late.sound.coin?.();
+  if (!STN || mealS.on) return;
+  if (!save.mealFree) { save.mealFree = 1; persist(); toast('첫 식사는 무료예요'); } // #93: 첫 한 번은 귤을 받지 않음 (서버 확인은 validate.js)
+  else { if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; } save.coins -= m.price; persist(); updateStats(); late.sound.coin?.(); }
   closePanels(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
   Object.assign(mealS, { on: true, item: m, phase: 'walk', t: 0 });
   setTarget(STN.seatGo, () => sitMeal()); mealS.target = player.target;
@@ -271,7 +269,6 @@ export function updateBuffUI(force) {
   const ic = buffPill.querySelector('svg.ic'); if (ic.dataset.k !== n.item.buff) { ic.dataset.k = n.item.buff; ic.innerHTML = BUFF_ICON[n.item.buff]; }
   buffPill.querySelector('.fg').style.strokeDashoffset = String(75.4 * (1 - n.left / n.total));
   buffPill.querySelector('b').textContent = txt; buffPill.classList.toggle('end', n.left < 30);
-  const off = (n.item.buff === 'dmg' || n.item.buff === 'regen') && !isBattle(); buffPill.style.opacity = off ? '.5' : '';
 }
 // 가장자리 포크·나이프: 레스토랑이 화면 밖이거나 조금 멀 때
 // 가장자리 가게 아이콘 (#57): 가게마다 아이콘 하나, 가장 가까운 (열 수 있는) 가게만. 화면 밖이거나 조금 멀 때
@@ -280,7 +277,7 @@ export function tickShopMark() {
   if (tipMarkT > 0 && tipMarkPos) { shopMarkId = '*tip'; shopMark.querySelector('svg').innerHTML = TIP_ICON.arrow; shopMark.hidden = false; late.placeArrow(shopMark, tipMarkPos, 0.6); return; }
   let best = null, bd = 1e9;
   for (const sh of shopsBuilt) { const w = SHOP_POP[sh.pop]?.when; if (w && !w()) continue; const d = Math.hypot(player.pos.x - sh.door.x, player.pos.z - sh.door.z); if (d < bd) { bd = d; best = sh; } }
-  const on = !!best && bd > SHOP_ST.markNear && bd < SHOP_ST.markFar && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on && !cutS.on;
+  const on = !!best && bd > SHOP_ST.markNear && bd < SHOP_ST.markFar && !late.tut?.active && !panelOpen() && cam.mode !== 'wardrobe' && !mealS.on && !cutS.on;
   if (!on) { if (!shopMark.hidden) shopMark.hidden = true; return; }
   if (shopMarkId !== best.id) { shopMarkId = best.id; shopMark.querySelector('svg').innerHTML = SHOP_ICON[best.id] || ''; shopMark.title = best.name; }
   shopMark.hidden = false; late.placeArrow(shopMark, best.signPos, 0.6);
@@ -305,7 +302,7 @@ function doInteract() { if (state.ctxTarget && !hp.isDown && !hp.pending) state.
 pressBtn(ui.ctx, () => doInteract());
 // 줍기 (E·줍기 버튼): 누르고 있는 동안 계속
 export const pickBtn = $('btn-pick');
-pickBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); late.pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } late.startPick(); });
+pickBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); late.pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } late.pressPick(); });
 ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => pickBtn.addEventListener(ev, () => { late.pickS.held = false; }));
-pickBtn.addEventListener('click', (e) => { if (e.detail === 0) late.startPick(); }); // 키보드로 누른 경우
+pickBtn.addEventListener('click', (e) => { if (e.detail === 0) late.pressPick(); }); // 키보드로 누른 경우
 pickBtn.addEventListener('contextmenu', (e) => e.preventDefault());

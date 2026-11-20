@@ -100,7 +100,7 @@ addEventListener('keydown', (e) => {
   if (k === 'enter') { e.preventDefault(); late.openChat(); }
   if (k === 'r' || k === 'shift') cycleSpeed();
   if (k === 'f') late.doInteract(); // 상호작용 (#34). 줍기(E)는 tickPick 이 누르고 있는 동안 처리
-  if (k === 'e') late.startPick();
+  if (k === 'e') late.pressPick(); // 범위 밖이면 가까운 쓰레기로 걸어감 (#104)
   if (k === 'q') late.toggleRide(); // 탈것 (#69)
   if (k === ' ') { e.preventDefault(); late.doJump(); }
   if (k === 'escape') cancelAll();

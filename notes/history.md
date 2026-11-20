@@ -679,3 +679,72 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 서버 `roomcore.js`: `deer`(방장만, `NET.deerMax` 4000바이트·80마리)·`dv`(보낸 사람 60m 안, 방장에게만 `from` 붙여)·`mount`·`unmount`, `hi` 에 `rides`. 노루 메시지는 따로 초당 `NET.deerPerSec`(5)
 - 노루 타기 빠르기 `DEER.rideWalk`·`rideRun`(9·15)을 `balance.js` 로, `NET.maxSpeed` 는 `max(32, rideRun × 2)`
 - 확인: `node tools/online.js [주소] [deer]` 에 노루 9가지(방장·위치 같음·타기·A 화면 걸터앉음·둘이 못 탐 화면/방·내리면 풀림·지나감 같이·귤 먹이·끊기면 풀림(deer 만 돌릴 때)), 화면 `dist/deer-ride-a.png`·`deer-ride-b.png`. `__oreum.deerNet()`
+
+- #95 메뉴 계정 칸에 "계정 번호 복사" 버튼. `account.sub` 만 노출(토큰 아님). 클립보드가 막히면 읽기 전용 글 상자(`acct-box-id`)로 보여 줌. 손님은 계정 칸 자체가 없음.
+
+## 스톤 첫 식사 무료 (#93)
+- `save.mealFree`(1 = 썼음). `orderMeal` 이 첫 주문엔 귤을 받지 않고 플래그를 세움(어떤 메뉴든, 버프는 같음). 안 썼으면 메뉴 값 자리에 "첫 식사 무료"(`.price.free`), 다 쓰면 값. 가게 근처(22m)에 처음 가면 팁 `stoneFree`(#66)
+- 서버 `validate.js`: `mealFree` 는 한 번 1이 되면 되돌릴 수 없음(`fixed: 'mealFree'`, `accounts.js` 가 `fix.mealFree` 로 알려 `onFix` 가 로컬에 반영). 어드민(`free`)은 확인 안 거쳐 '모두 리셋' 뒤 다시 받음. 모두 리셋·처음 시작은 로컬 저장이 지워져 다시 받음
+- 확인: `econ.js`·`sec.js` 49/49·`err.js` 오류 없음, `checkSave` 직접 호출, `__oreum.stone.order` 로 첫 주문 귤 그대로·두 번째는 값 받음
+
+## 손님 기록도 7일 안 오면 지우기 (#94)
+- `online.js` `loadSave`: 손님(세션 없음)은 `save.lastSeen`(마지막 접속)이 `NET.keepDays` 일보다 오래됐으면 소리·그래픽 설정(`gfx·gfxV3·perf·introSound·music`)만 남기고 지움. 값이 없던 예전 저장은 지금으로 채워 바로 지우지 않음. `writeLocal` 이 저장마다 `lastSeen` 갱신(`stampGuest`). 서버로 보내는 `strip` 에선 `lastSeen` 뺌
+- 지웠으면 `guestExpired` → 첫 화면 `#intro-expired` "7일 동안 오지 않아 기록이 지워졌어요". 메뉴에 손님용 `#m-guest` "기록 보관 N일 남음"(`start.js`). `privacy.html` 손님 문장에 7일 안내
+- 확인: `build.mjs`, `tools/oldsave.js`(8일 지난 `old8` 추가: 귤 777 → 5 로 초기화, 설정 유지) 통과
+
+## 어드민 메뉴에서 받은 의견 보기 (#96)
+- `src/game/inbox.js`: 서버 어드민(`enableDev`)일 때만 개발자 메뉴에 "받은 의견" 항목. 패널에 최신순 목록(한국 시각·글·닉네임/버전/기기), 글은 `cleanText` 후 `textContent` 로만 그림. 누르거나 길게 누르면 글 복사, "새로 고침"·"더 보기"(`?before=<id>`)
+- 마지막으로 본 id 는 기기 `oreumoreum.inbox.seen`. 새 글 수는 개발자 메뉴 항목·"어드민 설정"·메뉴 버튼의 점으로. 확인은 게임 열 때 1번 + 메뉴 열 때(30초 안 다시 열면 건너뜀)
+- 서버 `GET /feedback?before=<id>` 이어 받기(어드민만). `online.js` `getFeedback`
+- 확인: `build.mjs`, `tools/err.js`, `tools/sec.js` 49/49 통과. 화면 확인은 어드민 로그인이 필요해 하지 못함
+
+## 원스토어 웹게임 SDK 붙이기 (#97)
+- `build.mjs`: Pages 용 index.html 머리에 SDK v1.2.0 을 `<script type="module" async>` 한 줄로 게임 코드보다 먼저 로드(받으면 `window.__onestoreSDK` + `onestore-sdk` 이벤트). CSP `script-src` 에 그 한 줄의 해시와 `https://h5sdk.onestore.net`, `connect-src` 에도 같은 출처. async 라 SDK 를 못 받거나 늦어도 첫 화면을 막지 않음
+- `src/onestore.js`: createSDK → pause/resume/exit → initializeAsync(5초 넘게 답 없으면 일반 브라우저로) → 진행률 → startGameAsync. `{ err }` 면 아무 것도 안 함. 진행률은 main.js 10(시작)→60(내 캐릭터 모델)→85(게임 모듈)→100(셰이더 준비 또는 첫 프레임 3초 뒤, update.js)
+- 앱 안: pause → `state.osPaused`(frame 이 그리지 않음)·AudioContext suspend, resume → 되돌림(ringerSilent 면 소리 끔), exit → writeLocal·ab.flush·서버 keepalive push, 뒤로 → 패널·메뉴·탈것 고르기·옷장·앉기·사진·첫 화면 서버 고르기를 닫고 true(캐릭터 고르기·아무 것도 없으면 false). safeArea → page.html `--safe-t/b/l/r`(왼·오른쪽 env 를 변수로 모음). 기기 무음이면 소리 끈 채 시작
+- 임의 결정: 앱 안(`html.onestore`)에서는 구글 로그인 버튼을 숨기고 손님으로. playerId 로 계정 만들기는 안 함
+- `?onestore=mock`(+`&silent=1`): 가짜 SDK, 콘솔 `__onestoreMock.pause()/resume()/exit()/back()`. 확인 `node tools/onestore.js` 15/15, `tools/sec.js` 50/50(인라인은 SDK 로더 하나·해시 허용 검사 추가), `tools/err.js`, `tools/perf.js phone day`
+- 공식 가이드(gitbook) 페이지는 이 실행에서 읽지 못해 이슈에 적힌 SDK 요약대로 만듦
+
+## #107 적에게 맞으면 누워 버림
+- 원인: placeRunner 가 `root.rotation.y` 만 바꾸고 넉백·누움 기울기를 quaternion 에 곱했다. 곱한 결과가 Euler x·z 로 남아 다음 프레임에 또 곱해지고, 넉백이 끝나도 지워지지 않아 누운 채로 남았다(노루 타기·되살아남 뒤도 같음)
+- `src/bodytilt.js`: `orientBody` 가 heading 에서 다시 시작해 움찔(player.knock)·누움(hp.lie)을 축×각 벡터로 합쳐 한 번만 기울임(최대 1.6rad). 노루 위·멀티의 남도 같은 함수
+- 맞음 모양: 날아가 구르고 일어나던 것(#32) 대신 짧게 뒤로 밀리고(`BOAR.knockSpeed 10·knockV 4·knockDrag 7`, 약 1.3m) 움찔(`flinchAng 0.38` 을 `flinchPeak 0.08` 초에 젖히고 `flinchT 0.45` 초 안에 바로 섬). 그동안 조작 잠금. 연달아 맞으면 처음부터. 맞는 동안 비탈 숙임(뼈)은 줄임
+- 체력 0: 밀림이 땅에 닿으면 바로 쓰러짐 시작(`hp.tryBegin(P)`, rollT 인자 없앰)
+- 멀티: presence 에 `kn: [번호, 축x, 축z]`(맞는 동안만). 받는 쪽은 새 번호면 받은 때부터 같은 움찔·놀란 눈, 처음 보는 사람의 지난 번호는 무시
+- 확인 `node tools/hittilt.js` (전투 오름): 평지·비탈·연달아·달리기·#80 움직임·던지기·줍기·동작·탈것·노루·쓰러졌다 되살아남, 게임 시간 2초 뒤 몸 기울기 5° 안
+- `tools/audit.js` 71줄 낚시 단계 주석이 뒤 코드를 삼켜 문법 오류였던 것을 `/* */` 로 고침
+
+## #99 어드민: 들어오기 다시
+- 개발자 메뉴에 "들어오기 다시" 버튼(`#dev-intro`, `src/game/menu.js`): save 에서 `entered`·`look`·`server` 만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인(`_rev`·`_acct` 포함)은 그대로. 첫 화면(로그인 포함)→서버 고르기→캐릭터 고르기를 다시 지남
+- 두 버튼 설명 한 줄을 어드민 패널에 붙임. 어드민이 아니면 `m-dev` 가 숨겨져 보이지 않음
+
+## #101 탈것 값 올리기
+- `balance.js RIDES.list` 값: 스케이트보드 600→1500, 스쿠터 2000→4000, 조랑말 5000→8000. 이미 산 탈것은 그대로
+- `tools/econ.js` 로 장비 10칸 맞추는 시간은 여유 25% 기준 놀이 4시간 13분(5시간 안 통과), 효율 4시간 6~7분(탈것 안 사는 기준과 같음) — 비율 조정 필요 없었음
+- 마차는 그대로. 첫 탑승 토스트(`src/game/ride.js`)를 "마차는 정해진 길만 다녀요. 점프하면 뛰어내려요" 로
+
+## #98 서버는 전투 오름 하나 (깨끗한 오름 삭제)
+- 들어오기: 첫 화면 → (로그인/손님) → 캐릭터 고르기 → 튜토리얼. 서버 고르기 단계(`#intro-step`)·메뉴의 서버 바꾸기(`#menu-server`, `#server` 창)·그림 카드(`SERVER_ART`) 지움
+- `src/server.js`: 서버는 `battle` 하나. `isBattle()` 갈래를 걷어 냄(적·HP·귤 활 무기 탭·스톤 스테이크·샐러드·버프 흐림·타겟 표시·팁). `isBattle` 은 도구 호환용으로만 남김
+- 예전 저장: `save.server` 가 clean 이면 battle 로(장비·귤·치운 양 그대로). 쓰레기 칸 `trash.srv.clean` 은 battle 칸이 없을 때만 옮기고 지움. 기기 랭킹 `trash.rk` 의 clean 수는 battle 에 더해 한 줄로. `tools/oldsave.js` 에 `clean` 경우 더함
+- 연출 박자 `PACE.clean` 지움, `createPacing` 의 `isBattle` 인자 없앰 (battle 값 그대로)
+- 멀티 방: `oreum-<맵>-battle` 하나. 서버 `index.js` 는 예전 `oreum-<맵>` 접속을 battle 방으로 보냄 (`tools/sec.js` 가 두 이름이 같은 방인지 봄)
+- 랭킹: `SRVS = ['battle']`. 서버 DB(`rka`·`rkd`)의 clean 줄은 계정 DO 가 뜰 때 battle 에 더하고 지움(한 번만). `/rank?srv=clean` 도 battle. 랭킹 화면 서버 탭 지움
+- 도구: `econ.js`·`pace.js`·`audit.js` 는 battle 만. `pace.js --live` 는 로그인 상자 때문에 작은 창에서 시작 버튼이 화면 밖이라 evaluate 로 누름
+
+## #100 튜토리얼: 토스트 안내·단계마다 격리된 칸·쉽게
+- 그림 힌트 카드(#tut-hint)·남은 수(#tut-count)를 위쪽 토스트 `#tut-toast` 하나로 (상황 팁 #66 자리·모양, 아이콘 + 한 줄 + 남은 수). 문구는 `tutorial.js SAY` 한곳(PC 키 / 폰 버튼, 보통 / 쉬운 말). 단계가 끝나면 '잘했어요'(TUT.okT) 뒤 다음 단계. 다른 토스트는 그 아래로(`hud.js topStack` export)
+- 칸: `TUT.cells` 4칸(걷기·달리기 / 귤·과녁 / 개울·쓰레기 / 클린하우스·가게). `stonewall.js createPens` 가 낮은 돌담(#39 조각, 높이 TUT.penH 배)과 칸 사이 정낭을 세움. 정낭은 `createCrossWall` 에서 `jeongGate` 로 떼어 같이 씀. 개울 위엔 담 없음(빠지면 낚시꾼이 칸 안으로 건져 줌). 4칸 왼쪽 담이 가게 골목 입구를 막음. 칸을 마치면 정낭이 열리고 정낭 앞뒤로 빛나는 길(TUT.lane*). 끝나면 담·정낭·충돌 모두 지움(예전 보이지 않는 벽 TUT.walls 는 없앰)
+- 쓰레기 6 → 3(TUT.trashD), 과녁은 귤 바로 앞(targetD 44)·크게(targetR 1.1). 손 던지기는 원래 귤이 줄지 않아 빗나가도 그대로. 집게·배낭 단계에서 값이 모자라면 귤을 채움(topUp)
+- 진행이 없으면 TUT.fingerT(10초) 뒤 손가락·목표 화살표, TUT.easyT(30초) 뒤 토스트를 흔들고 쉬운 말로. 진행 = 목표에 1.5m 더 다가감, 줍기·맞히기·누를 곳 바뀜. 손가락은 `#tut-focus.idle` 일 때만
+- 튜토리얼 동안: 몹(pace)·투기꾼은 마지막 정낭 단계까지 안 나옴(`save.jeong` 조건 뺌), 날씨는 맑음(`weather.js calm`, 어드민이 정한 날씨는 그대로), 가게 가장자리 아이콘 없음, 멀티에서도 혼자(`net.js solo`: 남을 감추고 내 위치를 안 보냄, 귤 맞히기 대상에서도 뺌)
+- `tools/tutrun.js d|m [shots]`: 칸 안 배치·닫힌 정낭/담 막힘·정낭 열림·10초/30초·귤 안 줄음·끝나면 담 사라짐까지 확인. m 은 화면 버튼 탭만으로
+
+- #102 구글 로그인 버튼: 직접 그린 버튼(시작 버튼과 같은 크기·글자, 구글 G 로고) 위에 투명한 GSI 버튼을 같은 너비로 덮어 누름만 받음(너비 바뀌면 다시 그림, 높이는 scaleY 로 맞춤). 로그인 중·실패 글은 같은 버튼 안. 로그인 흐름·CSP 그대로.
+
+- #103 의견 보내기 앞쪽으로: 위쪽 한 줄 오른쪽 끝에 말풍선 아이콘(#fb-chip)이 바로 의견 창을 열고, 메뉴 맨 위에 주황색 큰 "의견 보내기" 버튼(#menu-feedback). 설정 목록의 항목은 뺌. 첫 화면 것은 그대로. 좁은 폭(320)에서 위쪽 줄이 넘치지 않음(fit 단계 f5 에서 아이콘 패딩 줄임).
+
+- #104 줍기 버튼 걷기: 누를 때(E·버튼) 범위 안이면 바로 줍고, 없으면 `PICK_SEEK.range`(25m) 안 가장 가까운 쓰레기(낱개·더미, 튜토리얼 귤 단계면 귤)로 걸어가 닿으면 바로 주움(`pickup.js` pressPick·startSeek·tickSeek). 길 찾기는 #40 과 같은 `trailRoute`(dump.js 의 `late.trailRoute`), 충돌·막힘은 탭 이동과 같음. 누르고 있으면 다 주운 뒤 다음 가까운 것으로 이어 감. 다시 누르기·조이스틱·방향키·땅 탭·패널·쓰러짐·탈것이면 멈춤. 고른 쓰레기에 #56 겨눔 표시와 같은 고리+세모(민트색 `PICK_SEEK.color`). 배낭이 가득이면 걷지 않고 가득 토스트, 없으면 "근처에 쓰레기가 없어요". 줍기 버튼은 찾는 거리 안에도 없을 때만 흐림. 가득 토스트 조사 고침(배낭이/호주머니가). 콘솔: `__oreum.trash.press()`, `.state().seek`, `.stopSeek()`.
+
+- #105 모바일 전체 화면·가로세로: 새 파일 `src/game/screen.js`. 터치 기기면 위쪽 줄 오른쪽(의견 버튼 앞)에 전체 화면 버튼(#fs-chip), 메뉴 설정(m-more)에 "전체 화면" 항목(#menu-fs). Fullscreen API(webkit 접두 포함)로 들어가고 나옴. 페이지 전체 화면이 안 되는 곳(iPhone Safari)은 버튼을 숨기고 게임에 처음 들어갈 때 "홈 화면에 추가하면 전체 화면으로 할 수 있어요" 토스트 한 번(`save.fsHint`), 메뉴 항목을 누르면 같은 안내. 홈 화면 앱(standalone)·원스토어 앱(`.onestore`)에서는 둘 다 숨김. manifest 는 이미 display standalone·orientation any. 돌리면 다시 불러오지 않고 `resize()` 가 화각까지 맞춤: 낮은 가로 화면(가로가 길고 높이 ≤ 500)은 세로 화각 62°, 나머지 50° (`balance.js SCREEN`). iOS 용으로 orientationchange 뒤 한 번 더 맞춤. page.html 끝에 낮은 가로 화면 media query: 첫 화면은 로고 왼쪽·카드 오른쪽(릴리스 노트 목록은 "더 보기"로), 창(.pop·가게 창·LEAP)은 화면 높이 안에서 안쪽 스크롤, 메뉴는 위쪽 줄 아래까지만·스크롤, 사진은 사진 왼쪽·버튼 오른쪽. 폰 세로에서 첫 화면 카드·가게 창이 옆으로 몇 px 넘치던 것 border-box 로 고침. 확인: `node tools/uishot.js both` (세로 390x844·가로 844x390, 화면마다 넘친 요소를 출력, 끝에 돌려서 화각 확인)

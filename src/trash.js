@@ -23,11 +23,14 @@ export const HEAP_SIG = 'h1:' + HEAP_DEFS.map((d) => d.zone + d.k + d.n).join(',
 export const HEAP_TOTAL = HEAP_FULL.reduce((a, b) => a + b, 0);
 
 /* ---------- 저장소 (기기 저장) ---------- */
-export function createLocalTrashStore({ save, persist, server = 'clean' }) {
+export function createLocalTrashStore({ save, persist }) {
+  const server = 'battle'; // 서버는 전투 오름 하나 (#98)
   const T = save.trash = (save.trash && typeof save.trash === 'object') ? save.trash : {};
   // 서버별 더미 남은 양 (#35, #45): srv[서버] = { sig, heaps:[남은 수…] }. 예전(흩뿌리기) 기록 date·picked 는 버림
   if (!T.srv || typeof T.srv !== 'object') T.srv = {};
   delete T.date; delete T.picked; delete T.today;
+  // #98: 예전 깨끗한 오름 칸은 전투 오름 칸이 없을 때만 그 자리로 옮기고 지움
+  if (T.srv.clean) { if (!T.srv.battle) T.srv.battle = T.srv.clean; delete T.srv.clean; }
   let S = null;
   const slot = (id) => {
     const o = T.srv[id] = (T.srv[id] && typeof T.srv[id] === 'object') ? T.srv[id] : {};
@@ -43,23 +46,26 @@ export function createLocalTrashStore({ save, persist, server = 'clean' }) {
   if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수
   { const ok = new Set(DEX_LIST.map((d) => d.id)); Object.keys(T.dex).forEach((k) => { if (!ok.has(k)) delete T.dex[k]; }); } // #16: 도감이 'undefined' 로 쌓이던 기록 지움
   S = slot(server);
-  for (const k in T.srv) if (k !== server) slot(k);
-  // 이 기기의 치운 수 (#11 랭킹, 손님·서버 없을 때 보여 줌): rk = { d: 오늘 날 번호, w: 이번 주 월요일 날 번호, day/week/all: { clean, battle } }
-  // 처음엔 그동안의 누적 수를 전체(깨끗한 오름)로
+  for (const k in T.srv) if (k !== server) delete T.srv[k];
+  // 이 기기의 치운 수 (#11 랭킹, 손님·서버 없을 때 보여 줌): rk = { d: 오늘 날 번호, w: 이번 주 월요일 날 번호, day/week/all: { battle } }
+  // 처음엔 그동안의 누적 수를 전체로. 예전 clean 칸은 battle 에 더해 한 줄로 (#98)
   const rk = (() => {
-    const o = T.rk = (T.rk && typeof T.rk === 'object') ? T.rk : { all: { clean: T.total } };
-    for (const k of ['day', 'week', 'all']) { const v = o[k] = (o[k] && typeof o[k] === 'object') ? o[k] : {}; SRVS.forEach((s) => { v[s] = Math.max(0, Math.floor(Number(v[s])) || 0); }); }
+    const o = T.rk = (T.rk && typeof T.rk === 'object') ? T.rk : { all: { battle: T.total } };
+    for (const k of ['day', 'week', 'all']) {
+      const v = o[k] = (o[k] && typeof o[k] === 'object') ? o[k] : {};
+      const n = (x) => Math.max(0, Math.floor(Number(x)) || 0);
+      if ('clean' in v) { v.battle = n(v.battle) + n(v.clean); delete v.clean; }
+      SRVS.forEach((s) => { v[s] = n(v[s]); });
+    }
     return o;
   })();
   const rkRoll = () => { const d = kstDay(), w = weekStart(d); if (rk.d !== d) { rk.d = d; SRVS.forEach((s) => { rk.day[s] = 0; }); } if (rk.w !== w) { rk.w = w; SRVS.forEach((s) => { rk.week[s] = 0; }); } };
   rkRoll();
-  const rkSrv = () => (server === 'battle' ? 'battle' : 'clean');
+  const rkSrv = () => server;
   const rkAdd = (n) => { rkRoll(); const s = rkSrv(); for (const k of ['day', 'week', 'all']) rk[k][s] = Math.max(0, rk[k][s] + n); };
   let dirty = false;
   return {
     server: () => server,
-    // 다른 서버의 더미 상태로 바꿔 끼움. 바꾼 뒤 trash.relayout() 필요
-    setServer(id) { server = id; S = slot(id); persist(); },
     resetTutorial() { T.tp = []; dirty = true; },
     left: (h) => S.heaps[h],
     full: (h) => HEAP_FULL[h],

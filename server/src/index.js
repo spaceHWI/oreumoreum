@@ -13,7 +13,9 @@ import { cleanItems, sendMail } from './feedback.js';
 export { Room } from './room.js';
 export { Accounts } from './accounts.js';
 
+// 방 이름 (#98): 'oreum-<맵>-battle' 하나. 예전 깨끗한 오름 방 'oreum-<맵>' 으로 오는 접속은 battle 방으로 보냄
 const ROOM_RE = new RegExp(`^oreum-(${NET.rooms.join('|')})(-battle)?$`);
+const roomOf = (r) => (r.endsWith('-battle') ? r : r + '-battle');
 const LOCAL_RE = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 const isDev = (env) => env.FAKE_AUTH === '1' || env.STATS_OPEN === '1';
 function allowOrigin(env, o) {
@@ -83,9 +85,10 @@ export default {
     try {
       if (url.pathname === '/ws') {
         if (req.headers.get('Upgrade') !== 'websocket') return json({ error: 'ws only' }, 426);
-        const room = url.searchParams.get('room') || '', ch = Math.max(0, Math.min(NET.maxCh - 1, parseInt(url.searchParams.get('ch'), 10) || 0));
-        const loadtest = env.STATS_OPEN === '1' && /^loadtest-[a-z0-9-]{1,40}$/.test(room); // 로컬 부하 재기 방은 연결 수 제한 없이
-        if (!ROOM_RE.test(room) && !loadtest) return json({ error: 'room' }, 400); // 정해진 방만 (방 만들기 폭주 막기)
+        const room0 = url.searchParams.get('room') || '', ch = Math.max(0, Math.min(NET.maxCh - 1, parseInt(url.searchParams.get('ch'), 10) || 0));
+        const loadtest = env.STATS_OPEN === '1' && /^loadtest-[a-z0-9-]{1,40}$/.test(room0); // 로컬 부하 재기 방은 연결 수 제한 없이
+        if (!ROOM_RE.test(room0) && !loadtest) return json({ error: 'room' }, 400); // 정해진 방만 (방 만들기 폭주 막기)
+        const room = loadtest ? room0 : roomOf(room0);
         if (!loadtest && (await limited(env, 'RL_WS', ipk, NET.wsPerMin))) return json({ error: 'too many' }, 429);
         const s = await who();
         const stub = env.ROOM.get(env.ROOM.idFromName(room + '#' + ch));
@@ -130,10 +133,10 @@ export default {
         if (!body || typeof body.save !== 'object') return json({ error: 'bad save' }, 400);
         return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub) }));
       }
-      // 랭킹 (#11): 로그인한 사람만. GET /rank?range=day|week|all&srv=clean|battle → 위 RANK.top 명 + 내 순위, GET /rank/me?srv= → 내 순위 셋
+      // 랭킹 (#11): 로그인한 사람만. GET /rank?range=day|week|all → 위 RANK.top 명 + 내 순위, GET /rank/me?srv= → 내 순위 셋
       if ((url.pathname === '/rank' || url.pathname === '/rank/me') && req.method === 'GET') {
         const s = await who(); if (!s) return json({ error: 'login' }, 401);
-        const srv = SRVS.includes(url.searchParams.get('srv')) ? url.searchParams.get('srv') : 'clean';
+        const srv = SRVS[0]; // 서버는 전투 오름 하나 (#98). 예전 클라이언트의 srv=clean 도 battle 로
         if (url.pathname === '/rank/me') return json(await accounts(env).rankMe(s.sub, srv));
         const range = RANGES.includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'day';
         return json(await accounts(env).rank(s.sub, range, srv));
@@ -152,7 +155,8 @@ export default {
       if (url.pathname === '/feedback' && req.method === 'GET') { // 받은 의견 보기: 어드민(또는 로컬 확인)만
         const s = await who();
         if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
-        return json(await accounts(env).feedbackList());
+        const before = Math.max(0, Math.floor(Number(url.searchParams.get('before'))) || 0); // 이어 받기: 이 id 보다 오래된 50개 (#96)
+        return json(await accounts(env).feedbackList(50, before));
       }
       return json({ error: 'not found' }, 404);
     } catch (e) {

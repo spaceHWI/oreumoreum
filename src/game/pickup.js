@@ -1,5 +1,5 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE } from '../balance.js';
+import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
 import * as THREE from 'three';
@@ -9,11 +9,11 @@ import { $, save, wearV, lookS, ab, persist } from './save.js';
 import { scene, wx, spots, sunEvent } from './scene.js';
 import { life, street, buff, trash, CH, CH_MINI, bloom, bfx, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
-import { topFit, toast, tips, updateStats, panelOpen, ach, onDexGet } from './hud.js';
-import { keys, marker } from './input.js';
+import { topFit, toast, tips, updateStats, panelOpen, busy, ach, onDexGet } from './hud.js';
+import { keys, marker, setTarget } from './input.js';
 import { setHoldBow } from './throw.js';
 
-Object.assign(late, { startPick }); // 앞 파일에서 부르는 함수
+Object.assign(late, { startPick, pressPick }); // 앞 파일에서 부르는 함수
 
 // ---------- 줍기·배낭 ----------
 export const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1, combo: 0, comboAt: -1e9 }; late.pickS = pickS;
@@ -22,10 +22,11 @@ export const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1
 export const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0); late.bagRoom = bagRoom;
 export const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && (late.tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
-function fullToast() { if (performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭' : '호주머니'; toast(CH ? `${w}가 가득 찼어요 · 가까운 클린하우스에 버려요` : `${w}가 가득 찼어요`); }
+function fullToast(force) { if (!force && performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭이' : '호주머니가'; toast(CH ? `${w} 가득 찼어요 · 가까운 클린하우스에 버려요` : `${w} 가득 찼어요`); }
 const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
 export function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
+  stopSeek();
   const gi = player.riding || player.air ? -1 : late.tut.gyulNear(player.pos); // 튜토리얼 귤 3개 (#62): 쓰레기보다 먼저
   if (gi >= 0) { const g = late.tut.gyuls[gi]; player.target = null; player.onArrive = null; marker.visible = false; player.heading = Math.atan2(g.x - player.pos.x, g.z - player.pos.z) || player.heading; player.pose = 'crouch'; player.poseT = 0; player.speed = 0; setHoldBow(false); pickS.cyc = 0; pickS.got = false; pickS.gyul = gi; return; }
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
@@ -53,6 +54,7 @@ function takeNow() {
 }
 export function tickPick(dt) {
   if (!trash) return;
+  tickSeek(); tickPickMark(performance.now() / 1000);
   const holding = pickS.held || keys.has('e');
   if (pickS.cyc < 0) {
     if (holding && state.holdBow && !pickBlocked()) setHoldBow(false); // 줍기를 누르면 활을 내리고 도구를 듦 (#38)
@@ -65,8 +67,73 @@ export function tickPick(dt) {
     pickS.cyc = -1;
     if (player.pose === 'crouch') player.pose = 'move';
     if (holding && canPick()) startPick();
+    else if (holding && !pickBlocked()) startSeek(true); // 누르고 있으면 다음 가까운 것으로 이어서 감 (#104)
   }
 }
+// ---------- 줍기 버튼: 가까운 쓰레기로 걸어가서 줍기 (#104) ----------
+// 범위 안에 있으면 바로 줍고, 없으면 PICK_SEEK.range 안 가장 가까운 쓰레기(낱개·더미, 튜토리얼 귤 단계면 귤)로 걸어가 도착하면 바로 주움.
+// 길·충돌은 클린하우스 자동 걷기(#40, autowalk.js)와 같음. 조이스틱·방향키·땅 탭·버튼 다시 누르기·패널·쓰러짐이면 멈춤
+export const seekS = { on: null }; // { t: {kind,i,x,z,R}, route, i, cur }
+const pickMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: PICK_SEEK.color, transparent: true, opacity: 0.85, depthWrite: false }));
+const pickTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: PICK_SEEK.color, depthTest: false, transparent: true }));
+pickMark.visible = pickTri.visible = false; pickMark.renderOrder = 3; pickTri.renderOrder = 9; scene.add(pickMark, pickTri);
+// 찾는 거리 안에서 가장 가까운 것 (가장자리까지 거리). 쓰레기 상태는 trash 에서만 읽음
+function seekFind() {
+  const px = player.pos.x, pz = player.pos.z; let best = null;
+  const tut = late.tut;
+  if (tut.active && tut.step === 'gyul') for (const g of tut.gyuls) { if (!g.m.visible) continue; const d = Math.hypot(g.x - px, g.z - pz); if (d <= PICK_SEEK.range && (!best || d < best.d)) best = { kind: 'g', i: g.i, x: g.x, z: g.z, R: 0, d }; }
+  const c = trash.candidates(px, pz, PICK_SEEK.range, bagRoom())[0];
+  if (c && (!best || c.d < best.d)) best = { kind: c.h != null ? 'h' : 'k', i: c.h != null ? c.h : c.k, x: c.x, z: c.z, R: Math.max(0, Math.hypot(c.x - px, c.z - pz) - c.d), d: c.d };
+  return best;
+}
+const seekAlive = (t) => t.kind === 'h' ? trash.heaps[t.i].st >= 0 && bagRoom() >= 1 : t.kind === 'k' ? !trash.store.isTutPicked(t.i) && bagRoom() >= 1 : !!late.tut.gyuls[t.i]?.m.visible;
+export function stopSeek() {
+  const s = seekS.on; if (!s) return; seekS.on = null; pickMark.visible = pickTri.visible = false;
+  if (player.target && player.target === s.cur) { player.target = null; player.onArrive = null; marker.visible = false; }
+}
+// quiet: 누르고 있어 이어 갈 때는 없어도 토스트 없음
+export function startSeek(quiet = false) {
+  if (!trash || seekS.on || pickBlocked() || busy()) return false;
+  const t = seekFind();
+  if (!t) { if (!quiet) { if (bagRoom() < 1) fullToast(true); else toast('근처에 쓰레기가 없어요'); } return false; }
+  // 설 자리: 쓰레기 가장자리에서 플레이어 쪽으로 도구 반경의 stand 만큼
+  const a = Math.atan2(player.pos.x - t.x, player.pos.z - t.z), off = t.kind === 'g' ? TUT.gyulR * PICK_SEEK.stand : t.R + toolNow().r * PICK_SEEK.stand;
+  const to = { x: t.x + Math.sin(a) * off, z: t.z + Math.cos(a) * off };
+  const r = late.trailRoute ? late.trailRoute(player.pos, to) : [to];
+  const route = r.map((q) => new THREE.Vector3(q.x, groundAt(q.x, q.z), q.z));
+  late.stopAutoGo?.();
+  setHoldBow(false);
+  seekS.on = { t, route, i: 0, cur: null };
+  seekNextWp(); return true;
+}
+function seekNextWp() { const s = seekS.on; setTarget(s.route[s.i], null); marker.visible = false; s.cur = player.target; }
+function tickSeek() {
+  const s = seekS.on; if (!s) return;
+  if (busy() || hp.isDown || player.riding || player.ride || player.cart || player.target !== s.cur) { stopSeek(); return; }
+  if (!seekAlive(s.t)) { stopSeek(); if (pickS.held || keys.has('e')) startSeek(true); return; } // 다른 데서 치워짐
+  if (canPick()) { startPick(); return; } // 닿으면 바로 주움
+  const last = s.i === s.route.length - 1, dc = Math.hypot(s.cur.x - player.pos.x, s.cur.z - player.pos.z);
+  if (!last && dc < 2.4) { s.i++; seekNextWp(); }
+}
+// 고른 쓰레기 표시 (#56 겨눔 표시와 같은 모양, 색만 다름)
+function tickPickMark(time) {
+  const s = seekS.on; if (!s) return;
+  const t = s.t, R = t.kind === 'h' ? t.R : 0, sc = Math.max(0.6, R + 0.5) * (1 + Math.sin(time * 6) * 0.08), gy = groundAt(t.x, t.z);
+  pickMark.visible = pickTri.visible = true;
+  pickMark.scale.set(sc, 1, sc); pickMark.position.set(t.x, gy + 0.08, t.z); pickMark.rotation.y = time * 1.5;
+  pickTri.position.set(t.x, gy + (t.kind === 'h' ? R * 0.8 + 1.8 : 1.3) + Math.sin(time * 6) * 0.1, t.z); pickTri.rotation.y = time * 2;
+}
+// 버튼(E)을 누른 순간: 걷는 중이면 멈춤, 범위 안이면 줍기, 아니면 찾아 감
+export function pressPick() {
+  if (seekS.on) { stopSeek(); return; }
+  if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
+  if (canPick()) { startPick(); return; }
+  if (trashFull()) { fullToast(true); return; }
+  startSeek();
+}
+// 줍기 버튼을 흐리게 할지: 찾는 거리 안에도 없을 때 (0.3초마다)
+let seekT = 0, seekHas = false;
+export function seekable() { const now = performance.now() / 1000; if (now - seekT > PICK_SEEK.retry) { seekT = now; seekHas = !!trash && !pickBlocked() && !!seekFind(); } return seekHas; }
 // 주운 쓰레기가 배낭으로 빨려 들어가는 연출
 const flyPool = [];
 function flyToBag(it) {

@@ -1,7 +1,6 @@
 // 연출 감독 연결 (#89): src/pacing.js 가 정한 차례대로 투기꾼·트럭·몹을 부르고, 긴장(tension 0~1)을 화면·소리·카메라에 옮긴다
 // 힐링 시간이 바탕이고 공격 시간은 조짐 3초 → 짧은 공격 → 보상·쉼. 수치는 balance.js PACE (파일 순서는 src/modules.js, 규칙은 notes/prototype-v1.md)
 import { PACE } from '../balance.js';
-import { isBattle } from '../server.js';
 import { createPacing } from '../pacing.js';
 import { DUMP_PER_HOUR } from '../dumpers.js';
 import * as THREE from 'three';
@@ -19,12 +18,12 @@ state.tension = 0; state.hitStop = 0; state.paceRare = 1;
 if (!save.pace || typeof save.pace !== 'object') { const old = (save.ach?.life?.['heap-clear'] || 0) > 0; save.pace = { first: old ? 1 : 0, bloomed: old ? 1 : 0 }; }
 const first = { done: !!save.pace.first, bloomed: !!save.pace.bloomed };
 let loose = false; const cleared = new Map(); // 더미 번호 → 다 치운 시각(감독 시계) : PACE.protect 동안 투기꾼이 다시 쌓지 않음
-const tutBusy = () => !!NS_TUT && !save.jeong && !save.tut?.done;
+const tutBusy = () => !!NS_TUT && !save.tut?.done; // #100 튜토리얼이 끝날 때까지(정낭이 열린 마지막 단계도) 몹 없음
 
 let cur = null; // 지금 공격: { dumpers: [투기꾼], mob: 몹 자리 계획 }
 const threats = () => (dumpers ? dumpers.activeN() : 0) + life.enemies.activeN();
 const pacing = createPacing({
-  isBattle, perHour: DUMP_PER_HOUR, first,
+  perHour: DUMP_PER_HOUR, first,
   hooks: {
     busy: () => !state.sessionOn || document.hidden || tutBusy() || !!state.fishing?.busy || !!state.fishing?.active || late.mealS?.on || late.cutS?.on || !!player.cart || panelOpen() || cam.mode !== 'follow' || hp.isDown || hp.pending || !!player.rescue,
     threats,

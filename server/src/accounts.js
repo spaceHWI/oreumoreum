@@ -17,14 +17,20 @@ export class Accounts extends DurableObject {
     // 버린 세션 토큰 (#84): 로그아웃한 토큰 번호와 그 토큰이 끝나는 시각 (끝나면 Cron 이 지움)
     this.sql.exec('CREATE TABLE IF NOT EXISTS rv (j TEXT PRIMARY KEY, exp INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS fb (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, ip TEXT, item TEXT, mailed INTEGER DEFAULT 0)');
-    // 랭킹 (#11): rkd = 날마다 치운 수(한국 날 번호 d), rka = 전체. srv 는 clean | battle. acc.look = 머리 아이콘 값
+    // 랭킹 (#11): rkd = 날마다 치운 수(한국 날 번호 d), rka = 전체. srv 는 battle 하나 (#98: 예전 clean 은 아래에서 battle 에 더해 합침). acc.look = 머리 아이콘 값
     const hadRank = this.sql.exec("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'rka'").one().n > 0;
     this.sql.exec('CREATE TABLE IF NOT EXISTS rkd (sub TEXT, srv TEXT, d INTEGER, n INTEGER, PRIMARY KEY (sub, srv, d))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS rka (sub TEXT, srv TEXT, n INTEGER, PRIMARY KEY (sub, srv))');
     this.sql.exec('CREATE INDEX IF NOT EXISTS rkd_sd ON rkd (srv, d)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS rka_sn ON rka (srv, n)');
     if (!this.sql.exec('PRAGMA table_info(acc)').toArray().some((c) => c.name === 'look')) this.sql.exec('ALTER TABLE acc ADD COLUMN look TEXT');
-    if (!hadRank) this.sql.exec("INSERT OR IGNORE INTO rka (sub, srv, n) SELECT sub, 'clean', cleaned FROM acc WHERE cleaned > 0"); // 랭킹 전 치운 양은 전체(깨끗한 오름)로
+    if (!hadRank) this.sql.exec("INSERT OR IGNORE INTO rka (sub, srv, n) SELECT sub, 'battle', cleaned FROM acc WHERE cleaned > 0"); // 랭킹 전 치운 양은 전체로
+    // #98: 깨끗한 오름 기록을 전투 오름 기록에 더하고 지움 (한 번 옮기면 clean 줄이 없어 다음엔 아무 일 없음)
+    if (this.sql.exec("SELECT COUNT(*) AS n FROM rka WHERE srv = 'clean'").one().n || this.sql.exec("SELECT COUNT(*) AS n FROM rkd WHERE srv = 'clean'").one().n) {
+      this.sql.exec("INSERT INTO rka (sub, srv, n) SELECT sub, 'battle', n FROM rka WHERE srv = 'clean' ON CONFLICT (sub, srv) DO UPDATE SET n = n + excluded.n");
+      this.sql.exec("INSERT INTO rkd (sub, srv, d, n) SELECT sub, 'battle', d, n FROM rkd WHERE srv = 'clean' ON CONFLICT (sub, srv, d) DO UPDATE SET n = n + excluded.n");
+      this.sql.exec("DELETE FROM rka WHERE srv = 'clean'"); this.sql.exec("DELETE FROM rkd WHERE srv = 'clean'");
+    }
     this.rkCache = new Map();
   }
   row(sub) { return this.sql.exec('SELECT * FROM acc WHERE sub = ?', sub).toArray()[0] || null; }
@@ -59,11 +65,11 @@ export class Accounts extends DurableObject {
     const out = { ...save, ...S };
     this.sql.exec('UPDATE acc SET save = ?, nick = ?, rev = ?, cleaned = ?, credit = ?, pick_credit = ?, saved_at = ?, last_seen = ?, look = ? WHERE sub = ?',
       JSON.stringify(out), S.nick, rev, S.trash.total, acc.credit, acc.pickCredit, t, t, lookOf(out, hairOk), sub);
-    // 랭킹 (#11): 서버가 확인한 치운 양이 늘어난 만큼만 그 서버(저장의 server)에 더함. 줄어든 것(처음부터 다시 등)은 빼지 않음
+    // 랭킹 (#11): 서버가 확인한 치운 양이 늘어난 만큼만 더함 (서버는 전투 오름 하나, #98). 줄어든 것(처음부터 다시 등)은 빼지 않음
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
-    if (gain > 0) this.rankAdd(sub, out.server === 'battle' ? 'battle' : 'clean', gain, t, migrate && !prev);
+    if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
     const fix = {};
-    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; }
+    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; }
     return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5 };
   }
   // 의견 저장: 한 주소에서 1시간에 FEEDBACK.ipPerHour 개까지. → 저장한 글 수 (넘으면 -1)
@@ -76,7 +82,7 @@ export class Accounts extends DurableObject {
     return items.length;
   }
   feedbackMailed(k) { this.sql.exec('UPDATE fb SET mailed = 1 WHERE id > (SELECT MAX(id) FROM fb) - ?', k); }
-  feedbackList(k = 50) { return this.sql.exec('SELECT id, at, item, mailed FROM fb ORDER BY id DESC LIMIT ?', k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
+  feedbackList(k = 50, before = 0) { return this.sql.exec('SELECT id, at, item, mailed FROM fb WHERE (? = 0 OR id < ?) ORDER BY id DESC LIMIT ?', before, before, k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
   /* ---------- 랭킹 (#11) ---------- */
   // onlyAll: 기기 기록을 옮긴 몫은 오늘·이번 주에 넣지 않음
   rankAdd(sub, srv, n, t = Date.now(), onlyAll = false) {

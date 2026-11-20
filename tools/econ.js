@@ -1,5 +1,5 @@
 // 귤 경제 계산 (#49, #53). 지금 src/balance.js 수치로 "하루 1시간씩" 플레이를 흉내 내 칸 10개(도구·배낭·신발·무기 + 옷 6칸) 도달 시각을 낸다
-//   node tools/econ.js              깨끗한 오름 + 전투 오름, 효율·여유 25% 각각 하루 끝 표와 마지막 칸 시각
+//   node tools/econ.js              전투 오름(#98: 서버는 하나), 효율·여유 25% 각각 하루 끝 표와 마지막 칸 시각
 //   node tools/econ.js --table      칸·단계별 도달 시각 표까지
 //   node tools/econ.js --log        구매 기록까지
 //   node tools/econ.js --slack 0.4  여유 비율 하나만 (기본은 0 과 0.25 둘 다)
@@ -33,7 +33,7 @@ async function live() {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 480, height: 300 } });
   await p.goto('file://' + path.join(__dirname, '../dist/test.html') + '#namsongi'); await p.waitForTimeout(6000);
-  await p.click('#enter').catch(() => {}); await p.click('#intro-srv button').catch(() => {}); await p.click('#srv-go').catch(() => {}); await p.waitForTimeout(5000);
+  await p.click('#enter').catch(() => {}); await p.waitForTimeout(5000);
   const r = await p.evaluate(() => { const o = window.__oreum, f = o.cleanhouse.api.front; return { front: { x: f.x, z: f.z }, fronts: o.cleanhouse.all.map((c) => ({ x: c.front.x, z: c.front.z })), heaps: o.trash.heaps().map((h) => [h.zone, h.k, h.x, h.z]) }; });
   await b.close();
   const o = { note: 'tools/econ.js 가 쓰는 남송이 더미 자리·클린하우스 앞 (node tools/econ.js --live 로 다시 뽑음). front 는 들머리, fronts 는 오름 안 것까지 모두 (#78)', front: { x: +r.front.x.toFixed(1), z: +r.front.z.toFixed(1) }, fronts: r.fronts.map((f) => ({ x: +f.x.toFixed(1), z: +f.z.toFixed(1) })), heaps: r.heaps.map((h) => [h[0], h[1], +h[2].toFixed(1), +h[3].toFixed(1)]) };
@@ -186,11 +186,11 @@ async function main() {
   console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 활 ${WEAPONS[1].price} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + WEAPONS[1].price + WSUM}`);
   const short = { tool: '도구', bag: '배낭', shoes: '신발', weapon: '무기', ride: '탈것', ...Object.fromEntries(WEAR.slots.map((w) => [w.k, w.name])) };
   const verdict = []; let day1Rate = 0;
-  for (const mode of ['clean', 'battle']) for (const slack of SLACKS) {
+  for (const mode of ['battle']) for (const slack of SLACKS) {
     const runs = [1, 7, 42, 99, 123].map((s) => seedRun(mode, slack, s));
-    const r = runs[2]; if (!day1Rate && mode === 'clean' && slack === 0) day1Rate = r.days[0].rate;
+    const r = runs[2]; if (!day1Rate && slack === 0) day1Rate = r.days[0].rate;
     const lasts = runs.map((x) => x.last).sort((a, b) => a - b), last = lasts[2];
-    const title = `${mode === 'clean' ? '깨끗한 오름' : '전투 오름'} · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
+    const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
     console.log(`\n== ${title} (투기꾼 쫓아내기 ${CHASE * 100}%) ==`);
     console.log('하루 끝 (한 번 돌린 예). 칸은 단계 (배낭 0 = 호주머니, 옷 0 = 없음)');
     console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), '산 것': d.n, '다 치운 구역': d.zones, '끝 귤/시간': d.rate, '남은 귤': d.coins })));

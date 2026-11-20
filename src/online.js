@@ -33,12 +33,23 @@ const ACCT_KEY = BASE + '.acct';
 
 // main.js 저장 키: 로그인했으면 계정 사본
 export const saveKey = (base) => (sess ? ACCT_KEY : base);
+export let guestExpired = false; // 손님 기록이 7일 넘어 지워진 채로 열림 (#94)
+const KEEP_SET = ['gfx', 'gfxV3', 'perf', 'introSound', 'music']; // 지워도 남기는 설정(소리·그래픽)
 export function loadSave(key) {
   let s = {};
   try { s = JSON.parse(ls.get(key) || '{}') || {}; } catch (e) { s = {}; }
   if (sess && s._acct && s._acct !== sess.sub) s = {}; // 다른 계정 사본
+  if (!sess) { // 손님 (#94): 마지막 접속에서 keepDays 일이 지났으면 지우고 처음부터. 값이 없던 예전 저장은 지금으로 채움(바로 지우지 않음)
+    const t = Number(s.lastSeen);
+    if (Number.isFinite(t) && t > 0 && Date.now() - t > NET.keepDays * 864e5) {
+      const keep = {}; for (const k of KEEP_SET) if (s[k] !== undefined) keep[k] = s[k];
+      s = keep; guestExpired = Object.keys(JSON.parse(ls.get(key) || '{}') || {}).some((k) => !KEEP_SET.includes(k));
+    }
+    s.lastSeen = Date.now();
+  }
   return s;
 }
+export const stampGuest = (s) => { if (!sess) s.lastSeen = Date.now(); }; // 저장할 때마다 마지막 접속 갱신
 
 const subOf = (token) => { try { const p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(atob(p + '==='.slice((p.length + 3) % 4))).s; } catch (e) { return null; } };
 async function api(path, { method = 'GET', body, keepalive = false, token = sess?.t } = {}) {
@@ -49,7 +60,9 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 }
 // 의견 보내기 (#77): 서버가 있으면 글 묶음을 POST /feedback (로그인 안 해도 됨)
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
-const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; return o; };
+// 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
+export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
+const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 
 /* ---------- 계정 ---------- */
@@ -82,7 +95,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const r = await api('/save', { method: 'PUT', body: { save: strip(s) }, keepalive });
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {
@@ -124,7 +137,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
   const rank = (range, srv) => api(`/rank?range=${encodeURIComponent(range)}&srv=${encodeURIComponent(srv)}`);
   const rankMe = (srv) => api(`/rank/me?srv=${encodeURIComponent(srv)}`);
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get admin() { return !!sess && admin; } };
+  return { start, push, dirty, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get admin() { return !!sess && admin; } };
 }
 
 /* ---------- 로그인 화면 ---------- */
@@ -148,18 +161,32 @@ export function mountLogin({ box, enterBtn, account, localSave, hasProgress, toa
   box.hidden = false;
   const note = '<p class="acct-beta">베타 서비스예요. 7일 안에 다시 접속하지 않으면 기록이 사라져요.</p>';
   if (account.loggedIn) { box.innerHTML = note + '<p class="acct-who">구글 계정으로 저장 중</p>'; return; }
-  box.innerHTML = note + (NET.googleClientId ? '<div class="acct-gis" id="acct-gis"></div>' : '');
+  box.innerHTML = note + (NET.googleClientId ? '<div class="acct-gis" id="acct-gis"><div class="btn gbtn" aria-hidden="true"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span class="gtxt">Google 계정으로 로그인</span></div><div class="gov" id="acct-gov"></div></div>' : '');
   enterBtn.textContent = '손님으로 하기';
+  enterBtn.classList.add('guest-go');
   enterBtn.dataset.guest = '1';
   const doLogin = async (cred) => {
-    try { await account.login(cred, { localSave, hasProgress, ask: askMigrate }); } catch (e) { toast('로그인하지 못했어요. 잠시 후 다시 해 주세요'); }
+    const gt = box.querySelector('.gtxt'), gb = box.querySelector('#acct-gis');
+    if (gt) gt.textContent = '로그인 중…'; gb?.classList.add('busy');
+    try { await account.login(cred, { localSave, hasProgress, ask: askMigrate }); } catch (e) { toast('로그인하지 못했어요. 잠시 후 다시 해 주세요'); if (gt) gt.textContent = '로그인하지 못했어요. 다시 눌러 보세요'; gb?.classList.remove('busy'); setTimeout(() => { if (gt && gb && !gb.classList.contains('busy')) gt.textContent = 'Google 계정으로 로그인'; }, 3000); }
   };
   mountLogin.fake = (name = 'tester') => doLogin('fake:' + name); // 확인용 (서버 FAKE_AUTH=1 일 때만 통함)
   if (!NET.googleClientId) return;
   loadGis().then((g) => {
     if (!g?.accounts?.id) return;
     g.accounts.id.initialize({ client_id: NET.googleClientId, callback: (r) => doLogin(r.credential), ux_mode: 'popup' });
-    g.accounts.id.renderButton(box.querySelector('#acct-gis'), { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ko', width: 260 });
+    const gis = box.querySelector('#acct-gis'), ov = box.querySelector('#acct-gov'), gtxt = box.querySelector('.gtxt');
+    if (!gis || !ov) return;
+    // 보이는 건 직접 그린 버튼, 그 위에 투명한 GSI 버튼을 같은 너비로 덮어 누름만 받는다 (#102). 너비가 바뀌면 다시 그림
+    let lastW = 0;
+    const draw = () => {
+      const w = Math.max(200, Math.min(400, Math.round(gis.clientWidth)));
+      if (w === lastW) return; lastW = w; ov.textContent = '';
+      g.accounts.id.renderButton(ov, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'ko', width: w, logo_alignment: 'left' });
+    };
+    draw();
+    if (window.ResizeObserver) new ResizeObserver(draw).observe(gis); else addEventListener('resize', draw);
+    ov.addEventListener('pointerdown', () => { gtxt.textContent = '로그인 중…'; gis.classList.add('busy'); });
   }).catch(() => { const g = box.querySelector('#acct-gis'); if (g) g.textContent = '구글 로그인을 불러오지 못했어요'; });
 }
 

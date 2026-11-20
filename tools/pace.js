@@ -1,11 +1,11 @@
-// 연출 감독 확인 (#89): 20분짜리 자동 플레이 기록에서 힐링·긴장 구간의 시간표를 뽑는다 (깨끗한 오름·전투 오름 각각)
+// 연출 감독 확인 (#89): 20분짜리 자동 플레이 기록에서 힐링·긴장 구간의 시간표를 뽑는다 (서버는 전투 오름 하나, #98)
 // src/pacing.js 를 그대로 돌리고, 플레이어는 흉내 낸다: 더미를 70~150초마다 하나 치움(꽃), 가끔 낚시(바쁨), 적은 5~30초 안에 쫓아내거나(85%) 놓침
 // (더미를 70~270초마다 하나 치움)
 // 확인: 물결 수, 긴장 비율(힐링 50% 이상), 겹침 0 (공격끼리·꽃 핀 뒤 10초·공격 뒤 쉼 90초·긴장 중 팁/잭팟/마차 표시), 첫 공격(꽃 한 번 뒤 투기꾼 하나)
 // node tools/pace.js            표 + notes/shots/pace-89.svg (시간표 그림)
 // node tools/pace.js --png      그림을 png 로도 (playwright)
 // node tools/pace.js --seeds 50 여러 번 돌려 평균·최악값
-// node tools/pace.js --live     dist/test.html 에서 실제 게임으로 한 번씩(깨끗한·전투): 조짐 → 공격 → 다 쫓아냄 → 보상·쉼, 긴장 화면을 notes/shots/pace-89-<서버>.png
+// node tools/pace.js --live     dist/test.html 에서 실제 게임으로 한 번: 조짐 → 공격 → 다 쫓아냄 → 보상·쉼, 긴장 화면을 notes/shots/pace-89-<서버>.png
 const path = require('path'), fs = require('fs');
 (async () => {
   const { createPacing } = await import(path.join(__dirname, '../src/pacing.js'));
@@ -20,7 +20,7 @@ const path = require('path'), fs = require('fs');
     const blooms = [], tipsShown = [], violations = [];
     const first = firstRun ? { done: false, bloomed: false } : { done: true, bloomed: true };
     const P = createPacing({
-      isBattle: () => server === 'battle', rnd, first, perHour: 1000 * DUMP.hourFrac * 3,
+      rnd, first, perHour: 1000 * DUMP.hourFrac * 3,
       hooks: {
         busy: () => now < busyUntil,
         threats: () => threats.filter((x) => !x.done).length,
@@ -64,18 +64,17 @@ const path = require('path'), fs = require('fs');
     const { chromium } = require('playwright');
     const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
     let fail = 0;
-    for (const srv of ['clean', 'battle']) {
+    for (const srv of ['battle']) {
       const p = await b.newPage({ viewport: { width: 640, height: 400 } }); p.on('pageerror', (e) => { fail++; console.log('ERR', e.message.slice(0, 300)); });
       await p.goto('file://' + path.join(__dirname, '../dist/test.html') + '#namsongi'); await p.waitForTimeout(6000);
-      await p.click('#enter').catch(() => {});
-      await p.evaluate((s) => { const bs = document.querySelectorAll('#intro-srv button'); (bs[s === 'battle' ? 1 : 0] || bs[0])?.click(); }, srv).catch(() => {});
-      await p.click('#srv-go').catch(() => {}); await p.waitForTimeout(4000);
+      await p.evaluate(() => document.getElementById('enter').click()).catch(() => {}); // 로그인 상자가 있으면 작은 창에서 버튼이 화면 밖일 수 있음
+      await p.waitForTimeout(4000);
       const L = await p.evaluate(() => {
         const O = window.__oreum, P = O.pace.pacing, L = [];
         try { O.look.close(); } catch { /* 없음 */ } O.cam.mode = 'follow'; O.save.jeong = 1; O.save.tut = { ...(O.save.tut || {}), done: 1 }; O.setTod(15);
-        document.body.classList.remove('tut'); const h = document.getElementById('tut-hint'); if (h) h.hidden = true;
+        document.body.classList.remove('tut'); const h = document.getElementById('tut-toast'); if (h) h.hidden = true;
         for (let i = 0; i < O.trash.api.heaps.length; i += 3) O.trash.setHeap(i, Math.floor(O.trash.api.heaps[i].n / 2)); // 빈 자리가 있어야 투기꾼이 옴
-        if (O.server.isBattle()) { const x = -60, z = 40; O.player.pos.set(x, O.groundAt(x, z), z); O.snap(); } // 1구역 (몹이 나오는 곳)
+        { const x = -60, z = 40; O.player.pos.set(x, O.groundAt(x, z), z); O.snap(); } // 1구역 (몹이 나오는 곳)
         P.test.first.done = true; P.test.first.bloomed = true; P.test.soon(0);
         const snap = (tag) => L.push({ tag, phase: P.phase, ten: +P.tension.toFixed(2), dump: O.dumpers.state().map((d) => d.kind + ':' + d.state).join(' '), en: O.enemies.test.state().map((e) => e.kind + ':' + e.state).join(' '), ev: P.events.slice(-1)[0]?.kind });
         for (let i = 0; i < 4; i++) { P.update(1); snap('+' + (i + 1) + '초'); }
@@ -101,7 +100,7 @@ const path = require('path'), fs = require('fs');
     return;
   }
   const rows = [];
-  for (const server of ['clean', 'battle']) for (const firstRun of [false, true]) {
+  for (const server of ['battle']) for (const firstRun of [false, true]) {
     const rs = []; for (let s = 1; s <= seeds; s++) rs.push(run(server, s, firstRun));
     const avg = (f) => rs.reduce((a, r) => a + f(r), 0) / rs.length, max = (f) => Math.max(...rs.map(f)), minf = (f) => Math.min(...rs.map(f));
     const gaps = rs.flatMap((r) => r.gaps), lens = rs.flatMap((r) => r.attacks.filter((a) => a.b < MIN * 60 - 1e-6).map((a) => a.b - a.a)); // 20분 끝에 잘린 것은 뺌
