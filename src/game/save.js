@@ -45,6 +45,10 @@ save.rides.own = Array.isArray(save.rides.own) ? save.rides.own.filter((id, i, a
 if (!save.rides.own.includes(save.rides.cur)) save.rides.cur = save.rides.own[save.rides.own.length - 1] || null;
 save.rides.walk = save.rides.walk ? 1 : 0; // 1 = 탈것 없이 걸어 다니기를 골라 둠 (#109)
 save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.bowAmmo)) || 0)); // 귤 하나로 남은 화살 수
+// 무기 3~6단계 (#123): weaponUse = 골라 쓰는 무기 단계(가진 것 안), ammo = 총·머신건 귤 하나로 남은 발 수, 레이저는 남은 귤 몫 0~1 (활은 예전대로 bowAmmo)
+{ const v = Math.floor(Number(save.weaponUse)); save.weaponUse = Math.max(1, Math.min(save.equip.weapon, Number.isFinite(v) && v > 0 ? v : save.equip.weapon)); }
+if (!save.ammo || typeof save.ammo !== 'object' || Array.isArray(save.ammo)) save.ammo = {};
+for (const w of WEAPONS) if (w.id !== 'bow' && (w.perGyul || w.gyulPerSec)) { const v = Number(save.ammo[w.id]), top = w.perGyul || 1; save.ammo[w.id] = Number.isFinite(v) ? Math.max(0, Math.min(top, w.perGyul ? Math.floor(v) : v)) : 0; }
 for (const k of ['tool', 'bag', 'shoes']) { const lo = k === 'bag' ? 0 : 1, v = Math.floor(Number(save.equip[k])); save.equip[k] = Math.max(lo, Math.min(5, Number.isFinite(v) ? v : 1)); } // 장비 단계 (상점에서 다음 단계만 삼)
 // 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감
 state.holdBow = false; // 귤 활을 손에 들고 있음 (#38): 쏘면 활, 줍기 누르면 다시 도구
@@ -70,7 +74,7 @@ export const clothGear = () => { const hasHair = ACCESSORIES[save.outfit.gear.ha
   WEAR.slots.forEach(({ k }) => { out[k] = CL.wear[k] || `${k}:none`; });
   if (!hasHair) out.hat = 'hat:cap'; // 머리를 고르기 전(구운 머리·모자)엔 모자를 겹쳐 쓰지 않음
   return out; };
-export const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip), ...clothGear() }; if (state.holdBow) save.outfit.gear.hand = 'hand:bow'; if (state.holdRod) save.outfit.gear.hand = 'hand:none'; };
+export const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip), ...clothGear() }; if (state.holdBow) save.outfit.gear.hand = 'hand:' + ((WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id === 'hand' ? 'bow' : (WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id); if (state.holdRod) save.outfit.gear.hand = 'hand:none'; };
 syncEquipGear();
 // 캐릭터 고르기 (#51): save.look = { sex: 'm'|'f', skin: 0~2 }. 없으면 입장 뒤 튜토리얼보다 먼저 고르기 화면. save.hairs = 가진 머리(hat 칸 장비)
 export const lookS = { open: false, t: 0, sex: 'm', skin: 0, oldPlayer: !freshSave && !save.look }; // 예전부터 하던 사람은 쓰던 초록 모자도 가짐

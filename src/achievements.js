@@ -49,6 +49,12 @@ export const BADGES = [
   { id: 'b-deer-friend', ev: 'follower', goal: 5, name: '노루 친구', desc: '동물이 다섯 번 따라왔어요', glyph: '친', color: '#b8865a', reward: 30, item: 'vest:c:#c9a27a' },
   { id: 'b-stones', ev: 'stone', goal: 10, name: '돌탑 쌓는 사람', desc: '소원 돌 10개', glyph: '탑', color: '#4a4744', reward: 30 },
   { id: 'b-boar', ev: 'boar-repel', goal: 5, name: '멧돼지 조련사', desc: '멧돼지를 다섯 번 쫓았어요', glyph: '멧', color: '#4a3a30', reward: 30 },
+  // 무기 첫 구매 (#123): 상점이 weapon-buy-<id> 를 알림
+  { id: 'b-arm-bow', ev: 'weapon-buy-bow', goal: 1, name: '첫 귤 활', desc: '귤 활을 샀어요', glyph: '활', color: '#9a6b3a', reward: 20 },
+  { id: 'b-arm-gun', ev: 'weapon-buy-gun', goal: 1, name: '귤 총잡이', desc: '귤 총을 샀어요', glyph: '총', color: '#e2683c', reward: 40 },
+  { id: 'b-arm-mg', ev: 'weapon-buy-mg', goal: 1, name: '귤 소나기', desc: '귤 머신건을 샀어요', glyph: '연', color: '#c9473d', reward: 80 },
+  { id: 'b-arm-laser', ev: 'weapon-buy-laser', goal: 1, name: '귤즙 광선', desc: '귤즙 레이저를 샀어요', glyph: '빛', color: '#ff9a1f', reward: 150 },
+  { id: 'b-arm-bomb', ev: 'weapon-buy-bomb', goal: 1, name: '귤 폭탄 장인', desc: '귤 폭탄을 샀어요', glyph: '폭', color: '#3f9a5a', reward: 250 },
   { id: 'b-photo', ev: 'photo', goal: 5, name: '인증샷 장인', desc: '표지석 인증샷 5장', glyph: '찰', color: '#33402a', reward: 20 },
   { id: 'b-streak-3', ev: 'daily-all', goal: 3, name: '사흘 개근', desc: '오늘의 업적을 모두 마친 날 3일', glyph: '3', color: '#8f7bd6', reward: 40 },
   { id: 'b-streak-7', ev: 'daily-all', goal: 7, name: '일주일 개근', desc: '오늘의 업적을 모두 마친 날 7일', glyph: '7', color: '#7fb8e8', reward: 100, item: 'glasses:t:round' },

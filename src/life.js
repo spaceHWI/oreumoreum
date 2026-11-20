@@ -496,6 +496,21 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   const extra = [];
   const extraHit = (p, tg, dmg) => { for (const t of extra) if (t.hitTest(p, tg, dmg)) return true; return false; };
   const addTargets = (t) => { extra.push(t); };
+  // 무기 3~6단계 (#123, src/weaponfx.js): 한 점 맞힘(적·투기꾼·하르방)과 둘레 맞힘(폭탄). 맞힌 것(적은 그 적)을 돌려줌
+  const hDummy = { vel: new THREE.Vector3() };
+  function hitAt(p, dmg, vel = null, { quiet = false, hb = true } = {}) {
+    if (vel) hDummy.vel.copy(vel); else hDummy.vel.set(0, 0, 0);
+    const e = enemies.hitTest(p, hDummy, dmg, quiet); if (e) return e;
+    for (const t of extra) if (t.hitTest(p, hDummy, dmg, quiet)) return true;
+    if (hb) for (const h of hareubangs) if (Math.hypot(p.x - h.pos.x, p.z - h.pos.z) < 0.8 && p.y > h.pos.y + 0.3 && p.y < h.pos.y + 3.3) { h.hitT = 1; sound.stone(); onToast('하르방 코를 맞혔어요. 복이 온대요'); hooks.hareubang?.(); return true; }
+    return null;
+  }
+  const areaOut = [];
+  function hitArea(p, r, dmg) {
+    const n = enemies.hitArea(p, r, dmg).length;
+    let m = 0; for (const t of extra) { areaOut.length = 0; t.aimTargets(areaOut); for (const a of areaOut) if (Math.hypot(a.pos.x - p.x, a.pos.z - p.z) < r + a.size * 0.5) { hDummy.vel.set(0, 0, 0); if (t.hitTest(aTmp.set(a.pos.x, a.pos.y + a.h, a.pos.z), hDummy, dmg, n + m > 0)) m++; } }
+    return n + m;
+  }
   function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
@@ -534,6 +549,6 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   }
   // 타고 있는 노루는 남김. 남은(못 지운) 목록을 돌려줌
   function removeDeer(list) { return list.filter((a) => { if (a.state === 'ridden') return true; const i = deer.indexOf(a); if (i >= 0) deer.splice(i, 1); group.remove(a.root); return false; }); }
-  L = { remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  L = { remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, hitAt, hitArea, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
   return L;
 }
