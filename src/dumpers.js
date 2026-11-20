@@ -69,7 +69,7 @@ function makeBar() {
 
 /* ---------- 투기꾼·트럭 ---------- */
 // trash: createTrash 결과, bound: { line 돌담 선, insideBy, center }, paths: 탐방로 선(nsPaths)
-// hooks: canSpawn() 지금 와도 되나(튜토리얼 중엔 안 옴), appear(d) 나타남, dumped(d, n) 쌓음, repel(kind, pos, def) 쫓아냄, offline(n, sec) 접속 안 한 동안 쌓인 양
+// hooks: canSpawn() 지금 와도 되나(튜토리얼 중엔 안 옴), appear(d) 나타남, dumped(d, n) 쌓음, repel(kind, pos, def, d) 쫓아냄, offline(n, sec) 접속 안 한 동안 쌓인 양
 // avoid(x, z): 트럭이 지나지 않을 곳 (들머리 튜토리얼 쪽)
 // 연출 감독(#89)이 있으면 hooks.paced = true 로 스스로 오지 않고 come() 으로만 옴. hooks.heapW(i) 더미 고르는 무게 배율(0 이면 뺌), hit(pos, dead) 맞음
 export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, avoid = null, rnd = Math.random }) {
@@ -127,7 +127,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     return cand[cand.length - 1];
   }
 
-  // opts: amt 쌓을 양(없으면 DUMP_AMT), hold 이 초 동안 숨어 있다가 나타남(감독의 조짐 #89)
+  // opts: start [x,z] 걷는 투기꾼이 시작할 자리(없으면 돌담 밖), amt 쌓을 양(없으면 DUMP_AMT), hold 이 초 동안 숨어 있다가 나타남(감독의 조짐 #89)
   function spawn(kind, heapI = -1, opts = {}) {
     if (list.length >= DUMP.max) return null;
     const hi = heapI >= 0 ? heapI : pickHeap(kind); if (hi < 0 || !trash.heaps[hi]) return null;
@@ -135,8 +135,9 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     let route;
     if (kind === 'truck') { route = truckRoute(h); if (!route) return null; const last = route[route.length - 1]; route.push(edgeOf(h, last[0], last[1], 2.6)); }
     else { // 돌담에서 더미와 가장 가까운 곳 바깥에서 곧장
-      const b = wallNear(h.x, h.z); if (!b) return null;
-      const s = outsideOf(b[0], b[1]); route = [s, edgeOf(h, s[0], s[1], 1.0)];
+      let s = opts.start; // #135 첫 투기꾼: 시야 안 정한 자리에서 시작
+      if (!s) { const b = wallNear(h.x, h.z); if (!b) return null; s = outsideOf(b[0], b[1]); }
+      route = [s, edgeOf(h, s[0], s[1], 1.0)];
     }
     const m = kind === 'truck' ? buildTruck() : buildWalker();
     const [sx, sz] = route[0];
@@ -176,7 +177,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     d.state = 'startle'; d.st = 0; d.fleeD = 0; d.puffT = 0; if (d.bar) d.bar.g.visible = false;
     if (d.kind === 'walker') { dropBag(d); d.arms[1].rotation.x = 0; }
     goBack(d);
-    hooks.repel?.(d.kind, d.pos.clone(), d.def);
+    hooks.repel?.(d.kind, d.pos.clone(), d.def, d);
   }
   // 떨어진 봉투: 땅에 잠깐 보이고, 주울 수 있는 쓰레기 DUMP.bagDrop 개가 근처 더미에 쌓임
   const drops = [];

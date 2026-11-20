@@ -14,7 +14,7 @@ import { $, isTouch, save, lookS, persist, MAP_ID } from './save.js';
 import { life, stream, STN, NS_TUT, trash, CH, player, hp } from './place.js';
 import { cam } from './camera.js';
 
-Object.assign(late, { toast, closePanels }); // 앞 파일에서 부르는 함수
+Object.assign(late, { toast, closePanels, gyulExpect: (n) => gyulExpect(n) }); // 앞 파일에서 부르는 함수
 
 // ---------- UI 기본 ----------
 export const ui = { ctx: $('btn-ctx'), toast: $('toast') }; // 위쪽 줄 (#75): 장소·닉네임·걸음·날씨·나침반·조작 안내 문구는 뺌 (걸음은 메뉴에)
@@ -91,11 +91,42 @@ export function tickTips(dt) {
   if (tipT > 0) { tipT -= dt; if (tipT <= 0) { tipEl.hidden = true; topStack(); } }
   if (tipMarkT > 0) { tipMarkT -= dt; if (tipMarkT <= 0 || (tipMarkPos && player.pos.distanceTo(tipMarkPos) < 6)) { tipMarkT = 0; tipMarkPos = null; } }
   tips.update(dt, tipState);
-}let lastCoins = -1;
-export function updateStats() {
-  if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; late.shopCoinsChanged?.(); }
+}// 귤 숫자 (#133): 실제 값(save.coins)은 바로 바뀌고, 위쪽 숫자(#coins)만 얻는 효과가 닿은 뒤 올라간다.
+// held = 아직 효과가 안 닿아 보이는 숫자에 안 넣은 얻은 귤. 보이는 숫자 ≤ 실제 값 - held. 효과는 gyulFx(n) 으로 알리고, 닿으면 gyulLand(n)
+let lastCoins = -1, shown = 0, held = 0, heldAt = 0, expected = 0, future = 0, covered = 0, uncov = 0, chkT = 0;
+const COUNT = { from: 0, to: 0, t0: 0, on: false };
+const GYUL_HOLD_MAX = 4500; // 효과가 안 닿아도 이 시간(ms)이 지나면 숫자를 맞춤
+function paintCoins(v) { const c = String(v); const el = $('coins'); if (el.textContent !== c) { const grow = el.textContent.length !== c.length; el.textContent = c; if (grow) topFit.dirty(); } }
+function countTo(target) { if (target === shown) { COUNT.on = false; return; } COUNT.from = shown; COUNT.to = target; COUNT.t0 = performance.now(); COUNT.on = true; }
+function gyulSnap() { held = 0; COUNT.on = false; shown = save.coins; paintCoins(shown); }
+function gyulTick() {
+  if (held === 0) future = 0;
+  if (held > 0 && performance.now() - heldAt > GYUL_HOLD_MAX) { held = 0; countTo(save.coins); }
+  if (!COUNT.on) return;
+  const k = Math.min(1, (performance.now() - COUNT.t0) / 600), e = 1 - (1 - k) * (1 - k);
+  shown = k >= 1 ? COUNT.to : Math.round(COUNT.from + (COUNT.to - COUNT.from) * e); if (k >= 1) COUNT.on = false; paintCoins(shown);
 }
-export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { late.sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
+export function gyulExpect(n) { expected += n; } // 곧 얻을 귤 (효과가 나중에 따로 옴)
+export function gyulFx(n) { const f = Math.min(n, future); future -= f; covered += n - f; gyulCheck(); } // 효과가 n 만큼 맡음
+export function gyulLand(n, plus) {
+  held = Math.max(0, held - n); countTo(Math.max(0, save.coins - held)); // 닿음: 톡 커지고 숫자가 셈
+  const g = document.querySelector('.gyul'); if (g) { g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); }
+  if (plus && n > 0) { const r = (g || $('gyul-pill')).getBoundingClientRect(), el = document.createElement('div'); el.className = 'fx-plus'; el.textContent = `+${n}`; el.style.left = (r.left + 40) + 'px'; el.style.top = (r.top + 34) + 'px'; document.body.append(el); setTimeout(() => el.remove(), 1000); }
+}
+function gyulCheck() { if (chkT) return; chkT = setTimeout(() => { chkT = 0; // 효과를 못 받은 얻은 귤은 화면 가운데에서 날려 보냄
+  const x = Math.min(uncov, covered); uncov -= x; covered = 0; const n = uncov; uncov = 0; if (n > 0) late.gyulFly?.(n); }, 80); }
+document.addEventListener('visibilitychange', () => { if (document.hidden || held > 0) gyulSnap(); }); // 탭을 숨겼다 돌아오면 바로 맞춤
+export function updateStats() {
+  if (save.coins !== lastCoins) {
+    const d = lastCoins < 0 ? 0 : save.coins - lastCoins; lastCoins = save.coins; const c = String(save.coins);
+    $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; late.shopCoinsChanged?.();
+    if (lastCoins >= 0 && d === 0) gyulSnap();
+    else if (d > 0) { if (held === 0) heldAt = performance.now(); held += d; const e = Math.min(d, expected); expected -= e; future += e; uncov += d - e; if (d - e > 0) gyulCheck(); }
+    else if (d < 0) { let v = shown + d; if (v < 0) { held = Math.max(0, held + v); v = 0; } shown = Math.min(v, Math.max(0, save.coins - held)); COUNT.on = false; paintCoins(shown); }
+  }
+  gyulTick();
+}
+export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank', 'inbox'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;

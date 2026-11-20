@@ -14,13 +14,13 @@ import { state, late } from './state.js';
 import { $, save, wearV, persist, MAP_ID } from './save.js';
 import { scene, camera } from './scene.js';
 import { life, NS_TUT, trash, runner, player, hp } from './place.js';
-import { topFit, toast, tips, updateStats, ach, onDexGet } from './hud.js';
+import { topFit, toast, tips, updateStats, ach, onDexGet, gyulFx, gyulLand } from './hud.js';
 import { marker } from './input.js';
 import { dismountRide } from './ride.js';
 import { dismountDeer } from './moves.js';
 import { net } from './room.js';
 
-Object.assign(late, { gyulShower, coinFx, setSoundUI }); // 앞 파일에서 부르는 함수
+Object.assign(late, { gyulShower, coinFx, gyulFly, setSoundUI }); // 앞 파일에서 부르는 함수
 
 // ---------- 소리·후크 ----------
 export const sound = new Sound(); late.sound = sound;
@@ -96,11 +96,11 @@ export const dumpers = trash ? createDumpers({
   hooks: {
     canSpawn: () => !NS_TUT || !!save.tut?.done, // 튜토리얼 중엔 안 옴 (#100: 마지막 정낭 단계도)
     paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
-    appear: (d) => { tips.event('dumper'); dumpWarn.start({ x: d.pos.x, z: d.pos.z }); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
-    dumped: (d, n) => { if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
-    repel: (kind, pos, def) => {
+    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
+    dumped: (d, n) => { if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
+    repel: (kind, pos, def, d) => {
       life.scatterTangerines(pos, def.reward);
-      sound.beep?.(true); toast(`${iga(def.name)} 놀라 도망가요`);
+      sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
       ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel');
     },
     offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) state.introToast = m; else toast(m); },
@@ -113,22 +113,26 @@ life.hooks.pickup = (n) => { late.tut.notify('pickup'); save.coins += n; persist
 life.hooks.pickupAt = (wp) => coinFx(wp, 1);
 life.hooks.reclaim = (wp) => { save.coins += 1; persist(); updateStats(); sound.coin?.(); coinFx(wp, 1); };
 // 귤이 화면 위에서 쏟아져 귤 알약으로 들어감 (첫 보너스 #31)
+let dotsLive = 0;
 export function gyulShower(n) {
-  updateStats(); const pill = $('gyul-pill'), r0 = pill.querySelector('i').getBoundingClientRect(), tgt = r0.width > 0 ? r0 : { left: 24, top: 24 }, k = LOW ? 14 : 28;
+  updateStats(); const pill = $('gyul-pill'), r0 = pill.querySelector('i').getBoundingClientRect(), tgt = r0.width > 0 ? r0 : { left: 24, top: 24 }, k = LOW ? 0 : Math.max(0, Math.min(12, 12 - dotsLive)); gyulFx(n); // 알갱이는 한 화면에 12개까지, 저사양은 숫자 세기만 (#133)
+  dotsLive += k;
   for (let i = 0; i < k; i++) setTimeout(() => {
     const dot = document.createElement('div'); dot.className = 'fx-gyul'; const sx = innerWidth * (0.3 + Math.random() * 0.4), sy = -20 - Math.random() * 30;
     dot.style.left = sx + 'px'; dot.style.top = sy + 'px'; document.body.append(dot);
     const mx = sx + (Math.random() - 0.5) * 160, my = innerHeight * (0.35 + Math.random() * 0.2);
     dot.style.transition = 'transform .45s cubic-bezier(.4,0,.9,.6)'; requestAnimationFrame(() => requestAnimationFrame(() => { dot.style.transform = `translate(${mx - sx}px, ${my - sy}px)`; }));
     setTimeout(() => { dot.style.transition = 'transform .5s cubic-bezier(.5,-0.2,.6,1), opacity .5s'; dot.style.transform = `translate(${tgt.left + 8 - sx}px, ${tgt.top + 8 - sy}px) scale(.6)`; }, 470);
-    setTimeout(() => { dot.remove(); pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); if (i % 4 === 0) sound.coin?.(); }, 1000);
+    setTimeout(() => { dot.remove(); dotsLive--; pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump'); if (i % 4 === 0) sound.coin?.(); }, 1000);
   }, i * 45);
+  setTimeout(() => gyulLand(n, false), (k ? (k - 1) * 45 + 1000 : 900)); // 숫자는 마지막 알갱이가 닿을 때 올라감
   const plus = document.createElement('div'); plus.className = 'fx-plus'; plus.textContent = `+${n}`; plus.style.left = (tgt.left + 40) + 'px'; plus.style.top = (tgt.top + 34) + 'px';
-  setTimeout(() => { document.body.append(plus); setTimeout(() => plus.remove(), 1000); }, k * 45 + 900);
+  setTimeout(() => { document.body.append(plus); setTimeout(() => plus.remove(), 1000); }, (k ? k * 45 : 0) + 900);
 }
 export function coinFx(wp, n) {
-  const v = wp.clone(); v.y += 0.6; v.project(camera);
-  if (v.z > 1) return;
+  gyulFx(n); const v = wp.clone(); v.y += 0.6; v.project(camera);
+  if (v.z > 1 || LOW || dotsLive >= 12) { setTimeout(() => gyulLand(n, false), 400); return; } // 화면 밖·저사양·알갱이가 많으면 날리지 않고 숫자만
+  dotsLive++;
   const sx = (v.x * 0.5 + 0.5) * innerWidth, sy = (-v.y * 0.5 + 0.5) * innerHeight;
   const plus = document.createElement('div'); plus.className = 'fx-plus'; plus.textContent = `+${n}`;
   plus.style.left = sx + 'px'; plus.style.top = sy + 'px'; document.body.append(plus);
@@ -136,7 +140,7 @@ export function coinFx(wp, n) {
   dot.style.left = sx + 'px'; dot.style.top = sy + 'px'; document.body.append(dot);
   const tgt = document.querySelector('.gyul i').getBoundingClientRect();
   requestAnimationFrame(() => { dot.style.transform = `translate(${tgt.left + 8 - sx}px, ${tgt.top + 8 - sy}px) scale(.6)`; dot.style.opacity = '0.9'; });
-  setTimeout(() => { dot.remove(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); }, 620);
+  setTimeout(() => { dot.remove(); dotsLive--; gyulLand(n, false); }, 620);
   setTimeout(() => plus.remove(), 900);
 }
 life.hooks.fed = () => { ach.emit('feed'); ach.emit('follower'); };
@@ -154,4 +158,17 @@ export function setSoundUI() {
 export function threatNear() {
   if (life.enemies.near(player.pos, MUSIC.near)) return true;
   return !!dumpers && dumpers.list.some((d) => d.state !== 'flee' && d.state !== 'startle' && d.state !== 'leave' && Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < MUSIC.near);
+}
+
+// 어디서 얻었는지 알려 주지 않은 귤(업적·보너스 등): 화면 가운데에서 위쪽 귤 표시로 날려 보냄 (#133)
+export function gyulFly(n) {
+  if (LOW || dotsLive >= 12) { setTimeout(() => gyulLand(n, true), 300); return; }
+  const tgt = document.querySelector('.gyul i').getBoundingClientRect(), sx = innerWidth / 2, sy = innerHeight * 0.55, k = Math.min(5, Math.max(1, n));
+  dotsLive += k;
+  for (let i = 0; i < k; i++) {
+    const dot = document.createElement('div'); dot.className = 'fx-gyul'; dot.style.left = sx + (i - (k - 1) / 2) * 14 + 'px'; dot.style.top = sy + 'px'; document.body.append(dot);
+    setTimeout(() => requestAnimationFrame(() => { dot.style.transform = `translate(${tgt.left + 8 - sx}px, ${tgt.top + 8 - sy}px) scale(.6)`; dot.style.opacity = '0.9'; }), i * 40);
+    setTimeout(() => { dot.remove(); dotsLive--; }, 700 + i * 40);
+  }
+  setTimeout(() => gyulLand(n, true), 680 + (k - 1) * 40);
 }
