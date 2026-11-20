@@ -280,6 +280,9 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .inbox-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .inbox-list li { border: 1px solid var(--hair); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
 .inbox-list li.new { border-color: var(--acc); }
+#gl-lost { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 60; padding: 14px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; font-size: 15px; max-width: calc(100vw - 32px); box-sizing: border-box; } /* #108 WebGL 화면을 잃음 */
+.inbox-list li.crash { border-style: dashed; background: rgba(214, 90, 60, .08); }
+.inbox-list li.crash .t { font-family: ui-monospace, monospace; font-size: 12px; }
 .inbox-list .t { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; margin: 2px 0; }
 .inbox-list small { opacity: .7; font-size: 11px; }
 #dev-inbox { position: relative; } #dev-inbox .badge-dot { top: 2px; right: 4px; }
@@ -947,6 +950,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 <div id="shop-arrow" class="panel round" hidden aria-hidden="true"><i class="g"></i><i class="tip"></i></div>
 
 <div class="toast panel" id="toast" hidden></div>
+<div class="panel" id="gl-lost" hidden role="alert"><span id="gl-lost-t">화면을 다시 준비하고 있어요</span><button type="button" class="btn primary small" id="gl-reload" hidden>다시 불러오기</button></div>
 <div class="tip-toast panel" id="tip" hidden role="status"></div>
 <div class="panel" id="banner" hidden><span class="bdg" id="banner-bdg">해</span><div><b id="banner-title">업적 달성</b><small id="banner-sub"></small></div><button type="button" class="btn small primary" id="banner-go">받기</button></div>
 
@@ -1183,5 +1187,5 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="pop-body" id="notes-body"></div>
   </div>
 </div>
-<script src="main-8051687892.js"></script>
+<script src="main-01ea70c051.js"></script>
 </body></html>
