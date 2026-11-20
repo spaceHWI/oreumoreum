@@ -2,7 +2,6 @@
 import { TOOLS, BAGS, POCKET, SHOES, WEAPONS, WEAR, CLOTHES, wearPrice } from '../balance.js';
 import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
-import { isBattle } from '../server.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, CL, wearV, syncEquipGear, persist } from './save.js';
 import { LEAPB, runner, player } from './place.js';
@@ -15,8 +14,8 @@ Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth }); // 앞
 
 // ---------- 상점·옷장 ----------
 // 상점 팝업 (#26): 탭 도구·배낭·신발·옷. 장비 탭은 5단계 한 줄(가진 것 체크·다음 것 값·그 뒤 잠금)
-const GEAR_ROWS = { tool: { k: 'tool', list: TOOLS }, bag: { k: 'bag', list: BAGS }, shoes: { k: 'shoes', list: SHOES }, weapon: { k: 'weapon', list: WEAPONS, battle: true } };
-const gearKeys = () => Object.keys(GEAR_ROWS).filter((k) => (!GEAR_ROWS[k].battle || isBattle()) && !(k === 'shoes' && LEAPB)); // 무기 탭은 전투 오름에서만 (#38), 신발은 LEAP 이 있으면 거기서 (#59)
+const GEAR_ROWS = { tool: { k: 'tool', list: TOOLS }, bag: { k: 'bag', list: BAGS }, shoes: { k: 'shoes', list: SHOES }, weapon: { k: 'weapon', list: WEAPONS } };
+const gearKeys = () => Object.keys(GEAR_ROWS).filter((k) => !(k === 'shoes' && LEAPB)); // 신발은 LEAP 이 있으면 거기서 (#59)
 const SVG_A = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'; late.SVG_A = SVG_A;
 // 단계마다 그림 (로우폴리 임시 아이콘)
 const TIER_ART = {
@@ -133,7 +132,7 @@ function buildGearShop(body, k) {
 function buildShop() {
   const body = $('shop-body'); body.innerHTML = '';
   $('shop-coins').textContent = String(save.coins);
-  document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)); if (GEAR_ROWS[b.dataset.tab]?.battle) b.hidden = !isBattle(); if (b.dataset.tab === 'shoes' || b.dataset.tab === 'wear') b.hidden = !!LEAPB; }); // 옷·신발은 LEAP (#59)
+  document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)); if (b.dataset.tab === 'shoes' || b.dataset.tab === 'wear') b.hidden = !!LEAPB; }); // 옷·신발은 LEAP (#59)
   if (GEAR_ROWS[shopTab]) { buildGearShop(body, shopTab); return; }
   buildWearRows(body, true);
 }

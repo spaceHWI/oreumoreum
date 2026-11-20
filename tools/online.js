@@ -119,7 +119,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   const c = await A.p.evaluate(() => window.__oreum.save.coins);
   ok(c < 999999 && c <= 40 + 1500 + 10, `귤 부풀리기 바로잡힘 (${c})`);
   // 보안 (#84)
-  if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.click('#enter').catch(() => {}); await wait(A.p, 500); await A.p.click('#srv-go').catch(() => {}); }
+  if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.click('#enter').catch(() => {}); }
   for (let k = 0; k < 30 && !(await A.p.evaluate(() => window.__oreum.net.ready)); k++) await wait(A.p, 1000);
   ok(await A.p.evaluate(() => window.__oreum.net.ready), '로그인한 채로 방에 붙음 (토큰은 하위 프로토콜)');
   ok(await A.p.evaluate(() => document.getElementById('m-dev').hidden), '서버가 있으면 어드민이 아닌 계정에 개발자 메뉴 없음');
@@ -154,14 +154,13 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   else ok(!tl.length, `순위가 그대로면 토스트 없음 (${rk0} → ${rk1})`);
   ok(await A.p.evaluate(() => { const B = window.__oreum.save.ach.badges; return !!(B['b-rank-10'] || B['b-rank-1']); }), '업적: rank-top10 / rank-top1');
   const listed = async () => { for (let k = 0; k < 60 && (await A.p.evaluate(() => /불러오는/.test(document.getElementById('rank-note').textContent))); k++) await wait(A.p, 250); };
-  await A.p.evaluate(() => window.__oreum.rank.open('clean')); await listed();
+  await A.p.evaluate(() => window.__oreum.rank.open()); await listed();
   const rk = await A.p.evaluate(() => { const me = document.querySelector('#rank-list .rk-row.me'); return { me: me && me.querySelector('.rk-nick').textContent, no: me && me.querySelector('.rk-no').textContent, rows: document.querySelectorAll('#rank-list .rk-row').length, medal: !!document.querySelector('#rank-list .rk-row.m1'), note: document.getElementById('rank-note').textContent }; });
   ok(rk.me === nick && +rk.no >= 1 && rk.medal, `순위표에 내 줄·1위 메달 (${JSON.stringify(rk)})`);
   await A.p.evaluate(() => document.querySelector('#rank-range [data-v="all"]').click()); await listed();
   ok(await A.p.evaluate(() => !!document.querySelector('#rank-list .rk-row.me')), '전체 탭에도 내 줄');
-  await A.p.evaluate(() => document.querySelector('#rank-srv [data-v="battle"]').click()); await listed();
-  ok(await A.p.evaluate(() => { const me = document.querySelector('#rank-list .rk-row.me'); return !me || me.classList.contains('out'); }), '전투 오름 탭: 치운 적 없으면 내 줄은 아래 따로');
-  await A.p.setViewportSize({ width: 390, height: 640 }); await A.p.evaluate(() => document.querySelector('#rank-srv [data-v="clean"]').click()); await listed(); await wait(A.p, 800);
+  ok(await A.p.evaluate(() => !document.getElementById('rank-srv') && window.__oreum.save.server === 'battle' && window.__oreum.online.account().rank('day', 'clean').then((r) => r.srv === 'battle')), '서버 탭 없음·예전 clean 저장은 battle·예전 srv=clean 요청도 battle 순위 (#98)');
+  await A.p.setViewportSize({ width: 390, height: 640 }); await A.p.evaluate(() => document.querySelector('#rank-range [data-v="day"]').click()); await listed(); await wait(A.p, 800);
   await A.p.screenshot({ path: 'dist/rank-online.png' });
   await B.p.evaluate(() => window.__oreum.rank.open()); await wait(B.p, 500);
   ok(await B.p.evaluate(() => document.querySelectorAll('#rank-list .rk-mine').length === 3 && /로그인하면/.test(document.getElementById('rank-note').textContent)), '손님: 이 기기 기록 셋과 로그인 안내');

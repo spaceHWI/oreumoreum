@@ -3,7 +3,7 @@ export const kstDay = (t = Date.now()) => Math.floor((t + 9 * 3600e3) / 864e5);
 // 1970-01-01 은 목요일. 월요일 = 0 이 되게
 export const weekStart = (d) => d - ((d + 3) % 7);
 export const RANGES = ['day', 'week', 'all'];
-export const SRVS = ['clean', 'battle'];
+export const SRVS = ['battle']; // 서버는 전투 오름 하나 (#98). 예전 'clean' 기록은 battle 로 합침
 // 머리 아이콘 값 'hat:short|1' (머리 키 | 피부색 번호)
 export function lookOf(save, hairOk) {
   const h = save?.outfit?.gear?.hair, k = typeof h === 'string' && hairOk(h) ? h : '';

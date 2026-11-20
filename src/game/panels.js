@@ -61,4 +61,4 @@ $('feedback-form').addEventListener('submit', async (e) => {
   $('feedback-send').disabled = false;
   if (r === 'ok' || r === 'kept') { $('feedback-input').value = ''; fbLen(); $('feedback').hidden = true; toast('고마워요! 잘 읽을게요'); if (!$('intro').hidden) { const ib = $('intro-feedback'); ib.textContent = '고마워요!'; setTimeout(() => { ib.textContent = '의견 보내기'; }, 3000); } }
 });
-$('menu-help').addEventListener('click', () => { closePanels(); $('intro').classList.add('dim'); document.body.classList.add('intro-help-on'); $('enter').textContent = '닫기'; $('intro-main').hidden = false; $('intro-step').hidden = true; $('intro').hidden = false; $('intro-help').hidden = false; });
+$('menu-help').addEventListener('click', () => { closePanels(); $('intro').classList.add('dim'); document.body.classList.add('intro-help-on'); $('enter').textContent = '닫기'; $('intro-main').hidden = false; $('intro').hidden = false; $('intro-help').hidden = false; });

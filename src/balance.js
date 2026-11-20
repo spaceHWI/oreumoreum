@@ -83,7 +83,7 @@ export const BLOOM_FX = {
   cheerT: 1.1, // 캐릭터가 기뻐하는 시간
   zone: { camT: 1.5, camDist: 0.6, camPitch: 0.2, column: 260, colT: 2.2, colH: 26, ring: 42, ringT: 2.4, glowT: 2.4, bannerT: 3.2, vib: [30, 50, 30, 50, 90] },
 };
-// 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음. 깨끗한 오름·전투 오름 둘 다
+// 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음
 // 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
 // 한 명 기준 한 시간에 오름 전체 쓰레기 × hourFrac 만큼 쌓임 (3분마다 한 번 → 한 번에 평균 약 38개).
 // 투기꾼은 작은 더미 하나(amt), 트럭 양은 이 평균이 맞게 자동 계산 (src/dumpers.js DUMP_AMT, 약 80)
@@ -448,15 +448,15 @@ export const HP = {
 
 // 레스토랑 스톤 (#50): 들머리 개울 건너 물가. 귤을 내고 식사하면 버프 (한 번에 하나, 새로 먹으면 바뀜)
 // 귤 = 메뉴판 가격 × 10. buff: speed 이동 속도·bag 배낭 용량·dmg 귤 무기 피해·pick 줍는 속도(배)·regen HP 회복 속도(배). v 는 더하는 비율(regen 은 곱하는 배수)
-// battle: 전투 오름에서만 살 수 있음 (깨끗한 오름에선 흐리게). sec: 버프 시간(없으면 buffSec)
+// sec: 버프 시간(없으면 buffSec). 모든 메뉴는 늘 살 수 있음 (#98: 깨끗한 오름이 없어져 battle 갈래를 뺌)
 export const STONE = {
   buffSec: 600,
   menu: [
     { id: 'pasta', ko: '시그니처 매콤 크림 파스타', en: 'Signature Spicy Cream Sauce Pasta', price: 190, buff: 'speed', v: 0.2, food: '#f2a65a' },
     { id: 'gnocchi', ko: '시그니처 새우 비스큐 뇨끼', en: 'Signature King Prawn Bisque Gnocchi', price: 200, buff: 'bag', v: 0.3, food: '#e0703c' },
-    { id: 'steak', ko: '시그니처 포크 스테이크', en: 'Signature Pork Steak', price: 290, buff: 'dmg', v: 0.5, battle: true, food: '#7a4a2c' },
+    { id: 'steak', ko: '시그니처 포크 스테이크', en: 'Signature Pork Steak', price: 290, buff: 'dmg', v: 0.5, food: '#7a4a2c' },
     { id: 'pizza', ko: '마르게리따', en: 'Pizza Margherita', price: 180, buff: 'pick', v: 0.25, food: '#e8b04a' },
-    { id: 'salad', ko: '하우스 리코타 샐러드', en: 'House Ricotta Salad', price: 100, buff: 'regen', v: 2, battle: true, food: '#7fb65a' },
+    { id: 'salad', ko: '하우스 리코타 샐러드', en: 'House Ricotta Salad', price: 100, buff: 'regen', v: 2, food: '#7fb65a' },
     { id: 'ade', ko: '플럼 에이드', en: 'Plum Ade', price: 50, buff: 'speed', v: 0.1, sec: 300, food: '#c2416b', drink: true },
   ],
   // 자리: 가게 거리(#57) 터 SHOPS 의 lot. 앞(테라스)이 골목 너머 개울·바다(서쪽)를 봄
@@ -613,7 +613,7 @@ export const MUSIC = {
 // 연출 감독 (#89, src/pacing.js): 힐링 시간(줍기·꽃·낚시)이 바탕이고 공격 시간(투기꾼·트럭·몹)은 짧고 또렷한 사건
 // 한 번 공격 = 조짐(omen 초: 방향 표시·음악·새가 날아오름) → 긴장(나타나서 쫓아낼 때까지, attack 초 안) → 쉼(rest 초 동안 새 적 없음)
 // gap: 공격 시작에서 다음 공격 시작까지(초) [최소, 최대]. 꽃이 피면 bloomQuiet 초 동안 적이 끼어들지 않음
-// clean: 깨끗한 오름(투기꾼·트럭만), battle: 전투 오름(몹 물결, dumpEvery 번째마다 투기꾼도 같이). 구역이 깊을수록 무리가 큼(group)
+// battle: 전투 오름(몹 물결, dumpEvery 번째마다 투기꾼도 같이). 구역이 깊을수록 무리가 큼(group). 깨끗한 오름(clean)은 #98 에서 없앰
 // 첫 공격: 튜토리얼 뒤 더미를 한 번 치워 꽃을 피운 다음 firstDelay 초 뒤, 약한 투기꾼 하나
 // 보상: 다 쫓아내면 귤 bonus(나머지는 그 1/3), 그리고 rest 초 쉼
 // 지루함: calmMax 초 넘게 아무 일이 없으면 작은 즐거움 하나 (드문 쓰레기 반짝임·노루가 지나감·반딧불이 떼·잭팟 조짐)
@@ -625,9 +625,8 @@ export const PACE = {
   bloomQuiet: 10,
   calmMax: 180,
   firstDelay: 25,
-  clean: { gap: [300, 480], bonus: 6, truckP: 0.6 },
   battle: { gap: [180, 240], bonus: 9, dumpEvery: 2, group: { 1: [1, 2], 2: [2, 2], 3: [2, 3], 4: [2, 3], 5: [3, 3] } },
-  truckMax: 140, // 트럭 한 번에 쌓는 최대 (방금 치운 보람을 지우지 않게. 전투 오름은 투기꾼이 두 번에 한 번이라 시간당 양이 줄고 몹이 헤집는 쓰레기가 더해짐)
+  truckMax: 140, // 트럭 한 번에 쌓는 최대 (방금 치운 보람을 지우지 않게. 투기꾼이 두 번에 한 번이라 시간당 양이 줄고 몹이 헤집는 쓰레기가 더해짐)
   near: 140, // 투기꾼이 노릴 더미: 플레이어에서 이 거리 안을 먼저 (보이는 곳에서 사건이 일어나게)
   protect: 600, // 방금(이 초 안에) 다 치운 더미에는 투기꾼이 다시 쌓지 않음
   busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
@@ -799,7 +798,7 @@ export const NET = {
   saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
   keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
   // 보안 (#84): 이동·줍기·폭주·요청 수 제한. 모두 서버(roomcore·index)가 봄
-  rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>(-battle)' 만. 그 밖은 거절 (방 만들기 폭주 막기)
+  rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>-battle' 만 (#98: 서버는 전투 오름 하나. 예전 'oreum-<이름>' 접속은 battle 방으로 보냄). 그 밖은 거절 (방 만들기 폭주 막기)
   maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
   moveSlack: 8,       // 이동 판정 여유 (m, 끊김·점프)
   warpGap: 10,        // 들것 귀환·자리 앉기 같은 순간 이동은 이 초에 한 번까지 받아 줌
@@ -817,7 +816,7 @@ export const NET = {
   deerPerSec: 5,      // 노루 메시지(무리·타기·먹이 부탁)는 따로 1초에 이만큼
 };
 
-// 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체, 깨끗한 오름·전투 오름 따로
+// 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체. 서버는 전투 오름 하나 (#98, 예전 깨끗한 오름 기록은 합침)
 export const RANK = {
   top: 50,            // 서버가 돌려주는 위 몇 명
   cacheMs: 10000,     // 서버: 같은 순위표는 이만큼 메모리에 두고 다시 셈 (계정 DO 부하)

@@ -10,7 +10,6 @@ import * as THREE from 'three';
 import { groundAt } from '../world.js';
 import { SKIN_TONES } from '../runner.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
-import { isBattle } from '../server.js';
 import { TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, WSLOT, CL, wearV, persist } from './save.js';
@@ -31,7 +30,6 @@ Object.assign(late, { refreshShopPop, finishMeal, finishCut, doInteract }); // �
 export const mealS = { on: false, item: null, phase: '', t: 0, target: null }; late.mealS = mealS;
 const stoneOpen = () => !NS_TUT || !!save.jeong; // 튜토리얼(정낭 열기 전)엔 아직 안 열림
 export const skipAct = { label: '건너뛰기', ic: 'skip', act: () => finishMeal() };
-const LOCK_SVG = '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const buffIc = (k, cls = '') => `<svg ${cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BUFF_ICON[k]}</svg>`;
 // 가게 팝업 (#57): 가게마다 같은 틀 #shoppop (위 로고·이름·표어, 아래 카드). head = 위 칸, fill(grid) = 카드 채우기, when = 열 수 있는 때
 const SHOP_POP = {
@@ -57,17 +55,17 @@ function buildStoneMenu(grid) {
   const cur = buff.now();
   for (const m of STONE.menu) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = m.id;
-    const lockd = m.battle && !isBattle(), min = Math.round((m.sec || STONE.buffSec) / 60);
-    b.disabled = lockd; b.classList.toggle('poor', !!save.mealFree && save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
+    const min = Math.round((m.sec || STONE.buffSec) / 60);
+    b.classList.toggle('poor', !!save.mealFree && save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
     b.title = `${m.ko} · ${m.en}`;
     b.innerHTML = `<svg class="food" viewBox="0 0 64 64" aria-hidden="true">${FOOD_SVG[m.id]}</svg><span class="mn"><b>${m.ko}</b><small>${m.en}</small></span>`
-      + `<span class="mv">${save.mealFree ? `<span class="price"><i></i>${m.price}</span>` : '<span class="price free">첫 식사 무료</span>'}<span class="bf">${buffIc(m.buff)}${buffText(m)}<em>${min}′</em></span></span>${lockd ? LOCK_SVG : ''}`;
+      + `<span class="mv">${save.mealFree ? `<span class="price"><i></i>${m.price}</span>` : '<span class="price free">첫 식사 무료</span>'}<span class="bf">${buffIc(m.buff)}${buffText(m)}<em>${min}′</em></span></span>`;
     b.addEventListener('click', () => orderMeal(m));
     grid.appendChild(b);
   }
 }
 export function orderMeal(m) {
-  if (!STN || mealS.on || (m.battle && !isBattle())) return;
+  if (!STN || mealS.on) return;
   if (!save.mealFree) { save.mealFree = 1; persist(); toast('첫 식사는 무료예요'); } // #93: 첫 한 번은 귤을 받지 않음 (서버 확인은 validate.js)
   else { if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; } save.coins -= m.price; persist(); updateStats(); late.sound.coin?.(); }
   closePanels(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
@@ -271,7 +269,6 @@ export function updateBuffUI(force) {
   const ic = buffPill.querySelector('svg.ic'); if (ic.dataset.k !== n.item.buff) { ic.dataset.k = n.item.buff; ic.innerHTML = BUFF_ICON[n.item.buff]; }
   buffPill.querySelector('.fg').style.strokeDashoffset = String(75.4 * (1 - n.left / n.total));
   buffPill.querySelector('b').textContent = txt; buffPill.classList.toggle('end', n.left < 30);
-  const off = (n.item.buff === 'dmg' || n.item.buff === 'regen') && !isBattle(); buffPill.style.opacity = off ? '.5' : '';
 }
 // 가장자리 포크·나이프: 레스토랑이 화면 밖이거나 조금 멀 때
 // 가장자리 가게 아이콘 (#57): 가게마다 아이콘 하나, 가장 가까운 (열 수 있는) 가게만. 화면 밖이거나 조금 멀 때

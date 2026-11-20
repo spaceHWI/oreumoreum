@@ -15,11 +15,11 @@ const ri = (rnd, [a, b]) => a + Math.floor(rnd() * (b - a + 1));
 const mid = ([a, b]) => (a + b) / 2;
 export const DELIGHTS = ['lucky', 'deer', 'fireflies', 'jackpot'];
 
-export function createPacing({ isBattle = () => false, rnd = Math.random, hooks = {}, first = { done: true, bloomed: true }, perHour = 0 }) {
+export function createPacing({ rnd = Math.random, hooks = {}, first = { done: true, bloomed: true }, perHour = 0 }) {
   let t = 0, phase = 'calm', phaseT = 0, nextAt = 0, restUntil = 0, quietUntil = 0, lastEvent = 0, tension = 0, wave = 0, busyN = 0;
   let plan = null, atk = null, delightI = Math.floor(rnd() * DELIGHTS.length);
   const log = [{ t: 0, phase: 'calm' }], events = [];
-  const cfg = () => (isBattle() ? PACE.battle : PACE.clean);
+  const cfg = () => PACE.battle; // 서버는 전투 오름 하나 (#98)
   // 첫 공격 시각: 지금부터 gap 의 0.4~0.7 (첫 공격을 아직 안 겪었으면 꽃을 피울 때 정함)
   const schedFirst = () => { nextAt = first.done ? t + rr(rnd, cfg().gap) * (0.4 + rnd() * 0.3) : first.bloomed ? t + PACE.firstDelay + 30 : Infinity; };
   schedFirst();
@@ -27,18 +27,15 @@ export function createPacing({ isBattle = () => false, rnd = Math.random, hooks 
   function ev(kind, data = {}) { events.push({ t: +t.toFixed(2), kind, ...data }); }
 
   // 한 번 올 때 투기꾼 양: 한 시간 양 × 평균 간격 ÷ (투기꾼이 오는 차례 비율). 투기꾼은 DUMP.walker.amt 그대로, 트럭이 나머지
-  function dumpAmts(battle) {
-    const C = cfg(), share = battle ? 1 / C.dumpEvery : 1, per = perHour * mid(C.gap) / 3600 / share;
-    const W = DUMP.walker.amt;
-    if (battle) { const p = DUMP.truckP; return { walker: W, truck: Math.min(PACE.truckMax, Math.max(W, Math.round((per - (1 - p) * W) / p))) }; }
-    const p = C.truckP, eW = p * 1 + (1 - p) * 2; // 트럭+투기꾼 또는 투기꾼 둘
-    return { walker: W, truck: Math.min(PACE.truckMax, Math.max(W, Math.round((per - eW * W) / p))) };
+  function dumpAmts() {
+    const C = cfg(), share = 1 / C.dumpEvery, per = perHour * mid(C.gap) / 3600 / share;
+    const W = DUMP.walker.amt, p = DUMP.truckP;
+    return { walker: W, truck: Math.min(PACE.truckMax, Math.max(W, Math.round((per - (1 - p) * W) / p))) };
   }
   function makePlan() {
-    const battle = isBattle(), amt = dumpAmts(battle);
+    const amt = dumpAmts();
     wave++;
     if (!first.done) return { first: true, wave, dumpers: [{ kind: 'walker', amt: amt.walker }], mob: false };
-    if (!battle) return { wave, mob: false, dumpers: rnd() < PACE.clean.truckP ? [{ kind: 'truck', amt: amt.truck }, { kind: 'walker', amt: amt.walker }] : [{ kind: 'walker', amt: amt.walker }, { kind: 'walker', amt: amt.walker }] };
     const withDump = wave % PACE.battle.dumpEvery === 0;
     return { wave, mob: true, group: PACE.battle.group, dumpers: withDump ? [rnd() < DUMP.truckP ? { kind: 'truck', amt: amt.truck } : { kind: 'walker', amt: amt.walker }] : [] };
   }
@@ -109,6 +106,6 @@ export function createPacing({ isBattle = () => false, rnd = Math.random, hooks 
     canMark: () => !quiet(),
     log, events, busyN: () => busyN,
     // 확인용: 다음 공격을 s 초 뒤로
-    test: { soon(s = 0) { if (!first.done) { first.bloomed = true; } nextAt = t + s; quietUntil = Math.min(quietUntil, t); if (phase === 'rest') { restUntil = t; } }, first, dumpAmts: () => dumpAmts(isBattle()) },
+    test: { soon(s = 0) { if (!first.done) { first.bloomed = true; } nextAt = t + s; quietUntil = Math.min(quietUntil, t); if (phase === 'rest') { restUntil = t; } }, first, dumpAmts: () => dumpAmts() },
   };
 }

@@ -8,7 +8,7 @@ import { useDonnaeko } from '../donnaeko.js';
 import { useGate } from '../gate.js';
 import { OUTFIT_OPTIONS, DEFAULT_OUTFIT, itemPrice, SKIN_TONES } from '../runner.js';
 import { pickMapId } from '../maps.js';
-import { setServerId, validServer, createAbStats } from '../server.js';
+import { createAbStats } from '../server.js';
 import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
 
@@ -85,10 +85,9 @@ if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
 save.recycle.gyul = Math.max(0, Math.floor(Number(save.recycle.gyul) || 0)); // 클린하우스에서 번 귤 누적
 state.resetting = false;
-// 서버 (#35): save.server = clean | battle. 처음 온 사람은 시작 화면에서 고름 (그 전엔 깨끗한 오름으로 둠)
-if (!validServer(save.server)) delete save.server;
-setServerId(save.server || 'clean');
-export const srvSwitched = !!save.srvSwitch && !!save.server; delete save.srvSwitch; // 메뉴에서 서버를 바꿔 새로고침한 직후
+// 서버 (#35 → #98): 전투 오름 하나. 예전 save.server = clean 은 battle 로 (장비·귤·치운 양은 그대로, 쓰레기 칸은 trash.js 에서 합침)
+if (save.server != null) save.server = 'battle';
+delete save.srvSwitch; // 예전 '서버 바꾸기' 새로고침 표시
 export const ab = createAbStats(KEY + '.ab'); // 서버별 접속 횟수·플레이 시간·주운 수 (기기 기록, 처음부터 다시 해도 남음)
 export const writeLocal = () => { stampGuest(save); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 저장 불가 환경 */ } };
 state.account = null; // 멀티 서버 계정 (#7). 서버 주소가 없으면 null

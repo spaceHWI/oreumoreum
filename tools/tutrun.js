@@ -15,7 +15,7 @@ const mode = process.argv[2] || 'd';
   const until = async (fn, ms = 8000, arg) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await p.evaluate(fn, arg)) return true; await W(200); } return false; };
   const hold = async (k, fn, ms = 8000, arg) => { await p.keyboard.down(k); const ok = await until(fn, ms, arg); await p.keyboard.up(k); await until(() => !window.__oreum.trash.state().picking, 4000); return ok; };
   await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await W(6000);
-  await p.click('#enter').catch(() => {}); await p.click('#intro-srv button').catch(() => {}); await p.click('#srv-go').catch(() => {}); await W(4000);
+  await p.click('#enter').catch(() => {}); await W(4000);
   await p.evaluate(() => window.__oreum.setTod(14));
   if (await p.evaluate(() => !document.getElementById('look').hidden)) { await shot('01-look'); await p.click('#look-ok'); await W(1500); }
   const t = await T();
