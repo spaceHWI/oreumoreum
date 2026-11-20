@@ -170,15 +170,6 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .tut-pop { animation: tutPop .8s cubic-bezier(.2,1.6,.4,1); }
 @keyframes tutPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
-#tut-hint { position: fixed; z-index: 8; width: 124px; height: 96px; padding: 6px; background: var(--paper); border: 3px solid var(--ink); border-radius: 18px; box-shadow: inset 0 0 0 2px #fff, 3px 4px 0 rgba(59,58,51,.22); pointer-events: none; animation: tutIn .5s cubic-bezier(.2,1.6,.4,1); }
-#tut-hint svg { width: 100%; height: 100%; display: block; overflow: visible; }
-#tut-hint.pos-center { left: max(var(--gut-l), calc(50% - 215px)); bottom: calc(var(--safe-b) + 30%); }
-#tut-hint.pos-left { left: calc(var(--gut-l) + 10px); bottom: calc(var(--safe-b) + 160px); }
-#tut-hint.pos-right { right: calc(var(--gut-r) + 10px); bottom: calc(var(--safe-b) + 216px); }
-#tut-hint::after { content: ""; position: absolute; left: 50%; bottom: -14px; width: 18px; height: 18px; background: var(--paper); border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: translateX(-50%) rotate(45deg); }
-#tut-hint.pos-right::after { left: auto; right: 22px; transform: rotate(45deg); }
-#tut-hint.pos-left::after { left: 30px; transform: rotate(45deg); }
-#tut-hint.pos-center::after { left: auto; right: -14px; bottom: 36px; transform: rotate(-45deg); }
 @keyframes tutIn { 0% { transform: scale(.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 .bob-x { animation: bobX 1.4s ease-in-out infinite; } .bob-y { animation: bobY 1.2s ease-in-out infinite; }
 @keyframes bobX { 0%, 100% { transform: translateX(-10px); } 50% { transform: translateX(10px); } }
@@ -313,7 +304,7 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
   .pop-menu { bottom: calc(var(--safe-b) + 214px); }
   #chat { bottom: calc(var(--safe-b) + 214px); }
 }
-@media (prefers-reduced-motion: reduce) { .fx-plus, .gyul.bump { animation: none; } .fx-gyul { transition: none; } #tut-hint, #ch-arrow, #ch-arrow svg, .tut-pop, .bob-x, .bob-y, #flash.go, #eat-glow.go, .stamina-track.boost, .stamina-track.boost .stamina-fill, .fx-stamina, .fx-yum { animation: none; } .hint { transition: none; } #btn-ctx:not(.idle) { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fx-plus, .gyul.bump { animation: none; } .fx-gyul { transition: none; } #tut-toast, #ch-arrow, #ch-arrow svg, .tut-pop, .bob-x, .bob-y, #flash.go, #eat-glow.go, .stamina-track.boost, .stamina-track.boost .stamina-fill, .fx-stamina, .fx-yum { animation: none; } .hint { transition: none; } #btn-ctx:not(.idle) { animation: none; } }
 
 /* ===== 현무암 UI 덮어쓰기 ===== */
 body { font-weight: 500; color: #fff; }
@@ -370,14 +361,12 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-go { width: 100%; font-size: 18px; font-weight: 800; padding: 12px 16px; }
 .intro-go:disabled { opacity: .4; pointer-events: none; }
 #enter[aria-busy="true"] { animation: hintPulse 1.1s ease-in-out infinite; } /* 게임을 다 받기 전 (#90: 느린 연결에서 눌러도 반응이 없던 문제) */
-body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-hint, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
+body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
 body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #intro .ver-line) { display: none; }
 @media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; } }
 
 .intro-actions .btn:disabled { opacity: .4; pointer-events: none; }
-#tut-hint { background: var(--glass-2); border: 1px solid var(--hair); border-radius: 22px; box-shadow: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: #fff; }
-#tut-hint::after { display: none; }
 .ach-item { border: 0; border-radius: 14px; background: rgba(255,255,255,.08); padding: 10px 12px; }
 .ach-item.done { background: rgba(255,138,31,.2); color: #ffb672; }
 .ach-item .bar { height: 7px; background: rgba(255,255,255,.18); } .ach-item .bar i { background: var(--acc); }
@@ -599,12 +588,6 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 
 /* 튜토리얼 개편 (#31): 힌트 카드는 화면 아래 가운데 하나, 건너뛰기 버튼, 목표 화살표, 호주머니 아이콘 */
 #bag-pill svg.pk { display: none; } #bag-pill.pocket svg.pk { display: block; } #bag-pill.pocket svg.bg { display: none; }
-#tut-hint, #tut-hint.pos-center, #tut-hint.pos-left, #tut-hint.pos-right { left: 50%; right: auto; bottom: calc(var(--safe-b) + 22px); width: 168px; height: 108px; padding: 8px 10px; margin-left: -84px; }
-#tut-hint.tut-in { animation: tutIn .5s cubic-bezier(.2,1.6,.4,1); }
-#tut-hint .hop { animation: tutHop 1.4s ease-in-out infinite; } #tut-hint .spark { animation: tutSpark 1s ease-in-out infinite; transform-origin: 102px 46px; }
-@keyframes tutHop { 0% { transform: translate(-22px, 0); } 25% { transform: translate(-4px, -16px); } 50% { transform: translate(14px, 0); } 75% { transform: translate(32px, -16px); } 100% { transform: translate(50px, 0); } }
-@keyframes tutSpark { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: .75; } }
-@media (max-width: 600px) { #tut-hint, #tut-hint.pos-center, #tut-hint.pos-left, #tut-hint.pos-right { bottom: calc(var(--safe-b) + 164px); width: 136px; height: 90px; margin-left: -68px; padding: 6px 8px; } }
 #tut-skip { position: fixed; z-index: 16; top: calc(var(--safe-t) + 10px); left: calc(var(--gut-l) + 10px); width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; color: #fff; opacity: .8; }
 #tut-skip[hidden] { display: none; } #tut-skip svg { width: 18px; height: 18px; } #tut-skip:hover { opacity: 1; }
 #tut-arrow { position: fixed; left: 0; top: 0; z-index: 15; width: 40px; height: 40px; margin: -20px 0 0 -20px; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 0; animation: hintPulse 1.1s ease-in-out infinite; }
@@ -620,19 +603,24 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 @keyframes tutTap { 0%, 100% { transform: translate(8px, 10px) rotate(-18deg); } 45% { transform: translate(0, 0) rotate(-18deg) scale(.92); } 60% { transform: translate(0, 0) rotate(-18deg) scale(.92); } }
 body.tut-dim [data-tut].tut-on:not(.tut-focus), body.tut-dim #shop :is(#shop-tabs button, .tier, .tier-buy):not(.tut-focus) { opacity: .42; filter: saturate(.6); transition: opacity .25s; }
 body.tut-dim .tut-focus { opacity: 1 !important; }
-#tut-count { position: fixed; z-index: 8; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: calc(var(--safe-b) + 136px); padding: 3px 12px; border-radius: 999px; background: var(--glass-2, rgba(30,30,28,.6)); color: #fff; font: 800 18px/1.3 'Gothic A1', sans-serif; font-variant-numeric: tabular-nums; pointer-events: none; }
-#tut-count[hidden] { display: none; }
-#tut-count.pop { animation: tutPop .5s cubic-bezier(.2,1.6,.4,1); }
-@media (max-width: 600px) { #tut-count { bottom: calc(var(--safe-b) + 260px); font-size: 16px; } }
-@media (prefers-reduced-motion: reduce) { #tut-focus .ring, #tut-focus .finger, #tut-count.pop { animation: none; } }
-body.looking #tut-focus, body.looking #tut-count, body.hp-down #tut-focus { display: none !important; }
+@media (prefers-reduced-motion: reduce) { #tut-focus .ring, #tut-focus .finger, #tut-toast .n.pop, #tut-toast.in, #tut-toast.shake { animation: none; } }
+body.looking #tut-focus, body.looking #tut-toast, body.hp-down #tut-focus { display: none !important; }
+#tut-focus:not(.idle) .finger { display: none; } /* #100 손가락은 진행이 없을 때만 (TUT.fingerT) */
+/* #100 튜토리얼 토스트: 상황 팁(#66) 자리·모양 + 남은 수. 끝나면 '잘했어요', 오래 멈추면 흔들고 더 쉬운 말로 */
+#tut-toast { font-size: 15px; font-weight: 700; z-index: 9; }
+#tut-toast .n { flex: none; padding: 1px 8px; border-radius: 999px; background: rgba(255,138,31,.9); color: #fff; font: 800 13px/1.4 'Gothic A1', sans-serif; }
+#tut-toast .n.pop { animation: tutPop .5s cubic-bezier(.2,1.6,.4,1); }
+#tut-toast.ok svg { color: #8fd16a; }
+#tut-toast.in { animation: tutToastIn .35s cubic-bezier(.2,1.5,.4,1); }
+#tut-toast.shake { animation: tutShake .6s ease-in-out; }
+@keyframes tutToastIn { from { opacity: 0; transform: translate(-50%, -10px) scale(.92); } }
+@keyframes tutShake { 0%, 100% { transform: translateX(-50%); } 15%, 55% { transform: translateX(calc(-50% - 9px)); } 35%, 75% { transform: translateX(calc(-50% + 9px)); } }
 #tut-arrow .dot { width: 14px; height: 14px; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 10px #ffd27a; }
 #tut-arrow .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid #ffd27a; transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(28px); }
-@media (prefers-reduced-motion: reduce) { #tut-hint .hop, #tut-hint .spark, #tut-arrow { animation: none; } }
 /* HP (#36): 위쪽 가운데 하트 + 막대. 쓰러지면 화면이 어두워지고 시작 지점에서 원형 게이지로 대기 */
 @keyframes hpLow { 50% { opacity: .45; } }
 @keyframes hpHit { 0% { transform: translateX(-50%) scale(1); } 20% { transform: translateX(calc(-50% - 4px)) scale(1.08); } 45% { transform: translateX(calc(-50% + 4px)) scale(1.04); } 100% { transform: translateX(-50%) scale(1); } }
-body.hp-down #tut-hint, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp-down #shop-arrow, body.hp-down .hint { display: none !important; }
+body.hp-down #tut-toast, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.hp-down #shop-arrow, body.hp-down .hint { display: none !important; }
 #enemy-warn { position: fixed; left: 0; top: 0; z-index: 7; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 900 30px/1 system-ui, sans-serif; color: #fff; background: radial-gradient(circle, #ff4a3a 0 55%, rgba(255,74,58,.35) 56% 100%); box-shadow: 0 0 18px rgba(255,60,40,.7); pointer-events: none; }
 #enemy-warn[hidden] { display: none; }
 #dump-warn { position: fixed; left: 0; top: 0; z-index: 7; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--acc); background: radial-gradient(circle, #24251f 0 55%, rgba(255,138,31,.35) 56% 100%); box-shadow: 0 0 16px rgba(255,138,31,.6); pointer-events: none; }
@@ -761,7 +749,7 @@ body.hp-down #cart-mark { display: none !important; }
 .look-skin button[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 3px var(--acc); }
 .look-ok { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(255,138,31,.45); }
 .look-ok svg { width: 28px; height: 28px; }
-body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, body.looking #joy, body.looking #speed-label, body.looking #ach-chip, body.looking #sun-chip, body.looking #hp-bar, body.looking #ch-arrow, body.looking #shop-arrow, body.looking #shop-mark, body.looking #cart-mark, body.looking #tut-hint, body.looking #tut-skip, body.looking #tut-arrow, body.looking #compass { visibility: hidden; }
+body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, body.looking #joy, body.looking #speed-label, body.looking #ach-chip, body.looking #sun-chip, body.looking #hp-bar, body.looking #ch-arrow, body.looking #shop-arrow, body.looking #shop-mark, body.looking #cart-mark, body.looking #tut-toast, body.looking #tut-skip, body.looking #tut-arrow, body.looking #compass { visibility: hidden; }
 @media (max-width: 600px) {
   .look-card { gap: 10px; padding: 10px; }
   .look-sex button { width: 54px; height: 54px; }
@@ -1160,5 +1148,5 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="pop-body" id="notes-body"></div>
   </div>
 </div>
-<script src="main-b434404733.js"></script>
+<script src="main-bf564c3b2c.js"></script>
 </body></html>
