@@ -68,6 +68,7 @@ import './game/input.js';
 import './game/menu.js';
 import './game/throw.js';
 import './game/panels.js';
+import './game/screen.js';
 import './game/ride.js';
 import './game/moves.js';
 import './game/room.js';

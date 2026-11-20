@@ -2,7 +2,7 @@
 import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong } from '../namsongi.js';
 import { createFootprints } from '../footprints.js';
-import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP } from '../balance.js';
+import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN } from '../balance.js';
 import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
 import { STREET } from '../streetlayout.js';
 import { createRetro } from '../retro.js';
@@ -42,7 +42,7 @@ const leapLane = (() => { const sh = SHOPS.find((r) => r.id === 'leap'), l = sh 
 export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane] }) : null; // 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
-export const camera = new THREE.PerspectiveCamera(50, 1, 0.5, NSW ? NSW.camFar : 14000);
+export const camera = new THREE.PerspectiveCamera(SCREEN.fov, 1, 0.5, NSW ? NSW.camFar : 14000);
 setBlinkCamera(camera); // 먼 캐릭터는 깜빡임 생략 (#74)
 export function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -52,6 +52,7 @@ export function resize() {
   renderer.setSize(w, h, false);
   retro.setSize(w * quality.pr, h * quality.pr); post.setSize(w * quality.pr, h * quality.pr);
   camera.aspect = w / h;
+  camera.fov = w > h && h <= SCREEN.lowH ? SCREEN.fovLow : SCREEN.fov; // 돌리면 바로 화각을 맞춤 (#105)
   camera.updateProjectionMatrix();
 }
 

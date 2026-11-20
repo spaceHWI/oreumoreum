@@ -853,3 +853,10 @@ export const LIFE_MODELS = {
   hareubang: { scale: 3.2 },                     // 키 약 3.1m (예전 임시 모양과 같음)
   lamp: { scale: 4.0, glow: 0.8, colR: 0.3 },     // 키 약 3.9m, 귤 등은 땅에서 약 2.6m. glow: 밤에 귤 등이 빛나는 세기, colR: 기둥 충돌 반지름
 };
+
+// 화면 방향 (#105): 낮은 가로 화면(폰을 가로로)에서는 세로 화각을 넓혀 캐릭터가 너무 크게 보이지 않게
+export const SCREEN = {
+  fov: 50,       // 기본 세로 화각(도)
+  fovLow: 62,    // 낮은 가로 화면 세로 화각
+  lowH: 500,     // 이 높이(px) 이하이면서 가로가 더 길면 낮은 가로 화면 (page.html 의 같은 media query 와 맞춤)
+};
