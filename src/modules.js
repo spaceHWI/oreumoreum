@@ -79,6 +79,8 @@ import './game/pickup.js';
 import './game/area.js';
 import './game/deernet.js';
 import './game/dump.js';
+import './game/field.js'; // 맵 전체 쓰기 (#138)
+import './game/guard.js'; // 구역 지킴이 돌하르방 (#119)
 import './game/shop.js';
 import './game/look.js';
 import './game/hooks.js';

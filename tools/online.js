@@ -45,9 +45,10 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const per = (ms) => Math.ceil(ms / NET.identMs);
     ok(s1.n >= 3 && s1.withO <= per(s1.ms) && s1.withO < s1.n && s2.withO >= 1 && s2.withO <= 1 + per(s2.ms), `옷·닉네임은 바뀔 때만 실음 (자리만 ${s1.n}번·그중 옷 ${s1.withO}번, 옷 바꾼 뒤 ${s2.withO}번, ${(s2.ms / 1000).toFixed(1)}초)`);
     ok(await B.p.evaluate((h) => [...window.__oreum.net.peersById.values()][0]?.data.o?.h === h, hat), `옷 바꾸면 B 화면에 바로 (${hat})`);
-    const C = await open('C'); await C.p.click('#enter'); await wait(C.p, 3000);
-    const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
+    const C = await open('C'); await C.p.click('#enter');
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
+    await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
+    const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
     ok(cs.some(([n, h]) => n === an && h === hat), `새로 들어온 C 에게 A 의 옷·닉네임 (${JSON.stringify(cs)})`);
     await C.ctx.close(); await wait(A.p, 800);
   }

@@ -6,6 +6,9 @@ const SAVES = {
   broken: { nick: '깨진 사람', coins: 'abc', equip: 5, clothes: 3, rides: 'x', trash: { srv: 1, bag: null, dex: 7 }, ach: { daily: 3, life: null, badges: [] }, tut: 'x', look: { sex: 'q', skin: 99 }, hairs: 2, buff: { id: 'nope', left: 5 }, recycle: [], server: 'nope', wishes: null },
   old8: { nick: '8일 전 사람', coins: 777, music: 0, gfx: 'low', lastSeen: Date.now() - 8 * 864e5 },
   midV: { nick: '중간 사람', coins: 1500, equip: { tool: 2, bag: 1, shoes: 2, weapon: 9 }, nsV1: 1, nsV2: 1, nsV3: 1, tut: { step: 4, done: false, v: 2 }, bagV: 1, server: 'battle', trash: { srv: { battle: { sig: 'old', heaps: [1, 2] } }, bag: { can: 3 } } },
+  // #138: 들판 기록이 깨진 저장 · 예전 더미 서명(h1)
+  field: { nick: '들판 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, field: { den: 'x', tr: { d: 'q', got: 5 }, sight: 'a', fog: '!!!' }, trash: { srv: { battle: { sig: 'h1:1s10', heaps: [3, 4] } } } },
+  field2: { nick: '들판 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, field: { den: { 'd2-0': -5, x: 'y' }, tr: { d: 1, got: ['t1-0'] }, sight: ['sight:0', 7], fog: 'AAAA' } },
   // #98: 깨끗한 오름 기록 → 전투 오름으로 (장비·귤·치운 양 그대로, 랭킹 기록은 battle 에 더함)
   clean: { nick: '깨끗한 사람', coins: 4321, equip: { tool: 3, bag: 2, shoes: 1, weapon: 2 }, nsV1: 1, nsV2: 1, nsV3: 1, entered: 1, look: { sex: 'f', skin: 1 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, server: 'clean', srvSwitch: 1,
     trash: { total: 900, srv: { clean: { sig: 'old', heaps: [0, 0] } }, bag: { can: 2 }, rk: { d: 0, w: 0, day: { clean: 5, battle: 1 }, week: { clean: 50, battle: 10 }, all: { clean: 800, battle: 100 } } } },

@@ -41,9 +41,17 @@ const FISHI = [
   `<path d="M4 25 q12 -14 30 -6 l10 -7 v26 l-10 -7 q-18 8 -30 -6z" fill="#f2c230" ${s()}/><path d="M16 18 q4 -6 10 -2" fill="#c9961a" ${s('stroke-width="1.8"')}/><path d="M20 21 l2 3 -2 3 M26 21 l2 3 -2 3" fill="none" ${s('stroke-width="1.6"')}/><circle cx="10" cy="23" r="1.8" fill="${K}"/>`,
   `<path d="M4 25 q12 -14 30 -6 l10 -7 v26 l-10 -7 q-18 8 -30 -6z" fill="#f08a1c" ${s()}/><path d="M16 18 q4 -6 10 -2" fill="#c4650e" ${s('stroke-width="1.8"')}/><path d="M22 22 q3 3 0 7 M28 21 q3 4 0 8" fill="none" ${s('stroke-width="1.6"')}/><circle cx="10" cy="23" r="1.8" fill="${K}"/>`,
 ];
+// 볼거리 칸 (#138): 전망 바위·샘·산담·방사탑
+const SIGHTI = {
+  view: `<path d="M5 40 L12 24 L22 20 L34 22 L43 40z" fill="#6b6d74" ${s()}/><path d="M12 24 H34" ${s('stroke-width="1.8"')}/><path d="M28 12 l4 -4 4 4" fill="none" ${s('stroke-width="1.8"')}/><circle cx="16" cy="11" r="3" fill="#ffd23f" ${s('stroke-width="1.8"')}/>`,
+  spring: `<ellipse cx="24" cy="31" rx="17" ry="8" fill="#6b6d74" ${s()}/><ellipse cx="24" cy="30" rx="11" ry="4.6" fill="#6fc0e0" ${s('stroke-width="1.8"')}/><path d="M24 11 q5 7 0 11 q-5 -4 0 -11z" fill="#6fc0e0" ${s('stroke-width="1.8"')}/>`,
+  sandam: `<rect x="7" y="14" width="34" height="26" rx="2" fill="#6b6d74" ${s()}/><rect x="12" y="19" width="24" height="16" rx="2" fill="#8fbf62" ${s('stroke-width="1.8"')}/><path d="M16 32 q8 -12 16 0" fill="#6f9a4a" ${s('stroke-width="1.8"')}/>`,
+  tower: `<path d="M12 41 L19 15 H29 L36 41z" fill="#6b6d74" ${s()}/><path d="M14.5 33 H33.5 M17 24 H31" ${s('stroke-width="1.8"')}/><rect x="22" y="5" width="4" height="10" rx="1" fill="#8a8c92" ${s('stroke-width="1.8"')}/>`,
+};
 export function dexIcon(d) {
   const [kind, k] = d.id.split(':');
   if (kind === 'fish') return FISHI[Number(k)] || '';
+  if (kind === 'sight') return SIGHTI[d.sk] || '';
   if (d.rare) return RARE[d.id] || '';
   const i = Number(k);
   return BASE[kind](COL[kind][i]) + DECO[kind][i];

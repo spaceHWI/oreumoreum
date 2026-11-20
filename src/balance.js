@@ -17,6 +17,7 @@ export const HEAP = {
     s: { n: 10, r: 0.95, h: 0.8, name: '작은 더미' }, // 무릎
     l: { n: 50, r: 1.8, h: 1.6, name: '큰 더미' }, // 허리
     xl: { n: 200, r: 3.1, h: 3.7, name: '대형 더미' }, // 사람 키 넘게
+    mt: { n: 500, r: 5.2, h: 5.6, name: '쓰레기 산', gv: 1.5 }, // #138 들판 쓰레기 산: 귤 값 × gv (구역 gv 에 곱함)
   },
   stages: [1, 0.66, 0.33, 0.12], // 4단계
   colPad: 0.15, // 충돌 반경 = 지금 모양 반경 × 0.85 + 이만큼
@@ -26,19 +27,24 @@ export const HEAP = {
   freeMax: 60, // 빈터 더미는 길에서 이만큼 안
   seed: 45,
 };
+// 들판 더미 (#138, notes/growth-loop.md 6절): 구역마다 길에서 FIELD.heapD m 떨어진 곳에 큰 더미·쓰레기 산. 길가 더미 뒤에 붙는 순서(저장 heaps 뒤쪽)
+// 자리는 FIELD.seed 고정 난수, 8자 고리의 '왼쪽 들판'(src/fieldplan.js). 바꾸면 HEAP_SIG 가 바뀌어 서버 더미가 새로 가득 참
+export const FIELD_HEAPS = { 1: { mt: 1 }, 2: { mt: 1 }, 3: { l: 2, mt: 1 }, 4: { xl: 1, mt: 1 }, 5: { xl: 1, mt: 1 } };
 // 구역 (#45): src/zones.js zoneAt 이 위치로 번호를 구함. heaps 더미 크기별 수, min 목표 시간(권장 장비로 혼자, 클린하우스 왕복 포함)
 // rec 권장 장비 점수 (#137, GROWTH.score 로 셈. 칸 10개가 모두 n단계면 구역 n 쯤). gear 권장 장비 단계(도구·배낭·신발, 시간 계산용)
 // gv 이 구역 쓰레기 귤 배수 (#137: 구역마다 벌이가 약 2.5배. 클린하우스에서 받는 귤 = TRASH_TYPES gyul × gv)
+//   #138 들판 더미·쓰레기 산이 더해져 하루 1시간을 다 쓰게 되어 1·1·2·8·14 로 낮춤 (전 4·4.5·8·18·30, tools/econ.js 흐름 통과)
 // mix 나오는 쓰레기 종류 비율(TRASH_TYPES 순서: 캔·페트병·비닐·스티로폼·폐어구)
 // maxD 더미를 클린하우스에서 이 거리(직선) 안에만 둠, amt 이 구역만 더미 하나의 쓰레기 수를 바꿈
+// chMax (#138) 길가 더미를 가장 가까운 클린하우스(들머리·오름 안)에서 이 거리 안에 둠: 권장 배낭이 반쯤 찰 때 클린하우스가 80m 안 (growth-loop 7-1절, tools/field.js)
 // 시간 어림은 __oreum.trash.estimate() (클린하우스 왕복 = 직선 거리 × 1.15, 달리기 10 × 신발)
 // 조정: 1구역은 캔·페트병·비닐만(부피 1) + 클린하우스 215 안, 5구역 대형 더미는 200 → 140개 (그대로면 약 29분)
 export const ZONES = [
-  { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: 10, gv: 4, gear: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
-  { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: 25, gv: 4.5, gear: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07] },
-  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, gv: 8, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11] },
-  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, gv: 18, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16] },
-  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, gv: 30, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 } },
+  { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: 10, gv: 1, gear: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
+  { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: 25, gv: 1, gear: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07], chMax: 90 },
+  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, gv: 2, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11], chMax: 80 },
+  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, gv: 8, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16], chMax: 90 },
+  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, gv: 14, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 }, chMax: 80 },
 ];
 // 성장 수치 (#137, notes/growth-loop.md 3절): 장비 점수. src/gearscore.js 가 읽음
 // score[단계] = 칸 하나 점수 (0 = 없음·호주머니). 칸 10개(도구·배낭·신발·무기 + 옷 6칸)의 합이 장비 점수
@@ -87,6 +93,42 @@ export const ZONE_LOOK = {
     crow: { tier: 3, per: 2600, perLow: 5000, heap: 2 }, // 까마귀 (고수, 다 피면 날아감)
   },
   butterflies: [0, 3, 2, 0, 0, 0], // 다 피지 않아도 구역에 늘 있는 나비 수 (초보)
+};
+// 맵 전체 쓰기 (#138, notes/growth-loop.md 6절·7-1절): 길가는 쉬운 곳, 길 밖은 값진 곳. 자리는 src/fieldplan.js, 모양 src/field.js, 게임 연결 src/game/field.js
+// 구역 안 8자 고리: 길로 들어와 길가 더미 → 왼쪽 들판(들판 더미·쓰레기 산·소굴) → 구역 클린하우스 → 오른쪽 들판(보물·볼거리) → 우두머리 빈터 → 문턱
+//   '왼쪽·오른쪽'은 길을 오르막 쪽으로 걸을 때. 구역 클린하우스보다 낮은 길(아래 반)의 왼쪽, 높은 길(위 반)의 오른쪽
+// seed 고정 난수. heapD 들판 더미·쓰레기 산 길에서 거리(m), spotD 소굴·보물·볼거리 길에서 거리, gap 서로 가장자리 최소 거리
+// den 적 소굴: n[구역] 수, near 이 거리 안에 오면 그 구역 적이 나옴, group 마릿수, gyul[구역] 다 쫓아내면 귤 묶음, reopen 다시 열리는 초, leave 이만큼 멀어지면 소굴 적이 돌아감(닫히지 않음)
+// treasure 숨은 보물: n[구역] 수, 하루(한국 시간) 한 번씩. gyul[구역] 귤, rare 드문 쓰레기(도감) 확률, r 열 수 있는 거리
+// sight 볼거리: list = [구역, 종류, 이름]. 종류 view 전망 바위·spring 샘·sandam 산담(무덤 돌담)·tower 방사탑. r 이 안에 오면 찾음(도감 + gyul[구역])
+// boss 우두머리 빈터(#139 가 씀): 구역마다 위쪽 길에서 d m, 반경 r 이 비고 평평한 곳
+// off 길 밖(오름 위 풀밭) 걷기 빠르기 배율[신발 단계]. 탈것은 RIDES.off (길에서만 빠름)
+// mark 멀리서 보이는 표시: 들판 더미·쓰레기 산 위 까마귀 crows 마리·연기, drawR 이 거리 안만. mini 미니맵 반경(m)·크기(px 폰·데스크톱)
+// fog 가 본 곳: 지도 격자 n×n, 플레이어 둘레 r m 가 밝아짐
+export const FIELD = {
+  seed: 138,
+  heapD: [18, 70], spotD: [16, 75], gap: 9,
+  den: { n: [0, 2, 2, 3, 3, 2], near: 16, group: [3, 4], gyul: [0, 5, 15, 300, 800, 2200], reopen: 1800, leave: 55, r: 4.2 },
+  treasure: { n: [0, 3, 4, 4, 5, 5], gyul: [0, 15, 25, 400, 1000, 2600], rare: 0.35, r: 2.6 },
+  sight: {
+    r: 7, gyul: [0, 30, 60, 150, 400, 900],
+    list: [[1, 'spring', '숲속 샘'], [1, 'sandam', '자락 산담'], [2, 'sandam', '남쪽 산담'], [2, 'view', '남쪽 전망 바위'], [3, 'tower', '능선 방사탑'], [3, 'view', '능선 전망 바위'], [4, 'spring', '굼부리 샘'], [4, 'tower', '굼부리 방사탑'], [5, 'view', '정상 전망 바위']],
+  },
+  boss: { d: [22, 55], r: 13 },
+  off: [0.8, 0.84, 0.88, 0.92, 0.96],
+  mark: { crows: 3, drawR: 300, drawRLow: 200 },
+  mini: { r: 110, px: [104, 148] },
+  fog: { n: 128, r: 42 },
+  chD: 80, // 권장 배낭으로 길가 더미를 반쯤 치우면 가득 차는 곳에서 구역 클린하우스까지 (7-1절, tools/field.js 가 잼)
+};
+// 구역 지킴이 돌하르방 (#119, src/game/guard.js · 서버 server/src/roomcore.js): 구역 더미를 모두 치운 순간 그 구역 자리에 서고 holdSec 뒤 가라앉음
+// 자리: 구역 길 위 반(upper, 길이 안 들어가는 구역은 옆 길)에서 길 옆 d m · 반경 r · 이미 있는 하르방에서 keep m 밖 (seed 고정 → 모두 같은 자리)
+// 연출: 꽃 피는 연출(BLOOM_FX.zone)이 먼저, 치운 뒤 afterBloom 초부터 riseT 초 동안 솟음. fresh 초 안에 들은 것만 연출·메시지(그 뒤 들어온 사람은 서 있는 모습만)
+// lookR m 안이면 카메라가 lookT 초 동안 그쪽을 봄. sinkT 초 동안 가라앉음. 저사양(단계 0)은 빛 기둥 없이 꽃잎만 조금
+export const ZONE_GUARD = {
+  holdSec: 1800, seed: 119, d: [3.2, 6.5], r: 1.3, keep: 12, depth: 3.5,
+  afterBloom: 2.4, riseT: 2.6, sinkT: 3, fresh: 10, lookR: 75, lookT: 2.6,
+  pillar: { h: 22, r: 1.1, t: 3.2 }, petals: 120, sparks: 50, dust: 70,
 };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
 // 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름

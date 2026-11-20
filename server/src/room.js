@@ -8,8 +8,8 @@ export class Room extends DurableObject {
     super(ctx, env);
     this.core = null; this.timer = null; this.saveT = 0; this.earnT = 0;
     ctx.blockConcurrencyWhile(async () => {
-      const [heaps, seen] = await Promise.all([ctx.storage.get('heaps'), ctx.storage.get('seen')]);
-      this.core = createRoomCore({ heaps, seen: seen || 0, stats: env.STATS_OPEN === '1' });
+      const [heaps, seen, guards] = await Promise.all([ctx.storage.get('heaps'), ctx.storage.get('seen'), ctx.storage.get('zg')]);
+      this.core = createRoomCore({ heaps, seen: seen || 0, stats: env.STATS_OPEN === '1', guards });
     });
   }
   async fetch(req) {
@@ -43,6 +43,7 @@ export class Room extends DurableObject {
   persist() {
     const p = [this.ctx.storage.put('seen', this.core.seen)];
     if (this.core.takeDirty()) p.push(this.ctx.storage.put('heaps', this.core.heaps().slice()));
+    if (this.core.guardsDirty()) p.push(this.ctx.storage.put('zg', this.core.guards())); // 구역 지킴이 세운 시각 (#119)
     return Promise.all(p).catch(() => {});
   }
 }
