@@ -1,4 +1,5 @@
 // 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { itemScore, scoreDiff } from '../gearscore.js';
 import { SHOES, STONE, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG } from '../balance.js';
 import { SHOP_ICON } from '../shops.js';
 import { leapLogo } from '../leap.js';
@@ -190,6 +191,7 @@ function buildLeapTabs(el) {
     el.append(b);
   }
 }
+const leapGd = (it) => it.stat === 'speed' ? scoreDiff(save, 'shoes', it.tier) : scoreDiff(save, leapS.slot, it.tier, it.id || undefined);
 function buildLeapCards(grid) {
   const items = leapItems(leapS.slot);
   for (const it of items) {
@@ -198,7 +200,8 @@ function buildLeapCards(grid) {
     b.classList.toggle('on', it.on); b.classList.toggle('sel', leapS.pick === it.id); b.classList.toggle('poor', !it.own && save.coins < it.price);
     b.title = it.name; b.setAttribute('aria-pressed', String(leapS.pick === it.id || it.on));
     b.setAttribute('aria-label', `${it.name}${it.tier ? ` ${it.tier}단계` : ''} · ${it.on ? '입고 있음' : it.own ? '가진 옷' : `귤 ${it.price}`}`);
-    b.innerHTML = `<span class="food">${it.art}${it.tier ? '<i class="tc"></i>' : ''}</span><span class="mn"><b>${it.name}</b><small class="st">${leapStat(it)}</small></span>`
+    const gd = it.on || (it.stat === 'speed' && it.own) ? '' : late.gdBadge(leapGd(it)); // 장비 점수 ▲/▼ (#137). 신발은 산 것 중 가장 좋은 것을 신어 아래 단계는 없음
+    b.innerHTML = `<span class="food">${it.art}${it.tier ? '<i class="tc"></i>' : ''}${gd}</span><span class="mn"><b>${it.name}</b><small class="st">${leapStat(it)}</small></span>`
       + `<span class="mv">${it.on ? LEAP_CHECK : it.own ? '' : `<span class="price"><i></i>${it.price.toLocaleString()}</span>`}</span>`;
     b.addEventListener('click', () => pickLeap(it));
     grid.append(b);
@@ -206,7 +209,7 @@ function buildLeapCards(grid) {
   const it = items.find((i) => i.id === leapS.pick && !i.own);
   if (!it) return;
   const bar = document.createElement('div'); bar.className = 'leap-buy';
-  bar.innerHTML = `<div><b><i class="tdot" style="background:${WEAR.tierColor[it.tier]}"></i>${it.name}</b><span class="tier-stats"><span>${leapStat(it)}</span></span></div>`;
+  bar.innerHTML = `<div><b><i class="tdot" style="background:${WEAR.tierColor[it.tier]}"></i>${it.name}</b><span class="tier-stats"><span>${leapStat(it)}</span>${late.scoreChip(itemScore(it.tier), leapGd(it))}</span></div>`;
   const bb = document.createElement('button'); bb.type = 'button'; bb.className = 'tier-buy' + (save.coins < it.price ? ' short' : '');
   { bb.innerHTML = `<i class="g"></i>${it.price.toLocaleString()}`; bb.setAttribute('aria-label', `${it.name} 사기`); bb.addEventListener('click', () => buyLeap(it)); }
   bar.append(bb); grid.append(bar);

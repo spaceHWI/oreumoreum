@@ -149,9 +149,10 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null, trail: makeTrail(), trailT: 0, hist: [] });
   }
   // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
-  function scatterTangerines(center, n) {
-    const T = SCATTER.air;
-    for (let i = 0; i < n; i++) {
+  // n 귤을 흩뿌림. maxN 개보다 많으면 알갱이는 maxN 개로 두고 하나에 귤 여러 개를 나눠 담음 (#137 적 귤이 커짐)
+  function scatterTangerines(center, n, maxN = Infinity) {
+    const T = SCATTER.air, cnt = Math.min(n, maxN), each = Math.floor(n / cnt), rest = n - each * cnt;
+    for (let i = 0; i < cnt; i++) {
       let x = center.x, z = center.z;
       for (let k = 0; k < 6; k++) {
         const a = rnd() * Math.PI * 2, r = SCATTER.rMin + rnd() * (SCATTER.rMax - SCATTER.rMin);
@@ -163,7 +164,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const y0 = center.y + 1; m.position.set(center.x, y0, center.z); group.add(m);
       const gy = height(x, z) + TR, tt = T * (0.8 + rnd() * 0.4);
       const v = new THREE.Vector3((x - center.x) / tt, (gy - y0) / tt + 11 * tt, (z - center.z) / tt);
-      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true, trail: makeTrail(), trailT: 0, hist: [] });
+      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true, v: each + (i < rest ? 1 : 0), trail: makeTrail(), trailT: 0, hist: [] });
     }
   }
   // ---------- 귤 활 화살 (#38) ----------
@@ -440,7 +441,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const tg = tangerines[i];
       if (!tg.landed || tg.eaten || tg.claimedBy || tg.rest < 0.6 || player.riding) continue;
       const p = tg.mesh.position;
-      if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < 1.6) { group.remove(tg.mesh); tangerines.splice(i, 1); hooks.reclaim?.(p.clone()); }
+      if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < 1.6) { group.remove(tg.mesh); tangerines.splice(i, 1); hooks.reclaim?.(p.clone(), tg.v || 1); }
     }
     for (const hb of hareubangs) {
       if (hb.hitT > 0) { hb.hitT = Math.max(0, hb.hitT - dt); shakeHareubang(hb); }
