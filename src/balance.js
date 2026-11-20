@@ -121,6 +121,15 @@ export const FIELD = {
   fog: { n: 128, r: 42 },
   chD: 80, // 권장 배낭으로 길가 더미를 반쯤 치우면 가득 차는 곳에서 구역 클린하우스까지 (7-1절, tools/field.js 가 잼)
 };
+// 구역 지킴이 돌하르방 (#119, src/game/guard.js · 서버 server/src/roomcore.js): 구역 더미를 모두 치운 순간 그 구역 자리에 서고 holdSec 뒤 가라앉음
+// 자리: 구역 길 위 반(upper, 길이 안 들어가는 구역은 옆 길)에서 길 옆 d m · 반경 r · 이미 있는 하르방에서 keep m 밖 (seed 고정 → 모두 같은 자리)
+// 연출: 꽃 피는 연출(BLOOM_FX.zone)이 먼저, 치운 뒤 afterBloom 초부터 riseT 초 동안 솟음. fresh 초 안에 들은 것만 연출·메시지(그 뒤 들어온 사람은 서 있는 모습만)
+// lookR m 안이면 카메라가 lookT 초 동안 그쪽을 봄. sinkT 초 동안 가라앉음. 저사양(단계 0)은 빛 기둥 없이 꽃잎만 조금
+export const ZONE_GUARD = {
+  holdSec: 1800, seed: 119, d: [3.2, 6.5], r: 1.3, keep: 12, depth: 3.5,
+  afterBloom: 2.4, riseT: 2.6, sinkT: 3, fresh: 10, lookR: 75, lookT: 2.6,
+  pillar: { h: 22, r: 1.1, t: 3.2 }, petals: 120, sparks: 50, dust: 70,
+};
 // 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
 // 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름
 // 꽃: 70% 부터 피기 시작(early 비율의 꽃이 70~98% 사이에 하나씩), 나머지는 100% 에 한꺼번에(물결). 어린 나무는 100% 에 솟음

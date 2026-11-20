@@ -43,6 +43,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | deernet.js | 멀티 노루 (#92): 노루 무리는 방장이 알림, 노루 타기는 방이 관리, 다른 사람 귤 먹이 부탁 |
 | dump.js | 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 |
 | field.js | 맵 전체 쓰기(#138): 적 소굴(가까이 가면 적 → 다 쫓아내면 닫힘·귤 묶음, `late.denLoot` 자리)·숨은 보물(하루 한 번 상호작용, `late.treasureLoot` 자리)·볼거리(처음 가까이 가면 도감·귤), 길 밖 걷기 느림(`late.fieldSlow`), 가 본 곳(save.field.fog)·큰 지도 아이콘(`late.fieldMap`)·미니맵(#minimap), 자동 걷기 길 밖 우회(autowalk.js `setRoutePass`), `__oreum.field` |
+| guard.js | 구역 지킴이 돌하르방(#119): 구역 더미를 모두 치우면 구역 자리(길 옆, `late.guard.spots`)에 솟아오름(꽃 연출 뒤·흙먼지·빛 기둥·꽃잎·카메라 한 번 보기)·메시지, ZONE_GUARD.holdSec 뒤 가라앉음. 세운 시각은 방(roomcore `zg`)이 주인, 옛 서버·혼자 하기는 save.zg. `__oreum.guard`, 확인 `node tools/guard.js` |
 | shop.js | 상점 팝업(장비 탭)·사는 연출, 옷 |
 | look.js | 캐릭터 고르기·머리·옷장, 표지판, 탐방로 고르기 |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
