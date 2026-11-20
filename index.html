@@ -907,6 +907,7 @@ body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
 /* 상황 팁 (#66): 토스트 자리, 아이콘 + 한 줄. 갈 곳이 있으면 눌러 볼 수 있음 */
 .tip-toast { position: fixed; left: 50%; top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h, 0px) + 10px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px 10px; font-size: 14px; z-index: 8; max-width: calc(100vw - 32px); pointer-events: none; animation: tipin .25s ease-out; }
 .tip-toast.go { pointer-events: auto; cursor: pointer; }
+#newver { z-index: 9; gap: 10px; } body.tip-on #newver { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h, 0px) + var(--tip-h, 0px) + 18px); } #newver .btn { flex: none; white-space: nowrap; }
 .tip-toast svg { flex: none; width: 20px; height: 20px; color: var(--accent, #ff8a1f); }
 .tip-toast[hidden] { display: none; }
 body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h, 0px) + 20px + var(--ban-h, 78px)); }
@@ -946,7 +947,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-e5b2d915ae.js">(function () {
+<script data-main="main-2c72ffa69b.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
