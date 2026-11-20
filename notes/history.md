@@ -785,3 +785,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `src/inapp.js`: 페이지 맨 앞 인라인 스크립트(빌드가 `page.html` 의 `__INAPP__` 자리에 넣고 CSP 해시에 더함). userAgent 에 KAKAOTALK(자동 `kakaotalk://web/openExternal?url=` + 안드로이드는 1.2초 뒤 크롬 `intent://`) 또는 Instagram·FBAN|FBAV·NAVER(inapp·Line/ (안내 화면만)이면 `#inapp` 안내 화면(바깥 브라우저로 열기·주소 복사·아이폰은 ⋯ 안내·작은 '그냥 여기서 하기')
 - Pages 빌드(`index.html`)는 게임 코드(`main-*.js`)를 이 스크립트가 불러옴(`data-main`). 인앱이면 '그냥 여기서 하기' 를 누를 때까지 안 받음. 한 파일 빌드(test.html)는 코드가 인라인이라 안내가 위에 덮기만 함
 - 실제 기기 확인은 사용자가
+
+## #113 첫 화면 베타 안내
+- 첫 화면 문구를 "베타 테스트 중이라 부족한 점이 있어요. / 의견 보내기로 많이 알려 주세요!" 두 줄로 바꿈(폰 390·PC 모두 두 줄).
+- "기록이 초기화될 수 있어요"는 의견 보내기 창 안내 끝으로 옮김. #intro-feedback 그대로.
