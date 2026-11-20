@@ -9,7 +9,7 @@ import { $, save, wearV, lookS, ab, persist } from './save.js';
 import { scene, wx, spots, sunEvent } from './scene.js';
 import { life, street, buff, trash, CH, CH_MINI, bloom, bfx, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
-import { topFit, toast, tips, updateStats, panelOpen, busy, ach, onDexGet } from './hud.js';
+import { topFit, toast, pickMsg, tips, updateStats, panelOpen, busy, ach, onDexGet } from './hud.js';
 import { keys, marker, setTarget, joy } from './input.js';
 import { setHoldBow } from './throw.js';
 
@@ -60,7 +60,7 @@ function takeNow() {
   for (const c of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
     while (n < tool.per && room >= 1) {
       const it = trash.take(c, room); if (!it) break;
-      room -= it.type.vol; n++; flyToBag(it); late.sound.pick?.(it.type.id);
+      room -= it.type.vol; n++; flyToBag(it); late.sound.pick?.(it.type.id); pickMsg(it.type.name);
       if (c.h == null) break;
     }
     if (n >= tool.per || room < 1) break;
