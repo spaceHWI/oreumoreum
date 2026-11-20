@@ -24,7 +24,7 @@ import { renderer, quality, retro, scene, NSW, camera, sun, applyQuality, wx, gr
 import { P, photoSpot, benchPos, life, cairns, fillCairn, col, wall, NS_TUT, stream, jeong, openJeong, street, shopsBuilt, STN, SAL, LEAPB, buff, trash, CH, CH_MINI, CHS, chNear, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
 import { screenInfo, toggleFullscreen } from './screen.js';
-import { toast, addCoins, closePanels, ach, openDex, onDexGet, topStack, updateStats } from './hud.js';
+import { toast, addCoins, closePanels, ach, openDex, onDexGet, topStack, updateStats, gyulExpect } from './hud.js';
 import { keys, joy } from './input.js';
 import { devOn, doEmote } from './menu.js';
 import { weaponNow, bowArmed, aimTarget, throwTangerine, fireWeapon, aimMark } from './throw.js';
@@ -65,11 +65,11 @@ state.fishing = createFishing({ scene, stream, player, runner, groundAt, height,
       const sp = FISH.species[c.i], dx = DEX_LIST.find((d) => d.id === `fish:${c.i}`);
       if (trash && dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
       if (c.jack) { // 잭팟 (#55): 귤이 터지듯 흩뿌려짐
-        const G = FISH.jackpot.gyul; addCoins(G); ach.emit('earn', G);
+        const G = FISH.jackpot.gyul; gyulExpect(G); addCoins(G); ach.emit('earn', G);
         setTimeout(() => { sound.jackpot?.(); gyulShower(G); coinFx(at.clone().setY(at.y + 1.2), G); }, FISH.pullT * 1000);
         ach.emit('fish'); ach.emit('fish-jackpot'); ach.emit('fish-' + sp.id);
       } else {
-      addCoins(FISH.fishGyul); ach.emit('earn', FISH.fishGyul); setTimeout(() => coinFx(at.clone().setY(at.y + 1.2), FISH.fishGyul), FISH.pullT * 1000);
+      gyulExpect(FISH.fishGyul); addCoins(FISH.fishGyul); ach.emit('earn', FISH.fishGyul); setTimeout(() => coinFx(at.clone().setY(at.y + 1.2), FISH.fishGyul), FISH.pullT * 1000);
       ach.emit('fish'); ach.emit('fish-' + sp.id);
       }
     } else if (trash) {
