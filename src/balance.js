@@ -777,7 +777,7 @@ export const DEER = {
 };
 
 export const NET = {
-  server: '',
+  server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
   sendMs: 100,        // 내 위치·동작 보내는 간격 (초당 10번 안쪽)
   tickMs: 100,        // 방이 모아 보내는 간격
