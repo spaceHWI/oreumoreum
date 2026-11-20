@@ -62,6 +62,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 적·전투: enemies.js/enemymodels.js · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
 - 탈것: rides.js · autowalk.js
 - 멀티·저장: online.js · net.js · social.js · server.js · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
+- 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - UI: tutorial.js · tips.js · uitips.js · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · music.js · page.html
 
 ## 결정 사항

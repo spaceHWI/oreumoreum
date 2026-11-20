@@ -25,8 +25,10 @@
   --body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
-  --gut-l: max(16px, env(safe-area-inset-left, 0px));
-  --gut-r: max(16px, env(safe-area-inset-right, 0px));
+  --safe-l: env(safe-area-inset-left, 0px); /* 원스토어 앱 안이면 앱이 알려 준 값으로 덮어씀 (#97, onestore.js) */
+  --safe-r: env(safe-area-inset-right, 0px);
+  --gut-l: max(16px, var(--safe-l));
+  --gut-r: max(16px, var(--safe-r));
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -108,6 +110,7 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 .acct-box { display: grid; justify-items: center; gap: 8px; margin-bottom: 10px; }
 .acct-beta { margin: 0; font-size: 13px; color: var(--ink-soft); text-align: center; }
 .acct-who { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
+.onestore .acct-gis { display: none; } /* 원스토어 앱 안: 구글 로그인 대신 손님으로 (#97) */
 .acct-gis { min-height: 44px; display: grid; place-items: center; color: var(--ink-soft); font-size: 12px; }
 .m-acct { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; width: 100%; font-size: 12.5px; color: var(--ink-soft); }
 .m-acct span { flex: 1 1 100%; text-align: center; }
@@ -473,7 +476,7 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 /* ===== 폰(세로): 쉬는 화면에 7개만. 걸음·소리·옷장 등은 메뉴 시트로, 체력은 달리기 버튼 테두리로 ===== */
 @media (max-width: 600px) {
   .touch .dock, .dock { display: contents; }
-  #btn-menu { position: fixed; z-index: 5; top: calc(var(--safe-t) + 12px); right: max(12px, env(safe-area-inset-right, 0px)); width: 38px; height: 38px; min-width: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  #btn-menu { position: fixed; z-index: 5; top: calc(var(--safe-t) + 12px); right: max(12px, var(--safe-r)); width: 38px; height: 38px; min-width: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   #btn-menu svg { width: 19px; height: 19px; }
   #btn-actions { position: fixed; z-index: 5; left: var(--gut-l); bottom: calc(var(--safe-b) + 150px); width: 44px; height: 44px; min-width: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   #btn-actions svg { width: 22px; height: 22px; }
@@ -805,7 +808,7 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 @media (max-width: 600px) { #btn-chat, #btn-ach { display: none !important; } }
 
 /* ===== 위쪽 한 줄 (#75) ===== */
-:root { --tb-h: 36px; --tb-top: calc(var(--safe-t) + 12px); --tb-l: max(12px, env(safe-area-inset-left, 0px)); --tb-r: max(12px, env(safe-area-inset-right, 0px)); --tb-end: 0px; }
+:root { --tb-h: 36px; --tb-top: calc(var(--safe-t) + 12px); --tb-l: max(12px, var(--safe-l)); --tb-r: max(12px, var(--safe-r)); --tb-end: 0px; }
 .topbar { position: fixed; z-index: 5; top: var(--tb-top); left: var(--tb-l); right: calc(var(--tb-r) + var(--tb-end)); height: var(--tb-h); display: flex; align-items: center; gap: 12px; pointer-events: none; white-space: nowrap; }
 .tb-g { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .tb-l, .tb-r { flex: none; }
@@ -884,7 +887,7 @@ body.banner-on.tip-on .toast { top: calc(var(--tb-top) + var(--tb-h) + 28px + va
 #menu #menu-sound[aria-pressed="false"], #menu #menu-tips[aria-pressed="false"] { color: var(--ink-soft); }
 body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
 @media (max-width: 600px) {
-  :root { --tb-h: 32px; --tb-top: calc(var(--safe-t) + 8px); --tb-l: calc(env(safe-area-inset-left, 0px) + 8px); --tb-r: calc(env(safe-area-inset-right, 0px) + 8px); --tb-end: calc(var(--tb-h) + 8px); }
+  :root { --tb-h: 32px; --tb-top: calc(var(--safe-t) + 8px); --tb-l: calc(var(--safe-l) + 8px); --tb-r: calc(var(--safe-r) + 8px); --tb-end: calc(var(--tb-h) + 8px); }
   .topbar { gap: 8px; }
   .tb-g { gap: 4px; }
   .topbar .tpill { padding: 0 10px 0 8px; gap: 4px; }
@@ -896,7 +899,7 @@ body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
   #btn-menu { top: var(--tb-top) !important; right: var(--tb-r) !important; width: var(--tb-h) !important; height: var(--tb-h) !important; }
   #btn-menu svg { width: 17px !important; height: 17px !important; }
 }
-@media (max-height: 500px) and (orientation: landscape) { :root { --tb-top: calc(var(--safe-t) + 8px); --tb-l: calc(env(safe-area-inset-left, 0px) + 8px); --tb-r: calc(env(safe-area-inset-right, 0px) + 8px); } }
+@media (max-height: 500px) and (orientation: landscape) { :root { --tb-top: calc(var(--safe-t) + 8px); --tb-l: calc(var(--safe-l) + 8px); --tb-r: calc(var(--safe-r) + 8px); } }
 @media (prefers-reduced-motion: reduce) { .topbar .tpill.bump, #hp-bar.low .fill, #hp-bar.low svg, #hp-bar.hit { animation: none; } }
 
 /* 상황 팁 (#66): 토스트 자리, 아이콘 + 한 줄. 갈 곳이 있으면 눌러 볼 수 있음 */

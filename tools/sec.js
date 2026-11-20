@@ -219,6 +219,11 @@ async function startServers() {
     /* ---------- 빌드 결과 ---------- */
     const html = fs.existsSync('dist/index.html') ? fs.readFileSync('dist/index.html', 'utf8') : '';
     ok(/http-equiv="Content-Security-Policy"[^>]*script-src 'self' /.test(html) && !/<script>/.test(html) && /object-src 'none'/.test(html), '페이지 CSP (같은 곳 스크립트만, 인라인 없음 #85)');
+    { // 원스토어 SDK 로더 (#97): 인라인은 이 한 줄뿐이고 CSP 에 그 해시가 있어야 함
+      const inl = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+      const hashOk = inl.every((c) => html.includes(`'sha256-${crypto.createHash('sha256').update(c, 'utf8').digest('base64')}'`));
+      ok(inl.length === 1 && /^import\{createSDK\}from"https:\/\/h5sdk\.onestore\.net\//.test(inl[0]) && hashOk, '인라인 스크립트는 원스토어 SDK 로더 하나뿐, CSP 해시로만 허용 (#97)');
+    }
     ok(!/ghp_[A-Za-z0-9]{20}|github_pat_|sk-[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE|@gmail\.com|SESSION_SECRET\s*[:=]\s*['"]/.test(html), '빌드 결과에 비밀 값 없음');
   } finally {
     if (!KEEP) for (const p of procs) { try { process.kill(-p.pid); } catch (e) { /* 이미 끝남 */ } }
