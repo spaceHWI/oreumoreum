@@ -63,7 +63,7 @@ export class Accounts extends DurableObject {
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, out.server === 'battle' ? 'battle' : 'clean', gain, t, migrate && !prev);
     const fix = {};
-    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; }
+    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; }
     return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5 };
   }
   // 의견 저장: 한 주소에서 1시간에 FEEDBACK.ipPerHour 개까지. → 저장한 글 수 (넘으면 -1)

@@ -681,3 +681,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인: `node tools/online.js [주소] [deer]` 에 노루 9가지(방장·위치 같음·타기·A 화면 걸터앉음·둘이 못 탐 화면/방·내리면 풀림·지나감 같이·귤 먹이·끊기면 풀림(deer 만 돌릴 때)), 화면 `dist/deer-ride-a.png`·`deer-ride-b.png`. `__oreum.deerNet()`
 
 - #95 메뉴 계정 칸에 "계정 번호 복사" 버튼. `account.sub` 만 노출(토큰 아님). 클립보드가 막히면 읽기 전용 글 상자(`acct-box-id`)로 보여 줌. 손님은 계정 칸 자체가 없음.
+
+## 스톤 첫 식사 무료 (#93)
+- `save.mealFree`(1 = 썼음). `orderMeal` 이 첫 주문엔 귤을 받지 않고 플래그를 세움(어떤 메뉴든, 버프는 같음). 안 썼으면 메뉴 값 자리에 "첫 식사 무료"(`.price.free`), 다 쓰면 값. 가게 근처(22m)에 처음 가면 팁 `stoneFree`(#66)
+- 서버 `validate.js`: `mealFree` 는 한 번 1이 되면 되돌릴 수 없음(`fixed: 'mealFree'`, `accounts.js` 가 `fix.mealFree` 로 알려 `onFix` 가 로컬에 반영). 어드민(`free`)은 확인 안 거쳐 '모두 리셋' 뒤 다시 받음. 모두 리셋·처음 시작은 로컬 저장이 지워져 다시 받음
+- 확인: `econ.js`·`sec.js` 49/49·`err.js` 오류 없음, `checkSave` 직접 호출, `__oreum.stone.order` 로 첫 주문 귤 그대로·두 번째는 값 받음

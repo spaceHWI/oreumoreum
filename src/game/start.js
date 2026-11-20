@@ -71,7 +71,7 @@ $('enter').disabled = false; $('enter').removeAttribute('aria-busy'); // 게임�
 // 멀티 서버 계정 (#7): 서버 주소가 있을 때만. 첫 화면에 베타 안내·구글 로그인, 메뉴에 남은 날짜·로그아웃·내 기록 지우기
 if (ONLINE) {
   state.account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => state.sessionOn,
-    onFix: (f) => { if (f.coins != null && f.coins !== save.coins) { save.coins = f.coins; updateStats(); toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; writeLocal(); } });
+    onFix: (f) => { if (f.coins != null && f.coins !== save.coins) { save.coins = f.coins; updateStats(); toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; if (f.mealFree) save.mealFree = 1; writeLocal(); } });
   document.querySelector('.intro-beta')?.setAttribute('hidden', '');
   mountLogin({ box: $('acct-box'), enterBtn: $('enter'), account: state.account, localSave: save, hasProgress: save.coins > 5 || (save.trash?.total || 0) > 0 || !!save.tut?.done, toast });
   const syncAcct = () => { $('m-acct').hidden = !state.account.loggedIn; $('acct-days').textContent = `기록 보관 ${state.account.daysLeft()}일 남음`; if (state.account.admin) enableDev(); }; // 서버 어드민이면 개발자 메뉴 (#84)

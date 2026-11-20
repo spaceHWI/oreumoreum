@@ -12,7 +12,7 @@ import { initUiTips } from '../uitips.js';
 import { createTips, TIP, TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
 import { $, isTouch, save, lookS, persist, MAP_ID } from './save.js';
-import { life, stream, STN, trash, CH, player, hp } from './place.js';
+import { life, stream, STN, NS_TUT, trash, CH, player, hp } from './place.js';
 import { cam } from './camera.js';
 
 Object.assign(late, { toast, closePanels }); // 앞 파일에서 부르는 함수
@@ -73,6 +73,7 @@ function tipState() {
     bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && late.canBuyGear().length > 0,
     hpLow: isBattle() && hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
     battle: isBattle(), hasBow: late.weaponNow().id === 'bow', idle: tipIdle,
+    stoneFree: !save.mealFree && !!STN?.terrace && Math.hypot(STN.terrace.x - player.pos.x, STN.terrace.z - player.pos.z) < 22 && (!NS_TUT || !!save.jeong),
     nearStream: !!sp && sp.d < 8 && !state.fishing?.busy && !stream.onBridge(player.pos.x, player.pos.z),
   };
 }
