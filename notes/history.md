@@ -802,3 +802,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `node tools/crashmap.js <버전> <main-해시.js:줄:칸>`: `git log -S"VERSION = '<버전>'"` 로 버전을 넣은 커밋을 찾고, 그 버전이던 커밋들(빌드 입력이 다른 것만)을 임시 worktree 에서 esbuild 만 감싸 소스맵을 켜고 dev(DEV=1)·release(PUBLIC=1)·local 로 빌드 → main 해시가 같은 빌드의 소스맵으로 원래 파일·줄·칸·함수 이름·앞뒤 줄. 소스맵은 임시 폴더에만(게시물에 안 들어감). 얕은 저장소면 먼저 전체 기록을 받음
 - tools/sec.js: /crashes 가 Origin 없이 되고 의견 글·닉네임·좌표가 새지 않는지 확인 더함
 - notes/auto.md 에 '오류 알림 이슈' 절
+
+## #117 마차를 뚫고 지나가지 못하게
+- collide.js 에 움직이는 부딪힘(칸에 넣지 않는 원 목록 `setDyn`): 마차가 place() 때마다 수레 셋·끌채·조랑말 셋 원의 월드 자리를 갱신. 모양은 balance.js `CART.block`
+- 플레이어 이동(걷기·개인 탈것·넉백·노루 타기)만 `col.move(…, dyn=true)` 로 막힘. 마차가 서 있는 플레이어에게 오면 `col.nudge()` 로 옆으로 밀림(높이는 땅에 붙임). 나무와 마차 사이에 끼면 마차 쪽을 마지막에 밀어 마차 속에는 남지 않게
+- 마차에 앉아 있는 동안은 updatePlayer 가 일찍 끝나 부딪힘 없음. 타기 거리(CART.cartR 6m)·내리는 자리(길가 3m)·뛰어내림(옆 3m)은 그대로
+- 다른 플레이어·노루·적은 안 막힘(이번 범위 밖). 확인 `node tools/cartblock.js` (느린 헤드리스라 4~5분 걸림)
