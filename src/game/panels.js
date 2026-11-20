@@ -23,7 +23,7 @@ $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('
 $('menu-wardrobe').addEventListener('click', () => { closePanels(); late.openWardrobe(); });
 $('menu-shop').addEventListener('click', () => { closePanels(); late.openShop('gear'); });
 $('menu-sign').addEventListener('click', () => { closePanels(); late.openSign(); });
-$('ver-text').textContent = `v${VERSION}`;
+$('ver-text').textContent = `v${VERSION}` + (RELEASE_NOTES[0]?.date ? ` · ${RELEASE_NOTES[0].date.replace(/-/g, '.')}` : ''); // 첫 화면에 새 릴리스 노트 날짜도
 function openNotes() {
   const box = $('notes-body'); box.innerHTML = '';
   RELEASE_NOTES.forEach((n) => {
