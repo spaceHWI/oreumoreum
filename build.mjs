@@ -76,7 +76,13 @@ fs.writeFileSync('dist/manifest.webmanifest', JSON.stringify({
 }, null, 2));
 // 내 캐릭터 모델은 게임 코드와 나란히 받게 미리 알림 (main.js 가 fetch 로 씀)
 const pre = packed.filter((a) => a.core).map((a) => `<link rel="preload" href="${listSplit[a.name].url}" as="fetch" crossorigin>`).join('');
-fs.writeFileSync('dist/index.html', wrap(csp("'self'"), bodySplit).replace('</head>', pre + '</head>'));
+// 원스토어 웹게임 SDK (#97): 머리에서 게임 코드보다 먼저, async 모듈로 (받는 동안·못 받아도 게임은 그대로 뜸). 쓰는 곳은 src/onestore.js
+const OS_SDK = 'https://h5sdk.onestore.net/lib/v1.2.0/onestore-h5-sdk.min.js';
+const osLoader = `import{createSDK}from"${OS_SDK}";window.__onestoreSDK=createSDK;dispatchEvent(new Event("onestore-sdk"))`;
+const osHash = crypto.createHash('sha256').update(osLoader, 'utf8').digest('base64');
+const osTag = `<script type="module" async>${osLoader}</script>`;
+const osCsp = (c) => c.replace(/connect-src /, `connect-src ${new URL(OS_SDK).origin} `);
+fs.writeFileSync('dist/index.html', wrap(osCsp(csp(`'self' 'sha256-${osHash}' ${new URL(OS_SDK).origin}`)), bodySplit).replace('</head>', osTag + pre + '</head>'));
 fs.writeFileSync('dist/test.html', wrap(csp(`'sha256-${scriptHash}'`), body));
 const kb = (n) => (n / 1024).toFixed(0) + 'KB';
 const aTot = packed.reduce((t, a) => t + a.buf.length, 0);

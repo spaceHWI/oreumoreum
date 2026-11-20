@@ -3,11 +3,12 @@ import { serverId, setServerId, SERVERS, SERVER_ART, SERVER_LABEL } from '../ser
 import { ONLINE, createAccount, mountLogin, guestExpired, loggedIn } from '../online.js';
 import { NET } from '../balance.js';
 import { state, late } from './state.js';
-import { $, save, srvSwitched, ab, writeLocal, persist, MAP_ID, prevMap } from './save.js';
+import { $, save, srvSwitched, ab, writeLocal, persist, MAP_ID, prevMap, lookS } from './save.js';
+import { onestore } from '../onestore.js';
 import { canvas } from './scene.js';
-import { trash, bloom } from './place.js';
+import { trash, bloom, player } from './place.js';
 import { cam, endTitleCam } from './camera.js';
-import { toast, updateStats, closePanels, ach } from './hud.js';
+import { toast, updateStats, closePanels, ach, panelOpen, cancelAll } from './hud.js';
 import { enableDev } from './menu.js';
 import { startSession } from './room.js';
 import { updateTrashUI, syncBloomDeer } from './pickup.js';
@@ -57,7 +58,7 @@ function closeIntro() {
 function enter() {
   if (state.sessionOn) { closeIntro(); return; } // 메뉴의 도움말에서 연 경우
   if (!introSrv) { $('intro-main').hidden = true; $('intro-step').hidden = false; syncIntroSrv(); return; }
-  const withSound = !save.soundOff;
+  const withSound = !save.soundOff && !onestore.silent; // 원스토어: 기기가 무음이면 소리 끈 채 (#97)
   applyIntroSrv(); startSession();
   if (introMap !== MAP_ID) { save.introSound = withSound ? 1 : 0; switchMap(introMap); return; }
   if (withSound) sound.start();
@@ -100,5 +101,29 @@ late.openRank = (srv) => rank.open(srv); late.rankAfterDump = () => rank.afterDu
 $('menu-rank').addEventListener('click', () => rank.open());
 document.addEventListener('visibilitychange', () => { if (!sound.ctx) return; if (document.hidden) sound.ctx.suspend(); else if (sound.on) sound.ctx.resume(); });
 // 다른 탐방로로 막 옮겨 왔으면 바로 입장
-if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (!save.look) openLook(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
+if (((prevMap && prevMap !== MAP_ID) || srvSwitched) && save.entered && save.server) { $('intro').hidden = true; startSession(); if (!save.look) openLook(); if (srvSwitched) setTimeout(() => toast(SERVER_LABEL[serverId()]), 600); if (save.introSound && !onestore.silent) { const once = () => { sound.start(); setSoundUI(); removeEventListener('pointerdown', once); }; addEventListener('pointerdown', once); } }
 if ($('intro').hidden) endTitleCam(); else cam.mode = 'title'; // 첫 화면이 떠 있는 동안은 오름을 도는 카메라 (#72)
+// ---------- 원스토어 앱 안 (#97, src/onestore.js) ----------
+// pause: 게임 루프·소리 멈춤 / resume: 되돌림 (기기 무음이면 소리 끔) / exit: 0.5초 안에 동기 저장 / 뒤로: 열린 것 닫기
+let osHeld = false; // pause 때 소리가 켜져 있었는지
+onestore.connect({
+  inApp() {}, // 구글 로그인 버튼은 page.html 의 .onestore .acct-gis 로 숨김 (앱 웹뷰에서 막힐 수 있어 손님으로 시작, 임의 결정)
+  pause() { state.osPaused = true; persist(); if (sound.ctx && sound.ctx.state !== 'suspended') { osHeld = true; sound.ctx.suspend(); } },
+  resume({ ringerSilent } = {}) {
+    state.osPaused = false;
+    if (ringerSilent && sound.on) { sound.stop(); setSoundUI(); }
+    if (osHeld && sound.ctx && sound.on) sound.ctx.resume();
+    osHeld = false;
+  },
+  exit() { try { writeLocal(); ab.flush(); state.account?.push?.(true); } catch (e) { /* 앱이 닫히는 중 */ } }, // 기기 저장 + 서버는 keepalive
+  back() {
+    if (!$('intro').hidden) {
+      if (!$('intro-step').hidden) { $('intro-step').hidden = true; $('intro-main').hidden = false; return true; }
+      if (state.sessionOn) { $('enter').click(); return true; } // 메뉴에서 연 도움말
+      return false;
+    }
+    if (lookS.open) return false; // 캐릭터 고르기는 꼭 거치는 화면이라 닫지 않음 → 앱의 종료 확인
+    if (panelOpen() || !$('ride-pick').hidden || cam.mode === 'wardrobe' || ['sit', 'photo'].includes(player.pose) || !$('photo').hidden) { $('ride-pick').hidden = true; cancelAll(); return true; }
+    return false;
+  },
+});

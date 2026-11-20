@@ -697,3 +697,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 마지막으로 본 id 는 기기 `oreumoreum.inbox.seen`. 새 글 수는 개발자 메뉴 항목·"어드민 설정"·메뉴 버튼의 점으로. 확인은 게임 열 때 1번 + 메뉴 열 때(30초 안 다시 열면 건너뜀)
 - 서버 `GET /feedback?before=<id>` 이어 받기(어드민만). `online.js` `getFeedback`
 - 확인: `build.mjs`, `tools/err.js`, `tools/sec.js` 49/49 통과. 화면 확인은 어드민 로그인이 필요해 하지 못함
+
+## 원스토어 웹게임 SDK 붙이기 (#97)
+- `build.mjs`: Pages 용 index.html 머리에 SDK v1.2.0 을 `<script type="module" async>` 한 줄로 게임 코드보다 먼저 로드(받으면 `window.__onestoreSDK` + `onestore-sdk` 이벤트). CSP `script-src` 에 그 한 줄의 해시와 `https://h5sdk.onestore.net`, `connect-src` 에도 같은 출처. async 라 SDK 를 못 받거나 늦어도 첫 화면을 막지 않음
+- `src/onestore.js`: createSDK → pause/resume/exit → initializeAsync(5초 넘게 답 없으면 일반 브라우저로) → 진행률 → startGameAsync. `{ err }` 면 아무 것도 안 함. 진행률은 main.js 10(시작)→60(내 캐릭터 모델)→85(게임 모듈)→100(셰이더 준비 또는 첫 프레임 3초 뒤, update.js)
+- 앱 안: pause → `state.osPaused`(frame 이 그리지 않음)·AudioContext suspend, resume → 되돌림(ringerSilent 면 소리 끔), exit → writeLocal·ab.flush·서버 keepalive push, 뒤로 → 패널·메뉴·탈것 고르기·옷장·앉기·사진·첫 화면 서버 고르기를 닫고 true(캐릭터 고르기·아무 것도 없으면 false). safeArea → page.html `--safe-t/b/l/r`(왼·오른쪽 env 를 변수로 모음). 기기 무음이면 소리 끈 채 시작
+- 임의 결정: 앱 안(`html.onestore`)에서는 구글 로그인 버튼을 숨기고 손님으로. playerId 로 계정 만들기는 안 함
+- `?onestore=mock`(+`&silent=1`): 가짜 SDK, 콘솔 `__onestoreMock.pause()/resume()/exit()/back()`. 확인 `node tools/onestore.js` 15/15, `tools/sec.js` 50/50(인라인은 SDK 로더 하나·해시 허용 검사 추가), `tools/err.js`, `tools/perf.js phone day`
+- 공식 가이드(gitbook) 페이지는 이 실행에서 읽지 못해 이슈에 적힌 SDK 요약대로 만듦

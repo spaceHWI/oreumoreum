@@ -2,6 +2,7 @@
 import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
+import { onestore } from '../onestore.js';
 import * as THREE from 'three';
 import { height, groundAt, surfaceAt } from '../world.js';
 import { G } from '../gfx2.js';
@@ -211,6 +212,7 @@ applyQuality();
 
 const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
 function frame(now) {
+  if (state.osPaused) { last = now; requestAnimationFrame(frame); return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1); last = now; // 맞힌 순간 짧은 멈춤 (#89)
   tickPace(Math.min(0.05, rawDt), now / 1000);
   state.camHold = Math.max(0, state.camHold - dt);
@@ -314,7 +316,8 @@ function frame(now) {
 let warmed = false;
 function warm() {
   const prep = () => renderer.compileAsync(scene, camera).catch(() => {});
-  prep().then(() => { state.shadersReady = true; });
+  prep().then(() => { state.shadersReady = true; onestore.ready(); }); // 첫 화면 준비 끝 → 원스토어 startGameAsync (#97)
+  setTimeout(() => onestore.ready(), 3000); // 셰이더 준비가 늦어도 앱 로딩 화면이 오래 남지 않게
   startAssets();
   let t = 0; onAnyAsset(() => { clearTimeout(t); t = setTimeout(prep, 250); });
 }
