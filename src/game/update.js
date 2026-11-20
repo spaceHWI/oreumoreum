@@ -3,6 +3,7 @@ import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER } from '../
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
+import { reportCrash } from '../crash.js';
 import * as THREE from 'three';
 import { orientBody, flinchK } from '../bodytilt.js';
 import { height, groundAt, surfaceAt } from '../world.js';
@@ -216,8 +217,17 @@ function adaptQuality(dt) { // 자동일 때만: 느리면 한 단계씩 내리�
 applyQuality();
 
 const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
+// 매 프레임 (#108): 한 프레임에서 오류가 나도 다음 프레임은 계속 (예전엔 끝에서 다음 프레임을 불러 오류 하나에 게임이 멈춤). 오류는 crash.js 로 알림
+let stepErr = 0;
 function frame(now) {
-  if (state.osPaused) { last = now; requestAnimationFrame(frame); return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
+  requestAnimationFrame(frame);
+  try { step(now); stepErr = 0; } catch (e) {
+    reportCrash(e, 'frame'); stepErr++;
+    if (stepErr > 1) try { renderer.render(scene, camera); } catch (_) { /* 그리기도 못 하면 다음 프레임 */ } // 같은 곳에서 계속 나면 그리기만이라도
+  }
+}
+function step(now) {
+  if (state.osPaused) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1); last = now; // 맞힌 순간 짧은 멈춤 (#89)
   tickPace(Math.min(0.05, rawDt), now / 1000);
   state.camHold = Math.max(0, state.camHold - dt);
@@ -314,7 +324,6 @@ function frame(now) {
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
   if (state.captureNext) { state.captureNext = false; capture(); }
   if (!warmed) { warmed = true; setTimeout(warm, 30); }
-  requestAnimationFrame(frame);
 }
 
 // 첫 화면 (#85): 첫 프레임이 그려지면 로고 화면이 떠 있는 동안 셰이더를 미리 준비(compileAsync)해 시작 버튼 뒤 멈칫함을 없애고,

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { height } from './world.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
 import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN } from './balance.js';
+import { reportCrash, crashNote } from './crash.js';
 
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (c >= 0 && c < 11172 && c % 28 ? '이' : '가'); };
@@ -70,11 +71,12 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     }
     if (!made) return null;
     const info = { kind: P.kind, n: made, x: P.x, z: P.z, zone: P.zone };
+    crashNote(`적 등장 ${P.kind}×${made}`);
     sound?.boar?.(); if (!quiet) hooks.enemyWave?.(info);
     return info;
   }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
-  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); e.bar.fill.material.dispose(); }
+  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   function hitTest(p, tg, dmg) {
@@ -192,7 +194,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (!player || !okAt) return;
     if (!hooks.paced) waveT -= dt; // 연출 감독(#89)이 있으면 감독이 부름
     if (waveT <= 0) { spawnWave(); waveT = ENEMY_SPAWN.every; } // 못 나오면(오름 밖·가득 참) 다음 차례까지 기다림
-    for (let i = list.length - 1; i >= 0; i--) { const e = list[i]; if (e) tick(e, dt, time); }
+    for (let i = list.length - 1; i >= 0; i--) { const e = list[i]; if (!e) continue; try { tick(e, dt, time); } catch (err) { reportCrash(err, 'enemy ' + e.kind); remove(e); } } // #108 한 마리가 오류를 내면 그 적만 없애고 게임은 계속
   }
 
   // 귤로 맞힐 대상 (#34 자동 조준)

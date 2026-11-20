@@ -29,7 +29,8 @@ export async function inboxCheck(force = false) {
 const meta = (it) => [it.nick, it.ver && `v${it.ver}`, it.srv, it.map, it.dev && `${it.dev} ${it.w || '?'}x${it.h || '?'}`].filter(Boolean).join(' · ');
 function row(it, isNew) {
   const li = document.createElement('li'); if (isNew) li.className = 'new';
-  const h = document.createElement('small'); h.textContent = kst(it.at) + (isNew ? ' · 새 글' : '');
+  if (it.kind === 'crash') li.classList.add('crash'); // #108 게임이 보낸 오류 알림
+  const h = document.createElement('small'); h.textContent = (it.kind === 'crash' ? '⚠ 오류 알림 · ' : '') + kst(it.at) + (isNew ? ' · 새 글' : '');
   const t = document.createElement('div'); t.className = 't'; t.textContent = cleanText(it.text, 600, { lines: true }); // 글자로만 (HTML 로 넣지 않음)
   const m = document.createElement('small'); m.textContent = cleanText(meta(it), 160);
   li.append(h, t, m);

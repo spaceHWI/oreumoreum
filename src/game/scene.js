@@ -2,7 +2,8 @@
 import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong } from '../namsongi.js';
 import { createFootprints } from '../footprints.js';
-import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN } from '../balance.js';
+import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH } from '../balance.js';
+import { crashNote, reportCrash } from '../crash.js';
 import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
 import { STREET } from '../streetlayout.js';
 import { createRetro } from '../retro.js';
@@ -29,6 +30,22 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// WebGL 화면을 잃었을 때 (#108): 휴대폰이 메모리가 모자라면 GPU 문맥을 빼앗기도 함. three 가 되살아난 문맥에 모든 걸 다시 올림.
+// 그동안 안내를 보이고, CRASH.glWait 안에 돌아오지 않으면 '다시 불러오기'. 되살아나면 셰이더를 다시 준비
+state.glLost = false;
+{
+  let lostT = 0;
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault(); state.glLost = true; crashNote('WebGL 잃음'); reportCrash({ name: 'ContextLost', message: 'webglcontextlost' }, 'gl');
+    $('gl-lost-t').textContent = '화면을 다시 준비하고 있어요'; $('gl-reload').hidden = true; $('gl-lost').hidden = false;
+    clearTimeout(lostT); lostT = setTimeout(() => { if (!state.glLost) return; $('gl-lost-t').textContent = '화면을 되살리지 못했어요'; $('gl-reload').hidden = false; }, CRASH.glWait);
+  });
+  canvas.addEventListener('webglcontextrestored', () => {
+    state.glLost = false; clearTimeout(lostT); $('gl-lost').hidden = true; crashNote('WebGL 되살아남');
+    setTimeout(() => { try { renderer.compileAsync(scene, camera).catch(() => {}); } catch (e) { /* 다음 그릴 때 준비됨 */ } }, 50);
+  });
+  $('gl-reload').addEventListener('click', () => location.reload());
+}
 state.farCull = null; // 멀리 있는 작은 물체 감추기 (#79), 맨 끝에서 만듦
 export const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)
 export const retro = createRetro(renderer);
