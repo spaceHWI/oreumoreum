@@ -808,3 +808,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 플레이어 이동(걷기·개인 탈것·넉백·노루 타기)만 `col.move(…, dyn=true)` 로 막힘. 마차가 서 있는 플레이어에게 오면 `col.nudge()` 로 옆으로 밀림(높이는 땅에 붙임). 나무와 마차 사이에 끼면 마차 쪽을 마지막에 밀어 마차 속에는 남지 않게
 - 마차에 앉아 있는 동안은 updatePlayer 가 일찍 끝나 부딪힘 없음. 타기 거리(CART.cartR 6m)·내리는 자리(길가 3m)·뛰어내림(옆 3m)은 그대로
 - 다른 플레이어·노루·적은 안 막힘(이번 범위 밖). 확인 `node tools/cartblock.js` (느린 헤드리스라 4~5분 걸림)
+
+## #134 새 버전 새로고침 알림
+- build.mjs 가 `dist/version.json`(`{v, main}`)을 만들고 publish.yml 이 dev·release 둘 다 게시. 게임(src/game/newver.js)은 5분마다·탭 복귀 때 `version.json?t=` 를 캐시 없이 받아 지금 `script[data-main]` 과 다르면 위쪽 알림(새로고침·닫기). 한 파일(test.html)은 data-main 이 없어 확인 안 함
+- 튜토리얼·창·전투·쓰러짐·입장 전엔 미뤘다가 끝나면 띄움. 닫으면 15~30분 뒤 다시. 새로고침은 persist·서버 저장(최대 3초 기다림) 뒤 reload
+- 모델 받다 404(assets.js `assetHooks.stale`) 도 같은 알림. 서버 hi 에 `minVer`(roomcore.js `MIN_VER`, 지금 비움)를 실을 수 있고, 클라 버전이 낮으면 닫기 없는 알림(deernet.js 가 late.newver 로 넘김)
+- 수치는 newver.js 맨 위 NEWVER. 버전 0.23.6

@@ -27,6 +27,7 @@ import { mealS, tickMeal, cutS, tickCut, tickLeap, updateBuffUI, tickShopMark } 
 import { toolNow, tickPick, tickFly, tickZone } from './pickup.js';
 import { tickDump, tickAutoGo, tickChArrow, updateContext } from './dump.js';
 import { leaving, leaveTo } from './look.js';
+import { tickNewVer } from './newver.js';
 import { sound, tickKnock, enemyWarn, dumpWarn, dumpers, threatNear } from './hooks.js';
 import { tickPace, pace } from './pace.js';
 import { deerNet } from './deernet.js';
@@ -317,7 +318,7 @@ function step(now) {
 
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
-  tickTips(dt); tickPickMsg(dt);
+  tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();

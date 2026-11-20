@@ -7,6 +7,7 @@ import { MeshoptDecoder as JsDecoder } from 'meshoptimizer/meshopt_decoder_refer
 import { ASSETS } from './assetlist.js';
 import { crashNote } from './crash.js'; // #108 마지막 한 일
 
+export const assetHooks = { stale: null }; // 받다 404 가 나면(배포로 예전 파일이 지워짐) 새 버전 알림 (#134)
 const cache = new Map(); // 이름 → 풀린 자료 { ...meta, pos: Uint8Array, ..., tex: blob URL }
 const waiting = new Map(); // 이름 → [콜백]
 const loading = new Map(); // 이름 → Promise
@@ -28,7 +29,7 @@ export const bytesAs = (s, T) => {
 
 async function fetchBytes(a) {
   if (a.b64) return bytesAs(a.b64, Uint8Array); // 한 파일로 여는 빌드: 자료가 JS 안에
-  const r = await fetch(a.url); if (!r.ok) throw new Error('asset ' + r.status);
+  const r = await fetch(a.url); if (!r.ok) { if (r.status === 404) assetHooks.stale?.(); throw new Error('asset ' + r.status); }
   return new Uint8Array(await r.arrayBuffer());
 }
 // 풀기: three.js 의 meshopt 디코더(wasm). wasm 이 막힌 브라우저면 느리지만 같은 결과인 JS 디코더로
