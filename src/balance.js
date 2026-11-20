@@ -175,7 +175,7 @@ export const DEX = {
   rareChance: 1 / 400, // 주울 때마다 이 확률로 그 종류의 드문 것
   rareGyul: 20, // 드문 것을 주우면 더 주는 귤
   common: {
-    can: ['음료 캔', '맥주 캔', '참치 캔', '찌그러진 캔'],
+    can: ['음료 캔', '탄산 캔', '참치 캔', '찌그러진 캔'],
     pet: ['생수 페트병', '탄산 페트병', '주스 페트병', '커피 페트병'],
     vinyl: ['비닐봉지', '과자 봉지', '컵라면 포장', '찢어진 비닐'],
     foam: ['스티로폼 조각', '컵라면 용기', '포장 완충재', '도시락 용기'],
@@ -183,7 +183,7 @@ export const DEX = {
   },
   rare: [
     { kind: 'can', name: '녹슨 양철 도시락' }, { kind: 'can', name: '옛날 우유 깡통' },
-    { kind: 'pet', name: '유리병 편지' }, { kind: 'pet', name: '옛날 소주병' },
+    { kind: 'pet', name: '유리병 편지' }, { kind: 'pet', name: '옛날 사이다병' },
     { kind: 'vinyl', name: '고무신 한 짝' }, { kind: 'vinyl', name: '오래된 라면 봉지' },
     { kind: 'foam', name: '아이스박스 조각' }, { kind: 'foam', name: '오래된 어시장 상자' },
     { kind: 'gear', name: '낡은 부표' }, { kind: 'gear', name: '찢어진 그물 뭉치' },

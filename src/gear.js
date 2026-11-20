@@ -4,15 +4,17 @@
 // - 장비 종류
 //   bone: 'head' 등 → 그 뼈에 붙는 단단한 물건 (모자·안경·배낭)
 //   skin: true      → 몸과 같은 뼈대로 휘는 옷 (바지·소매처럼 관절을 지나는 것). 가중치는 몸과 같은 규칙으로 자동 계산
-// - hide: 지금 몸 메시에 함께 구워진 부분 중 감출 곳 ('body' 손 빼고 몸 전체(#52 옷), 'head' 목 위 머리 전체(#51), 'hat' 모자, 'pack' 배낭(어깨끈 빼고), 'top' 재킷, 'bottom' 반바지, 'shoes' 신발)
-//   감춘 자리는 비어 보이므로 새 장비가 그 자리를 덮어야 한다. 몸만 있는 모델로 바꾸면 hide 없이 쓰면 된다
+// - 몸(#106): 옷 없는 기본 몸(basebody.js)에 옷·장비를 따로 얹음. Tripo 모델(runnermodel.js)은 머리(목 위)만 씀
+// - covers: 옷이 덮는 기본 몸 부위(basebody.js REGION: neck chest waist pelvis upperarm forearm hand thigh shin foot). 덮인 부위는 그리지 않아 옷 사이로 뚫고 나오지 않음
+// - hide: 'head' Tripo 머리(목 위) 전체를 감춤(#51 머리 3종), 'hat' Tripo 머리에 구운 모자를 감춤
+// - clip: 모자 윗면 높이. 머리 장비(머리카락)가 이보다 위로 삐져나오면 그리지 않음
 // - tint: 옷장 색(outfit[tint].color)을 따라갈 재질 이름
 // - 새 디자인은 Tripo·블렌더에서 기본 자세에 맞춰 만든 glb 를 model/extract-gear.js 로 바꿔 data 로 넣는다
 import * as THREE from 'three';
 import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
-import { addClothes, slippers } from './clothes.js';
+import { addClothes, slippers, CLOTH_BUILD, COVER } from './clothes.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
 function dataGeo(D) {
@@ -27,6 +29,7 @@ const geoCache = new Map();
 export const fromData = (name, def = '#ffffff') => (mat) => {
   const m = mat('main', def);
   const mesh = new THREE.Mesh(placeholderGeo(name, 'ball'), placeholderMat('#e3b995'));
+  mesh.userData.keep = true; // 받고 나서 모양·재질을 바꾸므로 runner 가 다른 조각과 합치지 않음 (#106)
   whenAsset(name, (D) => {
     let g = geoCache.get(name); if (!g) { g = dataGeo(D); geoCache.set(name, g); }
     if (D.tex) { const t = new THREE.TextureLoader().load(D.tex); t.flipY = false; t.colorSpace = TEXCS; m.map = t; m.needsUpdate = true; }
@@ -50,13 +53,13 @@ export const ACCESSORIES = {
   'hat:short': { slot: 'hair', label: '짧은 머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [230, 193, 157], build: fromData('hair-short') },
   'hat:bob': { slot: 'hair', label: '단발', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 152], build: fromData('hair-bob') },
   'hat:bun': { slot: 'hair', label: '똥머리', bone: 'head', hide: ['head'], skinTint: true, hair: true, lid: [229, 187, 150], build: fromData('hair-bun') },
-  'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
+  'hat:beanie': { slot: 'hat', label: '비니', bone: 'head', clip: 0.97, hide: ['hat'], tint: { main: 'hat' },
     build: (mat) => { const m = mat('main', '#c8553d');
       const top = M(new THREE.SphereGeometry(0.235, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.79, 0.02); top.scale.set(1.06, 0.9, 1.0);
       const band = M(new THREE.CylinderGeometry(0.255, 0.258, 0.075, 28, 1), m, 0, 0.785, 0.02); band.scale.z = 0.98;
       const pom = M(new THREE.SphereGeometry(0.055, 12, 10), mat('pom', '#f2efe6'), 0, 1.0, 0.02);
       return G(top, band, pom); } },
-  'hat:bucket': { slot: 'hat', label: '버킷햇', bone: 'head', hide: ['hat'], tint: { main: 'hat' },
+  'hat:bucket': { slot: 'hat', label: '버킷햇', bone: 'head', clip: 0.97, hide: ['hat'], tint: { main: 'hat' },
     build: (mat) => { const m = mat('main', '#d9c27a');
       const crown = M(new THREE.CylinderGeometry(0.2, 0.245, 0.2, 28, 1), m, 0, 0.88, 0.02);
       const lid = M(new THREE.SphereGeometry(0.2, 28, 8, 0, Math.PI * 2, 0, Math.PI / 2), m, 0, 0.975, 0.02); lid.scale.y = 0.25;
@@ -71,7 +74,10 @@ export const ACCESSORIES = {
       return G(l(1), l(-1), M(new THREE.BoxGeometry(0.06, 0.018, 0.02), frame, 0, 0.73, 0.285)); } },
 
   // ---- 등 ----
-  'back:pack': { slot: 'back', label: '배낭', builtin: true },
+  // 처음 배낭(#106 전에는 몸에 구워져 있던 것)
+  'back:pack': { slot: 'back', label: '배낭', bone: 'chest', tint: { main: 'pack' },
+    build: (mat) => { const m = mat('main', '#c08a4a'), p = mat('pocket', '#8a6a3c');
+      return G(M(new RoundedBoxGeometry(0.28, 0.29, 0.13, 3, 0.055), m, 0, 0.44, -0.16), M(new RoundedBoxGeometry(0.17, 0.1, 0.045, 2, 0.02), p, 0, 0.37, -0.225)); } },
   'back:round': { slot: 'back', label: '둥근 배낭', bone: 'chest', hide: ['pack'], tint: { main: 'pack' },
     build: (mat) => { const m = mat('main', '#3e6b8a');
       const body = M(new THREE.SphereGeometry(0.22, 24, 18), m, 0, 0.43, -0.2); body.scale.set(1.05, 0.95, 0.62);
@@ -79,12 +85,8 @@ export const ACCESSORIES = {
       return G(body, pocket); } },
 
   // ---- 하의 (몸과 같이 휘는 옷 예시) ----
-  'bottom:shorts': { slot: 'bottom', label: '반바지', builtin: true },
-  'bottom:long': { slot: 'bottom', label: '긴바지', skin: true, hide: ['bottom'], tint: { main: 'pants' },
-    build: (mat) => { const m = mat('main', '#4a5a78');
-      const hip = M(new THREE.SphereGeometry(0.2, 24, 14), m, 0, 0.215, 0.035); hip.scale.set(1.0, 0.42, 0.82);
-      const leg = (sx) => M(new THREE.CylinderGeometry(0.068, 0.06, 0.2, 16, 6), m, sx * 0.1, 0.13, 0.035);
-      return G(hip, leg(1), leg(-1)); } },
+  'bottom:shorts': { slot: 'bottom', label: '반바지', skin: true, covers: COVER.shorts, tint: { main: 'pants' }, build: (mat) => CLOTH_BUILD.shorts(mat, { kind: 'shorts', main: '#8a6a3c', acc: '#74592f' }) },
+  'bottom:long': { slot: 'bottom', label: '긴바지', skin: true, covers: COVER.long, tint: { main: 'pants' }, build: (mat) => CLOTH_BUILD.long(mat, { kind: 'long', main: '#4a5a78', acc: '#3a4762' }) },
 };
 
 // ---- 장비 단계(상점 #10): 손 도구·배낭·신발. 단계 수치는 balance.js, 여기는 모양만 ----
@@ -126,12 +128,11 @@ Object.assign(ACCESSORIES, {
       const bar = (sx) => M(new THREE.BoxGeometry(0.02, 0.66, 0.02), fr, sx * 0.23, 0.5, -0.12);
       const bag = M(new THREE.SphereGeometry(0.15, 8, 6), net, 0, 0.27, -0.34); bag.scale.set(1.2, 0.8, 0.7);
       return G(M(new RoundedBoxGeometry(0.44, 0.58, 0.24, 3, 0.08), m, 0, 0.5, -0.21), bar(1), bar(-1), roll, bag); } },
-  'shoes:s1': { slot: 'shoes', label: '운동화', builtin: true },
-  // 배낭 없음(#31, 처음엔 호주머니만): 몸에 구운 배낭·어깨끈을 감추고, 비는 등 쪽을 재킷 색 덩어리로 메움
-  'back:none': { slot: 'back', label: '배낭 없음', bone: 'chest', hide: ['pack', 'straps'], tint: { main: 'shirt' }, npc: true,
-    build: (mat) => { const m = mat('main', '#dccfac'); const b = M(new THREE.SphereGeometry(0.2, 20, 14), m, 0, 0.44, -0.035); b.scale.set(1.0, 0.95, 0.5); return G(b); } },
+  'shoes:s1': { slot: 'shoes', label: '운동화', skin: true, covers: ['foot'], tint: { main: 'shoes' }, build: (mat) => shoePair(mat, { up: '#26262b', sole: '#f2efe6', acc: '#f2efe6', h: 0.07, soleH: 0.03 })() },
+  // 배낭 없음(#31, 처음엔 호주머니만). #106 부터 배낭은 따로 얹는 것이라 아무것도 안 그림
+  'back:none': { slot: 'back', label: '배낭 없음', builtin: true, npc: true },
   // 낚시 NPC 밀짚모자 (#31)
-  'hat:straw': { slot: 'hat', label: '밀짚모자', bone: 'head', hide: ['hat'], npc: true,
+  'hat:straw': { slot: 'hat', label: '밀짚모자', bone: 'head', clip: 0.97, hide: ['hat'], npc: true,
     build: (mat) => { const m = mat('main', '#e3c77d'), band = mat('band', '#b5482f');
       const crown = M(new THREE.CylinderGeometry(0.19, 0.23, 0.17, 18, 1), m, 0, 0.88, 0.02);
       const brim = M(new THREE.CylinderGeometry(0.42, 0.44, 0.025, 24, 1), m, 0, 0.8, 0.02);
@@ -169,11 +170,12 @@ const SHOE_LOOK = {
   's4': { label: '등산화', up: '#8a6a3c', sole: '#2b2b33', acc: '#c9473d', h: 0.08, soleH: 0.05, boot: 0.07, toe: 1 },
   's5': { label: '바람 신발', up: '#7fd3c8', sole: '#f2f2f2', acc: '#ffd23f', h: 0.08, soleH: 0.065, boot: 0.04 },
 };
-Object.entries(SHOE_LOOK).forEach(([k, L]) => { ACCESSORIES['shoes:' + k] = { slot: 'shoes', label: L.label, skin: true, hide: ['shoes'], tint: { main: 'shoes' }, build: (mat) => shoePair(mat, L)() }; });
+Object.entries(SHOE_LOOK).forEach(([k, L]) => { ACCESSORIES['shoes:' + k] = { slot: 'shoes', label: L.label, skin: true, covers: ['foot'], tint: { main: 'shoes' }, build: (mat) => shoePair(mat, L)() }; });
 // 장비 단계 → 캐릭터에 보이는 장비
 // 옷 (#52): balance.js CLOTHES → clothes.js 모양. 칸마다 '없음'·'몸에 구운 것' 자리
 Object.assign(ACCESSORIES, {
-  'top:base': { slot: 'top', label: '구운 재킷', builtin: true },
+  // 처음 상의(#106 전에는 몸에 구워진 재킷). 옷장 셔츠 색을 따름
+  'top:base': { slot: 'top', label: '기본 상의', skin: true, covers: COVER.tee, tint: { main: 'shirt' }, build: (mat) => CLOTH_BUILD.tee(mat, { kind: 'tee', main: '#e8d9b5', acc: '#d6c7a0' }) },
   'hat:none': { slot: 'hat', label: '없음', builtin: true },
   'vest:none': { slot: 'vest', label: '없음', builtin: true },
   'jacket:none': { slot: 'jacket', label: '없음', builtin: true },
@@ -182,7 +184,7 @@ Object.assign(ACCESSORIES, {
   'back:bag1': { slot: 'back', label: '배낭', bone: 'chest', hide: ['pack'],
     build: (mat) => { const m = mat('main', '#c08a4a'), p = mat('pocket', '#8a6a3c');
       return G(M(new RoundedBoxGeometry(0.27, 0.27, 0.12, 3, 0.05), m, 0, 0.43, -0.155), M(new RoundedBoxGeometry(0.16, 0.1, 0.045, 2, 0.02), p, 0, 0.37, -0.22)); } },
-  'shoes:slip': { slot: 'shoes', label: '쓰레빠', skin: true, hide: ['shoes'], build: slippers },
+  'shoes:slip': { slot: 'shoes', label: '쓰레빠', skin: true, build: slippers },
 });
 addClothes(ACCESSORIES);
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];

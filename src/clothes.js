@@ -1,7 +1,7 @@
 // 옷 모양 (#52): balance.js CLOTHES 의 look 값으로 코드에서 만드는 로우폴리 옷
 // - 좌표는 기본 자세(T포즈, 키 0.98) 기준. 몸통·팔·다리를 감싸는 관(tube)과 껍질(shell)로 만들고, runner 가 몸과 같은 뼈대로 휘게 붙임
-// - 옷을 입으면 몸 메시에 구운 재킷·반바지·운동화·배낭은 감춤(hide 'body', 손만 남김). 그래서 맨살(팔뚝·종아리)도 여기서 'skin' 재질로 만듦
-// - 재질 이름: main 바탕, acc 포인트, skin 피부색(runner 가 피부색을 넣음), foot 발(양말을 신으면 양말 색, 아니면 피부색)
+// - #106: 옷은 기본 몸(basebody.js) 위에 얹는 껍데기. 맨살(팔뚝·종아리·발)은 몸이 그리고, 옷이 덮는 몸 부위는 covers 로 감춤
+// - 재질 이름: main 바탕, acc 포인트 (양말 색은 runner 가 몸의 발 색으로 넣음)
 // - 겹치는 순서(안 → 밖): 피부 < 양말 < 바지 < 티셔츠 < 잠바 < 베스트
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -9,12 +9,12 @@ import { CLOTHES } from './balance.js';
 
 const SE = 2.6; // 몸통 단면 모양 (2 = 타원, 클수록 네모에 가까움)
 // 몸통 단면: [y, 반폭, 앞 z, 뒤 z]
-const TORSO = [[0.17, 0.188, 0.172, -0.085], [0.23, 0.2, 0.19, -0.11], [0.3, 0.205, 0.2, -0.125], [0.38, 0.203, 0.195, -0.128], [0.46, 0.197, 0.185, -0.128], [0.52, 0.188, 0.17, -0.12], [0.56, 0.165, 0.15, -0.1], [0.59, 0.12, 0.125, -0.075], [0.615, 0.085, 0.1, -0.05]];
-const HIPS = [[0.12, 0.168, 0.138, -0.052], [0.16, 0.176, 0.152, -0.062], [0.22, 0.18, 0.16, -0.072], [0.3, 0.178, 0.165, -0.085]];
-const ARM = { y: 0.507, z: 0.04 }; // 팔 중심선
-const LEG = { x: 0.098, z: 0.035 }; // 다리 중심
-const pw = (v) => Math.sign(v) * Math.pow(Math.abs(v), 2 / SE);
-const prof = (T, y) => { if (y <= T[0][0]) return T[0]; for (let i = 1; i < T.length; i++) if (y <= T[i][0]) { const a = T[i - 1], b = T[i], k = (y - a[0]) / (b[0] - a[0]); return a.map((v, j) => v + (b[j] - v) * k); } return T[T.length - 1]; };
+export const TORSO = [[0.17, 0.188, 0.172, -0.085], [0.23, 0.2, 0.19, -0.11], [0.3, 0.205, 0.2, -0.125], [0.38, 0.203, 0.195, -0.128], [0.46, 0.197, 0.185, -0.128], [0.52, 0.188, 0.17, -0.12], [0.56, 0.165, 0.15, -0.1], [0.59, 0.12, 0.125, -0.075], [0.615, 0.085, 0.1, -0.05]];
+export const HIPS = [[0.12, 0.168, 0.138, -0.052], [0.16, 0.176, 0.152, -0.062], [0.22, 0.18, 0.16, -0.072], [0.3, 0.178, 0.165, -0.085]];
+export const ARM = { y: 0.507, z: 0.04 }; // 팔 중심선
+export const LEG = { x: 0.098, z: 0.035 }; // 다리 중심
+export const pw = (v) => Math.sign(v) * Math.pow(Math.abs(v), 2 / SE);
+export const prof = (T, y) => { if (y <= T[0][0]) return T[0]; for (let i = 1; i < T.length; i++) if (y <= T[i][0]) { const a = T[i - 1], b = T[i], k = (y - a[0]) / (b[0] - a[0]); return a.map((v, j) => v + (b[j] - v) * k); } return T[T.length - 1]; };
 export const frontZ = (y, pad = 0) => prof(TORSO, y)[2] + pad;
 
 // 바깥을 보게 삼각형 방향 맞춤. out(무게중심) 또는 고정 방향(Vector3) = 바깥
@@ -64,9 +64,8 @@ const G = (...ms) => { const g = new THREE.Group(); ms.flat(3).forEach((m) => m 
 const dark = (c, k = 0.82) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
 const side2 = (m) => { m.side = THREE.DoubleSide; return m; };
 
-// ---- 팔·다리 맨살 ----
-const forearms = (skin) => both((s) => mesh(tube('x', s * 0.27, s * 0.395, 0.05, 0.044, [ARM.y, ARM.z], { capHi: true }), skin));
-const shins = (skin, top = 0.14) => both((s) => mesh(tube('y', 0.03, top, 0.048, 0.054, [s * LEG.x, LEG.z], { capLo: true }), skin));
+// 옷이 덮는 기본 몸 부위 (#106, basebody.js REGION)
+export const COVER = { tee: ['chest', 'waist', 'upperarm'], teeLong: ['chest', 'waist', 'upperarm', 'forearm'], shorts: ['pelvis', 'waist', 'thigh'], long: ['pelvis', 'waist', 'thigh', 'shin'], jacket: ['chest', 'waist', 'upperarm', 'forearm'] };
 // 몸통에 붙는 띠 (줄무늬·반사띠·벨트)
 const band = (m, y0, y1, pad, open = 0) => mesh(shell(TORSO, y0, y1, pad, { rows: 1, open }), m);
 
@@ -74,7 +73,7 @@ const band = (m, y0, y1, pad, open = 0) => mesh(shell(TORSO, y0, y1, pad, { rows
 function tee(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(TORSO, 0.205, 0.615, 0), M)];
   if (L.long) out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.37, 0.072, 0.058, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.36, s * 0.39, 0.061, 0.059, [ARM.y, ARM.z], { rows: 1, capHi: true }), A)));
-  else out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.29, 0.072, 0.066, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.275, s * 0.295, 0.069, 0.069, [ARM.y, ARM.z], { rows: 1 }), A)), ...forearms(mat('skin', '#e8bf99')));
+  else out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.29, 0.072, 0.066, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.275, s * 0.295, 0.069, 0.069, [ARM.y, ARM.z], { rows: 1 }), A)));
   for (let i = 0; i < (L.stripes || 0); i++) { const y = 0.27 + i * 0.075; out.push(band(A, y, y + 0.032, 0.003)); }
   if (L.panel) out.push(band(A, 0.5, 0.6, 0.004), ...both((s) => mesh(tube('x', s * 0.15, s * 0.23, 0.075, 0.073, [ARM.y, ARM.z], { rows: 1 }), A)));
   const col = new THREE.Mesh(new THREE.TorusGeometry(0.093, 0.016, 6, 18), L.collar ? mat('collar', L.collar) : A); col.rotation.x = Math.PI / 2; col.position.set(0, 0.6, 0.025); col.scale.set(1, 1.1, 1); out.push(col);
@@ -84,7 +83,7 @@ function tee(mat, L) {
 function pants(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(HIPS, 0.125, 0.3, 0, { rows: 4, capLo: true }), M)];
   if (L.kind === 'shorts') {
-    out.push(...both((s) => mesh(tube('y', 0.105, 0.2, 0.084, 0.082, [s * LEG.x, LEG.z]), M)), ...both((s) => mesh(tube('y', 0.1, 0.12, 0.086, 0.085, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)), ...shins(mat('skin', '#e8bf99'), 0.12));
+    out.push(...both((s) => mesh(tube('y', 0.105, 0.2, 0.084, 0.082, [s * LEG.x, LEG.z]), M)), ...both((s) => mesh(tube('y', 0.1, 0.12, 0.086, 0.085, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
   } else {
     out.push(...both((s) => mesh(tube('y', 0.035, 0.2, 0.066, 0.084, [s * LEG.x, LEG.z], { rows: 4 }), M)), ...both((s) => mesh(tube('y', 0.03, 0.058, 0.069, 0.07, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
     if (L.knee) out.push(...both((s) => at(new RoundedBoxGeometry(0.08, 0.05, 0.03, 2, 0.012), A, s * LEG.x, 0.115, LEG.z + 0.074)));
@@ -154,18 +153,20 @@ function hat(mat, L) {
   }
   return G(out);
 }
+export const HAT_CLIP = 0.97; // 모자 윗면 조금 아래: 머리카락(똥머리 등)이 이보다 위로 나오면 감춤 (#106)
 export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat };
-// 쓰레빠 (신발 1단계): 맨발(또는 양말) + 얇은 밑창 + 끈
+// 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
 export const slippers = (mat) => {
-  const F = mat('foot', '#e8bf99'), S = mat('sole', '#3c8fd0'), B = mat('strap', '#2f6db5');
-  return G(both((s) => [at(new RoundedBoxGeometry(0.11, 0.06, 0.2, 2, 0.026), F, s * 0.106, 0.052, 0.075), at(new RoundedBoxGeometry(0.13, 0.024, 0.235, 2, 0.01), S, s * 0.106, 0.012, 0.078), at(new RoundedBoxGeometry(0.124, 0.03, 0.05, 2, 0.012), B, s * 0.106, 0.07, 0.12)]));
+  const S = mat('sole', '#3c8fd0'), B = mat('strap', '#2f6db5');
+  return G(both((s) => [at(new RoundedBoxGeometry(0.13, 0.016, 0.235, 2, 0.007), S, s * 0.104, 0.008, 0.08), at(new RoundedBoxGeometry(0.128, 0.026, 0.05, 2, 0.011), B, s * 0.104, 0.062, 0.115)]));
 };
 // ACCESSORIES 에 옷을 붙임 (gear.js 가 부름)
 export function addClothes(ACC) {
   CLOTHES.forEach((c) => {
     const L = c.look || {}, f = CLOTH_BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
     const rigid = c.slot === 'hat';
-    ACC[c.id] = { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head' } : { skin: true }), hide: c.slot === 'top' || c.slot === 'bottom' ? ['body'] : [], foot: c.slot === 'socks' ? L.main : undefined,
+    const covers = c.slot === 'top' ? (L.long ? COVER.teeLong : COVER.tee) : c.slot === 'bottom' ? (L.kind === 'long' ? COVER.long : COVER.shorts) : c.slot === 'jacket' ? COVER.jacket : [];
+    ACC[c.id] = { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: HAT_CLIP } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
       build: (mat) => f(mat, { kind: c.slot === 'top' ? 'tee' : c.slot === 'hat' ? 'cap' : 'socks', main: '#bbbbbb', acc: '#888888', ...L }) };
   });
 }
