@@ -20,7 +20,7 @@ import { $, isTouch, save, CLOTH, CL, wearRefund, wearV, syncEquipGear, lookS, a
 import { renderer, quality, retro, scene, NSW, camera, sun, applyQuality, wx, grass, motes, prints, spots, sunState, applySky, lamps } from './scene.js';
 import { P, photoSpot, benchPos, life, cairns, fillCairn, col, wall, NS_TUT, stream, jeong, openJeong, street, shopsBuilt, STN, SAL, LEAPB, buff, trash, CH, CH_MINI, CHS, chNear, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
-import { toast, addCoins, closePanels, ach, openDex, onDexGet } from './hud.js';
+import { toast, addCoins, closePanels, ach, openDex, onDexGet, topStack, updateStats } from './hud.js';
 import { keys, joy } from './input.js';
 import { devOn, doEmote } from './menu.js';
 import { weaponNow, bowArmed, aimTarget, throwTangerine, fireWeapon, aimMark } from './throw.js';
@@ -40,12 +40,14 @@ import { placeRunner } from './update.js';
 Object.assign(late, { exposeDebug }); // 앞 파일에서 부르는 함수
 
 // ---------- 튜토리얼 (입구 마당) ----------
-// 튜토리얼용 낱개 쓰레기 6개 (번호 k)
+// 튜토리얼용 낱개 쓰레기 (번호 k, #100: 3개)
 const tutTrashLeftList = () => (trash ? (spots.tut?.trash || []).filter((_, k) => !trash.store.isTutPicked(k)) : []);
 const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLeftList()) { const d = Math.hypot(t.x - player.pos.x, t.z - player.pos.z); if (d < bd) { bd = d; b = t; } } return b; };
 const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH,
-  col, crossLine: NSW ? NSB.crossLine : null, addTargets: life.addTargets, sound, juice: (p, d) => life.juiceSplash(p, d), ctxIc: () => state.ctxTarget?.ic, shopTab: () => ($('shop').hidden ? null : shopTab), // #62 과녁·벽·눌러야 할 곳
-  onDone: () => { updateTrashUI(false); if ($('dev-tut')) $('dev-tut').hidden = true; } }); late.tut = tut;
+  col, low: LOW, addTargets: life.addTargets, sound, juice: (p, d) => life.juiceSplash(p, d), ctxIc: () => state.ctxTarget?.ic, shopTab: () => ($('shop').hidden ? null : shopTab), // #62 과녁·눌러야 할 곳, #100 칸 돌담
+  onTop: topStack, onCoins: updateStats, // #100 위쪽 토스트 자리 맞추기, 모자란 귤 채움
+  onDone: () => { updateTrashUI(false); wx.calm(false); if ($('dev-tut')) $('dev-tut').hidden = true; } }); late.tut = tut;
+wx.calm(!!NS_TUT && tut.active); // #100 튜토리얼 동안은 맑음 (날씨 이벤트 없음)
 if (NS_TUT && tut.active) document.body.classList.add('tut');
 if ($('dev-tut')) $('dev-tut').hidden = !tut.active; // 개발자 버튼 '튜토리얼 건너뛰기' (#62)
 else if (!NS_TUT && save.tut && !save.tut.done) { save.tut.done = true; persist(); }

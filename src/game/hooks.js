@@ -94,7 +94,7 @@ export const dumpers = trash ? createDumpers({
   bound: { line: NSB.boundLine, insideBy: NSB.insideBy, center: NSB.BOUND_CENTER },
   avoid: NS_TUT ? (() => { const L = NSB.crossLine(TUT.gateD); return (x, z) => (x - L.c.x) * L.fx + (z - L.c.z) * L.fz < 6 && Math.hypot(x - L.c.x, z - L.c.z) < 260; })() : null, // 들머리 튜토리얼 쪽 길은 트럭이 안 지남
   hooks: {
-    canSpawn: () => !NS_TUT || !!save.jeong || !!save.tut?.done, // 튜토리얼 중엔 안 옴
+    canSpawn: () => !NS_TUT || !!save.tut?.done, // 튜토리얼 중엔 안 옴 (#100: 마지막 정낭 단계도)
     paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
     appear: (d) => { tips.event('dumper'); dumpWarn.start({ x: d.pos.x, z: d.pos.z }); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
     dumped: (d, n) => { if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },

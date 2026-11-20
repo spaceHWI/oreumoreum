@@ -1,51 +1,96 @@
-// 튜토리얼 처음부터 끝까지 (#62): 단계마다 화면을 찍는다. node tools/tutrun.js [d|m]  → dist/tut-<d|m>-<n>.jpg
+// 튜토리얼 처음부터 끝까지 (#62 → #100 칸 구조): 단계마다 상태·토스트를 찍고 확인한다. node tools/tutrun.js [d|m] [shots]
+// d = 데스크톱(키보드), m = 폰 세로(터치만: 화면 버튼 탭). shots 를 주면 dist/tut-<d|m>-<n>.jpg 로 작게 찍음
+// 확인: 칸 4개·정낭이 단계에 맞춰 열림, 닫힌 정낭·담은 막힘, 단계에 필요한 것이 그 칸 안, 10초 손가락·30초 쉬운 말, 귤이 모자라지 않음, 끝나면 칸이 사라짐
 const { chromium, devices } = require('playwright');
-const mode = process.argv[2] || 'd';
+const mode = process.argv[2] || 'd', SHOTS = !!process.argv[3];
+let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); if (!c) fails++; };
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext(mode === 'm' ? { ...devices['iPhone 13'] } : { viewport: { width: 1280, height: 720 } });
-  const p = await ctx.newPage(); let errs = 0;
+  const p = await ctx.newPage(); let errs = 0; const t0 = Date.now();
   p.on('pageerror', (e) => { errs++; console.log('ERR', e.message.slice(0, 300)); });
   const W = (ms) => p.waitForTimeout(ms);
-  const shot = async (n) => { await p.screenshot({ path: `dist/tut-${mode}-${n}.jpg`, type: 'jpeg', quality: 62, timeout: 150000 }); console.log('shot', n, await state()); };
-  const state = () => p.evaluate(() => { const o = window.__oreum; return JSON.stringify({ step: o.tut.step, s: o.save.tut.step, hits: o.save.tut.hits, gyul: o.save.tut.gyul, coins: o.save.coins, tool: o.save.equip.tool, bag: o.save.equip.bag, focus: o.tut.focus()?.id || o.tut.focus()?.className || null }); });
+  const shot = async (n) => { if (SHOTS) await p.screenshot({ path: `dist/tut-${mode}-${n}.jpg`, type: 'jpeg', quality: 55, scale: 'css', timeout: 150000 }); console.log('  @', n, await state()); };
+  const state = () => p.evaluate(() => { const o = window.__oreum, t = o.tut.toast(); return JSON.stringify({ step: o.tut.step, s: o.save.tut.step, coins: o.save.coins, toast: t && (t.text + (t.n ? ' ' + t.n : '')), focus: o.tut.focus()?.id || o.tut.focus()?.className || null, shop: document.getElementById('shop').hidden ? null : document.querySelector('#shop-tabs [aria-pressed="true"]')?.dataset.tab }); });
   const go = (x, z, lookAt) => p.evaluate(([x, z, l]) => { const o = window.__oreum; o.player.pos.set(x, o.groundAt(x, z), z); o.player.target = null; if (l) o.player.heading = Math.atan2(l[0] - x, l[1] - z); o.snap(); }, [x, z, lookAt]);
-  const T = () => p.evaluate(() => { const t = window.__oreum.spots.tut; const v = (q) => q && [q.x, q.z]; return { walk: v(t.walk), run: v(t.run), gyul: t.gyul.map(v), target: v(t.target), trash: t.trash.map(v), beyond: v(t.beyond), gate: v(t.gate) }; });
+  const T = () => p.evaluate(() => { const o = window.__oreum, t = o.spots.tut; const v = (q) => q && [q.x, q.z]; const c = o.cleanhouse.api; return { walk: v(t.walk), run: v(t.run), gyul: t.gyul.map(v), target: v(t.target), trash: t.trash.map(v), beyond: v(t.beyond), gate: v(t.gate), dump: v(c.front), shop: v(c.shopFront) }; });
   const press = async (k, ms = 80) => { await p.keyboard.down(k); await W(ms); await p.keyboard.up(k); };
-  const until = async (fn, ms = 8000, arg) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await p.evaluate(fn, arg)) return true; await W(200); } return false; };
-  const hold = async (k, fn, ms = 8000, arg) => { await p.keyboard.down(k); const ok = await until(fn, ms, arg); await p.keyboard.up(k); await until(() => !window.__oreum.trash.state().picking, 4000); return ok; };
+  const until = async (fn, ms = 8000, arg) => { const t1 = Date.now(); while (Date.now() - t1 < ms) { if (await p.evaluate(fn, arg)) return true; await W(200); } return false; };
+  // 폰은 화면 버튼을 탭, PC 는 키
+  const act = async (key, sel) => { if (mode === 'm') await p.tap(sel); else await press(key); };
+  const pick = async (fn, arg) => { if (mode === 'm') { await p.tap('#btn-pick'); return until(fn, 20000, arg); } await p.keyboard.down('e'); const r = await until(fn, 20000, arg); await p.keyboard.up('e'); return r; };
+  const stepIs = (n) => until((n) => window.__oreum.save.tut.step >= n && window.__oreum.tut.step, 15000, n);
   await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await W(6000);
   await p.click('#enter').catch(() => {}); await W(4000);
   await p.evaluate(() => window.__oreum.setTod(14));
-  if (await p.evaluate(() => !document.getElementById('look').hidden)) { await shot('01-look'); await p.click('#look-ok'); await W(1500); }
+  if (await p.evaluate(() => !document.getElementById('look').hidden)) { await p.click('#look-ok'); await W(1500); }
   const t = await T();
-  const lerp = (a, c, k) => [a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k];
-  await W(1500); await shot('02-walk');
-  // 벽 확인: 걷기 전에 앞으로 밀면 막히는가
-  const blocked = await p.evaluate(() => { const o = window.__oreum, w = o.tut.walls[0]; return w && o.col.blocked(w.L.c.x, w.L.c.z, 0.3); });
-  console.log('wall0 blocked', blocked);
-  await go(...t.walk, t.run); await W(1200); await shot('03-run');
-  await press('Shift'); await go(...t.run, t.gyul[0]); await W(1200); await press('Shift');
-  await go(...lerp(t.run, t.gyul[0], 0.75), t.gyul[0]); await W(1200); await shot('04-gyul');
-  for (let i = 0; i < t.gyul.length; i++) { const g = t.gyul[i]; await go(g[0] + 0.6, g[1] + 0.3, g); await W(300); console.log('gyul', i, await hold('e', (n) => window.__oreum.save.tut.gyul.length > n || window.__oreum.save.tut.step > 2, 20000, i)); }
-  await W(800);
-  const tp = lerp(t.gyul[2], t.target, 0.35);
+  await W(1500);
+  // ----- 칸 구조 -----
+  const cells = await p.evaluate(() => window.__oreum.tut.cells());
+  ok(cells.length >= 3, `칸 ${cells.length}개`);
+  const inCell = (pt, i, pad = 0.6) => p.evaluate(([x, z, i, pad]) => { const o = window.__oreum, L = o.tut.local(x, z), cs = o.tut.cells()[i], l = cs.l, r = cs.r; return L.d > cs.from + pad && L.d < cs.to - pad && L.lat > -l + pad && L.lat < r - pad; }, [pt[0], pt[1], i, pad]);
+  const where = [['walk', t.walk, 0], ['run', t.run, 0], ...t.gyul.map((g, k) => ['gyul' + k, g, 1]), ['target', t.target, 1], ...t.trash.map((g, k) => ['trash' + k, g, 2]), ['clean', t.dump, 3], ['shop', t.shop, 3]];
+  for (const [n, pt, i] of where) ok(await inCell(pt, i), `${n} 이 ${i + 1}번 칸 안`);
+  ok(await p.evaluate(() => window.__oreum.wx.kind === 'clear'), '튜토리얼 동안 맑음');
+  ok(await p.evaluate(() => window.__oreum.net.solo === true), '튜토리얼 동안 혼자');
+  // 닫힌 정낭·담: 칸 경계를 가로질러 걸어가 보면 막힘 (col.move 로 한 걸음씩)
+  const cross = (d0, d1, lat) => p.evaluate(([d0, d1, lat]) => { const o = window.__oreum, a = o.spots.tut.walk; const L = o.tut.local(a.x, a.z); // 걷기 원을 기준으로 길 방향 구하기
+    const b = o.spots.tut.run, Lb = o.tut.local(b.x, b.z), k = 1 / (Lb.d - L.d), fx = (b.x - a.x) * k, fz = (b.z - a.z) * k, ux = -fz, uz = fx;
+    const P = (d, s) => [a.x + fx * (d - L.d) + ux * (s - L.lat), a.z + fz * (d - L.d) + uz * (s - L.lat)];
+    let [x, z] = P(d0, lat); const [tx, tz] = P(d1, lat);
+    for (let i = 0; i < 400; i++) { const dx = tx - x, dz = tz - z, l = Math.hypot(dx, dz); if (l < 0.2) break; const r = o.col.move(x, z, x + dx / l * 0.15, z + dz / l * 0.15, 0.35); x = r[0] ?? r.x; z = r[1] ?? r.z; }
+    return o.tut.local(x, z).d; }, [d0, d1, lat]);
+  const c0 = cells[0];
+  ok(await cross(c0.to - 4, c0.to + 4, 0) < c0.to, '닫힌 정낭(1→2칸) 막힘');
+  ok(await cross(c0.to - 4, c0.to + 4, 5) < c0.to, '칸 사이 담 막힘');
+  // ----- 걷기: 토스트, 10초 손가락, 30초 쉬운 말 -----
+  await shot('02-walk');
+  ok(!!(await p.evaluate(() => window.__oreum.tut.toast()?.text)), '걷기 토스트');
+  await p.evaluate(() => window.__oreum.tut.setIdle(10.5)); await W(400);
+  ok(await p.evaluate(() => window.__oreum.tut.idle() >= 10), '10초 진행 없음');
+  if (mode === 'm') ok(await p.evaluate(() => window.__oreum.tut.finger()), '손가락이 누를 곳을 가리킴');
+  const before = await p.evaluate(() => window.__oreum.tut.toast().text);
+  await p.evaluate(() => window.__oreum.tut.setIdle(30.5)); await W(400);
+  const ez = await p.evaluate(() => window.__oreum.tut.toast());
+  ok(ez.easy && ez.shake && ez.text !== before, `30초: 흔들고 쉬운 말 (${before} → ${ez.text})`);
+  await go(...t.walk, t.run); await W(1500); await shot('03-run');
+  await act('Shift', '#btn-speed'); await go(...t.run, t.gyul[0]); await W(1500);
+  ok(await until(() => window.__oreum.tut.cells()[0].open, 4000), '1칸을 마치면 정낭이 열림');
+  await stepIs(2); await W(300); await shot('04-gyul');
+  for (let i = 0; i < t.gyul.length; i++) { const g = t.gyul[i]; await go(g[0] + 0.6, g[1] + 0.3, g); await W(400); ok(await pick((n) => window.__oreum.save.tut.gyul.length > n || window.__oreum.save.tut.step > 2, i), `귤 ${i + 1}`); await W(300); }
+  await stepIs(3);
+  const tp = [t.gyul[2][0] + (t.target[0] - t.gyul[2][0]) * 0.2, t.gyul[2][1] + (t.target[1] - t.gyul[2][1]) * 0.2];
   await go(...tp, t.target); await W(1500); await shot('05-throw');
-  for (let i = 0; i < 6 && !(await p.evaluate(() => window.__oreum.save.tut.step > 3)); i++) { const h = await p.evaluate(() => window.__oreum.save.tut.hits); await press('f'); await until((h) => window.__oreum.save.tut.hits > h, 12000, h); await until(() => window.__oreum.player.pose !== 'throw', 6000); await W(300); if (i === 0) await shot('05b-throw-hit'); console.log('hits', h, '->', await p.evaluate(() => window.__oreum.save.tut.hits)); }
-  await W(1000);
-  // 쓰레기 6개
-  await go(...lerp(t.trash[0], t.target, 0.25), t.trash[0]); await W(1200); await shot('06-pick');
-  for (let i = 0; i < t.trash.length; i++) { const g = t.trash[i]; await go(g[0] + 0.5, g[1] + 0.4, g); await W(300); const v0 = await p.evaluate(() => window.__oreum.trash.state().vol); await hold('e', (v) => window.__oreum.trash.state().vol > v, 20000, v0); await until(() => window.__oreum.save.tut.step > 4, 300); }
-  console.log('after trash', await state());
-  await W(1200); await shot('07-dump-go');
-  await p.evaluate(() => window.__oreum.cleanhouse.go()); await W(1500); await shot('07b-dump');
-  await press('f'); await until(() => window.__oreum.save.tut.step >= 6, 15000); await W(600); await shot('08-bonus'); await until(() => window.__oreum.save.tut.step >= 7, 90000);
-  await p.evaluate(() => { const o = window.__oreum, c = o.cleanhouse.api.shopFront; o.player.pos.set(c.x + 3, o.groundAt(c.x + 3, c.z), c.z); o.snap(); }); await W(1200); await shot('09-tongs');
-  await p.evaluate(() => { const o = window.__oreum, c = o.cleanhouse.api.shopFront; o.player.pos.set(c.x, o.groundAt(c.x, c.z), c.z); }); await W(800); await press('f'); await W(1200); await shot('09b-tongs-shop');
-  await p.click('#shop-body .tier-buy'); await until(() => window.__oreum.save.tut.step >= 8, 30000); await W(1500); await shot('10-bag-shop');
-  await p.click('#shop-tabs [data-tab="bag"]'); await W(800); await shot('10b-bag-buy');
-  await p.click('#shop-body .tier-buy'); await until(() => window.__oreum.save.tut.step >= 9, 30000); await W(1200); await p.click('#shop-close'); await W(2500); await shot('11-gate');
+  const coins0 = await p.evaluate(() => window.__oreum.save.coins);
+  for (let i = 0; i < 8 && !(await p.evaluate(() => window.__oreum.save.tut.step > 3)); i++) { const h = await p.evaluate(() => window.__oreum.save.tut.hits); await act('f', '#btn-ctx'); await until((h) => window.__oreum.save.tut.hits > h, 8000, h); await until(() => window.__oreum.player.pose !== 'throw', 6000); await W(300); }
+  ok(await p.evaluate(() => window.__oreum.save.tut.step > 3), '과녁 3번');
+  ok(await p.evaluate((c) => window.__oreum.save.coins >= c, coins0), '던져도 귤이 줄지 않음');
+  ok(await until(() => window.__oreum.tut.cells()[1].open, 4000), '2칸 정낭 열림');
+  // 쓰레기 3개
+  await stepIs(4); await go(...t.trash[0], t.trash[1]); await W(1200); await shot('06-pick');
+  for (let i = 0; i < t.trash.length; i++) { const g = t.trash[i]; await go(g[0] + 0.5, g[1] + 0.4, g); await W(400); const v0 = await p.evaluate(() => window.__oreum.trash.state().vol); await pick((v) => window.__oreum.trash.state().vol > v, v0); await until(() => !window.__oreum.trash.state().picking, 4000); }
+  ok(await until(() => window.__oreum.tut.cells()[2].open, 6000), '3칸 정낭 열림');
+  await stepIs(5); await W(600);
+  await p.evaluate(() => window.__oreum.cleanhouse.go()); await W(1500); await shot('07-dump');
+  await act('f', '#btn-ctx'); await until(() => window.__oreum.save.tut.step >= 6, 15000); await W(600); await shot('08-bonus'); await until(() => window.__oreum.save.tut.step >= 7, 90000);
+  await stepIs(7);
+  await p.evaluate(() => { const o = window.__oreum, c = o.cleanhouse.api.shopFront; o.player.pos.set(c.x, o.groundAt(c.x, c.z), c.z); o.snap(); }); await W(1200); await shot('09-tongs');
+  await act('f', '#btn-ctx'); await W(1200);
+  if (mode === 'm') await p.tap('#shop-body .tier-buy:not([disabled])'); else await p.click('#shop-body .tier-buy:not([disabled])');
+  ok(await until(() => window.__oreum.save.equip.tool >= 2, 10000), '집게 삼');
+  await stepIs(8); await W(300); await shot('10-bag');
+  if (mode === 'm') await p.tap('#shop-tabs [data-tab="bag"]'); else await p.click('#shop-tabs [data-tab="bag"]'); await W(800);
+  if (mode === 'm') await p.tap('#shop-body .tier-buy:not([disabled])'); else await p.click('#shop-body .tier-buy:not([disabled])');
+  ok(await until(() => window.__oreum.save.equip.bag >= 1, 10000), '배낭 삼');
+  await stepIs(9); await p.click('#shop-close').catch(() => {}); await W(1500); await shot('11-gate');
+  ok(await p.evaluate(() => window.__oreum.tut.cells()[3].open), '마지막 정낭 열림');
   await go(...t.beyond); await until(() => window.__oreum.save.tut.done, 30000); await W(1500); await shot('12-done');
-  console.log('errors', errs, 'done', await p.evaluate(() => window.__oreum.save.tut.done));
-  await b.close();
+  ok(await p.evaluate(() => window.__oreum.save.tut.done), '튜토리얼 끝');
+  ok(await p.evaluate(() => !window.__oreum.tut.pens()), '칸 돌담이 사라짐');
+  ok(await cross(c0.to - 4, c0.to + 4, 5) > c0.to, '끝난 뒤엔 칸 담이 막지 않음');
+  ok(await p.evaluate(() => window.__oreum.net.solo === false), '끝나면 혼자 아님');
+  ok(errs === 0, `페이지 오류 ${errs}`);
+  console.log(fails ? `FAIL ${fails}` : 'ALL OK', `(${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+  await b.close(); process.exit(fails ? 1 : 0);
 })();

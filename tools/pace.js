@@ -72,7 +72,7 @@ const path = require('path'), fs = require('fs');
       const L = await p.evaluate(() => {
         const O = window.__oreum, P = O.pace.pacing, L = [];
         try { O.look.close(); } catch { /* 없음 */ } O.cam.mode = 'follow'; O.save.jeong = 1; O.save.tut = { ...(O.save.tut || {}), done: 1 }; O.setTod(15);
-        document.body.classList.remove('tut'); const h = document.getElementById('tut-hint'); if (h) h.hidden = true;
+        document.body.classList.remove('tut'); const h = document.getElementById('tut-toast'); if (h) h.hidden = true;
         for (let i = 0; i < O.trash.api.heaps.length; i += 3) O.trash.setHeap(i, Math.floor(O.trash.api.heaps[i].n / 2)); // 빈 자리가 있어야 투기꾼이 옴
         { const x = -60, z = 40; O.player.pos.set(x, O.groundAt(x, z), z); O.snap(); } // 1구역 (몹이 나오는 곳)
         P.test.first.done = true; P.test.first.bloomed = true; P.test.soon(0);

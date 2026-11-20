@@ -732,3 +732,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티 방: `oreum-<맵>-battle` 하나. 서버 `index.js` 는 예전 `oreum-<맵>` 접속을 battle 방으로 보냄 (`tools/sec.js` 가 두 이름이 같은 방인지 봄)
 - 랭킹: `SRVS = ['battle']`. 서버 DB(`rka`·`rkd`)의 clean 줄은 계정 DO 가 뜰 때 battle 에 더하고 지움(한 번만). `/rank?srv=clean` 도 battle. 랭킹 화면 서버 탭 지움
 - 도구: `econ.js`·`pace.js`·`audit.js` 는 battle 만. `pace.js --live` 는 로그인 상자 때문에 작은 창에서 시작 버튼이 화면 밖이라 evaluate 로 누름
+
+## #100 튜토리얼: 토스트 안내·단계마다 격리된 칸·쉽게
+- 그림 힌트 카드(#tut-hint)·남은 수(#tut-count)를 위쪽 토스트 `#tut-toast` 하나로 (상황 팁 #66 자리·모양, 아이콘 + 한 줄 + 남은 수). 문구는 `tutorial.js SAY` 한곳(PC 키 / 폰 버튼, 보통 / 쉬운 말). 단계가 끝나면 '잘했어요'(TUT.okT) 뒤 다음 단계. 다른 토스트는 그 아래로(`hud.js topStack` export)
+- 칸: `TUT.cells` 4칸(걷기·달리기 / 귤·과녁 / 개울·쓰레기 / 클린하우스·가게). `stonewall.js createPens` 가 낮은 돌담(#39 조각, 높이 TUT.penH 배)과 칸 사이 정낭을 세움. 정낭은 `createCrossWall` 에서 `jeongGate` 로 떼어 같이 씀. 개울 위엔 담 없음(빠지면 낚시꾼이 칸 안으로 건져 줌). 4칸 왼쪽 담이 가게 골목 입구를 막음. 칸을 마치면 정낭이 열리고 정낭 앞뒤로 빛나는 길(TUT.lane*). 끝나면 담·정낭·충돌 모두 지움(예전 보이지 않는 벽 TUT.walls 는 없앰)
+- 쓰레기 6 → 3(TUT.trashD), 과녁은 귤 바로 앞(targetD 44)·크게(targetR 1.1). 손 던지기는 원래 귤이 줄지 않아 빗나가도 그대로. 집게·배낭 단계에서 값이 모자라면 귤을 채움(topUp)
+- 진행이 없으면 TUT.fingerT(10초) 뒤 손가락·목표 화살표, TUT.easyT(30초) 뒤 토스트를 흔들고 쉬운 말로. 진행 = 목표에 1.5m 더 다가감, 줍기·맞히기·누를 곳 바뀜. 손가락은 `#tut-focus.idle` 일 때만
+- 튜토리얼 동안: 몹(pace)·투기꾼은 마지막 정낭 단계까지 안 나옴(`save.jeong` 조건 뺌), 날씨는 맑음(`weather.js calm`, 어드민이 정한 날씨는 그대로), 가게 가장자리 아이콘 없음, 멀티에서도 혼자(`net.js solo`: 남을 감추고 내 위치를 안 보냄, 귤 맞히기 대상에서도 뺌)
+- `tools/tutrun.js d|m [shots]`: 칸 안 배치·닫힌 정낭/담 막힘·정낭 열림·10초/30초·귤 안 줄음·끝나면 담 사라짐까지 확인. m 은 화면 버튼 탭만으로

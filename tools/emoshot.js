@@ -7,7 +7,7 @@ const { chromium, devices } = require('playwright');
   const p = await ctx.newPage(); p.on('pageerror',e=>console.log('ERR',e.message));
   await p.goto('file://'+process.cwd()+'/dist/test.html#namsongi'); await p.waitForTimeout(5000);
   await p.click('#enter').catch(()=>{}); await p.click('#intro-srv button').catch(()=>{}); await p.click('#srv-go').catch(()=>{}); await p.waitForTimeout(2500);
-  await p.evaluate(()=>{ const o=window.__oreum; o.setTod(15); o.look?.close?.(); o.tut.skipAll?.(); o.save.tut.done=true; document.body.classList.remove('tut'); const h=document.getElementById('tut-hint'); if(h) h.hidden=true; });
+  await p.evaluate(()=>{ const o=window.__oreum; o.setTod(15); o.look?.close?.(); o.tut.skipAll?.(); o.save.tut.done=true; document.body.classList.remove('tut'); const h=document.getElementById('tut-toast'); if(h) h.hidden=true; });
   await p.waitForTimeout(2500);
   const n = mob ? 'm' : 'd';
   await p.click('#btn-actions'); await p.waitForTimeout(800);

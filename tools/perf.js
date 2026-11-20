@@ -82,7 +82,7 @@ async function enterGame(p) {
   await p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 180000 });
   await p.click('#enter', { timeout: 20000 }).catch(() => {});
   await p.waitForTimeout(1500);
-  await p.evaluate(() => { const o = window.__oreum; o.cam.mode = 'follow'; document.body.classList.remove('tut'); for (const id of ['tut-hint', 'intro-help', 'intro']) { const e = document.getElementById(id); if (e) e.hidden = true; } });
+  await p.evaluate(() => { const o = window.__oreum; o.cam.mode = 'follow'; document.body.classList.remove('tut'); for (const id of ['tut-toast', 'intro-help', 'intro']) { const e = document.getElementById(id); if (e) e.hidden = true; } });
   return p.evaluate(HELPERS);
 }
 

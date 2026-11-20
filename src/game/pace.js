@@ -18,7 +18,7 @@ state.tension = 0; state.hitStop = 0; state.paceRare = 1;
 if (!save.pace || typeof save.pace !== 'object') { const old = (save.ach?.life?.['heap-clear'] || 0) > 0; save.pace = { first: old ? 1 : 0, bloomed: old ? 1 : 0 }; }
 const first = { done: !!save.pace.first, bloomed: !!save.pace.bloomed };
 let loose = false; const cleared = new Map(); // 더미 번호 → 다 치운 시각(감독 시계) : PACE.protect 동안 투기꾼이 다시 쌓지 않음
-const tutBusy = () => !!NS_TUT && !save.jeong && !save.tut?.done;
+const tutBusy = () => !!NS_TUT && !save.tut?.done; // #100 튜토리얼이 끝날 때까지(정낭이 열린 마지막 단계도) 몹 없음
 
 let cur = null; // 지금 공격: { dumpers: [투기꾼], mob: 몹 자리 계획 }
 const threats = () => (dumpers ? dumpers.activeN() : 0) + life.enemies.activeN();

@@ -49,7 +49,7 @@ export function releaseTangerine() {
   let dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
   let from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
   if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
-  const peers = () => [...[...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))];
+  const peers = () => (late.net.solo ? [] : [...[...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]); // #100 튜토리얼 중엔 혼자
   const shot = t && aimShot(from, t);
   if (shot) life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy);
   else life.throwTangerine(from, dir, THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0), peers);
