@@ -82,6 +82,11 @@ export class Accounts extends DurableObject {
     return items.length;
   }
   feedbackMailed(k) { this.sql.exec('UPDATE fb SET mailed = 1 WHERE id > (SELECT MAX(id) FROM fb) - ?', k); }
+  // 오류 알림 (#122): since 뒤에 받은 kind 'crash' 만, 내보낼 칸(시각·글·버전·기기 종류)만 꺼냄. 닉네임·좌표·IP 는 꺼내지 않음
+  crashRows(since, k = 2000) {
+    return this.sql.exec("SELECT at, json_extract(item, '$.text') AS text, json_extract(item, '$.ver') AS ver, json_extract(item, '$.dev') AS dev FROM fb WHERE at > ? AND json_extract(item, '$.kind') = 'crash' ORDER BY id DESC LIMIT ?", since, k).toArray()
+      .map((r) => ({ at: r.at, text: String(r.text || ''), ver: String(r.ver || ''), dev: String(r.dev || '') }));
+  }
   feedbackList(k = 50, before = 0) { return this.sql.exec('SELECT id, at, item, mailed FROM fb WHERE (? = 0 OR id < ?) ORDER BY id DESC LIMIT ?', before, before, k).toArray().map((r) => ({ id: r.id, at: r.at, mailed: !!r.mailed, ...JSON.parse(r.item) })); }
   /* ---------- 랭킹 (#11) ---------- */
   // onlyAll: 기기 기록을 옮긴 몫은 오늘·이번 주에 넣지 않음
