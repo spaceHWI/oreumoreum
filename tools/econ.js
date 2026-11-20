@@ -5,6 +5,8 @@
 //   node tools/econ.js --slack 0.4  여유 비율 하나만 (기본은 0 과 0.25 둘 다)
 //   node tools/econ.js --chase 0.3  투기꾼을 쫓아내는 비율 (기본 0.5)
 //   node tools/econ.js --norides   탈것(#69) 없이 (비교용)
+//   node tools/econ.js --skip any   #111: 장비(도구·배낭·신발·무기)를 순서 없이. 살 수 있는 단계 중 이득÷값이 가장 큰 것
+//   node tools/econ.js --skip top   #111: 장비는 최고 단계 값만 모아 바로 삼 (중간 단계 안 삼)
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
 // 가정 (모두 어림):
 // - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
@@ -75,7 +77,7 @@ async function main() {
   const gOf = (z, e) => z.g * (1 + wv(e, 'vest')) + DEX.rareChance * wv(e, 'hat') * DEX.rareGyul;
   const value = (e) => zones.reduce((s, z) => s + z.n * gOf(z, e), 0);
 
-  const NORIDE = has('--norides'), RIDE_FLAT = 0.35, RIDE_OFF = 0.3, RIDE_T = 2;
+  const SKIP = arg('--skip', null), NORIDE = has('--norides'), RIDE_FLAT = 0.35, RIDE_OFF = 0.3, RIDE_T = 2;
   // 클린하우스 ↔ 구역 왕복 시간 (편도 d)
   function travel(e, d) {
     const walk = 2 * d / spdOf(e), R = e.ride ? RIDES.list[e.ride - 1] : null; if (!R) return walk;
@@ -120,21 +122,35 @@ async function main() {
     const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0 };
     const buys = [], days = [], LIST = { tool: TOOLS, bag: BAGS, shoes: SHOES };
     // 다음 단계: 도구·배낭·신발·무기는 순서대로. 옷은 순서 없이 살 수 있지만 계산은 한 단계씩 다 산다고 봄 (값을 넉넉히 셈)
-    const next = (k) => {
-      if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon ? WEAPONS[st.weapon] : null;
+    const step = (k) => {
+      if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon ? { ...WEAPONS[st.weapon], idx: st.weapon } : null;
       if (WS[k]) { const c = clothOf(k, e[k] + 1); return c && { tier: c.tier, name: c.name, price: wearPrice(c) }; }
       if (k === 'ride') return NORIDE ? null : RIDES.list[e.ride] && { tier: e.ride + 1, ...RIDES.list[e.ride] };
-      return LIST[k][k === 'bag' ? e.bag : e[k]];
+      const j = e[k]; return LIST[k][j] && { ...LIST[k][j], idx: j };
+    };
+    // #111 장비는 순서 없이: 고를 수 있는 단계들(idx = 0부터, 사면 단계 수가 idx+1)
+    const isGear = (k) => GEAR.includes(k) || k === 'weapon';
+    const cands = (k) => {
+      const L = k === 'weapon' ? (battle ? WEAPONS : []) : LIST[k], from = k === 'weapon' ? st.weapon : e[k], out = [];
+      for (let j = from; j < L.length; j++) if (!L[j].soon) out.push({ tier: j + 1, ...L[j], idx: j });
+      return out;
+    };
+    const next = (k) => {
+      if (!SKIP || !isGear(k)) return step(k);
+      const c = cands(k); if (!c.length) return null;
+      if (SKIP === 'top') return c[c.length - 1];
+      const ok = c.filter((n) => st.coins >= n.price); if (!ok.length) return c[0];
+      return ok.sort((a, b) => gainOf(k, b) - gainOf(k, a))[0];
     };
     const kinds = [...GEAR, ...WK, ...(battle ? ['weapon'] : []), ...(NORIDE ? [] : ['ride'])];
-    const buy = (k) => { const n = next(k); const at = Math.min(st.tAll, dayEnd); st.coins -= n.price; if (k === 'weapon') st.weapon++; else e[k]++; buys.push({ at, when: fmt(at), k, tier: n.tier, name: n.name, price: n.price }); };
+    const buy = (k, n = next(k)) => { const at = Math.min(st.tAll, dayEnd); st.coins -= n.price; if (k === 'weapon') st.weapon = n.idx + 1; else if (isGear(k)) e[k] = n.idx + 1; else e[k]++; buys.push({ at, when: fmt(at), k, tier: n.tier, name: n.name, price: n.price }); };
     // 이득 = 귤/초 늘어나는 양 ÷ 값. 무기는 몹 쫓아내는 시간 차이로 어림
-    const gain = (k) => {
-      const n = next(k); if (!n) return -1;
-      if (k === 'weapon') { const kind = ENEMY_SPAWN.byZone[3], a = mobFight(kind, st), b = (st.weapon++, mobFight(kind, st)); st.weapon--; return Math.max(1e-6, (a.t - b.t) / ENEMY_SPAWN.every * rateOf(e)) / n.price; }
-      const e2 = { ...e }; e2[k]++;
+    const gainOf = (k, n) => {
+      if (k === 'weapon') { const w0 = st.weapon, kind = ENEMY_SPAWN.byZone[3], a = mobFight(kind, st), b = (st.weapon = n.idx + 1, mobFight(kind, st)); st.weapon = w0; return Math.max(1e-6, (a.t - b.t) / ENEMY_SPAWN.every * rateOf(e)) / n.price; }
+      const e2 = { ...e }; if (isGear(k)) e2[k] = n.idx + 1; else e2[k]++;
       return Math.max(1e-6, rateOf(e2) - rateOf(e)) / n.price;
     };
+    const gain = (k) => { const n = next(k); return n ? gainOf(k, n) : -1; };
     // 벌이에 안 드는 옷(티셔츠·잠바·양말)은 장비를 따라 삼: 다음 단계가 도구·배낭·신발 가장 낮은 단계 이하일 때 (장비가 다 5단계면 언제든)
     const econ = (k) => GEAR.includes(k) || ECON_W.includes(k) || k === 'weapon' || k === 'ride';
     const gearMin = () => Math.min(e.tool, e.bag, e.shoes), gearMax = () => GEAR.every((k) => !next(k));
@@ -147,7 +163,7 @@ async function main() {
       let t = 0; const t0 = st.tAll; dayEnd = t0 + 3599; // 하루 1시간을 넘긴 마지막 나가기에서 산 건 그날 끝으로 셈
       const add = (dt) => { t += dt * S; st.tAll += dt * S; };
       if (d === 0) { // 튜토리얼: 쓰레기 6개 → 첫 보너스 → 집게·배낭
-        t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag');
+        t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool', step('tool')); buy('bag', step('bag'));
       }
       while (t < 3600) {
         const b = best(st, e, cleanSeen) || (st.cur = null, best(st, e, new Set())); if (!b) { add(30); continue; }
@@ -190,7 +206,7 @@ async function main() {
     const runs = [1, 7, 42, 99, 123].map((s) => seedRun(mode, slack, s));
     const r = runs[2]; if (!day1Rate && slack === 0) day1Rate = r.days[0].rate;
     const lasts = runs.map((x) => x.last).sort((a, b) => a - b), last = lasts[2];
-    const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
+    const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}${SKIP ? ` · 장비 순서 없이(${SKIP})` : ''}`;
     console.log(`\n== ${title} (투기꾼 쫓아내기 ${CHASE * 100}%) ==`);
     console.log('하루 끝 (한 번 돌린 예). 칸은 단계 (배낭 0 = 호주머니, 옷 0 = 없음)');
     console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), '산 것': d.n, '다 치운 구역': d.zones, '끝 귤/시간': d.rate, '남은 귤': d.coins })));

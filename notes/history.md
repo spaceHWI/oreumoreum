@@ -773,3 +773,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 ## #116 줍기 메시지
 - 주울 때마다 `#pickmsg` 작은 줄(화면 아래 가운데, 버튼 위)에 "캔을 주웠어요" 표시. 새로 주우면 바꿔 쓰고 같은 것을 이어 주우면 "캔 ×3", 2초 뒤 사라짐. 기존 toast 와 따로라 다른 안내를 가리지 않음. 내 줍기만 띄움(`pickup.js` takeNow → `hud.js` pickMsg).
+
+## #111 장비 순서 없이 사기·귤 모자라면 흑백
+- 장비(도구·배낭·신발·무기)는 순서 잠금 없음. 귤만 있으면 어느 단계든 그 단계 값으로 바로 사고 `equip = 단계`, 건너뛴 아래 단계는 가진 것(`shop.js` buyable·`buyGear(k, i)`). '곧 나와요'는 그대로 못 삼. 튜토리얼 중에는 바로 다음 단계만(집게·배낭)
+- 귤이 모자란 것은 흑백(`.poor`, `.tier-buy.short`): 장비 단계 칸·옷 칸·LEAP·미장원·스톤·탈것 카드. 누르면 "귤이 N개 모자라요". 귤 수가 바뀌면 `hud.js updateStats` → 마이크로태스크 `coinsRedraw` 가 열린 상점·가게 팝업을 다시 그림(`dataset.c` 로 이미 그렸으면 건너뜀)
+- LEAP 신발도 잠금 없이 아무 단계(`buyGear('shoes', i)`)
+- 서버 `validate.js spentOf`: 장비는 오른 단계의 값만 셈(건너뛴 단계 값 안 더함)
+- `tools/econ.js --skip any|top` 추가(값 균형 비교). `__oreum.cleanhouse.setCoins(n)` 추가

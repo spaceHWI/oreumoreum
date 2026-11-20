@@ -48,7 +48,7 @@ export function openShopPop(key) {
   root.classList.toggle('leap', h.cls === 'leap');
   P.onOpen?.(); refreshShopPop(); root.hidden = false;
 }
-export function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop-coins').textContent = String(save.coins); const tabs = $('shoppop-tabs'); tabs.hidden = !P.tabs; tabs.innerHTML = ''; if (P.tabs) P.tabs(tabs); const grid = $('shoppop-cards'); grid.innerHTML = ''; P.fill(grid); }
+export function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop').dataset.c = String(save.coins); $('shoppop-coins').textContent = String(save.coins); const tabs = $('shoppop-tabs'); tabs.hidden = !P.tabs; tabs.innerHTML = ''; if (P.tabs) P.tabs(tabs); const grid = $('shoppop-cards'); grid.innerHTML = ''; P.fill(grid); }
 const shopActs = shopsBuilt.map((sh) => ({ shop: sh.id, ic: sh.ic, label: sh.act, pos: sh.door, r: sh.r, when: SHOP_POP[sh.pop]?.when, act: () => openShopPop(sh.pop) }));
 export function openStone() { openShopPop('stone'); }
 function buildStoneMenu(grid) {
@@ -163,14 +163,14 @@ export function tickCut(dt) {
 }
 // ---------- LEAP (#59): 위 칸 고르기(신발·모자·티셔츠·바지·베스트·잠바·양말) → 옷 카드(그림·단계 색·능력치 지금→바뀔 값·값) ----------
 // 안 가진 카드를 누르면 내 캐릭터가 입어 본 모습(cam 'leap' 이 앞에서 비춤) + 아래 사기 버튼. 가진 옷은 눌러서 바로 갈아입음
-// 옷은 #52 WEAR·CLOTHES 표, 신발은 SHOES 표(차례대로 사고, 산 것 중 가장 좋은 것을 신음). 업적 이벤트 clothes-buy, clothes-buy-<칸>
+// 옷은 #52 WEAR·CLOTHES 표, 신발은 SHOES 표(#111: 순서 없이 어느 단계든 사고, 산 것 중 가장 좋은 것을 신음. 아래 단계는 가진 것). 업적 이벤트 clothes-buy, clothes-buy-<칸>
 export const leapS = { on: false, slot: LEAP.slots[0], pick: null, cam: null, tried: false };
 const LEAP_CHECK = `<span class="have">${'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
 const leapSlotName = (k) => k === 'shoes' ? '신발' : WSLOT[k].name;
 export function leapItems(k) {
   if (k === 'shoes') {
     const n = Math.max(1, save.equip.shoes || 1), now = SHOES[n - 1].speed;
-    return SHOES.map((t, i) => ({ id: 'shoes:' + (i + 1), shoes: i + 1, tier: i + 1, name: t.name, price: t.price, own: i < n, on: i === n - 1, lock: i > n,
+    return SHOES.map((t, i) => ({ id: 'shoes:' + (i + 1), shoes: i + 1, tier: i + 1, name: t.name, price: t.price, own: i < n, on: i === n - 1, lock: !!late.tut?.active && i > n,
       art: `${late.SVG_A.replace('<svg', '<svg class="art"')}>${late.TIER_ART.shoes[i]}</svg>`, now, v: t.speed, stat: 'speed' }));
   }
   const w = WSLOT[k], now = wearV(k), out = [];
@@ -209,7 +209,7 @@ function buildLeapCards(grid) {
   const bar = document.createElement('div'); bar.className = 'leap-buy';
   bar.innerHTML = `<div><b><i class="tdot" style="background:${WEAR.tierColor[it.tier]}"></i>${it.name}</b><span class="tier-stats"><span>${leapStat(it)}</span></span></div>`;
   const bb = document.createElement('button'); bb.type = 'button'; bb.className = 'tier-buy' + (save.coins < it.price ? ' short' : '');
-  if (it.lock) { bb.disabled = true; bb.innerHTML = `${late.SVG_A} stroke-width="2.5"><path d="M7 11h10v9H7zM9 11V8a3 3 0 0 1 6 0v3"/></svg><span>${it.price.toLocaleString()}</span>`; bb.setAttribute('aria-label', '앞 단계 신발을 먼저 사요'); }
+  if (it.lock) { bb.disabled = true; bb.innerHTML = `${late.SVG_A} stroke-width="2.5"><path d="M7 11h10v9H7zM9 11V8a3 3 0 0 1 6 0v3"/></svg>`; bb.setAttribute('aria-label', '지금은 못 사요'); }
   else { bb.innerHTML = `<i class="g"></i>${it.price.toLocaleString()}`; bb.setAttribute('aria-label', `${it.name} 사기`); bb.addEventListener('click', () => buyLeap(it)); }
   bar.append(bb); grid.append(bar);
 }
@@ -232,12 +232,12 @@ export function pickLeap(it) {
 }
 export function buyLeap(it) {
   if (!it || it.own) return false;
-  if (it.lock) { toast('앞 단계 신발을 먼저 사요'); return false; }
+  if (it.lock) return false;
   if (save.coins < it.price) { toast(`귤이 ${it.price - save.coins}개 모자라요`); return false; }
   const from = save.coins;
   leapS.tried = false; // 사면 바로 그 차림이 됨
   if (it.shoes) {
-    const before = save.equip.shoes; late.buyGear('shoes'); if (save.equip.shoes === before) return false;
+    const before = save.equip.shoes; late.buyGear('shoes', it.shoes - 1); if (save.equip.shoes === before) return false;
     ach.emit('clothes-buy'); ach.emit('clothes-buy-shoes');
   } else if (!late.buyCloth(it.id)) return false;
   leapS.pick = null; refreshShopPop();

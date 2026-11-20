@@ -41,8 +41,9 @@ function norm(s) {
 // 새로 산 것들의 값
 function spentOf(P, S) {
   let sp = 0;
-  for (const [k, [, list]] of Object.entries(TIERS)) for (let t = P.equip[k] + 1; t <= S.equip[k]; t++) sp += list[t - 1]?.price || 0;
-  for (let t = P.equip.weapon + 1; t <= S.equip.weapon; t++) sp += WEAPONS[t - 1]?.price || 0;
+  // 장비는 순서 없이 산다 (#111): 오른 단계의 값만 (건너뛴 단계 값은 더하지 않음)
+  for (const [k, [, list]] of Object.entries(TIERS)) if (S.equip[k] > P.equip[k]) sp += list[S.equip[k] - 1]?.price || 0;
+  if (S.equip.weapon > P.equip.weapon) sp += WEAPONS[S.equip.weapon - 1]?.price || 0;
   for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id)) sp += wearPrice(CLOTH[id]) || 0;
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;

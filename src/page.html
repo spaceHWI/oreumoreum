@@ -579,7 +579,11 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .tier-stats s { color: var(--ink-soft); text-decoration: none; font-weight: 500; font-size: 13px; }
 .tier-buy { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 104px; min-height: 48px; border: 0; border-radius: 999px; background: var(--acc); color: var(--acc-fg); padding: 0 18px; font: inherit; font-family: var(--display); font-weight: 800; font-size: 18px; }
 .tier-buy .g { width: 15px; height: 15px; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 1.5px #fff; }
-.tier-buy.short { background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); }
+.tier-buy.short { background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); filter: grayscale(1); }
+/* #111 귤이 모자란 것은 흑백: 그림·값·사기 버튼. 귤이 늘면 다시 그려 색이 돌아옴 */
+.tier.poor svg.art, .tier.poor .pr, .menu-card.poor .food, .menu-card.poor .price, .menu-card.poor .tc, .wear-item.poor svg.art, .wear-item.poor .pr { filter: grayscale(1); }
+.tier.poor svg.art, .menu-card.poor .food { opacity: .6; }
+.tier.poor .pr { color: rgba(255,255,255,.5); }
 .tier-buy:disabled { background: rgba(255,255,255,.06); color: rgba(255,255,255,.5); }
 .tier-buy svg { width: 18px; height: 18px; }
 .fx-spend { position: fixed; z-index: 30; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--gyul); box-shadow: inset -3px -3px 0 rgba(0,0,0,.15), 0 0 0 2px #fff; pointer-events: none; transition: transform .55s cubic-bezier(.3,.7,.4,1), opacity .55s ease-in; }

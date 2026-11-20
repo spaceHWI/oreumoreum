@@ -93,7 +93,13 @@ export function tickTips(dt) {
   tips.update(dt, tipState);
 }let lastCoins = -1;
 export function updateStats() {
-  if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; }
+  if (save.coins !== lastCoins) { const grow = lastCoins >= 0 && String(save.coins).length !== String(lastCoins).length; lastCoins = save.coins; const c = String(save.coins); $('coins').textContent = c; if (grow) topFit.dirty(); $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; queueMicrotask(coinsRedraw); }
+}
+// 귤 수가 바뀌면 열린 가게를 다시 그림: 모자란 것은 흑백, 살 수 있게 되면 색 (#111). 사는 함수가 스스로 다시 그렸으면(dataset.c 같음) 건너뜀
+function coinsRedraw() {
+  const c = String(save.coins);
+  if (!$('shop').hidden && $('shop').dataset.c !== c) late.buildShop?.();
+  if (!$('shoppop').hidden && $('shoppop').dataset.c !== c) late.refreshShopPop?.();
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) { late.sound.coin?.(); const g = document.querySelector('.gyul'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); } }
 const PANELS = ['shop', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'rank', 'inbox'];
