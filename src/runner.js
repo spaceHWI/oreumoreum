@@ -7,6 +7,7 @@ import { getAsset, bytesAs as b64 } from './assets.js'; // #85: 캐릭터 모델
 const RM = getAsset('runner');
 import { patchDQS } from './dqskin.js';
 import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
+import { baseBodyGeo, patchBody, hideMask, REGION_N, bodyWarp } from './basebody.js';
 import { BOW, BLINK } from './balance.js';
 
 // 가격 0 = 기본 제공. 상점에서 귤로 구매
@@ -74,7 +75,26 @@ export function skinWeights(pos) {
   }
   return { si, sw };
 }
-let modelGeo = null, modelTex = null;
+let modelGeo = null, modelTex = null, headGeo = null;
+// #106: Tripo 모델은 머리(목 위)만 씀. 목 위에 걸친 삼각형만 남긴 인덱스 (속성은 같이 씀)
+function getHeadGeo() {
+  if (headGeo) return headGeo;
+  const g = getModelGeo(), y = g.attributes.position.array, ix = g.index.array, out = [];
+  for (let t = 0; t < ix.length; t += 3) if (Math.max(y[ix[t] * 3 + 1], y[ix[t + 1] * 3 + 1], y[ix[t + 2] * 3 + 1]) > HEAD_Y - 0.01) out.push(ix[t], ix[t + 1], ix[t + 2]);
+  headGeo = new THREE.BufferGeometry(); for (const k of Object.keys(g.attributes)) headGeo.setAttribute(k, g.attributes[k]);
+  headGeo.setIndex(out); return headGeo;
+}
+const HEAD_Y = 0.595; // 이보다 위가 머리 (목·옷깃 아래는 기본 몸)
+// 기본 몸(#106) 체형별 메시 + 뼈 가중치 (옷과 같은 skinWeights 규칙)
+const bodyGeoCache = {};
+function getBodyGeo(sex) {
+  if (bodyGeoCache[sex]) return bodyGeoCache[sex];
+  const g = baseBodyGeo(sex), { si, sw } = skinWeights(g.attributes.position.array);
+  g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  return (bodyGeoCache[sex] = g);
+}
+// 체형: 머리 모양으로 정함 (저장 형식을 바꾸지 않으려고). 단발·똥머리 = 여, 나머지 = 남. outfit.body 가 있으면 그것
+export const bodySex = (of) => (of?.body === 'f' || of?.body === 'm' ? of.body : ['hat:bob', 'hat:bun'].includes(of?.gear?.hair) ? 'f' : 'm');
 function getModelGeo() {
   if (modelGeo) return modelGeo;
   const pos = b64(RM.pos, Float32Array), nq = b64(RM.nor, Int8Array), uv = b64(RM.uv, Float32Array), idx = b64(RM.idx, RM.idx16 ? Uint16Array : Uint32Array);
@@ -117,16 +137,17 @@ const lidFragment = (rest) => `if (face.x > 0.001 && ${rest}.z > 0.1) { float ln
 export const lidColor = (rgb, out = new THREE.Vector3()) => { if (NSMODE) return out.set(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255); const c = new THREE.Color().setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace); return out.set(c.r, c.g, c.b); };
 const LID_BASE = [232, 189, 154];
 // 머리 장비(#51)용 재질 패치: 피부색 + 몸과 같은 발광(텍스처 색 비율) + 눈꺼풀(#74). 장비 위치 = 기본 자세 좌표 (머리 뼈에 관절 위치만큼 옮겨 붙임)
-const patchHead = (U, lid) => (sh) => { sh.uniforms.cSkin = U.cSkin; sh.uniforms.face = U.face; sh.uniforms.cLid = { value: lidColor(lid || LID_BASE) };
+const patchHead = (U, lid) => (sh) => { sh.uniforms.cSkin = U.cSkin; sh.uniforms.face = U.face; sh.uniforms.hatClip = U.hatClip; sh.uniforms.cLid = { value: lidColor(lid || LID_BASE) };
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\n' + LID_VERT).replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;\n' + lidVertex('position'));
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cSkin;\n' + HSV_GLSL + LID_FRAG)
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 cSkin; uniform float hatClip;\n' + HSV_GLSL + LID_FRAG)
     .replace('#include <map_fragment>', `#include <map_fragment>
+    if (vRest.y > hatClip) discard; // 모자 위로 삐져나온 머리카락 (#106)
     ${lidFragment('vRest')}
     { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); ${skinGLSL('h', '1.0')} }`)
     .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));'); };
 function buildModel() {
-  const geo = getModelGeo();
-  const U = { cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 }, hideHead: { value: 0 }, hideBody: { value: 0 }, cSkin: { value: new THREE.Vector3(1, 1, 1) }, face: { value: new THREE.Vector2(0, 0) }, cLid: { value: lidColor(LID_BASE) } };
+  const geo = getHeadGeo();
+  const U = { hatClip: { value: 9 }, hideR: { value: new Array(REGION_N).fill(0) }, cFoot: { value: new THREE.Color() }, cHat: { value: new THREE.Color() }, cShirt: { value: new THREE.Color() }, cPants: { value: new THREE.Color() }, cShoes: { value: new THREE.Color() }, on: { value: new THREE.Vector4(0, 0, 0, 0) }, hide: { value: new THREE.Vector4(0, 0, 0, 0) }, hidePack: { value: 0 }, noStrap: { value: 0 }, hideHead: { value: 0 }, hideBody: { value: 0 }, cSkin: { value: new THREE.Vector3(1, 1, 1) }, face: { value: new THREE.Vector2(0, 0) }, cLid: { value: lidColor(LID_BASE) } };
   // 남송이오름(새 그림체)에서는 3단 툰 명암
   const mat = NSMODE ? new THREE.MeshToonMaterial({ map: modelTex, gradientMap: gradHard, emissive: '#ffffff', emissiveIntensity: 0.16 }) : new THREE.MeshLambertMaterial({ map: modelTex, color: '#e4e4e4', emissive: '#ffffff', emissiveIntensity: 0.32 });
   // 텍스처 색과 부위(기본 자세 위치)로 모자·상의·바지·신발을 가려 옷 색을 바꿈
@@ -136,8 +157,7 @@ function buildModel() {
       .replace('#include <map_fragment>', `#include <map_fragment>
       ${lidFragment('vRest')}
       { vec3 h = rgb2hsv(${NSMODE ? 'diffuseColor.rgb' : 'pow(diffuseColor.rgb, vec3(1.0 / 2.2))'}); float y = vRest.y; float ax = abs(vRest.x);
-        if (hideHead > 0.5 && y > 0.595) discard; // 머리 장비(#51)가 목 위를 덮음
-        if (hideBody > 0.5 && ax < 0.37 && y < 0.6) discard; // 옷(#52)이 손 빼고 몸 전체를 덮음 (재킷·반바지·운동화·배낭 감춤)
+        if (y < ${HEAD_Y.toFixed(3)}) discard; // #106: 이 모델은 머리만. 목 아래는 기본 몸
         ${skinGLSL('h', 'max(max(step(0.57, y), step(0.37, ax)), step(0.095, y) * step(y, 0.15))')}
         float green = smoothstep(0.2, 0.24, h.x) * (1.0 - smoothstep(0.42, 0.46, h.x)) * smoothstep(0.25, 0.4, h.y);
         float cream = smoothstep(0.07, 0.1, h.x) * (1.0 - smoothstep(0.17, 0.2, h.x)) * (1.0 - smoothstep(0.38, 0.46, h.y)) * smoothstep(0.55, 0.68, h.z);
@@ -163,52 +183,87 @@ function buildModel() {
   const bones = {}; BONE_ORDER.forEach((k) => { bones[k] = new THREE.Bone(); bones[k].name = k; });
   const rel = (k, parent) => { const a = JOINT[k], b = parent ? JOINT[parent] : [0, 0, 0]; bones[k].position.set(a[0] - b[0], a[1] - b[1], a[2] - b[2]); if (parent) bones[parent].add(bones[k]); };
   rel('hips'); rel('chest', 'hips'); rel('head', 'chest'); rel('armL', 'chest'); rel('armR', 'chest'); rel('legL', 'hips'); rel('legR', 'hips');
+  // Tripo 머리(목 위). 머리 장비(#51)를 쓰면 안 그림. 뼈대는 이 메시에 붙어 있고 몸·옷이 같이 씀
   const mesh = new THREE.SkinnedMesh(geo, mat); mesh.add(bones.hips); mesh.bind(new THREE.Skeleton(BONE_ORDER.map((k) => bones[k])));
   mesh.castShadow = true; mesh.receiveShadow = false;
   // 화면 밖·그림자 영역 밖이면 그리지 않게 (#79): 뼈가 움직여도 들어가도록 기본 자세 구를 넉넉히 키워 고정 (전엔 frustumCulled = false 로 늘 그림)
   const padSphere = (g) => { g.computeBoundingSphere(); const sp = g.boundingSphere.clone(); sp.radius *= 1.7; return sp; };
-  mesh.boundingSphere = padSphere(geo);
-  mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); mesh.customDepthMaterial.onBeforeCompile = patchDQS; // 그림자도 같은 방식으로 굽힘
+  const bodySphere = padSphere(getModelGeo());
+  mesh.boundingSphere = bodySphere;
+  const dqDepth = () => { const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); m.onBeforeCompile = patchDQS; return m; };
+  mesh.customDepthMaterial = dqDepth(); // 그림자도 같은 방식으로 굽힘
   const holder = new THREE.Group(); holder.scale.setScalar(MODEL_S); holder.add(mesh);
+  // 기본 몸 (#106): 옷 없는 매끈한 몸. 옷이 덮는 부위는 hideR 로 감춤, 발은 양말 색(cFoot)
+  const bodyMat = NSMODE ? new THREE.MeshToonMaterial({ color: SKIN_TONES[0], gradientMap: gradHard }) : new THREE.MeshLambertMaterial({ color: SKIN_TONES[0] });
+  bodyMat.userData.name = 'skin';
+  bodyMat.onBeforeCompile = (sh) => { patchBody(U)(sh); patchDQS(sh); };
+  let sex = 'm';
+  const body = new THREE.SkinnedMesh(getBodyGeo(sex), bodyMat); body.bind(mesh.skeleton, mesh.bindMatrix); body.boundingSphere = bodySphere;
+  body.castShadow = true; body.receiveShadow = false; body.customDepthMaterial = dqDepth(); holder.add(body);
   // 장비: 칸마다 하나. 뼈에 붙이거나(단단한 것) 같은 뼈대로 휘게(옷) 붙임
   const worn = {}; // slot → { key, obj, mats }
-  const gearMat = (tintCol) => (name, def) => { const m = NSMODE ? new THREE.MeshToonMaterial({ color: def, gradientMap: gradHard }) : new THREE.MeshLambertMaterial({ color: def });
+  const gearMat = () => (name, def) => { const m = NSMODE ? new THREE.MeshToonMaterial({ color: def, gradientMap: gradHard }) : new THREE.MeshLambertMaterial({ color: def });
     m.userData.def = def; m.userData.name = name; return m; };
+  const EMI = NSMODE ? 0.16 : 0.32;
+  // 장비 하나 = 그리기 한 번 (#106): 조각마다 재질 색을 정점 색으로 구워 한 메시로 합침. 재질(mats)은 색을 들고 있는 그릇으로만 씀
+  // 텍스처가 있는 것(머리 3종)은 그대로 둠. 양면 재질은 따로 한 메시
+  const vcMat = (side, skinned) => { const m = NSMODE ? new THREE.MeshToonMaterial({ color: '#ffffff', gradientMap: gradHard, vertexColors: true, side }) : new THREE.MeshLambertMaterial({ color: '#ffffff', vertexColors: true, side });
+    m.emissive.setScalar(EMI); m.userData.vc = true;
+    m.onBeforeCompile = (sh) => { if (skinned) patchDQS(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n#ifdef USE_COLOR\ntotalEmissiveRadiance *= vColor.rgb;\n#endif'); };
+    return m; };
+  function bake(src, skinned) {
+    const groups = new Map(), keep = []; // side → [{ g, m }]
+    src.traverse((o) => { if (!o.isMesh) return; if (o.userData.keep || o.material.map || o.material.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) { keep.push(o); return; }
+      const g = o.geometry.clone().applyMatrix4(o.matrixWorld); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+      if (!g.index) { const n = g.attributes.position.count, ix = []; for (let i = 0; i < n; i++) ix.push(i); g.setIndex(ix); }
+      const side = o.material.side; if (!groups.has(side)) groups.set(side, []); groups.get(side).push({ g, m: o.material }); });
+    const out = [];
+    groups.forEach((list, side) => { const g = list.length > 1 ? mergeGeometries(list.map((e) => e.g)) : list[0].g; list.forEach((e) => e.g !== g && e.g.dispose());
+      const col = new Float32Array(g.attributes.position.count * 3), parts = []; let at = 0; list.forEach((e) => { const n = e.g.attributes.position.count; parts.push([e.m, at, n]); at += n; });
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const recolor = () => { parts.forEach(([m, s, n]) => { for (let i = s; i < s + n; i++) { col[i * 3] = m.color.r; col[i * 3 + 1] = m.color.g; col[i * 3 + 2] = m.color.b; } }); g.attributes.color.needsUpdate = true; };
+      recolor(); out.push({ g, mat: vcMat(side, skinned), recolor }); });
+    return { out, keep };
+  }
   function wear(slot, key) {
-    const cur = worn[slot]; if (cur?.key === key) return; if (cur?.obj) { cur.obj.removeFromParent(); cur.obj.traverse((o) => { if (o.isMesh) { o.material.dispose?.(); } }); }
-    const a = ACCESSORIES[key]; worn[slot] = { key, obj: null, mats: [] };
+    const cur = worn[slot]; if (cur?.key === key && cur.sex === sex) return; if (cur?.obj) { cur.obj.removeFromParent(); cur.obj.traverse((o) => { if (o.isMesh) { o.material.dispose?.(); if (o.userData.own) o.geometry.dispose(); } }); }
+    const a = ACCESSORIES[key]; worn[slot] = { key, obj: null, mats: [], sex, recolor: [] };
     if (a && !a.builtin && a.build) {
       const mats = []; const mk = gearMat(); const src = a.build((n, d) => { const m = mk(n, d); mats.push(m); return m; });
-      src.updateMatrixWorld(true);
-      let obj;
-      if (a.skin) { // 기본 자세 좌표로 합쳐 정점마다 가중치를 붙임
-        obj = new THREE.Group();
-        // 같은 재질끼리 한 덩어리로 합쳐 그리기 횟수를 줄임 (옷은 조각이 많음)
-        const byMat = new Map(); src.traverse((o) => { if (!o.isMesh) return; const g = o.geometry.clone().applyMatrix4(o.matrixWorld); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
-          const gi = g.index ? g : (() => { const n = g.attributes.position.count, ix = []; for (let i = 0; i < n; i++) ix.push(i); g.setIndex(ix); return g; })();
-          if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(gi); });
-        byMat.forEach((gs, m) => { const g = gs.length > 1 ? mergeGeometries(gs) : gs[0]; const { si, sw } = skinWeights(g.attributes.position.array);
-          g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
-          m.onBeforeCompile = patchDQS; const sm = new THREE.SkinnedMesh(g, m); sm.bind(mesh.skeleton, mesh.bindMatrix); sm.boundingSphere = padSphere(g); obj.add(sm); });
-        holder.add(obj);
-      } else { obj = src; const j = JOINT[a.bone || 'chest']; obj.position.sub(new THREE.Vector3(...j)); bones[a.bone || 'chest'].add(obj); }
-      obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
       if (a.skinTint) mats.forEach((m) => { m.onBeforeCompile = patchHead(U, a.lid); });
-      worn[slot].obj = obj; worn[slot].mats = mats;
+      src.updateMatrixWorld(true);
+      const { out, keep } = bake(src, !!a.skin), obj = new THREE.Group();
+      if (a.skin) { // 기본 자세 좌표 그대로 체형에 맞춘 뒤(bodyWarp) 정점마다 가중치를 붙임 (몸과 같은 규칙)
+        out.forEach(({ g, mat: m }) => { bodyWarp(g.attributes.position.array, sex); const { si, sw } = skinWeights(g.attributes.position.array);
+          g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+          const sm = new THREE.SkinnedMesh(g, m); sm.bind(mesh.skeleton, mesh.bindMatrix); sm.boundingSphere = bodySphere; sm.userData.own = true; obj.add(sm); });
+        holder.add(obj);
+      } else { // 뼈에 붙는 단단한 것
+        out.forEach(({ g, mat: m }) => { const o = new THREE.Mesh(g, m); o.userData.own = true; obj.add(o); });
+        keep.forEach((o) => { if (o.parent) o.applyMatrix4(o.parent.matrixWorld); obj.add(o); }); // 텍스처 머리: 원래 메시 그대로 (받기 전 임시 모양 → 진짜 모양 바꿈이 이 메시에 일어남)
+        const j = JOINT[a.bone || 'chest']; obj.position.set(-j[0], -j[1], -j[2]); bones[a.bone || 'chest'].add(obj); }
+      obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+      worn[slot].obj = obj; worn[slot].mats = mats; worn[slot].recolor = out.map((e) => e.recolor);
     }
-    // 감출 부분 다시 계산
-    const hid = new Set(); Object.values(worn).forEach((w) => (ACCESSORIES[w.key]?.hide || []).forEach((h) => hid.add(h)));
-    U.hide.value.set(+hid.has('hat'), +hid.has('top'), +hid.has('bottom'), +hid.has('shoes')); U.hidePack.value = +hid.has('pack'); U.noStrap.value = +hid.has('straps'); U.hideHead.value = +hid.has('head'); U.hideBody.value = +hid.has('body');
+    // 감출 것 다시 계산: Tripo 머리·구운 모자, 덮인 몸 부위, 모자 위 머리카락
+    const hid = new Set(), cov = new Set(); let clip = 9;
+    Object.values(worn).forEach((w) => { const A = ACCESSORIES[w.key]; (A?.hide || []).forEach((h) => hid.add(h)); (A?.covers || []).forEach((h) => cov.add(h)); if (A?.clip) clip = Math.min(clip, A.clip); });
+    U.hide.value.set(+hid.has('hat'), 0, 0, 0); U.hidePack.value = 0; U.noStrap.value = 0; mat.visible = !hid.has('head'); // mesh.visible 은 그대로(뼈에 붙은 장비까지 숨겨짐)
+    hideMask([...cov], U.hideR.value); U.hatClip.value = clip;
   }
   const TINT = { hat: 'hat', pants: 'pants', shirt: 'shirt', shoes: 'shoes' };
+  // 상의·하의·신발은 늘 하나 입음 (없음·모르는 값이면 기본 것)
+  const MUST = { top: 'top:base', bottom: 'bottom:shorts', shoes: 'shoes:s1' };
   const set = (of) => { const pick = (k, u, i) => { const c = of[k]?.color || MODEL_DEFAULT[k]; U[u].value.set(c); U.on.value.setComponent(i, c.toLowerCase() === MODEL_DEFAULT[k] ? 0 : 1); }; pick('hat', 'cHat', 0); pick('shirt', 'cShirt', 1); pick('pants', 'cPants', 2); pick('shoes', 'cShoes', 3); skinRatio(of.skin?.color, U.cSkin.value);
-    const g = { ...DEFAULT_GEAR, ...(of.gear || {}) }; Object.entries(g).forEach(([slot, key]) => wear(slot, key));
+    const g = { ...DEFAULT_GEAR, ...(of.gear || {}) }; Object.entries(MUST).forEach(([k, d]) => { if (!ACCESSORIES[g[k]]?.build) g[k] = d; });
+    const sx = bodySex({ ...of, gear: g }); if (sx !== sex) { sex = sx; body.geometry = getBodyGeo(sex); }
+    Object.entries(g).forEach(([slot, key]) => wear(slot, key));
     const skinCol = SKIN_TONES.includes(String(of.skin?.color || '').toLowerCase()) ? of.skin.color : SKIN_TONES[0], footCol = ACCESSORIES[g.socks]?.foot || skinCol;
+    bodyMat.color.set(skinCol); bodyMat.emissive.copy(bodyMat.color).multiplyScalar(NSMODE ? 0.16 : 0.32); U.cFoot.value.set(footCol);
     // 장비 색: tint 로 묶인 재질은 옷장 색을 따름 (기본색이면 장비 자체 색)
     Object.values(worn).forEach((w) => { const t = ACCESSORIES[w.key]?.tint || {}; w.mats.forEach((m) => { const part = TINT[t[m.userData.name]]; const c = part && of[part]?.color; m.color.set(c && c.toLowerCase() !== MODEL_DEFAULT[part] ? c : m.userData.def);
-      if (m.userData.name === 'skin') m.color.set(skinCol); else if (m.userData.name === 'foot') m.color.set(footCol); // 옷(#52)의 맨살·발
-      m.emissive.copy(m.color).multiplyScalar(NSMODE ? 0.16 : 0.32); }); }); };
-  return { holder, mesh, mat, bones, set, wear, U };
+      m.emissive.copy(m.color).multiplyScalar(EMI); }); w.recolor.forEach((f) => f()); }); };
+  return { holder, mesh, body, mat, bodyMat, bones, set, wear, U };
 }
 const qTmp = new THREE.Quaternion(), eTmp = new THREE.Euler();
 const LEG_M = (P.hipY - 0.01) * MODEL_S; // 모델 다리 길이(골반 관절 → 발바닥)

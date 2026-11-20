@@ -56,7 +56,12 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 
 그 밖의 모듈 (src/)
 - 맵·그림: boot.js(맵 결정, 맨 먼저) · namsongi.js/namsongidata.js(남송이 지형) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js(가로등, model-lamp.js) · retro.js · quality.js
-- 캐릭터·장비: runner.js/runnermodel.js/dqskin.js · gear.js · clothes.js/clothicons.js · emotes.js · footprints.js
+- 캐릭터·장비: runner.js · basebody.js · runnermodel.js/dqskin.js · gear.js · clothes.js/clothicons.js · emotes.js · footprints.js
+- 캐릭터 구조 (#106): 뼈대 7개(hips·chest·head·armL·armR·legL·legR, 듀얼 쿼터니언 dqskin.js) 하나에 세 겹을 얹는다
+  - 기본 몸 `basebody.js`: 옷 없는 매끈한 몸 한 메시(몸통+목·팔·벙어리장갑 손·다리·발). 몸통 단면은 옷과 같은 표(clothes.js TORSO·HIPS)에서 조금 안쪽. 정점마다 부위 번호(REGION: neck chest waist pelvis upperarm forearm hand thigh shin foot). 남·여는 `bodyWarp`(허리·골반 폭)만 다르고 머리 모양으로 정함(runner.js `bodySex`: 단발·똥머리 = 여, `outfit.body` 가 있으면 그것). 피부색은 재질 색, 발은 양말 색(cFoot)
+  - 머리: 머리 장비(gear.js 'hat:short|bob|bun', Tripo 머리, 머리 뼈에 붙음)를 쓰면 그것만. 아니면 runnermodel.js(Tripo)의 목 위 삼각형만 남긴 메시(구운 초록 모자). 눈 깜빡임(#74)·피부색은 머리 재질 셰이더
+  - 옷·장비: 칸마다 따로 만든 껍데기. `skin: true` 면 몸과 같은 `skinWeights` 규칙(체형 맞춤 뒤)으로 휨, 아니면 `bone` 에 붙음. 장비 하나는 정점 색으로 구워 한 메시(그리기 1번, 양면 재질만 따로). `covers` 로 덮는 몸 부위를 감춤(옷 사이로 몸이 안 뚫림), 모자는 `clip` 위로 나온 머리카락을 감춤. 상의·하의·신발은 늘 하나(없으면 'top:base'·'bottom:shorts'·'shoes:s1')
+  - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
