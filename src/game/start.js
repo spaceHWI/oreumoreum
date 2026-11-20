@@ -77,6 +77,12 @@ if (ONLINE) {
   const syncAcct = () => { $('m-acct').hidden = !state.account.loggedIn; $('acct-days').textContent = `기록 보관 ${state.account.daysLeft()}일 남음`; if (state.account.admin) enableDev(); }; // 서버 어드민이면 개발자 메뉴 (#84)
   state.account.on(syncAcct); syncAcct();
   $('acct-out').addEventListener('click', () => state.account.logout());
+  $('acct-id').addEventListener('click', async () => { // 계정 번호(sub)만. 세션 토큰은 다루지 않음 (#95)
+    const id = state.account.sub; if (!id) return;
+    try { await navigator.clipboard.writeText(id); toast('계정 번호를 복사했어요'); return; } catch (e) { /* 클립보드가 막힌 곳 */ }
+    let t = $('acct-box-id'); if (!t) { t = document.createElement('textarea'); t.id = 'acct-box-id'; t.readOnly = true; t.rows = 2; $('m-acct').appendChild(t); }
+    t.value = id; t.focus(); t.select();
+  });
   $('acct-del').addEventListener('click', (e) => { const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '한 번 더 누르면 지워요'; setTimeout(() => { delete b.dataset.sure; b.textContent = '내 기록 지우기'; }, 4000); return; } state.resetting = true; state.account.deleteMe().catch(() => { state.resetting = false; toast('지우지 못했어요. 잠시 후 다시 해 주세요'); }); });
   state.account.start();
 }
