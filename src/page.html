@@ -847,6 +847,9 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
    4 버프는 고리만·HP 막대 짧게 5 여백·글자 줄이기 6 (아주 좁은 폰 + HP·버프) 좌표 숨김 — 두 줄이 되지 않게 */
 .topbar.f1 #zone-pill { display: none; }
 .topbar.f1 #xy-pill.inzone .na { display: none; } .topbar.f1 #xy-pill.inzone .zm { display: block; }
+#fb-chip { padding: 0 9px; } #fb-chip svg { width: 16px; height: 16px; }
+.topbar.f5 #fb-chip { padding: 0 6px; }
+.pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: #fff; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
 .topbar.f2 #ach-chip { display: none; }
 .topbar.f3 #bag-pill small, .topbar.f3 #bloom-row { display: none; }
 .topbar.f4 #buff-pill { padding: 0 3px; } .topbar.f4 #buff-pill b { display: none; }
@@ -910,6 +913,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg class="zm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg class="zf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="6.5" r="3.4"/><circle cx="17.2" cy="10.3" r="3.4"/><circle cx="15.2" cy="16.4" r="3.4"/><circle cx="8.8" cy="16.4" r="3.4"/><circle cx="6.8" cy="10.3" r="3.4"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></svg><b id="zone-n">1</b></div>
     <div class="panel tpill" id="xy-pill" data-tut="hud" title="좌표"><svg class="zm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="xy"><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
     <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 업적"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
+    <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg></button>
   </div>
 </div>
 <div class="hud hud-sub">
@@ -961,6 +965,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 </nav>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
+  <button type="button" id="menu-feedback" class="m-fb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>의견 보내기</button>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
@@ -981,7 +986,6 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="menu-help">조작법</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
     <button type="button" id="menu-perf">성능: 자동</button>
-    <button type="button" id="menu-feedback">의견 보내기</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
