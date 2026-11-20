@@ -82,7 +82,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const r = await api('/save', { method: 'PUT', body: { save: strip(s) }, keepalive });
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {

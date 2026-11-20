@@ -58,18 +58,18 @@ function buildStoneMenu(grid) {
   for (const m of STONE.menu) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = m.id;
     const lockd = m.battle && !isBattle(), min = Math.round((m.sec || STONE.buffSec) / 60);
-    b.disabled = lockd; b.classList.toggle('poor', save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
+    b.disabled = lockd; b.classList.toggle('poor', !!save.mealFree && save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
     b.title = `${m.ko} · ${m.en}`;
     b.innerHTML = `<svg class="food" viewBox="0 0 64 64" aria-hidden="true">${FOOD_SVG[m.id]}</svg><span class="mn"><b>${m.ko}</b><small>${m.en}</small></span>`
-      + `<span class="mv"><span class="price"><i></i>${m.price}</span><span class="bf">${buffIc(m.buff)}${buffText(m)}<em>${min}′</em></span></span>${lockd ? LOCK_SVG : ''}`;
+      + `<span class="mv">${save.mealFree ? `<span class="price"><i></i>${m.price}</span>` : '<span class="price free">첫 식사 무료</span>'}<span class="bf">${buffIc(m.buff)}${buffText(m)}<em>${min}′</em></span></span>${lockd ? LOCK_SVG : ''}`;
     b.addEventListener('click', () => orderMeal(m));
     grid.appendChild(b);
   }
 }
 export function orderMeal(m) {
   if (!STN || mealS.on || (m.battle && !isBattle())) return;
-  if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; }
-  save.coins -= m.price; persist(); updateStats(); late.sound.coin?.();
+  if (!save.mealFree) { save.mealFree = 1; persist(); toast('첫 식사는 무료예요'); } // #93: 첫 한 번은 귤을 받지 않음 (서버 확인은 validate.js)
+  else { if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; } save.coins -= m.price; persist(); updateStats(); late.sound.coin?.(); }
   closePanels(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
   Object.assign(mealS, { on: true, item: m, phase: 'walk', t: 0 });
   setTarget(STN.seatGo, () => sitMeal()); mealS.target = player.target;
