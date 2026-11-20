@@ -41,6 +41,7 @@ export function createLocalTrashStore({ save, persist }) {
   };
   if (!T.bag || typeof T.bag !== 'object') T.bag = {};
   TRASH_TYPES.forEach((t) => { T.bag[t.id] = Math.max(0, Math.floor(Number(T.bag[t.id]) || 0)); });
+  T.bag.xv = Math.max(0, Number(T.bag.xv) || 0); // #137 구역 귤 배수로 더 받을 귤 (쓰레기 종류 귤 × (ZONES gv - 1) 의 합). 예전 저장엔 없음 = 0
   T.total = Math.max(0, Math.floor(Number(T.total) || 0));
   if (!Array.isArray(T.tp)) T.tp = []; // 튜토리얼용 낱개 쓰레기: 주운 번호(0부터). 누적 수엔 세지 않음
   if (!T.dex || typeof T.dex !== 'object') T.dex = {}; // 도감: id → 주운 수
@@ -72,7 +73,7 @@ export function createLocalTrashStore({ save, persist }) {
     // 더미 h 에서 하나 꺼냄 (누적 수 +1)
     takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; rkAdd(1); dirty = true; return true; },
     // 방이 '늦었다'고 거절한 줍기 되돌리기 (#84): 배낭에서 그 종류 하나·누적 수 하나를 뺌
-    untake(kind) { if (T.bag[kind] > 0) T.bag[kind]--; T.total = Math.max(0, T.total - 1); rkAdd(-1); dirty = true; },
+    untake(kind, xv = 0) { if (T.bag[kind] > 0) T.bag[kind]--; T.bag.xv = Math.max(0, T.bag.xv - xv); T.total = Math.max(0, T.total - 1); rkAdd(-1); dirty = true; },
     // 이 기기의 치운 수 (#11): { day, week, all } (srv 기본은 지금 서버)
     localRank(srv = rkSrv()) { rkRoll(); return { day: rk.day[srv] || 0, week: rk.week[srv] || 0, all: rk.all[srv] || 0 }; },
     // 다시 쌓기 (#37 멧돼지가 흘림 · 뒤 이슈 투기꾼): 넣은 수
@@ -264,7 +265,9 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     }
     const type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
-    if (c.h != null) { recent.push({ h: c.h, kind: type.id }); if (recent.length > 30) recent.shift(); } // 방이 거절하면 되돌릴 수 있게 (#84)
+    const xv = c.h != null ? type.gyul * ((ZONES[heaps[c.h].zone - 1]?.gv || 1) - 1) : 0; // #137 구역마다 쓰레기 귤 배수
+    if (xv > 0) store.bag.xv = (store.bag.xv || 0) + xv;
+    if (c.h != null) { recent.push({ h: c.h, kind: type.id, xv }); if (recent.length > 80) recent.shift(); } // 방이 한 번에 되돌리라는 수(NET.takeAsk 64)보다 넉넉히 // 방이 거절하면 되돌릴 수 있게 (#84)
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
     dirty = true;
     emit('trash', { kind: type.id, dex: dx, dexNew });
@@ -293,7 +296,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   // 방(서버)이 더미 h 줍기를 거절했을 때 (#84): 그 더미에서 가장 최근에 주운 것 하나를 배낭에서 뺌. 뺐으면 true
   function undoTake(h) {
-    for (let i = recent.length - 1; i >= 0; i--) if (recent[i].h === h) { store.untake(recent[i].kind); recent.splice(i, 1); dirty = true; emit('changed', {}); return true; }
+    for (let i = recent.length - 1; i >= 0; i--) if (recent[i].h === h) { store.untake(recent[i].kind, recent[i].xv); recent.splice(i, 1); dirty = true; emit('changed', {}); return true; }
     return false;
   }
   function relayout() { syncCols(); dirty = true; emit('changed', {}); } // 서버를 바꾼 뒤 (#35)
@@ -306,7 +309,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     const fs = Array.isArray(from) ? from : [from], dOf = (h) => Math.min(...fs.map((f) => Math.hypot(h.x - f.x, h.z - f.z)));
     return ZONES.map((Z) => {
       const hs = heaps.filter((h) => h.zone === Z.id), n = hs.reduce((s, h) => s + h.n, 0);
-      const tool = TOOLS[Z.rec.tool - 1], bag = BAGS[Z.rec.bag - 1], speed = walk * SHOES[Z.rec.shoes - 1].speed;
+      const tool = TOOLS[Z.gear.tool - 1], bag = BAGS[Z.gear.bag - 1], speed = walk * SHOES[Z.gear.shoes - 1].speed;
       const vol = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0);
       const pick = n * tool.time / tool.per, trips = Math.ceil(n * vol / bag.cap);
       const avgD = hs.reduce((s, h) => s + h.n * dOf(h), 0) / Math.max(1, n) * detour;
@@ -324,7 +327,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     setHeap(i, n) { store.setLeft(i, n); syncCols(); dirty = true; store.commit(); emit('changed', {}); return store.left(i); },
     fillClean(pct) { const want = Math.round(HEAP_TOTAL * (1 - pct / 100)); let left = want; heaps.forEach((h, i) => { const n = Math.min(h.n, left); store.setLeft(i, n); left -= n; }); syncCols(); dirty = true; store.commit(); emit('changed', {}); return clean(); },
     fillBag(vol, kind = 'can') { const t = TRASH_TYPES.find((x) => x.id === kind) || TRASH_TYPES[0]; store.bag[t.id] += Math.max(0, Math.floor(vol / t.vol)); store.commit(); emit('changed', {}); return bagVol(); },
-    emptyBag() { TRASH_TYPES.forEach((t) => { store.bag[t.id] = 0; }); store.commit(); emit('changed', {}); },
+    emptyBag() { TRASH_TYPES.forEach((t) => { store.bag[t.id] = 0; }); store.bag.xv = 0; store.commit(); emit('changed', {}); },
     heaps: () => heaps.map((h, i) => ({ i, zone: h.zone, k: h.k, x: +h.x.toFixed(1), z: +h.z.toFixed(1), r: h.r, n: h.n, left: store.left(i), st: h.st })),
     nearestHeap(px, pz) { let b = null, bd = 1e18; heaps.forEach((h, i) => { if (h.st < 0) return; const d = Math.hypot(h.x - px, h.z - pz); if (d < bd) { bd = d; b = { i, x: h.x, z: h.z, r: curR(i), zone: h.zone, k: h.k, left: store.left(i), d }; } }); return b; },
     zoneAt, zoneClean, zoneLeft, estimate,

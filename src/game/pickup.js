@@ -1,4 +1,5 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
 import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
@@ -168,7 +169,7 @@ export function tickFly(dt) {
 const nearTop = () => spots.isViewpoint(player.pos) || player.pos.distanceTo(spots.sunWatch.pos) <= spots.sunWatch.r;
 let lastTrashUI = ''; state.lastZoneUI = ''; let zoneNow = 0; let zoneT = 0; export { zoneNow };
 // 구역 확인 (0.3초마다): 바뀌면 HUD 갱신
-export function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { zoneNow = z; updateTrashUI(false); } }
+export function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { const prev = zoneNow; zoneNow = z; updateTrashUI(false); late.zoneEnter?.(z, prev); } } // #136 구역 이름 배너·소리 (area.js)
 export function updateTrashUI(bump) {
   if (!trash) return;
   const vol = trash.bagVol(), cap = bagCap(), c = trash.clean() * 100;
@@ -178,8 +179,11 @@ export function updateTrashUI(bump) {
   if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('clean-ring').setAttribute('stroke-dasharray', `${(Math.min(100, c) / 100 * 37.7).toFixed(1)} 37.7`); $('bag-pill').classList.toggle('full', vol >= cap); topFit.dirty(); }
   // 지금 구역 번호·깨끗한 정도 (#45). 들머리(0)에서는 숨김
   const zc = zoneNow ? Math.floor(trash.zoneClean(zoneNow) * 100) : 0;
-  const zb = bloom ? bloom.bloomed().join('') : '', zk = `${zoneNow}/${zc}/${zb}`;
-  if (zk !== state.lastZoneUI) { state.lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
+  const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneTone(gearScore(save).total, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
+  if (zk !== state.lastZoneUI) { state.lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc;
+    // 권장 장비 점수와 견준 색 (#137): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
+    for (const el of [$('zone-pill'), $('xy-pill')]) { if (tone) el.dataset.tone = tone; else delete el.dataset.tone; }
+    $('zone-pill').dataset.rec = zoneNow ? zoneRec(zoneNow) : ''; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
     // 꽃 아이콘 (#46): 지금 구역이 다 피었으면 꽃 모양(귤색), 깨끗한 정도 옆엔 다 핀 구역마다 작은 점. 색은 흰색·귤색만 (#75)
     const bl = !!(bloom && zoneNow && bloom.isBloomed(zoneNow)); $('zone-pill').classList.toggle('bloom', bl);
     const row = $('bloom-row'); row.hidden = !zb; row.innerHTML = [...zb].map((z) => `<i title="${z}구역 ${BLOOM.zones[z].name}"></i>`).join(''); topFit.dirty(); }

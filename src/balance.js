@@ -27,23 +27,66 @@ export const HEAP = {
   seed: 45,
 };
 // 구역 (#45): src/zones.js zoneAt 이 위치로 번호를 구함. heaps 더미 크기별 수, min 목표 시간(권장 장비로 혼자, 클린하우스 왕복 포함)
-// rec 권장 장비 단계(도구·배낭·신발, 시간 계산용), mix 나오는 쓰레기 종류 비율(TRASH_TYPES 순서: 캔·페트병·비닐·스티로폼·폐어구)
+// rec 권장 장비 점수 (#137, GROWTH.score 로 셈. 칸 10개가 모두 n단계면 구역 n 쯤). gear 권장 장비 단계(도구·배낭·신발, 시간 계산용)
+// gv 이 구역 쓰레기 귤 배수 (#137: 구역마다 벌이가 약 2.5배. 클린하우스에서 받는 귤 = TRASH_TYPES gyul × gv)
+// mix 나오는 쓰레기 종류 비율(TRASH_TYPES 순서: 캔·페트병·비닐·스티로폼·폐어구)
 // maxD 더미를 클린하우스에서 이 거리(직선) 안에만 둠, amt 이 구역만 더미 하나의 쓰레기 수를 바꿈
 // 시간 어림은 __oreum.trash.estimate() (클린하우스 왕복 = 직선 거리 × 1.15, 달리기 10 × 신발)
 // 조정: 1구역은 캔·페트병·비닐만(부피 1) + 클린하우스 215 안, 5구역 대형 더미는 200 → 140개 (그대로면 약 29분)
 export const ZONES = [
-  { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
-  { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07] },
-  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11] },
-  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16] },
-  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 } },
+  { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: 10, gv: 4, gear: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
+  { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: 25, gv: 4.5, gear: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07] },
+  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, gv: 8, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11] },
+  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, gv: 18, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16] },
+  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, gv: 30, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 } },
 ];
+// 성장 수치 (#137, notes/growth-loop.md 3절): 장비 점수. src/gearscore.js 가 읽음
+// score[단계] = 칸 하나 점수 (0 = 없음·호주머니). 칸 10개(도구·배낭·신발·무기 + 옷 6칸)의 합이 장비 점수
+// grade 등급(보통·좋은·귀한·전설) 더하는 비율, enh 강화 한 번에 더하는 비율 (등급·강화는 다음 이슈에서 채움. 지금은 모두 0)
+// pick·fight: 줍는 힘·싸우는 힘에 드는 칸. red·green: 내 점수 ÷ 구역 권장 점수가 red 아래면 빨강, green 이상이면 초록, 사이는 노랑
+export const GROWTH = {
+  score: [0, 1, 3, 6, 14, 32, 75],
+  grade: [0, 0.15, 0.35, 0.7], enh: 0.12, enhMax: 5,
+  pick: ['tool', 'bag', 'shoes', 'hat', 'bottom', 'vest'],
+  fight: ['weapon', 'top', 'jacket', 'socks'],
+  red: 0.85, green: 1.2,
+  // 단계별 값 (도구·배낭·신발·무기 같은 곡선, 단계마다 약 4배). 1단계는 배낭(호주머니 → 배낭)만 값이 있음
+  price: [0, 50, 200, 800, 3200, 13000, 30000],
+  wearK: 1, // 옷 6칸 값 = price × wearK (같은 곡선)
+};
 // 구역 경계 모양 (src/zones.js)
 export const ZONE_SHAPE = {
   summitR: 60, // 가장 높은 곳에서 이 안은 정상
   rimW: 30, // 말굽 능선 길에서 이 안은 능선
   craterPad: -8, // 북쪽 원형 굼부리 둘레 길에서 이만큼 (- 안쪽)
   slopeRel: 28, southZ: -90, // 솟은 높이(m) 이 위이고 정상보다 남쪽(z 가 정상 z + southZ 보다 큼)이면 남쪽 사면
+};
+// 구역 구분 (#136, src/zonelook.js·src/game/area.js): 초보(1~2)·중수(3)·고수(4~5)
+// tier[구역] 묶음 번호(0 들머리). tiers[묶음] 이름·지도 색. 문턱은 탐방로가 묶음 경계를 넘는 곳(같은 묶음끼리 merge m 안이면 하나)
+// 초보→중수: 정낭(열린 채) + 양옆 낮은 돌담 wallLen m. 중수→고수: 큰 바위 문 + 방사탑. 안내판은 문턱 옆 signOff m
+// mood[구역] = [밝음, 억새빛, 어두움·붉은 흙] 땅·풀 색 (다 핀 구역은 어두움이 걷힘). fog[구역] 안개 가까이·멀리 배율 (다 피면 1)
+// wind·reed·music[구역]: 바람·억새 소리·평소 음악 크기 배율, lp 평소 음악 밝기(패드 필터) 배율
+// banner: 구역 이름이 뜨는 시간·다시 뜨기까지 쉬는 시간·방금 나온 구역으로 돌아갈 땐 이 초 동안 안 띄움
+// decor: 구역 소품. per = 한 개에 땅 넓이(m², 작을수록 빽빽), drawR 이 거리 안만 그림(한 번에 하나로 그림), heap = 더미마다 둘레에 더하는 수
+export const ZONE_LOOK = {
+  tier: [0, 1, 1, 2, 3, 3],
+  tiers: [null, { name: '초보', color: '#8fd16a' }, { name: '중수', color: '#f2b544' }, { name: '고수', color: '#b07ce0' }],
+  merge: 25, wallLen: 7, signOff: 2.4, towerOff: 5.2,
+  mood: [[0, 0, 0], [1, 0, 0], [0.75, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, 0.85]],
+  fog: [[1, 1], [1, 1], [1, 1], [1, 1], [0.35, 0.06], [0.5, 0.12]],
+  wind: [1, 0.85, 0.9, 1.35, 1.15, 1.3], reed: [1, 0.7, 0.8, 2.2, 1, 1.2],
+  music: [1, 1, 1, 0.92, 0.82, 0.85], lp: [1, 1.1, 1.05, 0.9, 0.7, 0.75],
+  banner: { sec: 2.8, cool: 4, back: 20 },
+  decor: {
+    drawR: 95, drawRLow: 60, moveStep: 6, crowFlee: 7,
+    flower: { tier: 1, per: 110, perLow: 220 }, // 들꽃 무리 (초보)
+    reed: { tier: 2, per: 55, perLow: 110, heap: 6 }, // 억새 포기 (중수, 더미 둘레에도)
+    cairn: { tier: 2, per: 900, perLow: 1600 }, // 돌무더기 (중수)
+    log: { tier: 3, per: 1100, perLow: 2000 }, // 쓰러진 나무 (고수)
+    scorch: { tier: 3, per: 1300, perLow: 2400, heap: 1 }, // 그을린 자국: 외계인 흔적 (고수, 다 피면 사라짐)
+    crow: { tier: 3, per: 2600, perLow: 5000, heap: 2 }, // 까마귀 (고수, 다 피면 날아감)
+  },
+  butterflies: [0, 3, 2, 0, 0, 0], // 다 피지 않아도 구역에 늘 있는 나비 수 (초보)
 };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
 // 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름
@@ -119,32 +162,34 @@ export const TRASH = {
   heapDrawR: 420, heapDrawRLow: 260, // 더미를 그리는 거리
 };
 
-// 장비 5단계. 상점에서 다음 단계만 살 수 있고 사면 바로 착용 (#10). 저장은 save.equip.{tool,bag,shoes} = 1~5
+// 장비 5단계. 상점에서 순서 없이 사고(#111) 사면 바로 착용 (#10). 저장은 save.equip.{tool,bag,shoes} = 1~5
 // rate 는 상점에 보이는 초당 개수 (= per ÷ time)
-// 값 (#49 → #53): tools/econ.js 로 맞춤. 칸 10개(도구·배낭·신발·무기 + 옷 6칸) 모두 5단계까지 — 효율적으로 4시간, 여유 25% 더 써도 5시간 안 (하루 1시간씩)
-// 흡입기는 예전(한 번 1개, 초당 4)이면 큰 갈퀴(초당 10)보다 느려 한 번 3개(초당 12)로
+// #137 성장 루프 (notes/growth-loop.md 4절): 단계마다 능력이 2배 넘게, 값은 단계마다 약 4배. tools/econ.js 로 맞춤
+//   흐름: 1일(1시간) 구역 1·2단계, 2일 구역 2~3·3단계, 3일 4단계, 4일 구역 4, 5일 5단계·정상
+//   집게(2단계)는 튜토리얼 첫 보너스(TUT.firstBonus)로 삼
 export const TOOLS = [
   { tier: 1, name: '맨손', per: 1, time: 0.9, r: 1.6, price: 0 },
-  { tier: 2, name: '집게', per: 1, time: 0.5, r: 2.4, price: 100 },
-  { tier: 3, name: '갈퀴', per: 3, time: 0.6, r: 3.2, price: 400 },
-  { tier: 4, name: '큰 갈퀴', per: 5, time: 0.5, r: 4.0, price: 1000 },
-  { tier: 5, name: '흡입기', per: 3, rate: 12, time: 0.25, r: 5.0, price: 2100 },
+  { tier: 2, name: '집게', per: 1, time: 0.4, r: 2.4, price: GROWTH.price[2] },
+  { tier: 3, name: '갈퀴', per: 3, time: 0.5, r: 3.2, price: GROWTH.price[3] },
+  { tier: 4, name: '큰 갈퀴', per: 7, time: 0.5, r: 4.0, price: GROWTH.price[4] },
+  { tier: 5, name: '흡입기', per: 8, rate: 32, time: 0.25, r: 5.0, price: GROWTH.price[5] },
 ];
 // 배낭: 처음엔 배낭 없이 호주머니(POCKET)만. save.equip.bag 0 = 호주머니, 1~5 = BAGS[bag-1] (#31)
 export const POCKET = { tier: 0, name: '호주머니', cap: 6, price: 0 };
 export const BAGS = [
-  { tier: 1, name: '배낭', cap: 20, price: 80 },
-  { tier: 2, name: '큰 배낭', cap: 40, price: 200 },
-  { tier: 3, name: '등산 배낭', cap: 80, price: 650 },
-  { tier: 4, name: '대형 배낭', cap: 150, price: 1100 },
-  { tier: 5, name: '원정 배낭', cap: 300, price: 2100 },
+  { tier: 1, name: '배낭', cap: 20, price: GROWTH.price[1] },
+  { tier: 2, name: '큰 배낭', cap: 45, price: GROWTH.price[2] },
+  { tier: 3, name: '등산 배낭', cap: 100, price: GROWTH.price[3] },
+  { tier: 4, name: '대형 배낭', cap: 220, price: GROWTH.price[4] },
+  { tier: 5, name: '원정 배낭', cap: 500, price: GROWTH.price[5] },
 ];
+// 신발: 빠르기는 그대로, 값만 같은 곡선 (#137)
 export const SHOES = [
   { tier: 1, name: '쓰레빠', speed: 1.0, price: 0 }, // #52 처음엔 쓰레빠
-  { tier: 2, name: '러닝화', speed: 1.1, price: 150 },
-  { tier: 3, name: '트레일화', speed: 1.2, price: 550 },
-  { tier: 4, name: '등산화', speed: 1.3, price: 1100 },
-  { tier: 5, name: '바람 신발', speed: 1.45, price: 2100 },
+  { tier: 2, name: '러닝화', speed: 1.1, price: GROWTH.price[2] },
+  { tier: 3, name: '트레일화', speed: 1.2, price: GROWTH.price[3] },
+  { tier: 4, name: '등산화', speed: 1.3, price: GROWTH.price[4] },
+  { tier: 5, name: '바람 신발', speed: 1.45, price: GROWTH.price[5] },
 ];
 
 // 클린하우스(재활용장): 들머리 한 곳 + 오름 안 작은 것 4곳(#78). 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
@@ -255,13 +300,15 @@ export const BOAR = {
 // sight 이 거리 안에 플레이어가 보이면 돌진, lose 이보다 멀어지면 그만둠, life 안 쫓아내면 스스로 떠나는 시간(초)
 // rootEvery 땅 헤집는 간격(초), rootT 헤집는 시간, rootTrash 흘리는 쓰레기 수(가까운 더미에 더함), size 판정·충돌 크기 배율
 // ranged: 멀리서 쏘는 적. keep 이 거리를 지키며 every 초마다 광선, range 쏘는 거리, speed 광선 속도, r 맞는 반경
+// #137: 기운(hp)·귤이 구역마다 약 2.4~2.5배 (notes/growth-loop.md 3절). 귤은 dropMax 개까지 알갱이로 흩뿌리고 나눠 담음 (ENEMY_DROP)
 export const ENEMIES = {
   piglet: { name: '아기 멧돼지', hp: 3, walk: 1.8, chase: 4.6, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
-  dog: { name: '들개', hp: 6, walk: 3.0, chase: 9.5, flee: 11, dmg: 15, reward: { gyul: 10, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
-  boar: { name: '멧돼지', hp: 12, walk: 2.4, chase: 7.2, flee: 9, dmg: 25, reward: { gyul: 20, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
-  rabid: { name: '광견병 걸린 들개', hp: 20, walk: 3.6, chase: 12, flee: 12, dmg: 30, reward: { gyul: 35, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
-  alien: { name: '외계인', hp: 40, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 60, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 2.6, speed: 15, r: 1.0 } },
+  dog: { name: '들개', hp: 8, walk: 3.0, chase: 9.5, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
+  boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 7.2, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 12, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
+  alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 2.6, speed: 15, r: 1.0 } },
 };
+export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 export const ENEMY_SPAWN = {
   every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤). 남송이는 연출 감독(#89 PACE.battle)이 부르고, 이 값은 쓰레기 없는 맵에서만
   group: [2, 3], // 한 무리 마릿수
@@ -273,17 +320,31 @@ export const ENEMY_SPAWN = {
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
 };
-// 무기 (#38): 전투 오름에서만. 상점 무기 탭에서 다음 단계만 삼. 저장은 save.equip.weapon = 1(손)~
-// dmg 적에게 주는 피해, range 자동 조준 사거리(수평 m), speed 화살 속도(m/s), grav 화살에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
-// soon: 아직 없는 단계 (상점에 잠긴 그림만)
+// 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
+// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
+// cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
+// r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 2, range: 32, speed: 40, grav: 5, perGyul: 5, price: 850 },
-  { tier: 3, id: 'gun', name: '귤 총', soon: true },
-  { tier: 4, id: 'mg', name: '귤 머신건', soon: true },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', soon: true },
-  { tier: 6, id: 'bomb', name: '귤 폭탄', soon: true },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 5, price: GROWTH.price[2] },
+  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
+  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
+  { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
+// 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
+// aimT 총을 겨눈 채로 있는 시간(초), kick 반동 시간, life 탄이 아무것도 안 맞고 날아가는 최대 시간은 range / speed
+// laser: w 줄기 굵기, wet 맞은 적이 젖어 보이는 시간(초), drip 초당 떨어지는 방울 수
+// bomb: grav 포물선 중력, vMin·vMax 수평 속도, k 위로 던지는 비율, boom 터지는 빛 시간(초), fuse 땅에 닿고 터지기까지(초)
+// low: 저사양 단계에서 효과를 이 비율로
+export const WEAPON_FX = {
+  aimT: 0.55, kick: 0.09,
+  splash: 6, splashLow: 3, // 총알이 맞으면 튀는 즙 방울 수
+  laser: { w: 0.07, wet: 1.6, drip: 14 },
+  bomb: { grav: 22, vMin: 6, vMax: 22, k: 0.75, boom: 0.5, fuse: 0.12, splashN: 3 },
+  low: 0.5,
+  peerSeq: 1.5, // 다른 사람에게 보내는 한 발 사건을 이 초 동안 실어 둠 (그 뒤 빼서 보내는 양을 줄임)
+};
 // 귤 활 연출 (#38)
 export const BOW = {
   release: 0.3, total: 0.62, // 당겨서 놓는 순간·동작 전체 (초)
@@ -368,7 +429,7 @@ export const TUT = {
   fingerT: 10, easyT: 30, okT: 1.1,
   cleanD: 94, // 클린하우스(길 오른쪽 7.5)
   gateD: 112, // 안쪽 돌담·정낭
-  firstBonus: 200, // 클린하우스에 처음 버릴 때 귤이 이만큼이 되도록 채워 줌 (집게 100 + 배낭 80)
+  firstBonus: GROWTH.price[2] + GROWTH.price[1], // 클린하우스에 처음 버릴 때 귤이 이만큼이 되도록 채워 줌 (집게 + 배낭, #137)
   rescueT: 1.2, // 낚시 NPC 가 줄에 걸린 캐릭터를 끌어 올리는 시간(초)
   arrowFar: 22, // 목표가 이보다 멀거나 화면 밖이면 가장자리 화살표
 };
@@ -561,8 +622,8 @@ export const WEAR = {
     { k: 'jacket', name: '잠바', stat: 'guard', none: true, v: [0, 0.08, 0.16, 0.24, 0.32, 0.4] },
     { k: 'socks', name: '양말', stat: 'regen', none: true, v: [1, 1.2, 1.4, 1.6, 1.8, 2] },
   ],
-  price: [0, 0, 50, 200, 400, 900], // 단계별 값 (#53 tools/econ.js 로 맞춤, 6칸 같은 값). 모자·티셔츠·바지 1단계는 처음부터 가짐
-  priceNone1: 40, // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
+  price: GROWTH.price.slice(0, 6).map((p, t) => t < 2 ? 0 : Math.round(p * GROWTH.wearK)), // 단계별 값 (#137: 장비와 같은 곡선 × wearK). 모자·티셔츠·바지 1단계는 처음부터 가짐
+  priceNone1: Math.round(GROWTH.price[1] * GROWTH.wearK), // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
   tierColor: ['#7b7b80', '#9a9a94', '#5aa55a', '#4a86c8', '#9a6ad0', '#f29a2e'], // 단계 색: 없음·회색·초록·파랑·보라·귤색
 };
 // 옷 목록: 한 줄이 옷 한 벌. 단계마다 옷을 늘리려면 여기에 줄만 더하면 됨 (같은 단계 = 같은 능력, 모양은 look)
@@ -806,10 +867,15 @@ export const NET = {
   hitPerSec: 3, hitRange: 45, // 귤·활 맞힘 알림: 1초에 몇 번, 맞힌 사람과 거리 상한(m)
   putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭, 방장만): 1분에 넣는 수, 한꺼번에(접속 안 한 동안 쌓인 몫) 넣을 수 있는 수
   // 저장 확인: 클라이언트가 보낸 귤·장비를 그대로 믿지 않음
-  earnPerSec: 4,      // 귤이 늘 수 있는 빠르기 (지난 저장 뒤 지난 시간 × 이 값 + earnBurst)
-  earnBurst: 1500,    // 업적·뱃지 보상처럼 한꺼번에 받는 몫
+  // 귤이 늘 수 있는 몫 (#144): ① 작은 몫(토큰 통: 적·업적·낚시·보너스) + ② 번 몫(earn_bank: 방이 받아 준 줍기 × 더미 구역 값, server/src/heaps.js ZONE_GYUL)
+  //   클린하우스에 버린 귤은 ② 에서 먼저 씀. #137 의 고정 큰 몫(earnBurst 100000, earnPerSec 80)은 한 번에 10만 귤 부풀리기를 받아 줘서 되돌림
+  earnPerSec: 15,     // ① 이 빠르기로 참 (지난 저장 뒤 지난 시간 × 이 값). 5구역 외계인 무리(3마리 × 400, 3~4분마다)가 초당 약 6
+  earnBurst: 4000,    // ① 한꺼번에 받는 몫: 업적·뱃지 몰아 받기, 첫 보너스, 지키기 보너스, 작은 배낭 한 번(종류 운 여유)
+  earnPickSlack: 1.5, // ② 줍기 하나의 값 = 구역 평균 귤 × 이 여유 × gv × 베스트. 종류는 주울 때 운이라 평균보다 비싼 것이 많이 나올 수 있음
+  earnBankMax: 60000, // ② 쌓이는 상한: 정상 구역에서 가장 큰 배낭(부피 540, 보통 쓰레기 330개 안팎 × 줍기 값 123 ≈ 4만)을 채운 몫에 여유
+  earnFlushMs: 1000,  // 방이 번 몫을 계정에 넘기는 간격 (버리기 직전에 주운 것도 저장 전에 넘어가게)
   earnWindow: 3600,   // 지난 시간은 이 초까지만 셈 (오래 꺼 뒀다고 귤이 쌓이지 않게)
-  pickPerSec: 15, pickBurst: 400, // 치운 양(누적)이 늘 수 있는 빠르기
+  pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
   migrateCoinsMax: 30000, // 기기 기록을 계정으로 옮길 때 받아 주는 귤 상한
   saveMax: 200000,    // 저장 크기 상한 (바이트)
   saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
@@ -819,7 +885,9 @@ export const NET = {
   maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
   moveSlack: 8,       // 이동 판정 여유 (m, 끊김·점프)
   warpGap: 10,        // 들것 귀환·자리 앉기 같은 순간 이동은 이 초에 한 번까지 받아 줌
-  takePerSec: 6,      // 더미 줍기: 1초에 몇 번 (한꺼번에도 이만큼)
+  takePerSec: 40,     // 더미 줍기: 1초에 몇 개 (한꺼번에도 이만큼. #137 흡입기 초당 32개. 예전 6)
+  takeMax: 16,        // 한 메시지에 묶어 보내는 줍기 수 상한 (#137). 클라이언트는 이보다 많으면 나눠 보냄
+  takeAsk: 64,        // 한 메시지에 적힌 수는 여기까지 셈: takeMax 를 넘은 몫도 '되돌려라'(no)로 알림 (#144, 화면의 되돌리기 상한과 같음)
   strikeMax: 8, strikeWin: 30, // 되돌리기·버린 메시지가 strikeWin 초 안에 strikeMax 번을 넘으면 끊음
   dropKick: 60,       // 버린 메시지가 strikeWin 초 안에 이만큼이면 끊음 (폭주)
   banSec: 60,         // 끊긴 사람(계정·주소)은 이 초 동안 다시 못 들어옴

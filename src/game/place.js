@@ -1,7 +1,7 @@
 // 소품(표지석·벤치·징검돌·하르방·돌탑), 사물 충돌, 돌담, 들머리 개울, 가게 거리, 쓰레기·오름 안 클린하우스·꽃, 마차, 러너(player), HP (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { TEXCS } from '../boot.js';
 import { createTrash, createLocalTrashStore } from '../trash.js';
-import { CLEANHOUSE, CAIRN, TUT, SHOPS, LIFE_MODELS } from '../balance.js';
+import { CLEANHOUSE, CAIRN, TUT, SHOPS, LIFE_MODELS, ZONE_LOOK } from '../balance.js';
 import { rideRig, createCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import { createShopStreet, SHOP_BUILD } from '../shops.js';
@@ -200,7 +200,7 @@ export const chNear = (p = player.pos) => { let b = null, bd = 1e18; for (const 
 export const chActs = CHS.map((c) => ({ ch: c, ic: 'dump', label: '버리기', pos: c.front, r: CLEANHOUSE.r, act: () => late.dumpBag(c) }));
 export const shopAct = CH && { ic: 'shop', label: '상점', pos: CH.shopFront, r: CLEANHOUSE.shopR, act: () => late.openShop('gear') };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46): 풀 색·꽃·나무·나비·새, 다 핀 구역엔 노루가 돌아오고 몹이 나오지 않음
-export const bloom = trash ? createBloom({ scene, ns: NSW, trash, height, onPath: (x, z) => surfaceAt(x, z) !== 0, col, low: LOW }) : null;
+export const bloom = trash ? createBloom({ scene, ns: NSW, trash, height, onPath: (x, z) => surfaceAt(x, z) !== 0, col, low: LOW, ambFly: (z) => ZONE_LOOK.butterflies[z] || 0 }) : null;
 export const bfx = bloom ? createBloomFx({ scene, height, tier: () => (LOW ? 0 : quality.level) }) : null; // 치웠을 때·꽃밭 효과 (#65)
 // ---------- 마차 (#69): 들머리 ↔ 능선 ↔ 정상 아래. 위치는 시각에서 계산 ----------
 export const cart = NS_TUT ? createCart({ scene, height, low: LOW, col }) : null;

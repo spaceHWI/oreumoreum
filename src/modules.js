@@ -24,6 +24,7 @@ import './fishing.js';
 import './streamshape.js';
 import './collide.js';
 import './gear.js';
+import './weaponmodels.js'; // 무기 3~6단계 손에 든 모양 (#123)
 import './cleanhouse.js';
 import './autowalk.js';
 import './toon.js';
@@ -67,6 +68,7 @@ import './game/hud.js';
 import './game/input.js';
 import './game/menu.js';
 import './game/throw.js';
+import './game/arms.js'; // 무기 3~6단계 (#123)
 import './game/panels.js';
 import './game/screen.js';
 import './game/ride.js';
@@ -74,6 +76,7 @@ import './game/moves.js';
 import './game/room.js';
 import './game/stores.js';
 import './game/pickup.js';
+import './game/area.js';
 import './game/deernet.js';
 import './game/dump.js';
 import './game/shop.js';

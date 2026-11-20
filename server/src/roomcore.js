@@ -1,7 +1,7 @@
 // 방 하나의 규칙 (#7). Cloudflare 와 상관없는 순수 JS 라 Node 에서 그대로 재 볼 수 있음 (bench.mjs, tools/loadtest.js)
 // 받는 것 (JSON 문자열):
 //   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로). o·nick 은 바뀔 때만 와도 됨 (#115)
-//   {t:'take', h}         더미 h 에서 하나 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}
+//   {t:'take', h, n?}     더미 h 에서 n(없으면 1)개 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}. 로그인한 사람이면 주운 수 × 더미 값(HEAP_GYUL)을 번 몫으로 셈 (#144)
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
@@ -15,7 +15,7 @@
 //   되돌리기·버린 메시지가 쌓이면 {t:'kick'} 후 끊고 그 계정·주소는 banSec 초 동안 못 들어옴 ({t:'ban'})
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET } from '../../src/balance.js';
-import { HEAP_FULL, HEAP_SIG } from './heaps.js';
+import { HEAP_FULL, HEAP_SIG, HEAP_GYUL } from './heaps.js';
 import { cleanText } from '../../src/safetext.js';
 
 const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134). 지금은 비워 둠 → 예: '0.24.0'
@@ -26,6 +26,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   const peers = new Map(); // id → peer
   let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], v | 0))) : HEAP_FULL.slice();
   const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
+  const earned = new Map(); // 계정 → 받아 준 줍기로 번 몫 (#144). room.js 가 earnFlushMs 마다 꺼내 계정(Accounts.earn)에 넘김
   let heapsDirty = false, roomSeen = seen || 0, host = null, nextId = 1, tick = 0;
   const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0, moveBack: 0, kicks: 0, takeNo: 0 };
   const bans = new Map(); // 계정·주소 키 → 풀리는 시각 (ms)
@@ -88,7 +89,8 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
     if ('nick' in d) d.nick = cleanText(d.nick, NET.nickMax);
     // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
-    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; }
+    if ('gs' in d) d.gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0; // 장비 점수 (#137, 이름표 옆 숫자. 보여 주기만)
+    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; if (!('gs' in d) && 'gs' in p.d) d.gs = p.d.gs; }
     if ('say' in d) d.say = d.say && typeof d.say === 'object' && isNum(d.say.at) ? { t: cleanText(d.say.t, NET.sayMax), at: d.say.at } : null;
     // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
     const ht = d.ht;
@@ -140,10 +142,12 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       }
       case 'unmount': if (unride(p)) all(ridesMsg()); break;
       case 'p': presence(p, m.d); break;
-      case 'take': {
+      case 'take': { // n: 한 번에 주운 수 (#137 묶어 보냄, 없으면 1)
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
-        if (H[h] > 0 && p.takeTok >= 1) { p.takeTok--; H[h]--; heapsDirty = true; heapOut.set(h, H[h]); }
-        else { st.takeNo++; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: 1 })); } // 늦게 온 마지막 하나·너무 빠른 줍기: 주운 사람이 되돌림
+        // 보낸 수(ask)는 그대로 세고 받는 수만 takeMax·남은 수·초당 몫으로 자름 (#144: 예전엔 takeMax 로 먼저 잘라 넘친 몫을 되돌리라고 알리지 않았음)
+        const ask = Math.max(1, Math.min(NET.takeAsk, m.n | 0 || 1)), got = Math.max(0, Math.min(ask, NET.takeMax, H[h], Math.floor(p.takeTok)));
+        if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); }
+        if (got < ask) { st.takeNo += ask - got; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: ask - got })); } // 늦게 온 마지막 것·너무 빠른 줍기: 주운 사람이 그만큼 되돌림
         break;
       }
       case 'put': {
@@ -182,6 +186,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   return {
     join, leave, message, step, setCap(n) { cap = n; },
     get size() { return peers.size; }, get host() { return host; },
+    takeEarned() { if (!earned.size) return null; const a = [...earned]; earned.clear(); return a; },
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },
     get seen() { return roomSeen; }, stats: () => ({ n: peers.size, ...st }),
   };

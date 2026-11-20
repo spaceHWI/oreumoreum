@@ -1,7 +1,7 @@
 // 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { nsPaths } from '../namsongi.js';
 import { DEX_LIST } from '../trash.js';
-import { TUT, BOAR, SCATTER, ENEMY_SPAWN, ENEMIES, DUMP, MUSIC } from '../balance.js';
+import { TUT, BOAR, SCATTER, ENEMY_SPAWN, ENEMIES, ENEMY_DROP, DUMP, MUSIC } from '../balance.js';
 import { RIDE_BY } from '../rides.js';
 import { flinchK } from '../bodytilt.js';
 import * as THREE from 'three';
@@ -59,7 +59,7 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 life.hooks.enemyWave = (w) => { toast(`${ENEMY_NAME(w.kind)} ${w.n}마리가 나타났어요! 귤을 맞히면 도망가요`); enemyWarn.start(w); };
 life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(ENEMY_NAME(kind))} 숲으로 돌아갔어요`); };
 life.hooks.enemyRepel = (kind, pos, def) => {
-  life.scatterTangerines(pos, def.reward.gyul);
+  life.scatterTangerines(pos, def.reward.gyul, ENEMY_DROP.max);
   if (trash && Math.random() < def.reward.rare) { const rares = DEX_LIST.filter((d) => d.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel');
   if (kind === 'boar') ach.emit('boar-repel');
@@ -111,7 +111,7 @@ life.hooks.hareubang = () => { ach.emit('hareubang'); late.tut.notify('hareubang
 life.hooks.pickup = (n) => { late.tut.notify('pickup'); save.coins += n; persist(); updateStats(); sound.coin?.(); ach.emit('pickup', n); };
 // 귤 줍는 효과: 그 자리에서 +1이 떠오르고 귤이 왼쪽 위 귤 칸으로 날아감
 life.hooks.pickupAt = (wp) => coinFx(wp, 1);
-life.hooks.reclaim = (wp) => { save.coins += 1; persist(); updateStats(); sound.coin?.(); coinFx(wp, 1); };
+life.hooks.reclaim = (wp, v = 1) => { save.coins += v; persist(); updateStats(); sound.coin?.(); coinFx(wp, v); }; // v: 알갱이 하나에 담긴 귤 (#137 적 귤)
 // 귤이 화면 위에서 쏟아져 귤 알약으로 들어감 (첫 보너스 #31)
 let dotsLive = 0;
 export function gyulShower(n) {

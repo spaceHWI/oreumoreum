@@ -12,10 +12,12 @@ import { marker } from './input.js';
 // 귤 던지기 (#34): 상호작용 버튼(F)으로, 할 일이 없을 때. 손으로 던지기는 무료라 가진 귤이 줄지 않음
 // 자동 조준: 사거리 안 가장 가까운 대상(적·하르방)을 겨눠 몸을 돌려 던지고, 대상 발밑에 표시. 없으면 보는 방향으로
 state.throwPending = false, state.throwAim = null;
-// 무기 (#38): 귤 활을 샀으면 F 로 활을 쏨. 말 탄 동안은 손 던지기
-export const weaponNow = () => WEAPONS[save.equip.weapon - 1] || WEAPONS[0]; late.weaponNow = weaponNow;
-export const bowReady = () => weaponNow().id === 'bow' && !player.riding && !player.ride && !player.cart;
-export const bowArmed = () => bowReady() && (save.bowAmmo > 0 || save.coins > 0); // 귤이 0이고 남은 화살도 없으면 손 던지기
+// 무기 (#38): 귤 활 이상을 골라 쓰면 F 로 그 무기를 씀. 말·탈것·마차 위에서는 손 던지기. 3~6단계는 game/arms.js (#123)
+export const weaponNow = () => WEAPONS[save.weaponUse - 1] || WEAPONS[0]; late.weaponNow = weaponNow;
+export const bowReady = () => weaponNow().id !== 'hand' && !player.riding && !player.ride && !player.cart; // 무기를 쓸 수 있음 (이름은 #38 그대로)
+// 남은 탄이 있거나 귤로 채울 수 있음. 귤이 0이고 남은 탄도 없으면 손 던지기
+export const armedFor = (w) => w.id === 'bow' ? save.bowAmmo > 0 || save.coins > 0 : w.id === 'bomb' ? save.coins >= w.cost : w.id === 'hand' ? false : (save.ammo?.[w.id] || 0) > 0 || save.coins > 0;
+export const bowArmed = () => bowReady() && armedFor(weaponNow());
 export function setHoldBow(v) {
   if (state.holdBow === v) return; state.holdBow = v;
   syncEquipGear(); runner.apply(save.outfit); late.net.send(true);
@@ -46,6 +48,7 @@ export function throwTangerine() {
 export function releaseTangerine() {
   state.throwPending = false;
   const t = state.throwAim; state.throwAim = null;
+  if (state.lobPending) { state.lobPending = false; late.releaseBomb(t); return; } // 귤 폭탄 (#123): 같은 던지기 동작으로 폭탄을 놓음
   let dir = new THREE.Vector3(Math.sin(player.heading), 0, Math.cos(player.heading));
   let from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
   if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
@@ -72,7 +75,7 @@ function aimShot(from, t) {
 }
 // 귤 활 쏘기 (#38): 5발에 귤 1개. 남은 화살이 없으면 귤 하나를 써서 채움
 state.bowPending = false;
-export function fireWeapon() { if (bowArmed()) shootBow(); else throwTangerine(); }
+export function fireWeapon() { if (!bowArmed()) throwTangerine(); else if (weaponNow().id === 'bow') shootBow(); else late.fireArm(); }
 function shootBow() {
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   state.emo?.stop();
@@ -106,15 +109,18 @@ function arrowShot(from, t, w) {
   }
   return new THREE.Vector3((p.x - from.x) / T, (p.y - from.y) / T + 0.5 * w.grav * T, (p.z - from.z) / T);
 }
-// 남은 화살 표시: 상호작용 버튼 위 작은 점 5개 (활을 쓸 때만)
+// 남은 화살 표시: 상호작용 버튼 위 작은 점 5개 (활을 쓸 때만). 3~6단계 무기는 game/arms.js armsAmmo (#123)
 let ammoFlash = 0, ammoKey = '';
 export function updateAmmo() {
   const el = $('ammo'); if (!el) return;
-  const on = bowReady(), n = save.bowAmmo, key = `${on}|${n}|${save.coins > 0}`;
+  const w = weaponNow(), on = bowReady();
+  if (on && w.id !== 'bow') { ammoKey = ''; late.armsAmmo?.(el); return; }
+  const n = save.bowAmmo, key = `${on}|${n}|${save.coins > 0}`;
   if (key === ammoKey) return; ammoKey = key;
   el.hidden = !on; if (!on) return;
+  el.className = 'ammo'; el.style.removeProperty('--k');
   el.classList.toggle('empty', n <= 0 && save.coins <= 0);
-  el.innerHTML = Array.from({ length: weaponNow().perGyul }, (_, i) => `<b class="${i < n ? 'on' : ''}"></b>`).join('');
+  el.innerHTML = Array.from({ length: w.perGyul }, (_, i) => `<b class="${i < n ? 'on' : ''}"></b>`).join('');
   if (ammoFlash) { ammoFlash = 0; el.classList.remove('use'); void el.offsetWidth; el.classList.add('use'); }
 }
 // 겨눈 대상 발밑 표시

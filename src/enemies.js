@@ -79,17 +79,28 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
-  function hitTest(p, tg, dmg) {
+  // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
+  function hurt(e, dmg, quiet) {
+    e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
+    if (e.hp <= 0) repel(e);
+    else { if (!quiet) sound?.beep?.(false); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 돌진
+  }
+  const live = (e) => e.state !== 'flee' && e.state !== 'leave';
+  function hitTest(p, tg, dmg, quiet = false) {
     for (const e of list) {
-      if (e.state === 'flee' || e.state === 'leave') continue;
+      if (!live(e)) continue;
       if (Math.hypot(p.x - e.pos.x, p.z - e.pos.z) >= BOAR.hitR * e.def.size || p.y > e.pos.y + e.h + BOAR.hitPad) continue;
-      e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
       tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
-      if (e.hp <= 0) repel(e);
-      else { sound?.beep?.(false); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 돌진
-      return true;
+      hurt(e, dmg, quiet);
+      return e;
     }
-    return false;
+    return null;
+  }
+  // 둘레 r 안 모두 (#123 귤 폭탄). 맞은 적 목록
+  function hitArea(p, r, dmg) {
+    const out = [];
+    for (const e of list.slice()) { if (!live(e) || Math.hypot(p.x - e.pos.x, p.z - e.pos.z) > r + BOAR.hitR * e.def.size * 0.5) continue; hurt(e, dmg, out.length > 0); out.push(e); }
+    return out;
   }
   function repel(e) {
     e.state = 'flee'; e.st = 0; e.bar.g.visible = false;
@@ -210,7 +221,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
 
   return {
     bind(p, s) { player = p; sound = s; },
-    update, hitTest, aimTargets, list, bolts,
+    update, hitTest, hitArea, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
     activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
     planWave, spawnPlan,

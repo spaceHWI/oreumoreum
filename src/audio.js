@@ -21,12 +21,24 @@ export class Sound {
       if (!this.forest) this._scheduleBell();
       this._scheduleBird();
       this._gusts();
-      this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day;
+      this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day; if (this.zoneAmb) this.setZoneAmb(...this.zoneAmb);
     }
-    this.ctx.resume();
+    this.wake();
     this.on = true;
     this._applyGains();
     return true;
+  }
+  // 소리 장치 깨우기 (#143): iOS 는 전화·다른 앱이 소리 장치를 잡고 있으면 resume() 이 거절된다(InvalidStateError: Failed to start the audio device).
+  // 게임은 그대로 되므로 오류로 올리지 않고, 다음에 화면을 누를 때 한 번 더 켜 본다
+  wake() {
+    if (!this.ctx) return;
+    let p; try { p = this.ctx.resume(); } catch (e) { p = Promise.reject(e); }
+    if (!p || !p.catch) return;
+    p.catch(() => {
+      if (this._wakeWait) return;
+      this._wakeWait = true;
+      addEventListener('pointerdown', () => { this._wakeWait = false; if (this.on && !document.hidden) this.wake(); }, { once: true });
+    });
   }
   stop() { this.on = false; this._applyGains(); }
   setAmb(v) { this.ambOn = v; this._applyGains(); }
@@ -63,19 +75,26 @@ export class Sound {
     const g1 = c.createGain(); g1.gain.value = 0.16; this.windGain = g1; this.windLP = lp;
     const lfo = c.createOscillator(); lfo.frequency.value = 0.07; const lg = c.createGain(); lg.gain.value = 0.1;
     lfo.connect(lg); lg.connect(g1.gain);
-    s1.connect(lp); lp.connect(g1); g1.connect(this.amb);
+    // 구역마다 바람·억새 소리 세기 (#136): setZoneAmb
+    this.windZ = c.createGain(); this.windZ.connect(this.amb); this.reedZ = c.createGain(); this.reedZ.connect(this.amb);
+    s1.connect(lp); lp.connect(g1); g1.connect(this.windZ);
     // 억새 사각거림
     const s2 = this._src(); const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 4200; bp.Q.value = 0.8;
     const g2 = c.createGain(); g2.gain.value = 0.02;
     const lfo2 = c.createOscillator(); lfo2.frequency.value = 0.13; const lg2 = c.createGain(); lg2.gain.value = 0.018;
     lfo2.connect(lg2); lg2.connect(g2.gain);
-    s2.connect(bp); bp.connect(g2); g2.connect(this.amb);
+    s2.connect(bp); bp.connect(g2); g2.connect(this.reedZ);
     // 빗소리: 좁은 대역 잡음 두 겹 (평소엔 0)
     const s3 = this._src(), s4 = this._src(); const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
     const bp2 = c.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 600; bp2.Q.value = 0.5;
     const rg = c.createGain(); rg.gain.value = 0; this.rainGain = rg;
     s3.connect(hp); hp.connect(rg); s4.connect(bp2); bp2.connect(rg); rg.connect(this.amb); s3.start(); s4.start();
     [s1, s2, lfo, lfo2].forEach((n) => n.start());
+  }
+  // 구역 소리 (#136): 바람·억새 배율, 평소 음악 크기·밝기 배율. 천천히 바뀜
+  setZoneAmb(wind = 1, reed = 1, music = 1, lp = 1) {
+    this.zoneAmb = [wind, reed, music, lp]; if (!this.ctx) return;
+    const t = this.ctx.currentTime; this.windZ?.gain.setTargetAtTime(wind, t, 1.5); this.reedZ?.gain.setTargetAtTime(reed, t, 1.5); this.music?.setZone(music, lp);
   }
   setRain(v) { if (this.rainGain) this.rainGain.gain.setTargetAtTime(v * 0.1, this.ctx.currentTime, 0.8); }
 

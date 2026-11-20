@@ -31,9 +31,11 @@ export function dumpBag(ch = chNear()) {
   if (!ch || dumpS.el) return;
   const bag = trash.store.bag, per = []; let n = 0, g = 0;
   const vk = 1 + wearV('vest'); // 베스트(#52): 받는 귤 더함
-  TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });
+  // 구역 귤 배수 (#137): 주울 때 모아 둔 bag.xv 를 종류별 귤에 비례해 나눠 더함
+  const base = TRASH_TYPES.reduce((s, t) => s + (bag[t.id] || 0) * t.gyul, 0), zk = base > 0 ? 1 + (bag.xv || 0) / base : 1;
+  TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * zk * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });
   if (!n) { toast('배낭이 비었어요. 쓰레기를 주워 와요'); return; }
-  TRASH_TYPES.forEach((t) => { bag[t.id] = 0; });
+  TRASH_TYPES.forEach((t) => { bag[t.id] = 0; }); bag.xv = 0;
   save.recycle.visits++; save.recycle.gyul += g;
   trash.store.commit();
   late.gyulExpect?.(g); addCoins(g); late.tut.notify('dump'); // 귤 숫자는 쏟아지는 연출 뒤에 올라감 (#133)
@@ -206,6 +208,10 @@ export function updateContext() {
 const CTX_ICON = {
   do: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
   bow: '<path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/><circle cx="19" cy="6" r="1.6"/>',
+  gun: '<path d="M3 9h13l2 2v3H9l-1 5H5l1-5H3zM18 11h3M12 14v2"/><circle cx="20" cy="9" r="1.5"/>', // 무기 3~6단계 (#123, 상점 그림과 같음)
+  mg: '<path d="M2 9h15l2 2v3H9l-1 5H5l1-5H2zM19 10h3M19 12h3M19 14h3M8 9V6h5v3"/>',
+  laser: '<path d="M3 10h9v4H3zM12 11h2v2h-2M14 12h8M5 14l-1 5h3l1-5M7 7c1-2 3-2 4 0"/>',
+  bomb: '<circle cx="11" cy="14" r="7"/><path d="M14 7l2-3M16 4l3 1M18 2v2M9 12c0-1 1-2 2-2"/>',
   throw: '<circle cx="11" cy="14" r="6"/><path d="M11 8c0-2 1-3 3-4M8 5c1 1 2 2 3 3M19 5l2-2M20 9h2"/>',
   dump: '<path d="M4 10l8-6 8 6M6 9v11h12V9M10 20v-5h4v5"/><path d="M12 4v-2" />',
   shop: '<path d="M3 9l2-5h14l2 5M3 9h18M3 9c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3M5 12v8h14v-8"/><circle cx="12" cy="16" r="2"/>',

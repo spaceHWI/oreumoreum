@@ -9,8 +9,9 @@ import { cam } from './camera.js';
 import { toast, updateStats, closePanels, ach } from './hud.js';
 import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
+import { itemScore, scoreDiff } from '../gearscore.js';
 
-Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth }); // 앞 파일에서 부르는 함수
+Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, gdBadge, scoreChip }); // 앞 파일에서 부르는 함수
 
 // ---------- 상점·옷장 ----------
 // 상점 팝업 (#26): 탭 도구·배낭·신발·옷. 장비 탭은 5단계 한 줄(가진 것 체크·안 가진 것은 값, 귤이 모자라면 흑백 #111)
@@ -49,7 +50,11 @@ const STAT_ICON = {
   speed: '<path d="M4 17l6-6 4 4 6-8M14 7h6v6"/>', // 빠르기
   dmg: '<path d="M12 3l2.5 6 6.5.5-5 4 1.5 6.5L12 16l-5.5 4L8 13.5l-5-4 6.5-.5z"/>', // 피해
 }; late.STAT_ICON = STAT_ICON;
-const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
+// 장비 점수 (#137): 칸마다 지금 것 대비 ▲/▼ 점수 차, 고른 것의 점수
+const SCORE_IC = '<path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/>';
+export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 점수 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
+export function scoreChip(sc, d) { return `<span class="gs" title="장비 점수">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
+const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
   : k === 'bag' ? [['cap', String(t.cap)]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
 // 순서 없이 사기 (#111): 귤만 충분하면 어느 단계든 바로 산다. 산 단계 아래는 '가짐'
 // 튜토리얼 집게·배낭 단계에서는 그 물건(바로 다음 단계)만
@@ -90,9 +95,9 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); return; }
   if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= next.price; save.equip[k] = i + 1;
+  save.coins -= next.price; save.equip[k] = i + 1; if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
-  if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); } // 무기 (#38)
+  if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
   toast(`${next.name} · 바로 착용했어요`);
   shopPick = null; buildShop();
@@ -112,7 +117,8 @@ function buildGearShop(body, k) {
     c.innerHTML = (own ? `<i class="st">${CHECK}</i>` : isNext ? `<i class="st">${SVG_A} stroke-width="3"><path d="M12 19V6M6 11l6-6 6 6"/></svg></i>` : t.soon ? `<i class="st">${LOCK}</i>` : '')
       + `${SVG_A.replace('<svg', '<svg class="art"')}>${TIER_ART[k][i]}</svg>`
       + (t.soon ? '' : `<span class="n">${tierStats(k, t)[0][1]}</span>`)
-      + (own || t.soon ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>`);
+      + (own || t.soon ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>`)
+      + (own || t.soon ? '' : gdBadge(scoreDiff(save, k, i + 1)));
     c.addEventListener('click', () => { shopPick = i; buildShop(); });
     tiers.append(c);
   });
@@ -126,7 +132,7 @@ function buildGearShop(body, k) {
   const det = document.createElement('div'); det.className = 'tier-detail';
   const info = document.createElement('div');
   const stats = tierStats(k, t), was = pick >= cur ? tierStats(k, now) : null;
-  info.innerHTML = `<h3>${t.name}</h3><div class="tier-stats">${stats.map(([ic, v], j) => `<span>${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('')}</div>`;
+  info.innerHTML = `<h3>${t.name}</h3><div class="tier-stats">${stats.map(([ic, v], j) => `<span>${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('')}${scoreChip(itemScore(pick + 1), pick >= cur ? scoreDiff(save, k, pick + 1) : 0)}</div>`;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'tier-buy';
   if (pick < cur) { b.disabled = true; b.innerHTML = CHECK; b.setAttribute('aria-label', '가짐'); }
   else { b.innerHTML = `<i class="g"></i>${t.price.toLocaleString()}`; b.classList.toggle('short', poor(pick)); b.setAttribute('aria-label', `${t.name} 사기`); b.addEventListener('click', () => buyGear(k, pick)); }
@@ -172,7 +178,7 @@ export function buildWearRows(body, shop) {
       b.style.setProperty('--tc', WEAR.tierColor[tier]); b.title = c ? `${c.name} · ${tier}단계` : '없음';
       b.setAttribute('aria-label', c ? `${c.name} ${tier}단계${has ? '' : ` 귤 ${price}`}` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
       if (shop && !has) b.setAttribute('aria-expanded', String(wearPick === id));
-      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (has ? '' : `<span class="pr${save.coins < price ? ' short' : ''}"><i class="g"></i>${price.toLocaleString()}</span>`);
+      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (has ? '' : `<span class="pr${save.coins < price ? ' short' : ''}"><i class="g"></i>${price.toLocaleString()}</span>`) + (on ? '' : gdBadge(scoreDiff(save, w.k, tier, id || undefined)));
       b.addEventListener('click', () => { if (has) { wearPick = null; if (!on) wearCloth(w.k, id); if (shop) buildShop(); else late.buildWardrobe(); } else { wearPick = wearPick === id ? null : id; buildShop(); } });
       grid.append(b);
     };
@@ -183,7 +189,7 @@ export function buildWearRows(body, shop) {
     if (pc) { // 고른 옷: 능력치 지금 → 바뀔 값, 값
       const det = document.createElement('div'); det.className = 'tier-detail wear-detail';
       const nv = w.v[pc.tier], price = wearPrice(pc);
-      det.innerHTML = `<div><h3><i class="tdot" style="background:${WEAR.tierColor[pc.tier]}"></i>${pc.name}</h3><div class="tier-stats"><span>${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${nv !== cur ? `<s>${wearStatText(w.stat, cur)}</s>→<em>${wearStatText(w.stat, nv)}</em>` : wearStatText(w.stat, nv)}</span></div></div>`;
+      det.innerHTML = `<div><h3><i class="tdot" style="background:${WEAR.tierColor[pc.tier]}"></i>${pc.name}</h3><div class="tier-stats"><span>${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${nv !== cur ? `<s>${wearStatText(w.stat, cur)}</s>→<em>${wearStatText(w.stat, nv)}</em>` : wearStatText(w.stat, nv)}</span>${scoreChip(itemScore(pc.tier), scoreDiff(save, w.k, pc.tier, pc.id))}</div></div>`;
       const bb = document.createElement('button'); bb.type = 'button'; bb.className = 'tier-buy' + (save.coins < price ? ' short' : ''); bb.innerHTML = `<i class="g"></i>${price.toLocaleString()}`; bb.setAttribute('aria-label', `${pc.name} 사기`);
       bb.addEventListener('click', () => buyCloth(pc.id)); det.append(bb); row.append(det);
     }
