@@ -836,3 +836,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 줍기는 같은 틱 안에서 더미마다 묶어 {t:'take', h, n} 하나로 보냄(online.js). 서버는 takeTok 안에서 n 만큼 받고 모자란 수를 no 로 돌려줌. NET takePerSec 6→40, takeMax 16, pickPerSec 15→40, pickBurst 400→1000, earnPerSec 4→80, earnBurst 1500→100000 (정상 구역을 몰아서 치운 몫)
 - tools/econ.js: 구역은 장비 점수로 고름(빨강 아닌 구역 중 가장 높은 곳, 없으면 30초씩 몹·투기꾼만), 하루 끝 흐름 확인(1일 2단계·구역1 … 5일 5단계·구역5), `--flow`. 마지막 칸 목표는 효율·여유 모두 5시간. tools/sec.js 는 몫·줍기 한도를 NET 값으로 읽게 고침
 - 남은 점: 구역을 다 치운 뒤 다음 구역이 빨강이라 할 일 없는 시간이 하루 30~40분(econ 가정). 맵 전체 쓰기(#138)·우두머리(#139)·강화(#140)가 채울 몫. 무기 3~6단계가 없어 정상(권장 320) 최고 점수는 291(노랑)
+
+## #143 [오류] 소리 장치를 못 켤 때 (iOS InvalidStateError)
+- 원인: iOS 는 전화·다른 앱이 소리 장치를 잡고 있으면 `AudioContext.resume()` 이 거절됨. 거절을 받는 곳이 없어 오류 알림으로 올라옴(게임은 그대로 됨, 소리만 멈춘 채)
+- audio.js `Sound.wake()`: resume 거절을 받고, 다음에 화면을 누를 때 한 번 더 켜 봄(기다리는 것은 하나만). `start()`·탭으로 돌아올 때(`visibilitychange`)·원스토어 resume 세 곳 모두 `wake()` 로
