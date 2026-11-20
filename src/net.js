@@ -15,6 +15,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
   let room = null, myPeer = null, ready = false;
   let lastSent = 0, lastKey = '';
+  let idKey = '', idT = -1e9; // 옷·닉네임을 마지막으로 실어 보낸 값·때 (#115). '' 이면 다음에 꼭 실음 (처음·다시 붙음)
   const hand = { hitBy: null }; // 누가 나를 귤로 맞혔나 (손잡기는 #86 에서 뺌)
   let hitOut = null;
 
@@ -96,7 +97,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     try { room = lobby.join ? await lobby.join((typeof roomName === 'function' ? roomName() : roomName) || 'oreum') : lobby; } catch (e) { room = lobby; }
     onRoom?.(room);
     room.onPeers((ch) => {
-      for (const pr of ch.peers) if (pr.sameTab) myPeer = pr.peer;
+      for (const pr of ch.peers) if (pr.sameTab) { if (pr.peer !== myPeer) idKey = ''; myPeer = pr.peer; } // 새로(다시) 붙으면 옷·닉네임부터 (#115)
       for (const pr of ch.left) removePeer(pr.peer);
       for (const pr of [...ch.joined, ...ch.updated]) {
         if (pr.isMe || pr.kind !== 'viewer') continue;
@@ -107,7 +108,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       ready = true;
       onPeersChanged?.(peersById.size);
       send(!wsLobby); // 서버 방은 새로 온 사람에게 방이 내 마지막 상태를 대신 보내 줌 (#7)
-    }, () => { ready = false; onPeersChanged?.(0); });
+    }, () => { ready = false; idKey = ''; onPeersChanged?.(0); });
   }
 
   function send(force) {
@@ -115,8 +116,12 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     const now = performance.now();
     if (!force && now - lastSent < NET.sendMs) return; // 초당 10번 안쪽 (#7)
     const p = player;
+    // 옷·닉네임은 처음·바뀜·다시 붙음 때만 (#115). 서버(roomcore)가 없으면 앞 값을 씀. 받아 주지 않은 메시지에 실렸을 수 있어 identMs 마다 한 번 더.
+    // room 캐퍼빌리티(서버 없음)는 presence 를 통째로 바꾸므로 늘 실음
+    const id = { nick: save.nick, o: compactOutfit(save.outfit) }, ik = JSON.stringify(id);
+    const withId = !wsLobby || ik !== idKey || now - idT > NET.identMs;
     const obj = {
-      nick: save.nick, o: compactOutfit(save.outfit),
+      ...(withId ? id : {}),
       x: +p.pos.x.toFixed(2), z: +p.pos.z.toFixed(2), h: +p.heading.toFixed(3),
       run: p.running, pose: p.pose, jy: +p.jumpY.toFixed(2), spd: +p.speed.toFixed(1),
       ...(p.knock ? { kn: [p.knock.id, +p.knock.ax.toFixed(2), +p.knock.az.toFixed(2)] } : {}), // 맞음 움찔 (#107)
@@ -126,6 +131,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     const key = JSON.stringify(obj);
     if (!force && key === lastKey) return;
     lastKey = key; lastSent = now;
+    if (withId) { idKey = ik; idT = now; }
     room.presence(obj).catch(() => {});
   }
 

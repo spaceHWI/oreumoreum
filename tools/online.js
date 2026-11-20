@@ -33,6 +33,21 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await wait(A.p, 2500);
   ok(await A.p.evaluate(() => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await B.p.evaluate(() => window.__oreum.net.count === 1), 'B 가 A 를 봄');
+  { // 옷·닉네임은 바뀔 때만 보냄 (#115): A 가 보내는 것을 세고, 옷을 바꾸면 B 화면에 바로
+    await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; });
+    for (let k = 0; k < 6; k++) { await A.p.evaluate(() => { window.__oreum.player.pos.x += 0.5; }); await wait(A.p, 200); }
+    const s1 = await A.p.evaluate(() => ({ n: __sent.length, withO: __sent.filter((d) => d.includes('"o":')).length }));
+    const hat = await A.p.evaluate(() => { const o = window.__oreum.save.outfit; o.hat.type = o.hat.type === 'straw' ? 'bucket' : 'straw'; window.__oreum.player.pos.x += 0.5; return o.hat.type; });
+    await wait(A.p, 1200);
+    const s2 = await A.p.evaluate(() => ({ n: __sent.length, withO: __sent.filter((d) => d.includes('"o":')).length }));
+    ok(s1.n >= 3 && s1.withO === 0 && s2.withO === 1, `옷·닉네임은 바뀔 때만 실음 (자리만 ${s1.n}번, 옷 바꾼 뒤 ${s2.withO}번)`);
+    ok(await B.p.evaluate((h) => [...window.__oreum.net.peersById.values()][0]?.data.o?.h === h, hat), `옷 바꾸면 B 화면에 바로 (${hat})`);
+    const C = await open('C'); await C.p.click('#enter'); await wait(C.p, 3000);
+    const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
+    const an = await A.p.evaluate(() => window.__oreum.save.nick);
+    ok(cs.some(([n, h]) => n === an && h === hat), `새로 들어온 C 에게 A 의 옷·닉네임 (${JSON.stringify(cs)})`);
+    await C.ctx.close(); await wait(A.p, 800);
+  }
   // A 를 움직이면 B 화면의 A 가 따라옴
   await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 5; });
   await wait(A.p, 800);
