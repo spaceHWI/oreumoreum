@@ -64,6 +64,13 @@ export function enableDev() {
       try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); localStorage.removeItem(TK); } catch (e) { /* 무시 */ }
       location.reload();
     });
+    // 들어오기 다시 (#99): 들어오기를 본 표시·서버 고른 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
+    $('dev-intro').addEventListener('click', () => {
+      state.resetting = true;
+      const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server;
+      try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
+      location.reload();
+    });
     $('dev-tut').addEventListener('click', () => { late.tut.skipAll(); toast('튜토리얼 건너뛰기'); }); // #62 건너뛰기는 개발자 버튼에만
     $('dev-gyul').addEventListener('click', () => { save.coins += 10000; persist(); updateStats(); late.sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
   }
