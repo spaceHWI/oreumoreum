@@ -302,7 +302,7 @@ function doInteract() { if (state.ctxTarget && !hp.isDown && !hp.pending) state.
 pressBtn(ui.ctx, () => doInteract());
 // 줍기 (E·줍기 버튼): 누르고 있는 동안 계속
 export const pickBtn = $('btn-pick');
-pickBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); late.pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } late.startPick(); });
+pickBtn.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; e.preventDefault(); late.pickS.held = true; try { pickBtn.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } late.pressPick(); });
 ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => pickBtn.addEventListener(ev, () => { late.pickS.held = false; }));
-pickBtn.addEventListener('click', (e) => { if (e.detail === 0) late.startPick(); }); // 키보드로 누른 경우
+pickBtn.addEventListener('click', (e) => { if (e.detail === 0) late.pressPick(); }); // 키보드로 누른 경우
 pickBtn.addEventListener('contextmenu', (e) => e.preventDefault());

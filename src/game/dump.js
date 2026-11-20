@@ -20,7 +20,7 @@ import { rideOffAct, cartOnAct, cartOffAct } from './ride.js';
 import { mountDeer, rePoseAct } from './moves.js';
 import { social } from './room.js';
 import { mealS, skipAct, cutS, cutSkipAct, interactables, fishAct, dismountAct, standAct, throwAct, pickBtn } from './stores.js';
-import { pickS, bagRoom, canPick, updateTrashUI } from './pickup.js';
+import { pickS, bagRoom, canPick, updateTrashUI, seekS, seekable } from './pickup.js';
 
 Object.assign(late, { dumpBag, placeArrow, stopAutoGo, startAutoGo }); // 앞 파일에서 부르는 함수
 
@@ -140,6 +140,7 @@ export function chRoute() {
   for (const c of CHS) { const r = trailRoute(trailG, player.pos, c.front), L = routeLen(player.pos, r); if (!best || L < best.L) best = { ch: c, r, L }; }
   return best;
 }
+late.trailRoute = (from, to) => { if (!trailG) trailG = buildTrailGraph(nsPaths, 6); return trailRoute(trailG, from, to); }; // 줍기 버튼 걷기도 같은 길 찾기 (#104)
 export function startAutoGo() {
   if (!CH || autoGo || busy() || player.riding || hp.isDown) return;
   const b = chRoute(); if (!b) return;
@@ -197,8 +198,8 @@ export function updateContext() {
   const ic = best ? (best.ic || (best.cairn ? 'cairn' : best.deer ? 'deer' : best.peer ? 'hand' : 'do')) : 'do';
   if (ui.ctx.dataset.ic !== ic) { ui.ctx.dataset.ic = ic; ui.ctx.querySelector('svg').innerHTML = CTX_ICON[ic] || CTX_ICON.do; }
   updateAmmo();
-  // 줍기 버튼: 도구 반경 안에 주울 쓰레기가 없으면 흐리게
-  const can = pickS.cyc >= 0 || canPick();
+  // 줍기 버튼: 찾는 거리(#104) 안에도 주울 쓰레기가 없으면 흐리게
+  const can = pickS.cyc >= 0 || !!seekS.on || canPick() || seekable();
   if (pickBtn.classList.contains('dim') === can) pickBtn.classList.toggle('dim', !can);
 }
 // 상호작용 버튼 아이콘 (지금 될 동작)
