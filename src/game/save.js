@@ -43,6 +43,7 @@ if (!save.bagV) { if (freshSave || typeof save.equip.bag !== 'number') save.equi
 if (!save.rides || typeof save.rides !== 'object') save.rides = {};
 save.rides.own = Array.isArray(save.rides.own) ? save.rides.own.filter((id, i, a) => RIDE_BY[id] && a.indexOf(id) === i) : [];
 if (!save.rides.own.includes(save.rides.cur)) save.rides.cur = save.rides.own[save.rides.own.length - 1] || null;
+save.rides.walk = save.rides.walk ? 1 : 0; // 1 = 탈것 없이 걸어 다니기를 골라 둠 (#109)
 save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.bowAmmo)) || 0)); // 귤 하나로 남은 화살 수
 for (const k of ['tool', 'bag', 'shoes']) { const lo = k === 'bag' ? 0 : 1, v = Math.floor(Number(save.equip[k])); save.equip[k] = Math.max(lo, Math.min(5, Number.isFinite(v) ? v : 1)); } // 장비 단계 (상점에서 다음 단계만 삼)
 // 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감

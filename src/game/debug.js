@@ -29,7 +29,7 @@ import { keys, joy } from './input.js';
 import { devOn, doEmote } from './menu.js';
 import { weaponNow, bowArmed, aimTarget, throwTangerine, fireWeapon, aimMark } from './throw.js';
 import { feedback } from './panels.js';
-import { rideCode, onRoad, noRideZone, mountRide, dismountRide, toggleRide, updateRideBtn, openRidePick, buyRide, boardCart, leaveCart, cartMark } from './ride.js';
+import { rideCode, onRoad, noRideZone, mountRide, dismountRide, toggleRide, updateRideBtn, openRideWin, buyRide, boardCart, leaveCart, cartMark } from './ride.js';
 import { photoBlob, photoPose, startPhoto, beginPhoto, rePoseAct, canSharePhoto, mountDeer, dismountDeer } from './moves.js';
 import { net, social, photog } from './room.js';
 import { mealS, shopPopNow, openShopPop, refreshShopPop, openStone, orderMeal, finishMeal, cutS, orderCut, sitCut, finishCut, leapS, leapItems, leapTryOn, pickLeap, buyLeap, shopMark, shopMarkId, interactables } from './stores.js';
@@ -126,7 +126,7 @@ if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌
 state.debugReady = false;
 function exposeDebug() { window.__oreum = debugApi(); }
 function debugApi() { return { charKit: { THREE, buildRunner, SKIN_TONES, TOOL_GEAR, BAG_GEAR, SHOE_GEAR, CLOTHES, HAIR }, screen: () => ({ ...screenInfo(), fov: camera.fov, w: innerWidth, h: innerHeight }), toggleFullscreen, assets: assetInfo, lifeModels: { mount: (i = 0) => mountDeer(life.deer[i]), dismount: () => dismountDeer(), lamps: () => lamps.points.length }, deerNet: () => late.deerNet, feedback, rank, emo: state.emo, doEmote, net, online: ONLINE && { account: () => state.account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
-  give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRidePick(),
+  give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRideWin(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),
   speed: rideSpeed, rig, zone: noRideZone, onRoad, buy: (id) => buyRide(RIDE_BY[id]), open: () => openShopPop('ride'), shop: shopsBuilt.find((sh) => sh.id === 'ride') || null,
   cart: cart && { api: cart, board: () => boardCart(), leave: (j) => leaveCart(!!j), state: () => ({ ...cart.state }), mark: () => !cartMark.hidden, wait: (i) => cart.stops[i] && cart.stops[i].ring.visible, goStop: (i) => { const S = cart.stops[i]; player.pos.set(S.pos.x, groundAt(S.pos.x, S.pos.z), S.pos.z); }, shift: (v) => { state.cartShift = v; }, at: (stop) => { const now = Date.now() / 1000; for (let t = 0; t < CART.lap; t += 0.5) { const st = cartStateAt(now + t); if (!st.moving && st.stop === stop && st.left > 6) { state.cartShift = t; return t; } } return null; }, goCart: () => { player.pos.set(cart.pos.x + 3, 0, cart.pos.z); player.pos.y = groundAt(player.pos.x, player.pos.z); } },

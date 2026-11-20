@@ -76,6 +76,7 @@ export function enableDev() {
   }
 }
 if (!ONLINE && hwiFlag) enableDev(); // 혼자 하기(서버 주소 없음)는 예전처럼
+$('menu-ride').addEventListener('click', () => late.openRideWin()); // 탈것 창 (#109)
 $('menu-ach').addEventListener('click', () => openAch());
 $('menu-sound').addEventListener('click', () => { if (late.sound.on) late.sound.stop(); else late.sound.start(); save.soundOff = late.sound.on ? 0 : 1; persist(); late.setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
 // 배경 음악 켜기/끄기·크기 (#64). save.music = { on, vol }
