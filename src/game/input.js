@@ -6,7 +6,8 @@ import { state, late } from './state.js';
 import { $, clamp } from './save.js';
 import { canvas, scene, camera, terrain } from './scene.js';
 import { player } from './place.js';
-import { cam } from './camera.js';
+import { cam, camPitchMax } from './camera.js';
+import { CAM } from '../balance.js';
 import { busy, cancelAll } from './hud.js';
 
 // ---------- 입력 ----------
@@ -29,7 +30,7 @@ canvas.addEventListener('pointermove', (e) => {
   p.x = e.clientX; p.y = e.clientY;
   if (ptrs.size === 1) {
     if (Math.hypot(p.x - p.sx, p.y - p.sy) > 8) dragMoved = true;
-    if (dragMoved && cam.mode !== 'photo') { cam.yaw -= dx * 0.006; cam.pitch = clamp(cam.pitch + dy * 0.004, -0.6, 1.25); state.camHold = 1.5; }
+    if (dragMoved && cam.mode !== 'photo') { cam.yaw -= dx * 0.006; cam.pitch = clamp(cam.pitch + dy * 0.004, CAM.pitchMin, camPitchMax()); state.camHold = 1.5; } // 탈 때도 같은 범위, 탈 때만 상한 조금 더 (#170)
   } else if (ptrs.size === 2) {
     const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
     if (pinchD > 0) userZoom(cam.dist * (pinchD / d));
