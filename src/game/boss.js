@@ -141,6 +141,7 @@ function spawn(z, puppet = false, at = null) {
     if (bfx && Math.hypot(x - player.pos.x, zz - player.pos.z) < 160) { bfx.ring(x, zz, 7, 1.0, '#e9d2a6', 0, 1.4); bfx.burst(x, height(x, zz) + 0.3, zz, { petals: lite() ? 10 : 40, sparks: 0, up: 3, spread: 2, color: '#b8a07c' }); }
     late.sound?.boar?.();
   }
+  if (!puppet) late.story?.bossCome?.(z, name(z)); // 이야기 이벤트 (#168): 회의 주최자·UFO 도입
   if (Math.hypot(x - player.pos.x, zz - player.pos.z) < B.near + 10) say('danger', 'bossCome', `${zoneShort(z)} 우두머리 '${name(z)}'${josaIGa(name(z))} 빈터에 나타났어요!`, 3.2, { ttl: 8 });
   enemyWarn.start({ x, z: zz });
   return cur;
@@ -383,7 +384,7 @@ function defeated(c, mine) {
   const log = logOf(z), got = { gyul: D.gyul, mat: D.mat, first, log: { ...log, repel: log.repel + 1 }, s0: log.s0 };
   delete S.log[z]; persist();
   say('quest', 'bossBeat', `${name(z)}${josaEulReul(name(z))} 쫓아냈어요! 귤 ${D.gyul} · ${D.mat}`, 3.4, { ttl: 8 });
-  late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel');
+  late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel'); late.lvGain?.('boss'); // 경험치 (#159) late.story?.bossBeat?.(z); // #168 관광버스·엔딩
   pendingSummary = { z, got, at: nowS() + ZONE_GUARD.afterBloom + B.summaryAt }; // 하르방이 솟는 동안 보고 나서
 }
 let pendingSummary = null;

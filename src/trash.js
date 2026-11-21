@@ -5,12 +5,13 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES } from './balance.js';
 import { zoneAt } from './zones.js';
 import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
 export { HEAP_DEFS, HEAP_SIG, HEAP_TOTAL };
 import { kstDay, weekStart, SRVS } from './rankday.js';
+import { STORY_DEX } from './punktext.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
@@ -19,6 +20,8 @@ TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push
 FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
 // 볼거리 칸 (#138): 오름 들판의 전망 바위·샘·산담·방사탑 'sight:번호' (FIELD.sight.list 순서). 처음 찾으면 등록
 FIELD.sight.list.forEach((s, i) => DEX_LIST.push({ id: `sight:${i}`, kind: 'sight', sk: s[1], name: s[2], rare: false, sec: 'sight' }));
+// 수수께끼 칸 (#168): 이야기 이벤트에서만 얻는 것 'story:번호' ('수상한 불빛' 의 외계 캔)
+DEX_LIST.push({ id: STORY_DEX.id, kind: 'story', name: STORY_DEX.name, rare: false, sec: 'story' });
 
 // 더미 목록 (자리와 상관없이 정해지는 순서)은 src/heapdefs.js (서버와 같이 씀). 저장의 heaps[i] 가 이 순서
 
@@ -72,6 +75,8 @@ export function createLocalTrashStore({ save, persist }) {
     full: (h) => HEAP_FULL[h],
     // 더미 h 에서 하나 꺼냄 (누적 수 +1)
     takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; rkAdd(1); dirty = true; return true; },
+    // 동료가 하나 줄임 (#172): 누적 수·랭킹·배낭·도감엔 안 셈. 마지막 keep 몫은 남김
+    nibble(h) { if (!(S.heaps[h] > Math.ceil(HEAP_FULL[h] * BUDDIES.keep))) return false; S.heaps[h]--; dirty = true; return true; },
     // 방이 '늦었다'고 거절한 줍기 되돌리기 (#84): 배낭에서 그 종류 하나·누적 수 하나를 뺌
     untake(kind, xv = 0) { if (T.bag[kind] > 0) T.bag[kind]--; T.bag.xv = Math.max(0, T.bag.xv - xv); T.total = Math.max(0, T.total - 1); rkAdd(-1); dirty = true; },
     // 이 기기의 치운 수 (#11): { day, week, all } (srv 기본은 지금 서버)
@@ -197,7 +202,8 @@ function placeEntry(out, E, trail, height, ring) {
 
 /* ---------- 모양 (로우폴리 임시) ---------- */
 function piece(g, color) { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals(); const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
-function jitter(g, amt, seed) { const r = mulberry(seed), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (r() - 0.5) * amt, p.getY(i) + (r() - 0.5) * amt, p.getZ(i) + (r() - 0.5) * amt); return g; }
+// 흩뜨리기: 같은 자리의 꼭짓점은 같은 만큼 움직임 (#154). 인덱스 없는 Icosahedron·모서리 점이 면마다 따로인 Box·Torus 도 면 사이가 벌어지지 않게
+function jitter(g, amt, seed) { const r = mulberry(seed), p = g.attributes.position, M = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + ',' + Math.round(p.getY(i) * 1e4) + ',' + Math.round(p.getZ(i) * 1e4); let d = M.get(k); if (!d) M.set(k, d = [(r() - 0.5) * amt, (r() - 0.5) * amt, (r() - 0.5) * amt]); p.setXYZ(i, p.getX(i) + d[0], p.getY(i) + d[1], p.getZ(i) + d[2]); } return g; }
 function makeGeos() {
   const can = mergeGeometries([piece(new THREE.CylinderGeometry(0.12, 0.12, 0.34, 7), '#ffffff'), piece(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 7).translate(0, 0.18, 0), '#d0d3d8')]).rotateZ(Math.PI / 2).translate(0, 0.11, 0);
   const pet = mergeGeometries([piece(new THREE.CylinderGeometry(0.14, 0.14, 0.42, 7), '#ffffff'), piece(new THREE.CylinderGeometry(0.06, 0.135, 0.14, 7).translate(0, 0.28, 0), '#ffffff'), piece(new THREE.CylinderGeometry(0.065, 0.065, 0.06, 6).translate(0, 0.38, 0), '#3a7fd0')]).rotateZ(Math.PI / 2).translate(0, 0.13, 0);
@@ -216,7 +222,7 @@ const PAL = [
 // 더미 모양: 크기 k, 단계 st(0 가득 ~ 3 거의 다 치움). 어두운 쓰레기 덩어리 위에 봉투·상자·타이어·스티로폼·그물·캔·병
 const STG_R = [1, 0.8, 0.6, 0.42], STG_H = [1, 0.72, 0.48, 0.26];
 const stageOf = (f) => { let st = 0; for (let i = 1; i < HEAP.stages.length; i++) if (f <= HEAP.stages[i]) st = i; return st; };
-function makeHeapGeo(k, st, low) {
+function heapParts(k, st, low) {
   const S = HEAP.sizes[k], R = S.r * STG_R[st], Hh = S.h * STG_H[st], r = mulberry(901 + st * 31 + k.length * 7 + (k === 'mt' ? 5 : 0)), sc = { s: 0.72, l: 1.0, xl: 1.5, mt: 1.9 }[k];
   const parts = [piece(jitter(new THREE.IcosahedronGeometry(1, 1), 0.16, 5 + st).scale(R, Hh * 0.82, R), '#5a5248'), piece(jitter(new THREE.IcosahedronGeometry(1, 0), 0.2, 9 + st).scale(R * 0.55, Hh * 0.35, R * 0.55).translate(R * 0.1, Hh * 0.62, -R * 0.08), '#3a3a40')];
   const N = Math.round({ s: 12, l: 28, xl: 64, mt: 96 }[k] * [1, 0.72, 0.5, 0.3][st] * (low ? 0.7 : 1));
@@ -235,8 +241,10 @@ function makeHeapGeo(k, st, low) {
     g.scale(s, s, s).rotateY(r() * 6.28).rotateX((r() - 0.5) * 0.8).translate(Math.cos(a) * rho, y + 0.05 * s, Math.sin(a) * rho);
     parts.push(piece(g, c));
   }
-  return mergeGeometries(parts);
+  return parts;
 }
+const makeHeapGeo = (k, st, low) => mergeGeometries(heapParts(k, st, low));
+export const __geo = { makeGeos, makeHeapGeo, heapParts }; // tools/heapgeo.js 검사용 (#154)
 
 /* ---------- 쓰레기 세상 ---------- */
 // paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
@@ -353,6 +361,13 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     if (got && !quiet) { syncCols(); dirty = true; emit('changed', {}); emit('refill', { h: i, zone: h0.zone, n: got }); }
     return got;
   }
+  // 동료 줍기 (#172): 더미 i 를 하나 줄임 (배낭·귤·도감·누적 수 없음, 마지막 BUDDIES.keep 몫은 남김). 줄였으면 true
+  function buddyTake(i) {
+    if (!heaps[i] || !store.nibble?.(i)) return false;
+    const before = heaps[i].st; syncCols(); dirty = true;
+    if (heaps[i].st !== before) emit('heap-stage', { h: i, st: heaps[i].st });
+    return true;
+  }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   // 방(서버)이 더미 h 줍기를 거절했을 때 (#84): 그 더미에서 가장 최근에 주운 것 하나를 배낭에서 뺌. 뺐으면 true
   function undoTake(h) {
@@ -397,5 +412,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   };
   // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
   function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
-  return { update, any, candidates, take, undoTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps, trail, loops: heaps.loops, ok };
+  return { update, any, candidates, take, undoTake, buddyTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps, trail, loops: heaps.loops, ok };
 }
