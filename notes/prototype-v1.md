@@ -74,6 +74,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | mutter.js | 캐릭터 혼잣말(#169): 내 머리 위 실마리 말풍선(내 화면에만). 줄마다 조건·풀림·최대 3번, 일 줄(큰 더미·투기꾼 버림·가게 거리·정상), 한가한 줄. 차례는 감독 kind 'mutter', 글 `punktext.js MUTTER_TEXT`, 수치 balance.js MUTTER, 저장 save.mutter, 설정 '혼잣말'. `late.tickMutter`(update.js 감독 뒤), `__oreum.mutter.say(id)`, 확인 `node tools/mutter.js` |
 | punkworld.js | 오름펑크 세계(#165): 오름 방송(스피커 기둥·자막 띠 `#radio-strip`·상황 방송·설정 '오름 방송', 감독 문 radio)·쪽지(쓰레기 2%, `#punk-note`·칩 `#punk-chip`·도감 칸 late.dexExtra 감쌈)·칭호(업적 창 [칭호] `#punk-title`, save.punk.title → net.js `tt` 이름표 위). 글은 `src/punktext.js`, 수치 balance.js PUNK. `late.tickPunk`, `__oreum.punkWorld` |
 | outfitset.js | 한 벌 맞춤(#179): 겉모습으로 OUTFIT_SETS 세 벌을 입으면 캐릭터 둘레 빛 점(Points 하나, SET_FX)·칭호 토스트. `late.outfitSet = { check, tick, worn, titles }`(칭호는 가진 옷으로 셈, #165 가 씀). wearCloth 가 check, update.js 가 tick. 확인 `node tools/style.js` |
+| idle.js | 오래 멈춤(#157): 조작 없으면 5분 창·6분 쉬러 감(저장·`net.rest()`·`state.idleRest` 로 그리기 멈춤), 누르면 `net.wake()` 로 같은 자리. presence `a:1`(`late.idleBeat`, room.js extra), 서버 4004 받으면 쉬는 화면. `__oreum.idle` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |

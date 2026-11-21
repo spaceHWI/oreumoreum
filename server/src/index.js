@@ -108,8 +108,9 @@ export default {
         if (!loadtest && (await limited(env, 'RL_WS', ipk, NET.wsPerMin))) return json({ error: 'too many' }, 429);
         const s = await who();
         const stub = env.ROOM.get(env.ROOM.idFromName(room + '#' + ch));
-        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-cap', 'x-ipk', 'x-proto', 'x-room', 'authorization']) h.delete(k); h.set('x-ipk', ipk); h.set('x-room', room + '#' + ch); // 꾸민 x-* 헤더는 지움
+        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-adm', 'x-cap', 'x-ipk', 'x-proto', 'x-room', 'authorization']) h.delete(k); h.set('x-ipk', ipk); h.set('x-room', room + '#' + ch); // 꾸민 x-* 헤더는 지움
         if (s) h.set('x-acct', s.sub);
+        if (s && adminSubs(env).has(s.sub)) h.set('x-adm', '1'); // 어드민은 오래 멈춰도 내보내지 않음 (#157)
         if (req.headers.get('Sec-WebSocket-Protocol')) h.set('x-proto', '1');
         if (loadtest) h.set('x-cap', '500'); // 부하 재기: 정원 없이
         return stub.fetch(new Request(url.origin + '/ws?room=' + room, { headers: h })); // 토큰은 주소에 싣지 않음
