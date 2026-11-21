@@ -7,7 +7,8 @@
 // 저장 save.boss = { done: {구역: 끝낸 수}, beat: {구역: 쫓아낸 ms}, log: {구역: {pick, repel, s0}}, wake: 구역, mats: {재료 이름: 수} }
 // (파일 순서는 src/modules.js: pace 뒤, boss 앞. 적 후크(hooks.js)를 감쌈)
 import * as THREE from 'three';
-import { ZONE_BOSS as B, ZONES } from '../balance.js';
+import { ZONE_BOSS as B, ZONES, CART } from '../balance.js';
+import { parkedFastCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import { gradHard } from '../toon.js';
 import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
@@ -159,6 +160,10 @@ const exits = [];
 if (ON) for (let z = 1; z <= 5; z++) {
   const f = fastSpot(z);
   if (f) { const m = new THREE.Mesh(signGeo, signMat); m.position.set(f.x, f.y, f.z); m.rotation.y = f.rot; m.visible = false; m.castShadow = !lite(); scene.add(m);
+    { // 세워 둔 빠른 마차 (#174): 팻말 뒤 길가에 말 둘 + 깃발. 부딪힘은 마차와 같은 원들
+      const cg = parkedFastCart(lite()), bz = -B.fast.park; cg.position.set(0, 0, bz); m.add(cg);
+      m.updateMatrixWorld(true); const v = new THREE.Vector3();
+      if (col) CART.block.forEach(([lx, lz, r]) => { v.set(lx, 0, bz + lz).applyMatrix4(m.matrixWorld); col.add(v.x, v.z, r * 0.9); }); }
     const pos = new THREE.Vector3(f.x, f.y, f.z); exits.push({ m, z });
     interactables.push({ label: '빠른 마차', ic: 'cart', pos, r: B.fast.r, when: () => isDone(z) && !late.bossFight?.(), act: () => { if (travel(streetIn(), 'cart', '빠른 마차를 타고 가게 거리로', B.fast)) setTimeout(() => toast('가게 거리에 왔어요'), (B.fast.fade + B.fast.hold) * 1000 + 300); } }); }
   const c = cutSpot(z);
