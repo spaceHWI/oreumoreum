@@ -165,6 +165,7 @@ const wxGray = new THREE.Color(), lum = (c) => c.r * 0.3 + c.g * 0.59 + c.b * 0.
 function applyWx(el) {
   const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8), W = WEATHER;
   sun.intensity *= c.light * (1 - 0.45 * c.sunHide); hemi.intensity *= Math.max(W.lightMin, 0.55 + 0.45 * c.light); fill.intensity *= c.light;
+  bodies.stars.material.opacity *= 1 - 0.95 * Math.min(1, c.gray * c.cover); // 구름에 가린 별
   fogRef.f = scene.fog.far;
   scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; fogBase.n = scene.fog.near; fogBase.f = scene.fog.far; applyZoneFog();
   // 밝기 배율: 낮엔 c.sky, 밤비는 더 어둡게 (회색기만큼만)

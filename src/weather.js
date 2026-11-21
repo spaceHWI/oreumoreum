@@ -73,7 +73,7 @@ export function createWeather({ scene, low }) {
   function update(dt, p, wind, cam = null) {
     const now = performance.now() / 1000, rdt = last ? Math.min(1, Math.max(0, now - last)) : dt; last = now;
     const T = WX[target], k = 1 - Math.exp(-rdt * 3 / WEATHER.blendSec); // blendSec 이면 95%
-    NUM.forEach((n) => { cur[n] += (T[n] - cur[n]) * k; });
+    NUM.forEach((n) => { const d = T[n] - cur[n]; cur[n] = Math.abs(d) < 0.004 ? T[n] : cur[n] + d * k; }); // 거의 닿으면 맞춤 (settled 가 오래 안 끝나지 않게)
     pt += dt;
     const drift = (cur.snow > cur.rain ? 2.2 : R.drift) * (wind || 1);
     // 눈

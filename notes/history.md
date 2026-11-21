@@ -916,3 +916,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - tools/econ.js: 일하는 구역이 80% 이고 빨강이 아니면 holdSec 마다 한 번 우두머리(다가가기 20초 + 맞히기만 × 1.5). `--noboss` 비교
 - 확인: tools/boss.js (방 12 + 게임 39), `--online` 멀티 15, 권장 장비로 패턴 켠 채(피하지 않고 HP 를 채움) 쫓아낸 게임 시간 손 87.2 · 활 56.3 · 총 49.6 · 머신건 63.2 · 레이저 51.3초. 맞히기만(우두머리를 묶음) 손 약 32(40 기운에 60.5 → 32 로 낮춤)·활 42.1초. tools/econ.js 흐름·5시간 통과(효율 4시간 15분·여유 4시간 22분), online.js 36·sec.js 53·guard.js·enemyrun iphone 통과
 - 남은 점: 빠른 마차·지름길은 화면 전환 임시(마차·돌계단 길 모양 없음). 우두머리를 쫓아낸 기억은 방에 따로 두지 않아, 방장이 바뀐 새 방장이 그 전 싸움을 못 봤으면 돌하르방이 서 있어도 다시 나올 수 있음. 귀한 재료는 쌓기만(#140)
+
+## #147 비가 와도 맑아 보임: 비·흐림·눈이 한눈에 보이게
+- weather.js `WX` 에 칸을 더함: sky(하늘 밝기), flat(위·지평선 차이 줄임), sunHide(해 원반·햇무리·노을빛 가림), wet(땅·풀·나무 칙칙하게), cloud(구름 어둡게·크게·낮게). 비 = gray 1·sky 0.6·flat 0.75·light 0.45·fog 0.22·sunHide 1·wet 1·cloud 1, 흐림 = gray 0.9·sky 0.82·light 0.62·fog 0.6·sunHide 1·wet 0.35·cloud 0.45, 눈 = gray 1·sky 1.05(밝은 회색)·light 0.72·wet 0.55, 안개 = gray 0.85·sunHide 0.9. 맑음·구름 많음·강풍은 그대로
+- game/scene.js applyWx: 하늘·안개·구름 색을 파란 기 없는 회색으로(밝기 × sky, 밤비는 × WEATHER.nightRain 0.7), 낮엔 skyMin 아래로 안 어두워짐, 해 빛(uSunCol) × (1 − sunHide), 해 세기 × light × (1 − 0.45 sunHide)(그림자 흐림), 하늘빛 아래 한도 lightMin, 구름 덩어리 크기 × 1.7·높이 × 0.65(비), 별은 구름에 가림. 안개 거리는 날씨 × 구역(#136) 이 맑은 날의 fogMin 0.06 아래로 안 줄어듦
+- namsongi.js `uWet`: 땅·풀(groundColor)은 채도 55%·밝기 24%, 나무·소품(enhance)은 채도 45%·밝기 20% 까지 낮춤. `NSW.setWet`
+- 빗줄기: 점 → 바람 쪽으로 기운 0.9m 선 (WEATHER.rainLine n 1000·LOW 420), 카메라 2.4~6m 앞 굵은 띠 10줄(LOW 없음). 눈은 굵은 점(4.2px). 땅에 튀는 물방울은 안 함
+- 섞기: 프레임 dt 대신 실제 시간으로(blendSec 6 에 95%, 맑음→비 90% 실제 4.8초). 거의 닿으면 맞춤(settled)
+- 못 받으면: 앞에 받은 날씨를 WEATHER.keepMin 120분까지 둠, 그 뒤 맑음
+- 메뉴에 지금 날씨 아이콘·이름(#m-wx)
+- 확인: tools/wxshot.js (맑음·흐림·비·눈 × 13시·17.6시·22시 한 장, notes/shots/weather.png). perf desk 비: fps·1% fps 그대로(0.9·0.7), JS ms 는 소프트웨어 GL 흔들림이 커서(같은 빌드 5.5~9.8) 5번 가운데 6.2 → 7.8. 굵은 띠 26줄일 때 더 무거워 10줄로 줄임
+
