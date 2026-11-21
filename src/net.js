@@ -15,6 +15,8 @@ import { titleText } from './punktext.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
+// 동굴 (#195, game/cave.js 가 채움): at = 동굴 안이면 보낼 입구 자리 {x, z}
+export const netCave = { at: null };
 export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook, cull = null, animR = 1e9, shadowR = 1e9, lobby: wsLobby = null, onRoom = null, solo = null }) { // wsLobby: 멀티 서버 로비 (#7, online.js). 있으면 room 캐퍼빌리티 대신
  // solo(): 참이면 혼자 (#100 튜토리얼 중: 남이 안 보이고 내 모습도 안 보냄). cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still, fwd } | null: 탈것 (#69)·노루 (#92)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
@@ -144,6 +146,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       ht: hitOut, yl: p.yellowUntil > Date.now() ? 1 : 0,
       ...(extra ? extra() : {}),
     };
+    // 동굴 (#195): 동굴 안에서는 진짜 자리 대신 입구 자리에 서 있는 것으로 (서버 이동 판정·자리 한도에 걸리지 않게). cv = 동굴 안
+    if (netCave.at) { obj.x = netCave.at.x; obj.z = netCave.at.z; obj.spd = 0; obj.run = false; obj.pose = 'move'; obj.jy = 0; obj.cv = 1; }
     const key = JSON.stringify(obj);
     if (!force && key === lastKey) return;
     lastKey = key; lastSent = now;

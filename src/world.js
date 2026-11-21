@@ -133,7 +133,11 @@ export const PAL = {
 
 // 메시 삼각형 기준 높이 샘플러: 발이 지면에 정확히 붙도록 (각진 곳에서 뜨는 문제 방지)
 let meshPos = null, meshN = 0, meshCell = 1, meshExt = EXTENT;
+// 동굴 (#195, game/cave.js): 동굴 층이 떠 있으면 그 자리(오름 땅 밖)의 바닥 높이. 동굴 밖이면 null
+let caveG = null;
+export function setCaveGround(fn) { caveG = fn; }
 export function height(x, z) {
+  if (caveG) { const cy = caveG(x, z); if (cy !== null) return cy; }
   if (!meshPos) return heightAnalytic(x, z);
   const u = (x + meshExt) / meshCell, v = (z + meshExt) / meshCell;
   let ix = Math.floor(u), iz = Math.floor(v);

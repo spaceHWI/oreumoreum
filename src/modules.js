@@ -118,6 +118,7 @@ import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 �
 import './game/idle.js'; // 오래 멈추면 쉬러 가기 (#157)
 import './game/metrics.js'; // 이용 통계 (#121): 업적·쓰레기·적 후크를 감싸서 셈 (start.js 전)
 import './game/metricsadmin.js'; // 어드민 '수치' 표 (#121)
+import './game/cave.js'; // 동굴 탐험 (#195): 굼부리 용암 동굴, 별도 동굴 장면
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
