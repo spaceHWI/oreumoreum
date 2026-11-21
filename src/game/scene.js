@@ -1,6 +1,7 @@
 // 렌더러·장면·빛·성능 단계 적용, 실제 제주 시각의 해·하늘, 날씨 반영 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { NSMODE } from '../boot.js';
-import { buildNamsongi, nsAlong } from '../namsongi.js';
+import { buildNamsongi, nsAlong, nsPaths } from '../namsongi.js';
+import { aimLamps } from '../lampaim.js';
 import { createFootprints } from '../footprints.js';
 import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH, WEATHER } from '../balance.js';
 import { crashNote, reportCrash } from '../crash.js';
@@ -125,6 +126,9 @@ export const prints = createFootprints({ scene, height, surfaceAt, low: LOW }); 
 if (PW && !NSW) createFlowers({ scene, height, extent: TERR_EXT, count: LOW ? 3200 : 6500, canGrow: (x, z) => (Math.abs(x) > TERR_EXT || Math.abs(z) > TERR_EXT || surfaceAt(x, z) !== 0 || groundAt(x, z) - height(x, z) > 0.05) ? 0 : 1 });
 export const spots = buildSpots(MAP_ID);
 if (NSW && spots.tut?.stream) spots.lamps = [...(spots.lamps || []), ...STREET.lamps]; // 가게 거리 가로등 (#57)
+// 가로등 팔이 길 쪽을 보게 (#174): 탐방로·가게 거리 골목 가운데 선 기준으로 돌림각을 다시 잡고, 길에서 먼 것은 당김. 잰 값은 __oreum.lampAim
+export const lampAim = NSW && spots.lamps ? aimLamps(spots.lamps, [...Object.values(nsPaths).filter(Array.isArray), ...(spots.tut?.stream ? [STREET.alley] : [])]) : null;
+if (lampAim) spots.lamps = lampAim.lamps;
 export const lamps = createLamps({ scene, positions: spots.lamps || [], height });
 
 // ---------- 시간·해 (실제 제주 시각) ----------
