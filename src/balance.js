@@ -1892,3 +1892,23 @@ export const MEET = {
 // 대화·말풍선 한 틀 (#190). bubble: 머리 위 말풍선 한 줄 ch 자 · lines 줄, 넘치면 pages 장까지 넘기고 그래도 넘치면 말줄임. chatLines 채팅(사람이 쓴 글)은 한 장에 조금 더
 // win: 대화 창(.talk) 대사 한 장 최대 lines 줄(넘으면 ▶ 다음 장), line 대사 한 줄 권장 글자 수(넘으면 문장에서 나눠 보여 줌, tools/talkshot.js 가 셈)
 export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 } };
+
+// 동굴 탐험 (#195, src/cavegen.js · game/cave.js). 고렙용 별도 동굴 맵. 값·이름은 모두 임의
+// open: 'admin' 이면 개발자 메뉴가 켜진 사람만 들어감(1·2번 조각이 끝나기 전), true 면 minLv·needZone 을 채운 사람, false 면 막음
+// x0·z0: 동굴 자리(오름 땅 ±2380 밖, 서버 자리 한도 ±4000 안). floorGap: 층마다 x 로 떨어뜨림
+// floors 층 수 · rooms 층마다 방 수 [최소, 최대] (3층이면 9~12) · extra 층마다 더 잇는 통로 수(갈림길) · grid 한 층 칸 수 · cell 칸 크기(m)
+// roomR 방 반지름 · bossR 맨 아래 방 · corrW 통로 반폭 · ceil 천장 높이(통로·방 [가장자리, 가운데]) · wobble 벽 울퉁불퉁(칸 비율)
+// cam: 카메라 거리·최대·숙임 · lamp: 헤드랜턴(반경 r m) · fog: 안개 [시작, 끝] m (그 밖은 검게, 멀리 그리지 않음)
+// fade·hold: 들어가고 나올 때 어두워지는 시간(초) · near: 입구·줄·구멍 상호작용 거리 · moss·crystal: 발광 이끼·수정 수(층마다)
+export const CAVE = {
+  open: 'admin', minLv: 12, needZone: 3,
+  x0: 3200, z0: 3200, floorGap: 300,
+  floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
+  roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,
+  cam: { dist: 7.5, max: 9, pitch: 0.2 },
+  lamp: { r: 13, i: 46, color: '#ffe2b0' },
+  fog: [5, 14], ambient: 0.55,
+  fade: 0.5, hold: 0.35, near: 2.6,
+  moss: 70, crystal: 26,
+  lines: { locked: '바람이 새어 나와요. 아직은 무리예요', admin: '지금은 어드민만 들어갈 수 있어요', enter: '용암 동굴', down: '더 깊이 내려갑니다', out: '밖으로 나왔어요' },
+};
