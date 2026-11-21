@@ -4,7 +4,7 @@ import * as THREE from 'three';
 export const UI_LABELS = [
   ['UI-01', '귤', '#gyul-pill'],
   ['UI-02', '배낭', '#bag-pill'],
-  ['UI-03', '깨끗한 정도', '#clean-pill'],
+  ['UI-03', '지금 구역 깨끗한 정도', '#where-c'],
   ['UI-04', 'HP', '#hp-bar'],
   ['UI-05', '버프', '#buff-pill'],
   ['UI-06', '구역', '#zone-pill'],

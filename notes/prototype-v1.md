@@ -54,7 +54,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | look.js | 캐릭터 고르기·머리, 표지판, 탐방로 고르기 |
 | bag.js | 내 가방(#166): 배낭 칸·B·메뉴로 여는 한 창(`#wardrobe` 패널, 카메라 `cam.mode 'wardrobe'`), 탭 옷·무기·도구·배낭·탈것, 장비 점수·능력 4줄, 없는 것 [사러 가기]. `late.openBag(tab)`·`closeBag`·`bagRefresh`(예전 `openWardrobe`·`closeWardrobe`·`buildWardrobe` 이름도). 탈것·무기 고르기는 ride.js `chooseRide`·arms.js `chooseArm`. 확인 `node tools/bag.js` |
 | thumbs.js | 물건 그림(#184): 옷·도구·배낭·신발·무기·탈것을 실제 3D 모델로 찍은 작은 그림. 따로 만든 작은 렌더러(96px)로 처음 필요할 때 찍어 data URL 캐시, 한가할 때 미리 찍고 15초 안 쓰면 렌더러 버림. `late.itemArt(kind, i, cls)`·`late.rideArt(id)`, 옷은 `clothicons.js ART.thumb` 로 clothSvg 가 먼저 씀 |
-| iconui.js | 아이콘 글자 라벨(#184): 위쪽 칸 아래 2~4글자·폰 아래 버튼 글자를 처음 며칠(body.newbie, `save.lbl`, `balance.js ICON_LABEL`) |
+| iconui.js | 물건 그림 미리 찍기(warmThumbs). 아이콘 아래 글자 라벨(#184)은 #196 에서 없앰: 뜻은 title(마우스)·폰 길게 누르기(uitips.js) |
 | nickname.js | 이름 바꾸기(#162): 메뉴 '이름 바꾸기'·내 가방 이름 옆 버튼 → `#nickwin` 창. 처음 한 번 무료, 그다음 귤(`NICK`), 하루 한 번. 로그인했으면 `account.rename` → 서버 `POST /nick`, 손님은 `save.nickRen`. 처음 짓기는 look.js(캐릭터 고르기 이름 칸, `save.nickSet`). 확인 `node tools/nick.js` |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
