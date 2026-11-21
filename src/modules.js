@@ -109,6 +109,7 @@ import './game/swarm.js'; // 들판 떼 (#173)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
 import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
+import './game/simple.js'; // 화면 단순하게·전체 화면 안내 (#189)
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
 import './game/start.js';
