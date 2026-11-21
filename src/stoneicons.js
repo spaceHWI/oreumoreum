@@ -1,4 +1,5 @@
 // 레스토랑 스톤 (#50) 그림: 메뉴 음식(접시 위 음식, 아이콘풍)·버프 아이콘·포크와 나이프. viewBox 0 0 64 64 / 24 24
+import { ic } from './icons.js';
 const plate = '<ellipse cx="32" cy="40" rx="27" ry="15" fill="#f4f1ea"/><ellipse cx="32" cy="38" rx="20" ry="10.5" fill="#e4dfd3"/>';
 export const FOOD_SVG = {
   vin: '<ellipse cx="32" cy="56" rx="14" ry="4" fill="#000" opacity=".18"/><path d="M18 24h24v20a10 10 0 0 1-10 10h-4a10 10 0 0 1-10-10z" fill="#f4efe6"/><path d="M42 30h4a6 6 0 0 1 0 12h-4" fill="none" stroke="#f4efe6" stroke-width="4"/><path d="M21 28h18v15a7 7 0 0 1-7 7h-4a7 7 0 0 1-7-7z" fill="#a8323a"/><circle cx="26" cy="30" r="5" fill="#f29a2e"/><path d="M26 25.5v9M21.5 30h9" stroke="#fff4e0" stroke-width="1.2" opacity=".7"/><path d="M33 33l5-6" stroke="#7a4a2c" stroke-width="2.4" stroke-linecap="round"/><path d="M24 20c0-4 4-4 4-8M32 20c0-4 4-4 4-8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"/>', // 귤 뱅쇼 (#180)
@@ -11,12 +12,12 @@ export const FOOD_SVG = {
 };
 // 버프 아이콘 (24, 선)
 export const BUFF_ICON = {
-  speed: '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
-  bag: '<path d="M7 8h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM9 8V6a3 3 0 0 1 6 0v2M12 12v5M9.5 14.5h5"/>',
-  dmg: '<circle cx="10" cy="14" r="6"/><path d="M10 8c0-2 1-3 3-4M15 10l6-6M18 4h3v3"/>',
-  pick: '<path d="M12 3v11M7 21l5-7 5 7M17 4l3 3M20 4l-3 3"/>',
-  regen: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M12 10v5M9.5 12.5h5"/>',
+  speed: ic('quick'),
+  bag: ic('bag'),
+  dmg: ic('dmg'),
+  pick: ic('pick'),
+  regen: ic('regen'),
 };
-export const FORK_KNIFE = '<path d="M7 3v7a2 2 0 0 0 4 0V3M9 3v18M17 21V3c-2 1-3 4-3 8h3"/>';
+export const FORK_KNIFE = ic('eat');
 // 버프 수치 글자: +20%, ×2
 export const buffText = (m) => (m.buff === 'regen' ? `×${m.v}` : `+${Math.round(m.v * 100)}%`);

@@ -27,6 +27,7 @@ import { scene, wx } from './scene.js';
 import { player, trash, life, col, NS_TUT, street } from './place.js';
 import { toast, ach, panelOpen, closePanels, PANELS, openAch, openDex } from './hud.js';
 import { director, holdWin } from './director.js';
+import { icon } from '../icons.js';
 
 const R = PUNK.radio;
 
@@ -76,7 +77,7 @@ body.banner-on #radio-strip, body.tip-on #radio-strip { top: calc(var(--tb-top, 
 @media (max-width: 600px) { #radio-strip { font-size: 13px; height: 30px; } #punk-title .pt-list { grid-template-columns: 1fr 1fr; } }
 `;
 document.head.append(css);
-const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h3l7 5V5L6 10H3z"/><path d="M16 8.5c1.6 1.8 1.6 5.2 0 7M18.8 6c3 3.2 3 8.8 0 12"/></svg>';
+const SPK = icon('radio'); // 오름 방송 (#184 아이콘 세트)
 const PAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" fill="#f4ecd8" stroke="#33302a"/><path d="M15 3v4h4M9 11h7M9 14.5h7M9 18h4" stroke="#33302a"/></svg>';
 const el = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); Object.assign(e, attrs); if (html) e.innerHTML = html; document.body.append(e); return e; };
 const strip = el('div', { id: 'radio-strip', hidden: true }, `${SPK}<span class="rs-w"><span class="rs-t"></span></span>`); strip.setAttribute('aria-live', 'polite');

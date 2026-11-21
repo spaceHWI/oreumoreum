@@ -50,6 +50,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | shop.js | 장비점 창(#128: 도구·배낭·무기 세 묶음, 폰은 탭)·사는 연출, 가게 안내(무엇을 어디서·`goShop(id)` 길 안내 → 도착하면 창·`shopGuide()` 메뉴/귤 칸), 살 수 있는 새 물건 점(지붕 간판·귤 칸, 본 것은 기기 localStorage), 미니맵 가게 아이콘, 내 가방 옷 줄(`buildWearRows`) |
 | look.js | 캐릭터 고르기·머리, 표지판, 탐방로 고르기 |
 | bag.js | 내 가방(#166): 배낭 칸·B·메뉴로 여는 한 창(`#wardrobe` 패널, 카메라 `cam.mode 'wardrobe'`), 탭 옷·무기·도구·배낭·탈것, 장비 점수·능력 4줄, 없는 것 [사러 가기]. `late.openBag(tab)`·`closeBag`·`bagRefresh`(예전 `openWardrobe`·`closeWardrobe`·`buildWardrobe` 이름도). 탈것·무기 고르기는 ride.js `chooseRide`·arms.js `chooseArm`. 확인 `node tools/bag.js` |
+| thumbs.js | 물건 그림(#184): 옷·도구·배낭·신발·무기·탈것을 실제 3D 모델로 찍은 작은 그림. 따로 만든 작은 렌더러(96px)로 처음 필요할 때 찍어 data URL 캐시, 한가할 때 미리 찍고 15초 안 쓰면 렌더러 버림. `late.itemArt(kind, i, cls)`·`late.rideArt(id)`, 옷은 `clothicons.js ART.thumb` 로 clothSvg 가 먼저 씀 |
+| iconui.js | 아이콘 글자 라벨(#184): 위쪽 칸 아래 2~4글자·폰 아래 버튼 글자를 처음 며칠(body.newbie, `save.lbl`, `balance.js ICON_LABEL`) |
 | nickname.js | 이름 바꾸기(#162): 메뉴 '이름 바꾸기'·내 가방 이름 옆 버튼 → `#nickwin` 창. 처음 한 번 무료, 그다음 귤(`NICK`), 하루 한 번. 로그인했으면 `account.rename` → 서버 `POST /nick`, 손님은 `save.nickRen`. 처음 짓기는 look.js(캐릭터 고르기 이름 칸, `save.nickSet`). 확인 `node tools/nick.js` |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
@@ -97,6 +99,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
 - 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
+- 아이콘 (#184): icons.js(아이콘 세트, `tools/icongen.mjs` 로 만듦: Tabler Icons(MIT, THIRD_PARTY.md) + 직접 그린 오름오름 것. `icon(id)`·`ic(id)`, page.html 은 `<svg data-i="id"></svg>` 를 build.mjs 가 채움) · iconart.js(id → 그림 주소로 갈아 끼우기). 목록·그림 뽑을 목록 notes/icons.md, 아이콘 시트 `node tools/iconsheet.mjs <이름>`
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 레벨·증강 (#159): augments.js — 저장만 읽는 순수 함수(레벨 곡선 `levelOf`·`xpAt`, 저장 고치기 `lvSave`, 증강 값 `augV(save, id)` = 겹친 수 × v, 뽑기 `rollDraw`, 옛 저장 경험치 `oldXp`, 서버 확인 `checkLv`). 능력치 자리마다 장비 값에 더함: 큰손 pickup.js·자석 귤 hooks.js pickR2·분리수거 달인 dump.js·쌍귤 throw.js/arms.js(덤 귤 `tg.twin` 은 못 주움)·빠른 손 charge.js·두꺼운 잠바 hooks.js·노루 친구 ride.js/update.js. 수치 balance.js LEVEL·AUGMENTS. 서버 validate.js·roomcore(`lv` 이름표)·heaps.js(분리수거 몫)
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만

@@ -1,4 +1,5 @@
 // 옷 그림 (#52, 상점·옷장). balance.js CLOTHES 의 look 색으로 칠한 작은 그림. viewBox 40
+import { ic } from './icons.js';
 const OL = 'stroke="#17171a" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"';
 const P = (d, f, extra = '') => `<path d="${d}" fill="${f}" ${OL} ${extra}/>`;
 function hat(L) {
@@ -61,18 +62,20 @@ function socks(L) {
   return s;
 }
 const F = { hat, top, bottom, vest, jacket, socks };
-// c: CLOTHES 한 줄 (없으면 '없음' 그림)
+// c: CLOTHES 한 줄 (없으면 '없음' 그림). #184: 실제 모델을 찍은 그림(game/thumbs.js 가 ART.thumb 를 채움)이 있으면 그것, 없으면 아래 색 그림
+export const ART = { thumb: null };
 export function clothSvg(c, cls = 'art') {
+  const t = c && ART.thumb?.(c, cls); if (t) return t;
   const inner = c ? F[c.slot]?.(c.look || {}) || '' : '<circle cx="20" cy="20" r="11" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/><path d="M13 27l14-14" stroke="currentColor" stroke-width="2"/>';
   return `<svg class="${cls}" viewBox="0 0 40 40" aria-hidden="true">${inner}</svg>`;
 }
 // 능력치 아이콘(24, 선)과 글
 export const WEAR_STAT_ICON = {
-  rare: '<path d="M12 3l2 6.5L20.5 12 14 14.5 12 21l-2-6.5L3.5 12 10 9.5z"/>',
-  hp: '<path d="M12 20s-7.5-4.6-9-9.4C2 7.3 4 4.5 7 4.5c2 0 3.5 1.2 5 3 1.5-1.8 3-3 5-3 3 0 5 2.8 4 6.1-1.5 4.8-9 9.4-9 9.4z"/>',
-  pocket: '<path d="M5 5h14v8a7 7 0 0 1-14 0zM5 9h14"/>',
-  gyul: '<circle cx="12" cy="13.5" r="7"/><path d="M12 6.5c0-2 2-3.5 4.5-3.5"/>',
-  guard: '<path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/>',
-  regen: '<path d="M12 20s-7-4.4-8.5-9C2.6 8 4.4 5 7.3 5c2 0 3.4 1.1 4.7 2.8C13.3 6.1 14.7 5 16.7 5c2.9 0 4.7 3 3.8 6-1.5 4.6-8.5 9-8.5 9zM12 10v6M9 13h6"/>',
+  rare: ic('rare'),
+  hp: ic('heart'),
+  pocket: ic('pocket'),
+  gyul: ic('magnet'),
+  guard: ic('guard'),
+  regen: ic('regen'),
 };
 export const wearStatText = (stat, v) => stat === 'pocket' ? `+${v}` : stat === 'gyul' ? `+${Math.round(v * 100)}%` : stat === 'guard' ? (v ? `-${Math.round(v * 100)}%` : '0%') : `×${v}`;

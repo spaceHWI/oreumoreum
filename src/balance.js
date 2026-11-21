@@ -1591,6 +1591,9 @@ export const REC = {
   types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
   tag: '#오름오름',
 };
+
+// 아이콘 글자 라벨 (#184): 처음 보는 사람용. 처음 days 일 동안 보이고, 그 뒤엔 튜토리얼을 마치고 taps 번 넘게 눌렀으면 사라짐
+export const ICON_LABEL = { days: 3, taps: 10 };
 // 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
 // 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
 export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };

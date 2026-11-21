@@ -86,6 +86,8 @@ import './game/guard.js'; // 구역 지킴이 돌하르방 (#119)
 import './game/shop.js';
 import './game/look.js';
 import './game/bag.js'; // 내 가방 (#166)
+import './game/thumbs.js'; // 물건 그림: 실제 모델을 찍은 작은 그림 (#184)
+import './game/iconui.js'; // 아이콘 글자 라벨 (#184)
 import './game/nickname.js'; // 이름 바꾸기 (#162)
 import './game/hooks.js';
 import './game/guide.js';

@@ -4,7 +4,7 @@ import { SHOES, STONE, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHO
 import { SHOP_ICON } from '../shops.js';
 // 장비점·가게 안내 로고 (#128): 둥근 현무암 판에 흰 아이콘 (가게 창 위 칸)
 const iconLogo = (path) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#2f3336"/><g transform="translate(4.2 4.2) scale(.65)" fill="none" stroke="#f3ecdc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`);
-const GEAR_LOGO = iconLogo(SHOP_ICON.gear), DIR_LOGO = iconLogo('<path d="M4 4h16v12H4zM12 16v5M8 21h8"/><circle cx="8" cy="8" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="16" cy="8" r="1.2"/>');
+const GEAR_LOGO = iconLogo(SHOP_ICON.gear), DIR_LOGO = iconLogo(ic('map'));
 import { leapLogo } from '../leap.js';
 import { salonLogo } from '../salon.js';
 import { FOOD_SVG, BUFF_ICON, buffText } from '../stoneicons.js';
@@ -26,6 +26,7 @@ import { bowArmed, bowReady, armedFor, setHoldBow, fireWeapon, weaponNow, lockFa
 import { RIDE_LOGO, buildRideMenu } from './ride.js';
 import { dismountDeer, sitDown, standUp, openWishes, startPhoto } from './moves.js';
 import { photog } from './room.js';
+import { ic } from '../icons.js';
 
 Object.assign(late, { refreshShopPop, finishMeal, finishCut, doInteract }); // 앞 파일에서 부르는 함수
 
@@ -184,7 +185,7 @@ export function leapItems(k) {
   if (k === 'shoes') {
     const n = Math.max(1, save.equip.shoes || 1), now = SHOES[n - 1].speed;
     return SHOES.map((t, i) => ({ id: 'shoes:' + (i + 1), shoes: i + 1, tier: i + 1, name: t.name, price: t.price, own: i < n, on: i === n - 1,
-      art: `${late.SVG_A.replace('<svg', '<svg class="art"')}>${late.TIER_ART.shoes[i]}</svg>`, now, v: t.speed, stat: 'speed' }));
+      art: late.itemArt ? late.itemArt('shoes', i, 'art') : `${late.SVG_A.replace('<svg', '<svg class="art"')}>${late.TIER_ART.shoes[i]}</svg>`, now, v: t.speed, stat: 'speed' }));
   }
   const w = WSLOT[k], now = wearV(k), out = [];
   if (w.none) out.push({ id: '', tier: 0, name: '없음', price: 0, own: true, on: !CL.wear[k], art: clothSvg(null), now, v: w.v[0], stat: w.stat });
