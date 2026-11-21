@@ -2,7 +2,7 @@
 // - 주는 사람: 오름지기(들머리 안내판 옆, 밀짚모자), 구역 클린하우스 옆 표지판(구역 2~5), 가게 앞 주인(가게 퀘스트). 머리 위 노란 !(줄기 받기)·노란 ?(돌려주기)·흰 !(곁가지)·회색 ?(하는 중)
 //   다가가 상호작용(F) → 받기·끝내기 창(#quest, 폰은 아래에서 올라오는 한 장). 미니맵·큰 지도에도 같은 표시(late.questIcons)
 // - 추적 줄(#quest-track): 화면 위 한 줄 '할 일 (1/3)' + 방향 화살표·거리. 누르면 그쪽으로 자동으로 걸어감(dump.js startAutoGo), 조건을 채우면 노랗게 '○○에게 돌아가기'
-//   #142 '다음 할 일' 은 퀘스트가 끝난 사람에게 이 줄을 이어 쓴다
+//   #142 '다음 할 일'(game/nexthint.js late.nextHint): 배낭 참·귤 닿음·HP 낮음이면 잠깐 바뀌고, 줄기 퀘스트가 끝난 사람에게 이어 줄 것을 이 줄에 씀
 // - 퀘스트 창(#qlog, 메뉴·L·추적 줄 목록 단추): 하는 중·끝낸 것
 // - 셈: 업적 사건(ach.emit)·더미 치움(trash.on, 남이 치운 것은 QUESTS.coopR 안이면)·소굴 닫음(field.js late.questEv)을 save.quest.c 에. 장비·우두머리·구역은 저장에서 바로 읽음
 // - 감독(#176): 문 quest(정낭을 나서면 오름지기 첫 퀘스트)·shopQuest(첫 버리기 뒤 장비점 주인)·shopQuests(2일째나 구역 2: 다른 가게 주인)를 등록. 조건을 채움·주운 실마리는 say('quest')
@@ -82,6 +82,7 @@ if (trash) trash.on((ev, d) => {
   count(h.field ? 'heapField' : 'heapRoad'); count('heap@' + h.zone);
 });
 late.questEv = (k, n = 1) => count(k, n);
+late.questTrackDirty = (bump) => trackDirty(bump);
 
 /* ---------- 주는 사람 ---------- */
 const tm = (c) => new THREE.MeshToonMaterial({ color: c, gradientMap: gradHard });
@@ -212,7 +213,7 @@ director.register({ id: 'shopQuests', kind: 'quest', gate: (f) => (f.days >= 2 |
 
 /* ---------- 추적 줄 ---------- */
 const TR = $('quest-track'), trT = TR.querySelector('.qt'), trP = TR.querySelector('.qp'), trA = TR.querySelector('.qa'), trD = TR.querySelector('.qd'), trM = TR.querySelector('.qm');
-let trDirty = true, trCur = null, trTarget = null, trTargetT = 0, trKey = '';
+let trDirty = true, trCur = null, trTarget = null, trTargetT = 0, trKey = '', trK = null;
 function trackDirty(bump = false) { trDirty = true; if (bump) { TR.classList.remove('bump'); void TR.offsetWidth; TR.classList.add('bump'); } }
 const heapLeft = (i) => trash.store.left(i) > 0;
 function nearest(list, f = () => true) { let b = null, bd = 1e12; for (const o of list) { if (!f(o)) continue; const d = (o.x - player.pos.x) ** 2 + (o.z - player.pos.z) ** 2; if (d < bd) { bd = d; b = o; } } return b; }
@@ -233,11 +234,16 @@ function goPos(go) {
   if (kind === 'boss' && F) { const o = F.bosses.find((b) => b.zone === z); return o && v3(o.x, o.z); }
   return null;
 }
-function trackInfo() {
-  const t = quests.tracked(); if (!t) return null;
+function questInfo(t) {
   if (t.st === 'offer') return { t, text: `${whoOf(t.q.giver)}에게 가기`, prog: '', ready: false, go: t.q.giver, mark: '!' };
   if (t.ready) return { t, text: `${whoOf(t.to)}에게 돌아가기`, prog: '', ready: true, go: t.to, mark: '?' };
   return { t, text: t.q.task, prog: t.n > 1 && t.q.ask.k !== 'zone' ? `${t.p}/${t.n}` : '', ready: false, go: t.q.go || null, mark: t.main ? '!' : 'w' };
+}
+// #142 다음 할 일 (game/nexthint.js): 잠깐 바뀌는 안내(배낭 참·귤 닿음·HP 낮음)가 먼저, 퀘스트가 없으면 이어 줄 것. 그 안내는 pos()·arrive·tap 을 직접 가짐
+function trackInfo() {
+  const t = quests.tracked(), base = t ? questInfo(t) : null;
+  const h = late.nextHint?.(base, { open: director.isOpen('quest'), mainLeft: !!quests.mainNext() });
+  return h || base;
 }
 const trackOn = () => state.sessionOn && !late.tut?.active && !panelOpen() && cam.mode !== 'wardrobe' && !document.body.classList.contains('tut') && !(isTouch && innerWidth <= 600 && !$('boss-bar').hidden);
 const pv = new THREE.Vector3();
@@ -253,12 +259,13 @@ function tickTrack(dt) {
   const on = trackOn() && !!trCur;
   if ((trTargetT -= dt) <= 0 || trDirty) {
     trTargetT = 0.5; trCur = trackInfo();
-    trTarget = trCur ? goPos(trCur.go) : null;
+    trTarget = trCur ? (trCur.pos ? trCur.pos() : goPos(trCur.go)) : null;
     if (trCur) {
       const key = trCur.text + trCur.prog + trCur.ready + trCur.mark;
       if (key !== trKey || trDirty) {
+        if ((trCur.k || '') !== trK) { if (trK !== null) trackDirty(true); trK = trCur.k || ''; } // 안내가 바뀌면 한 번 튐
         trKey = key; trT.textContent = trCur.text; trP.textContent = trCur.prog; TR.classList.toggle('ready', trCur.ready);
-        trM.textContent = trCur.mark === '?' ? '?' : '!'; trM.classList.toggle('side', trCur.mark === 'w');
+        trM.textContent = trCur.mark === '?' ? '?' : trCur.mark === 'next' ? '›' : '!'; trM.classList.toggle('side', trCur.mark === 'w'); trM.classList.toggle('tmp', trCur.mark === 'tmp'); trM.classList.toggle('next', trCur.mark === 'next');
       }
     }
     trDirty = false;
@@ -276,9 +283,10 @@ function tickTrack(dt) {
 }
 function trackGo() {
   if (autoGo?.dest?.quest) { stopAutoGo(); return; }
+  if (trCur?.tap) { trCur.tap(); return; }
   if (!trCur || !trTarget) { openLog(); return; }
-  const gid = givers.has(trCur.go) ? trCur.go : null;
-  const ok = startAutoGo({ pos: trTarget.clone(), near: gid ? Q.r * 0.7 : 3, quest: true, arrive: () => { if (gid) openGiver(gid); } });
+  const gid = givers.has(trCur.go) ? trCur.go : null, arr = trCur.arrive;
+  const ok = startAutoGo({ pos: trTarget.clone(), near: trCur.near || (gid ? Q.r * 0.7 : 3), quest: true, arrive: () => { if (arr) arr(); else if (gid) openGiver(gid); } });
   if (!ok) toast('지금은 걸어갈 수 없어요');
 }
 TR.addEventListener('click', (e) => { if (e.target.closest('.ql')) { e.stopPropagation(); openLog(); return; } trackGo(); });
@@ -362,8 +370,9 @@ late.tickQuest = (dt) => {
 /* ---------- 확인용 (window.__oreum.quest) ---------- */
 late.questDebug = {
   api: quests, givers, state: () => JSON.parse(JSON.stringify(quests.state())),
+  get next() { return late.nextDebug; }, // #142 다음 할 일 (game/nexthint.js)
   where: () => Object.fromEntries([...givers.values()].map((g) => [g.id, { x: +g.pos.x.toFixed(1), z: +g.pos.z.toFixed(1), mark: g.cur }])),
-  track: () => trCur && { text: trCur.text, prog: trCur.prog, ready: trCur.ready, go: trCur.go, target: trTarget && [+trTarget.x.toFixed(1), +trTarget.z.toFixed(1)], shown: !TR.hidden },
+  track: () => trCur && { text: trCur.text, prog: trCur.prog, ready: trCur.ready, go: trCur.go, k: trCur.k || null, mark: trCur.mark, target: trTarget && [+trTarget.x.toFixed(1), +trTarget.z.toFixed(1)], shown: !TR.hidden },
   give: (id) => quests.accept(id), done: (id) => { const r = quests.complete(id); if (r) give(r, quests.BY.get(id)); trackDirty(); return r; },
   count: (k, n = 1) => { count(k, n); trackDirty(); }, open: (gid) => openGiver(gid), log: () => openLog(), go: () => trackGo(), win: () => !win.el.hidden && { who: win.giver?.id, id: win.item?.q.id, st: win.item?.st },
   press: () => $('quest-go').click(), close: closeWin, catchUp: () => quests.catchUp(), reset: () => { quests.reset(); trackDirty(); }, goPos, ending,

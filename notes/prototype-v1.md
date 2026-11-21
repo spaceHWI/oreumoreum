@@ -104,6 +104,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
 - 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
+- 다음 할 일: game/nexthint.js(#142, quest 뒤): late.nextHint(퀘스트 줄, ctx) 가 추적 줄에 잠깐 바뀌는 안내(HP·배낭·장비점)나 퀘스트 뒤 이어 줄 것을 돌려줌. 수치는 balance.js NEXT_HINT
 - 아이콘 (#184): icons.js(아이콘 세트, `tools/icongen.mjs` 로 만듦: Tabler Icons(MIT, THIRD_PARTY.md) + 직접 그린 오름오름 것. `icon(id)`·`ic(id)`, page.html 은 `<svg data-i="id"></svg>` 를 build.mjs 가 채움) · iconart.js(id → 그림 주소로 갈아 끼우기). 목록·그림 뽑을 목록 notes/icons.md, 아이콘 시트 `node tools/iconsheet.mjs <이름>`
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 레벨·증강 (#159): augments.js — 저장만 읽는 순수 함수(레벨 곡선 `levelOf`·`xpAt`, 저장 고치기 `lvSave`, 증강 값 `augV(save, id)` = 겹친 수 × v, 뽑기 `rollDraw`, 옛 저장 경험치 `oldXp`, 서버 확인 `checkLv`). 능력치 자리마다 장비 값에 더함: 큰손 pickup.js·자석 귤 hooks.js pickR2·분리수거 달인 dump.js·쌍귤 throw.js/arms.js(덤 귤 `tg.twin` 은 못 주움)·빠른 손 charge.js·두꺼운 잠바 hooks.js·노루 친구 ride.js/update.js. 수치 balance.js LEVEL·AUGMENTS. 서버 validate.js·roomcore(`lv` 이름표)·heaps.js(분리수거 몫)
