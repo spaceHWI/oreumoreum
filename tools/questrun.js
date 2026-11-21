@@ -27,7 +27,7 @@ const TASK = { trash: (n) => n * 1.6, heapRoad: () => 75, heapField: () => 150, 
   if (await ev(() => !document.getElementById('look').hidden)) { await p.click('#look-ok'); await W(1500); }
   // ----- 튜토리얼 건너뛰기 → 정낭 -----
   ok(await ev(() => window.__oreum.quest.track() === null || !window.__oreum.quest.track().shown), '튜토리얼 동안 추적 줄 없음');
-  await ev(() => { const o = window.__oreum; o.tut.skipAll(); });
+  await ev(() => { const o = window.__oreum; o.tut.skipAll(); o.quest.next?.off(true); }); // 잠깐 바뀌는 안내(#142 배낭 참·귤 닿음·HP)는 tools/nexthint.js 가 봄
   ok(await until(() => window.__oreum.director.state().open.includes('quest'), 8000), '감독 문 quest 열림 (정낭을 나섬)');
   const where = (await Q()).where; ok(!!where.jigi, `오름지기 자리 ${JSON.stringify(where.jigi)}`);
   ok(Object.keys(where).filter((k) => k.startsWith('b:')).length >= 3, `구역 표지판 ${Object.keys(where).filter((k) => k.startsWith('b:')).join(',')}`);

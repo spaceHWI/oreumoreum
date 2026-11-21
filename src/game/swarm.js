@@ -27,6 +27,7 @@ import { toast, updateStats, busy } from './hud.js';
 import { director } from './director.js';
 import { weaponNow, bowReady } from './throw.js';
 import { holding } from './arms.js';
+import { icon } from '../icons.js';
 
 const S = SWARM, E = life.enemies;
 /* ---------- 저장 ---------- */
@@ -376,7 +377,7 @@ st.textContent = `
 `;
 document.head.appendChild(st);
 const bar = document.createElement('div'); bar.id = 'swarm-bar'; bar.className = 'panel'; bar.hidden = true; bar.setAttribute('role', 'status');
-bar.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 20c3-6 5-6 6-12M9 20c2-4 4-5 6-11M15 20c1-3 3-4 6-9"/></svg><span id="sb-t">0:00</span><span>·</span><span class="sb-n" id="sb-k">0</span><span>마리 ·</span><span>물결 <b id="sb-w">1</b></span><span class="sb-bar" title="다음 증강"><i id="sb-a"></i></span>';
+bar.innerHTML = icon('field') + '<span id="sb-t">0:00</span><span>·</span><span class="sb-n" id="sb-k">0</span><span>마리 ·</span><span>물결 <b id="sb-w">1</b></span><span class="sb-bar" title="다음 증강"><i id="sb-a"></i></span>';
 document.body.appendChild(bar);
 let hudN = -1, hudS = -1;
 function hud(on) { bar.hidden = !on; document.body.classList.toggle('swarm-on', on); hudN = -1; }

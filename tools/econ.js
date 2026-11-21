@@ -9,9 +9,11 @@
 //   node tools/econ.js --nosmoker  들머리 흡연자(#156) 없이 (비교용)
 //   node tools/econ.js --flow       하루 끝 흐름 확인만 (#137)
 //   node tools/econ.js --noaug      레벨은 세되 증강(#159)을 고르지 않음 (비교용. 기본은 벌이 증강을 먼저 고름: 큰손·분리수거 달인·가벼운 발·노루 친구)
+//   node tools/econ.js --norare     귀한 귤(#130) 없이 (비교용)
+//   node tools/econ.js --split 3   하루 1시간을 3번에 나눠 함 (#131: 나갔다 오면 그 사이 쓰레기가 다시 참). 사이 시간 --gap 분(기본 DUMP.offlineMaxH, 가득)
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
 // 가정 (모두 어림):
-// - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
+// - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH). --split 이면 나눈 판마다 그 사이(--gap 분) 빈자리를 src/refill.js 곡선으로 채움
 // - 한 번 나가기 = 클린하우스 → 구역 → 배낭이 찰 때까지 더미 돌며 줍기 → 클린하우스. 거리는 직선 × 1.15 (trash.estimate 와 같음)
 //   클린하우스는 들머리 + 오름 안 4곳 (#78): 더미마다 가장 가까운 곳까지 거리 (--one: 들머리 하나만, 비교용)
 // - 더미 사이 걷기 = 구역 더미를 가까운 것부터 한 바퀴 도는 거리 ÷ 쓰레기 수 × 주운 수
@@ -62,6 +64,8 @@ async function live() {
 async function main() {
   if (has('--live')) await live();
   const B = await import('../src/balance.js');
+  const RF = await import('../src/refill.js'); // #131 빈 동안 다시 참
+  const SPLIT = Math.max(1, +arg('--split', 1) || 1), GAP = +arg('--gap', B.DUMP.offlineMaxH * 60);
   const AG = await import('../src/augments.js');
   const { LEVEL } = B, NOAUG = has('--noaug');
   const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
@@ -72,6 +76,8 @@ async function main() {
   let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
+  const RG = await import('../src/raregyul.js'), NORARE = has('--norare'); // 귀한 귤 (#130): 쫓아낼 때 기댓값만큼 더함. --norare 로 빼고 견줌
+  const rgEV = (who, g, mx) => (NORARE ? 0 : RG.rareEV(who, g, mx));
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
   const FRONTS = has('--one') || !map.fronts ? [map.front] : map.fronts; // 가장 가까운 클린하우스 기준 (#78)
   const RUN = 10, DETOUR = 1.15, HAND_T = 1.0, BOSS_OVER = 1.5; // … , 우두머리: 맞히기만 한 시간 × 이만큼 (피하기·부하, tools/boss.js 로 잰 비율) // 달리기 속도(main.js), 길 굽이, 손 던지기 동작 시간(runner.js THROW.total)
@@ -149,7 +155,7 @@ async function main() {
   };
   function mobFight(kind, st) {
     const E = ENEMIES[kind], w = weaponOf(st), k = killOf(E.hp, w);
-    return { t: 3 + k.t, gy: E.reward.gyul + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
+    return { t: 3 + k.t, gy: E.reward.gyul + rgEV(kind, E.reward.gyul, B.ENEMY_DROP.max) + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
   }
 
   // 들판 떼 (#173): 구역 z(번호)·무기 단계 wt 로 들판에 있는 1초의 귤 (조각 포함, 탄 값 뺌)
@@ -224,7 +230,9 @@ async function main() {
       if (d === 0) { // 튜토리얼: 쓰레기 6개 → 첫 보너스 → 집게·배낭
         t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag'); st.tutDone = true;
       }
+      let nextSplit = 3600 / SPLIT;
       while (t < 3600) {
+        if (SPLIT > 1 && t >= nextSplit) { nextSplit += 3600 / SPLIT; st.left = zones.map((z, i) => Math.min(z.n, st.left[i] + (z.n - st.left[i]) * RF.emptyFill(GAP * 60, z.id))); cleanSeen = new Set(); st.cur = null; } // #131 나갔다 옴
         let b = best(st, e, cleanSeen) || (st.cur = null, best(st, e, new Set()));
         if (!b) { const sc = scoreOf(e, st.weapon); let j = 0; zones.forEach((z, k) => { if (sc >= z.rec * GROWTH.red) j = k; }); b = { i: j, r: { t: 30, gy: 0, m: 0 }, idle: true }; idleT += 30 * S; }
         const { r } = b; add(r.t); st.left[b.i] -= r.m; st.coins += r.gy; earned += r.gy; gainXp(r.xp);
@@ -233,7 +241,7 @@ async function main() {
         dumpT += r.t * S;
         while (dumpT >= DUMP.every) {
           dumpT -= DUMP.every; const truck = Math.random() < DUMP.truckP, def = truck ? DUMP.truck : DUMP.walker;
-          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); gainXp(LEVEL.xp.dumper); st.coins += def.reward - Math.ceil(k.gy); earned += def.reward - Math.ceil(k.gy); }
+          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); gainXp(LEVEL.xp.dumper); const g = def.reward + rgEV(truck ? 'truck' : 'walker', def.reward) - Math.ceil(k.gy); st.coins += g; earned += g; }
           else { const wts = zones.map((z, i) => DUMP.zoneBase + zoneClean(i)), sum = wts.reduce((a, c) => a + c, 0); let x = Math.random() * sum, i = 0; while (i < 4 && x > wts[i]) { x -= wts[i]; i++; } st.left[i] = Math.min(zones[i].n, st.left[i] + (truck ? 80 : DUMP.walker.amt)); }
         }
         // 몹
@@ -371,5 +379,11 @@ async function main() {
   { const Q = B.QUESTS, sum = (z) => Q.main.filter((q) => q.z === z).reduce((a, q) => a + (q.reward?.gyul || 0), 0), q1 = sum(1), cap = Math.round(day1 * Q.dayCap);
     console.log(`퀘스트: 첫날(구역 1) 보상 귤 ${q1} · 첫날 벌이 ${day1} 의 ${Math.round(Q.dayCap * 100)}% = ${cap} → ${q1 <= cap ? '통과' : '넘침 (보상을 줄일 것)'}`);
     console.log('  구역별 줄기 보상 합: ' + [1, 2, 3, 4, 5].map((z) => `구역 ${z} ${sum(z)}`).join(' · ')); }
+  { // 오름펑크 (#165): 쪽지는 귤이 없음(쓰레기 수·귤은 보통 쓰레기와 같음). 칭호가 열리는 업적의 보상 합은 첫날 벌이의 10% 안
+    const { NOTES, TITLES } = require('../src/punktext.js'), { BADGES } = require('../src/achievements.js'), src = fs.readFileSync(path.join(__dirname, '../src/game/punkworld.js'), 'utf8');
+    const noGyul = NOTES.every((n) => !('gyul' in n) && !('reward' in n)) && !/addCoins|coins\s*[+-]?=|scatterTangerines/.test(src);
+    const ids = new Set(TITLES.map((t) => t.badge)), add = BADGES.filter((b) => ids.has(b.id) && /^b-(earn-10k|stare|unpaid|alien-cs|crow|hare-five|dumper|guard-1|notes|ending)$/.test(b.id)), tot = add.reduce((s, b) => s + b.reward, 0), cap = Math.round(day1 * 0.1);
+    console.log(`쪽지: ${NOTES.length}장, 귤 ${noGyul ? '0 (벌이 그대로)' : '있음'} · 칭호 ${TITLES.length}개, 새 업적 ${add.length}개 보상 합 귤 ${tot} · 첫날 벌이 ${day1} 의 10% ${cap} → ${noGyul && tot <= cap && TITLES.every((t) => BADGES.some((b) => b.id === t.badge)) ? '통과' : '넘음·없는 업적'}`);
+  }
 }
 main();

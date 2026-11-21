@@ -23,6 +23,7 @@ import { interactables } from './stores.js';
 import { field } from './field.js';
 import { cam } from './camera.js';
 import { dismountRide, leaveCart } from './ride.js';
+import { ic, icon } from '../icons.js';
 
 export const ON = !!(trash && field && field.bosses?.length);
 const LOOP = (z) => field?.loops?.[z] || null;
@@ -45,10 +46,10 @@ export function logOf(z) { return S.log[z] || (S.log[z] = { pick: 0, repel: 0, s
 
 /* ---------- 구역 완료 요약 ---------- */
 const IC = {
-  pick: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg>',
-  repel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="14" r="6"/><path d="M11 8c0-2 1-3 3-4M19 5l2-2M20 9h2"/></svg>',
-  got: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16v9H4zM4 10l2-4h12l2 4M10 13h4v3h-4"/></svg>',
-  score: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/></svg>',
+  pick: icon('bag'),
+  repel: icon('gyul-throw'),
+  got: icon('chest'),
+  score: icon('score'),
 };
 const TONE_C = { r: '#ff5a4a', y: '#ffd23f', g: '#8fe36a' };
 export function openSummary(z, got) {
@@ -97,8 +98,8 @@ $('wake-start').addEventListener('click', () => { $('wake-pick').hidden = true; 
 
 /* ---------- 빠른 마차·지름길 (구역 완료로 열림) ---------- */
 const FADE_IC = {
-  cart: '<path d="M3 9h11v6H3zM2 9h13M14 12l3-1"/><circle cx="7" cy="18" r="2.5"/><ellipse cx="19" cy="10.5" rx="2.6" ry="1.8"/><path d="M18 12.5v5M21 12v5"/>',
-  steps: '<path d="M3 20h6v-4h5v-4h4V8h3"/><path d="M3 20V9"/>',
+  cart: ic('cart'),
+  steps: ic('steps'),
 };
 let travelT = 0, lastWarp = -1e9;
 export function warp(s) {

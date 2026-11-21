@@ -1,10 +1,11 @@
 // 장비점 창(도구·배낭·무기)·가게 안내(무엇을 어디서 사는지·길 안내)·살 수 있는 새 물건 점·사는 연출, 옷 (#128. #86 에서 main.js 를 나눔. 파일 순서는 src/modules.js, 규칙은 notes/prototype-v1.md 코드 구조)
 // 사는 것은 모두 가게 거리의 가게에서 (#128): 도구·배낭·무기 = 장비점, 옷·신발 = LEAP, 머리 = 루이네미장원, 탈것 = 탈것 가게, 식사 = 스톤
 // 어디서나 열리던 상점(메뉴·귤 칸)은 가게 안내 → 고르면 그 가게까지 자동 걷기(dump.js startAutoGo(dest)) → 도착하면 그 가게 창
-import { TOOLS, BAGS, POCKET, SHOES, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, BOOTS, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
 import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
 import { SHOP_ICON } from '../shops.js';
+import { ic } from '../icons.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, CL, wearV, syncEquipGear, persist } from './save.js';
 import { LEAPB, street, shopsBuilt, roofSigns, CH, runner, player } from './place.js';
@@ -14,53 +15,37 @@ import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
 import { SHOP_POP, openShopPop, refreshShopPop, shopPopNow } from './stores.js';
 import { startAutoGo } from './dump.js';
-import { itemScore, scoreDiff, gyulPickR } from '../gearscore.js';
+import { itemScore, scoreDiff, gyulPickR, abilityCloth } from '../gearscore.js';
 import { LOOK_COLORS } from '../balance.js';
 import { colorDots, lcIndex } from '../lookcolors.js'; // 기본 옷 색 (#155)
 
-Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, gdBadge, scoreChip, goShop, shopGuide, gearTabs, fillGearShop, fillShopDir, shopOpened }); // 앞 파일에서 부르는 함수
+Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, wearBoots, buyBoots, gdBadge, scoreChip, goShop, shopGuide, gearTabs, fillGearShop, fillShopDir, shopOpened }); // 앞 파일에서 부르는 함수
 
 // ---------- 장비점 (#128) ----------
 // 세 묶음 도구·배낭·무기 (LEAP 이 없는 맵이면 신발도). 데스크톱은 한 화면에 나란히, 폰은 위쪽 큰 탭. 카드 = 그림·이름·능력 '지금 → 사면'·값 + 큰 [사기]
 const GEAR_ROWS = { tool: { k: 'tool', name: '도구', list: TOOLS }, bag: { k: 'bag', name: '배낭', list: BAGS }, weapon: { k: 'weapon', name: '무기', list: WEAPONS }, shoes: { k: 'shoes', name: '신발', list: SHOES } };
 const gearKeys = () => Object.keys(GEAR_ROWS).filter((k) => !(k === 'shoes' && LEAPB)); // 신발은 LEAP 이 있으면 거기서 (#59)
 const SVG_A = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'; late.SVG_A = SVG_A;
-// 단계마다 그림 (로우폴리 임시 아이콘)
+// 단계마다 그림: 아이콘 세트(#184). 가게 카드·내 가방은 실제 모델을 찍은 그림(thumbs.js itemArt)이 먼저, 없으면 이것
 const TIER_ART = {
-  tool: ['<path d="M8 21v-7l-2-3V6a1 1 0 0 1 2 0v4M10 10V4a1 1 0 0 1 2 0v6M12 10V5a1 1 0 0 1 2 0v5M14 10V6a1 1 0 0 1 2 0v6l-2 9"/>', // 맨손
-    '<path d="M10 3l1 18M14 3l-1 18M9 8h6"/>', // 집게
-    '<path d="M12 3v11M6 21l2-7h8l2 7M10 14v7M14 14v7"/>', // 갈퀴
-    '<path d="M12 2v11M4 21l2-8h12l2 8M8 13v8M12 13v8M16 13v8"/>', // 큰 갈퀴
-    '<path d="M9 3h6v6H9zM12 9v6M7 15h10l-2 6H9zM17 5h3M17 7h2"/>'], // 흡입기
-  bag: ['<path d="M8 10h8v10H8zM10 10V8a2 2 0 0 1 4 0v2"/>',
-    '<path d="M7 9h10v11H7zM9.5 9V7a2.5 2.5 0 0 1 5 0v2M9 14h6"/>',
-    '<path d="M6 8h12v13H6zM9 8V6a3 3 0 0 1 6 0v2M9 13h6v4H9z"/>',
-    '<path d="M5 7h14v14H5zM8.5 7V5a3.5 3.5 0 0 1 7 0v2M8 12h8v5H8zM5 10H3v6h2M19 10h2v6h-2"/>',
-    '<path d="M5 6h14v15H5zM8.5 6V4.5a3.5 3.5 0 0 1 7 0V6M8 11h8v6H8zM5 9H3v8h2M19 9h2v8h-2M7 3h10"/>'],
-  shoes: ['<path d="M4 16h14a2 2 0 0 0-2-3h-3l-2-3H6l-2 3zM4 16v2h14v-2"/>',
-    '<path d="M3 16h16a2 2 0 0 0-2-3h-3l-3-4H5l-2 4zM3 16v2h16v-2M8 9l1 2"/>',
-    '<path d="M3 16h17a2 2 0 0 0-2-3h-3l-3-4H5l-2 4zM3 16v2h17v-2M6 18v1M10 18v1M14 18v1M18 18v1"/>',
-    '<path d="M4 16h16a2 2 0 0 0-2-3h-3l-2-6H6v6l-2 0zM4 16v3h16v-3M7 9h5M7 11h5"/>',
-    '<path d="M3 15h17a2 2 0 0 0-2-3h-3l-3-4H5l-2 4zM3 15v2h17v-2M1 9h4M2 12h3M20 7l2-2M21 10h2"/>'],
-  weapon: ['<circle cx="9" cy="15" r="5"/><path d="M9 10c0-2 1-3 3-4M15 8l4-4M17 11h4"/>', // 손 (귤 던지기)
-    '<path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/><circle cx="19" cy="6" r="1.6"/>', // 귤 활
-    '<path d="M3 9h13l2 2v3H9l-1 5H5l1-5H3zM18 11h3M12 14v2"/><circle cx="20" cy="9" r="1.5"/>', // 귤 총
-    '<path d="M2 9h15l2 2v3H9l-1 5H5l1-5H2zM19 10h3M19 12h3M19 14h3M8 9V6h5v3"/>', // 귤 머신건
-    '<path d="M3 10h9v4H3zM12 11h2v2h-2M14 12h8M5 14l-1 5h3l1-5M7 7c1-2 3-2 4 0"/>', // 귤즙 레이저
-    '<circle cx="11" cy="14" r="7"/><path d="M14 7l2-3M16 4l3 1M18 2v2M9 12c0-1 1-2 2-2"/>'], // 귤 폭탄
+  tool: ['hand', 'tongs', 'rake', 'bigrake', 'vacuum'].map(ic), // 맨손·집게·갈퀴·큰 갈퀴·흡입기
+  bag: [0, 1, 2, 3, 4].map(() => ic('bag')),
+  shoes: [0, 1, 2, 3, 4].map(() => ic('shoe')),
+  weapon: ['gyul-throw', 'bow', 'gun', 'mg', 'laser', 'bomb'].map(ic), // 손(귤 던지기)·귤 활·귤 총·머신건·레이저·폭탄
+  boots: ['<path d="M8 2h7v11l3 1.5a2 2 0 0 1 1 1.8V19H6V2z"/><path d="M8 5h7M6 19v2h13v-2"/>'], // 고진의 파란장화 (#167)
 }; late.TIER_ART = TIER_ART;
 const STAT_ICON = {
-  per: '<circle cx="6" cy="16" r="2.5"/><circle cx="12" cy="8" r="2.5"/><circle cx="18" cy="16" r="2.5"/>', // 한 번에 몇 개
-  rate: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/>', // 초당
-  r: '<path d="M3 12h18M6 9l-3 3 3 3M18 9l3 3-3 3"/>', // 닿는 거리
-  cap: '<path d="M7 8h10v12H7zM9.5 8V6a2.5 2.5 0 0 1 5 0v2"/>', // 배낭 칸
-  speed: '<path d="M4 17l6-6 4 4 6-8M14 7h6v6"/>', // 빠르기
-  dmg: '<path d="M12 3l2.5 6 6.5.5-5 4 1.5 6.5L12 16l-5.5 4L8 13.5l-5-4 6.5-.5z"/>', // 피해
-  gyul: '<circle cx="12" cy="13" r="4"/><path d="M12 9V7.5M4 13a8 8 0 0 1 16 0M2.5 13h2M19.5 13h2"/>', // 귤 모으는 범위 (#151)
+  per: ic('per'), // 한 번에 몇 개
+  rate: ic('rate'), // 초당
+  r: ic('reach'), // 닿는 거리
+  cap: ic('bag'), // 배낭 칸
+  speed: ic('speed'), // 빠르기
+  dmg: ic('dmg'), // 피해
+  gyul: ic('magnet'), // 귤 모으는 범위 (#151)
 };
 const STAT_TITLE = { per: '한 번에 줍는 수', rate: '초당 줍는 수', r: '닿는 거리', cap: '배낭 용량', speed: '빠르기', dmg: '피해', gyul: '귤 모으는 범위' }; late.STAT_ICON = STAT_ICON;
 // 장비 점수 (#137): 칸마다 지금 것 대비 ▲/▼ 점수 차, 고른 것의 점수
-const SCORE_IC = '<path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/>';
+const SCORE_IC = ic('score');
 export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 점수 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
 export function scoreChip(sc, d) { return `<span class="gs" title="장비 점수">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
 const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
@@ -103,7 +88,7 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   const off = late.questOff?.('gear', next.price) || 0, pay = next.price - off; // 퀘스트 할인권 (#158)
   if (save.coins < pay) { toast(`귤이 ${pay - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; late.lootTidy?.(); if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
+  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; if (k === 'shoes' && save.equip.boots === 2) save.equip.boots = 1; /* 새 신발을 사면 장화를 벗음 (#167) */ late.lootTidy?.(); if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
@@ -141,7 +126,7 @@ function gearGroup(k) {
     c.className = 'buy-card' + (own ? ' own' : '') + (on ? ' on' : '') + (poor ? ' poor' : '') + (t.soon ? ' soon' : '') + (just ? ' just' : '') + (!own && i === cur && !t.soon ? ' next' : '');
     const stats = t.soon ? [] : tierStats(k, t), was = own ? null : tierStats(k, now);
     const st = stats.map(([ic, v], j) => `<span title="${STAT_TITLE[ic] || ''}">${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('');
-    c.innerHTML = `<span class="art">${SVG_A}>${TIER_ART[k][i]}</svg>${own || t.soon ? '' : gdBadge(scoreDiff(save, k, i + 1))}</span>`
+    c.innerHTML = `<span class="art">${late.itemArt ? late.itemArt(k, i, '') : `${SVG_A}>${TIER_ART[k][i]}</svg>`}${own || t.soon ? '' : gdBadge(scoreDiff(save, k, i + 1))}</span>`
       + `<span class="bn"><b>${t.soon ? '준비 중' : t.name}</b><small class="tier-stats">${st}${t.soon ? '' : scoreChip(itemScore(i + 1), 0)}</small></span>`;
     const act = document.createElement('span'); act.className = 'ba';
     if (just) act.innerHTML = `<span class="have">${CHECK()}장착했어요</span>`;
@@ -178,7 +163,8 @@ const seen = (() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || 
 const SHOP_ITEMS = { // 가게마다 아직 안 가진 살 것 [{ key, price }]. 스톤(식사)은 늘 살 수 있어 점이 없음
   gear: () => gearKeys().flatMap((k) => GEAR_ROWS[k].list.map((t, i) => buyable(k, i) && { key: `${k}:${i + 1}`, price: t.price }).filter(Boolean)),
   leap: () => [...CLOTHES.filter((c) => LEAP.slots.includes(c.slot) && !CL.own[c.id]).map((c) => ({ key: 'c:' + c.id, price: wearPrice(c) })),
-    ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : [])],
+    ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : []),
+    ...(LEAPB && !save.equip.boots ? [{ key: 'shoes:boots', price: BOOTS.price }] : [])],
   salon: () => (save.look ? HAIR.list.filter((h) => !save.hairs[h.key]).map((h) => ({ key: 'h:' + h.key, price: h.price })) : []),
   ride: () => RIDES.list.filter((r) => !(save.rides.own || []).includes(r.id)).map((r) => ({ key: 'r:' + r.id, price: r.price })),
 };
@@ -247,10 +233,26 @@ late.shopIcons = (x, uv, s, inC) => {
   }
 };
 // ---------- 옷 (#52): 칸마다 한 줄. 옷 그림·단계 색·입은 것 체크·없는 것은 값. 가진 옷은 눌러서 바로 갈아입음 ----------
-export function wearCloth(slot, id) {
+export function wearCloth(slot, id) { // 겉모습만 바꿈 (#179): 능력은 가진 옷 중 가장 좋은 것 그대로
   if (id) CL.wear[slot] = id; else delete CL.wear[slot];
+  syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true); late.outfitSet?.check(true);
+}
+// 고진의 파란장화 (#167): save.equip.boots 0 없음 · 1 가짐 · 2 신음. 벗으면 가진 단계 신발 중 가장 좋은 것
+export function wearBoots(on) {
+  if (!save.equip.boots) return;
+  save.equip.boots = on ? 2 : 1;
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
 }
+export function buyBoots() {
+  if (save.equip.boots) return false;
+  if (save.coins < BOOTS.price) { toast(`귤이 ${BOOTS.price - save.coins}개 모자라요`); return false; }
+  save.coins -= BOOTS.price; save.equip.boots = 1; late.sound.coin?.(); ach.emit('clothes-buy'); ach.emit('clothes-buy-shoes'); ach.emit('boots-buy');
+  wearBoots(true); refreshDots();
+  toast(`${BOOTS.name} · 바로 신었어요`);
+  return true;
+}
+// 겉모습 옷 색 (#179): tint 인 옷의 색 번호 (0 = 원래 색)
+export function tintCloth(id, i) { if (!CLOTH[id]?.tint || !CL.own[id]) return; if (i > 0) CL.tint[id] = i; else delete CL.tint[id]; syncEquipGear(); runner.apply(save.outfit); persist(); net.send(true); }
 export function buyCloth(id) {
   const c = CLOTH[id]; if (!c || CL.own[id]) return false; const off = late.questOff?.('leap', wearPrice(c)) || 0, price = wearPrice(c) - off; // 퀘스트 할인권 (#158)
   if (save.coins < price) { toast(`귤이 ${price - save.coins}개 모자라요`); return false; }
@@ -262,30 +264,32 @@ export function buyCloth(id) {
 export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 가진 옷은 눌러서 바로 갈아입음. lock(옷, 줄) 을 주면 안 가진 옷도 흐리게 (사는 것은 LEAP #128)
   const CHECK = `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`;
   WEAR.slots.forEach((w) => {
-    const list = CLOTHES.filter((c) => c.slot === w.k && CL.own[c.id]).sort((a, b) => a.tier - b.tier);
+    const list = CLOTHES.filter((c) => c.slot === w.k && CL.own[c.id]).sort((a, b) => (a.tier || 99) - (b.tier || 99)), abId = abilityCloth(save, w.k);
     const row = document.createElement('div'); row.className = 'w-row wear-row';
     const cur = wearV(w.k), head = document.createElement('div'); head.className = 'wear-head';
-    head.innerHTML = `<span class="wear-name">${w.name}</span><span class="wear-stat">${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${wearStatText(w.stat, cur)}</span>`;
+    head.innerHTML = `<span class="wear-name">${w.name}</span><span class="wear-stat" title="능력은 가진 옷 중 가장 좋은 것 · 고르면 모양만 바뀌어요">${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${wearStatText(w.stat, cur)}</span>`;
     const grid = document.createElement('div'); grid.className = 'wear-grid';
     const cell = (c) => {
       const id = c?.id || '', on = c ? CL.wear[w.k] === id : !CL.wear[w.k], tier = c ? c.tier : 0;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item has' + (on ? ' on' : '') + (c ? '' : ' none'); b.dataset.id = id;
-      b.style.setProperty('--tc', WEAR.tierColor[tier]); b.title = c ? `${c.name} · ${tier}단계` : '없음';
-      b.setAttribute('aria-label', c ? `${c.name} ${tier}단계` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
-      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (on ? '' : gdBadge(scoreDiff(save, w.k, tier, id || undefined)));
+      const tag = c ? (c.style ? '겉모습' : `${tier}단계${id === abId ? ' · 능력' : ''}`) : '';
+      b.style.setProperty('--tc', c?.style ? WEAR.styleColor : WEAR.tierColor[tier]); b.title = c ? `${c.name} · ${tag}` : '없음 (능력은 그대로)';
+      b.setAttribute('aria-label', c ? `${c.name} ${tag}` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
+      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (c && id === abId ? '<i class="abm" aria-hidden="true"></i>' : ''); // 능력을 주는 옷 표시 (#179)
       b.addEventListener('click', () => { if (!on) wearCloth(w.k, id); late.buildWardrobe(); });
       grid.append(b);
     };
     if (w.none) cell(null);
     list.forEach(cell);
-    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => a.tier - b.tier).forEach((c) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', WEAR.tierColor[c.tier]);
+    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => (a.tier || 99) - (b.tier || 99)).forEach((c) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', c.style ? WEAR.styleColor : WEAR.tierColor[c.tier]);
       b.title = `${c.name} · LEAP 에서 ${wearPrice(c).toLocaleString()}귤`; b.setAttribute('aria-label', `${c.name} 잠김 · LEAP 에서 살 수 있어요`);
       b.innerHTML = clothSvg(c) + `<span class="pr"><i class="g"></i>${wearPrice(c).toLocaleString()}</span>`;
       b.addEventListener('click', () => lock(c, row)); grid.append(b);
     });
     row.append(head, grid);
     if (LOOK_COLORS.ids[w.k] && CL.wear[w.k] === LOOK_COLORS.ids[w.k]) row.append(baseColorRow(w.k)); // 기본 옷을 입고 있으면 색 바꾸기 (무료)
+    else if (CLOTH[CL.wear[w.k]]?.tint) row.append(styleColorRow(CLOTH[CL.wear[w.k]])); // 겉모습 옷 색 바꾸기 (#179, 무료)
     body.append(row);
   });
 }
@@ -300,3 +304,11 @@ export function baseColorRow(k) {
   return wrap;
 }
 late.baseColorRow = baseColorRow;
+// 겉모습 옷 색 동그라미 (#179): 0번 = 그 옷 원래 색, 나머지는 LOOK_COLORS.style
+export function styleColorRow(c) {
+  const wrap = document.createElement('div'); wrap.className = 'bag-lc'; const row = document.createElement('div'); row.className = 'lc-dots'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', `${c.name} 색`);
+  const cur = CL.tint[c.id] | 0;
+  LOOK_COLORS.style.forEach(([col, name], i) => { const b = document.createElement('button'); b.type = 'button'; b.style.background = col || c.look.main; b.title = name; b.setAttribute('aria-label', `${c.name} ${name}`); b.setAttribute('aria-pressed', String(i === cur));
+    b.addEventListener('click', () => { tintCloth(c.id, i); late.buildWardrobe(); }); row.append(b); });
+  wrap.append(row); return wrap;
+}

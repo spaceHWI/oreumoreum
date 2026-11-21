@@ -6,11 +6,13 @@
 // - 세션: 서명·만료 + 계정 DO 확인(지운 계정·버린 토큰 거절). WebSocket 은 주소창 대신 하위 프로토콜로 토큰을 받음 (로그에 안 남게)
 // - 어드민: 로그인 계정의 sub 가 시크릿 ADMIN_SUBS(쉼표로 여럿)에 있을 때만
 // - 로그: 아무것도 console 에 찍지 않음. IP 원문·토큰은 저장하지 않음
-import { NET, CRASHES } from '../../src/balance.js';
+import { NET, CRASHES, METRICS } from '../../src/balance.js';
 import { RANGES, SRVS } from '../../src/rankday.js';
 import { verifyGoogle, signSession, readSession, ipKey } from './auth.js';
 import { cleanItems, sendMail } from './feedback.js';
 import { groupCrashes } from './crashes.js';
+import { cleanMetrics } from './metrics.js';
+import { cleanText } from '../../src/safetext.js';
 export { Room } from './room.js';
 export { Accounts } from './accounts.js';
 
@@ -107,7 +109,7 @@ export default {
         if (!loadtest && (await limited(env, 'RL_WS', ipk, NET.wsPerMin))) return json({ error: 'too many' }, 429);
         const s = await who();
         const stub = env.ROOM.get(env.ROOM.idFromName(room + '#' + ch));
-        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-cap', 'x-ipk', 'x-proto', 'authorization']) h.delete(k); h.set('x-ipk', ipk); // 꾸민 x-* 헤더는 지움
+        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-cap', 'x-ipk', 'x-proto', 'x-room', 'authorization']) h.delete(k); h.set('x-ipk', ipk); h.set('x-room', room + '#' + ch); // 꾸민 x-* 헤더는 지움
         if (s) h.set('x-acct', s.sub);
         if (req.headers.get('Sec-WebSocket-Protocol')) h.set('x-proto', '1');
         if (loadtest) h.set('x-cap', '500'); // 부하 재기: 정원 없이
@@ -146,7 +148,7 @@ export default {
         const s = await who(); if (!s) return json({ error: 'login' }, 401);
         const body = await readJson(req, NET.saveMax + 4096);
         if (!body || typeof body.save !== 'object') return json({ error: 'bad save' }, 400);
-        return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub) }));
+        return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub), ver: cleanText(body.ver, 20) }));
       }
       // 이름 바꾸기 (#162): POST /nick {nick, price} → { ok, nick, paid, coins, rev, nickRen } 또는 { error: bad|same|day|price|coins (, price) }
       if (url.pathname === '/nick' && req.method === 'POST') {
@@ -164,6 +166,13 @@ export default {
         if (url.pathname === '/rank/me') return json(await accounts(env).rankMe(s.sub, srv));
         const range = RANGES.includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'day';
         return json(await accounts(env).rank(s.sub, range, srv));
+      }
+      // 이용 통계 (#121): 로그인 없이. 묶음 하나(text/plain, sendBeacon)를 날짜별 합계에 더하기만. 요청 수는 위 RL_API 를 같이 씀
+      if (url.pathname === '/m' && req.method === 'POST') {
+        const m = cleanMetrics(await readJson(req, METRICS.maxBytes * 2));
+        if (!m) return json({ error: 'bad' }, 400);
+        await accounts(env).metricsAdd(m.src, m.rows);
+        return json({ ok: true });
       }
       // 철 이벤트 (#180): 서버 날짜(달력)·모두의 트리 합계. 로그인 안 해도 됨 (손님도 트리를 봄)
       if (url.pathname === '/season' && req.method === 'GET') return json(await accounts(env).seasonInfo());
@@ -183,6 +192,28 @@ export default {
         if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
         const before = Math.max(0, Math.floor(Number(url.searchParams.get('before'))) || 0); // 이어 받기: 이 id 보다 오래된 50개 (#96)
         return json(await accounts(env).feedbackList(50, before));
+      }
+      if (url.pathname === '/admin/online' && req.method === 'GET') { // 지금 접속 (#186): 어드민(또는 로컬 확인)만. 숫자만 (이름·계정 번호·IP·좌표 없음)
+        const s = await who();
+        if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
+        return json(await accounts(env).online());
+      }
+      // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민(ADMIN_SUBS)만. 로컬 확인(STATS_OPEN)도 어드민 계정이어야 함 (남에게 귤을 보내는 길이라)
+      if (url.pathname.startsWith('/admin/')) {
+        const s = await who();
+        if (!(s && adminSubs(env).has(s.sub))) return json({ error: 'admin' }, 403);
+        const A = accounts(env);
+        if (url.pathname === '/admin/clamps' && req.method === 'GET') return json(await A.clampList(Math.max(1, Math.min(NET.clampKeepDays, Math.floor(Number(url.searchParams.get('days'))) || NET.clampKeepDays))));
+        if (url.pathname === '/admin/metrics' && req.method === 'GET') return json({ days: METRICS.viewDays, rows: await A.metricsList(Math.max(1, Math.min(METRICS.keepDays, Math.floor(Number(url.searchParams.get('days'))) || METRICS.viewDays))) }); // 이용 통계 (#121)
+        if (url.pathname === '/admin/grants' && req.method === 'GET') return json(await A.grantList());
+        if (url.pathname === '/admin/grant' && req.method === 'POST') {
+          const b = await readJson(req, 4096);
+          const sub = typeof b?.sub === 'string' ? b.sub.trim() : '', n = Math.floor(Number(b?.n)), why = cleanText(b?.why, 60);
+          if (!/^[0-9A-Za-z_-]{1,80}$/.test(sub) || !(n >= 1 && n <= NET.grantMax) || !why) return json({ error: 'bad grant' }, 400);
+          const r = await A.grant(sub, n, why, s.sub);
+          return json(r, r.error ? 404 : 200);
+        }
+        return json({ error: 'not found' }, 404);
       }
       return json({ error: 'not found' }, 404);
     } catch (e) {

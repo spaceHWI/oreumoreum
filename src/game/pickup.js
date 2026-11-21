@@ -17,6 +17,7 @@ import { cam, followCam } from './camera.js';
 import { topFit, toast, pickMsg, tips, updateStats, panelOpen, busy, ach, onDexGet } from './hud.js';
 import { keys, marker, setTarget, joy } from './input.js';
 import { setHoldBow } from './throw.js';
+import { icon } from '../icons.js';
 
 Object.assign(late, { startPick, pressPick }); // 앞 파일에서 부르는 함수
 
@@ -156,6 +157,7 @@ function tickLook(dt) {
 }
 // 버튼(E)을 누른 순간: 걷는 중이면 멈춤, 범위 안이면 줍기, 아니면 찾아 감
 export function pressPick() {
+  late.stopApproach?.(); // 다가가서 쏘기(#132) 중이면 줍기로 넘어감
   if (seekS.on) { stopSeek(); return; }
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   if (canPick()) { startPick(); return; }
@@ -238,7 +240,7 @@ function zoneFx(z) {
   if (here) { bfx.zone({ x: player.pos.x, z: player.pos.z, color }); if (cam.mode === 'follow') state.camPullT = 0; }
   const gl = $('bloom-glow'); gl.style.setProperty('--bg-t', C.glowT + 's'); gl.classList.remove('go'); void gl.offsetWidth; gl.classList.add('go');
   const bn = $('bloom-banner'), fl = (s) => `<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="${color}" stroke="rgba(0,0,0,.28)" stroke-width=".6">${[0, 72, 144, 216, 288].map((a) => `<ellipse cx="12" cy="6.4" rx="3.6" ry="5" transform="rotate(${a + s} 12 12)"/>`).join('')}</g><circle cx="12" cy="12" r="2.6" fill="#ffb01f"/></svg>`;
-  bn.innerHTML = `<span class="bz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/></svg><b>${z}</b></span><svg class="ba" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg><span class="bf">${fl(0)}${fl(36)}${fl(12)}</span>`;
+  bn.innerHTML = `<span class="bz">${icon('zone')}<b>${z}</b></span><svg class="ba" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg><span class="bf">${fl(0)}${fl(36)}${fl(12)}</span>`;
   bn.title = `${z}구역 ${BLOOM.zones[z]?.name || ''}`; bn.style.setProperty('--bb-t', C.bannerT + 's');
   bn.hidden = false; bn.classList.remove('go'); void bn.offsetWidth; bn.classList.add('go');
   clearTimeout(zoneFx.t); zoneFx.t = setTimeout(() => { bn.hidden = true; bn.classList.remove('go'); }, C.bannerT * 1000 + 100);
