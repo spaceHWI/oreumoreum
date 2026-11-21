@@ -48,6 +48,8 @@ export const feedback = createFeedback({
 feedback.flush();
 // 오류 알림 (#108): 같은 의견함에 kind 'crash' 로 (좌표·닉네임 없이)
 setCrashSink(postFeedback, () => ({ ver: VERSION, srv: serverId(), map: MAP_ID, dev: isTouch ? (Math.min(innerWidth, innerHeight) <= 600 ? 'phone' : 'tablet') : 'desktop', w: innerWidth, h: innerHeight }));
+// 귤 맞춤 정보 (#188, start.js cutNotice): 하루 안에 깎였으면 의견 글 끝에 한 줄 붙임
+function cutNote() { const c = save.lastCut; if (!c || !(Date.now() - c.at < 864e5)) return ''; return `\n\n[귤 맞춤] -${c.n} (${c.why}) ${c.before} → ${c.after} · ${new Date(c.at).toISOString()} · v${c.ver || VERSION}`; }
 const fbLen = () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / ${FEEDBACK.max}`; };
 function openFeedback(close = true) { if (close) closePanels(); $('feedback-input').maxLength = FEEDBACK.max; fbLen(); $('feedback').hidden = false; setTimeout(() => $('feedback-input').focus(), 50); }
 $('menu-feedback').addEventListener('click', () => openFeedback());
@@ -64,7 +66,7 @@ $('feedback-form').addEventListener('submit', async (e) => {
   const w = feedback.wait();
   if (w > 0) { const m = `조금 뒤에 다시 보내 주세요 (${Math.ceil(w / 1000)}초)`; toast(m); $('feedback-len').textContent = m; return; }
   $('feedback-send').disabled = true;
-  const r = await feedback.send($('feedback-input').value);
+  const r = await feedback.send($('feedback-input').value + cutNote());
   $('feedback-send').disabled = false;
   if (r === 'ok' || r === 'kept') { $('feedback-input').value = ''; fbLen(); $('feedback').hidden = true; toast('고마워요! 잘 읽을게요'); if (!$('intro').hidden) { const ib = $('intro-feedback'); ib.textContent = '고마워요!'; setTimeout(() => { ib.textContent = '의견 보내기'; }, 3000); } }
 });
