@@ -196,7 +196,7 @@ export function peerRide(e, dt) {
   if (!rd && !e.rig) return null;
   if (!e.rig) e.rig = rideRig(e.runner);
   e.rig.set(rd === 'cart' ? '' : rd); e.rig.tick(dt, e.speed);
-  if (rd === 'cart') return { pose: 'sit', lift: 1.22 * CART.scale - RIDES.sitDrop, still: true };
+  if (rd === 'cart') return { pose: 'sit', lift: CART.seatPos[0][1] * CART.scale - RIDES.sitDrop, still: true };
   return rd && e.rig.state ? { pose: e.rig.pose(), lift: e.rig.lift(), still: e.rig.still() } : null;
 }
 updateRideBtn();

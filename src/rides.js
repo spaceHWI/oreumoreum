@@ -57,7 +57,7 @@ export function buildScoot() {
   return mesh(P);
 }
 // 조랑말 (제주마 느낌: 다리 짧고 몸통 통통, 갈기 짙음). 반환 { root, legs[4](어깨 기준 회전), head, tail, seatY(안장 윗면) }
-export function buildPony({ coat = '#8a5a36', mane = '#2a1e18', saddle = '#b8452f', scale = 1, tack = true } = {}) {
+export function buildPony({ coat = '#8a5a36', mane = '#2a1e18', saddle = '#b8452f', scale = 1, tack = true, shaggy = false } = {}) {
   const root = new THREE.Group(), s = scale;
   const body = [
     piece(new THREE.CapsuleGeometry(0.36, 0.72, 4, 10), coat, M4(0, 1.02, 0, Math.PI / 2, 0, 0, 1, 1, 0.98)),
@@ -75,10 +75,12 @@ export function buildPony({ coat = '#8a5a36', mane = '#2a1e18', saddle = '#b8452
     ball(0.035, '#151515', M4(0.13, 0.55, 0.5)), ball(0.035, '#151515', M4(-0.13, 0.55, 0.5)),
   ];
   if (tack) hp.push(box(0.28, 0.04, 0.04, '#3a2a20', M4(0, 0.4, 0.58, 0.35)));
+  if (shaggy) hp.push(box(0.2, 0.42, 0.3, mane, M4(0, 0.52, 0.0, 0.5)), box(0.22, 0.14, 0.14, mane, M4(0, 0.7, 0.4, 0.9)), box(0.3, 0.05, 0.05, '#3a2a20', M4(0, 0.38, 0.6, 0.35)), box(0.04, 0.05, 0.6, '#3a2a20', M4(0.13, 0.33, 0.25, 0.35)), box(0.04, 0.05, 0.6, '#3a2a20', M4(-0.13, 0.33, 0.25, 0.35))); // 덥수룩한 갈기·앞머리·굴레
   head.add(mesh(hp));
   // 꼬리
   const tail = new THREE.Group(); tail.position.set(0, 1.18, -0.68); root.add(tail);
-  tail.add(mesh([box(0.12, 0.6, 0.1, mane, M4(0, -0.28, -0.06, 0.25))]));
+  tail.add(mesh(shaggy ? [box(0.16, 0.66, 0.14, mane, M4(0, -0.3, -0.06, 0.25)), box(0.1, 0.3, 0.1, mane, M4(0, -0.6, -0.12, 0.1))] : [box(0.12, 0.6, 0.1, mane, M4(0, -0.28, -0.06, 0.25))]));
+  if (shaggy) b.geometry = mergeGeometries([b.geometry, box(0.3, 0.32, 0.12, '#3a2a20', M4(0, 1.08, 0.38)), box(0.76, 0.06, 0.06, '#3a2a20', M4(0, 1.36, 0.36))]); // 목사리(끌채에 거는 띠)
   // 다리 (짧고 굵게, 발굽 짙게)
   const legs = [];
   for (const [x, z] of [[0.2, 0.42], [-0.2, 0.42], [0.2, -0.42], [-0.2, -0.42]]) {
@@ -178,36 +180,78 @@ let route0 = null, sched0 = null;
 export const cartRoute = () => route0 || (route0 = makeRoute());
 const cartSched = () => sched0 || (sched0 = makeSchedule(cartRoute()));
 
-// 마차 모양: 앞 조랑말 + 뒤 두 바퀴 수레(벤치 둘, 천 지붕). 원점 = 수레 바퀴 축 아래 땅, 앞 +z
-function buildCartMesh(low) {
+// 마차 모양 (#174 오름펑크): 제주 조랑말 + 노란 감귤 콘테나를 이어 붙인 짐칸, 나무 바퀴 둘, 양옆 긴 의자, 귤색·흰 줄무늬 천막,
+// 앞에 밀짚모자 마부, 뒤에 '오름 순환' 손글씨 팻말과 초롱(밤에 켜짐). fast: 빠른 마차(#139)는 말 둘 + 깃발. 원점 = 바퀴 축 아래 땅, 앞 +z
+// 그리기: 말 7(몸·머리·꼬리·다리 4) + 수레 1 + 바퀴 1 + 팻말 1 + 초롱 1 (+ 마부). 저사양은 천막 한 색·초롱 빛 없음
+const CRATE = '#f2c12e', CRATE2 = '#d9a514', SLOT = '#6b5320';
+// 콘테나 하나: 노란 상자 + 세로 갈비 + 손잡이 구멍(밖을 보는 면 nx, nz)
+function crate(P, x, y, z, w, h, d, nx, nz) {
+  P.push(box(w, h, d, CRATE, M4(x, y, z)), box(w + 0.02, 0.04, d + 0.02, CRATE2, M4(x, y + h / 2 - 0.02, z))); // 몸·윗테
+  const along = nx ? d : w, k = along / 3;
+  for (const t of [-k, k]) P.push(nx ? box(0.02, h * 0.8, 0.04, CRATE2, M4(x + nx * (w / 2 + 0.005), y - 0.02, z + t)) : box(0.04, h * 0.8, 0.02, CRATE2, M4(x + t, y - 0.02, z + nz * (d / 2 + 0.005))));
+  P.push(nx ? box(0.02, 0.06, along * 0.3, SLOT, M4(x + nx * (w / 2 + 0.008), y + h * 0.22, z)) : box(along * 0.3, 0.06, 0.02, SLOT, M4(x, y + h * 0.22, z + nz * (d / 2 + 0.008))));
+}
+let signTex = null;
+function cartSignTex() {
+  if (signTex) return signTex;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#e8cf9e'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#7a5432'; x.lineWidth = 10; x.strokeRect(5, 5, 246, 118);
+  x.fillStyle = '#3a2a1a'; x.font = '700 50px "Nanum Pen Script", "Gaegu", "Noto Sans KR", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.save(); x.translate(128, 62); x.rotate(-0.04); x.fillText('오름 순환', 0, 0); x.restore();
+  x.fillStyle = '#ff8a1f'; x.beginPath(); x.arc(28, 100, 9, 0, Math.PI * 2); x.fill(); x.beginPath(); x.arc(228, 100, 9, 0, Math.PI * 2); x.fill();
+  signTex = new THREE.CanvasTexture(c); signTex.colorSpace = THREE.SRGBColorSpace; return signTex;
+}
+function buildCartMesh(low, { fast = false } = {}) {
   const g = new THREE.Group(), body0 = new THREE.Group(); body0.scale.setScalar(CART.scale); g.add(body0);
-  const pony = buildPony({ scale: RIDES.size.horse / CART.scale, saddle: '#d28a2a' }); pony.root.position.set(0, 0, 2.3); body0.add(pony.root);
+  const ps = RIDES.size.horse / CART.scale, coat = '#7a4a2a', mane = '#2a1e18';
+  const ponies = (fast ? [0.5, -0.5] : [0]).map((x) => { const p = buildPony({ scale: ps, coat, mane, tack: false, shaggy: true }); p.root.position.set(x, 0, 2.3); body0.add(p.root); return p; });
   const WD = '#a8774a', WD2 = '#7a5432';
   const P = [
-    box(1.7, 0.1, 2.1, WD, M4(0, 0.78, 0)), // 바닥
-    box(1.7, 0.36, 0.08, WD2, M4(0, 0.98, -1.05)), box(0.08, 0.3, 2.1, WD2, M4(0.85, 0.96, 0)), box(0.08, 0.3, 2.1, WD2, M4(-0.85, 0.96, 0)), box(1.7, 0.5, 0.08, WD2, M4(0, 1.05, 1.05)), // 둘레
-    box(1.5, 0.08, 0.42, '#c98f5a', M4(0, 1.18, 0.42)), box(1.5, 0.08, 0.42, '#c98f5a', M4(0, 1.18, -0.5)), // 벤치 둘 (앞을 봄)
-    box(1.5, 0.36, 0.07, '#c98f5a', M4(0, 1.4, 0.2)), box(1.5, 0.36, 0.07, '#c98f5a', M4(0, 1.4, -0.72)), // 등받이
+    box(1.7, 0.1, 2.1, WD, M4(0, 0.78, 0)), // 바닥 판
     cyl(0.03, 0.03, 2.3, WD2, M4(0.42, 0.95, 1.95, Math.PI / 2 - 0.08)), cyl(0.03, 0.03, 2.3, WD2, M4(-0.42, 0.95, 1.95, Math.PI / 2 - 0.08)), // 끌채
   ];
-  for (const x of [0.8, -0.8]) for (const z of [0.98, -0.98]) P.push(cyl(0.035, 0.035, 2.0, '#5a3e26', M4(x, 1.8, z))); // 지붕 기둥 (#16: 앉은 사람 모자가 지붕을 뚫지 않게 높임)
-  P.push(box(1.9, 0.06, 2.3, '#f3ecdc', M4(0, 2.82, 0)), box(1.92, 0.12, 0.08, '#ff8a1f', M4(0, 2.76, 1.15)), box(1.92, 0.12, 0.08, '#ff8a1f', M4(0, 2.76, -1.15))); // 천 지붕 (귤색 테)
+  if (fast) P.push(box(1.5, 0.05, 0.05, WD2, M4(0, 0.97, 3.05))); // 두 말을 잇는 가름대
+  // 콘테나 짐칸: 양옆 셋씩(등받이 높이), 앞·뒤 둘씩(낮게)
+  for (const s of [1, -1]) for (const z of [-0.68, 0, 0.68]) crate(P, s * 0.74, 1.08, z, 0.26, 0.5, 0.66, s, 0);
+  for (const x of [-0.31, 0.31]) { crate(P, x, 0.99, 0.95, 0.6, 0.32, 0.22, 0, 1); crate(P, x, 0.99, -0.95, 0.6, 0.32, 0.22, 0, -1); }
+  // 양옆 긴 의자(앉는 자리 CART.seatPos 가 이 위): 판 + 다리
+  for (const s of [1, -1]) { P.push(box(0.4, 0.08, 1.7, '#c98f5a', M4(s * 0.41, 1.18, -0.04))); for (const z of [-0.75, 0.67]) P.push(box(0.06, 0.32, 0.06, WD2, M4(s * 0.41, 0.98, z))); }
+  // 마부 자리: 앞 콘테나 위 널빤지
+  P.push(box(0.7, 0.06, 0.32, '#c98f5a', M4(0, CART.driverPos[1] - 0.03, CART.driverPos[2])), box(0.08, 0.3, 0.08, WD2, M4(0.3, 1.05, CART.driverPos[2])), box(0.08, 0.3, 0.08, WD2, M4(-0.3, 1.05, CART.driverPos[2])));
+  // 천막: 기둥 넷(앉은 사람 모자가 지붕을 뚫지 않게 높게, #16) + 박공 지붕 줄무늬
+  for (const x of [0.8, -0.8]) for (const z of [0.98, -0.98]) P.push(cyl(0.035, 0.035, 2.0, '#5a3e26', M4(x, 1.8, z)));
+  const N = low ? 1 : 4, slope = Math.atan2(0.22, 0.96);
+  for (const s of [1, -1]) for (let i = 0; i < N; i++) {
+    const w = 0.98 / N, cx = s * (w * (i + 0.5)), y = 3.02 - 0.22 * (Math.abs(cx) / 0.96);
+    P.push(box(w / Math.cos(slope) + 0.01, 0.05, 2.36, low || i % 2 === 0 ? '#ff8a1f' : '#fbf3e4', M4(cx, y, 0, 0, 0, -s * slope)));
+  }
+  for (const z of [1.18, -1.18]) for (let i = 0; i < 6; i++) { const x = -0.9 + 0.36 * i; P.push(box(0.36, 0.1, 0.03, i % 2 && !low ? '#fbf3e4' : '#ff8a1f', M4(x + 0.18, 2.75, z))); } // 앞뒤 늘어진 단
+  if (fast) P.push(cyl(0.025, 0.025, 1.1, '#5a3e26', M4(0.8, 3.4, -0.98)), piece(new THREE.CylinderGeometry(0.0, 0.32, 0.6, 3, 1), '#ff5a1f', M4(0.8, 3.72, -1.28, Math.PI / 2, 0, 0, 1, 1, 0.5))); // 깃발
   const body = mesh(P, !low); body0.add(body);
-  const wheels = [0.95, -0.95].map((x) => { const w = new THREE.Group(); w.position.set(x, 0.5, -0.05); w.add(mesh([WHEEL(0.5, 0.08, '#5a3e26', M4()), WHEEL(0.12, 0.12, '#3a2a1a', M4()), ...[0, 1, 2, 3].map((k) => box(0.04, 0.9, 0.05, '#7a5432', M4(0, 0, 0, k * Math.PI / 4)))], !low)); body0.add(w); return w; });
+  // 바퀴 둘(한 축으로 같이 돎)
+  const axle = new THREE.Group(); axle.position.set(0, 0.5, -0.05); body0.add(axle);
+  const WP = []; for (const x of [0.95, -0.95]) WP.push(WHEEL(0.5, 0.08, '#5a3e26', M4(x)), WHEEL(0.12, 0.12, '#3a2a1a', M4(x)), ...[0, 1, 2, 3].map((k) => box(0.04, 0.9, 0.05, '#7a5432', M4(x, 0, 0, k * Math.PI / 4))));
+  axle.add(mesh(WP, !low));
+  const wheels = [axle];
+  // 뒤 팻말 + 초롱
+  if (!fast) { const sg = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), new THREE.MeshToonMaterial({ map: cartSignTex(), gradientMap: gradHard })); sg.position.set(0, 1.35, -1.08); sg.rotation.y = Math.PI; body0.add(sg); }
+  const lanternMat = new THREE.MeshLambertMaterial({ color: '#ffb347', emissive: '#ff9a2e', emissiveIntensity: 0 });
+  const lantern = new THREE.Mesh(mergeGeometries([new THREE.CylinderGeometry(0.11, 0.11, 0.2, 8).translate(0, -0.2, 0), new THREE.CylinderGeometry(0.06, 0.08, 0.05, 8).translate(0, -0.08, 0), new THREE.CylinderGeometry(0.01, 0.01, 0.12, 4)]), lanternMat);
+  lantern.position.set(-0.86, 2.6, -1.04); body0.add(lantern);
   // 자리 (수레 기준): 앉은 엉덩이 자리
-  const seats = [[0.38, 0.42], [-0.38, 0.42], [0.38, -0.5], [-0.38, -0.5]].slice(0, CART.seats).map(([x, z]) => new THREE.Vector3(x * CART.scale, 1.22 * CART.scale, z * CART.scale));
-  return { g, pony, wheels, seats };
+  const seats = CART.seatPos.slice(0, CART.seats).map(([x, y, z]) => new THREE.Vector3(x * CART.scale, y * CART.scale, z * CART.scale));
+  return { g, pony: ponies[0], ponies, wheels, seats, lantern, lanternMat, body0 };
 }
-// 정류장: 나무 팻말(마차 그림) + 벤치. 팻말 위에 남은 시간 고리 (Sprite, 캔버스)
-function cartIconTex() {
-  const c = document.createElement('canvas'); c.width = 128; c.height = 128; const x = c.getContext('2d');
-  x.fillStyle = '#d9b98a'; x.fillRect(0, 0, 128, 128); x.strokeStyle = '#6a4a2c'; x.lineWidth = 8; x.strokeRect(4, 4, 120, 120);
-  x.strokeStyle = '#2b2b2e'; x.fillStyle = '#2b2b2e'; x.lineWidth = 7; x.lineCap = 'round'; x.lineJoin = 'round';
-  x.beginPath(); x.rect(22, 52, 50, 26); x.stroke(); x.beginPath(); x.moveTo(18, 48); x.lineTo(76, 48); x.stroke(); // 수레
-  x.beginPath(); x.arc(46, 88, 13, 0, Math.PI * 2); x.stroke();
-  x.beginPath(); x.moveTo(72, 70); x.lineTo(92, 64); x.stroke(); x.beginPath(); x.ellipse(98, 64, 12, 8, 0, 0, Math.PI * 2); x.fill(); x.beginPath(); x.moveTo(104, 60); x.lineTo(110, 44); x.lineTo(114, 56); x.fill(); // 말
-  x.beginPath(); x.moveTo(92, 70); x.lineTo(90, 90); x.moveTo(104, 70); x.lineTo(106, 90); x.stroke();
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+// 빠른 마차(#139) 세워 둔 모양: 말 둘 + 깃발, 마부·초롱 빛 없음
+export function parkedFastCart(low) { const C = buildCartMesh(low, { fast: true }); C.lantern.visible = false; return C.g; }
+// 정류장 팻말 글: 정류장 이름 + 다음 마차까지 (가까울 때만 다시 그림)
+function stopBoard(name) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 160; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; let last = null;
+  const draw = (line) => { if (line === last) return; last = line; const x = c.getContext('2d');
+    x.fillStyle = '#d9b98a'; x.fillRect(0, 0, 256, 160); x.strokeStyle = '#6a4a2c'; x.lineWidth = 10; x.strokeRect(5, 5, 246, 150);
+    x.fillStyle = '#2b2116'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '800 40px "Noto Sans KR", sans-serif'; x.fillText(name, 128, 52);
+    x.fillStyle = '#b8452f'; x.font = '700 30px "Noto Sans KR", sans-serif'; x.fillText(line, 128, 112); t.needsUpdate = true; };
+  draw('마차 정류장'); return { tex: t, draw };
 }
 function ringSprite() {
   const c = document.createElement('canvas'); c.width = c.height = 96; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
@@ -226,23 +270,30 @@ function ringSprite() {
   return sp;
 }
 
-export function createCart({ scene, height, low = false, col = null }) {
+// makeDriver: () => 러너 (마부, 밀짚모자). sfx(kind, 크기 0..1): 'hoof' 말발굽·'bell' 방울 (가까울 때만 부름)
+export function createCart({ scene, height, low = false, col = null, makeDriver = null, sfx = null }) {
   const R = cartRoute();
   const C = buildCartMesh(low); scene.add(C.g);
-  // 정류장
-  const icon = cartIconTex();
+  // 마부: 앞 널빤지에 걸터앉아 두 손으로 고삐 (서 있는 캐릭터를 'ride' 자세로)
+  const driver = makeDriver ? makeDriver() : null;
+  if (driver) { const [dx, dy, dz] = CART.driverPos; driver.root.position.set(dx, dy - RIDES.sitDrop / CART.scale, dz); driver.root.scale.setScalar(1 / CART.scale); C.body0.add(driver.root);
+    for (let k = 0; k < 4; k++) driver.animate(0.1, { speed: 0, running: false, pose: 'ride', t: 1, lid: 0 }); }
+  // 정류장: 현무암 돌기둥에 나무 팻말(이름·다음 마차까지), 작은 평상
   const stops = CART.stops.map((S, i) => {
     const q = R.side(S, 1), c = nsAlong(S.path, S.d), g = new THREE.Group();
     const y = height(q.x, q.z); g.position.set(q.x, y, q.z); g.rotation.y = Math.atan2(c.x - q.x, c.z - q.z); // 앞이 길
-    g.add(mesh([cyl(0.07, 0.08, 2.4, '#6a4a2c', M4(-0.9, 1.2, 0)), box(0.1, 0.1, 0.1, '#6a4a2c', M4(-0.9, 2.42, 0)),
-      box(1.6, 0.08, 0.45, '#b98a58', M4(0.5, 0.48, 0)), box(1.6, 0.42, 0.06, '#b98a58', M4(0.5, 0.78, -0.24, -0.12)), box(0.08, 0.46, 0.4, '#6a4a2c', M4(-0.22, 0.23, 0)), box(0.08, 0.46, 0.4, '#6a4a2c', M4(1.22, 0.23, 0))]));
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.72), new THREE.MeshToonMaterial({ map: icon, gradientMap: gradHard, side: THREE.DoubleSide }));
-    board.position.set(-0.9, 2.0, 0.09); g.add(board);
-    const ring = ringSprite(); ring.position.set(-0.9, 2.85, 0); g.add(ring);
+    const BS = '#4a4844', BS2 = '#5e5b55', WD = '#b98a58', WD2 = '#6a4a2c';
+    g.add(mesh([piece(new THREE.CylinderGeometry(0.2, 0.26, 1.1, 6), BS, M4(-0.9, 0.55, 0, 0, 0.3)), piece(new THREE.CylinderGeometry(0.17, 0.2, 0.9, 6), BS2, M4(-0.9, 1.55, 0, 0.04, 0.9)), ball(0.16, BS, M4(-0.9, 2.05, 0, 0, 0, 0, 1, 0.6, 1), 0), // 돌기둥 (구멍 숭숭 현무암 느낌으로 두 덩이)
+      box(0.08, 0.08, 0.12, WD2, M4(-0.9, 2.12, 0.18)), // 팻말 걸이
+      box(1.7, 0.08, 1.0, WD, M4(0.55, 0.42, -0.1)), box(1.7, 0.03, 0.06, WD2, M4(0.55, 0.47, 0.38)), ...[[-0.25, 0.3], [1.35, 0.3], [-0.25, -0.5], [1.35, -0.5]].map(([x, z]) => box(0.08, 0.4, 0.08, WD2, M4(x, 0.2, z)))])); // 평상
+    const B = stopBoard(S.name);
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.56), new THREE.MeshToonMaterial({ map: B.tex, gradientMap: gradHard, side: THREE.DoubleSide }));
+    board.position.set(-0.9, 1.75, 0.24); g.add(board);
+    const ring = ringSprite(); ring.position.set(-0.9, 2.7, 0); g.add(ring);
     scene.add(g);
     g.updateMatrixWorld(true);
-    if (col) { const p = new THREE.Vector3(-0.9, 0, 0).applyMatrix4(g.matrixWorld); col.add(p.x, p.z, 0.25); } // 팻말 기둥
-    return { i, name: S.name, g, ring, pos: new THREE.Vector3(q.x, y, q.z), path: c };
+    if (col) { const p = new THREE.Vector3(-0.9, 0, 0).applyMatrix4(g.matrixWorld); col.add(p.x, p.z, 0.3); } // 돌기둥
+    return { i, name: S.name, g, ring, board: B, pos: new THREE.Vector3(q.x, y, q.z), path: c };
   });
   const st = { now: 0, s: 0, heading: 0, moving: false, stop: -1, speed: 0, wheel: 0, phase: 0 };
   const pos = new THREE.Vector3(), _a = new THREE.Vector3();
@@ -261,14 +312,31 @@ export function createCart({ scene, height, low = false, col = null }) {
       CART.block.forEach(([lx, lz, r], k) => { blk[k * 3] = pos.x + c * lx + s * lz; blk[k * 3 + 1] = pos.z - s * lx + c * lz; blk[k * 3 + 2] = r; });
     }
   }
-  function update(dt, now, eye) {
+  const fx = { tail: 0, tailT: 3, bell: 2 };
+  const d0 = (eye) => (eye ? Math.hypot(eye.x - pos.x, eye.z - pos.z) : 1e9);
+  // night: 0 낮 .. 1 밤 (초롱)
+  function update(dt, now, eye, night = 0) {
     place(now);
     st.wheel += st.speed * dt / (0.5 * CART.scale); C.wheels.forEach((w) => { w.rotation.x = st.wheel; });
-    st.phase += dt * st.speed * 1.3; gait(C.pony, st.phase, st.speed > 0.3 ? 0.3 + st.speed * 0.03 : 0);
-    // 정류장 고리: 가까운 곳만
+    const ph0 = st.phase; st.phase += dt * st.speed * 1.3;
+    C.ponies.forEach((p, k) => gait(p, st.phase + k * 0.6, st.speed > 0.3 ? 0.3 + st.speed * 0.03 : 0));
+    // 가끔 꼬리를 침
+    if ((fx.tailT -= dt) <= 0) { fx.tail = 0.9; fx.tailT = 4 + Math.random() * 6; }
+    if (fx.tail > 0) { fx.tail -= dt; C.ponies.forEach((p) => { p.tail.rotation.z = Math.sin((0.9 - fx.tail) * 14) * 0.45 * (fx.tail / 0.9); }); }
+    if (!low) C.lanternMat.emissiveIntensity = night * 1.6;
+    if (driver) driver.root.visible = d0(eye) < (low ? CART.driverR * 0.6 : CART.driverR); // 마부는 가까울 때만 (사람 모델이라 무거움)
+    // 소리: 가까울 때만. 말발굽은 걸음 반 바퀴마다, 방울은 가끔
+    const d = eye ? Math.hypot(eye.x - pos.x, eye.z - pos.z) : 1e9;
+    if (sfx && d < CART.soundR) {
+      const vol = 1 - d / CART.soundR;
+      if (st.speed > 0.3 && Math.floor(st.phase / Math.PI) !== Math.floor(ph0 / Math.PI)) sfx('hoof', vol);
+      if ((fx.bell -= dt) <= 0) { fx.bell = st.speed > 0.3 ? 2.5 + Math.random() * 2 : 6 + Math.random() * 6; sfx('bell', vol); }
+    }
+    // 정류장 고리·팻말 글: 가까운 곳만
     for (const S of stops) {
       const near = eye && S.pos.distanceTo(eye) < CART.ringR; S.ring.visible = !!near; if (!near) continue;
       const w = cartWait(S.i, now); S.ring.userData.draw(Math.min(1, w / CART.lap), w === 0);
+      S.board.draw(w === 0 ? '마차 와 있어요' : w < 60 ? `${Math.ceil(w / 10) * 10}초 뒤` : `${Math.ceil(w / 60)}분 뒤`);
     }
   }
   // 자리 i 의 월드 위치(엉덩이), 마차가 보는 방향
@@ -282,7 +350,7 @@ export function createCart({ scene, height, low = false, col = null }) {
   // 정류장 쪽 내릴 자리 (팻말 앞 길가)
   const exitAt = (i) => { const q = nsAlong(CART.stops[i].path, CART.stops[i].d, CART.stops[i].path === 'approach' ? 1 : -1, CART.side - 1.6); return _a.set(q.x, height(q.x, q.z), q.z).clone(); };
   update(0, Date.now() / 1000);
-  return { update, seat, boardable, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R };
+  return { update, seat, boardable, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R, driver };
 }
 
 // ---------- 탈것 가게 (가게 거리 빈 터, 임시 모양) ----------
