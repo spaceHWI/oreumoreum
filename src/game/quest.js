@@ -42,7 +42,7 @@ const VAL = {
   tool: () => save.equip.tool | 0, bag: () => save.equip.bag | 0, weapon: () => Math.max(0, (save.equip.weapon | 0) - 1),
   zone: () => save.journey?.maxZ || 0,
 };
-const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; return quests.state().c[k] || 0; };
+const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; return quests.state().c[k] || 0; };
 const life = () => save.ach?.life || {};
 // 옛 저장에서 이미 한 것 (catchUp): 그 구역을 끝냈으면 그 구역 퀘스트는 모두, 아니면 평생 기록으로 어림
 function oldDone(q) {
@@ -59,7 +59,7 @@ export const quests = createQuests({
   save, persist, defs: Q,
   hooks: {
     val, oldDone,
-    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) : need === 'loot' ? !!late.loot : false),
+    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
     door: (id) => director.isOpen(id),
     open: () => director.isOpen('quest'),
     ready: (q) => onReady(q),

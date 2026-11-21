@@ -5,6 +5,8 @@ const eyes = (x1, x2, y) => `<circle cx="${x1}" cy="${y}" r="1.7" fill="${K}"/><
 const cheeks = (x1, x2, y) => `<circle cx="${x1}" cy="${y}" r="2" fill="${P}" opacity=".7"/><circle cx="${x2}" cy="${y}" r="2" fill="${P}" opacity=".7"/>`;
 
 export const BADGE_ICONS = {
+  // 금연 구역 지킴이 (#156): 빨간 원에 사선, 가운데 담배
+  'b-nosmoke': `<circle cx="24" cy="24" r="16" fill="${W}" stroke="#d8423a" stroke-width="5"/><path d="M12 27 h20 v5 H12z" fill="#f4f1e8" ${s()}/><path d="M27 27 h5 v5 h-5z" fill="#e3a25a" ${s('stroke-width="1.8"')}/><path d="M35 24 q3 -4 0 -8" fill="none" stroke="#9aa0aa" stroke-width="2" stroke-linecap="round"/><path d="M13 13 L35 35" stroke="#d8423a" stroke-width="5" stroke-linecap="round"/>`,
   // 무기 첫 구매 (#123): 귤 활·귤 총·머신건·레이저·폭탄
   'b-arm-bow': `<path d="M14 6 Q36 12 30 42" fill="none" stroke="${W}" stroke-width="4" stroke-linecap="round"/><path d="M14 6 Q36 12 30 42" fill="none" ${s()}/><path d="M14 6 L30 42" ${s()}/><path d="M12 28 L38 16" ${s()}/><circle cx="38" cy="16" r="4" fill="${O}" ${s()}/>`,
   'b-arm-gun': `<path d="M8 18 h24 l4 4 v6 H22 l-2 10 h-7 l2-10 H8z" fill="${O}" ${s()}/><path d="M36 22 h6" ${s()}/><circle cx="42" cy="22" r="3" fill="${Y}" ${s()}/>${eyes(16, 22, 23)}`,
@@ -63,7 +65,21 @@ Object.assign(BADGE_ICONS, {
   'b-gear-all': `<path d="M24 5 l16 6 v12 q0 14 -16 20 q-16 -6 -16 -20 V11z" fill="#e8b94a" ${s()}/><path d="M24 14 l3 6 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z" fill="${W}" ${s('stroke-width="1.8"')}/>`,
 });
 
-export const DAILY_ICON = `<circle cx="24" cy="24" r="12" fill="${O}" ${s()}/><path d="M24 12 q3 -5 7 -4 q-1 4 -7 4z" fill="${G}" ${s('stroke-width="1.8"')}/>${eyes(20, 28, 23)}<path d="M21 27 q3 2.5 6 0" fill="none" ${s()}/>`;
+// #165 칭호가 열리는 업적
+Object.assign(BADGE_ICONS, {
+  'b-earn-10k': `<circle cx="24" cy="26" r="13" fill="${O}" ${s()}/><path d="M24 13 q4 -6 9 -5 q-1 5 -9 5z" fill="${G}" ${s('stroke-width="1.8"')}/><path d="M18 26 h12 M24 20 v12" fill="none" ${s()}/>`,
+  'b-stare': `<ellipse cx="15" cy="24" rx="8" ry="6" fill="${W}" ${s()}/><ellipse cx="33" cy="24" rx="8" ry="6" fill="${W}" ${s()}/><circle cx="17" cy="24" r="2.6" fill="${K}"/><circle cx="31" cy="24" r="2.6" fill="${K}"/><path d="M8 15 l12 3 M40 15 l-12 3" fill="none" ${s()}/>`,
+  'b-unpaid': `<path d="M14 16 q10 -8 20 0 l3 22 H11z" fill="#5a7a4a" ${s()}/><path d="M18 27 h12" fill="none" ${s()}/><path d="M17 33 q7 -4 14 0" fill="none" ${s()}/>${eyes(20, 28, 23)}`,
+  'b-alien-cs': `<ellipse cx="24" cy="24" rx="12" ry="14" fill="#8ad0a8" ${s()}/><ellipse cx="19" cy="23" rx="3.4" ry="5" fill="${K}"/><ellipse cx="29" cy="23" rx="3.4" ry="5" fill="${K}"/><path d="M21 32 h6" fill="none" ${s()}/>`,
+  'b-crow': `<path d="M8 28 q8 -16 22 -12 l10 -2 -6 6 q2 12 -12 14 l-4 6 -2 -6 q-6 -1 -8 -6z" fill="#3a3d48" ${s()}/><circle cx="31" cy="19" r="1.8" fill="${W}"/><circle cx="12" cy="36" r="4" fill="${O}" ${s('stroke-width="1.8"')}/>`,
+  'b-hare-five': `<path d="M15 40 V20 q0 -10 9 -10 q9 0 9 10 v20z" fill="#8a847a" ${s()}/>${eyes(20, 28, 21)}<path d="M22 27 h4" fill="none" ${s()}/><path d="M36 22 l6 -8 M38 25 l7 -4" fill="none" ${s()}/>`,
+  'b-dumper': `<path d="M12 20 h24 l-3 18 H15z" fill="#9a958a" ${s()}/><path d="M18 20 q6 -8 12 0" fill="none" ${s()}/><path d="M10 10 l28 28 M38 10 L10 38" fill="none" ${s('stroke="#d8423a" stroke-width="4"')}/>`,
+  'b-guard-1': `<path d="M16 40 V18 q0 -9 8 -9 q8 0 8 9 v22z" fill="#6f6a62" ${s()}/>${eyes(20, 28, 20)}<path d="M20 27 h8" fill="none" ${s()}/><path d="M10 40 h28" fill="none" ${s('stroke="#4f7a36" stroke-width="4"')}/>`,
+  'b-ending': `<circle cx="24" cy="24" r="13" fill="#9ab0e8" ${s()}/><ellipse cx="24" cy="24" rx="20" ry="6" fill="none" ${s()}/><path d="M18 22 q6 5 12 0" fill="none" ${s()}/>`,
+  'b-notes': `<path d="M12 8 h18 l6 6 v26 H12z" fill="${W}" ${s()}/><path d="M30 8 v6 h6" fill="none" ${s()}/><path d="M17 20 h14 M17 26 h14 M17 32 h9" fill="none" ${s()}/>`,
+});
+
+export const DAILY_ICON =`<circle cx="24" cy="24" r="12" fill="${O}" ${s()}/><path d="M24 12 q3 -5 7 -4 q-1 4 -7 4z" fill="${G}" ${s('stroke-width="1.8"')}/>${eyes(20, 28, 23)}<path d="M21 27 q3 2.5 6 0" fill="none" ${s()}/>`;
 export const ALLDAY_ICON = `<path d="M24 6 l5 10 11 1.5 -8 7.5 2 11 -10 -5.5 -10 5.5 2 -11 -8 -7.5 11 -1.5z" fill="${Y}" ${s()}/>${eyes(20.5, 27.5, 22)}<path d="M21.5 26 q2.5 2 5 0" fill="none" ${s()}/>`;
 
 export const iconSvg = (inner) => `<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;

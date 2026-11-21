@@ -31,7 +31,7 @@ export const topFit = (() => {
   };
   function fit() {
     dirty = false;
-    for (let k = 0; k <= 6; k++) { bar.dataset.fit = String(k); for (let i = 1; i <= 6; i++) bar.classList.toggle('f' + i, i <= k); if (need() <= bar.clientWidth + 0.5) break; }
+    for (let k = 0; k <= 7; k++) { bar.dataset.fit = String(k); for (let i = 1; i <= 7; i++) bar.classList.toggle('f' + i, i <= k); if (need() <= bar.clientWidth + 0.5) break; }
     bottom = bar.getBoundingClientRect().bottom || bottom;
   }
   addEventListener('resize', () => { dirty = true; t = 0; });
@@ -146,7 +146,7 @@ export function updateScore() {
   late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick'];
+export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -181,24 +181,35 @@ export function tickBanner(dt) {
   $('banner').hidden = false; document.body.classList.add('banner-on'); bannerT = 4.5; topStack();
 }
 $('banner-go').addEventListener('click', () => { $('banner').hidden = true; document.body.classList.remove('banner-on'); bannerT = 0; openAch(); });
-export function refreshAchUI() {
+export function refreshAchUI(keep) { // keep: 목록은 그대로 (받기 버튼이 '받음' 을 잠깐 보여 줌)
   const d = ach.ensureDaily();
   const done = d.items.filter((x) => x.done).length;
   $('ach-count').textContent = `${done}/${d.items.length}`; $('ach-ring').setAttribute('stroke-dasharray', `${(done / Math.max(1, d.items.length) * 56.5).toFixed(1)} 56.5`);
   const un = ach.unclaimed();
   $('ach-dot').hidden = !un; $('ach-dot2').hidden = !un;
-  if (!$('ach').hidden) buildAch();
+  if (!keep && !$('ach').hidden) buildAch();
 }
 export function openAch() { closePanels(); buildAch(); $('ach').hidden = false; }
 $('ach-chip').addEventListener('click', openAch);
 { const g = $('gyul-pill'); g.addEventListener('click', () => late.shopGuide()); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); late.shopGuide(); } }); } // #128 사는 창 대신 가게 안내
 $('btn-ach').addEventListener('click', openAch);
+// 받기 버튼 (#153): 귤색 바탕 + 귤 아이콘 + 은은한 맥박. 누르면 강조가 꺼지고 '받음' 으로 바뀐 뒤 목록을 다시 그림
+function claimBtn(cls, reward, take) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = cls + ' claim-go';
+  b.innerHTML = `<i class="cg" aria-hidden="true"></i>귤 ${reward} 받기`;
+  b.addEventListener('click', () => {
+    if (b.disabled) return; const got = take(); b.disabled = true; b.className = cls + ' claim-done'; b.textContent = got ? '받음' : '이미 받음';
+    refreshAchUI(true); setTimeout(() => { if (!$('ach').hidden) buildAch(); }, 650);
+  });
+  return b;
+}
 function buildAch() {
   const d = ach.ensureDaily();
   const [yy, mm, dd] = d.date.split('-');
   $('ach-date').textContent = `${Number(mm)}월 ${Number(dd)}일 · 매일 자정에 바뀌어요`;
   const list = $('ach-list'); list.innerHTML = '';
-  d.items.forEach((it) => {
+  const ready = (it) => it.done && !it.claimed; // #153 받을 수 있는 줄을 맨 위로
+  [...d.items].sort((a, b) => ready(b) - ready(a)).forEach((it) => {
     const def = ach.defD(it.id); if (!def) return;
     const row = document.createElement('div'); row.className = 'ach-item' + (it.done ? ' done' : '');
     const t = document.createElement('div');
@@ -207,7 +218,7 @@ function buildAch() {
     t.append(nm, sm);
     const right = document.createElement('div');
     if (it.claimed) { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = '받음'; }
-    else if (it.done) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small primary'; b.textContent = `귤 ${def.reward} 받기`; b.addEventListener('click', () => { const got = ach.claim('daily', it.id); if (got) addCoins(got.reward, got.name); refreshAchUI(); buildAch(); }); right.append(b); }
+    else if (it.done) right.append(claimBtn('btn small', def.reward, () => { const got = ach.claim('daily', it.id); if (got) addCoins(got.reward, got.name); return got; }));
     else { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = `귤 ${def.reward}`; }
     const bar = document.createElement('div'); bar.className = 'bar'; const fillEl = document.createElement('i'); fillEl.style.width = `${Math.round((it.prog / def.goal) * 100)}%`; bar.append(fillEl);
     row.append(t, right, bar); list.append(row);
@@ -217,6 +228,8 @@ function buildAch() {
   // 단계형(fam)은 한 칸: 받을 수 있는 단계가 있으면 그 단계, 아니면 다음 목표(다 했으면 마지막 단계)
   const groups = []; const byFam = {};
   BADGES.forEach((b) => { if (!b.fam) { groups.push([b]); return; } if (!byFam[b.fam]) { byFam[b.fam] = []; groups.push(byFam[b.fam]); } byFam[b.fam].push(b); });
+  const canClaim = (g) => g.some((b) => ach.state.badges[b.id] && !ach.state.badges[b.id].claimed);
+  groups.sort((a, b) => canClaim(b) - canClaim(a)); // #153 받을 수 있는 뱃지를 맨 앞으로
   groups.forEach((g) => {
     const earned = g.filter((b) => ach.state.badges[b.id]);
     const unclaimed = earned.find((b) => !ach.state.badges[b.id].claimed);
@@ -229,7 +242,7 @@ function buildAch() {
     const ds = document.createElement('small'); ds.textContent = st ? b.desc : `${b.desc}${b.goal > 1 ? ` (${Math.min(b.goal, ach.state.life[b.ev] || 0).toLocaleString('ko-KR')}/${b.goal.toLocaleString('ko-KR')})` : ''}`;
     el.append(circ, nm, ds);
     // #16: 예전 옷 색 보상(item)은 #52 옷장과 이어지지 않아 귤만 줌
-    if (st && !st.claimed) { const c = document.createElement('button'); c.type = 'button'; c.className = 'chip claim'; c.textContent = `귤 ${b.reward} 받기`; c.addEventListener('click', () => { const got = ach.claim('badge', b.id); if (got) addCoins(got.reward, `뱃지 ${got.name}`); refreshAchUI(); buildAch(); }); el.append(c); }
+    if (st && !st.claimed) el.append(claimBtn('chip claim', b.reward, () => { const got = ach.claim('badge', b.id); if (got) addCoins(got.reward, `뱃지 ${got.name}`); return got; }));
     bl.append(el);
   });
 }
@@ -242,12 +255,12 @@ function buildDex() {
   $('dex-count').textContent = `${got} / ${DEX_LIST.length}`;
   const g = $('dex-grid'); g.innerHTML = ''; let sec = '';
   DEX_LIST.forEach((d) => {
-    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : ''; g.append(h); } // 개울 칸 (#44)
+    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : sec === 'story' ? '수수께끼' : ''; g.append(h); } // 개울 칸 (#44)
     const n = dx[d.id] || 0, el = document.createElement('div'); el.className = 'dex-cell' + (n ? '' : ' locked') + (d.rare ? ' rare' : '');
     el.dataset.id = d.id;
     const ic = document.createElement('span'); ic.className = 'dex-ic'; ic.innerHTML = iconSvg(dexIcon(d));
     const nm = document.createElement('b'); nm.textContent = n ? d.name : '???';
-    const sm = document.createElement('small'); sm.textContent = d.kind === 'sight' ? (n ? '찾음' : '') : n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
+    const sm = document.createElement('small'); sm.textContent = d.kind === 'sight' || d.kind === 'story' ? (n ? '찾음' : '') : n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
     el.append(ic, nm, sm); g.append(el);
   });
   late.dexExtra?.(g); // #140 재료·전설 장비 칸 (game/loot.js)

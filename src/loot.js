@@ -159,7 +159,7 @@ export function tidySpare(save) {
   }
   while (keep.length > LOOT.spareMax) out.push(keep.pop());
   save.loot = keep;
-  const sold = out.map((it) => [it, sellValue(it)]); for (const [, v] of sold) save.coins += v;
+  const sold = out.map((it) => [it, sellValue(it)]); for (const [it, v] of sold) { save.coins += v; noteSold(save, it); }
   return sold;
 }
 // 새 장비를 안 쓰는 장비 칸에 넣음
@@ -174,7 +174,9 @@ export function equipSpare(save, i) {
   else { setUp(save, it.s, it); if (it.s === 'shoes' && save.equip?.boots === 2) save.equip.boots = 1; } // 장화(#167)를 신고 있었으면 벗음
   return true;
 }
-export function sellSpare(save, i) { const it = save.loot[i]; if (!it) return 0; save.loot.splice(i, 1); const v = sellValue(it); save.coins += v; return v; }
+export function sellSpare(save, i) { const it = save.loot[i]; if (!it) return 0; save.loot.splice(i, 1); const v = sellValue(it); save.coins += v; noteSold(save, it); return v; }
+// 판 것 목록 (#188): 다음 서버 저장에 실어 보내 서버가 그 귤을 인정함 (서버가 받으면 online.js 가 보낸 만큼 지움). 멀티가 아니면 쌓이기만 하니 64개까지
+export function noteSold(save, it) { const L = Array.isArray(save.sold) ? save.sold : (save.sold = []); L.push({ s: it.s, t: it.t, g: it.g | 0, e: it.e | 0 }); if (L.length > 64) L.splice(0, L.length - 64); }
 // 장비 단계를 새로 샀을 때(부르는 쪽이 equip 을 바꾸기 전): 예전 단계 장비의 등급·강화는 안 쓰는 장비로
 export function tierUp(save, k) {
   const cur = curItem(save, k); if (!GEAR4.includes(k)) return;

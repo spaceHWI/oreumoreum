@@ -166,6 +166,7 @@ late.lootTidy = () => { const sold = tidySpare(save); for (const [x, v] of sold)
   life.hooks.enemyRepel = (kind, pos, def) => {
     const d2 = legendOn(save, 'extra') ? { ...def, reward: { ...def.reward, gyul: Math.round(def.reward.gyul * LOOT.fx.extra.k) } } : def;
     base?.(kind, pos, d2);
+    if (def.swarm === 'mob') return; // 들판 떼 보통 적(#173)은 떨구지 않음 (잦아서). 정예는 떨굼, 대장은 보물 상자(swarm.js)
     dropLoot('enemy', Math.max(1, Math.min(5, ZONE_OF[kind] || trash?.zoneAt?.(pos.x, pos.z) || 1)), pos);
   }; }
 late.denLoot = (d) => dropLoot('den', d.zone, new THREE.Vector3(d.x, d.y ?? height(d.x, d.z), d.z));
