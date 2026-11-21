@@ -173,10 +173,12 @@ export function tickAutoGo() {
 }
 chArrow.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
 chArrow.addEventListener('click', (e) => { e.stopPropagation(); if (autoGo?.ch) stopAutoGo(); else startAutoGo(); });
+// 길 안내는 한 번에 하나 (#201): 배낭이 찬 클린하우스·장비점 짧은 표시·추적 퀘스트가 있으면 마차·가게 가장자리 표시(ride.js·stores.js)는 쉼
+late.guideBusy = () => !chArrow.hidden || !shopArrow.hidden || !!late.questGuiding?.();
 export function tickChArrow() {
   const full = !!CH && bagRoom() < 1;
   const ch = autoGo?.ch || chNear(); // 가는 중이면 그곳, 아니면 가장 가까운 곳 (#78)
-  const on = !!ch && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen() && (player.pos.distanceTo(ch.front) > CLEANHOUSE.arrowNear || !!autoGo?.ch);
+  const on = !!ch && (full || !!autoGo?.ch) && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen() && (player.pos.distanceTo(ch.front) > CLEANHOUSE.arrowNear || !!autoGo?.ch); // 배낭이 찼거나 가는 중일 때만 (#201)
   if (!on) { if (!chArrow.hidden) chArrow.hidden = true; }
   else {
     chArrow.hidden = false; placeArrow(chArrow, ch.center, ch.small ? 3.2 : 4.2);

@@ -146,7 +146,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     const [sx, sz] = route[0];
     const d = { ...m, kind, def, heap: hi, amt: opts.amt ?? DUMP_AMT[kind], hold: opts.hold || 0, route, ri: 1, wpT: 0, pos: new THREE.Vector3(sx, height(sx, sz), sz), heading: 0, speed: 0, state: 'come', st: 0, hp: def.hp, flash: 0, phase: rnd() * 6, pitch: 0, roll: 0, bar: null };
     d.heading = Math.atan2(route[1][0] - sx, route[1][1] - sz);
-    if (def.hp > 1) { d.bar = makeBar(); d.bar.g.position.set(0, m.h + 0.8, 0); d.root.add(d.bar.g); }
+    if (def.hp > 1) { d.bar = makeBar(); d.bar.g.position.set(0, m.h + 0.8, 0); d.bar.g.visible = false; d.root.add(d.bar.g); }
     hooks.dress?.(d); // 철 이벤트 차림 (#180 산타 투기꾼)
     d.root.position.copy(d.pos); group.add(d.root);
     list.push(d);
@@ -168,7 +168,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       const vx = tg.vel.x * 0.1, vz = tg.vel.z * 0.1, vl = vx * vx + vz * vz;
       let u = vl > 1e-6 ? ((d.pos.x - (p.x - vx)) * vx + (d.pos.z - (p.z - vz)) * vz) / vl : 1; u = u < 0 ? 0 : u > 1 ? 1 : u;
       if (Math.hypot(p.x - vx * (1 - u) - d.pos.x, p.z - vz * (1 - u) - d.pos.z) >= d.def.hitR || p.y > d.pos.y + d.h + 0.1 || p.y < d.pos.y - 0.3) continue;
-      d.hp = Math.max(0, d.hp - dmg); d.flash = 0.25;
+      d.hp = Math.max(0, d.hp - dmg); d.flash = 0.25; if (d.bar) d.bar.t = 3; /* 막대는 맞힌 뒤 3초만 (#201) */
       tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
       if (d.hp <= 0) repel(d); else { d.flinch = 0.3; if (!quiet) sound?.beep?.(false); }
       if (!quiet || d.hp <= 0) hooks.hit?.(d.pos, d.hp <= 0);
@@ -281,6 +281,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       if (d.state !== 'startle') d.arms[0].rotation.x = -s * a * 0.8; if (d.state !== 'dump' && d.state !== 'startle') d.arms[1].rotation.x = d.state === 'flee' ? -s * a : 0.15;
       d.body.position.y = Math.abs(Math.cos(d.phase)) * 0.06 * Math.min(1, d.speed);
     }
+    if (d.bar) { d.bar.t = Math.max(0, (d.bar.t || 0) - dt); const sh = d.bar.t > 0 && d.state !== 'startle' && d.state !== 'leave' && d.state !== 'flee'; if (d.bar.g.visible !== sh) d.bar.g.visible = sh; }
     if (d.bar && d.bar.g.visible) {
       d.flash = Math.max(0, d.flash - dt);
       const f = d.hp / d.def.hp; d.bar.fill.scale.x = 1.12 * Math.max(0.001, f);

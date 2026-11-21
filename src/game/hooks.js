@@ -101,6 +101,7 @@ export const enemyWarn = makeEdgeWarn('enemy-warn', '!', ENEMY_SPAWN.warnT);
 // 쓰레기 투기꾼·투기 트럭 (#47): 주기적으로 와서 더미를 다시 쌓음. 버리기 전에 귤을 맞히면 도망
 const DUMP_IC = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M9 3h6l-1.2 3.2c3 1.2 5.2 4.3 5.2 7.8 0 4-3.1 7-7 7s-7-3-7-7c0-3.5 2.2-6.6 5.2-7.8z"/></svg>'; late.DUMP_IC = DUMP_IC;
 export const dumpWarn = makeEdgeWarn('dump-warn', DUMP_IC, DUMP.warnT);
+late.edgeWarnOn = () => enemyWarn.t > 0 || dumpWarn.t > 0; // 같은 뜻(적 방향) 표시는 한 번에 하나 (#201, throw.js tickEdgeAim)
 state.introToast = null; // 첫 화면이 떠 있을 때 온 알림은 들어간 뒤 보여 줌 (#16)
 export const dumpers = trash ? createDumpers({
   scene, trash, height, paths: nsPaths,

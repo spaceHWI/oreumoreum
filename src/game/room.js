@@ -69,4 +69,4 @@ export function startSession() { if (state.sessionOn) return; state.sessionOn = 
 addEventListener('pagehide', () => ab.flush());
 document.addEventListener('visibilitychange', () => { if (document.hidden) ab.flush(); });
 export const tmp = new THREE.Vector3();
-export const alertMark = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 96; const g = c.getContext('2d'); g.fillStyle = '#e2342a'; g.font = 'bold 86px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 32, 50); const t = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false })); sp.scale.set(0.8, 1.2, 1); sp.position.y = 3.0; sp.visible = false; sp.renderOrder = 11; runner.root.add(sp); return sp; })();
+/* 내 머리 위 빨간 느낌표는 없앰 (#201): 위험은 화면 가장자리 붉은빛(#141)·적 방향 표시로 충분 */

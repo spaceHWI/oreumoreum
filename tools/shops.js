@@ -44,12 +44,11 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     ok(mode === 'd' ? g.vis.length === 3 && !g.tabs : g.vis.length === 1 && g.tabs, `${mode === 'd' ? '데스크톱 나란히' : '폰 탭 하나씩'} (보임 ${g.vis}, 탭 ${g.tabs})`);
     ok(await E(() => /귤 더 필요/.test(document.querySelector('#shoppop .buy-group[data-k="weapon"] .buy-btn')?.textContent || '')), '모자라면 ○○귤 더 필요');
     await shot('2-gear');
-    // 점: 귤을 채우면 장비점 지붕·귤 칸에 점, 창을 열면 지워짐
+    // 점: 귤을 채워도 지붕·귤 칸에 점이 없음 (#201, 받을 것이 있을 때만)
     await E(() => { document.getElementById('shoppop').hidden = true; const o = window.__oreum; o.save.coins = 99999; o.updateStats?.(); });
     const d1 = await E(() => window.__oreum.street.dots());
-    ok(d1.gear && await E(() => window.__oreum.street.pillDot()), `새 물건 점 (지붕 ${JSON.stringify(d1)})`);
+    ok(!Object.values(d1).some(Boolean) && !(await E(() => window.__oreum.street.pillDot())), `새 물건은 점을 띄우지 않음 #201 (지붕 ${JSON.stringify(d1)})`);
     await E(() => window.__oreum.street.open('gear')); await W(400);
-    ok(!(await E(() => window.__oreum.street.dots())).gear, '장비점을 열면 점이 지워짐');
     // 무기 사기 → 장착
     if (mode === 'm') await p.click('#shoppop-tabs [data-tab="weapon"]'); await W(300);
     await p.click('#shoppop .buy-group[data-k="weapon"] .buy-card[data-i="1"] .buy-btn'); await W(500);

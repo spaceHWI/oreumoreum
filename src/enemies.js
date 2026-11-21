@@ -36,13 +36,14 @@ function makeBar() {
   const g = new THREE.Group();
   const bg = new THREE.Sprite(barBgMat); bg.center.set(0, 0.5); bg.scale.set(1.24, 0.2, 1); bg.position.x = -0.62; bg.renderOrder = 10;
   const fill = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#ff8a3c', depthTest: false })); fill.center.set(0, 0.5); fill.scale.set(1.12, 0.12, 1); fill.position.set(-0.56, 0, 0.001); fill.renderOrder = 11;
-  g.add(bg, fill);
-  return { g, fill };
+  const inner = new THREE.Group(); inner.add(bg, fill); inner.visible = false; g.add(inner); // inner: 보일 때만 (#201). g 를 끄면 아주 안 보임(쫓겨남·떠남)
+  return { g, fill, inner, t: 0 };
 }
 
 // 돌진 조짐 표시 (#148): 발밑 붉은 고리
 const warnGeo = new THREE.RingGeometry(0.7, 1.05, 24).rotateX(-Math.PI / 2);
 const warnMat = new THREE.MeshBasicMaterial({ color: '#ff3b2f', transparent: true, opacity: 0.8, depthWrite: false });
+const BAR_SHOW = 3; // 맞힌 뒤 기운 막대가 보이는 초 (#201)
 const ATK = new Set(['wind', 'dash', 'back']), AGGRO = new Set(['charge', 'wind', 'dash', 'back', 'stagger']);
 const _to = new THREE.Vector3(); // tick 안에서 새로 만들지 않음 (#146)
 
@@ -136,11 +137,11 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hurt(e, dmg, quiet, ch = 0) {
     if (e.state === 'calm') { scatter(e); return; } // #168 모여 있던 적은 맞으면 흩어짐
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
-    if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
+    if (e.remoteHurt) { e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
     const stag = e.state === 'stagger'; if (stag) dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     hooks.dmgNum?.(e, dmg, stag, ch); // 머리 위 피해 숫자 (#141, game/feel.js)
-    e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
+    e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
       const ux = e.pos.x - player.pos.x, uz = e.pos.z - player.pos.z, L = Math.hypot(ux, uz) || 1;
       e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1) * (1 + (CHARGE.push - 1) * ch); e.flX = ux / L; e.flZ = uz / L;
@@ -292,7 +293,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     e.tail.rotation.x = Math.sin(time * 9 + e.phase) * 0.4;
     e.fx?.(dt, time, e);
     // 막대: 맞으면 잠깐 흰색
-    if (e.bar.g.visible) {
+    // 막대는 맞혔거나(BAR_SHOW 초) 나를 노리는 적만 (#201)
+    if (e.bar.t > 0) e.bar.t -= dt;
+    { const show = e.bar.g.visible && (e.bar.t > 0 || AGGRO.has(e.state)); if (e.bar.inner.visible !== show) e.bar.inner.visible = show; }
+    if (e.bar.inner.visible) {
       e.flash = Math.max(0, e.flash - dt);
       const f = e.hp / d0.hp; e.bar.fill.scale.x = 1.12 * Math.max(0.001, f);
       e.bar.fill.material.color.set(e.flash > 0 ? '#ffffff' : f <= 0.34 ? '#ff4a3a' : '#ff8a3c');
