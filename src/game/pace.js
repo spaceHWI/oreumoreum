@@ -25,7 +25,7 @@ const tutBusy = () => !!NS_TUT && !save.tut?.done; // #100 튜토리얼이 끝�
 let cur = null; // 지금 공격: { dumpers: [투기꾼], mob: 몹 자리 계획 }
 const threats = () => (dumpers ? dumpers.activeN() : 0) + life.enemies.activeN();
 const pacing = createPacing({
-  perHour: DUMP_PER_HOUR, first,
+  perHour: DUMP_PER_HOUR, first, crowd: () => state.crowd || 1, // 같이 있는 사람 수 (#131, 방이 {t:'np'} 로 알려 줌. room.js)
   hooks: {
     busy: () => !state.sessionOn || document.hidden || tutBusy() || !!state.fishing?.busy || !!state.fishing?.active || late.mealS?.on || late.cutS?.on || !!player.cart || panelOpen() || cam.mode !== 'follow' || hp.isDown || hp.pending || !!player.rescue,
     threats,
