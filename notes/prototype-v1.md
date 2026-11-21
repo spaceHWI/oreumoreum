@@ -43,6 +43,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | room.js | 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 |
 | stores.js | 레스토랑 스톤, 가게 팝업 틀(`SHOP_POP`: 가게마다 head·fill·tabs, 장비점 gear·가게 안내 dir 는 shop.js 가 채움), 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 가게 안내도 상호작용, 상호작용(F)·줍기(E) 키 |
 | pickup.js | 줍기·배낭(줍기 버튼으로 가까운 쓰레기까지 걷기 #104), 구역 확인, 더미·꽃밭 효과 |
+| approach.js | 다가가서 쏘기(#132): 던지기 버튼을 누르면(stores.js throwAct.act → `approachPress`, pressFire 앞) 감지 거리(balance.js APPROACH.detect) 안 적을 타겟으로(쫓는 적 > 투기꾼·트럭·흡연자 > 가까운 순, 손일 때 APPROACH.handHard 는 뒤로), 사거리 밖이면 줍기와 같은 `late.trailRoute` 로 다가가 닿으면 쏘고, 쫓아내면 다음 적. 직접 움직임·줍기 버튼·창·탈것·튜토리얼·귤 떨어짐·막힘이면 멈춤, 기운 낮으면 제자리. 누르고 있는 동안은 charge.js 에 맡김(짧게 놓으면 `late.approachOn` 이라 charge 가 쏘지 않음). throw.js detectR 을 `late.approachR` 만큼 늘림. `tickApproach`(update.js tickArms 뒤), `__oreum.approach`, 확인 `node tools/approach.js` |
 | area.js | 구역 구분(#136): 문턱·구역 소품(`src/zonelook.js`) 만들기, 구역이 바뀌면(`late.zoneEnter`) 이름 배너·권장 점수 경고·첫 정낭 팁·구역 소리·안개, 오름 지도(위 구역 칸을 누르면) |
 | deernet.js | 멀티 노루 (#92): 노루 무리는 방장이 알림, 노루 타기는 방이 관리, 다른 사람 귤 먹이 부탁 |
 | dump.js | 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 |

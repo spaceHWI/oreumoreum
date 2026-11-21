@@ -304,4 +304,5 @@ updateArmBtn();
 export function armsChanged() { stopLaser(); A.held = false; A.cd = 0; A.mgB = null; late.chargeCancel?.(); setHoldBow(false); updateArmBtn(); }
 
 export const armsTime = () => A.gt || 0;
-Object.assign(late, { armsTime, fireArm, releaseBomb, tickArms, armsAmmo, openArmWin, armsChanged, armFx, chargedArm });
+const armReady = () => A.cd <= 0 && !A.mgB && !A.lasing && !(weaponNow().id === 'bomb' && A.bombCd > 0); // 다가가서 쏘기(#132)가 다음 발을 쏴도 되나
+Object.assign(late, { armReady, armsTime, fireArm, releaseBomb, tickArms, armsAmmo, openArmWin, armsChanged, armFx, chargedArm });

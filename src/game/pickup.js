@@ -157,6 +157,7 @@ function tickLook(dt) {
 }
 // 버튼(E)을 누른 순간: 걷는 중이면 멈춤, 범위 안이면 줍기, 아니면 찾아 감
 export function pressPick() {
+  late.stopApproach?.(); // 다가가서 쏘기(#132) 중이면 줍기로 넘어감
   if (seekS.on) { stopSeek(); return; }
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   if (canPick()) { startPick(); return; }
