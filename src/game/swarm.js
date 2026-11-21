@@ -51,7 +51,7 @@ const distTrail = (x, z) => trash.trail.dist(x, z, S.offD + 4);
 
 let whyNot = '', testOff = false; // testOff: 확인 도구(tools/fight.js 등)가 떼 없이 잴 때
 function canField() {
-  whyNot = !trash || !state.sessionOn || testOff ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() ? 'boss' : late.story?.busy || state.cine ? 'story' : '';
+  whyNot = !trash || !state.sessionOn || testOff ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() || late.raidFight?.() ? 'boss' : late.story?.busy || state.cine ? 'story' : '';
   if (whyNot) return false;
   const z = zoneOf(player.pos.x, player.pos.z);
   whyNot = !z ? 'zone0' : bloom?.isBloomed(z) ? 'bloomed' : '';
@@ -388,7 +388,7 @@ function tickHud() {
   $('sb-k').textContent = run.kills; $('sb-w').textContent = run.stage + 1;
   const prev = run.augN ? (S.augAt[run.augN - 1] ?? run.nextAug - S.augStep) : 0;
   $('sb-a').style.width = `${Math.round(100 * Math.min(1, (run.shards - prev) / Math.max(1, run.nextAug - prev)))}%`;
-  bar.hidden = !!late.bossFight?.();
+  bar.hidden = !!late.bossFight?.() || !!late.raidFight?.();
 }
 
 /* ---------- 설정: 자동 던지기 ---------- */

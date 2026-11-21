@@ -213,7 +213,7 @@ export const ZONE_BOSS = {
   beam: { warn: 1.15, r: 2.6, n: 3, spread: 5, dmgK: 0.8, every: 7 },
   walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
   slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
-  netMs: 200,
+  netMs: 200, netHold: 10, // netHold: 받는 쪽은 방장 알림이 끊겨도 이 초까지 제자리에 둠 (#181: 끊긴 방장이 빠지고 다음 방장이 이어받는 동안. 예전 3초에 사라졌다 가득 찬 채 다시 나왔음)
   // 싸움이 풀린 뒤 (#183, enemies.js restRegen): 기운은 남고 delay 초 동안 그대로, 그 뒤 초당 최대 기운의 rate 씩 참 (다시 맞거나 싸움이 붙으면 멈춤)
   //   delay 는 가장 먼 구역(굼부리) 클린하우스에서 처음 쓰러졌다 돌아오는 약 46초(직선·달리기, tools/boss.js 표)를 보고 20 → 30
   // parting: 풀린 뒤 이 초 안에 마지막으로 때린 사람 쪽으로 돌진 한 번 (partR 안에 있을 때, 띠 끝은 빈터에서 leash + partOver 까지)
@@ -221,6 +221,22 @@ export const ZONE_BOSS = {
   rest: { delay: 30, rate: 0.02, parting: 3, partR: 50, partOver: 12, awayToast: 30 },
   fast: { r: 6, fade: 0.9, hold: 1.1, park: 5 }, // park: 세워 둔 빠른 마차가 팻말 뒤(길 방향) 이만큼 (#174)
   shortcut: { r: 4, off: 4.5, fade: 0.8, hold: 0.8 },
+};
+// 오름 레이드 '쓰레기 대왕' (#181, src/raidcore.js·src/game/raid.js). 시각·시작·끝·기운·기여·보상은 방(서버, 없으면 내 화면의 같은 코드)이 셈, 몸 움직임은 방장이 굴림
+// times: 나타나는 시각(한국 시간 [시, 분]) · lead: 이만큼 앞서 알림(초) · limit: 제한 시간(초) · r: 굼부리 한가운데(zones.js CRATER)에서 참가로 보는 거리
+// hp1: 한 사람 몫 기운, 참가자 n 명이면 hp1 × max(1, n × perK) (도중에 늘면 남은 비율 지킴) · dps·dpsBurst: 한 사람이 1초에 줄 수 있는 피해 상한(서버가 자름)
+// 패턴: ① bag 쓰레기 봉투 던지기(바닥 원 → 떨어짐) ② ph1(기운 60% 아래) 무리 부르기 + 몸통 돌진 ③ 기운 0 → 부서져 더미 heaps 개(각 n 개)를 뿌림. breakSec 안에 다 주우면 끝, 못 주우면 남은 기운 reform 으로 다시 뭉침
+// 보상(참가자 = 피해나 줍기에 한 번이라도 보탠 사람): gyul(구역 4 우두머리의 3배)·경험치 xp, 그날(한국 날짜) 첫 성공엔 상자 box 귤 더. vest 번 성공하면 한정 옷 '대왕 잡은 조끼'
+export const RAID = {
+  name: '쓰레기 대왕', times: [[12, 30], [20, 0], [22, 0]], lead: 600, limit: 480, r: 55,
+  hp1: 5000, perK: 0.8, dps: 400, dpsBurst: 800, dmg: 42, k: 3.2, kind: 'boar',
+  bag: { warn: 1.3, r: 2.6, n: 3, spread: 7, gap: [2.0, 3.0] },
+  charge: { warn: 1.0, len: 20, w: 3.2, speed: 11, rest: 1.2, every: 9 },
+  call: { every: 15, n: [2, 3], max: 4, kind: 'rabid' },
+  phase: 0.6, walk: 2.2,
+  heaps: 8, heapN: 5, spread: 16, pickR: 2.4, pickEvery: 0.35, pickPerSec: 5, breakSec: 75, reform: 0.35,
+  gyul: ZONE_BOSS.list[4].gyul * 3, box: 2000, xp: 300, vest: 10, top: 3,
+  netMs: 200, stateMs: 250, // 방장이 몸 자리를 알리는 간격 · 방이 기운·단계를 알리는 가장 짧은 간격
 };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
 // 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름
@@ -1370,6 +1386,8 @@ export const NET = {
   bossPerSec: 8,      // 우두머리 메시지는 따로 1초에 이만큼 (방장 알림 5번 + 여유)
   bossMax: 700,       // 우두머리 메시지 크기 상한 (바이트)
   bossHitMax: 300,    // 한 번에 알리는 피해 상한 (귤 폭탄 90 × 무리 + 모아 쏘기 여유)
+  raidPerSec: 16,     // 레이드 메시지(#181: 피해 rh·줍기 rp·참가 rj·방장 몸 rs)는 따로 1초에 이만큼
+  raidMax: 400,       // 레이드 메시지 크기 상한 (바이트)
   // 오래 멈춤 (#157, 임의 값): 조작(이동·줍기·던지기·화면 돌리기·버튼·글쓰기) 없이 idleWarnSec 면 '계속 하시겠어요?' 창, idleRestSec 면 방에서 나가 쉬는 화면
   idleWarnSec: 300,   // 5분: 창과 줄어드는 숫자
   idleRestSec: 360,   // 6분: 저장하고 방에서 나감 (누르면 다시 들어옴)

@@ -365,6 +365,24 @@ async function startServers() {
       const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
       ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
     }
+    { // #181 오름 레이드: 방이 기운·기여·보상을 셈. 피해 부풀리기·없는 더미 줍기·보상 두 번·남의 레이드 몸·바로 열기 거절
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { RAID, NET: N2 } = await import('../src/balance.js');
+      let T0 = Date.UTC(2026, 10, 21, 3, 0); const core = createRoomCore({ now: () => T0 }); const ms = { a: [], b: [] };
+      const a = core.join((x) => ms.a.push(JSON.parse(x)), { acct: 'raid-a' }), bq = core.join((x) => ms.b.push(JSON.parse(x)), { acct: 'raid-b' });
+      core.message(a, JSON.stringify({ t: 'rgo' })); core.step(); ok(core.raid.ph === 0, '레이드 바로 열기는 STATS_OPEN 방·어드민만');
+      core.message(bq, JSON.stringify({ t: 'rs', s: [1, 2, 3] })); ok(!ms.a.some((m) => m.t === 'rs'), '방장 아닌 사람의 레이드 몸 알림은 버림');
+      T0 += 30 * 60e3; core.step(); ok(core.raid.ph === 2, `정해진 시각(12:30 KST)에 레이드 시작 (단계 ${core.raid.ph})`);
+      const h0 = core.raid.hp; core.message(a, JSON.stringify({ t: 'rh', d: 1e9 })); ok(h0 - core.raid.hp <= N2.bossHitMax + 1e-6, `피해 부풀리기는 잘림 (${h0 - core.raid.hp})`);
+      const h1 = core.raid.hp; for (let i = 0; i < 10; i++) { T0 += 100; core.message(a, JSON.stringify({ t: 'rh', d: 300 })); } ok(h1 - core.raid.hp <= RAID.dpsBurst + RAID.dps + 1, `한 사람이 1초에 줄 수 있는 피해 상한 (${Math.round(h1 - core.raid.hp)} ≤ ${RAID.dpsBurst + RAID.dps})`);
+      core.message(a, JSON.stringify({ t: 'rp', i: 0 })); ok(core.raid.contrib(a.id).p === 0, '싸우는 동안(부서지기 전) 더미 줍기는 안 셈');
+      for (let i = 0; i < 400 && core.raid.ph === 2; i++) { T0 += 1000; core.message(a, JSON.stringify({ t: 'rh', d: 300 })); core.message(bq, JSON.stringify({ t: 'rh', d: 300 })); core.step(); }
+      core.message(a, JSON.stringify({ t: 'rp', i: 99 })); core.message(a, JSON.stringify({ t: 'rp', i: -1 })); ok(core.raid.contrib(a.id).p === 0, '없는 더미 줍기는 거절');
+      for (let i = 0; i < RAID.heaps; i++) for (let k = 0; k < RAID.heapN + 2; k++) { T0 += 260; core.message(k % 2 ? a : bq, JSON.stringify({ t: 'rp', i })); }
+      core.step(); const e1 = core.takeEarned() || [];
+      ok(core.raid.ph === 4 && e1.length === 2 && e1.every(([, g]) => g === RAID.gyul + RAID.box), `성공 보상은 방이 번 몫에 (${JSON.stringify(e1)})`);
+      ok(ms.a.filter((m) => m.t === 'rw').length === 1 && ms.b.filter((m) => m.t === 'rw').length === 1, '보상 알림은 한 번씩');
+      for (let i = 0; i < 6; i++) core.message(a, JSON.stringify({ t: 'rp', i: 0 })); core.step(); ok(!core.takeEarned(), '끝난 뒤 줍기로 보상 두 번 받기 거절');
+    }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });

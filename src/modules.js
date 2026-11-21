@@ -95,6 +95,8 @@ import './game/guide.js';
 import './game/pace.js';
 import './game/zonedone.js'; // 구역 완료 요약·깨어나는 곳·빠른 마차·지름길 (#139, hooks 뒤: 적 후크를 감쌈)
 import './game/boss.js'; // 구역 우두머리 (#139)
+import './game/raid.js'; // 오름 레이드 (#181)
+import './game/peerfight.js'; // 옆 사람 전투 중 표시 (#181)
 import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
 import './game/raregyul.js'; // 귀한 귤 (#130): 한라봉·천혜향·레드향·황금향
 import './game/forge.js'; // 강화 (#140, 장비점 창)
