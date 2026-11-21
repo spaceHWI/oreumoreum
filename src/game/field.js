@@ -20,7 +20,7 @@ import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
 import { scene, NSW, spots } from './scene.js';
-import { trash, bloom, col, player, life, hp, CHS } from './place.js';
+import { trash, bloom, col, player, life, hp, CHS, stream } from './place.js';
 import { toast, addCoins, onDexGet, panelOpen } from './hud.js';
 import { interactables } from './stores.js';
 import { buildMapBase, mapXY } from './area.js';
@@ -123,6 +123,14 @@ if (field) setRoutePass((x, z) => {
   const gx = height(x + 1, z) - height(x - 1, z), gz = height(x, z + 1) - height(x, z - 1);
   return Math.hypot(gx, gz) / 2 < 1.1; // 45° 넘는 비탈
 });
+
+/* ---------- 적이 밀려 들어가면 안 되는 곳 (#146 enemypack.js): 사물·물·45° 넘는 비탈 ---------- */
+life.hooks.enemyPass = (x, z, r) => {
+  if (col && col.blocked(x, z, r)) return false;
+  if (stream && stream.inWater(x, z)) return false;
+  const gx = height(x + 1, z) - height(x - 1, z), gz = height(x, z + 1) - height(x, z - 1);
+  return Math.hypot(gx, gz) / 2 < 1.1;
+};
 
 /* ---------- 가 본 곳 (격자 비트) ---------- */
 const FN = FIELD.fog.n, fogBits = new Uint8Array(FN * FN / 8), fogZone = new Uint8Array(FN * FN);

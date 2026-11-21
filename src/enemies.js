@@ -5,10 +5,12 @@
 //   비껴가면 stagger(비틀거림, 이때 맞으면 급소). 한 번에 덤비는 적은 COMBAT.attackers, 나머지는 ringR 둘레를 돎. 맞으면 멈칫하며 뒤로 밀림(fl)
 //   #149 back·stagger 가 끝나면 rest(ENEMIES.*.rest 초) 동안 쉬며 ringR 둘레를 돎 (덤비는 자리는 지킴)
 // 구역 번호는 hooks.zoneAt(x, z) 로 받음 (없으면 구역 없는 맵: ENEMY_SPAWN.kinds)
+// #146 무리: 같이 나온 적은 e.pack 이 같고, 적끼리 겹치지 않게 밀어내며 플레이어 둘레 자기 자리(e.slotA)로 벌려 에워쌈 → src/enemypack.js
 import * as THREE from 'three';
 import { height } from './world.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
-import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, COMBAT, CHARGE } from './balance.js';
+import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE } from './balance.js';
+import { createPack, slotGoal, bodyR } from './enemypack.js';
 import { reportCrash, crashNote } from './crash.js';
 
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -31,6 +33,7 @@ function makeBar() {
 const warnGeo = new THREE.RingGeometry(0.7, 1.05, 24).rotateX(-Math.PI / 2);
 const warnMat = new THREE.MeshBasicMaterial({ color: '#ff3b2f', transparent: true, opacity: 0.8, depthWrite: false });
 const ATK = new Set(['wind', 'dash', 'back']), AGGRO = new Set(['charge', 'wind', 'dash', 'back', 'stagger']);
+const _to = new THREE.Vector3(); // tick 안에서 새로 만들지 않음 (#146)
 
 export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   let player = null, sound = null;
@@ -38,13 +41,15 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   let waveT = ENEMY_SPAWN.first;
   const okMap = spots.enemyOk || null; // 맵이 적을 허락하지 않으면 없음 (null)
   const okAt = okMap && ((x, z) => okMap(x, z) && !hooks.spawnBlock?.(x, z)); // 다 핀 구역(#46)에는 나오지 않음
+  const pack = createPack({ list, spots, hooks });
+  let packN = 0; // 무리 묶음 id (#146): spawnPlan 한 번 = 무리 하나. 확인용 test.spawn 은 -1 로 한 무리
 
-  function spawnOne(kind, x, z, over = null) {
+  function spawnOne(kind, x, z, over = null, pk = null) {
     const def = over ? { ...ENEMIES[kind], ...over } : ENEMIES[kind], m = buildEnemyModel(kind);
     const pos = new THREE.Vector3(x, height(x, z), z);
     m.root.position.copy(pos); group.add(m.root);
     const bar = makeBar(); bar.g.position.set(0, m.h + 0.45, 0); m.root.add(bar.g);
-    const e = { ...m, kind, def, pos, heading: rnd() * Math.PI * 2, speed: 0, phase: rnd() * 6, hp: def.hp, state: 'wander', st: 0, life: def.life, rootT: range(rnd, def.rootEvery), shotT: def.ranged ? def.ranged.every * 0.6 : 0, hitCd: 0, flash: 0, bar, chg: 0, pitch: 0, roll: 0 };
+    const e = { ...m, kind, def, pos, heading: rnd() * Math.PI * 2, speed: 0, phase: rnd() * 6, seed: rnd() * 6.283, pack: pk, hp: def.hp, state: 'wander', st: 0, life: def.life, rootT: range(rnd, def.rootEvery), shotT: def.ranged ? def.ranged.every * 0.6 : 0, hitCd: 0, flash: 0, bar, chg: 0, pitch: 0, roll: 0 };
     list.push(e);
     return e;
   }
@@ -82,13 +87,14 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function spawnPlan(P, quiet = false) {
     if (!P || !player) return null;
     const sameZone = (x, z) => okAt(x, z) && (P.zone == null || P.forceKind || hooks.zoneAt(x, z) === P.zone);
-    const n = Math.min(P.n, ENEMY_SPAWN.max - list.length);
+    const n = Math.min(P.n, ENEMY_SPAWN.max - list.length), pk = ++packN;
+    const r0 = BOAR.bodyR * ENEMIES[P.kind].size, free = (x, z) => list.every((o) => o.state === 'flee' || o.state === 'leave' || Math.hypot(o.pos.x - x, o.pos.z - z) >= r0 + bodyR(o) + ENEMY_PACK.spawnGap); // 처음 자리도 겹치지 않게 (#146)
     let made = 0;
     for (let i = 0; i < n; i++) {
-      for (let k = 0; k < 8; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * 4, x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if (k < 6 ? sameZone(x, z) : okAt(x, z)) { const e = spawnOne(P.kind, x, z); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
+      for (let k = 0; k < 16; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * (4 + k * 0.3), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if ((k < 12 ? sameZone(x, z) : okAt(x, z)) && (k < 14 ? free(x, z) : true)) { const e = spawnOne(P.kind, x, z, null, pk); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
     }
     if (!made) return null;
-    const info = { kind: P.kind, n: made, x: P.x, z: P.z, zone: P.zone };
+    const info = { kind: P.kind, n: made, x: P.x, z: P.z, zone: P.zone, pack: pk };
     crashNote(`적 등장 ${P.kind}×${made}`);
     sound?.boar?.(); if (!quiet) hooks.enemyWave?.(info);
     return info;
@@ -143,7 +149,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hesitate() { if (held) return false; let n = 0; for (const e of list) if (!e.boss && AGGRO.has(e.state)) { e.hold = COMBAT.holdT; n++; } if (n) held = true; return n > 0; }
   function tick(e, dt, time) {
     const d0 = e.def; e.st += dt; e.hitCd -= dt; e.life -= dt; if (e.rest > 0) e.rest -= dt;
-    const to = new THREE.Vector3(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z), d = to.length();
+    const to = _to.set(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z), d = to.length();
     if ((e.state === 'wander' || e.state === 'root' || AGGRO.has(e.state)) && (player.down || e.life <= 0)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 쓰러뜨렸거나 시간이 다 됨
     let want = 0;
     if (e.state === 'boss' && e.ctl) { // 구역 우두머리 (#139): 패턴은 boss.js
@@ -153,9 +159,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       turnTo(e, Math.atan2(-to.x, -to.z) + Math.sin(time * 2 + e.phase) * 0.3, Math.min(1, dt * 3));
       if (d > ENEMY_SPAWN.goneD || e.st > 14) { remove(e); if (e.state === 'leave') hooks.enemyGone?.(e.kind); return; }
     } else if (e.state === 'charge' && d0.ranged) { // 멀리서 쏘는 적 (#48 외계인): 거리를 지키며 옆으로 돌고, 때마다 광선
-      const R = d0.ranged, face = Math.atan2(to.x, to.z);
-      if (d > R.keep + 3) { want = d0.chase; turnTo(e, face, Math.min(1, dt * 3)); }
+      const R = d0.ranged, face = Math.atan2(to.x, to.z), ta = e.slotA; // #146 무리 안에서 방향을 나눠 같은 쪽으로 몰리지 않게
+      if (d > R.keep + 3) { want = d0.chase; turnTo(e, ta != null ? slotGoal(e, player, R.keep, ta)[0] : face, Math.min(1, dt * 3)); }
       else if (d < R.keep - 3) { want = d0.walk; turnTo(e, face + Math.PI, Math.min(1, dt * 3)); }
+      else if (ta != null) { const g = slotGoal(e, player, R.keep, ta); if (g[1] > 1.5) { want = d0.walk; turnTo(e, g[0], Math.min(1, dt * 3)); } else { want = d0.walk * ENEMY_PACK.orbit; turnTo(e, face - Math.PI / 2, Math.min(1, dt * 2)); } } // 제 자리로 옮겨 가고, 자리에선 무리가 함께 한쪽으로 천천히 돎
       else { want = d0.walk * 0.6; turnTo(e, face + Math.PI / 2 * (e.phase % 2 < 1 ? 1 : -1), Math.min(1, dt * 2)); }
       if (!(e.fl > 0)) e.shotT -= dt; // 맞아 멈칫하는 동안은 못 쏨 (#148)
       if (e.shotT <= 0 && d < R.range && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
@@ -163,8 +170,15 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     } else if (e.hold > 0 && AGGRO.has(e.state)) { // 기운이 낮을 때 머뭇거림 (#148)
       e.hold -= dt; want = d < COMBAT.ringR ? d0.walk : 0; turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 3)); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; }
     } else if (e.state === 'charge') { // 쫓음 (#148): 자리가 있으면 windD 안에서 조짐, 없으면 ringR 둘레를 돎
-      const face = Math.atan2(to.x, to.z), resting = e.rest > 0, slot = !resting && atkN() < COMBAT.attackers; // 공격 뒤 쉬는 동안은 둘레를 돎 (#149)
+      const face = Math.atan2(to.x, to.z), resting = e.rest > 0, slot = !resting && (e.slotA == null || e.close) && atkN() < COMBAT.attackers; // 공격 뒤 쉬는 동안은 둘레를 돎 (#149). 무리에선 붙는 적(e.close)만 덤빔 (#146)
       if (slot && d < COMBAT.windD && e.hitCd <= 0 && !player.down) { e.state = 'wind'; e.st = 0; want = 0; }
+      else if (e.slotA != null) { // #146 무리: 플레이어 둘레 제 자리로 돌아 다가감. 붙는 적은 windD 안, 나머지는 한 걸음 뒤에서 맴돎
+        const Rg = slot ? ENEMY_PACK.closeR : e.close && !resting ? COMBAT.ringR : COMBAT.ringR + ENEMY_PACK.backR;
+        const g = slotGoal(e, player, Rg, e.slotA + (Rg > COMBAT.ringR ? Math.sin(time * ENEMY_PACK.driftW + e.seed) * ENEMY_PACK.drift : 0));
+        if (e.detour > 0) { e.detour -= dt; want = d0.walk; turnTo(e, g[0] + e.detourS * 1.1, Math.min(1, dt * 4)); } // 막혔으면 옆으로 돌아감
+        else if (g[1] > 0.9) { want = resting || g[1] < 3 ? d0.walk : d0.chase; turnTo(e, g[0], Math.min(1, dt * 3)); }
+        else { want = 0; turnTo(e, face, Math.min(1, dt * 3)); }
+      }
       else if (!slot && d < COMBAT.ringR + 2) { const off = Math.max(-1, Math.min(1, (COMBAT.ringR - d) / 3)), side = e.phase % 2 < 1 ? 1 : -1; want = d0.walk; turnTo(e, face + side * Math.PI / 2 * (1 + off), Math.min(1, dt * 3)); }
       else { want = resting ? d0.walk : d > 3 ? d0.chase : e.hitCd > 0 ? 0 : 2; turnTo(e, face, Math.min(1, dt * 3)); }
       if (d > d0.lose && e.st > 2) { e.state = 'wander'; e.st = 0; }
@@ -189,6 +203,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       want = d0.walk; if (rnd() < dt * 0.3) e.heading += (rnd() - 0.5) * 1.5;
       e.rootT -= dt; if (e.rootT <= 0) { e.state = 'root'; e.st = 0; e.dropped = false; }
       if (d < d0.sight && !player.down) { e.state = 'charge'; e.st = 0; }
+    }
+    if (e.state === 'charge' || e.state === 'wander') { // #146 저마다 빠르기를 조금씩 다르게, 앞에 붙은 적이 있으면 뒤에서 기다림
+      want *= 1 + ENEMY_PACK.vary * Math.sin(e.phase * 0.23 + e.seed);
+      if (e.yieldT > 0) want = Math.min(want, d0.walk * 0.5);
     }
     if (e.fl > 0) { e.fl -= dt; want = 0; e.speed = 0; const nx = e.pos.x + e.flX * e.flV * dt, nz = e.pos.z + e.flZ * e.flV * dt; if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); } // 맞아 멈칫 (#148)
     if (e.snap) e.speed = want; else e.speed += (want - e.speed) * Math.min(1, dt * 3); // 우두머리 돌진은 바로 (snap)
@@ -271,7 +289,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (!hooks.paced) waveT -= dt; // 연출 감독(#89)이 있으면 감독이 부름
     if (waveT <= 0) { spawnWave(); waveT = ENEMY_SPAWN.every; } // 못 나오면(오름 밖·가득 참) 다음 차례까지 기다림
     blocked = false;
+    if (list.length > 1) pack.assign(dt, player, AGGRO); // #146 무리 자리 나누기
     for (let i = list.length - 1; i >= 0; i--) { const e = list[i]; if (!e) continue; try { tick(e, dt, time); } catch (err) { reportCrash(err, 'enemy ' + e.kind); remove(e); } } // #108 한 마리가 오류를 내면 그 적만 없애고 게임은 계속
+    if (list.length > 1) { try { pack.separate(dt); } catch (err) { reportCrash(err, 'enemy pack'); } } // #146 적끼리 겹치지 않게
     stuckT = blocked && player.driving ? stuckT + dt : Math.max(0, stuckT - dt * 2);
     if (!list.some((e) => AGGRO.has(e.state))) held = false; // 싸움이 끝나면 머뭇거림을 다시 쓸 수 있음
   }
@@ -299,7 +319,11 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     test: {
       wave: (kind = null) => spawnWave(true, kind),
       kindHere: () => (player ? kindAt(player.pos.x, player.pos.z) : null),
-      spawn: (kind = 'boar', dx = 8, dz = 8) => (player ? spawnOne(kind, player.pos.x + dx, player.pos.z + dz) : null),
+      spawn: (kind = 'boar', dx = 8, dz = 8, pk = -1) => (player ? spawnOne(kind, player.pos.x + dx, player.pos.z + dz, null, pk) : null),
+      // #146 한 자리에 n 마리 한 무리 (ENEMY_SPAWN.max 를 넘어도 부름). 바로 쫓음
+      pack: (kind = 'boar', n = 6, dx = 12, dz = 0) => { if (!player) return []; const pk = ++packN, got = []; for (let i = 0; i < n; i++) { const e = spawnOne(kind, player.pos.x + dx + (rnd() - 0.5) * 0.4, player.pos.z + dz + (rnd() - 0.5) * 0.4, null, pk); e.state = 'charge'; e.st = 0; got.push(e); } return got; },
+      // 가장 가까운 두 적 사이 거리 - 몸 반지름 합(최솟값), 플레이어 둘레로 벌어진 각(도)
+      spread: () => { const L = list.filter((e) => e.state !== 'flee' && e.state !== 'leave'); let gap = Infinity, near = Infinity; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const dd = Math.hypot(L[i].pos.x - L[j].pos.x, L[i].pos.z - L[j].pos.z); gap = Math.min(gap, dd - bodyR(L[i]) - bodyR(L[j])); near = Math.min(near, dd); } const bs = L.map((e) => Math.atan2(e.pos.x - player.pos.x, e.pos.z - player.pos.z)).sort((a, b) => a - b); let big = 0; for (let i = 0; i < bs.length; i++) big = Math.max(big, ((bs[(i + 1) % bs.length] - bs[i]) + Math.PI * 4) % (Math.PI * 2) || (bs.length === 1 ? Math.PI * 2 : 0)); return { n: L.length, gap, near, arc: (Math.PI * 2 - big) * 180 / Math.PI, d: L.map((e) => Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z)) }; },
       clear: () => { for (const e of list.slice()) remove(e); for (const b of bolts) group.remove(b.g); bolts.length = 0; },
       get timer() { return waveT; }, set timer(v) { waveT = v; },
       state: () => list.map((e) => ({ kind: e.kind, hp: e.hp, state: e.state, life: Math.round(e.life), x: Math.round(e.pos.x), z: Math.round(e.pos.z) })),
