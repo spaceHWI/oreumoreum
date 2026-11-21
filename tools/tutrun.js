@@ -56,7 +56,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   ok(ez.easy && ez.shake && ez.text !== before, `30초: 흔들고 쉬운 말 (${before} → ${ez.text})`);
   await go(...t.walk, t.run); await W(1500);
   // ----- #151 확대·축소: 휠(PC) / 두 손가락(폰, 여기선 cam.dist 를 바꿔 흉내) -----
-  ok(await until(() => window.__oreum.tut.step === 'zoom', 8000), '확대 단계');
+  ok(await until(() => window.__oreum.tut.step === 'zoom', 30000), '확대 단계'); /* 느린 화면(소프트웨어 GL 1~4fps)에선 '잘했어요' 뒤 다음 단계가 늦게 옴 (#193) */
   await shot('025-zoom');
   await p.evaluate(() => { window.__oreum.cam.dist *= 0.8; }); await W(800); ok(await p.evaluate(() => window.__oreum.tut.step === 'zoom'), '카메라 거리가 저절로 바뀐 것은 안 셈');
   if (mode === 'm') { ok(await p.evaluate(() => !document.getElementById('tut-pinch').hidden), '폰: 두 손가락 그림'); await p.evaluate(() => { window.__oreum.cam.zoomed *= 0.8; }); } // 두 손가락은 흉내만 (input.js userZoom 과 같은 값)

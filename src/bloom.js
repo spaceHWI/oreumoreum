@@ -81,7 +81,7 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low, ambFly
   const stemMat = new THREE.MeshToonMaterial({ color: '#5f9a45', vertexColors: true, gradientMap: gradHard });
   const headMat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
   const treeMat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
-  const IM = {}; // IM[zone][g] = { stem, head, cap }
+  const IM = {}; /* IM[zone][g] = { stem, head, cap } */
   ZONE_IDS.forEach((z) => { IM[z] = [0, 1, 2].map((g) => { const geo = clumpGeo(B.zones[z].kind, z * 10 + g), cap = Math.max(1, items.filter((it) => it.kind === 0 && it.zone === z && it.g === g).length);
     const mk = (gg, m) => { const im = new THREE.InstancedMesh(gg, m, cap); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; scene.add(im); return im; };
     const head = mk(geo.head, headMat); head.setColorAt(0, new THREE.Color()); return { stem: mk(geo.stem, stemMat), head }; }); });

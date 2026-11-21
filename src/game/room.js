@@ -42,7 +42,7 @@ export const net = createNet({
     room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
   },
-  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}) }), // tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76)
+  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}) }), /* tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76) */
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)
@@ -69,4 +69,4 @@ export function startSession() { if (state.sessionOn) return; state.sessionOn = 
 addEventListener('pagehide', () => ab.flush());
 document.addEventListener('visibilitychange', () => { if (document.hidden) ab.flush(); });
 export const tmp = new THREE.Vector3();
-export const alertMark = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 96; const g = c.getContext('2d'); g.fillStyle = '#e2342a'; g.font = 'bold 86px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 32, 50); const t = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false })); sp.scale.set(0.8, 1.2, 1); sp.position.y = 3.0; sp.visible = false; sp.renderOrder = 11; runner.root.add(sp); return sp; })();
+/* 내 머리 위 빨간 느낌표는 없앰 (#201): 위험은 화면 가장자리 붉은빛(#141)·적 방향 표시로 충분 */

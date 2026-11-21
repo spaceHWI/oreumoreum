@@ -156,7 +156,10 @@ export function createRoofSigns({ scene, height, street, shops }) {
       const d = Math.hypot(cp.x - s.x, cp.y - s.sp.position.y, cp.z - s.z);
       const want = Math.min(S.roofSize * S.roofMaxK, Math.max(S.roofSize, (S.roofMinPx * 2 * d * tanH) / Math.max(1, viewH)));
       if (Math.abs(want - s.size) > 0.02) { s.size = want; setY(s); }
-      const dh = Math.hypot(cp.x - s.x, cp.z - s.z), top = s.onTop && dh > S.roofTopNear && d < S.roofTopFar, m = s.sp.material;
+      const dh0 = Math.hypot(cp.x - s.x, cp.z - s.z), vis = dh0 < S.roofShow; // 멀리서는 감춤 (#201)
+      if (s.sp.visible !== vis) { s.sp.visible = vis; s.glow.visible = vis; }
+      if (!vis) continue;
+      const dh = dh0, top = s.onTop && dh > S.roofTopNear && d < S.roofTopFar, m = s.sp.material;
       if (m.depthTest === top) { m.depthTest = !top; s.dot.material.depthTest = !top; s.glow.material.depthTest = !top; s.sp.renderOrder = top ? 999 : 3; s.dot.renderOrder = top ? 1000 : 4; }
       m.opacity = top && d < S.roofNear ? S.roofFade : 1;
       s.glow.material.opacity = night * S.roofGlow;

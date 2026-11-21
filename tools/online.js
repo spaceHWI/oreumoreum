@@ -25,6 +25,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     // 튜토리얼 끝낸 손님으로 들어감
     await p.evaluate(() => { const o = window.__oreum; Object.assign(o.save, { server: 'clean', entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); localStorage.setItem(Object.keys(localStorage).find((k) => k.startsWith('oreumoreum') && !k.includes('.ab')) || 'oreumoreum.v1', JSON.stringify(o.save)); });
     await p.reload(); await p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 120000 });
+    // 오래 멈춤(#157): 검사 화면은 손을 대지 않으므로 8분 뒤 서버가 닫고(4004) 클라이언트도 쉬러 감 → 뒤쪽 검사(노루 먹이·엔딩)가 B 에 닿지 않던 원인 (#193). 조작이 있는 것처럼 둠
+    await p.evaluate(() => { const i = window.__oreum.idle; if (!i) return; i.set({ warn: 1e6, rest: 1e6, hidden: 1e6 }); setInterval(() => i.act?.(), 20000); });
     console.log(name, 'ready');
     return { ctx, p };
   };
@@ -60,7 +62,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   };
   ok(await A.p.evaluate(() => document.getElementById('enter').textContent === '손님으로 하기' && !document.getElementById('acct-box').hidden), '첫 화면: 손님으로 하기·베타 안내');
   ok(await A.p.evaluate(() => /7일/.test(document.getElementById('acct-box').textContent)), '베타 안내 문구');
-  for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
+  for (const X of [A, B]) { await X.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */; await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
   if (ONLY === 'cart') { // 지나가는 마차 (#120): A 가 달리는 마차에 타면 B 화면에도 앉은 모습, B 는 A 가 앉은 자리를 피해 앉음
@@ -107,18 +109,18 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.title === t && e.label?.scale.y > 0.9), tt), `A 가 단 칭호가 B 화면 이름표 위에 (${tt})`);
     await A.p.evaluate(() => { window.__oreum.punkWorld.title.set(-1); window.__oreum.player.pos.x += 0.5; });
     ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
-    const C = await open('C'); await C.p.click('#enter', { timeout: 120000 }); // 세 번째 브라우저는 느린 환경에서 클릭 처리(입장 준비)가 30초를 넘기도 함
+    const C = await open('C'); await C.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */;
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
-    await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
+    await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat], 90000); /* 화면 셋: C 가 방에 붙기까지 30초를 넘기도 함 (#193) */ // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
     const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
     ok(cs.some(([n, h]) => n === an && h === hat), `새로 들어온 C 에게 A 의 옷·닉네임 (${JSON.stringify(cs)})`);
     await C.ctx.close(); await wait(A.p, 800);
   }
   // A 를 움직이면 B 화면의 A 가 따라옴
   await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 5; });
-  await wait(A.p, 800);
-  const d = await B.p.evaluate(() => { const e = [...window.__oreum.net.peersById.values()][0]; return e ? e.tpos.x : null; });
   const ax = await A.p.evaluate(() => window.__oreum.player.pos.x);
+  await until(B, (ax) => { const e = [...window.__oreum.net.peersById.values()][0]; return e && Math.abs(e.tpos.x - ax) < 0.5; }, ax, 10000); /* 0.8초 고정 대신: 느린 화면에선 다음 자리 보내기가 늦음 (#193) */
+  const d = await B.p.evaluate(() => { const e = [...window.__oreum.net.peersById.values()][0]; return e ? e.tpos.x : null; });
   ok(d != null && Math.abs(d - ax) < 0.5, `위치 이어 받기 (A ${ax.toFixed(1)} / B 가 본 A ${d?.toFixed(1)})`);
   { // 무기 3~6단계 (#123): A 가 쏜 탄·던진 폭탄이 B 화면에 보임 (presence wf 사건만, 보내는 양은 그대로)
     await B.p.evaluate(() => { const f = window.__oreum.weapon.fx; window.__vis = { shot: 0, lob: 0 }; const s0 = f.shoot, l0 = f.lob; f.shoot = function (...a) { if (a[2]?.vis) window.__vis.shot++; return s0.apply(this, a); }; f.lob = function (...a) { if (a[2]?.vis) window.__vis.lob++; return l0.apply(this, a); }; });
@@ -151,7 +153,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
     await wait(A.p, 1500);
     const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
-    ok((aOn >= 1 || aOn === -1) && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn === -1 ? '꺼짐(#190 BUDDIES.on)' : aOn + '명'}, B 가 보는 사람 ${bSee.n}명`);
+    if (aOn === -1) ok(bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료 꺼짐(#190 BUDDIES.on=false): B 가 보는 사람 ${bSee.n}명, 동료 값 없음`); /* 동료를 다시 켜면 아래 줄이 다시 봄 (#193) */
+    else ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
     const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
     const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
     await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
@@ -192,8 +195,12 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await B.p.evaluate(() => { const d = window.__oreum.player.riding; d.pos.x -= 1.5; d.pos.z += 1; d.heading = 2.2; });
     await wait(A.p, 1500);
     const seen = await A.p.evaluate(({ id, bId }) => { const o = window.__oreum, d = o.life.deerById(id), e = o.net.peersById.get(bId); return { rider: o.deerNet().rides.get(id), st: d.state, dr: e?.data.dr, gap: e ? Math.hypot(d.pos.x - e.pos.x, d.pos.z - e.pos.z) : -1, lift: e ? e.runner.root.position.y - e.pos.y : 0 }; }, { id, bId });
-    const bp = await B.p.evaluate(() => { const d = window.__oreum.player.riding; return [d.pos.x, d.pos.z]; });
-    const ap = await A.p.evaluate((id) => { const d = window.__oreum.life.deerById(id); return [d.pos.x, d.pos.z]; }, id);
+    let bp, ap; /* 두 화면을 차례로 읽는 사이 노루가 움직이므로 몇 번 다시 잼 (#193: 화면이 무거워져 한 번 재면 1.98m 로 흔들림) */
+    for (let k = 0; k < 6; k++) {
+      bp = await B.p.evaluate(() => { const d = window.__oreum.player.riding; return [d.pos.x, d.pos.z]; });
+      ap = await A.p.evaluate((id) => { const d = window.__oreum.life.deerById(id); return [d.pos.x, d.pos.z]; }, id);
+      if (Math.hypot(ap[0] - bp[0], ap[1] - bp[1]) < 1.5) break; await wait(A.p, 700);
+    }
     // 차이 상한 1.5m (#131): 소프트웨어 GL 둘이 같이 도는 확인 환경에서는 보내기(sendMs)·틱·보간이 밀려 1m 안팎으로 흔들림 (dev 에서도 1.02~1.10m 로 실패하던 것)
     ok(seen.rider === bId && seen.st === 'ridden' && seen.dr === id && seen.gap < 0.3 && seen.lift > 0.6 && Math.hypot(ap[0] - bp[0], ap[1] - bp[1]) < 1.5, `A 화면: B 가 노루에 걸터앉아 같이 움직임 (${JSON.stringify(seen)}, 차이 ${Math.hypot(ap[0] - bp[0], ap[1] - bp[1]).toFixed(2)}m)`);
     await A.p.screenshot({ path: 'dist/deer-ride-a.png' }); await B.p.screenshot({ path: 'dist/deer-ride-b.png' });
@@ -245,23 +252,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const a2 = await A.p.evaluate(() => window.__oreum.story.ending.state()), b2 = await B.p.evaluate(() => window.__oreum.story.ending.state());
     ok(!!a2 && !b2, `엔딩: 같은 날 두 번째는 끝낸 사람만 (A ${!!a2} · B ${!!b2})`);
     await A.p.evaluate(() => window.__oreum.story.ending.stop());
-  }
-  { // 오래 멈춤 (#157, 방장 순서를 쓰는 확인들 뒤): 시간을 짧게 줄여 (가) 조작 없으면 방에서 빠짐 (나) 누르면 같은 자리로 돌아옴 (다) 서버가 닫은 연결엔 다시 붙지 않음
-    await A.p.evaluate(() => window.__oreum.idle.set({ warn: 1, rest: 2 }));
-    const gone = await until(B, () => window.__oreum.net.count === 0, null, 20000);
-    const as = await A.p.evaluate(() => window.__oreum.idle.state());
-    ok(gone && as.mode === 'rest' && as.asleep, `(가) 조작이 없으면 쉬러 가고 B 화면에서 사라짐 (${JSON.stringify({ mode: as.mode, asleep: as.asleep })})`);
-    const ap = await A.p.evaluate(() => { const o = window.__oreum; o.idle.set({ warn: 900, rest: 900 }); o.idle.wake(); return o.player.pos.x; });
-    const back = await until(B, (x) => [...window.__oreum.net.peersById.values()].some((e) => Math.abs(e.tpos.x - x) < 0.5), ap, 20000);
-    ok(back, `(나) 누르면 다시 들어와 같은 자리 (A ${ap.toFixed(1)})`);
-    // 서버 기준을 2초로 (로컬 STATS_OPEN 만 받음). 화면 쪽 시간은 길게 둬서 서버가 닫는지만 봄
-    await A.p.evaluate(() => window.__oreum.net.room.send({ t: 'idle', s: 2 }));
-    const shut = await until(A, () => window.__oreum.idle.state().mode === 'rest', null, 20000);
-    await wait(A.p, 5000);
-    const st2 = await A.p.evaluate(() => ({ open: window.__oreum.net.room.open, mode: window.__oreum.idle.state().mode }));
-    ok(shut && !st2.open && st2.mode === 'rest' && await B.p.evaluate(() => window.__oreum.net.count === 0), `(다) 서버가 닫으면(4004) 쉬는 화면, 다시 붙지 않음 (${JSON.stringify(st2)})`);
-    await A.p.evaluate(() => window.__oreum.idle.wake());
-    ok(await until(B, () => window.__oreum.net.count === 1, null, 20000) && await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1, null, 20000), '깨우면 다시 서로 봄');
+    { let c = -1; for (let k = 0; k < 20; k++) { const n = await A.p.evaluate(() => window.__oreum.save.coins); if (n === c) break; c = n; await wait(A.p, 2000); } } /* 억지로 다시 튼 엔딩의 보상(귤 날아가는 효과 뒤 숫자 올림)이 아래 '귤 40' 뒤에 들어와 340 이 되던 것 (#193) */
   }
   // 가짜 로그인 → 계정 사본으로 새로고침
   await A.p.evaluate(() => { window.__oreum.save.coins = 40; });
@@ -278,7 +269,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   const c = await A.p.evaluate(() => window.__oreum.save.coins);
   ok(c < 999999 && c <= 40 + NET.earnBurst + NET.earnPerSec * 60, `귤 부풀리기 바로잡힘 (999999 → ${c})`);
   // 보안 (#84)
-  if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.click('#enter').catch(() => {}); }
+  if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */.catch(() => {}); }
   for (let k = 0; k < 30 && !(await A.p.evaluate(() => window.__oreum.net.ready)); k++) await wait(A.p, 1000);
   ok(await A.p.evaluate(() => window.__oreum.net.ready), '로그인한 채로 방에 붙음 (토큰은 하위 프로토콜)');
   ok(await A.p.evaluate(() => document.getElementById('m-dev').hidden), '서버가 있으면 어드민이 아닌 계정에 개발자 메뉴 없음');

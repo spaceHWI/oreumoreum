@@ -26,7 +26,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     // 튜토리얼 끝낸 기록으로 저장하고 다시 엶 (튜토리얼 중엔 혼자라 남이 안 보임)
     await p.evaluate(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); const k = Object.keys(localStorage).find((x) => x.endsWith('.acct')); if (k) localStorage.setItem(k, JSON.stringify(o.save)); return o.online.account().push(); }); // 이 기기 사본에도 바로 (push 가 바쁘면 건너뜀)
     await p.reload(); await ready(p);
-    if (await p.evaluate(() => !document.getElementById('intro').hidden)) await p.click('#enter').catch(() => {});
+    const introOpen = () => p.evaluate(() => !document.getElementById('intro').hidden);
+    if (await introOpen().catch(async () => { await ready(p); return introOpen(); })) await p.click('#enter').catch(() => {}); /* 로그인 뒤 페이지가 한 번 더 새로 고쳐지며 읽던 문맥이 사라지기도 함 (#193) */
     const X = { ctx, p };
     ok(await until(X, () => window.__oreum.net.ready && window.__oreum.online.account().loggedIn, null, 40000), `${name}: 로그인한 채로 방에 붙음`);
     console.log(name, 'ready');

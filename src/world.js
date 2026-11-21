@@ -18,7 +18,7 @@ export const smooth = (t) => t * t * (3 - 2 * t);
 const AKKEUN = { x: 330, z: 300, r: 95, h: 26 };
 
 // 다른 맵(돈내코)이 지형 함수를 갈아끼울 수 있게
-let altImpl = null; // { height(x,z), surface(x,z), color(x,z,h,c) }
+let altImpl = null; /* { height(x,z), surface(x,z), color(x,z,h,c) } */
 export function setMapImpl(impl) { altImpl = impl; }
 export function heightAnalytic(x, z) {
   if (altImpl) return altImpl.height(x, z);

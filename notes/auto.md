@@ -21,10 +21,12 @@
 - 수치는 한 파일(예: `src/balance.js`)에 모은다
 
 ## 확인
-- `npm ci` 후 `node build.mjs` 통과
+- `npm ci` 후 `node build.mjs` 통과 (빌드가 `tools/lint.js` 로 줄 중간 `//` 주석·300자 넘는 줄의 `//` 를 막는다. 걸리면 `/* */` 로 쓰거나 줄을 나눈다)
+- `node tools/smoke.js` 통과 (새 사용자 튜토리얼 첫 단계·게임 루프 셈·걷기·줍기·던지기·가게·가방, 폰·PC). 게임 루프(`src/game/update.js`)에 새 시스템을 붙이면 `state.ticks` 와 `smoke.js` 의 `LOOP` 에 한 줄 더한다. 루프는 문장마다 한 줄
 - `tools/err.js` 를 남송이 기준으로 돌려 페이지 오류가 없는지 확인 (필요하면 스크립트의 주소 해시를 고쳐 쓴다). 스크린샷은 꼭 필요할 때만, 작게
 - 새 기능은 `window.__oreum` 으로 값을 넣어 보며 동작을 확인한다
 - 귤이 늘어나는 새 기능은 '서버가 그 몫을 아는가' 를 확인한다 (#188): 기록이 저장에 남는 큰 보상이면 `server/src/earn.js` 에 인정 길을 더하고, 아니면 한 번에 `NET.earnBurst` 를 넘지 않는지 본다. `tools/sec.js` 에 그 몫을 받아 주는 줄·두 번 받기 거절 줄을 더한다
+- **검사가 실패하면 '이 작업 전 dev 에서도 실패' 라고 넘기지 않는다** (#193). 그 자리에서 고치거나(낡은 검사면 검사를) 새 이슈를 올리고 그 번호를 코멘트에 적는다
 - 수치(`src/balance.js`, `NET` 한도 포함)를 바꾸는 이슈는 `node tools/online.js`(로컬 서버 `cd server && npm run dev`)·`node tools/sec.js` 를 끝까지 돌려 통과시킨다. 실패를 '관계없음' 으로 남기지 않는다: 낡은 검사면 검사를 고치고, 진짜 구멍이면 코드를 고친다 (#144)
 
 ## 오류 알림 이슈
@@ -35,7 +37,7 @@
 
 ## 끝
 1. 커밋하고 `work/` 브랜치를 올린다: `git -c push.negotiate=true push -u origin <브랜치>`
-2. 확인이 통과했으면 `dev` 에 합쳐 올린다. 다른 실행이 그새 dev 를 바꿨을 수 있으니 합치기 직전에 `git pull` 로 받고, 충돌은 양쪽 의도를 살려 고친 뒤 빌드·`err.js` 를 한 번 더 돌린다. push 가 거절되면 다시 받아 합친다 (`git checkout dev && git pull --ff-only origin dev && git merge --no-ff <브랜치> && git push origin dev`). 개발 서버에 자동 게시된다
+2. 확인이 통과했으면 `dev` 에 합쳐 올린다. 다른 실행이 그새 dev 를 바꿨을 수 있으니 합치기 직전에 `git pull` 로 받고, 충돌은 양쪽 의도를 살려 고친 뒤, **충돌이 없어도 합친 뒤의 dev 에서** 빌드·`err.js`·`smoke.js` 를 한 번 더 돌린다 (나란히 도는 다른 실행의 변경과 합쳐진 상태로, #193). 실패하면 push 하지 않는다. push 가 거절되면 다시 받아 합친다 (`git checkout dev && git pull --ff-only origin dev && git merge --no-ff <브랜치> && git push origin dev`). 개발 서버에 자동 게시된다
 3. 이슈 메모(바꾼 것·결정 사항)는 `notes/history.md` 끝에 몇 줄 더하고, 파일 구성이 바뀌었으면 `notes/prototype-v1.md` 의 코드 구조도 고친다 (2의 합치기 전에)
 4. 이슈에 결과 코멘트(바꾼 것, dev 에서 확인하는 방법, 임시로 둔 것·남은 점)를 달고 이슈를 닫는다
 5. (실행 글에 줄 이름이 있으면 그 줄에서, 다른 실행이 하는 중인 것은 빼고) `notes/queue.md` 에서 다음으로 열려 있는 이슈를 찾아, 그 이슈의 모델에 맞는 예약 작업을 `fire_trigger` 도구로 실행한다 (ToolSearch 로 `select:mcp__claude-code-remote__fire_trigger`, 예약 작업 ID 는 프롬프트에 있음). 남은 이슈가 없거나 도구가 없으면 넘어간다

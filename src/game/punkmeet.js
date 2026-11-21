@@ -343,7 +343,7 @@ late.meet = {
   hitCrow() { if (!crowAim.ok()) return false; crowHit(); return true; },
   hitTourist() { if (!tourAim.ok()) return false; tourHit(); return true; },
   shoot: () => shootTourist(),
-  litterNow() { if (tour) removeTourist(); if (!spawnTourist(true)) return false; const a = player.heading, x = player.pos.x + Math.sin(a) * 6, z = player.pos.z + Math.cos(a) * 6; tPos.set(x, height(x, z), z); tour.heading = a; tour.state = 'drop'; tour.t = 0.6; tour.m.bag.visible = true; return true; }, // 플레이어 앞 6m 에서 바로 쓰레기를 버리고 돌아섬
+  litterNow() { if (tour) removeTourist(); if (!spawnTourist(true)) return false; const a = player.heading, x = player.pos.x + Math.sin(a) * 6, z = player.pos.z + Math.cos(a) * 6; tPos.set(x, height(x, z), z); tour.heading = a; tour.state = 'drop'; tour.t = 0.6; tour.m.bag.visible = true; return true; }, /* 플레이어 앞 6m 에서 바로 쓰레기를 버리고 돌아섬 */
   goTourist() { if (!tour) return null; const a = tour.heading, x = tPos.x + Math.sin(a) * 2, z = tPos.z + Math.cos(a) * 2; player.pos.set(x, height(x, z), z); player.heading = a + Math.PI; return { x: +x.toFixed(1), z: +z.toFixed(1) }; },
   five(i = -1) {
     const list = hbList.filter((h) => h.up()); if (!list.length) return false;

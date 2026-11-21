@@ -881,6 +881,7 @@ export const SHOP_ST = {
   roofMinPx: 28, roofMaxK: 2.6, // 화면에서 최소 이 px 로 보이게 멀수록 키움 (최대 roofSize × roofMaxK)
   roofSee: [8, 16, 28], roofSeeH: 3.5, roofNear: 30, roofFade: 0.82, roofTopNear: 12, roofTopFar: 70, // 둘레 이 거리(m)·눈높이에서 가려지면 그 간판만 맨 위에 그림(roofTopNear~roofTopFar 사이만: 가게 바로 앞에선 앞 간판을 덮지 않게), roofNear 안에선 roofFade 만큼 투명
   roofGlow: 0.5, // 밤 간판 뒤 따뜻한 빛 세기
+  roofShow: 70, // 지붕 간판은 카메라가 이 거리(m, 땅 위) 안일 때만 (#201: 멀리서는 감춤)
   dirR: 3.4, // 들머리 '가게 안내도' 판 앞 이 거리 안이면 상호작용 '가게 안내'
   cartHintR: 9, // 정상·능선 클린하우스 이 거리 안에서 버리고 나면 '가게 거리 가는 마차' 안내 (세션에 한 번)
 };

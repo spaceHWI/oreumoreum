@@ -59,8 +59,8 @@ export const scene = new THREE.Scene();
 const FOG = new THREE.Color('#cfe0dc');
 scene.background = FOG;
 scene.fog = new THREE.Fog(FOG, MAP_ID === 'gate' ? 90 : 220, MAP_ID === 'donnaeko' ? 3200 : MAP_ID === 'gate' ? 900 : 2600);
-const leapLane = (() => { const sh = SHOPS.find((r) => r.id === 'leap'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(LEAP.fore - 0.2), at(LEAP.fore + LEAP.D + 0.2)], w: LEAP.W / 2 + 0.2 }]; })(); // LEAP 바닥 밑 풀 없앰 (#59)
-export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane] }) : null; // 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목
+const leapLane = (() => { const sh = SHOPS.find((r) => r.id === 'leap'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(LEAP.fore - 0.2), at(LEAP.fore + LEAP.D + 0.2)], w: LEAP.W / 2 + 0.2 }]; })(); /* LEAP 바닥 밑 풀 없앰 (#59) */
+export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane] }) : null; /* 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목 */
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 export const camera = new THREE.PerspectiveCamera(SCREEN.fov, 1, 0.5, NSW ? NSW.camFar : 14000);
