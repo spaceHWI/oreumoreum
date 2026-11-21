@@ -118,9 +118,9 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   }
   // A 를 움직이면 B 화면의 A 가 따라옴
   await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 5; });
-  await wait(A.p, 800);
-  const d = await B.p.evaluate(() => { const e = [...window.__oreum.net.peersById.values()][0]; return e ? e.tpos.x : null; });
   const ax = await A.p.evaluate(() => window.__oreum.player.pos.x);
+  await until(B, (ax) => { const e = [...window.__oreum.net.peersById.values()][0]; return e && Math.abs(e.tpos.x - ax) < 0.5; }, ax, 10000); /* 0.8초 고정 대신: 느린 화면에선 다음 자리 보내기가 늦음 (#193) */
+  const d = await B.p.evaluate(() => { const e = [...window.__oreum.net.peersById.values()][0]; return e ? e.tpos.x : null; });
   ok(d != null && Math.abs(d - ax) < 0.5, `위치 이어 받기 (A ${ax.toFixed(1)} / B 가 본 A ${d?.toFixed(1)})`);
   { // 무기 3~6단계 (#123): A 가 쏜 탄·던진 폭탄이 B 화면에 보임 (presence wf 사건만, 보내는 양은 그대로)
     await B.p.evaluate(() => { const f = window.__oreum.weapon.fx; window.__vis = { shot: 0, lob: 0 }; const s0 = f.shoot, l0 = f.lob; f.shoot = function (...a) { if (a[2]?.vis) window.__vis.shot++; return s0.apply(this, a); }; f.lob = function (...a) { if (a[2]?.vis) window.__vis.lob++; return l0.apply(this, a); }; });
@@ -195,8 +195,12 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await B.p.evaluate(() => { const d = window.__oreum.player.riding; d.pos.x -= 1.5; d.pos.z += 1; d.heading = 2.2; });
     await wait(A.p, 1500);
     const seen = await A.p.evaluate(({ id, bId }) => { const o = window.__oreum, d = o.life.deerById(id), e = o.net.peersById.get(bId); return { rider: o.deerNet().rides.get(id), st: d.state, dr: e?.data.dr, gap: e ? Math.hypot(d.pos.x - e.pos.x, d.pos.z - e.pos.z) : -1, lift: e ? e.runner.root.position.y - e.pos.y : 0 }; }, { id, bId });
-    const bp = await B.p.evaluate(() => { const d = window.__oreum.player.riding; return [d.pos.x, d.pos.z]; });
-    const ap = await A.p.evaluate((id) => { const d = window.__oreum.life.deerById(id); return [d.pos.x, d.pos.z]; }, id);
+    let bp, ap; /* 두 화면을 차례로 읽는 사이 노루가 움직이므로 몇 번 다시 잼 (#193: 화면이 무거워져 한 번 재면 1.98m 로 흔들림) */
+    for (let k = 0; k < 6; k++) {
+      bp = await B.p.evaluate(() => { const d = window.__oreum.player.riding; return [d.pos.x, d.pos.z]; });
+      ap = await A.p.evaluate((id) => { const d = window.__oreum.life.deerById(id); return [d.pos.x, d.pos.z]; }, id);
+      if (Math.hypot(ap[0] - bp[0], ap[1] - bp[1]) < 1.5) break; await wait(A.p, 700);
+    }
     // 차이 상한 1.5m (#131): 소프트웨어 GL 둘이 같이 도는 확인 환경에서는 보내기(sendMs)·틱·보간이 밀려 1m 안팎으로 흔들림 (dev 에서도 1.02~1.10m 로 실패하던 것)
     ok(seen.rider === bId && seen.st === 'ridden' && seen.dr === id && seen.gap < 0.3 && seen.lift > 0.6 && Math.hypot(ap[0] - bp[0], ap[1] - bp[1]) < 1.5, `A 화면: B 가 노루에 걸터앉아 같이 움직임 (${JSON.stringify(seen)}, 차이 ${Math.hypot(ap[0] - bp[0], ap[1] - bp[1]).toFixed(2)}m)`);
     await A.p.screenshot({ path: 'dist/deer-ride-a.png' }); await B.p.screenshot({ path: 'dist/deer-ride-b.png' });
