@@ -1056,6 +1056,8 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #quest-track[hidden] { display: none; }
 #quest-track .qm { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #ffd23f; color: #3a2a00; font: 900 15px/1 var(--display); font-style: normal; }
 #quest-track .qm.side { background: #fff; }
+#quest-track .qm.tmp { background: var(--gyul); color: #fff; }
+#quest-track .qm.next { background: rgba(255,255,255,.9); color: #3a3a3a; }
 #quest-track .qt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 #quest-track .qp { flex: none; color: var(--gyul); }
 #quest-track .qa { flex: none; width: 18px; height: 18px; transform: rotate(var(--a, 0rad)); }
@@ -1432,7 +1434,7 @@ body.newbie .dock button span { display: block; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-3066b59087.js">(function () {
+<script data-main="main-022d703fdc.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
