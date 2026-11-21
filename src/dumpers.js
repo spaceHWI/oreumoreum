@@ -326,7 +326,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   function aimTargets(out) {
     for (const d of list) {
       if (d.state !== 'come' && d.state !== 'dump') continue;
-      let a = aims.get(d); if (!a) { a = { kind: d.kind, pos: d.pos, h: d.h * 0.55, size: d.def.hitR, vel: new THREE.Vector3() }; aims.set(d, a); }
+      let a = aims.get(d); if (!a) { a = { kind: d.kind, pos: d.pos, h: d.h * 0.55, size: d.def.hitR, vel: new THREE.Vector3(), ok: () => list.includes(d) && (d.state === 'come' || d.state === 'dump') }; aims.set(d, a); }
       a.vel.set(Math.sin(d.heading) * d.speed, 0, Math.cos(d.heading) * d.speed); out.push(a);
     }
     if (aims.size > list.length * 2 + 8) for (const k of aims.keys()) if (!list.includes(k)) aims.delete(k);

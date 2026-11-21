@@ -1,5 +1,5 @@
 // 무기 3~6단계 확인 (#123): node tools/arms.js [shot]
-// dist/test.html 남송이 전투 오름에서 무기마다 적(멧돼지·외계인)을 불러 쫓아내는 시간·쓴 귤·쏜 수를 잼. 적은 움직이지 않게(쏘지도 않게) 묶음
+// dist/test.html 남송이 전투 오름에서 무기마다 적(멧돼지·외계인)을 불러 쫓아내는 시간·쓴 귤·쏜 수를 잼. 적은 움직이지 않게(쏘지도 않게, 맞아 밀려도 제자리로 #148) 묶음
 // 시간은 게임 시간(느린 헤드리스에서도 실제 초). 머신건·레이저는 F 를 누르고 있음, 총·활·폭탄은 cd 마다 F. shot 을 주면 무기마다 쏘는 순간을 /tmp/claude-0/shots/arms-*.png 로
 const { chromium } = require('playwright');
 const SHOT = process.argv[2] === 'shot', OUT = process.env.SHOTS || '/tmp/claude-0/shots/';
@@ -21,7 +21,7 @@ if (SHOT) require('fs').mkdirSync(OUT, { recursive: true });
       o.save.equip.weapon = 6; o.weapon.use(tier); o.save.coins = 5000; o.save.bowAmmo = 0; o.save.ammo = { gun: 0, mg: 0, laser: 0 };
       const x = -60, z = 40; o.player.pos.set(x, o.groundAt(x, z), z); o.player.heading = Math.PI / 2; o.player.knock = null;
       // 적을 앞 12m 에 세우고 움직이지 않게 (쏘지도 않게)
-      const e = o.enemies.test.spawn(kind, 12, 0); e.def = { ...e.def, walk: 0, chase: 0, flee: 9, rootEvery: [999, 999], ...(e.def.ranged ? { ranged: { ...e.def.ranged, every: 999 } } : {}) }; e.heading = -Math.PI / 2; e.shotT = 999;
+      const e = o.enemies.test.spawn(kind, 12, 0); e.def = { ...e.def, walk: 0, chase: 0, flee: 9, rootEvery: [999, 999], ...(e.def.ranged ? { ranged: { ...e.def.ranged, every: 999 } } : {}) }; e.heading = -Math.PI / 2; e.shotT = 999; window.__home = e.pos.clone(); // 맞아 밀려도(#148) 제자리로 (아래에서 되돌림)
       window.__t0 = o.weapon.t(); window.__c0 = o.save.coins;
     }, { tier, kind });
     const hold = tier === 4 || tier === 5, gap = { 1: 650, 2: 650, 3: 720, 6: 2050 }[tier];
@@ -33,7 +33,7 @@ if (SHOT) require('fs').mkdirSync(OUT, { recursive: true });
       if (!hold && now >= next) { await p.keyboard.press('f'); fired++; next = now + gap / 1000; }
       await p.waitForTimeout(60);
       if (SHOT && !shot && now > 0.35) { shot = true; await p.screenshot({ path: `${OUT}arms-${kind}-${tier}.png` }); }
-      done = await p.evaluate(() => { const o = window.__oreum, e = o.enemies.list[0]; return !e || e.state === 'flee' ? { t: o.weapon.t() - window.__t0, gy: window.__c0 - o.save.coins } : null; });
+      done = await p.evaluate(() => { const o = window.__oreum, e = o.enemies.list[0]; if (e && e.state !== 'flee' && window.__home) e.pos.copy(window.__home); return !e || e.state === 'flee' ? { t: o.weapon.t() - window.__t0, gy: window.__c0 - o.save.coins } : null; });
     }
     if (hold) await p.keyboard.up('f');
     const info = await p.evaluate(() => { const o = window.__oreum; return { w: o.weapon.now(), hp: o.enemies.list[0]?.hp, pose: o.player.pose, fx: { shots: o.weapon.fx.shots.length, bombs: o.weapon.fx.bombs.length } }; });

@@ -192,6 +192,7 @@ export function updateContext() {
     if (!best) best = player.ride ? rideOffAct : throwAct; // 할 일이 없으면 귤 던지기 (탈것 위에선 내리기)
   }
   if (best !== state.ctxTarget) { state.ctxTarget = best; ui.ctx.classList.toggle('idle', !best); ui.ctx.classList.toggle('soft', best === throwAct); }
+  { const em = best === throwAct && throwAct.empty; if (ui.ctx.classList.contains('empty') !== em) ui.ctx.classList.toggle('empty', em); } // 귤이 없음 (#148)
   { const bite = best === fishAct && state.fishing.phase === 'bite'; if (ui.ctx.classList.contains('bite') !== bite) ui.ctx.classList.toggle('bite', bite); }
   let label = '상호작용';
   if (best) label = best.cairn ? ((social.stones.get(best.cairn.id) || []).some((e) => e.mine) ? '소원 보기' : '돌 올리기') : best.label;

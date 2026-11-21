@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { height, surfaceAt } from './world.js';
 import { createEnemies } from './enemies.js';
-import { SCATTER, THROW_DMG, BOW, TANGERINE as TG } from './balance.js';
+import { SCATTER, THROW_DMG, BOW, TANGERINE as TG, COMBAT } from './balance.js';
+import { steer } from './homing.js';
 import { LOW } from './gfx2.js';
 import { buildDeer, buildHareubang, shakeHareubang, wantDeer } from './lifemodels.js';
 
@@ -141,12 +142,12 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     m.position.y = tg.baseY + TG.hover + Math.sin(time * TG.bobSpeed + tg.ph) * TG.bob;
     tg.glow.position.y = tg.baseY - m.position.y + 0.03; // 위로 뜬 만큼 내려 땅에 붙임
   }
-  function throwTangerine(from, dir, power, peersFn, vy) {
+  function throwTangerine(from, dir, power, peersFn, vy, home = null) { // home: 유도 대상 (#148)
     const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true;
     const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = TR + 0.01; leaf.rotation.x = -1; m.add(leaf);
     m.position.copy(from); group.add(m);
     const v = dir.clone().multiplyScalar(power); v.y += vy ?? power * 0.55;
-    tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null, trail: makeTrail(), trailT: 0, hist: [] });
+    tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null, trail: makeTrail(), trailT: 0, hist: [], home });
   }
   // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
   // n 귤을 흩뿌림. maxN 개보다 많으면 알갱이는 maxN 개로 두고 하나에 귤 여러 개를 나눠 담음 (#137 적 귤이 커짐)
@@ -187,7 +188,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   // vel: 처음 속도(Vector3), opt: { dmg, grav, peersFn }
   function shootArrow(from, vel, opt = {}) {
     const m = makeArrow(); m.position.copy(from); m.quaternion.setFromUnitVectors(zAxis, aTmp.copy(vel).normalize()); group.add(m);
-    arrows.push({ mesh: m, vel: vel.clone(), t: 0, dmg: opt.dmg ?? 2, grav: opt.grav ?? 5, peersFn: opt.peersFn || null });
+    arrows.push({ mesh: m, vel: vel.clone(), t: 0, dmg: opt.dmg ?? 2, grav: opt.grav ?? 5, peersFn: opt.peersFn || null, home: opt.home || null });
   }
   function endArrow(i, hit) {
     const a = arrows[i]; group.remove(a.mesh); arrows.splice(i, 1);
@@ -200,7 +201,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const p = a.mesh.position, n = Math.max(1, Math.ceil(a.vel.length() * dt / 0.45)), h = dt / n; // 빨라서 나눠 움직이며 맞았는지 봄
       let done = false;
       for (let k = 0; k < n && !done; k++) {
-        a.vel.y -= a.grav * h; p.addScaledVector(a.vel, h);
+        a.vel.y -= a.grav * h; if (a.home && a.t < COMBAT.homeT && !steer(a.vel, p, a.home, h, COMBAT.homeRateBow)) a.home = null; p.addScaledVector(a.vel, h); // 유도 (#148)
         const dummy = { vel: aStep.set(0, 0, 0) };
         if (enemies.hitTest(p, dummy, a.dmg) || extraHit(p, dummy, a.dmg)) { done = true; break; }
         for (const hb of hareubangs) {
@@ -409,6 +410,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       if (tg.landed) { tg.rest += dt; restTangerine(tg, time, dt); if (tg.rest > (tg.drop ? SCATTER.life : 45) || tg.eaten) { if (!tg.eaten) group.remove(tg.mesh); if (tg.claimedBy && tg.claimedBy.target === tg) tg.claimedBy.target = null; tangerines.splice(i, 1); } continue; }
       tg.vel.y -= 22 * dt; tg.t += dt;
       const p = tg.mesh.position;
+      if (tg.home && (tg.enemyHit || tg.t > COMBAT.homeT || !steer(tg.vel, p, tg.home, dt, COMBAT.homeRate))) tg.home = null; // 유도 (#148)
       p.addScaledVector(tg.vel, dt);
       tg.mesh.rotation.x += dt * 8; tg.mesh.rotation.z += dt * 5;
       if (tg.trail) { // 꼬리 (#63): 일정 간격으로 지난 자리를 기록, 오래될수록 작고 옅게
@@ -441,7 +443,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const tg = tangerines[i];
       if (!tg.landed || tg.eaten || tg.claimedBy || tg.rest < 0.6 || player.riding) continue;
       const p = tg.mesh.position;
-      if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < 1.6) { group.remove(tg.mesh); tangerines.splice(i, 1); hooks.reclaim?.(p.clone(), tg.v || 1); }
+      if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < (hooks.pickR2?.() || 1.6)) { group.remove(tg.mesh); tangerines.splice(i, 1); hooks.reclaim?.(p.clone(), tg.v || 1); } // 싸우는 중엔 더 넓게 (#148)
     }
     for (const hb of hareubangs) {
       if (hb.hitT > 0) { hb.hitT = Math.max(0, hb.hitT - dt); shakeHareubang(hb); }
