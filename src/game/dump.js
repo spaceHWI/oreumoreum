@@ -15,7 +15,7 @@ import { cam } from './camera.js';
 import { ui, topFit, toast, addCoins, panelOpen, busy, ach } from './hud.js';
 import { marker, setTarget } from './input.js';
 import { updateAmmo } from './throw.js';
-import { rideOffAct, cartOnAct, cartOffAct } from './ride.js';
+import { rideOffAct, cartOnAct, cartOffAct, cartNear } from './ride.js';
 import { mountDeer, rePoseAct } from './moves.js';
 import { social } from './room.js';
 import { mealS, skipAct, cutS, cutSkipAct, interactables, fishAct, dismountAct, standAct, throwAct, pickBtn } from './stores.js';
@@ -197,12 +197,12 @@ export function updateContext() {
   if (state.photoState && !state.photoState.shot) best = rePoseAct; // 찍기 전: 다시 누르면 포즈 바꾸기 (#70)
   else if (player.pose === 'sit') best = mealS.on ? skipAct : cutS.on ? cutSkipAct : standAct;
   else if (player.riding && !busy()) best = dismountAct;
-  else if (player.cart) best = cart.state.moving ? null : cartOffAct; // 마차 (#69): 서 있을 때만 내리기, 가는 중엔 점프로 뛰어내림
+  else if (player.cart) best = cartOffAct; // 마차 (#69): 내리기. 달리는 중에도 옆 길 위로 (#120), 점프는 뛰어내리기
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
     const d = life.nearestDeer(player.pos, 2.6);
     if (d) { if (!state.deerAct || state.deerAct.deer !== d) state.deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = state.deerAct; }
-    if (cart && !best && cart.boardable(player.pos) >= 0) best = cartOnAct; // 정류장에 마차가 서 있으면 타기 (#69)
+    if (cart && !best && cartNear()) best = cartOnAct; // 정류장에 마차가 서 있거나 (#69) 달리는 마차 가까이면 (#120) 타기
     if (state.fishing && !player.ride && (state.fishing.active || (!best && state.fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
     if (!best) best = player.ride ? rideOffAct : throwAct; // 할 일이 없으면 귤 던지기 (탈것 위에선 내리기)
   }
