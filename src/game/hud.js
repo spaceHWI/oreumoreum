@@ -250,6 +250,7 @@ function buildDex() {
     const sm = document.createElement('small'); sm.textContent = d.kind === 'sight' ? (n ? '찾음' : '') : n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
     el.append(ic, nm, sm); g.append(el);
   });
+  late.dexExtra?.(g); // #140 재료·전설 장비 칸 (game/loot.js)
 }
 $('menu-dex')?.addEventListener('click', openDex);
 $('ach-dex')?.addEventListener('click', openDex);
