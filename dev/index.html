@@ -272,6 +272,15 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 
 /* 표지판·소원 */
 .sign-eyebrow { margin: 0 0 2px; font-size: 12px; color: var(--ink-soft); }
+/* 동료 말 걸기 (#172): 아래쪽 작은 창, 화면을 가리지 않게 */
+#mate-talk { place-items: end center; padding-bottom: calc(120px + var(--safe-b)); pointer-events: none; }
+#mate-talk .pop { width: min(420px, 100%); pointer-events: auto; }
+#mate-talk h2 { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+#mate-talk .mt-bot { width: 22px; height: 18px; border-radius: 5px; background: #9fd3ff; position: relative; flex: none; }
+#mate-talk .mt-bot::before { content: ""; position: absolute; left: 5px; top: 6px; width: 4px; height: 4px; background: #24251f; box-shadow: 8px 0 0 #24251f; }
+#mate-talk .mt-line { margin: 0 0 12px; line-height: 1.55; font-size: 16px; }
+#mate-talk .mt-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+@media (max-width: 600px) { #mate-talk { padding-bottom: calc(150px + var(--safe-b)); } #mate-talk .mt-line { font-size: 15px; } }
 #sign-body h2 { font-family: var(--display); font-weight: 800; font-size: 28px; margin: 0 0 6px; }
 #sign-body h2 small { font-size: 14px; color: var(--ink-soft); font-family: var(--body); }
 #sign-body p { margin: 0 0 8px; line-height: 1.55; font-size: 14px; }
@@ -1287,7 +1296,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-05e5df126a.js">(function () {
+<script data-main="main-349dd7f013.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1420,6 +1429,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="menu-perf">성능: 자동</button>
     <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
+    <button type="button" id="menu-mates" aria-pressed="true" title="동료 캐릭터 보이기">동료: 켬</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
@@ -1554,6 +1564,12 @@ button.bag-card { cursor: pointer; }
   <div class="panel pop">
     <div class="pop-head"><h2>오름 지도</h2><button type="button" class="btn small" id="omap-close">닫기</button></div>
     <div class="pop-body"><p id="omap-now"></p><canvas id="omap-c" width="440" height="440" aria-label="오름 지도: 구역과 지금 자리"></canvas><div class="omap-rows" id="omap-rows"></div></div>
+  </div>
+</div>
+<div class="overlay" id="mate-talk" hidden role="dialog" aria-label="동료와 이야기">
+  <div class="panel pop">
+    <div class="pop-head"><h2><i class="mt-bot" aria-hidden="true"></i><span class="mt-name"></span></h2><button type="button" class="btn small" id="mt-close">닫기</button></div>
+    <div class="pop-body"><p class="mt-line"></p><div class="mt-acts"><button type="button" class="btn small" id="mt-more">또 얘기해요</button><button type="button" class="btn small primary" id="mt-follow" aria-pressed="false">같이 가요</button></div></div>
   </div>
 </div>
 <div class="overlay dim" id="sign" hidden>
