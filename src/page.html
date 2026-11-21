@@ -376,7 +376,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-go { width: 100%; font-size: 18px; font-weight: 800; padding: 12px 16px; }
 .intro-go:disabled { opacity: .4; pointer-events: none; }
 #enter[aria-busy="true"] { animation: hintPulse 1.1s ease-in-out infinite; } /* 게임을 다 받기 전 (#90: 느린 연결에서 눌러도 반응이 없던 문제) */
-body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
+body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus, #tut-pinch) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #arm-more, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #pickmsg, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
 body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #intro .ver-line) { display: none; }
 @media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; box-sizing: border-box; } #shoppop .pop { box-sizing: border-box; } } /* border-box: 폰에서 카드·가게 창이 화면 옆으로 몇 px 넘치던 것 (#105) */
@@ -629,8 +629,18 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 body.tut-dim [data-tut].tut-on:not(.tut-focus), body.tut-dim #shoppop.gearshop :is(#shoppop-tabs button, .buy-card, .buy-btn):not(.tut-focus) { opacity: .42; filter: saturate(.6); transition: opacity .25s; }
 body.tut-dim .tut-focus { opacity: 1 !important; }
 @media (prefers-reduced-motion: reduce) { #tut-focus .ring, #tut-focus .finger, #tut-toast .n.pop, #tut-toast.in, #tut-toast.shake { animation: none; } }
-body.looking #tut-focus, body.looking #tut-toast, body.hp-down #tut-focus { display: none !important; }
-#tut-focus:not(.idle) .finger { display: none; } /* #100 손가락은 진행이 없을 때만 (TUT.fingerT) */
+body.looking #tut-focus, body.looking #tut-toast, body.looking #tut-pinch, body.hp-down #tut-focus { display: none !important; }
+#tut-focus:not(.idle) .finger { display: none; }
+/* #151 확대 단계 (폰): 화면 가운데 두 손가락이 벌어졌다 오므려짐. 토스트의 건너뛰기 */
+#tut-pinch { position: fixed; left: 50%; top: 50%; z-index: 40; width: 0; height: 0; pointer-events: none; }
+#tut-pinch[hidden] { display: none; }
+#tut-pinch b { position: absolute; width: 34px; height: 40px; margin: -20px 0 0 -17px; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.25)); animation: tutPinch1 1.6s ease-in-out infinite; }
+#tut-pinch b.f2 { animation-name: tutPinch2; }
+#tut-pinch svg { width: 100%; height: 100%; display: block; }
+@keyframes tutPinch1 { 0%, 100% { transform: translate(-10px, 10px) rotate(-40deg); } 50% { transform: translate(-46px, 46px) rotate(-40deg); } }
+@keyframes tutPinch2 { 0%, 100% { transform: translate(10px, -10px) rotate(140deg); } 50% { transform: translate(46px, -46px) rotate(140deg); } }
+@media (prefers-reduced-motion: reduce) { #tut-pinch b { animation: none; } }
+#tut-toast .tut-pass { flex: none; margin-left: 4px; padding: 3px 10px; border: 0; border-radius: 999px; background: rgba(255,255,255,.18); color: inherit; font: 700 12px/1.4 'Gothic A1', sans-serif; cursor: pointer; } /* #100 손가락은 진행이 없을 때만 (TUT.fingerT) */
 /* #100 튜토리얼 토스트: 상황 팁(#66) 자리·모양 + 남은 수. 끝나면 '잘했어요', 오래 멈추면 흔들고 더 쉬운 말로 */
 #tut-toast { font-size: 15px; font-weight: 700; z-index: 9; }
 #tut-toast .n { flex: none; padding: 1px 8px; border-radius: 999px; background: rgba(255,138,31,.9); color: #fff; font: 800 13px/1.4 'Gothic A1', sans-serif; }
@@ -950,6 +960,9 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 #boss-bar.roar { animation: bump .45s ease-out; }
 body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloom-banner { translate: 0 var(--boss-h, 54px); } /* 토스트·팁은 기운 줄 아래로 */
 #boss-bar small { position: absolute; right: 10px; top: 6px; font-size: 12px; color: var(--ink-soft); }
+#boss-bar small.rg { right: auto; left: 10px; color: #9fe6a0; } #boss-bar.regen .bn { padding: 0 42px; } /* #183 쉬며 기운이 차는 중: 막대 끝이 옅게 깜빡임 */
+#boss-bar.regen .fill::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 22px; border-radius: 6px; background: linear-gradient(90deg, transparent, rgba(190,255,180,.85)); animation: bossRg 1s ease-in-out infinite; }
+@keyframes bossRg { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 @media (max-width: 600px) { #boss-bar { left: calc(var(--safe-l, 0px) + 12px); transform: none; width: calc(100vw - 160px); padding: 5px 10px 7px; } #boss-bar .bn { font-size: 13px; } } /* 오른쪽 미니맵을 비켜 왼쪽에 */
 #zdone .pop { width: min(400px, 100%); }
 #zdone h2 { color: var(--tier, #fff); }
@@ -1012,7 +1025,7 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #fade-go { position: fixed; inset: 0; z-index: 9; background: #0e0f0c; opacity: 0; pointer-events: none; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 18px; transition: opacity var(--ft, .9s) ease; }
 #fade-go.on { opacity: 1; pointer-events: auto; } #fade-go[hidden] { display: none; }
 #fade-go svg { width: 54px; height: 54px; display: block; margin: 0 auto 8px; animation: bump .6s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #fade-go svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #boss-bar.regen .fill::after, #fade-go svg { animation: none; } }
 /* 오름 지도 (#136): 구역을 세 묶음 색으로, 지금 자리 */
 /* 미니맵 (#138): 위 줄 오른쪽 아래, 둥근 창. 가 본 곳·더미·소굴·보물·볼거리. 누르면 오름 지도 */
 #minimap { position: fixed; z-index: 4; top: calc(var(--tb-top) + var(--tb-h) + 10px); right: var(--tb-r); width: 148px; height: 148px; border-radius: 50%; border: 2px solid var(--hair); background: rgba(20,24,18,.55); box-shadow: 0 4px 14px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; }
@@ -1325,7 +1338,7 @@ button.bag-card { cursor: pointer; }
 <div id="bloom-glow" aria-hidden="true"></div>
 <div id="bloom-banner" role="status" hidden></div>
 <div id="zone-title" role="status" hidden><b></b><small></small></div>
-<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small></div>
+<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small><small id="boss-rg" class="rg" hidden>회복 중</small></div>
 <div class="overlay dim" id="zdone" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2 id="zdone-t">구역 완료</h2><button type="button" class="btn small" id="zdone-close">닫기</button></div>
@@ -1467,7 +1480,9 @@ button.bag-card { cursor: pointer; }
     <div id="intro-help" hidden>
       <span class="touch-only"><b>이동</b> 왼쪽 아래 조이스틱 · 땅을 탭해도 걸어가요</span>
       <span class="desk-only"><b>이동</b> W/S 앞뒤 · A/D 방향 · 땅 클릭 · Shift 걷기·달리기 · Space 점프</span>
-      <span><b>시점</b> 화면을 끌어서 둘러보기 · 두 손가락이나 휠로 확대</span>
+      <span><b>시점</b> 화면을 끌어서 둘러보기</span>
+      <span class="desk-only"><b>확대·축소</b> 마우스 휠</span>
+      <span class="touch-only"><b>확대·축소</b> 두 손가락 벌리기·오므리기</span>
       <span><b>줍기</b> 손 버튼(E) · 누르고 있으면 계속 주워요</span>
       <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가게·돌탑·사진사 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
       <span><b>귤</b> 쓰레기를 클린하우스에 버리면 받아요. 던지면 노루·말이 먹고 따라와요</span>

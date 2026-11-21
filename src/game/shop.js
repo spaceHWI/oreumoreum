@@ -14,7 +14,7 @@ import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
 import { SHOP_POP, openShopPop, refreshShopPop, shopPopNow } from './stores.js';
 import { startAutoGo } from './dump.js';
-import { itemScore, scoreDiff } from '../gearscore.js';
+import { itemScore, scoreDiff, gyulPickR } from '../gearscore.js';
 import { LOOK_COLORS } from '../balance.js';
 import { colorDots, lcIndex } from '../lookcolors.js'; // 기본 옷 색 (#155)
 
@@ -56,13 +56,15 @@ const STAT_ICON = {
   cap: '<path d="M7 8h10v12H7zM9.5 8V6a2.5 2.5 0 0 1 5 0v2"/>', // 배낭 칸
   speed: '<path d="M4 17l6-6 4 4 6-8M14 7h6v6"/>', // 빠르기
   dmg: '<path d="M12 3l2.5 6 6.5.5-5 4 1.5 6.5L12 16l-5.5 4L8 13.5l-5-4 6.5-.5z"/>', // 피해
-}; late.STAT_ICON = STAT_ICON;
+  gyul: '<circle cx="12" cy="13" r="4"/><path d="M12 9V7.5M4 13a8 8 0 0 1 16 0M2.5 13h2M19.5 13h2"/>', // 귤 모으는 범위 (#151)
+};
+const STAT_TITLE = { per: '한 번에 줍는 수', rate: '초당 줍는 수', r: '닿는 거리', cap: '배낭 용량', speed: '빠르기', dmg: '피해', gyul: '귤 모으는 범위' }; late.STAT_ICON = STAT_ICON;
 // 장비 점수 (#137): 칸마다 지금 것 대비 ▲/▼ 점수 차, 고른 것의 점수
 const SCORE_IC = '<path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/>';
 export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 점수 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
 export function scoreChip(sc, d) { return `<span class="gs" title="장비 점수">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
 const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
-  : k === 'bag' ? [['cap', String(t.cap)]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
+  : k === 'bag' ? [['cap', String(t.cap)], ['gyul', `${gyulPickR({ equip: { bag: t.tier } })}m`]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
 // 순서 없이 사기 (#111): 귤만 충분하면 어느 단계든 바로 산다. 산 단계 아래는 '가짐'
 // 튜토리얼 집게·배낭 단계에서는 그 물건(바로 다음 단계)만
 const tutOnly = (k) => { const s = late.tut?.active && late.tut.step; return (s === 'tongs' && k === 'tool') || (s === 'bag' && k === 'bag'); };
@@ -138,7 +140,7 @@ function gearGroup(k) {
     const c = document.createElement('div'); c.dataset.k = k; c.dataset.i = i;
     c.className = 'buy-card' + (own ? ' own' : '') + (on ? ' on' : '') + (poor ? ' poor' : '') + (t.soon ? ' soon' : '') + (just ? ' just' : '') + (!own && i === cur && !t.soon ? ' next' : '');
     const stats = t.soon ? [] : tierStats(k, t), was = own ? null : tierStats(k, now);
-    const st = stats.map(([ic, v], j) => `<span>${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('');
+    const st = stats.map(([ic, v], j) => `<span title="${STAT_TITLE[ic] || ''}">${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('');
     c.innerHTML = `<span class="art">${SVG_A}>${TIER_ART[k][i]}</svg>${own || t.soon ? '' : gdBadge(scoreDiff(save, k, i + 1))}</span>`
       + `<span class="bn"><b>${t.soon ? '준비 중' : t.name}</b><small class="tier-stats">${st}${t.soon ? '' : scoreChip(itemScore(i + 1), 0)}</small></span>`;
     const act = document.createElement('span'); act.className = 'ba';

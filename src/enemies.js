@@ -8,8 +8,9 @@
 // #146 무리: 같이 나온 적은 e.pack 이 같고, 적끼리 겹치지 않게 밀어내며 플레이어 둘레 자기 자리(e.slotA)로 벌려 에워쌈 → src/enemypack.js
 import * as THREE from 'three';
 import { height } from './world.js';
+import { drape } from './drape.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
-import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE } from './balance.js';
+import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS } from './balance.js';
 import { createPack, slotGoal, bodyR } from './enemypack.js';
 import { reportCrash, crashNote } from './crash.js';
 
@@ -18,6 +19,16 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 const range = (rnd, [a, b]) => a + rnd() * (b - a);
 const irange = (rnd, [a, b]) => a + Math.floor(rnd() * (b - a + 1));
 
+
+// 정예 적이 쉬며 기운을 채움 (#183, 수치 ZONE_BOSS.rest): 싸움이 풀린 뒤 delay 초 동안은 그대로, 그 뒤 초당 최대 기운의 rate 씩
+// 싸우는 동안은 부르지 않는다(부르는 쪽이 싸움이 붙을 때 e.calmT = 0). 맞으면 hurt 가 e.calmT = 0 으로 되돌림. dt 가 커도(건너뛰기) 쉬는 시간만큼은 빼고 셈
+// 우두머리(game/boss.js)가 씀. 소굴·들판 떼 정예·대장·이야기 적·레이드 보스도 같은 함수로. 차오르는 중이면 true
+export function restRegen(e, dt, max = e.def?.hp, o = ZONE_BOSS.rest) {
+  e.calmT = (e.calmT || 0) + dt;
+  const run = Math.min(dt, e.calmT - o.delay);
+  if (!(max > 0) || run <= 0 || e.hp >= max) return false;
+  e.hp = Math.min(max, e.hp + max * o.rate * run); return e.hp < max;
+}
 
 // 머리 위 기운 막대 (스프라이트 둘, 왼쪽 기준으로 줄어듦)
 const barBgMat = new THREE.SpriteMaterial({ color: '#1d1a17', transparent: true, opacity: 0.75, depthTest: false });
@@ -100,7 +111,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     return info;
   }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
-  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) group.remove(e.warn); e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
+  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
@@ -108,6 +119,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hurt(e, dmg, quiet, ch = 0) {
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
     if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
+    e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
     if (e.state === 'stagger') dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
@@ -242,9 +254,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * (1 - e.st / COMBAT.staggerT) : 0);
     }
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
-      if (!e.warn) { e.warn = new THREE.Mesh(warnGeo, warnMat); e.warn.renderOrder = 3; group.add(e.warn); }
+      if (!e.warn) { e.warn = new THREE.Mesh(warnGeo.clone(), warnMat); e.warn.renderOrder = 3; group.add(e.warn); e.warnAt = drape(e.warn, height); } // 땅을 따라 휨 (#151)
       e.warn.visible = e.state === 'wind';
-      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warn.scale.set(k, 1, k); e.warn.position.set(e.pos.x, e.pos.y + 0.08, e.pos.z); }
+      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warnAt(e.pos.x, e.pos.z, Math.round(k * 25) / 25, 0, 0.02); }
     }
     legs4(e, e.speed > 0.3 ? 0.7 : 0);
     const charge = (e.state === 'charge' && e.speed > 4) || e.state === 'wind' || e.state === 'dash' ? 1 : 0; e.chg += (charge - e.chg) * Math.min(1, dt * 4);

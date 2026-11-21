@@ -165,6 +165,11 @@ export const ZONE_BOSS = {
   walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
   slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
   netMs: 200,
+  // 싸움이 풀린 뒤 (#183, enemies.js restRegen): 기운은 남고 delay 초 동안 그대로, 그 뒤 초당 최대 기운의 rate 씩 참 (다시 맞거나 싸움이 붙으면 멈춤)
+  //   delay 는 가장 먼 구역(굼부리) 클린하우스에서 처음 쓰러졌다 돌아오는 약 46초(직선·달리기, tools/boss.js 표)를 보고 20 → 30
+  // parting: 풀린 뒤 이 초 안에 마지막으로 때린 사람 쪽으로 돌진 한 번 (partR 안에 있을 때, 띠 끝은 빈터에서 leash + partOver 까지)
+  // awayToast: 이 초 넘게 아무도 싸움 거리에 없으면 '빈터로 돌아갔어요'. 사라졌다 다시 나와도 남은 기운은 이어짐 (그동안 찬 만큼 더해)
+  rest: { delay: 30, rate: 0.02, parting: 3, partR: 50, partOver: 12, awayToast: 30 },
   fast: { r: 6, fade: 0.9, hold: 1.1, park: 5 }, // park: 세워 둔 빠른 마차가 팻말 뒤(길 방향) 이만큼 (#174)
   shortcut: { r: 4, off: 4.5, fade: 0.8, hold: 0.8 },
 };
@@ -514,15 +519,18 @@ export const WALL = {
 export const TUT = {
   walkD: 14, runD: 30, // 걷기·달리기 원 자리 (#62: 단계 사이는 걸어서 5초 안)
   ringR: 2.4, // 원에 이만큼 들어오면 도착
-  gyulD: [35.5, 37.5, 39.5], gyulR: 1.7, // #62 바닥에 놓인 귤 3개 (길 양옆 번갈아), 이 안에서 줍기(E)
+  gyulD: [35.5, 37.5, 39.5], gyulR: 1.7, // #62 바닥에 놓인 귤 3개 (길 양옆 번갈아). #151 부터는 GYUL_PICK 범위 안에 들면 저절로 모임
   targetD: 44, targetLat: 2.2, targetH: 1.25, targetR: 1.1, hits: 3, // #62 과녁: 자리·길에서 옆으로·판 가운데 높이·맞는 반지름, 맞힐 횟수 (#100: 귤 줍는 곳 바로 앞, 크게)
   streamD: 58, streamW: 6.6, // 개울 가운데 자리, 길 방향 반폭 (돌다리로 건넘)
-  trashD: [69, 72.5, 76], // 쓰레기 3개 (#100: 6 → 3, 임의값. 가게 골목 SHOP_ST.d 앞에서 끝나게)
+  trashD: [69, 72.5, 76], // (예전) 쓰레기 3개 자리 (#100)
+  heapD: 72.5, heapLat: 1.2, heapN: 3, // #151 튜토리얼 전용 작은 더미: 자리(길 따라·옆), 쓰레기 수(예전 낱개 3개와 같게). 저장·멀티·구역·업적에 안 들어감
+  heapLookT: 1.5, // 더미를 다 치우면 카메라가 더미 쪽을 보는 시간(초)
+  shopGateR: 4, // #151 가게 거리 쪽 정낭에 이만큼 다가가면 안내 한 번
   // #100 단계마다 격리된 칸: 들머리 마당을 낮은 돌담으로 나눈 우리. to = 칸 끝(다음 칸과의 정낭) 자리, steps = 이 칸에서 하는 단계(다 하면 정낭이 열림)
   // l·r = 길 가운데에서 왼쪽·오른쪽 담까지. 마지막 칸 끝은 들머리·오름 사이 정낭(gateD). 왼쪽 4칸 담이 가게 골목(SHOP_ST.d) 입구를 막음
   cellBack: -4, // 첫 칸 뒷담 (시작 지점 뒤)
   cells: [
-    { to: 33, steps: ['walk', 'run'], l: 7, r: 7 },
+    { to: 33, steps: ['walk', 'zoom', 'run'], l: 7, r: 7 },
     { to: 46.5, steps: ['gyul', 'throw'], l: 7, r: 7 },
     { to: 80, steps: ['pick'], l: 7, r: 7 },
     { to: 112, steps: ['dump', 'bonus', 'tongs', 'bag'], l: 6, r: 22 },
@@ -531,6 +539,7 @@ export const TUT = {
   laneLen: [6, 9], laneW: 1.3, laneT: 10, // 정낭이 열리면 정낭 앞뒤로 빛나는 길 (m, 반폭, 이 초 뒤 사라짐)
   // #100 쉽게: 진행이 없으면 손가락(초), 더 없으면 토스트를 흔들고 더 쉬운 말로(초). 잘했어요 토스트 시간(초)
   fingerT: 10, easyT: 30, okT: 1.1,
+  zoomK: 0.15, zoomSkipT: 8, // #151 확대·축소 단계: 카메라 거리가 이 비율 넘게 바뀌면 통과, 이 초 뒤 '건너뛰기'
   cleanD: 94, // 클린하우스(길 오른쪽 7.5)
   gateD: 112, // 안쪽 돌담·정낭
   firstBonus: GROWTH.price[2] + GROWTH.price[1], // 클린하우스에 처음 버릴 때 귤이 이만큼이 되도록 채워 줌 (집게 + 배낭, #137)
@@ -608,6 +617,11 @@ export const THROW_AIM = {
 };
 
 // 전투 손맛 (#148, 모두 임의값). 타겟 고정은 game/throw.js, 유도는 src/homing.js, 적 돌진·물러남은 src/enemies.js
+// 귤 모으는 범위 (#151): 떨어진 귤(적·더미·흩어진 귤, 튜토리얼 귤)은 이 안에 들면 저절로 빨려 와 모임.
+// 배낭 단계마다 perBag 씩 넓어짐 (1단계 3.5m → 5단계 5.5m). 계산은 gearscore.js gyulPickR 하나 (#140 전리품 장비도 거기에 더함)
+// 싸우는 중엔 COMBAT.autoPick 과 견줘 큰 쪽. suckT: 빨려 오는 시간(초)
+export const GYUL_PICK = { r: 3.5, perBag: 0.5, suckT: 0.3 };
+
 export const COMBAT = {
   detectHand: 28, detectPad: 8, losePad: 6, // 타겟을 잡는 거리: 손은 28m, 무기는 사거리 + detectPad. 잡은 타겟은 이만큼 더 멀어지면 놓음
   pickPx: 70, // 화면에서 적을 누를 때 이 픽셀 안이면 그 적으로 바꿈
@@ -623,7 +637,7 @@ export const COMBAT = {
   flinchT: 0.35, flinchDist: 1.5, // 맞은 적이 멈칫하는 시간(초)·뒤로 밀리는 거리(m, ÷ 크기)
   lowHp: 0.3, holdT: 2, // 기운이 이 비율 아래면 적이 잠깐 머뭇거림(초, 한 싸움에 한 번)
   stuckT: 2, // 적에게 막혀 이 초 넘게 못 빠져나오면 적 사이로 지나갈 수 있음
-  autoPick: 3.2, // 싸우는 중에는 이 거리 안 떨어진 귤을 자동으로 주움 (평소 1.26m)
+  autoPick: 3.2, // 싸우는 중에는 이 거리 안 떨어진 귤을 자동으로 주움 (평소는 GYUL_PICK, 둘 중 큰 쪽 #151)
 };
 
 // 모아 쏘기 (#129): 던지기 버튼(F)을 길게 눌렀다 놓으면 더 센 한 방. 손·활·총·폭탄은 놓을 때 쏨(짧게 누르면 예전 한 발과 같음),

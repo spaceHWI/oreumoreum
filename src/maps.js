@@ -220,7 +220,9 @@ function namsongiSpots() {
         walk: at('approach', TUT.walkD), run: at('approach', TUT.runD),
         gyul: TUT.gyulD.map((d, k) => at('approach', d, k % 2 ? 1 : -1, 0.8)), // #62 귤 3개
         target: at('approach', TUT.targetD, 1, TUT.targetLat), // #62 과녁 (앞이 시작 쪽)
-        trash: TUT.trashD.map((d, k) => { const q = at('approach', d, k % 2 ? 1 : -1, 0.9 + (k % 3) * 0.35); return { x: q.x, z: q.z, t: k % 3, r: q.x * 3.1 % 6.28 }; }),
+        // #151 낱개 대신 작은 더미 하나: 쓰레기 TUT.heapN 개가 더미 둘레에 모여 있음 (번호·저장은 예전 낱개와 같음)
+        heap: (() => { const q = at('approach', TUT.heapD, 1, TUT.heapLat); return { x: q.x, z: q.z }; })(),
+        trash: Array.from({ length: TUT.heapN }, (_, k) => { const q = at('approach', TUT.heapD, 1, TUT.heapLat), a = k * 2.09 + 0.4; return { x: q.x + Math.cos(a) * 0.3, z: q.z + Math.sin(a) * 0.3, t: k % 3, r: a }; }),
         stream: { x: st.x, z: st.z, dir: st.dir },
         farBank: at('approach', TUT.streamD + TUT.streamW + 2.2),
         gate: at('approach', G0), beyond: at('approach', G0 + 6),
