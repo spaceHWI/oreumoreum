@@ -68,6 +68,16 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(gotShot && gotLob, `A 의 귤 총 탄·귤 폭탄이 B 화면에 보임 (탄 ${gotShot}, 폭탄 ${gotLob}${wf !== 'null' ? ', ' + wf : ''})`);
     await A.p.evaluate(() => { const o = window.__oreum; o.save.equip.weapon = 1; o.weapon.use(1); });
   }
+  { // 모아 쏘기 (#129): A 가 모으는 빛(presence cg)과 모아 쏜 센 샷(wf 7번째 칸)이 B 화면에 보임
+    await B.p.evaluate(() => { const f = window.__oreum.charge.fx; window.__cv = { orb: 0, glow: 0 }; const o0 = f.orb, g0 = f.glow; f.orb = function (...a) { window.__cv.orb++; return o0.apply(this, a); }; f.glow = function (...a) { if (a[0] !== 0) window.__cv.glow++; return g0.apply(this, a); }; });
+    await A.p.evaluate(() => { const o = window.__oreum; o.save.coins += 20; document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; }); });
+    const ctxOk = await A.p.evaluate(() => window.__oreum.aim.ctx() === 'throw');
+    let glow = false;
+    if (ctxOk) { await A.p.keyboard.down('f'); glow = await until(B, () => window.__cv.glow > 0, null, 15000); await A.p.keyboard.up('f'); }
+    await A.p.evaluate(() => window.__oreum.charge.shoot(1, 'hand'));
+    const orb = await until(B, () => window.__cv.orb > 0, null, 15000);
+    ok(orb && (glow || !ctxOk), `A 의 모으는 빛·모아 쏜 귤이 B 화면에 보임 (빛 ${ctxOk ? glow : '던지기 버튼 아님, 건너뜀'}, 센 귤 ${orb})`);
+  }
   // 더미 줍기: A 가 0번 더미에서 하나 → B 의 0번 더미도 하나 줄어듦
   const before = await B.p.evaluate(() => window.__oreum.trash.api.store.left(0));
   await A.p.evaluate(() => { const t = window.__oreum.trash.api; t.store.takeOne(0); });

@@ -1,5 +1,5 @@
 // 카메라, 첫 화면 궤도 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { BLOOM_FX, PACE, TITLE } from '../balance.js';
+import { BLOOM_FX, PACE, TITLE, CHARGE } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { state } from './state.js';
@@ -44,4 +44,5 @@ export function ease(dt, snap, k) {
   const a = snap ? 1 : 1 - Math.exp(-dt * k);
   cam.pos.lerp(camTarget.pos, a); cam.look.lerp(camTarget.look, a);
   camera.position.copy(cam.pos); camera.lookAt(cam.look);
+  if (state.shake > 0 && cam.mode === 'follow') { const a = CHARGE.shake * state.shake / CHARGE.shakeT; camera.position.x += (Math.random() - 0.5) * 2 * a; camera.position.y += (Math.random() - 0.5) * 2 * a; } // 가득 모은 샷이 맞음 (#129, game/charge.js 가 줄임)
 }

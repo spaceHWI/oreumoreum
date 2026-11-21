@@ -65,7 +65,7 @@ life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(E
 life.hooks.enemyRepel = (kind, pos, def) => {
   life.scatterTangerines(pos, def.reward.gyul, ENEMY_DROP.max);
   if (trash && Math.random() < def.reward.rare) { const rares = DEX_LIST.filter((d) => d.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
-  ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel');
+  ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
 };
 life.hooks.pickR2 = () => (life.enemies.active() ? COMBAT.autoPick ** 2 : 0); // 싸우는 중엔 떨어진 귤을 더 멀리서 주움 (#148)

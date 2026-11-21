@@ -40,4 +40,19 @@ export const weaponSounds = {
     const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(3000, t); f.frequency.exponentialRampToValueAtTime(300, t + 0.5);
     const sg = c.createGain(); env(c, sg, t, 0.005, 0.35, 0.55); s.connect(f); f.connect(sg); sg.connect(this.sfx); s.start(t, Math.random()); s.stop(t + 0.6);
     this.splat?.(); },
+  // 모아 쏘기 (#129): 모으는 동안 차오르는 낮은 음(k 0~1, null 이면 끔), 가득 차면 반짝 '딩', 센 샷은 묵직한 '퍽'
+  chargeHum(k) {
+    const c = this.ctx; if (!c) return;
+    if (!this.on || !this.sfxOn) k = null;
+    const t = c.currentTime;
+    if (k != null && !this._cg) {
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + 0.1); g.connect(this.sfx);
+      const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = 220; o.connect(g); o.start(t); this._cg = { g, o };
+    }
+    if (k != null && this._cg) { this._cg.o.frequency.setTargetAtTime(220 + 440 * k, t, 0.05); this._cg.g.gain.setTargetAtTime(0.035 + 0.04 * k, t, 0.05); }
+    else if (k == null && this._cg) { const z = this._cg; this._cg = null; z.g.gain.cancelScheduledValues(t); z.g.gain.setValueAtTime(Math.max(0.0001, z.g.gain.value), t); z.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1); z.o.stop(t + 0.12); }
+  },
+  chargeFull() { if (!this.on || !this.sfxOn) return; const c = this.ctx, t = c.currentTime;
+    for (const [f, d] of [[1320, 0], [1980, 0.06]]) { const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f; const g = c.createGain(); env(c, g, t + d, 0.005, 0.12, 0.35); o.connect(g); g.connect(this.sfx); o.start(t + d); o.stop(t + d + 0.4); } },
+  chargeShot(k) { if (!this.on || !this.sfxOn) return; pop(this, 420 + 200 * k, 90, 0.22 + 0.12 * k, 0.22); },
 };
