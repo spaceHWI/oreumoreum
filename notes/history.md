@@ -1423,6 +1423,39 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 이야기 이벤트 '수상한 불빛'(#168) UFO 는 다른 모양(makeUfo)이지만 빛기둥 길이를 지나는 자리 땅 높이로 바꿈
 - 확인: `__oreum.ufo()` 뒤 `__oreum.ufoInfo().ground`(땅 x·y·z, 빛기둥 길이 L, 거리 D). 그림 `notes/shots/192-*.jpg`
 
+
+## #195 동굴 탐험 1번 조각: 별도 동굴 맵 띄우기·절차 생성 (2026-11-21)
+- 굼부리(구역 4) 북쪽 원형 굼부리 가운데에 용암 동굴 입구(현무암 아치·고사리·찬 김). 상호작용 '동굴 들어가기'. `CAVE.open = 'admin'` 이라 지금은 개발자 메뉴가 켜진 사람만, 다른 사람은 '바람이 새어 나와요. 아직은 무리예요'
+- 동굴은 따로 만든 장면(`src/game/cave.js` 의 caveScene). 들어가면 화면이 어두워지고(#fade-go) update.js 가 오름 장면 대신 동굴 장면만 그림(`late.caveFrame`). 오름 쪽 것은 지우지 않고 그리지만 않음(되살리기가 비싸서). 동굴 층은 나오거나 층을 바꿀 때 dispose
+- 땅: `world.js setCaveGround` 로 동굴 자리(오름 땅 밖 x0·z0 3200, 서버 자리 한도 ±4000 안)에서 height()/groundAt() 이 동굴 바닥. 벽은 spots.clamp 를 감싸 칸 판정(미끄러지듯 막힘). 바닥 누르기 이동은 input.js 가 `late.caveRay`
+- 절차 생성(`src/cavegen.js`, three 없음): 오늘 날짜·층 씨앗, 칸(1.5m) 위에 방(원)·굽은 통로를 새기고 바닥·벽·천장을 한 메시로(칸 모서리를 흔들어 바위 느낌, 현무암 한 색 + 발광 이끼·수정 인스턴스). 안개 5~14m·검은 배경·헤드랜턴(PointLight 13m)
+- 카메라: 거리 7.5(최대 9)·낮게, 머리에서 카메라 쪽으로 칸·천장을 보며 막히면 앞으로 당김
+- 쓰러지면 바로 밖으로(잃는 것은 2번 조각). 동굴 안에서 오름 쪽으로 걷게 하는 것(자동 걷기 등)은 끔. 줍기 버튼은 '아직 주울 것이 없어요'
+- 멀티: 동굴 안이면 입구 자리·cv:1 로 보냄(net.js `netCave`)
+- 확인 `node tools/caverun.js [--days 7] [--live]`: 며칠치 동굴의 방 수·갈림길·삼각형·줄→구멍 걸어 닿는지, --live 는 왕복 3번 메모리·draw call·바꾸는 시간. `__oreum.cave` (enter·exit·down·state·stats·goEnt)
+- 남은 것: 2번(줍기·들고 나오기·적 2종·층 지킴이), 3번(함정·보물·주인·하루 판 수), 4번(멀티 칸·쪽지·옷·퀘스트·감독 문 cave). 위쪽 '곳 이름'·미니맵은 동굴 안에서도 오름 것 그대로
+## #198 산타 모자 틈
+- 원인: 산타 모자 고깔을 통째로 뒤로 기울여(rotation.x -0.55) 앞쪽 밑단이 테보다 0.1 가량 들려 앞·옆에서 머리카락이 비쳤고, 고깔이 머리보다 좁아 위쪽에서 머리가 뚫고 나옴. 똥머리는 뒤로 비침
+- 고침: `clothes.js santaGeo(r, dh, h)` 새로 둠. 머리를 덮는 둥근 덮개가 고깔로 이어지는 회전체(Lathe)이고 밑단은 수평, 위로 갈수록 뒤로 꺾임(정점을 높이에 따라 옮김). 테(토러스)가 밑단을 덮음. 방울은 꺾인 끝(tip)에
+- 산타 모자는 `KIND_HAT.santa.clip = 0.88` (테 바로 위에서 머리카락 자름, 똥머리 안 비침)
+- 하르방·산타 투기꾼 모자(`season.js santaHat`)도 같은 몸통으로 바꿈
+- 확인 도구 `tools/hats.js [dist] [모자 id,...]`: 머리 3종 × 앞·옆·뒤·위·달리기를 남녀 한 장씩 가까이 찍음
+- 다른 모자 훑음: 비니·요리사·갓·하르방·귤 반쪽·안전모·기본 모자·밀짚·버킷은 머리가 비치는 틈 없음. 다만 똥머리는 이 모자들 아래 뒤쪽으로 잘린 반달 모양이 보임(머리카락 자체, 틈 아님) — 그대로 둠
+## #199 쪽지 넘겨 보기·종이 배경·그림
+- 쪽지 창을 `src/game/noteview.js` 로 떼어 냄(punkworld.js 는 주기·칩·도감만). 순서는 주운 순서(save.punk.notes 의 때). 새로 주운 창·칩은 그 쪽지(맨 뒤)에서 시작해 ◀ 로 앞 것, 도감에서 열면 그 쪽지부터. ◀ ▶·←→·A·D·좌우 밀기, 끝에서 멈춤(처음으로 안 돎). 창이 열린 동안 ←→·A·D 는 캐릭터를 움직이지 않음(capture 로 먼저 받음). 넘겨 본 것도 읽음(save.punk.unread 에서 뺌), 앞·뒤에 안 읽은 게 있으면 ◀·▶ 에 귤색 점. 아래 '3 / 12'·구역 이름
+- 종이: NOTES 에 `paper` 칸 — memo·notebook·receipt·letter·postcard·alien·form·flyer·crumple·photo·rubbing·diary (CSS 만, 그림 파일 없음). 손글씨는 Nanum Pen Script(구글 글꼴, 처음 열 때만 받음, 못 받으면 고딕). 영수증은 고정폭, 외계 문서·고지서·전단·탁본은 고딕
+- 그림: NOTES 에 `img: true` 면 `assets/notes/<id>.webp` 를 종이 위쪽에 테이프로 붙인 듯(열 때만 받음, 못 받으면 종이만). build.mjs 가 dist/assets/notes 로 복사, publish.yml 이 `assets/` 로 올림. 한 파일 빌드(oreumoreum.html)엔 그림 없음. 아직 그림은 하나도 없음(기획 세션 몫, 이슈 코멘트의 표)
+- 넘김: 옆에서 밀려 들어오는 짧은 움직임 + 종이 쓸리는 소리(audio.js 가 40KB 를 넘어 noteview.js 에서 late.sound 의 noise 로 냄). 저사양(LOW)·움직임 줄이기는 바로 바뀜. 긴 쪽지는 창 안 스크롤(box-sizing border-box, 폰 390 폭에서 30장 모두 화면 안)
+- 확인 `node tools/notes.js [--shot]` (데스크톱·폰, 38줄)
+## #163 오름펑크 상호작용: 하르방 하이파이브·관광객 사진 부탁·까마귀 도둑
+- 새 파일: `src/game/punkmeet.js`(게임 연결, `late.meet`), `src/punkmodels.js`(관광객·까마귀·카메라 아이콘·반짝임·그림자), `src/punksound.js`('탁'·'까악', audio.js 가 40KB 가까워 따로). 수치 balance.js `MEET`
+- 하르방: 들머리·가게 거리(life.hareubangs) + 서 있는 구역 지킴이(#119) 앞 2.5m '인사하기' → emotes 'five'(남에게도 보임) → 손이 닿는 순간 '탁'·들썩·눈 반짝·말풍선 10줄. 하루 한 번(KST) 10분 버프: 귤 모으는 범위 +0.5m(hooks.js pickR2 에 `late.punkPickR`)·이동 +3%(update.js `late.punkSpeed`), 위 줄 `#punk-pill` 한 칸(식사 버프와 따로). 저장 save.meet(망가진 값은 새로, #165 의 save.punk 와 따로)
+- 관광객: 8~12분마다 한 명, 플레이어에서 160m 안 가장 가까운 자리(들머리 클린하우스 옆·정상 사진사 반대쪽·field.sights 볼거리)에 걸어와 손 흔듦·카메라 아이콘. '사진 찍어 주기' → 3·2·1(#countdown)·번쩍(#flash)·셔터 → 귤 10. 1/3 은 쓰레기를 버리고 돌아섬: 9초 안에 귤로 맞히면 사과·도로 줍고 귤 15, 안 맞히면 trash.drop 2개(투기꾼 봉투와 같은 길, 방에선 방장만). 60초 안 찍으면 감. 튜토리얼 중엔 없음. 모양은 dumpers.js `buildWalker(색)`(export, 마스크 끄기)
+- 까마귀: 배낭이 가득 찬 채(bagRoom<1) 30초 → 3~20초 뒤, 5분에 한 번·하루 5번까지. 2초 경고(까악·그림자·감독 danger) → 내려와 배낭에서 가장 많은 쓰레기 1개(xv 도 비율만큼) → 8초 머리 위 맴돎 → 멀어짐. 맞히면(life.addTargets, 타겟 고정 #148) 떨군 쓰레기는 배낭으로(자리 없으면 더미), 반짝이는 것 표 C.drop: 귤 20(귀한 귤 #130 `late.rareGive`(raregyul.js, 값 20 에 가까운 레드향)·영수증 쪽지 #165 `late.receiptDrop`(punkworld.js, 그 구역 안 주운 쪽지, 다 모았으면 귤)). 처음 올 때 팁 'crow'(tips.js)
+- 감독 문(#176 JOURNEY): 관광객은 'tourist'(구역 2), 까마귀는 'crow'(구역 3) 문이 열린 뒤부터. 이야기 이벤트 'tour'(#168) 의 `late.tourists.bus` 는 아직 없음(한 번에 한 명만)
+- 귤 벌이: 관광객 시간당 90 + 까마귀 하루 최대 100 = 190, 1일차 1시간 4,109 의 5%(205) 안 (`node tools/econ.js` 오름펑크 줄)
+- 합치다 고친 것: tools/online.js '동료는 내 화면에만' 이 #190 동료 끄기(BUDDIES.on false) 뒤 늘 실패하던 낡은 검사 → 꺼져 있으면 남에게 안 보이는지만 봄. #165 punkworld.js 가 #164 punk.js 의 `late.tickPunk` 를 덮어써 박스 시야·망사리가 안 돌던 것 → punkworld 는 `late.tickPunkWorld`
+- 확인 `node tools/punkmeet.js`, `__oreum.punk.tourist(litter)`·`crow()`·`five()`·`litterNow()`·`goTourist()`·`shoot()`·`hitCrow()`·`hitTourist()`·`state()`·`resetDay()`
 ## #181 적 같이 보이기·오름 레이드
 - 보통 적 공유는 재 보고 넣지 않음 (사용자 결정 기준 20%): `node tools/enemyshare.js` 로 구역 주인 방식(구역마다 주인 하나가 적 30마리 상태를 가까운 것 초당 5번·먼 것 1번, 방이 같은 구역 사람에게 중계)을 흉내 내 잼. 30명: 방이 받는 양 26.5 → 41.7KB/s(+58%), 사람당 받는 양 19.4 → 22.0KB/s(+13%), 방 메시지 603 → 783개/s(+30%). 20명 +87%·+17%·+30%, 10명 +173%·+25%·+30%. 대신 옆 사람 머리 위 '전투 중' 표시(`game/peerfight.js`, 받은 presence 만 봄)
 - 레이드 '쓰레기 대왕': 규칙은 `src/raidcore.js` 한곳(서버 방 roomcore 와, 서버가 없을 때 내 화면 `game/raid.js`). 기운·더미·기여·보상은 방이 셈(피해는 사람마다 초당 RAID.dps 까지, 한 메시지 NET.bossHitMax), 보상 귤은 방이 번 몫(#144 bank)에 넣고 `rw` 로 알림. 하루(한국 날짜) 계정마다 RAID.times 수만큼만 보상(확인용으로 여러 번 열어도). 바로 열기 `rgo` 는 STATS_OPEN 방·어드민(index.js 가 `x-admin` 헤더)만

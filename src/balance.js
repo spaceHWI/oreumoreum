@@ -1875,6 +1875,58 @@ export const MUTTER = {
   y: 3.4, // 말풍선 높이 (채팅 말풍선과 같음)
 };
 
+// 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진 부탁·까마귀 도둑. 게임 연결은 src/game/punkmeet.js, 모양 src/punkmodels.js
+// 값은 모두 임의. 셋의 귤 벌이는 하루 1시간 벌이의 5% 안 (tools/econ.js 가 셈)
+export const MEET = {
+  hb: {
+    r: 2.5, // 하르방 앞 이 거리 안에서 '인사하기'
+    hitAt: 0.55, // 하이파이브 동작에서 손이 코에 닿는 때(초)
+    buffSec: 600, pickR: 0.5, speed: 0.03, // 하루 한 번(KST 자정) 버프: 10분 동안 귤 모으는 범위 +0.5m, 이동 +3%
+    lines: ['코는 만지지 말랬지', '오늘도 무급이구나', '나도 귤 좋아해', '돌이라 표정 관리가 안 돼', '손바닥 따뜻하네', '오백 년째 서 있는 중', '바람 많이 부는 날엔 나도 춥다', '사진은 왼쪽 얼굴로 부탁해', '쓰레기 버리는 사람 봤으면 말해 줘', '탁! 좋은 하루'],
+  },
+  tourist: {
+    every: [480, 720], // 나오는 사이(초): 8~12분, 한 번에 한 명
+    near: 160, // 나올 자리는 플레이어에서 이 거리 안의 가장 가까운 곳 (없으면 retry 초 뒤 다시)
+    retry: 60, walkIn: 14, speed: 1.6, // 자리에서 이만큼 떨어진 곳부터 걸어 들어옴
+    r: 3, wait: 60, // 상호작용 거리, 안 찍어 주면 이 초 뒤 그냥 감
+    pose: 3, // 자세를 잡고 이 초 뒤 찰칵
+    gyul: 10, litterP: 1 / 3, litterN: 2, sorryGyul: 15, // 사진 보상, 쓰레기를 버리고 갈 확률·개수, 귤로 맞히면 더 주는 귤
+    litterT: 9, hitR: 0.8, // 버리고 돌아선 뒤 맞힐 수 있는 시간(초), 맞는 반경
+    lines: ['사진 좀 찍어 주실래요?', '여기 배경 좋죠?', '저 좀 찍어 주세요!'],
+    thanks: ['인생샷이에요!', '와, 프사 바꿔야겠다', '감사합니다! 귤 드릴게요'],
+    sorry: ['앗, 죄송해요! 제가 치울게요', '헉, 들켰다… 미안해요'],
+    colors: { top: '#ffd34d', hat: '#f2f2ee', leg: '#5b7fa8', shoe: '#e9e4da' }, // 밝은 셔츠·흰 모자·청바지
+  },
+  crow: {
+    fullT: 30, cd: 300, dayMax: 5, // 배낭이 가득 찬 채 이 초 넘게 다니면, 이 초에 한 번까지, 하루 이만큼까지
+    roll: [3, 20], // 조건이 맞은 뒤 오기까지(초, 무작위)
+    warn: 2, // 오기 전 '까악'·그림자 (초)
+    swoop: 0.9, circle: 8, leave: 4, // 내려오기·머리 위 맴돌기·멀어지기 (초)
+    rMin: 5, rMax: 8, yMin: 6, yMax: 9, // 맴도는 반경·높이 (머리 위 6~10m)
+    hitR: 1.4, // 맞는 반경 (날아다녀서 넉넉히)
+    drop: [['gyul', 0.7, 20], ['rare', 0.2, 20], ['receipt', 0.1, 20]], // 반짝이는 것: 종류·확률·귤(없는 기능이면 귤로)
+  },
+};
 // 대화·말풍선 한 틀 (#190). bubble: 머리 위 말풍선 한 줄 ch 자 · lines 줄, 넘치면 pages 장까지 넘기고 그래도 넘치면 말줄임. chatLines 채팅(사람이 쓴 글)은 한 장에 조금 더
 // win: 대화 창(.talk) 대사 한 장 최대 lines 줄(넘으면 ▶ 다음 장), line 대사 한 줄 권장 글자 수(넘으면 문장에서 나눠 보여 줌, tools/talkshot.js 가 셈)
 export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 } };
+
+// 동굴 탐험 (#195, src/cavegen.js · game/cave.js). 고렙용 별도 동굴 맵. 값·이름은 모두 임의
+// open: 'admin' 이면 개발자 메뉴가 켜진 사람만 들어감(1·2번 조각이 끝나기 전), true 면 minLv·needZone 을 채운 사람, false 면 막음
+// x0·z0: 동굴 자리(오름 땅 ±2380 밖, 서버 자리 한도 ±4000 안). floorGap: 층마다 x 로 떨어뜨림
+// floors 층 수 · rooms 층마다 방 수 [최소, 최대] (3층이면 9~12) · extra 층마다 더 잇는 통로 수(갈림길) · grid 한 층 칸 수 · cell 칸 크기(m)
+// roomR 방 반지름 · bossR 맨 아래 방 · corrW 통로 반폭 · ceil 천장 높이(통로·방 [가장자리, 가운데]) · wobble 벽 울퉁불퉁(칸 비율)
+// cam: 카메라 거리·최대·숙임 · lamp: 헤드랜턴(반경 r m) · fog: 안개 [시작, 끝] m (그 밖은 검게, 멀리 그리지 않음)
+// fade·hold: 들어가고 나올 때 어두워지는 시간(초) · near: 입구·줄·구멍 상호작용 거리 · moss·crystal: 발광 이끼·수정 수(층마다)
+export const CAVE = {
+  open: 'admin', minLv: 12, needZone: 3,
+  x0: 3200, z0: 3200, floorGap: 300,
+  floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
+  roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,
+  cam: { dist: 7.5, max: 9, pitch: 0.2 },
+  lamp: { r: 13, i: 46, color: '#ffe2b0' },
+  fog: [5, 14], ambient: 0.55,
+  fade: 0.5, hold: 0.35, near: 2.6,
+  moss: 70, crystal: 26,
+  lines: { locked: '바람이 새어 나와요. 아직은 무리예요', admin: '지금은 어드민만 들어갈 수 있어요', enter: '용암 동굴', down: '더 깊이 내려갑니다', out: '밖으로 나왔어요' },
+};

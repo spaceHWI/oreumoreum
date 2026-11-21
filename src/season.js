@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { gradHard } from './toon.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SEASON } from './balance.js';
+import { santaGeo } from './clothes.js';
 
 const X = SEASON.xmas;
 const mats = new Map();
@@ -114,9 +115,9 @@ export function buildTree({ low = false } = {}) {
 export function santaHat(r = 0.4) {
   const g = new THREE.Group();
   const rim = mesh(new THREE.TorusGeometry(r, r * 0.22, 6, 16), WHITE); rim.rotation.x = Math.PI / 2; g.add(rim);
-  const c = new THREE.Group(); c.rotation.x = -0.5; g.add(c);
-  c.add(mesh(new THREE.ConeGeometry(r * 0.98, r * 1.8, 12), RED, 0, r * 0.85, 0));
-  c.add(mesh(new THREE.SphereGeometry(r * 0.24, 8, 6), WHITE, 0, r * 1.8, 0));
+  // 몸통: 밑단 수평, 위로 갈수록 뒤로 꺾임 (#198: 고깔째 기울이면 앞이 들려 틈)
+  const body = santaGeo(r * 0.99, r * 0.55, r * 1.9); g.add(mesh(body.geo, RED, 0, -r * 0.05, 0));
+  g.add(mesh(new THREE.SphereGeometry(r * 0.24, 8, 6), WHITE, 0, body.tip[1] - r * 0.05, body.tip[2]));
   return bake(g);
 }
 // 멧돼지 루돌프 꾸밈: 머리 뼈(모델 좌표, 키 0.77) 기준 코·뿔 머리띠

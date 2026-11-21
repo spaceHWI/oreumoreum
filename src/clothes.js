@@ -143,6 +143,16 @@ function scarf(mat, L) {
   });
   return G(out);
 }
+// 산타 모자 몸통 (#198, 하르방·투기꾼 모자도 씀): 밑 반지름 r·높이 dh 의 둥근 머리 덮개가 끝 높이 h 의 고깔로 이어지고, 위로 갈수록 뒤(-z)로 꺾임
+// 밑단은 수평이라 테(토러스)가 빈틈없이 덮음. 예전처럼 고깔 전체를 기울이면 앞쪽 밑단이 들려 머리가 비침. 돌려줌: { geo, tip: [0, y, z] } (방울 자리)
+export function santaGeo(r, dh, h) {
+  const pts = [], N = 12, bend = (y) => { const s = Math.max(0, (y - dh * 0.55) / (h - dh * 0.55)); return [-0.62 * h * s * s, -0.3 * h * s * s]; };
+  for (let i = 0; i <= N; i++) { const y = -0.02 * h + (h * 1.02) * (i / N), dome = y < dh ? r * Math.sqrt(Math.max(0, 1 - (Math.max(0, y) / dh) ** 2)) : 0, cone = r * Math.max(0, 1 - y / h); pts.push(new THREE.Vector2(Math.max(dome, cone, i < N ? 0.004 : 0), y)); }
+  const geo = new THREE.LatheGeometry(pts, 18), P = geo.attributes.position;
+  for (let i = 0; i < P.count; i++) { const [dz, dy] = bend(P.getY(i)); P.setZ(i, P.getZ(i) + dz); P.setY(i, P.getY(i) + dy); }
+  geo.computeVertexNormals(); const [tz, ty] = bend(h);
+  return { geo, tip: [0, h + ty, tz] };
+}
 // ---- 모자 (머리 뼈에 붙는 단단한 것). 머리 위 가운데 (0, 0.83, 0.045) ----
 export const HC = { y: 0.8, z: 0.042 };
 function hat(mat, L) {
@@ -167,11 +177,10 @@ function hat(mat, L) {
       [[-0.11, 0.2], [-0.16, 0.12]].forEach(([dy, w]) => { const t = at(new THREE.PlaneGeometry(w, 0.022), I, x + s * 0.001, cy + dy, HC.z); t.rotation.y = r; out.push(t); });
     });
     out.push(at(new THREE.PlaneGeometry(0.22, 0.02), I, 0, cy - 0.15, HC.z + Dp / 2 + 0.002)); // 앞 글씨 줄
-  } else if (L.kind === 'santa') { // 산타 모자 (#180): 흰 털 테 + 뒤로 꺾인 빨간 고깔 + 방울
-    const rim = at(new THREE.TorusGeometry(0.255, 0.05, 8, 26), A, 0, HC.y + 0.03, HC.z); rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.06, 1); out.push(rim);
-    const cone = new THREE.Group(); cone.position.set(0, HC.y + 0.05, HC.z); cone.rotation.x = -0.55; out.push(cone);
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.42, 20, 3), M); c.position.y = 0.2; cone.add(c);
-    const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), A); pom.position.y = 0.42; cone.add(pom);
+  } else if (L.kind === 'santa') { // 산타 모자 (#180, #198): 흰 털 테 + 머리를 덮는 빨간 몸통(아래는 수평, 위로 갈수록 뒤로 꺾임) + 방울
+    const body = santaGeo(0.275, 0.22, 0.62); const c = at(body.geo, side2(M), 0, HC.y + 0.005, HC.z); c.scale.z = 1.06; out.push(c);
+    const rim = at(new THREE.TorusGeometry(0.272, 0.05, 8, 26), A, 0, HC.y + 0.03, HC.z); rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.06, 1); out.push(rim);
+    out.push(at(new THREE.SphereGeometry(0.062, 10, 8), A, 0, HC.y + 0.005 + body.tip[1], HC.z + body.tip[2] * 1.06));
   } else if (L.kind === 'antler') { // 루돌프 머리띠 (#180): 머리 위를 넘는 띠 + 갈래 뿔 둘 + 작은 빨간 방울
     const bandG = new THREE.TorusGeometry(0.262, 0.016, 6, 24, Math.PI); const b = at(bandG, A, 0, HC.y - 0.07, HC.z - 0.01); b.scale.set(1.02, 1.05, 1); out.push(b); // 귀에서 귀로 머리 위를 넘음
     both((s) => {
@@ -209,7 +218,7 @@ export function boots(mat, L) {
   return G(out);
 }
 // 새 모양 종류의 덮는 부위·모자 자르기 (#179, src/clothes2.js 가 채움): KIND_COVER[kind] = 덮는 몸 부위, KIND_HAT[kind] = { clip, hide }
-export const KIND_COVER = {}, KIND_HAT = {};
+export const KIND_COVER = {}, KIND_HAT = { santa: { clip: 0.88 } }; // 산타 모자는 테 바로 위에서 머리카락을 자름 (#198: 똥머리가 뒤로 비침)
 export const HAT_CLIP = 0.97; // 모자 윗면 조금 아래: 머리카락(똥머리 등)이 이보다 위로 나오면 감춤 (#106)
 export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, boots, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat, santa: hat, antler: hat, box: hat, scarf };
 // 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
