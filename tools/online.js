@@ -25,6 +25,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     // 튜토리얼 끝낸 손님으로 들어감
     await p.evaluate(() => { const o = window.__oreum; Object.assign(o.save, { server: 'clean', entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); localStorage.setItem(Object.keys(localStorage).find((k) => k.startsWith('oreumoreum') && !k.includes('.ab')) || 'oreumoreum.v1', JSON.stringify(o.save)); });
     await p.reload(); await p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 120000 });
+    // 오래 멈춤(#157): 검사 화면은 손을 대지 않으므로 8분 뒤 서버가 닫고(4004) 클라이언트도 쉬러 감 → 뒤쪽 검사(노루 먹이·엔딩)가 B 에 닿지 않던 원인 (#193). 조작이 있는 것처럼 둠
+    await p.evaluate(() => { const i = window.__oreum.idle; if (!i) return; i.set({ warn: 1e6, rest: 1e6, hidden: 1e6 }); setInterval(() => i.act?.(), 20000); });
     console.log(name, 'ready');
     return { ctx, p };
   };
@@ -121,7 +123,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
     await wait(A.p, 1500);
     const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
-    ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
+    if (aOn === -1) ok(bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료 꺼짐(#190 BUDDIES.on=false): B 가 보는 사람 ${bSee.n}명, 동료 값 없음`); /* 동료를 다시 켜면 아래 줄이 다시 봄 (#193) */
+    else ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
     const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
     const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
     await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
@@ -215,6 +218,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const a2 = await A.p.evaluate(() => window.__oreum.story.ending.state()), b2 = await B.p.evaluate(() => window.__oreum.story.ending.state());
     ok(!!a2 && !b2, `엔딩: 같은 날 두 번째는 끝낸 사람만 (A ${!!a2} · B ${!!b2})`);
     await A.p.evaluate(() => window.__oreum.story.ending.stop());
+    { let c = -1; for (let k = 0; k < 20; k++) { const n = await A.p.evaluate(() => window.__oreum.save.coins); if (n === c) break; c = n; await wait(A.p, 2000); } } /* 억지로 다시 튼 엔딩의 보상(귤 날아가는 효과 뒤 숫자 올림)이 아래 '귤 40' 뒤에 들어와 340 이 되던 것 (#193) */
   }
   // 가짜 로그인 → 계정 사본으로 새로고침
   await A.p.evaluate(() => { window.__oreum.save.coins = 40; });
