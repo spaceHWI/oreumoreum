@@ -972,6 +972,54 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 .zd-open { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; } .zd-open span { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.12); }
 .zd-next { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0 0 12px; } .zd-next .tone { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 #zdone-ok, #wake-pick .btn { width: 100%; }
+/* 퀘스트 (#158, game/quest.js): 위 추적 줄 · 주는 사람 창 · 퀘스트 창(L) · 마지막 하늘 글씨 */
+#quest-track { position: fixed; z-index: 5; left: var(--tb-l); top: calc(var(--tb-top) + var(--tb-h) + 10px); max-width: min(380px, calc(100vw - 180px)); min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 8px; border-radius: 14px; border: 1px solid var(--hair); background: var(--glass); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: var(--ink); font: 700 14px/1.2 var(--body); cursor: pointer; user-select: none; -webkit-user-select: none; }
+#quest-track[hidden] { display: none; }
+#quest-track .qm { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #ffd23f; color: #3a2a00; font: 900 15px/1 var(--display); font-style: normal; }
+#quest-track .qm.side { background: #fff; }
+#quest-track .qt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#quest-track .qp { flex: none; color: var(--gyul); }
+#quest-track .qa { flex: none; width: 18px; height: 18px; transform: rotate(var(--a, 0rad)); }
+#quest-track .qa[hidden] { display: none; }
+#quest-track .qd { flex: none; min-width: 30px; color: var(--ink-soft); font-size: 12px; }
+#quest-track .ql { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.12); color: inherit; cursor: pointer; }
+#quest-track.ready { background: rgba(255, 210, 63, .92); border-color: transparent; color: #2a1e00; }
+#quest-track.ready .qm { background: #2a1e00; color: #ffd23f; } #quest-track.ready .qp { color: #2a1e00; } #quest-track.ready .qd { color: rgba(42,30,0,.72); } #quest-track.ready .ql { background: rgba(42,30,0,.12); }
+#quest-track.going .qa { animation: qpulse 1s ease-in-out infinite; }
+#quest-track.bump { animation: bump .45s ease-out; }
+@keyframes qpulse { 50% { opacity: .35; } }
+@media (max-width: 600px) { #quest-track { max-width: calc(100vw - 160px); min-height: 44px; gap: 6px; padding: 3px 3px 3px 7px; font-size: 13px; } #quest-track .ql { width: 38px; height: 38px; } }
+#quest .pop { width: min(420px, 100%); }
+#quest .q-name { margin: 2px 0 8px; font: 800 19px/1.3 var(--display); color: #ffd23f; }
+#quest .q-name.side { color: #fff; }
+#quest .q-say p { margin: 0 0 6px; line-height: 1.5; }
+#quest .q-task { margin: 10px 0 6px; padding: 9px 11px; border-radius: 12px; background: rgba(255,255,255,.08); font-weight: 700; }
+#quest .q-task:empty, #quest .q-rew:empty { display: none; }
+#quest .q-task b { color: var(--gyul); }
+#quest .q-rew { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 12px; font-weight: 800; }
+#quest .q-rew .gy { width: 16px; height: 16px; border-radius: 50%; background: var(--gyul); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15); }
+#quest .q-rew span { display: inline-flex; align-items: center; gap: 5px; }
+#quest .q-go { width: 100%; min-height: 48px; font-size: 17px; }
+#quest .q-go.claim { animation: qglow 1.2s ease-in-out infinite; }
+@keyframes qglow { 50% { box-shadow: 0 0 0 4px rgba(255,210,63,.45), 0 0 18px rgba(255,170,40,.6); } }
+#qlog .pop { width: min(440px, 100%); }
+#qlog h3 { margin: 12px 0 6px; font: 800 15px var(--display); color: var(--ink-soft); }
+#qlog h3:first-child { margin-top: 2px; }
+#qlog .q-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.07); font-weight: 700; }
+#qlog .q-row small { display: block; color: var(--ink-soft); font-weight: 500; }
+#qlog .q-row b { flex: none; color: var(--gyul); }
+#qlog .q-row.ready { background: rgba(255,210,63,.2); }
+#qlog .q-row.done { opacity: .55; }
+#qlog .q-row.side { border-left: 3px solid #fff; } #qlog .q-row.main { border-left: 3px solid #ffd23f; }
+#qlog .q-empty { color: var(--ink-soft); margin: 4px 0; }
+@media (max-width: 600px) {
+  #quest, #qlog { place-items: end stretch; padding: 0; }
+  #quest .pop, #qlog .pop { width: 100%; max-height: 84%; border-radius: 24px 24px 0 0; padding-bottom: var(--safe-b); animation: qsheet .22s ease-out; }
+}
+@keyframes qsheet { from { transform: translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+#quest-end { position: fixed; z-index: 30; left: 0; right: 0; top: 16%; padding: 0 16px; text-align: center; pointer-events: none; font: 900 clamp(26px, 6vw, 56px)/1.25 var(--display); color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,.6), 0 0 40px rgba(120,220,255,.55); opacity: 0; transition: opacity 1.6s; }
+#quest-end.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #quest-track.going .qa, #quest .q-go.claim, #quest-track.bump { animation: none; } }
 #zdone .pop-head h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #wake-pick .pop { width: min(360px, 100%); } .wake-btns { display: grid; gap: 8px; }
 #fade-go { position: fixed; inset: 0; z-index: 9; background: #0e0f0c; opacity: 0; pointer-events: none; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 18px; transition: opacity var(--ft, .9s) ease; }
@@ -1157,7 +1205,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-cd42e79329.js">(function () {
+<script data-main="main-89c2c6a601.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1326,6 +1374,20 @@ button.bag-card { cursor: pointer; }
     <div class="pop-body"><div class="zd-rows" id="zdone-rows"></div><div class="zd-open" id="zdone-open"></div><p class="zd-next" id="zdone-next"></p><button type="button" class="btn primary" id="zdone-ok">좋아요</button></div>
   </div>
 </div>
+<div id="quest-track" role="button" tabindex="0" title="퀘스트: 누르면 그쪽으로 걸어가요" hidden><i class="qm">!</i><span class="qt"></span><b class="qp"></b><svg class="qa" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l7.5 16L12 14l-7.5 4z"/></svg><small class="qd"></small><button type="button" class="ql" aria-label="퀘스트 목록 (L)" title="퀘스트 목록 (L)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></button></div>
+<div class="overlay dim" id="quest" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2 id="quest-who"></h2><button type="button" class="btn small" id="quest-close">닫기</button></div>
+    <div class="pop-body"><p class="q-name" id="quest-name"></p><div class="q-say" id="quest-say"></div><div class="q-task" id="quest-task"></div><div class="q-rew" id="quest-rew"></div><button type="button" class="btn primary q-go" id="quest-go">받기</button></div>
+  </div>
+</div>
+<div class="overlay dim" id="qlog" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>퀘스트</h2><button type="button" class="btn small" id="qlog-close">닫기</button></div>
+    <div class="pop-body" id="qlog-body"></div>
+  </div>
+</div>
+<div id="quest-end" aria-live="polite"></div>
 <div class="overlay dim" id="wake-pick" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>어디서 시작할까요?</h2></div>
