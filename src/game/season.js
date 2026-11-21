@@ -69,7 +69,6 @@ function apply() {
   for (const e of life.enemies.list) if (e.xmasDeco) e.xmasDeco.visible = on;
   sound.setWinter?.(on);
   $('menu-xmas').hidden = !on;
-  logoSnow(on);
   applied = on; refreshDot(); late.tips?.refresh?.();
   const v = $('adm-season-v'); if (v) v.textContent = mode === 'on' ? '켬' : mode === 'off' ? '끔' : `기간대로 (${realDay() ? '켜짐' : '꺼짐'})`;
   document.querySelectorAll('[data-season]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.season === mode))); // #153 고른 것은 눌린 모양
@@ -77,16 +76,7 @@ function apply() {
 function setMode(m) { mode = m === 'on' || m === 'off' ? m : ''; try { if (mode) localStorage.setItem(SK, mode); else localStorage.removeItem(SK); } catch (e) { /* 무시 */ } apply(); }
 document.querySelectorAll('[data-season]').forEach((b) => b.addEventListener('click', () => { setMode(b.dataset.season); toast('철 이벤트: ' + (mode === 'on' ? '켬' : mode === 'off' ? '끔' : '기간대로')); }));
 
-// 첫 화면 로고에 눈 살짝: 글자 넷 윗면에 흰 눈 덩이
-function logoSnow(on) {
-  const box = document.querySelector('.intro-logo'); if (!box) return;
-  let el = box.querySelector('.logo-snow');
-  if (!on) { el?.remove(); return; }
-  if (el) return;
-  const NS = 'http://www.w3.org/2000/svg'; el = document.createElementNS(NS, 'svg'); el.setAttribute('class', 'logo-snow'); el.setAttribute('viewBox', '0 0 409 40'); el.setAttribute('aria-hidden', 'true');
-  el.innerHTML = [0, 1, 2, 3].map((i) => { const x = i * 103; return `<path d="M${x + 6} 12c4-7 12-9 20-6 6-4 16-4 22 1 8-4 18-3 24 3 6-2 14 0 20 4v4H${x + 6}z" fill="#ffffff"/><circle cx="${x + 30}" cy="16" r="3" fill="#ffffff"/><circle cx="${x + 72}" cy="15" r="2.4" fill="#ffffff"/>`; }).join('');
-  box.append(el);
-}
+// 첫 화면 로고는 철 이벤트에도 그대로 둔다 (#192: 로고 위 눈 덩이가 구름처럼 보여 뺌)
 
 /* ---------- 트리 (모두 함께) ---------- */
 let pollT = 2, lastPicked = -1;
