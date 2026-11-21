@@ -329,6 +329,7 @@ function step(now) {
     ease(dt, false, 1.5);
   } else if (cam.mode === 'photo') ease(dt, false, 4);
 
+  late.tickUfo?.(dt); // 첫 화면 UFO (#150): 카메라를 옮긴 뒤
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
@@ -368,7 +369,7 @@ state.farCull = createFarCull(camera, quality.tier);
   const lifeG = life.deer[0]?.root.parent || null;
   const draws = (o) => { let n = 0; o.traverse((c) => { if ((c.isMesh && !c.isInstancedMesh) || c.isSprite) n++; }); return n; };
   for (const o of scene.children) {
-    if (o === runner.root || o === lifeG || o.isMesh || o.isPoints || o.isSprite || o.isLight || o.name === 'halla') continue;
+    if (o === runner.root || o === lifeG || o.isMesh || o.isPoints || o.isSprite || o.isLight || o.name === 'halla' || o.userData.noCull) continue; // noCull: 카메라를 따라다니는 것(첫 화면 UFO #150)
     if (draws(o) < 3) continue;
     state.farCull.add(o);
   }
