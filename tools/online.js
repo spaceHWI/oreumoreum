@@ -49,6 +49,10 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const tee = await A.p.evaluate(() => { const o = window.__oreum; o.save.look = { ...(o.save.look || { sex: 'm', skin: 0 }), colors: { hat: 0, top: 3, bottom: 0, shoes: 0 } }; o.clothes.wear('top', 'top:w-tee'); o.player.pos.x += 0.5; return o.save.outfit.gear.top; });
     const seenTee = await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.data.o?.gr?.top === t), tee);
     ok(tee === 'top:w-tee~3' && seenTee, `A 가 고른 기본 옷 색이 B 화면에 (${tee})`);
+    // 레벨 (#159): 문이 열린 A 의 레벨이 B 화면 이름표에 (바뀔 때만 실림)
+    const alv = await A.p.evaluate(() => { const o = window.__oreum; o.save.journey = { ...(o.save.journey || {}), seen: { ...(o.save.journey?.seen || {}), level: '2026-01-01' } }; o.level.setXp(5000); o.player.pos.x += 0.5; return o.level.state().lv; });
+    const seenLv = await until(B, (lv) => [...window.__oreum.net.peersById.values()].some((e) => e.lv === lv), alv);
+    ok(alv > 1 && seenLv, `B 가 A 의 레벨을 봄 (레벨 ${alv})`);
     const C = await open('C'); await C.p.click('#enter');
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)

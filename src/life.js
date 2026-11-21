@@ -443,6 +443,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     // 던진 귤 다시 줍기 (동물이 먹으러 오는 중이 아니면)
     for (let i = tangerines.length - 1; i >= 0; i--) {
       const tg = tangerines[i];
+      if (tg.twin && tg.landed && tg.rest > 0.4 && !tg.claimedBy) { group.remove(tg.mesh); tangerines.splice(i, 1); continue; } // 쌍귤(#159) 덤 귤은 줍지 못하고 사라짐 (귤을 더 쓰지 않았으니)
       if (!tg.landed || tg.eaten || tg.claimedBy || tg.rest < 0.6 || player.riding) continue;
       const p = tg.mesh.position;
       if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < (tg.drop ? hooks.pickR2?.() || 1.6 : hooks.throwR2?.() || 1.6)) { tangerines.splice(i, 1); const v = tg.v || 1; suck(tg.mesh, (at) => hooks.reclaim?.(at, v)); } // 범위 안이면 빨려 옴 (#151), 싸우는 중엔 더 넓게 (#148)

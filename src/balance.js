@@ -1345,3 +1345,36 @@ export const SEASON = {
     ],
   },
 };
+
+// 레벨과 증강 (#159, src/augments.js·src/game/level.js). 값은 모두 임의 (tools/econ.js 로 맞춤)
+// 경험치: 쓰레기 하나 trash, 더미를 다 치우면 heap(쓰레기 산 mt), 적을 쫓아내면 그 적 귤 보상 × enemyK, 우두머리 boss, 투기꾼 dumper, 퀘스트 quest[최소, 최대] (#158 이 값을 골라 줌)
+// 레벨 L → L+1 에 round(base × L^pow), 최고 max. 레벨업마다 증강 하나를 고름 (고를 수 = 레벨 - 1)
+// reroll: 다시 뽑기 한 번 값(귤). safe: 싸움이 끝나고 이 초 뒤에 고르기 창을 엶. guard: 멀티에서 창을 연 동안 받지 않는 시간(초)
+// glow: 레벨업 빛 시간(초)·반지름(m), barMs: 경험치 띠가 차오르는 시간
+export const LEVEL = {
+  base: 70, pow: 1.6, max: 30,
+  xp: { trash: 1, heap: 10, mt: 40, enemyK: 0.2, enemyMin: 1, boss: 100, dumper: 5, quest: [20, 60] },
+  reroll: 50, safe: 1.5, guard: 2,
+  glow: { t: 1.4, r: 2.2 }, barMs: 600,
+};
+// 증강 12종 (세 갈래 × 4). v = 한 번 고를 때 더하는 값, 최대 max 번 겹침. 수치는 작게: 3번 겹쳐도 장비 한 단계(#137, 2배 넘는 도약)보다 훨씬 작게
+// 셈은 src/augments.js augV(save, id) = 겹친 수 × v. 장비·식사 능력치에 더해짐(곱하지 않음). 장비 점수(gearscore.js)에는 넣지 않음
+// text: 카드 한 줄 ({v} 자리에 1번 값), sec·r: 지속 초·반지름
+export const AUGMENTS = {
+  max: 3,
+  branches: [{ id: 'clean', name: '청소', color: '#5aa55a' }, { id: 'fight', name: '전투', color: '#e0583c' }, { id: 'live', name: '생존', color: '#4a86c8' }],
+  list: [
+    { id: 'bighand', br: 'clean', name: '큰손', v: 0.15, text: '{v}% 확률로 쓰레기 1개 더' },
+    { id: 'magnet', br: 'clean', name: '자석 귤', v: 0.4, text: '귤 모이는 범위 +{v}m' },
+    { id: 'flower', br: 'clean', name: '꽃길', v: 0.08, sec: 8, text: '더미를 치우면 8초 이동 +{v}%' },
+    { id: 'recycle', br: 'clean', name: '분리수거 달인', v: 0.03, text: '클린하우스 귤 +{v}%' },
+    { id: 'twin', br: 'fight', name: '쌍귤', v: 0.04, text: '{v}% 확률로 한 발 더 (귤은 그대로)' },
+    { id: 'burst', br: 'fight', name: '터지는 귤', v: 0.04, r: 1.5, text: '맞은 둘레 1.5m 에 피해 {v}%' },
+    { id: 'sour', br: 'fight', name: '신 귤', v: 0.1, sec: 1.5, text: '맞은 적 1.5초 {v}% 느려짐' },
+    { id: 'quick', br: 'fight', name: '빠른 손', v: 0.08, text: '모아 쏘기 시간 -{v}%' },
+    { id: 'bite', br: 'live', name: '귤 한 입', v: 2, text: '적을 쫓아내면 기운 +{v}' },
+    { id: 'light', br: 'live', name: '가벼운 발', v: 0.02, text: '이동 +{v}%' },
+    { id: 'jacket', br: 'live', name: '두꺼운 잠바', v: 0.03, text: '받는 피해 -{v}%' },
+    { id: 'deer', br: 'live', name: '노루 친구', v: 0.04, text: '탈것 속도 +{v}%' },
+  ],
+};
