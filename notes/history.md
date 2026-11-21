@@ -1036,3 +1036,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 소리: audio.js `hoof`(걸음 반 바퀴마다)·`cartBell`(가끔), CART.soundR 30m 안에서만
 - 타는 자리 CART.seatPos·마부 자리 driverPos 로 이름 붙임(#120 이 씀). 크기·부딪힘·시간표는 그대로
 - 가로등(lampaim.js): 들머리·능선 가로등은 팔이 길 반대쪽을 보고 있었음(돌림각 부호가 반대, 25개 중 23개가 약 180° 어긋남, 가게 거리 2개는 맞음). 이제 가장 가까운 탐방로·가게 거리 골목 가운데를 보고, 6m 안에 다른 길이 지나면 그 방향들의 가운데. 4m 넘게 먼 것은 3.4m 로 당김(LAMP_AIM, 지금 0개). `__oreum.lampAim` 에 앞뒤 각
+## #173 들판 떼 (2026-11-21)
+- 새 파일 `src/game/swarm.js`(게임 연결 전부)·`src/punktext.js`(이름·말투 표 SWARM_TEXT, #165 가 이어서)·`tools/swarm.js`(자동 판). 수치 `balance.js SWARM`, 설계 `notes/growth-loop.md` 6-1절
+- 들판 = 탐방로에서 12m 넘게(9m 안이면 길). 판(`run`)이 시작되면 카메라 뒤쪽 18~26m(좁으면 넓혀)에서 그 구역 떼가 나옴. 물결은 머문 시간 4→8→14(+정예)→20(+정예 2), 5분 떼 대장 → 보물 상자(`late.swarmLoot` 자리) → 3분 단계로. 상한 PC 24·폰 16·저사양 10
+- 적: enemies.js `spawnSwarm(kind, x, z, over, pk, k)` (spawnOne + 바로 쫓음, 모양 k 배). def.swarm('mob'·'elite'·'leader') 이면 쫓겨날 때 토스트 없음. 쫓겨난 떼 적은 1.2초, 떠나는 떼 적은 3.5초 뒤 지움(그리기 수). 새 종류 `crow`(구역 3, 날다가 조짐·돌진 때 내려옴)·`drone`(구역 5, 약한 광선) — 표 값은 '보통 적' 기준, 모양은 enemymodels.js 로우폴리 한 메시
+- 귤: 떼 적의 def.reward.gyul 은 0, 대신 def.sg 를 알갱이 2개까지로 흩뿌림. 구역별 배수 `mob.gyul` [0.03, 0.1, 0.17, 1.1, 1.6] (결정: 이슈의 25% 그대로면 구역 1·2 들판 10분이 길가의 2.9·2.5배, 4·5 는 0.3·0.2배 → econ 으로 1~1.2배에 맞춤)
+- 자동 던지기: 탄은 swarm.js InstancedMesh(무기 간격 `SWARM.auto`·피해·귤 소모는 무기 그대로, 폭탄은 큰 공 + 둘레 피해). 무기 자체의 탄·효과는 쓰지 않음(증강 갈래·관통·뒤로를 한곳에서). 던지기 버튼을 누르고 있으면 손 조작이 먼저, 메뉴 설정 '자동 던지기'(save.swarm.auto)
+- 증강 12종(그 판만, 3단계): 카드 창 `#swarm-pick`(1·2·3 키, 12초 안 고르면 첫 카드). 혼자면 state.slowMo/slowK 로 0.3배, 멀티면 player.iframe 2초. 이동 배수 `late.swarmSpeed`(update.js, 썩은 귤 자루 느려짐도)
+- 숨 돌릴 틈: `late.pace.cleared` 를 감싸 더미 자리 25m 30초. 문 'field'(#176): FACTS.fieldQuest = save.quest.field(#158 이 채움), 퀘스트 시스템(late.quest)이 없으면 첫 버리기 뒤. 그 전엔 물결 1단계
+- 멀티: 떼는 방으로 보내지 않음(보통 적과 같음). 서버 변경 없음 — 떼 귤은 ① 작은 몫(NET.earnPerSec 토큰 통) 안. 대장 상자는 구역 5 에서 3300 으로 earnBurst 4000 아래
+- `tools/econ.js`: 놀이의 10% 를 들판으로 셈(`SWARM.econ.share`, --noswarm 비교). '들판 떼 10분 귤' 표·판정과 '마지막 칸이 하루 넘게 당겨지지 않음' 판정 더함. 15% 로 두면 효율 플레이 2일 장비 단계가 4로 넘어 흐름 실패
+- `tools/perf.js` 시나리오 `swarm`(`__oreum.swarm.fill`: 상한만큼 둘레에)

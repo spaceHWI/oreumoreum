@@ -30,6 +30,7 @@ const FACTS = {
   zonesDone: () => Object.values(save.boss?.done || {}).filter((n) => n > 0).length,
   zone: () => J().maxZ || 0,
   night: () => ((sunState?.el ?? 30) < -4 ? 1 : 0),
+  fieldQuest: () => (save.quest?.field || save.swarm?.quest ? 1 : late.quest ? 0 : (save.recycle?.visits || 0) >= 1 ? 1 : 0), // #173 들판 떼: 퀘스트 '들판 탐사'(#158) 뒤. 퀘스트가 아직 없으면 첫 버리기 뒤
 };
 
 export const director = createDirector({
