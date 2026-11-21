@@ -1346,7 +1346,7 @@ export const SEASON = {
   },
 };
 
-// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·칭호. 글은 src/punktext.js, 게임 연결은 game/punk.js
+// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·칭호. 글은 src/punktext.js, 게임 연결은 game/punkworld.js
 // radio.every 방송 사이 [최소, 최대] 초 · sec 자막 띠가 흐르는 초 · r 스피커 기둥에서 이 m 안에서만 들림 · first 문(JOURNEY 'radio')이 열린 뒤 첫 방송까지 초
 //   situ 상황 방송이 생기면 다음 방송을 이 초 안으로 당김 · situTtl 상황 방송이 기다리는 최대 초 · spots 스피커 자리 [들머리 길 approach 거리(정낭 TUT.gateD 에서), 쪽, 옆 m], 가게 거리 골목 [s, 쪽]
 // note.p 쓰레기 하나 주울 때 쪽지가 나올 확률 (쓰레기 수·귤은 보통 쓰레기와 같음)

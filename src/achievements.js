@@ -78,7 +78,7 @@ BADGES.push(
   { id: 'b-rank-10', ev: 'rank-top10', goal: 1, name: '오늘의 열 명', desc: '오늘 랭킹 10위 안에 들었어요', color: '#ff9a1f', reward: 50 }, // 랭킹 (#11)
   { id: 'b-rank-1', ev: 'rank-top1', goal: 1, name: '오늘의 일등', desc: '오늘 랭킹 1위를 했어요', color: '#e8b94a', reward: 150 },
   { id: 'b-gear-all', ev: 'gear-max-all', goal: 1, name: '완전 무장', desc: '장비를 전부 최고 단계까지', color: '#e8b94a', reward: 400 },
-  // 칭호가 열리는 업적 (#165, 칭호 글은 punktext.js TITLES). 사건은 game/punk.js 가 냄 (stare·trash-day-500·quest-boss1·note-all)
+  // 칭호가 열리는 업적 (#165, 칭호 글은 punktext.js TITLES). 사건은 game/punkworld.js 가 냄 (stare·trash-day-500·quest-boss1·note-all)
   { id: 'b-earn-10k', ev: 'earn', goal: 10000, name: '귤값 하는 사람', desc: '귤 10,000개 벌기', color: '#ff9a1f', reward: 50 },
   { id: 'b-stare', ev: 'boar-stare', goal: 1, name: '멧돼지와 눈싸움', desc: '멧돼지 앞에서 10초 동안 안 맞고 버티기', color: '#6b4a36', reward: 20 },
   { id: 'b-unpaid', ev: 'trash-day-500', goal: 1, name: '오늘도 무급', desc: '하루에 쓰레기 500개 줍기', color: '#5a7a4a', reward: 50 },

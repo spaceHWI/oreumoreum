@@ -1,4 +1,4 @@
-// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·이름 장난 칭호. 글은 src/punktext.js, 수치는 balance.js PUNK. 파일 순서는 season 뒤 (src/modules.js)
+// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·이름 장난 칭호. 글은 src/punktext.js, 수치는 balance.js PUNK. 파일 순서는 season 뒤 (src/modules.js). #164 아이템은 game/punk.js
 // 1. 오름 방송: 들머리·가게 거리 스피커 기둥(코드 모델). 감독 문 'radio' 가 열리면 PUNK.radio.every 초마다 '딩동댕' 뒤 이장님 방송이 위쪽 자막 띠로
 //    스피커 PUNK.radio.r m 안에서만. 감독(kind 'radio', 우선순위 맨 뒤·싸움 중엔 안 나옴)을 거침. 상황(구역 완료·우두머리·비·자정)은 다음 방송에 먼저, 멀티는 이름(safeNick 거친 것)
 //    메뉴 설정 '오름 방송' 켜기·끄기 (save.punk.radio)
