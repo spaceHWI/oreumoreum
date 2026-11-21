@@ -2,7 +2,9 @@
 // - 구역이 ZONE_BOSS.appear(80%) 깨끗해지고 최근(ZONE_GUARD.holdSec 안)에 쫓아낸 적이 없으면, 그 구역 우두머리 빈터(field.bosses)에 우두머리가 나옴
 //   모양은 그 구역 적(enemies.js spawnBoss)을 키우고 색을 곱하고 머리 위 왕관·발밑 빛 고리. 빈터 가까이 오면 싸움 시작(화면 위 이름·기운 줄)
 // - 패턴: 기운 50%·20% 에서 단계가 바뀜(포효). 돌진(바닥 띠 경고 → 달림) · 무리 부르기(그 구역 적) · 광선(바닥 원 경고 → 하늘 빛 기둥). 경고를 보고 피할 수 있음
-//   여럿이면 기운이 사람 수에 맞춰 늚. 쓰러지면 마지막으로 지난 구역 클린하우스에서 깨어남(hp.js startAt → late.wakeAt), 우두머리는 빈터로 돌아가 기운을 채움
+//   여럿이면 기운이 사람 수에 맞춰 늚(남은 비율은 지킴). 쓰러지면 마지막으로 지난 구역 클린하우스에서 깨어남(hp.js startAt → late.wakeAt)
+// - #183 싸움이 풀리면(모두 leash 밖·쓰러짐) 기운은 그대로, 빈터로 걸어 돌아가 ZONE_BOSS.rest.delay 초 쉰 뒤 천천히 참(enemies.js restRegen). 단계는 기운 비율대로
+//   풀린 뒤 parting 초 안에 마지막으로 때린 사람 쪽으로 돌진 한 번(맞히고 달아나기 막기). 사라졌다 다시 나와도 남은 기운은 kept 로 이어짐(그동안 찬 만큼 더해)
 // - 쫓아내면: 느린 화면 + 큰 전리품(귤 + 귀한 재료 자리 save.boss.mats, #140 강화가 씀) → 돌하르방(guard.js raise) → 구역 완료 요약 한 장
 // - 구역 완료(save.boss.done)로 열리는 것: 그 구역 클린하우스 옆 '빠른 마차'(가게 거리까지 기다림 없이), 구역 들어오는 곳 옆 '지름길'(구역 위쪽 끝으로), 요약에 다음 구역 권장 점수
 //   (빠른 마차·지름길은 지금은 화면이 어두워졌다 밝아지는 임시 연출. 길·마차 모양은 나중에)
@@ -14,6 +16,7 @@ import * as THREE from 'three';
 import { ZONE_BOSS as B, ZONE_GUARD, ENEMIES, ENEMY_SPAWN, BOAR, COLLIDE } from '../balance.js';
 import { gradHard } from '../toon.js';
 import { gearScore } from '../gearscore.js';
+import { restRegen } from '../enemies.js';
 import { tierColor, zoneShort, josaIGa, josaEulReul } from '../zonelook.js';
 import { height } from '../world.js';
 import { state, late } from './state.js';
@@ -35,6 +38,21 @@ const nowS = () => performance.now() / 1000;
 const netBeat = {}; // 방에서 들은 쫓아낸 시각 (구역 → 기기 ms)
 const beatAt = (z) => Math.max(Number(S.beat[z]) || 0, netBeat[z] || 0);
 const recent = (z) => Date.now() - beatAt(z) < ZONE_GUARD.holdSec * 1000;
+const R = B.rest;
+const phaseOf = (f) => (f <= B.phase[1] ? 2 : f <= B.phase[0] ? 1 : 0);
+// 사라진 우두머리의 남은 기운 (#183, 방장·혼자 화면만, 저장하지 않음): 구역 → { f: 비율, calm: 쉰 초, at: 사라진 시각 }
+const kept = {};
+function keptFrac(z) {
+  const k = kept[z]; if (!k) return null;
+  const calm = k.calm + (nowS() - k.at), f = Math.min(1, k.f + Math.max(0, calm - Math.max(R.delay, k.calm)) * R.rate);
+  if (f >= 1) { delete kept[z]; return null; }
+  return { f, calm };
+}
+// 사람 수가 바뀌어 최대 기운이 달라지면 남은 비율을 지켜 맞춤 (#183)
+function rescale(c, n) {
+  const f = c.max > 0 ? c.e.hp / c.max : 1;
+  c.n = Math.max(1, n); c.max = c.base * (1 + B.perPlayer * (c.n - 1)); c.e.hp = f * c.max; c.e.def = { ...c.e.def, hp: c.max };
+}
 
 
 /* ---------- 모양: 왕관·발밑 고리·경고 띠·경고 원·빛 기둥 ---------- */
@@ -114,7 +132,10 @@ function spawn(z, puppet = false, at = null) {
   const e = life.enemies.spawnBoss(D.kind, x, zz, { ...D, ctl: puppet ? puppetCtl : aiCtl, remoteHurt: puppet ? sendHit : null, puppet });
   e.heading = Math.atan2(player.pos.x - x, player.pos.z - zz);
   tintBoss(e, D.tint);
-  cur = { z, e, base: D.hp, max: D.hp, ph: 0, fight: false, n: 1, act: null, seq: -1, gapT: 1.5, callT: 4, beamT: 2, minions: [], fighters: new Map(), hitByMe: false, puppet, net: null, tintT: 0, sendT: 0, roarT: 0, bornT: nowS() };
+  cur = { z, e, base: D.hp, max: D.hp, ph: 0, fight: false, n: 1, act: null, seq: -1, gapT: 1.5, callT: 4, beamT: 2, minions: [], fighters: new Map(), hitByMe: false, puppet, net: null, tintT: 0, sendT: 0, roarT: 0, bornT: nowS(),
+    regen: false, regenSeen: 0, partT: 0, partDone: true, awayT: -1, lastHp: D.hp, lastBy: null, byNet: false };
+  const k = puppet ? null : keptFrac(z); // 물러났다 돌아옴: 남은 기운 이어서 (#183)
+  if (k) { e.hp = k.f * D.hp; e.calmT = k.calm; cur.lastHp = e.hp; cur.ph = phaseOf(k.f); } delete kept[z];
   crown.visible = aura.visible = true; aura.material.color.set(tierColor(z));
   if (!puppet) { // 나타남: 흙먼지·포효·방향 표시
     if (bfx && Math.hypot(x - player.pos.x, zz - player.pos.z) < 160) { bfx.ring(x, zz, 7, 1.0, '#e9d2a6', 0, 1.4); bfx.burst(x, height(x, zz) + 0.3, zz, { petals: lite() ? 10 : 40, sparks: 0, up: 3, spread: 2, color: '#b8a07c' }); }
@@ -127,6 +148,7 @@ function spawn(z, puppet = false, at = null) {
 function despawn(quiet = true) {
   if (!cur) return;
   const e = cur.e; if (life.enemies.list.includes(e) && e.state === 'boss') life.enemies.remove(e);
+  if (!cur.puppet && e.hp > 0 && e.hp < cur.max) kept[cur.z] = { f: e.hp / cur.max, calm: e.calmT || 0, at: nowS() }; // #183
   if (!quiet) say('danger', 'bossGone', `${name(cur.z)}${josaIGa(name(cur.z))} 숲으로 돌아갔어요`, 2.8, { ttl: 5 });
   endAct(); cur = null; crown.visible = aura.visible = false; bar(false);
 }
@@ -245,6 +267,28 @@ function pickAct(c, t) {
   startAct('charge', { ax: e.pos.x, az: e.pos.z, bx: e.pos.x + Math.sin(dir) * len, bz: e.pos.z + Math.cos(dir) * len });
 }
 
+// 풀린 뒤 돌진 한 번 (#183): 마지막으로 때린 사람(없으면 가장 가까운 사람) 쪽. 빈터에서 leash + partOver 까지만
+function partCharge(c) {
+  const e = c.e, a = ARENA.get(c.z), ps = people().map((p) => ({ ...p, d: Math.hypot(p.x - e.pos.x, p.z - e.pos.z) })).filter((p) => p.d < R.partR);
+  const t = ps.find((p) => p.id === c.lastBy) || ps.sort((p, q) => p.d - q.d)[0]; if (!t) return false;
+  const dir = Math.atan2(t.x - e.pos.x, t.z - e.pos.z);
+  let len = Math.max(8, Math.min(B.charge.len, t.d + 5));
+  for (; len > 6; len -= 1) { const bx = e.pos.x + Math.sin(dir) * len, bz = e.pos.z + Math.cos(dir) * len; if (Math.hypot(bx - a.x, bz - a.z) < B.leash + R.partOver && trash.ok(bx, bz)) break; }
+  startAct('charge', { ax: e.pos.x, az: e.pos.z, bx: e.pos.x + Math.sin(dir) * len, bz: e.pos.z + Math.cos(dir) * len }); return true;
+}
+// 싸움 밖 (#183): 맞으면 그 사람 쪽으로 돌진 한 번 · 쉬며 기운 채우기 · 단계는 기운 비율대로 · 오래 아무도 없으면 토스트
+function tickRest(c, dt) {
+  if (c.e.hp < c.lastHp - 1e-6) { if (!c.byNet) c.lastBy = myId(); c.partT = R.parting; c.partDone = false; c.awayT = Math.min(c.awayT, 0); }
+  c.byNet = false;
+  if (c.partT > 0) { c.partT -= dt; if (!c.partDone && !c.act) c.partDone = partCharge(c); }
+  c.regen = restRegen(c.e, dt, c.max);
+  c.ph = phaseOf(c.e.hp / c.max);
+  if (c.awayT >= 0 && (c.awayT += dt) >= R.awayToast) {
+    c.awayT = -1;
+    if (distA(c.z, player.pos) < B.leash + 40 || hp.isDown) say('danger', 'bossReset', `${name(c.z)}${josaIGa(name(c.z))} 빈터로 돌아갔어요. 다시 도전해요`, 3, { ttl: 5 });
+  }
+}
+
 /* ---------- 받는 쪽(멀티) ---------- */
 function puppetCtl(e, dt) {
   const c = cur, n = c?.net; if (!c || c.e !== e || !n) return 0;
@@ -276,7 +320,9 @@ function onBs(m) {
   const s = m.s; if (!Array.isArray(s) || s.length < 8) return;
   if (cur && (cur.z !== m.z || !cur.puppet)) despawn();
   if (!cur) { if (!spawn(m.z, true, { x: s[0], z: s[1] })) return; }
-  const c = cur; c.net = { x: s[0], z: s[1], h: s[2] }; c.netT = nowS(); c.e.hp = Math.max(0, s[3]); c.max = Math.max(1, s[4]);
+  const c = cur; c.net = { x: s[0], z: s[1], h: s[2] }; c.netT = nowS();
+  if (!s[6] && s[3] > c.e.hp + 0.01 && s[3] < s[4]) c.regenSeen = nowS(); // 싸움 밖에서 기운이 오름 = 쉬며 차는 중 (#183, 새로 보내는 것 없음)
+  c.e.hp = Math.max(0, s[3]); c.max = Math.max(1, s[4]); c.regen = nowS() - c.regenSeen < 1.5;
   if (s[5] > c.ph && c.fight) roar(c, true);
   c.ph = s[5] | 0; c.fight = !!s[6]; c.n = s[7] | 0;
   const a = m.a; if (Array.isArray(a) && a[1] !== c.seq) {
@@ -288,7 +334,7 @@ function onBs(m) {
 function onBh(m) {
   if (!isHost() || !cur || cur.puppet || cur.z !== m.z || !(m.d > 0)) return;
   if (!life.enemies.list.includes(cur.e) || cur.e.state !== 'boss') return;
-  cur.fighters.set(m.from, Date.now());
+  cur.fighters.set(m.from, Date.now()); cur.lastBy = m.from; cur.byNet = true;
   life.enemies.hurt(cur.e, m.d, true);
 }
 // 방장이 바뀜: 받던 우두머리를 이어 굴리거나, 내가 굴리던 것을 받는 쪽으로
@@ -318,7 +364,7 @@ life.hooks.bossRepel = (e) => {
   defeated(c, meIn);
 };
 function defeated(c, mine) {
-  const e = c.e, z = c.z, D = B.list[z], pos = e.pos.clone();
+  const e = c.e, z = c.z, D = B.list[z], pos = e.pos.clone(); delete kept[z];
   if (c.puppet) { e.puppet = false; e.ctl = null; e.remoteHurt = null; if (e.state === 'boss') { e.state = 'flee'; e.st = 0; } }
   for (const m of c.minions) if (life.enemies.list.includes(m) && m.state !== 'flee') { m.state = 'leave'; m.st = 0; m.bar.g.visible = false; }
   endAct(); cur = null; crown.visible = aura.visible = false; bar(false);
@@ -349,9 +395,11 @@ function bar(on) {
   if (on && cur) { $('boss-name').textContent = name(cur.z); el.style.setProperty('--tier', tierColor(cur.z)); document.body.style.setProperty('--boss-h', (el.offsetHeight + 8) + 'px'); }
 }
 function tickBar() {
-  const c = cur, on = !!c && c.fight && distA(c.z, player.pos) < B.leash + 8 && !panelOpen() && !late.tut?.active;
+  const c = cur, resting = !!c && !c.fight && c.e.hp < c.max - 0.01 && distA(c.z, player.pos) < B.near; // #183: 쉬며 차는 동안에도 가까우면 보임
+  const on = !!c && (c.fight && distA(c.z, player.pos) < B.leash + 8 || resting) && !panelOpen() && !late.tut?.active;
   bar(on); if (!on) return;
-  const el = $('boss-bar'), f = Math.max(0, c.e.hp / c.max);
+  const el = $('boss-bar'), f = Math.max(0, c.e.hp / c.max), rg = resting && (c.puppet ? nowS() - c.regenSeen < 1.5 : c.regen);
+  el.classList.toggle('regen', rg); $('boss-rg').hidden = !rg;
   $('boss-fill').style.width = (f * 100).toFixed(1) + '%';
   el.classList.toggle('ph1', c.ph === 1); el.classList.toggle('ph2', c.ph === 2);
   const n = $('boss-n'); n.hidden = !(c.n > 1); if (c.n > 1) n.textContent = `${c.n}명`;
@@ -382,21 +430,24 @@ function tickHost(dt) {
       const c = cur, a = ARENA.get(c.z), inL = ps.filter((p) => distA(c.z, p) < B.leash);
       if (!c.fight) {
         if (!ps.some((p) => distA(c.z, p) < B.despawn) || !canSpawn(c.z)) { if (live) room.send({ t: 'bs', z: c.z, gone: 1 }); despawn(); return; }
-        if (ps.some((p) => Math.hypot(p.x - c.e.pos.x, p.z - c.e.pos.z) < a.r + B.fight || distA(c.z, p) < a.r + B.fight)) { // 싸움 시작
-          c.fight = true; c.gapT = 1.2; c.callT = 4; c.beamT = 2; c.n = Math.max(1, inL.length);
-          c.max = c.base * (1 + B.perPlayer * (c.n - 1)); c.e.hp = c.max; c.e.def = { ...c.e.def, hp: c.max };
+        if (ps.some((p) => distA(c.z, p) < B.leash && (Math.hypot(p.x - c.e.pos.x, p.z - c.e.pos.z) < a.r + B.fight || distA(c.z, p) < a.r + B.fight))) { // 싸움 시작 (#183: 빈터 leash 안에서만, 풀린 뒤 따라 나온 우두머리 곁이라고 다시 붙지 않게)
+          c.fight = true; c.gapT = 1.2; c.callT = 4; c.beamT = 2; c.partT = 0; c.awayT = -1; c.regen = false; c.e.calmT = 0;
+          rescale(c, inL.length); c.ph = phaseOf(c.e.hp / c.max); // #183: 가득 채우지 않고 남은 비율 그대로
           roar(c, false); say('danger', 'bossFight', `${name(c.z)}${josaIGa(name(c.z))} 덤벼요! 바닥 경고를 보고 피해요`, 3, { ttl: 4 });
           sendState(true);
         }
-      } else if (!inL.length) { // 모두 멀어지거나 쓰러짐: 빈터로 돌아가 기운을 채움
-        if (distA(c.z, player.pos) < B.leash + 40 || hp.isDown) say('danger', 'bossReset', `${name(c.z)}${josaIGa(name(c.z))} 빈터로 돌아갔어요. 다시 도전해요`, 3, { ttl: 5 });
-        endAct(); c.fight = false; c.ph = 0; c.n = 1; c.max = c.base; c.e.hp = c.base; c.e.pos.set(a.x, height(a.x, a.z), a.z); c.minions.length = 0; c.fighters.clear(); c.hitByMe = false;
+      } else if (!inL.length) { // 모두 멀어지거나 쓰러짐 (#183): 기운은 그대로, 걸어서 빈터로 돌아가 쉬었다가 천천히 참. 풀린 직후 돌진 한 번
+        endAct(); c.fight = false; rescale(c, 1); c.e.calmT = 0; c.minions.length = 0;
+        c.partT = R.parting; c.partDone = false; c.awayT = 0; c.lastHp = c.e.hp;
         sendState(true);
-      } else if (inL.length > c.n) { const n = inL.length, k = (1 + B.perPlayer * (n - 1)) / (1 + B.perPlayer * (c.n - 1)); c.n = n; c.max *= k; c.e.hp *= k; }
+      } else if (inL.length > c.n) rescale(c, inL.length);
     }
   }
   if (!cur || cur.puppet) return;
-  const c = cur, f = c.e.hp / c.max, ph = f <= B.phase[1] ? 2 : f <= B.phase[0] ? 1 : 0;
+  const c = cur;
+  if (!c.fight) tickRest(c, dt); else c.byNet = false;
+  c.lastHp = c.e.hp;
+  const ph = phaseOf(c.e.hp / c.max);
   if (c.fight && ph > c.ph) { c.ph = ph; roar(c, true); c.gapT = Math.min(c.gapT, 0.6); if (ph === 1) c.callT = 0; if (ph === 2) c.beamT = 0; sendState(true); }
   if (live && (c.sendT -= dt * 1000 / B.netMs) <= 0) { c.sendT = 1; sendState(true); }
 }
@@ -425,17 +476,20 @@ late.tickBoss = (dt) => {
 // beat(z)/done(): 기록, summary(z): 요약 창 · fast(z)/cut(z): 빠른 마차·지름길 · wake(z): 깨어날 구역 · net(): 멀티 상태
 late.bossFight = () => !!cur?.fight;
 late.boss = ON ? {
-  state: () => cur && { zone: cur.z, hp: +cur.e.hp.toFixed(1), max: +cur.max.toFixed(1), ph: cur.ph, fight: cur.fight, n: cur.n, act: cur.act?.k || null, actT: cur.act ? +cur.act.t.toFixed(2) : null, puppet: cur.puppet, x: +cur.e.pos.x.toFixed(1), z: +cur.e.pos.z.toFixed(1), minions: cur.minions.length, state: cur.e.state, size: +cur.e.def.size.toFixed(2) },
+  state: () => cur && { zone: cur.z, hp: +cur.e.hp.toFixed(1), max: +cur.max.toFixed(1), ph: cur.ph, fight: cur.fight, n: cur.n, act: cur.act?.k || null, actT: cur.act ? +cur.act.t.toFixed(2) : null, puppet: cur.puppet, x: +cur.e.pos.x.toFixed(1), z: +cur.e.pos.z.toFixed(1), minions: cur.minions.length, state: cur.e.state, size: +cur.e.def.size.toFixed(2), regen: !!cur.regen, calm: +(cur.e.calmT || 0).toFixed(1), part: cur.partT > 0 && !cur.partDone },
   spots: () => [...ARENA].map(([z, a]) => ({ zone: z, x: Math.round(a.x), z: Math.round(a.z), r: a.r, fast: fastSpot(z) && { x: Math.round(fastSpot(z).x), z: Math.round(fastSpot(z).z) }, cut: cutSpot(z) && { x: Math.round(cutSpot(z).x), z: Math.round(cutSpot(z).z), to: { x: Math.round(cutSpot(z).to.x), z: Math.round(cutSpot(z).to.z) } }, wake: chSpot(z) && { x: Math.round(chSpot(z).x), z: Math.round(chSpot(z).z) } })),
   go(z, d = 22) { const a = ARENA.get(z); if (!a) return null; const h = Math.atan2(player.pos.x - a.x, player.pos.z - a.z) || 0, x = a.x + Math.sin(h) * d, zz = a.z + Math.cos(h) * d; warp({ x, z: zz, h: h + Math.PI }); zoneDoneTest.resetWarp(); return { x: +x.toFixed(1), z: +zz.toFixed(1) }; },
   goSpot(kind, z) { const s = kind === 'fast' ? fastSpot(z) : kind === 'cut' ? cutSpot(z) : chSpot(z); if (!s) return null; warp({ x: s.x + 1.2, z: s.z + 1.2, h: 0 }); zoneDoneTest.resetWarp(); return { x: +s.x.toFixed(1), z: +s.z.toFixed(1) }; },
-  ready(z) { let need = Math.ceil(trash.heaps.filter((h) => h.zone === z).reduce((s, h) => s + h.n, 0) * (1 - B.appear)); trash.heaps.forEach((h, i) => { if (h.zone !== z) return; const n = Math.min(h.n, need); trash.test.setHeap(i, n); need -= n; }); delete S.beat[z]; netBeat[z] = 0; return +trash.zoneClean(z).toFixed(3); },
+  ready(z) { delete kept[z]; let need = Math.ceil(trash.heaps.filter((h) => h.zone === z).reduce((s, h) => s + h.n, 0) * (1 - B.appear)); trash.heaps.forEach((h, i) => { if (h.zone !== z) return; const n = Math.min(h.n, need); trash.test.setHeap(i, n); need -= n; }); delete S.beat[z]; netBeat[z] = 0; return +trash.zoneClean(z).toFixed(3); },
   can: (z) => canSpawn(z), spawn: (z) => (cur ? null : !!spawn(z)), despawn: () => despawn(),
   arena: (z = cur?.z) => { const a = ARENA.get(z); return a ? { x: a.x, z: a.z, r: a.r } : null; },
   fight() { if (!cur) return false; spawnT = 0; cur.e.pos.set(player.pos.x + 6, height(player.pos.x + 6, player.pos.z), player.pos.z); return true; },
   hp(v) { if (!cur) return null; if (v != null) life.enemies.hurt(cur.e, Math.max(0, cur.e.hp - v), true); return cur ? cur.e.hp : 0; },
   act(k) { if (!cur || cur.puppet) return null; const t = target(cur) || { x: player.pos.x, z: player.pos.z, d: Math.hypot(player.pos.x - cur.e.pos.x, player.pos.z - cur.e.pos.z) }; if (k === 'beam') cur.beamT = 0; if (k === 'call') cur.callT = 0; const ph = cur.ph; if (k !== 'charge') cur.ph = 2; if (k === 'call') cur.beamT = 99; pickAct(cur, t); cur.ph = ph; return cur.act?.k; },
   freeze(on) { if (cur) cur.gapT = on ? 1e9 : 1; return !!cur; },
+  rest(sec) { if (!cur || cur.fight || cur.puppet) return null; cur.regen = restRegen(cur.e, sec, cur.max); cur.lastHp = cur.e.hp; return { hp: +cur.e.hp.toFixed(2), calm: +cur.e.calmT.toFixed(2), regen: cur.regen }; }, // #183 쉬는 시간 건너뛰기
+  rescale(n) { if (!cur || cur.puppet) return null; rescale(cur, n); return { hp: +cur.e.hp.toFixed(2), max: +cur.max.toFixed(2) }; },
+  kept: (z) => keptFrac(z),
   hold(on) { if (cur) { cur.hold = !!on; cur.gapT = on ? 1e9 : 1; } return !!cur; },
   done: () => ({ done: { ...S.done }, beat: { ...S.beat }, mats: { ...S.mats }, log: JSON.parse(JSON.stringify(S.log)), wake: S.wake }),
   setDone(z, n = 1) { if (n) S.done[z] = n; else delete S.done[z]; persist(); zoneDoneTest.setExitT(0); },

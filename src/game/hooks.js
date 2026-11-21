@@ -1,6 +1,7 @@
 // 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { nsPaths } from '../namsongi.js';
 import { DEX_LIST } from '../trash.js';
+import { gyulPickR } from '../gearscore.js';
 import { TUT, BOAR, SCATTER, ENEMY_SPAWN, ENEMIES, ENEMY_DROP, DUMP, MUSIC, COMBAT } from '../balance.js';
 import { RIDE_BY } from '../rides.js';
 import { flinchK } from '../bodytilt.js';
@@ -70,7 +71,8 @@ life.hooks.enemyRepel = (kind, pos, def) => {
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
 };
-life.hooks.pickR2 = () => (life.enemies.active() ? COMBAT.autoPick ** 2 : 0); // 싸우는 중엔 떨어진 귤을 더 멀리서 주움 (#148)
+life.hooks.pickR2 = () => Math.max(gyulPickR(save), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; // 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐). 싸우는 중엔 #148 값과 큰 쪽
+life.hooks.throwR2 = () => (life.enemies.active() ? COMBAT.autoPick ** 2 : 1.6); // 내가 던진 귤은 예전 범위 (노루가 먹으러 올 틈), 싸우는 중엔 넓게 (#148)
 life.hooks.paced = !!trash; life.hooks.hit = (p, dead) => late.pace?.hit(p, dead); // 몹도 연출 감독이 부름 (#89). 쓰레기 없는 맵은 예전대로
 life.hooks.enemyRoot = (kind, pos, n) => { if (trash) trash.drop(pos.x, pos.z, n, ENEMIES[kind]?.rootR || 14); };
 // 나타날 때 화면 가장자리 방향 표시 (적: 빨간 느낌표, 투기꾼 #47: 봉투 아이콘)

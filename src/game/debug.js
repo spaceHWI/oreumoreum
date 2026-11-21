@@ -1,5 +1,5 @@
 // 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, window.__oreum (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { gearScore } from '../gearscore.js';
+import { gearScore, gyulPickR } from '../gearscore.js';
 import { DEX_LIST } from '../trash.js';
 import { assetInfo } from '../assets.js';
 import * as crash from '../crash.js';
@@ -51,7 +51,8 @@ Object.assign(late, { exposeDebug }); // 앞 파일에서 부르는 함수
 // 튜토리얼용 낱개 쓰레기 (번호 k, #100: 3개)
 const tutTrashLeftList = () => (trash ? (spots.tut?.trash || []).filter((_, k) => !trash.store.isTutPicked(k)) : []);
 const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLeftList()) { const d = Math.hypot(t.x - player.pos.x, t.z - player.pos.z); if (d < bd) { bd = d; b = t; } } return b; };
-const tut = createTutorial({ save, persist, player, isTouch, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH,
+const tut = createTutorial({ save, persist, player, isTouch, camDist: () => cam.zoomed, gyulR: () => gyulPickR(save), toast, // #151 확대 단계·귤 모으는 범위·정낭 안내
+  onGyul: (at) => { save.coins += 1; persist(); updateStats(); sound.coin?.(); coinFx(at, 1); }, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH,
   col, low: LOW, addTargets: life.addTargets, sound, juice: (p, d) => life.juiceSplash(p, d), ctxIc: () => state.ctxTarget?.ic, shopTab: gearTabNow, // #62 과녁·눌러야 할 곳, #100 칸 돌담
   onTop: topStack, onCoins: updateStats, // #100 위쪽 토스트 자리 맞추기, 모자란 귤 채움
   onDone: () => { updateTrashUI(false); wx.calm(false); if ($('dev-tut')) $('dev-tut').hidden = true; } }); late.tut = tut;
