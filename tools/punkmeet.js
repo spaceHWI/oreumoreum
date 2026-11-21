@@ -1,5 +1,5 @@
 // 오름펑크 상호작용 확인 (#163)
-//   node tools/punk.js          (먼저 node build.mjs)
+//   node tools/punkmeet.js          (먼저 node build.mjs)
 // 하르방 인사하기 → 하루 한 번 버프 칸·두 번째는 말풍선만 / 관광객 → 사진(귤 10) → 쓰레기 버리고 돌아섬 → 귤로 맞히면 귤 15 / 안 맞히면 더미에 쌓임
 // 까마귀: 배낭이 가득 차면 → 경고 → 쓰레기 1개를 물고 맴돎 → 귤로 맞히면 돌려받고 귤 / 안 맞히면 1개 잃음. 망가진 예전 save.punk 로 시작해도 오류 없음
 const path = require('path');

@@ -331,9 +331,9 @@ late.tickPunk = (dt, time) => {
 };
 updatePill(true);
 
-/* ---------- 확인용 (window.__oreum.punk) ---------- */
+/* ---------- 확인용 (window.__oreum.punk 에 #164 것과 함께 실림, late.meet) ---------- */
 // tourist(): 가장 가까운 자리에 관광객 바로 · crow(): 까마귀 바로(배낭을 채워 둠) · five(): 가장 가까운 하르방 앞으로 가서 인사 · state()
-late.punk = {
+late.meet = {
   tourist(litter) { if (tour) removeTourist(); const ok = spawnTourist(true); if (ok && litter != null) { const P0 = T.litterP; T.litterP = litter ? 1 : 0; setTimeout(() => { T.litterP = P0; }, (T.wait + 30) * 1000); } return ok; },
   crow() { if (crow) removeCrow(); if (trash && bagRoom() >= 1) trash.test.fillBag?.(bagRoom()); updateTrashUI(true); return spawnCrow(); },
   hitCrow() { if (!crowAim.ok()) return false; crowHit(); return true; },

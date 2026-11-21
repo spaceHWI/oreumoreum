@@ -1087,9 +1087,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 
 ## #163 오름펑크 상호작용: 하르방 하이파이브·관광객 사진 부탁·까마귀 도둑
-- 새 파일: `src/game/punk.js`(게임 연결, season 뒤), `src/punkmodels.js`(관광객·까마귀·카메라 아이콘·반짝임·그림자), `src/punksound.js`('탁'·'까악', audio.js 가 40KB 가까워 따로). 수치 balance.js `PUNK`
+- 새 파일: `src/game/punkmeet.js`(게임 연결, `late.meet`), `src/punkmodels.js`(관광객·까마귀·카메라 아이콘·반짝임·그림자), `src/punksound.js`('탁'·'까악', audio.js 가 40KB 가까워 따로). 수치 balance.js `PUNK`
 - 하르방: 들머리·가게 거리(life.hareubangs) + 서 있는 구역 지킴이(#119) 앞 2.5m '인사하기' → emotes 'five'(남에게도 보임) → 손이 닿는 순간 '탁'·들썩·눈 반짝·말풍선 10줄. 하루 한 번(KST) 10분 버프: 귤 모으는 범위 +0.5m(hooks.js pickR2 에 `late.punkPickR`)·이동 +3%(update.js `late.punkSpeed`), 위 줄 `#punk-pill` 한 칸(식사 버프와 따로). 저장 save.punk(망가진 값은 새로)
 - 관광객: 8~12분마다 한 명, 플레이어에서 160m 안 가장 가까운 자리(들머리 클린하우스 옆·정상 사진사 반대쪽·field.sights 볼거리)에 걸어와 손 흔듦·카메라 아이콘. '사진 찍어 주기' → 3·2·1(#countdown)·번쩍(#flash)·셔터 → 귤 10. 1/3 은 쓰레기를 버리고 돌아섬: 9초 안에 귤로 맞히면 사과·도로 줍고 귤 15, 안 맞히면 trash.drop 2개(투기꾼 봉투와 같은 길, 방에선 방장만). 60초 안 찍으면 감. 튜토리얼 중엔 없음. 모양은 dumpers.js `buildWalker(색)`(export, 마스크 끄기)
 - 까마귀: 배낭이 가득 찬 채(bagRoom<1) 30초 → 3~20초 뒤, 5분에 한 번·하루 5번까지. 2초 경고(까악·그림자·감독 danger) → 내려와 배낭에서 가장 많은 쓰레기 1개(xv 도 비율만큼) → 8초 머리 위 맴돎 → 멀어짐. 맞히면(life.addTargets, 타겟 고정 #148) 떨군 쓰레기는 배낭으로(자리 없으면 더미), 반짝이는 것 표 C.drop: 귤 20(귀한 귤 `late.rareGyul`·영수증 `late.receiptDrop` 이 아직 없으면 귤). 처음 올 때 팁 'crow'(tips.js)
 - 귤 벌이: 관광객 시간당 90 + 까마귀 하루 최대 100 = 190, 1일차 1시간 4,109 의 5%(205) 안 (`node tools/econ.js` 오름펑크 줄)
-- 확인 `node tools/punk.js`, `__oreum.punk.tourist(litter)`·`crow()`·`five()`·`litterNow()`·`goTourist()`·`shoot()`·`hitCrow()`·`hitTourist()`·`state()`·`resetDay()`
+- 확인 `node tools/punkmeet.js`, `__oreum.punk.tourist(litter)`·`crow()`·`five()`·`litterNow()`·`goTourist()`·`shoot()`·`hitCrow()`·`hitTourist()`·`state()`·`resetDay()`
