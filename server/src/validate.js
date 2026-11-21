@@ -5,7 +5,8 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON } from '../../src/balance.js';
+import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 
 // 예전 값 (#144): 실서버 클라이언트가 아직 #137 앞 값 표(v0.23.7)일 수 있음. 그때 값으로 산 장비가 되돌려지지 않게, 쓴 귤은 지금 값과 이 값 중 작은 쪽으로 셈
@@ -45,34 +46,65 @@ function norm(s) {
     if (isObj(c)) for (const k of ['hat', 'top', 'bottom', 'shoes']) { const n = c[k]; if (Number.isInteger(n) && n >= 0 && n < LOOK_COLORS[k].length) o[k] = n; }
     s.look.colors = o;
   }
+  if (isObj(s.season) || s.season !== undefined) s.season = isObj(s.season) && s.season.xmas !== undefined ? { xmas: cleanXmas(s.season.xmas) } : undefined; // 철 이벤트 (#180)
+  if (s.season === undefined) delete s.season;
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
 }
 
+// 철 이벤트 (#180): 달력·선물 옷은 값을 안 셈
+const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift] : []);
 // 새로 산 것들의 값
 function spentOf(P, S) {
+  const free = freeCloths(S);
   let sp = 0;
   // 장비는 순서 없이 산다 (#111): 올라간 단계의 값만 (건너뛴 아래 단계 값은 더하지 않음)
   for (const [k, [, list]] of Object.entries(TIERS)) if (S.equip[k] > P.equip[k]) sp += priceOf(list[S.equip[k] - 1]?.price || 0, OLD_PRICE[k][S.equip[k] - 1]);
   if (S.equip.weapon > P.equip.weapon) sp += priceOf(WEAPONS[S.equip.weapon - 1]?.price || 0, OLD_PRICE.weapon[S.equip.weapon - 1]);
-  for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id)) { const c = CLOTH[id]; sp += priceOf(wearPrice(c) || 0, c.tier === 1 ? (wearPrice(c) ? OLD_PRICE.wearNone : 0) : OLD_PRICE.wear[c.tier - 1]); }
+  for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) { const c = CLOTH[id]; sp += priceOf(wearPrice(c) || 0, c.tier === 1 ? (wearPrice(c) ? OLD_PRICE.wearNone : 0) : OLD_PRICE.wear[c.tier - 1]); }
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
   return sp;
 }
 function revertItems(P, S) {
+  const free = freeCloths(S);
   for (const k of [...Object.keys(TIERS), 'weapon']) S.equip[k] = Math.min(S.equip[k], P.equip[k]);
-  for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id)) delete S.clothes.own[id];
+  for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) delete S.clothes.own[id];
   for (const [k, id] of Object.entries(S.clothes.wear)) if (id && !(S.clothes.own[id] || START_CLOTH.has(id))) delete S.clothes.wear[k];
   S.rides.own = S.rides.own.filter((id) => P.rides.own.includes(id)); if (!S.rides.own.includes(S.rides.cur)) S.rides.cur = S.rides.own[S.rides.own.length - 1] || null;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
 }
 
+// 철 이벤트 (#180) 확인: 열린 달력 칸·선물 옷·트리 선물은 늘기만 하고, 새로 연 칸은 서버 날짜로 오늘까지만(지난 날은 귤 miss).
+// → { spent: 지난 날 연 값, room: 달력·트리로 늘 수 있는 귤 }. 서버 날짜 xday = 12월 며칠(기간 밖 0), treeDone = 모두의 트리가 다 참
+function seasonCheck(P, S, { xday = 0, treeDone = false }, fixed, budget = Infinity) {
+  const out = { spent: 0, room: 0 };
+  const PX = P.season?.xmas || null;
+  if (!S.season?.xmas) { if (PX) S.season = { xmas: PX }; return out; } // 옛 클라이언트가 빼고 보내도 지우지 않음 (지웠다 다시 열어 귤을 또 받지 못하게)
+  const SX = S.season.xmas, P0 = PX || cleanXmas(null);
+  const add = SX.days.filter((d) => !P0.days.includes(d)).sort((a, b) => calCost(a, xday) - calCost(b, xday)), ok = [];
+  for (const d of add) { // 오늘 칸(무료)부터. 지난 날 칸은 가진 귤 + 늘 수 있는 귤 안에서만
+    if (!calOpenable(d, xday)) continue;
+    const c = calCost(d, xday), r = calReward(d).coins || 0;
+    if (c && out.spent + c > budget + out.room + r) continue;
+    ok.push(d); out.spent += c; out.room += r;
+  }
+  if (ok.length !== add.length) fixed.push('season');
+  SX.days = [...new Set([...P0.days, ...ok])].sort((a, b) => a - b);
+  const gAdd = SX.gift.filter((id) => !P0.gift.includes(id));
+  if (gAdd.length && !xday) fixed.push('season');
+  SX.gift = [...new Set([...P0.gift, ...(xday ? gAdd : [])])].slice(0, Math.max(P0.gift.length, SEASON.xmas.santa.giftMax));
+  if (SX.tree && !P0.tree) { if (treeDone && xday) out.room += SEASON.xmas.tree.gift; else { SX.tree = 0; fixed.push('season'); } }
+  if (P0.tree) SX.tree = 1;
+  if (SX.snow && !SX.days.includes(SEASON.xmas.cal.days)) SX.snow = 0;
+  return out;
+}
+
 // prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, bank, savedAt }, t: 지금(ms)
 // → { save, fixed: [바로잡은 칸], acc: 새 credit·pickCredit·bank }
 // free: 어드민 계정 (#84, 시크릿 ADMIN_SUBS). 귤·치운 양 몫을 보지 않음 (개발자 버튼 '귤 채우기')
-export function checkSave(prev, next, acc, t, { migrate = false, free = false } = {}) {
+export function checkSave(prev, next, acc, t, { migrate = false, free = false, xday = 0, treeDone = false } = {}) {
   if (!isObj(next)) throw new Error('bad save');
   const S = norm(JSON.parse(JSON.stringify(next)));
   const P = norm(JSON.parse(JSON.stringify(prev || FRESH)));
@@ -88,12 +120,13 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false } 
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
     return { save: S, fixed, acc: { credit, pickCredit, bank } };
   }
-  const room = credit + bank; // 이번에 늘 수 있는 귤
-  let spent = spentOf(P, S);
-  if (spent > P.coins + room) { revertItems(P, S); spent = 0; fixed.push('items'); }
+  const sx = seasonCheck(P, S, { xday, treeDone }, fixed, P.coins + credit + bank); // 철 이벤트 (#180)
+  const room = credit + bank + sx.room; // 이번에 늘 수 있는 귤
+  let spent = spentOf(P, S) + sx.spent;
+  if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
   const gain = S.coins + spent - P.coins;
   if (gain > room) { S.coins = Math.max(0, Math.floor(P.coins + room - spent)); fixed.push('coins'); }
-  const used = Math.max(0, S.coins + spent - P.coins), fromBank = Math.min(bank, used);
+  const used = Math.max(0, S.coins + spent - P.coins - sx.room), fromBank = Math.min(bank, used);
   bank -= fromBank; credit -= used - fromBank;
   const pg = S.trash.total - P.trash.total;
   if (pg > pickCredit) { S.trash.total = Math.floor(P.trash.total + pickCredit); fixed.push('picked'); }

@@ -144,6 +144,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     const d = { ...m, kind, def, heap: hi, amt: opts.amt ?? DUMP_AMT[kind], hold: opts.hold || 0, route, ri: 1, wpT: 0, pos: new THREE.Vector3(sx, height(sx, sz), sz), heading: 0, speed: 0, state: 'come', st: 0, hp: def.hp, flash: 0, phase: rnd() * 6, pitch: 0, roll: 0, bar: null };
     d.heading = Math.atan2(route[1][0] - sx, route[1][1] - sz);
     if (def.hp > 1) { d.bar = makeBar(); d.bar.g.position.set(0, m.h + 0.8, 0); d.root.add(d.bar.g); }
+    hooks.dress?.(d); // 철 이벤트 차림 (#180 산타 투기꾼)
     d.root.position.copy(d.pos); group.add(d.root);
     list.push(d);
     if (d.hold > 0) d.root.visible = false; else hooks.appear?.(d);

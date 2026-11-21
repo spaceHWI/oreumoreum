@@ -30,6 +30,7 @@ const FACTS = {
   zonesDone: () => Object.values(save.boss?.done || {}).filter((n) => n > 0).length,
   zone: () => J().maxZ || 0,
   night: () => ((sunState?.el ?? 30) < -4 ? 1 : 0),
+  fieldQuest: () => (save.quest?.done?.includes('field1') ? 1 : 0), // #158 퀘스트 '들판 탐사' 를 끝냄
 };
 
 export const director = createDirector({

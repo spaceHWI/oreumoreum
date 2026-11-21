@@ -62,6 +62,8 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
+// 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
+export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 
@@ -95,7 +97,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const r = await api('/save', { method: 'PUT', body: { save: strip(s) }, keepalive });
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {
