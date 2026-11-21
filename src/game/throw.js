@@ -27,7 +27,7 @@ const aimFwd = new THREE.Vector3();
 // 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 잡아 두지 않고 사거리 안에서만 (예전처럼). 화면에서 누르거나 Tab 으로 바꿈
 // state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요' (다가가기는 #132)
 state.lock = null; state.lockPick = false;
-const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range);
+const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
 const detectR = () => (bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand);
 const flat = (t) => Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function aimScore(t, fl) {
@@ -99,9 +99,12 @@ export function releaseTangerine() {
   let from = player.pos.clone().addScaledVector(dir, 0.6); from.y += 1.4 + player.jumpY + (player.riding ? 0.95 : 0);
   if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
   const peers = () => (late.net.solo ? [] : [...[...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]); // #100 튜토리얼 중엔 혼자
+  const ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129): game/charge.js 가 놓을 때 넣음
   const shot = t && aimShot(from, t);
-  if (shot) life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy, t); // 타겟 쪽으로 휨 (#148)
-  else life.throwTangerine(from, dir, THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0), peers);
+  let tg;
+  if (shot) tg = life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy, t, ch); // 타겟 쪽으로 휨 (#148)
+  else tg = life.throwTangerine(from, dir, (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1), peers, undefined, null, ch);
+  if (ch) late.chargeLaunch?.(ch, 'hand', tg.mesh.position, () => !tg.enemyHit && !tg.landed && tg.mesh.parent, t);
 }
 // 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔
 function aimShot(from, t) {
@@ -140,8 +143,10 @@ export function releaseArrow() {
   let from = player.pos.clone().addScaledVector(fwd, 0.7); from.y += 1.45 + player.jumpY;
   { const arm = runner.root.userData.parts?.armL; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h.addScaledVector(fwd, 0.25); } }
   const peers = () => [...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }));
+  const ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129)
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
-  life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg'), grav: w.grav, peersFn: peers, home: t });
+  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
+  if (ch) late.chargeLaunch?.(ch, 'bow', a.mesh.position, () => life.arrows.includes(a), t);
   late.sound.bow?.();
 }
 // 거의 곧게 날아가는 화살: 날아갈 시간만큼 중력과 대상의 움직임을 미리 셈

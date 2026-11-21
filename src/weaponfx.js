@@ -21,7 +21,8 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   // from·vel: Vector3. opt: { dmg, grav, life, peersFn, vis(보이기만), quiet }
   function shoot(from, vel, opt = {}) {
     if (shots.length >= N) shots.shift();
-    shots.push({ p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null });
+    const s = { p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null, ch: opt.ch || 0, sc: opt.size ? new THREE.Vector3(opt.size, opt.size, opt.size) : null }; // ch·size: 모아 쏘기 (#129)
+    shots.push(s); return s;
   }
   function updateShots(dt) {
     let c = 0;
@@ -32,7 +33,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
       for (let k = 0; k < n && !done; k++) {
         s.v.y -= s.grav * h; if (s.home && !steer(s.v, s.p, s.home, h, COMBAT.homeRateBow)) s.home = null; s.p.addScaledVector(s.v, h); // 유도 (#148)
         if (!s.vis) {
-          const hit = life.hitAt(s.p, s.dmg, s.v, { quiet: s.quiet });
+          const hit = life.hitAt(s.p, s.dmg, s.v, { quiet: s.quiet, ch: s.ch });
           if (hit) { done = true; s.onHit?.(hit, s.p); life.juiceSplash(s.p, v1.copy(s.v).normalize()); if (!s.quiet) sound?.splat?.(); break; }
           if (s.peersFn && s.t > 0.03) for (const pe of s.peersFn()) { if (Math.hypot(s.p.x - pe.pos.x, s.p.z - pe.pos.z) < 0.6 && s.p.y > pe.pos.y + 0.2 && s.p.y < pe.pos.y + 2.2) { life.hooks.hitRunner?.(pe.id); done = true; break; } }
           if (done) break;
@@ -41,8 +42,8 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
       }
       if (done) { shots.splice(i, 1); continue; }
       v1.copy(s.v).normalize(); q.setFromUnitVectors(zAx, v1);
-      m4.compose(s.p, q, one); pellets.setMatrixAt(c, m4);
-      v2.set(1, 1, Math.min(s.t * s.v.length(), LOW ? 1.2 : 2.4)); m4.compose(s.p, q, v2); tails.setMatrixAt(c, m4); c++;
+      m4.compose(s.p, q, s.sc || one); pellets.setMatrixAt(c, m4);
+      v2.set(s.sc ? s.sc.x : 1, s.sc ? s.sc.x : 1, Math.min(s.t * s.v.length(), LOW ? 1.2 : 2.4) * (s.sc ? 1.6 : 1)); m4.compose(s.p, q, v2); tails.setMatrixAt(c, m4); c++;
     }
     pellets.count = tails.count = c; pellets.visible = tails.visible = c > 0; // 없을 때는 그리지 않음
     if (c) { pellets.instanceMatrix.needsUpdate = true; tails.instanceMatrix.needsUpdate = true; }
@@ -81,12 +82,12 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
     b = { used: true, root, core, glow, end, on: false, t: 0, dropT: 0 }; beams.push(b); return b;
   }
   // 줄기 하나를 from → to 로 놓음 (매 프레임). hitPos: 맞은 곳이 있으면 거기서 즙이 튐
-  function setBeam(b, from, to, dt, hit) {
+  function setBeam(b, from, to, dt, hit, wMul = 1) { // wMul: 모아 쏜 굵은 줄기 (#129)
     b.on = true; b.t += dt;
-    const L = Math.max(0.1, from.distanceTo(to)), w = F.laser.w * (1 + Math.sin(b.t * 50) * 0.15);
+    const L = Math.max(0.1, from.distanceTo(to)), w = F.laser.w * wMul * (1 + Math.sin(b.t * 50) * 0.15);
     b.root.visible = b.end.visible = true; b.root.position.copy(from); b.root.lookAt(to);
     b.core.scale.set(w * 0.45, w * 0.45, L); b.glow.scale.set(w * 1.6, w * 1.6, L);
-    b.end.position.copy(to); b.end.scale.setScalar(0.18 + Math.sin(b.t * 37) * 0.04 + (hit ? 0.12 : 0));
+    b.end.position.copy(to); b.end.scale.setScalar((0.18 + Math.sin(b.t * 37) * 0.04 + (hit ? 0.12 : 0)) * Math.sqrt(wMul));
     if (hit) { b.dropT -= dt; if (b.dropT <= 0) { b.dropT = 1 / (F.laser.drip * (LOW ? F.low : 1)); const a = Math.random() * 6.28; v1.copy(from).sub(to).normalize(); drop(to, Math.cos(a) * 2 + v1.x * 2, 1.5 + Math.random() * 2, Math.sin(a) * 2 + v1.z * 2, 0.4, 1); } }
   }
   function offBeam(b) { if (!b) return; b.on = false; b.used = false; b.root.visible = b.end.visible = false; }
@@ -120,8 +121,8 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   }
   // opt: { dmg, r, vis, onBoom(pos, n) }
   function lob(from, vel, opt = {}) {
-    const g = makeBomb(); g.position.copy(from); group.add(g);
-    bombs.push({ g, v: vel.clone(), t: 0, fuse: -1, dmg: opt.dmg ?? 0, r: opt.r ?? 5, vis: !!opt.vis, onBoom: opt.onBoom || null });
+    const g = makeBomb(); g.position.copy(from); group.add(g); if (opt.size) g.scale.setScalar(opt.size);
+    bombs.push({ g, v: vel.clone(), t: 0, fuse: -1, dmg: opt.dmg ?? 0, r: opt.r ?? 5, vis: !!opt.vis, onBoom: opt.onBoom || null, ch: opt.ch || 0 });
   }
   const booms = [];
   const boomGeo = new THREE.SphereGeometry(1, 14, 10), ringGeo = new THREE.RingGeometry(0.86, 1, 32).rotateX(-Math.PI / 2);
@@ -149,7 +150,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
         if (b.fuse <= 0) {
           group.remove(b.g); bombs.splice(i, 1);
           boom(p, b.r);
-          if (!b.vis) { const n = life.hitArea(p, b.r, b.dmg); b.onBoom?.(p, n); }
+          if (!b.vis) { const n = life.hitArea(p, b.r, b.dmg, b.ch); b.onBoom?.(p, n); }
         }
       }
     }

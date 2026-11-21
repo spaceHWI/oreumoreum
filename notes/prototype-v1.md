@@ -32,6 +32,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향. 골라 쓰는 무기(`save.weaponUse`), 3~6단계면 `late.fireArm` |
 | arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르는 창(`#armwin`·던지기 버튼 옆 ▾), 멀티 presence `wf`. 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
+| charge.js | 모아 쏘기(#129): 던지기 버튼(F)을 길게 눌렀다 놓기. `pressFire`(stores.js throwAct.act) → 누르는 동안 모음(`tickCharge`, update.js 에서 tickArms 앞) → 놓으면 `fireCharged`. 손·활은 `state.chargeShot` 을 throw.js release 가 씀, 총·머신건·레이저·폭탄은 arms.js `chargedArm`. 이동 느려짐 `late.chargeSlow`, 사거리 `late.chargeRange`, 맞음 `life.hooks.chargeHit`(enemies.js hurt 의 ch), 멀티 presence `cg`·wf 7번째 칸. 효과 `src/chargefx.js`, 수치 balance.js CHARGE. 확인 `node tools/charge.js` |
 | panels.js | 채팅, 메뉴 항목, 릴리스 노트, 의견 보내기, 도움말 |
 | screen.js | 전체 화면 버튼·메뉴 항목(안 되는 곳은 홈 화면 추가 안내), 돌릴 때 바로 맞추기 (#105) |
 | ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차 |
