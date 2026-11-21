@@ -828,7 +828,19 @@ body.hp-down #cart-mark { display: none !important; }
 /* 캐릭터 고르기 (#51) */
 #look { position: fixed; left: var(--gut-l); right: var(--gut-r); bottom: calc(var(--safe-b) + 22px); z-index: 10; display: flex; justify-content: center; pointer-events: none; }
 #look[hidden] { display: none; }
-.look-card { pointer-events: auto; display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 28px; }
+.look-card { pointer-events: auto; display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 14px; border-radius: 28px; }
+.look-top { display: flex; align-items: center; gap: 14px; justify-content: center; }
+/* 기본 옷 색 (#155): 줄마다 이름 + 색 동그라미 8개, 오른쪽에 아무거나 */
+.look-cols { display: flex; align-items: center; gap: 10px; justify-content: center; border-top: 1px solid var(--hair); padding-top: 10px; }
+.look-colors { display: grid; gap: 6px; }
+.lc-row { display: flex; align-items: center; gap: 8px; }
+.lc-k { width: 30px; font-size: 12px; font-weight: 700; color: rgba(255,255,255,.8); flex: none; }
+.lc-dots { display: flex; gap: 6px; }
+.lc-dots button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); padding: 0; flex: none; }
+.lc-dots button[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px var(--acc); }
+.look-rand { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255,255,255,.1); color: #fff; display: grid; place-items: center; flex: none; }
+.look-rand svg { width: 24px; height: 24px; }
+.bag-lc { display: flex; align-items: center; gap: 8px; padding: 6px 2px 0; } /* 내 가방: 기본 옷 색 (#155) */
 .look-sex { display: flex; gap: 8px; }
 .look-sex button { width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255,255,255,.08); padding: 6px; display: grid; place-items: center; }
 .look-sex button svg { width: 100%; height: 100%; }
@@ -840,7 +852,12 @@ body.hp-down #cart-mark { display: none !important; }
 .look-ok svg { width: 28px; height: 28px; }
 body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, body.looking #joy, body.looking #speed-label, body.looking #ach-chip, body.looking #sun-chip, body.looking #hp-bar, body.looking #ch-arrow, body.looking #shop-arrow, body.looking #shop-mark, body.looking #cart-mark, body.looking #tut-toast, body.looking #tut-skip, body.looking #tut-arrow, body.looking #compass { visibility: hidden; }
 @media (max-width: 600px) {
-  .look-card { gap: 10px; padding: 10px; }
+  .look-card { gap: 8px; padding: 10px; }
+  .look-top { gap: 10px; }
+  .look-cols { gap: 8px; padding-top: 8px; }
+  .look-colors { gap: 5px; }
+  .lc-dots { gap: 5px; }
+  .lc-dots button { width: 23px; height: 23px; }
   .look-sex button { width: 54px; height: 54px; }
   .look-skin { gap: 8px; padding: 0 10px; }
   .look-skin button { width: 28px; height: 28px; }
@@ -1400,9 +1417,12 @@ button.bag-card { cursor: pointer; }
 <!-- 캐릭터 고르기 (#51): 가운데 캐릭터가 돌아가며 보이고, 아래 카드에서 기본 머리(성별)·피부색을 고름 -->
 <div id="look" hidden>
   <div class="panel look-card" role="dialog" aria-label="캐릭터 고르기">
-    <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
-    <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>
-    <button type="button" class="look-ok" id="look-ok" aria-label="이 모습으로 시작"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></button>
+    <div class="look-top">
+      <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
+      <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>
+      <button type="button" class="look-ok" id="look-ok" aria-label="이 모습으로 시작"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></button>
+    </div>
+    <div class="look-cols"><div class="look-colors" id="look-colors"></div><button type="button" class="look-rand" id="look-rand" aria-label="옷 색 아무거나" title="아무거나"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.500"/><circle cx="9" cy="9" r="1.300" fill="currentColor"/><circle cx="15" cy="15" r="1.300" fill="currentColor"/><circle cx="15" cy="9" r="1.300" fill="currentColor"/><circle cx="9" cy="15" r="1.300" fill="currentColor"/></svg></button></div>
   </div>
 </div>
 <div class="overlay dim" id="notes" hidden>

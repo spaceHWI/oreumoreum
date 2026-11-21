@@ -15,6 +15,8 @@ import { updateTrashUI } from './pickup.js';
 import { SHOP_POP, openShopPop, refreshShopPop, shopPopNow } from './stores.js';
 import { startAutoGo } from './dump.js';
 import { itemScore, scoreDiff } from '../gearscore.js';
+import { LOOK_COLORS } from '../balance.js';
+import { colorDots, lcIndex } from '../lookcolors.js'; // 기본 옷 색 (#155)
 
 Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, gdBadge, scoreChip, goShop, shopGuide, gearTabs, fillGearShop, fillShopDir, shopOpened }); // 앞 파일에서 부르는 함수
 
@@ -279,6 +281,18 @@ export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 
       b.addEventListener('click', () => lock(c, row)); grid.append(b);
     });
     row.append(head, grid);
+    if (LOOK_COLORS.ids[w.k] && CL.wear[w.k] === LOOK_COLORS.ids[w.k]) row.append(baseColorRow(w.k)); // 기본 옷을 입고 있으면 색 바꾸기 (무료)
     body.append(row);
   });
 }
+// 기본 옷 색 바꾸기 (#155): 처음 고른 색 동그라미와 같은 것. 내 가방 옷 줄·신발 줄 아래 (무료)
+export function baseColorRow(k) {
+  const wrap = document.createElement('div'); wrap.className = 'bag-lc';
+  wrap.append(colorDots(k, lcIndex(save.look?.colors, k), (i) => {
+    save.look = save.look && typeof save.look === 'object' ? save.look : { sex: 'm', skin: 0 };
+    save.look.colors = { ...(save.look.colors || {}), [k]: i };
+    syncEquipGear(); runner.apply(save.outfit); persist(); net.send(true); late.buildWardrobe();
+  }));
+  return wrap;
+}
+late.baseColorRow = baseColorRow;
