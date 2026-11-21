@@ -257,7 +257,7 @@ export function createTutorial({ save, persist, player, isTouch, camDist, gyulR,
   // 살 것은 귤이 모자랄 일이 없게: 집게·배낭 값이 모자라면 채움 (보통은 첫 보너스로 충분)
   function topUp() {
     const need = (save.equip.tool < 2 ? TOOLS[1].price : 0) + (save.equip.bag < 1 ? BAGS[0].price : 0);
-    if (save.coins < need) { save.coins = need; persist(); onCoins?.(); }
+    if (save.coins < need) { const gap = need - save.coins; save.coins = need; persist(); onCoins?.(gap); } /* 채운 귤은 번 귤이 아님 (#202 레벨) */
   }
   const begin = (name) => {
     cur = name; timer = 0; easy = false; idle = 0; best = 1e9; progKey = '';

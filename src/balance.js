@@ -127,28 +127,29 @@ export const FIELD = {
 };
 // 들판 떼 (#173, src/game/swarm.js, notes/growth-loop.md '들판 떼' 절): 길에서 offD m 넘게 벗어나면 그 구역 떼가 몰려옴(뱀서류). 모두 임의값
 // offD 들판으로 치는 길에서 거리(m), backD 이보다 가까우면 길로 돌아온 것, backT 길로 돌아온 뒤 떼가 흩어지기까지(초), firstT 들판에 들어선 뒤 첫 적이 보이기까지
-// ring 플레이어 둘레 이 거리(화면 밖 쪽)에서 나옴, gap 한 마리씩 나오는 간격(초), stages 들판에 머문 시간 t초부터 동시에 n마리, elite [간격초, 마리]
-// leaderT 이 초에 떼 대장 1마리, after 대장을 쫓아내면 이 시각(초)으로 되돌아감. cap 동시에 화면에 있는 떼 적 상한(PC·폰·저사양, 성능)
+// ring 플레이어 둘레 이 거리(화면 밖 쪽)에서 나옴, gap 한 마리씩 나오는 가장 짧은 간격(초), run 한 판(#202, 아래 주석). 물결 3·5 첫머리에 정예 하나
+// cap 동시에 화면에 있는 떼 적 상한(PC·폰·저사양, 성능)
 // mob 떼 적 = 그 구역 보통 적 × (기운·피해(#194 0.4 → 0.3)·귤 보상(구역별)·크기), life 스스로 떠나기까지. elite 정예 = 보통 적 크기에 기운 × hp. leader 떼 대장 = 크기 × k, 기운 × hp, chest 쫓아내면 보물 상자 귤(구역별)
 // kinds 구역별 떼 (여러 개면 [종류, 비율]), straight 곧게 달려드는 구역(무리 자리 나누기 없이), shard 쫓아낸 한 마리가 떨구는 귤 조각 수, shardN 조각 이만큼이 귤 1
-// magnet 조각이 빨려 오는 거리(m), shardLife 조각이 땅에 남는 초, shardXp 구역별 조각 하나 경험치 (#194: 레벨 5~10 이 지내는 구역 1~3 은 들판 3분에 레벨업 1번쯤, 4·5 는 5일 목표를 당기지 않게 낮춤. 증강은 레벨업 때만 game/level.js)
+// magnet 조각이 빨려 오는 거리(m), shardLife 조각이 땅에 남는 초 (#202: 조각은 그냥 작은 귤, 레벨은 번 귤로 game/level.js)
 // tap 직접 던질 때 무기마다 어림 간격(초): tools/econ.js 셈, 레이저 한 발 몫(귤비·도는 귤 피해). 들판에도 자동 던지기는 없음 (#194). shotV 증강 탄(두 갈래·뒤로·관통·귤비) 속도
 // quiet 더미를 다 치우면 그 자리 r m 가 t 초 동안 조용
-// den 소굴 r m 안이면 떼 × more, 그 소굴이 닫혔으면 × closed. slowNew 장비 점수가 구역 권장보다 낮으면 물결 시간이 이 배로 느리게 흐름. lowHp 기운이 이 비율 아래면 떼 전체가 머뭇거림(#148)
+// den 소굴 r m 안이면 떼 × more, 그 소굴이 닫혔으면 × closed. slowNew 장비 점수가 구역 권장보다 낮으면 떼가 나오는 간격이 1/이 배로 길어짐(#202: 판 시간은 그대로). lowHp 기운이 이 비율 아래면 떼 전체가 머뭇거림(#148)
 // sack 구역 4 '썩은 귤 자루': 쫓아낸 광견병 들개가 p 확률로 떨굼 → fuse 초 뒤 터져 r m 안 플레이어를 t 초 동안 slow 배로 느리게
 // econ tools/econ.js: 들판 10분 귤이 길가 10분의 max 배를 넘지 않게, 하루 놀이 중 share 만큼 들판에 있다고 셈
 export const SWARM = {
   offD: 12, backD: 9, backT: 6, firstT: 1.2,
   ring: [18, 26], gap: 0.25,
-  stages: [{ t: 0, n: 4 }, { t: 30, n: 7 }, { t: 90, n: 11, elite: [40, 1] }, { t: 180, n: 16, elite: [60, 2] }], // #194 자동 던지기를 없애며 8·14·20 → 7·11·16, 정예 30 → 40초
-  leaderT: 300, after: 180,
+  /* 한 판 (#202): 들판에 들어가면 시작, t[구역] 초 동안 물결 waves 번(물결마다 n[0] → n[1] 마리, 구역이 하나 깊을수록 × (1 + deep)). 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결
+     시간이 다 되면 '버텼다!' + 그 판에서 번 귤의 bonus 덤(서버는 bonusMax[구역]까지, 쉬는 시간 안에 두 번 인정하지 않음 earn.js). 끝나면 그 구역 들판은 rest 초 조용함(사람마다·구역마다, save.swarm.rest) */
+  run: { t: [0, 180, 195, 210, 225, 240], waves: 6, n: [6, 30], deep: 0.12, bigT: 30, bonus: 0.2, bonusMax: [0, 60, 200, 700, 1500, 3000], rest: 480 },
   cap: { pc: 24, phone: 16, low: 10 },
-  mob: { hp: 0.3, dmg: 0.3, gyul: [0, 0.08, 0.22, 0.32, 0.4, 0.15], size: 0.7, life: 80 }, // gyul 구역별: 25% 로 두면 구역 1·2 는 길가의 2.5배라 1~3 은 길가와 비슷하게, 4·5 는 서버 ③(NET.swarmPerSec) 안으로 (tools/econ.js, 소수 몫은 확률로 1)
+  mob: { hp: 0.3, dmg: 0.3, gyul: [0, 0.05, 0.17, 0.25, 0.32, 0.12], size: 0.7, life: 80 }, // #202 한 판 덤(run.bonus)만큼 낮춤. gyul 구역별: 25% 로 두면 구역 1·2 는 길가의 2.5배라 1~3 은 길가와 비슷하게, 4·5 는 서버 ③(NET.swarmPerSec) 안으로 (tools/econ.js, 소수 몫은 확률로 1)
   elite: { hp: 2 },
-  leader: { k: 1.5, hp: 5, chest: [0, 15, 45, 450, 1200, 3300] },
+  leader: { k: 1.5, hp: 3, chest: [0, 8, 22, 220, 600, 1650] } /* #202 한 판 끝 큰 물결에 한 번 (5분마다 → 판마다라 반으로) */,
   kinds: { 1: [['piglet', 1]], 2: [['dog', 1]], 3: [['boar', 0.65], ['crow', 0.35]], 4: [['rabid', 1]], 5: [['drone', 1]] },
   straight: [1],
-  shard: [0, 1, 1, 2, 2, 3], shardN: 3, magnet: 3.5, shardLife: 40, shardXp: [0, 8, 8, 8, 5, 3],
+  shard: [0, 1, 1, 2, 2, 3], shardN: 3, magnet: 3.5, shardLife: 40, /* 조각 3개 = 귤 1 (#202: 경험치 없음, 레벨은 번 귤로) */
   tap: { hand: 0.8, bow: 0.62, gun: 0.7, mg: 1 / 6, laser: 0.2, bomb: 2 }, shotV: 26,
   quiet: { r: 25, t: 30 },
   den: { r: 30, more: 1.3, closed: 0.5 },
@@ -489,6 +490,9 @@ export const ENEMIES = {
   // 들판 떼 전용 (#173, src/game/swarm.js): 구역 3 까마귀(하늘에서 내려와 쪼고 올라감), 구역 5 외계인 드론(작은 비행 접시, 약한 광선). 표의 값은 '보통 적' 기준이고 떼는 SWARM.mob 비율로 낮춤
   crow: { name: '까마귀', hp: 16, walk: 3.4, chase: 7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
   drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
+  // 동굴 전용 (#195, game/cavelife.js): 박쥐(약하고 많음, 낮게 날아 쪼고 올라감) · 눈먼 동굴 게(느리지만 단단, 가까이 와서 집게로 받음). 땅 헤집기 없음
+  bat: { name: '동굴 박쥐', hp: 30, walk: 3.2, chase: 7.5, rush: 10, rest: 2.0, flee: 12, dmg: 14, reward: { gyul: 60, rare: 0.02 }, sight: 12, lose: 26, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.6, fly: 2.2 },
+  crab: { name: '눈먼 동굴 게', hp: 150, walk: 1.6, chase: 3.6, rush: 7.5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 320, rare: 0.05 }, sight: 9, lose: 22, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.0 },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 // 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
@@ -1341,7 +1345,8 @@ export const NET = {
   // 서버가 아는 큰 귤 (#188, server/src/earn.js): 저장의 기록(판 장비·퀘스트·우두머리·소굴·보물·볼거리)으로 몫을 인정해 ② 에 더함
   //   fresh: 지난 저장에 없던(새로 떨어져 바로 판) 장비 수 통 — 초당 freshPerSec 씩 차고 freshBurst 에서 멈춤 (적 1.2%·소굴 12%·보물 35%·우두머리 60% 를 넉넉히)
   //   legend: 그중 전설 (우두머리·보물 4구역부터만 떨어짐). bossGap·denGap: 같은 우두머리·소굴을 다시 인정하기까지 초 (ZONE_GUARD.holdSec 1800·FIELD.den.reopen 1800 보다 조금 짧게)
-  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64 },
+  //   cave (#195): 동굴에서 들고 나온 쓰레기 귤(save.cave.out 누적)이 늘어난 몫 × caveK(베스트·분리수거 증강 여유). 통은 초당 cavePerSec, 최대 caveBurst (가장 큰 배낭 540 × 동굴 귤 39 ≈ 2.1만 한 판)
+  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64, caveK: 1.6, cavePerSec: 12, caveBurst: 26000, swarmRestK: 0.9 }, /* swarmRestK (#202): 들판 떼 덤은 쉬는 시간의 이만큼 지나야 다시 인정 */
   clampKeepDays: 30,  // 귤 맞춤 기록(#188 GET /admin/clamps)·운영자 귤 보내기 기록 보관 날짜
   grantMax: 1000000,  // 어드민이 한 번에 보내는 귤 상한 (#188 POST /admin/grant)
   pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
@@ -1779,8 +1784,9 @@ export const PUNK = {
 // reroll: 다시 뽑기 한 번 값(귤). safe: 싸움이 끝나고 이 초 뒤에 고르기 창을 엶. guard: 멀티에서 창을 연 동안 받지 않는 시간(초)
 // glow: 레벨업 빛 시간(초)·반지름(m), barMs: 경험치 띠가 차오르는 시간
 export const LEVEL = {
-  base: 70, pow: 1.6, max: 30, late: { from: 12, k: 1.25 }, /* late (#194): 레벨 from 부터 드는 경험치 × k (들판 경험치로 5일 목표가 당겨지지 않게 뒤쪽만 가파르게) */
-  xp: { trash: 1, heap: 10, mt: 40, enemyK: 0.2, enemyMin: 1, boss: 100, dumper: 5, quest: [20, 60] },
+  /* #202: 경험치 = 지금까지 번 귤(save.lv.xp, 쓴 귤·받은 귤·판 귤·환불·운영자 귤·철 선물은 빼고). 레벨 L → L+1 에 드는 귤 = base × k^(L-1), from 레벨부터는 앞 레벨의 k2 배씩 (구역 벌이가 몇 배씩 커져 앞은 가파르게, 끝은 한 달쯤) */
+  base: 250, k: 1.68, from: 15, k2: 1.05, max: 30, v: 2,
+  old: { base: 70, pow: 1.6 }, /* #159·#194 경험치 곡선 (옛 저장 레벨을 셈: 레벨이 내려가지 않게) */
   reroll: 50, safe: 1.5, guard: 2,
   glow: { t: 1.4, r: 2.2 }, barMs: 600,
 };
@@ -1948,4 +1954,14 @@ export const CAVE = {
   fade: 0.5, hold: 0.35, near: 2.6,
   moss: 70, crystal: 26,
   lines: { locked: '바람이 새어 나와요. 아직은 무리예요', admin: '지금은 어드민만 들어갈 수 있어요', enter: '용암 동굴', down: '더 깊이 내려갑니다', out: '밖으로 나왔어요' },
+  // 2번 조각 (game/cavelife.js): 외계 쓰레기 더미·들고 나오기·적·층 지킴이
+  // junk.kinds: 동굴 쓰레기 두 가지. as = 배낭에 들어가는 쓰레기 종류(TRASH_TYPES id, 부피·클린하우스 통은 그것), 귤은 부피 × perVol (나머지는 bag.xv)
+  // perVol: 부피 1 의 귤 = 구역 5 평균(쓰레기 종류 섞임 × gv)의 2배 (아래 Z5V). perRoom 방 하나 더미 수 [최소, 최대], n 더미 하나 쓰레기 수, r 더미 반경
+  // lose: 쓰러지면 든 동굴 쓰레기 가운데 이 비율을 잃음. walkR: 줍기 버튼으로 걸어가는 거리
+  junk: { kinds: [{ id: 'glowcan', name: '빛나는 캔', as: 'foam', p: 0.6 }, { id: 'part', name: '알 수 없는 부품', as: 'gear', p: 0.4 }], perVol: 0, perRoom: [1, 2], pocket: 2, n: [6, 11], r: 1.1, lose: 0.5, walkR: 26 },
+  // 적: 방에 들어서면(wake m) 그 방 몫이 나옴. bats [최소, 최대] 박쥐 떼 · crabs 게 · 층 지킴이(guard): 바탕 kind 를 k 배로, 기운·피해·귤
+  //   지킴이는 구멍(아래층) 방에 서 있고 쫓아내야 구멍이 열림. 맨 아래 층은 주인 방 앞 방(주인은 3번 조각). 쉬며 기운이 참 (#183 restRegen, ZONE_BOSS.rest)
+  mobs: { wake: 20, bats: [3, 5], crabs: [0, 2], guard: { kind: 'crab', k: 2.3, name: '동굴 지킴이', hp: 1500, dmg: 40, gyul: 2400, walk: 1.4 } },
+  lines2: { full: '배낭이 가득 찼어요 · 들고 밖으로 나가요', none: '주울 것이 보이지 않아요', guard: '지킴이가 구멍을 막고 있어요', guardGone: '지킴이가 물러났어요 · 아래로 가는 길이 열렸어요', lost: '쓰러져 동굴 쓰레기 절반을 잃었어요', carry: '동굴 쓰레기를 들고 나왔어요 · 클린하우스에 버려요', lostLoad: '동굴에서 길을 잃고 나왔어요 · 동굴 쓰레기 절반을 잃었어요' },
 };
+{ const z = ZONES[4], g = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0), v = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0); CAVE.junk.perVol = Math.round(2 * z.gv * g / v); } /* Z5V: 구역 5 부피 1 귤 × 2 */

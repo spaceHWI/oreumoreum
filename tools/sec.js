@@ -236,6 +236,39 @@ async function startServers() {
       ok(rg <= NET.earnBurst && !r.fixed.length && r.save.coins === 100 + rg, `외계인 + 황금향 한 번(귤 +${rg})은 받아 줌 (earnBurst ${NET.earnBurst} 안)`);
       r2 = checkSave(r.save, { ...r.save, coins: r.save.coins + rg }, { ...r.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
       ok(r2.fixed.includes('coins') && r2.save.coins <= r.save.coins + NET.earnPerSec * 1, '귀한 귤 몫을 곧바로 또 받으면 거절');
+      { // 동굴 (#195): 들고 나온 동굴 쓰레기 귤(save.cave.out 누적)은 통(caveBurst) 안에서 인정. 통이 빈 채 또는 누적을 줄였다 올려 두 번 받기는 거절
+        const { CAVE } = await import('../src/balance.js'), E = NET.earnRec, run = 540 * CAVE.junk.perVol; // 가장 큰 배낭 한 판
+        let c1 = checkSave(P, { ...P, coins: 100, cave: { out: run } }, acc, t);
+        const c2 = checkSave(c1.save, { ...c1.save, coins: 100 + run }, { ...c1.acc, credit: 0, savedAt: t }, t + 5000);
+        ok(c1.rec.why.cave >= run && !c2.fixed.length && c2.save.coins === 100 + run, `동굴에서 들고 나온 한 판(귤 ${run})은 버린 뒤 저장에서 받아 줌`);
+        const c3 = checkSave(c2.save, { ...c2.save, coins: 100 + run * 3, cave: { out: run * 3 } }, { ...c2.acc, credit: 0, savedAt: t + 5000 }, t + 6000);
+        ok(c3.fixed.includes('coins') && c3.save.coins < 100 + run * 2 + E.cavePerSec * 2, `통이 빈 채 동굴 귤 부풀리기 거절 (${c3.save.coins})`);
+        const c4 = checkSave(c2.save, { ...c2.save, cave: { out: 0 } }, { ...c2.acc, credit: 0, savedAt: t + 5000 }, t + 6000);
+        ok(c4.save.cave.out === run, '동굴 누적을 줄이면 서버가 되돌림 (줄였다 올려 두 번 받기 막음)');
+        c1 = checkSave(P, { ...P, coins: 100 + 999999, cave: { out: 999999 } }, acc, t);
+        ok(c1.fixed.includes('coins') && c1.save.coins <= 100 + E.caveBurst + 1, `동굴 귤 한 번에 크게 부풀리기 거절 (${c1.save.coins}, 통 ${E.caveBurst})`);
+      }
+      { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
+        const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
+        const P0 = { ...P, swarm: { earn: 0, won: {} } };
+        let w = checkSave(P0, { ...P0, coins: 100 + 40, swarm: { earn: 0, won: { 2: { at: t, b: 40 } } } }, acc, t);
+        ok(!w.fixed.length && w.save.coins === 140 && w.rec?.why?.swarm === 40, `떼 한 판 버틴 덤(구역 2, 40)은 몫으로 인정`);
+        let w2 = checkSave(w.save, { ...w.save, coins: 140 + 40, swarm: { earn: 0, won: { 2: { at: t + 60000, b: 40 } } } }, { ...w.acc, credit: 0, bank: 0, savedAt: t + 60000 }, t + 60000);
+        ok(w2.fixed.includes('coins') && w2.save.coins === 140, `쉬는 시간(${R.rest}초) 안에 같은 구역 덤 두 번 받기 거절`);
+        w2 = checkSave(w.save, { ...w.save, coins: 140 + mx + 500, swarm: { earn: 0, won: { 2: { at: t + R.rest * 1000, b: mx + 500 } } } }, { ...w.acc, credit: 0, bank: 0, savedAt: t + R.rest * 1000 - 10 }, t + R.rest * 1000);
+        ok(w2.fixed.includes('coins') && w2.save.coins === 140 + mx, `쉬는 시간 뒤 덤은 다시 인정·구역 상한 ${mx} 까지`);
+        // 레벨 (#202): 경험치(번 귤)는 받아 준 귤 가운데 판 귤을 뺀 만큼만
+        const { xpAt: XA } = await import('../src/augments.js'), x0 = XA(6), L0 = { xp: x0, aug: {}, draw: null, rr: 0, v: 2 };
+        const PL = { ...P, lv: L0 };
+        let l = checkSave(PL, { ...PL, coins: 100 + qg, quest: { done: [q.id] }, lv: { ...L0, xp: x0 + qg } }, acc, t);
+        ok(!l.fixed.length && l.save.lv.xp === x0 + qg, `번 귤(퀘스트 ${qg})만큼 경험치는 그대로`);
+        l = checkSave(PL, { ...PL, coins: 100, lv: { ...L0, xp: x0 + 5000 } }, acc, t);
+        ok(l.fixed.includes('lvxp') && l.save.lv.xp === x0 && l.lvCut === 5000, '귤이 안 늘었는데 경험치만 늘면 깎음 (깎은 양을 알려 줌)');
+        l = checkSave({ ...PL, loot: [leg] }, { ...PL, coins: 100 + lv, loot: [], sold: [leg], lv: { ...L0, xp: x0 + lv } }, acc, t);
+        ok(l.fixed.includes('lvxp') && l.save.lv.xp === x0 && l.save.coins === 100 + lv, `장비 판 귤(${lv})은 경험치로 안 셈 (귤은 받아 줌)`);
+        l = checkSave({ ...P, lv: { xp: 5000, aug: { recycle: 3, twin: 3 }, old: 1 } }, { ...P, coins: 100, lv: { xp: 5000, aug: { recycle: 3, twin: 3 }, old: 1 } }, acc, t);
+        ok(l.save.lv.v === 2 && l.save.lv.aug.recycle === 3 && l.save.lv.aug.twin === 3 && !l.fixed.includes('lvxp'), `옛 경험치 저장은 서버도 번 귤 경험치로 바꾸고(레벨이 내려가지 않음) 한 번은 몫을 안 봄 (xp ${l.save.lv.xp})`);
+      }
       { // 오늘의 할 일 (#125)
         // 오늘의 할 일 (#125): 오늘 목록의 받은 할 일·셋 다는 몫으로 인정, 두 번·다른 날·없는 할 일은 거절, 이어 오기는 서버가 센 날까지만
         const DL = await import('../src/daily.js'), day = DL.kstDayN(t), date = DL.kstDate(t), ids = DL.todaysTasks(date).map((x) => x.id);
@@ -289,15 +322,16 @@ async function startServers() {
     // 레벨·증강 (#159): 경험치는 최고 레벨까지, 증강은 아는 것만·종류마다 3 이하·합이 (레벨 - 1) 이하
     { const { xpAt, levelOf } = await import('../src/augments.js');
       const lvPut = async (lv) => { const r = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, lv } } }); return { r, lv: (await req('dev', '/me', { token: A.token })).j.save.lv }; };
-      const a = await lvPut({ xp: 1e12, aug: {} });
+      const a = await lvPut({ xp: 1e12, aug: {}, v: 2 }); // 지난 저장에 번 귤 경험치(v 2)가 없으면 이번 한 번은 몫을 안 봄 (#202)
       ok(a.r.j.fixed.includes('lv') && levelOf(a.lv.xp).lv === 30, `범위 밖 경험치는 최고 레벨 30 까지 (${a.lv.xp})`);
-      const b2 = await lvPut({ xp: xpAt(3), aug: { recycle: 3, bighand: 3, fly: 9 } }); // 레벨 3 → 증강 2개까지
+      const b2 = await lvPut({ xp: xpAt(3), aug: { recycle: 3, bighand: 3, fly: 9 }, v: 2 }); // 레벨 3 → 증강 2개까지
       const n2 = Object.values(b2.lv.aug).reduce((s, n) => s + n, 0);
       ok(b2.r.j.fixed.includes('lv') && n2 <= 2 && !('fly' in b2.lv.aug), `레벨보다 많은 증강·없는 증강 거절 (레벨 3 → ${JSON.stringify(b2.lv.aug)})`);
-      const c2 = await lvPut({ xp: xpAt(20), aug: { recycle: 7, twin: -1 } });
+      const c2 = await lvPut({ xp: xpAt(20), aug: { recycle: 7, twin: -1 }, v: 2 });
       ok(c2.r.j.fixed.includes('lv') && !(c2.lv.aug.recycle > 3) && !('twin' in c2.lv.aug), `증강은 종류마다 3 이하 (${JSON.stringify(c2.lv.aug)})`);
-      const d2 = await lvPut({ xp: xpAt(5), aug: { recycle: 2, twin: 2 } });
-      ok(!d2.r.j.fixed.includes('lv') && d2.lv.aug.recycle === 2 && d2.lv.aug.twin === 2, '맞는 레벨·증강은 그대로'); }
+      ok(c2.r.j.fixed.includes('lvxp') && c2.lv.xp === xpAt(3) && c2.r.j.fix?.lv?.cut === xpAt(20) - xpAt(3), `귤을 안 벌었는데 레벨 20 경험치는 깎음 (#202, fix.lv.cut ${c2.r.j.fix?.lv?.cut})`);
+      const d2 = await lvPut({ xp: xpAt(3), aug: { recycle: 1, twin: 1 }, v: 2 });
+      ok(!d2.r.j.fixed.includes('lv') && !d2.r.j.fixed.includes('lvxp') && d2.lv.aug.recycle === 1 && d2.lv.aug.twin === 1, '맞는 레벨·증강은 그대로'); }
 
     /* ---------- 방 (이동·줍기·폭주·맞힘) ---------- */
     const P = await sock('dev', 'oreum-namsongi-battle', { ch: 3, token: A.token });

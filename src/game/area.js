@@ -107,7 +107,7 @@ function fillMapText() {
   const all = Math.floor(trash.clean() * 100); // 오름 전체 깨끗한 정도 (#196: 위쪽 줄은 지금 구역 값만)
   $('omap-now').innerHTML = (z ? `<b style="color:${tierColor(z)}">${z} ${zoneShort(z)}</b><i>${tierName(z)} 구역</i><i>깨끗한 정도 ${zc}%</i><i><span class="tone" style="background:${TONE_C[tn] || '#fff'}"></span> 권장 점수 ${zoneRec(z)} ${TONE[tn] || ''}</i><i>좌표 ${Math.round(player.pos.x)}, ${Math.round(player.pos.z)}</i>`
     : `<b>들머리</b><i>내 장비 점수 ${sc}</i>`) + `<i>오름 전체 깨끗함 ${all}%</i>`;
-  $('omap-rows').innerHTML = ZONES.map((Z) => { const c = Math.floor(trash.zoneClean(Z.id) * 100); return `<div class="${Z.id === z ? 'now' : ''}"><span class="sw" style="background:${tierColor(Z.id)}"></span><b>${Z.id}</b><span>${zoneShort(Z.id)} · ${tierName(Z.id)}</span>${enemySvg(zoneEnemy(Z.id))}<span class="pc${c >= 100 ? ' done' : ''}" title="깨끗한 정도">${c}%</span><span class="rec" data-tone="${zoneTone(sc, Z.id)}" title="권장 장비 점수">${Z.rec}</span></div>`; }).join('');
+  $('omap-rows').innerHTML = ZONES.map((Z) => { const c = Math.floor(trash.zoneClean(Z.id) * 100); return `<div class="${Z.id === z ? 'now' : ''}"><span class="sw" style="background:${tierColor(Z.id)}"></span><b>${Z.id}</b><span>${zoneShort(Z.id)} · ${tierName(Z.id)}${late.swarmRestTxt?.(Z.id) || ''}</span>${enemySvg(zoneEnemy(Z.id))}<span class="pc${c >= 100 ? ' done' : ''}" title="깨끗한 정도">${c}%</span><span class="rec" data-tone="${zoneTone(sc, Z.id)}" title="권장 장비 점수">${Z.rec}</span></div>`; }).join('');
 }
 let mapT = 0;
 function openMap() { if (!zoneLook) return; closePanels(); fillMapText(); drawMap(); $('omap').hidden = false; mapT = 0.25; }

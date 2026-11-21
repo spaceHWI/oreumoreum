@@ -142,7 +142,7 @@ function onGot(m) {
   if (!Number.isFinite(m.in)) return;
   const G = gf(), d = Math.max(0, Math.floor(m.in) - G.in); G.in = Math.max(G.in, Math.floor(m.in));
   if (!d) { persist(); return; }
-  gyulExpect(d); save.coins += d; persist(); updateStats();
+  gyulExpect(d); late.notEarned?.(d); save.coins += d; persist(); updateStats();
   const e = net.peersById.get(m.from), who = (e?.nick || (typeof m.nick === 'string' && m.nick.trim() ? m.nick.slice(0, 16) : '러너'));
   const me = runner.root;
   if (e && me) for (let i = 0; i < Math.min(d, 2); i++) fly(handPos(e.runner.root), () => handPos(me), i * 0.08);

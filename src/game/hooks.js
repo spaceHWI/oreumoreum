@@ -116,7 +116,7 @@ export const dumpers = trash ? createDumpers({
     repel: (kind, pos, def, d) => {
       life.scatterTangerines(pos, late.rareDrop?.(kind, pos, def.reward) ?? def.reward); late.season?.repel(d, pos); // 귀한 귤 낮은 확률 (#130) // 산타면 선물 상자 (#180)
       sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
-      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.lvGain?.('dumper'); late.story?.dumperRepel?.(); // 경험치 (#159), 이야기 이벤트 (#168)
+      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.story?.dumperRepel?.(); // 이야기 이벤트 (#168)
     },
     offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) state.introToast = m; else toast(m); },
   },

@@ -242,7 +242,6 @@ function reward(m) {
   const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   save.raid.wins = (save.raid.wins | 0) + 1; save.raid.day = day;
   addCoins(m.g | 0); // 서버는 이 몫을 번 몫(#144)에 넣어 둠
-  if (m.xp > 0) late.lvGain?.('raid', m.xp | 0);
   if (bfx) { state.slowMo = 1.2; state.slowK = 0.35; bfx.burst(player.pos.x, player.pos.y + 1.2, player.pos.z, { petals: lite() ? 30 : 100, sparks: lite() ? 12 : 50, up: 6, spread: 1.4, color: '#ffb030' }); }
   late.sound?.fanfare?.();
   const top = Array.isArray(m.top) ? m.top.slice(0, R.top).map((s, i) => `${i + 1}. ${String(s).slice(0, 16)}`).join('  ') : '';
