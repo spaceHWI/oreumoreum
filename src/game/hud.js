@@ -66,7 +66,7 @@ export const tips = createTips({ save, persist, show: showTip }); late.tips = ti
 export function tipMark(pos) { tipMarkPos = pos; tipMarkT = 6; }
 export function nearestHeapPos() { if (!trash) return null; let b = null, bd = 1e9; trash.heaps.forEach((h, i) => { if (!(trash.store.left(i) > 0)) return; const d = Math.hypot(h.x - player.pos.x, h.z - player.pos.z); if (d < bd) { bd = d; b = { x: h.x, z: h.z }; } }); return b; }
 const TIP_GO = {
-  shop: () => late.openShop(), cleanhouse: () => { if (CH) late.startAutoGo(); }, dex: () => openDex(),
+  shop: () => late.goShop('gear'), leap: () => late.goShop('leap'), cleanhouse: () => { if (CH) late.startAutoGo(); }, dex: () => openDex(),
   heap: () => { const p = nearestHeapPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
   stream: () => { const p = tipStreamPos(); if (p) tipMark(new THREE.Vector3(p.x, groundAt(p.x, p.z), p.z)); },
   stone: () => { if (STN?.terrace) tipMark(STN.terrace.clone()); },
@@ -121,7 +121,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden || hel
 export function updateStats() {
   if (save.coins !== lastCoins) {
     const d = lastCoins < 0 ? 0 : save.coins - lastCoins; lastCoins = save.coins; const c = String(save.coins);
-    $('m-coins').textContent = c; $('shop-coins').textContent = c; $('ach-coins').textContent = c; late.shopCoinsChanged?.();
+    $('m-coins').textContent = c; $('ach-coins').textContent = c; late.shopCoinsChanged?.();
     if (lastCoins >= 0 && d === 0) gyulSnap();
     else if (d > 0) { if (held === 0) heldAt = performance.now(); held += d; const e = Math.min(d, expected); expected -= e; future += e; uncov += d - e; if (d - e > 0) gyulCheck(); }
     else if (d < 0) { let v = shown + d; if (v < 0) { held = Math.max(0, held + v); v = 0; } shown = Math.min(v, Math.max(0, save.coins - held)); COUNT.on = false; paintCoins(shown); }
@@ -143,7 +143,7 @@ export function updateScore() {
   late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-const PANELS = ['shop', 'omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'armwin', 'rank', 'inbox', 'zdone', 'wake-pick'];
+const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'armwin', 'rank', 'inbox', 'zdone', 'wake-pick'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -155,8 +155,8 @@ export function cancelAll() {
   player.target = null; player.onArrive = null; late.marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shoppop-close', 'shoppop'], ['ridewin-close', 'ridewin'], ['armwin-close', 'armwin'], ['shop-close', 'shop'], ['sign-close', 'sign'], ['omap-close', 'omap'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
-['shop', 'omap', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'armwin', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
+[['shoppop-close', 'shoppop'], ['ridewin-close', 'ridewin'], ['armwin-close', 'armwin'], ['sign-close', 'sign'], ['omap-close', 'omap'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+['omap', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'ridewin', 'armwin', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
 export const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r) }); late.ach = ach;
@@ -188,7 +188,7 @@ export function refreshAchUI() {
 }
 export function openAch() { closePanels(); buildAch(); $('ach').hidden = false; }
 $('ach-chip').addEventListener('click', openAch);
-{ const g = $('gyul-pill'); g.addEventListener('click', () => late.openShop('gear')); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); late.openShop('gear'); } }); }
+{ const g = $('gyul-pill'); g.addEventListener('click', () => late.shopGuide()); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); late.shopGuide(); } }); } // #128 사는 창 대신 가게 안내
 $('btn-ach').addEventListener('click', openAch);
 function buildAch() {
   const d = ach.ensureDaily();

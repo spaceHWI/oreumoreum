@@ -38,14 +38,14 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차 |
 | moves.js | 노루 타기, 점프, 벤치에 앉기, 돌탑 소원, 사진사 사진 |
 | room.js | 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 |
-| stores.js | 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 |
+| stores.js | 레스토랑 스톤, 가게 팝업 틀(`SHOP_POP`: 가게마다 head·fill·tabs, 장비점 gear·가게 안내 dir 는 shop.js 가 채움), 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 가게 안내도 상호작용, 상호작용(F)·줍기(E) 키 |
 | pickup.js | 줍기·배낭(줍기 버튼으로 가까운 쓰레기까지 걷기 #104), 구역 확인, 더미·꽃밭 효과 |
 | area.js | 구역 구분(#136): 문턱·구역 소품(`src/zonelook.js`) 만들기, 구역이 바뀌면(`late.zoneEnter`) 이름 배너·권장 점수 경고·첫 정낭 팁·구역 소리·안개, 오름 지도(위 구역 칸을 누르면) |
 | deernet.js | 멀티 노루 (#92): 노루 무리는 방장이 알림, 노루 타기는 방이 관리, 다른 사람 귤 먹이 부탁 |
 | dump.js | 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 |
 | field.js | 맵 전체 쓰기(#138): 적 소굴(가까이 가면 적 → 다 쫓아내면 닫힘·귤 묶음, `late.denLoot` 자리)·숨은 보물(하루 한 번 상호작용, `late.treasureLoot` 자리)·볼거리(처음 가까이 가면 도감·귤), 길 밖 걷기 느림(`late.fieldSlow`), 가 본 곳(save.field.fog)·큰 지도 아이콘(`late.fieldMap`)·미니맵(#minimap), 자동 걷기 길 밖 우회(autowalk.js `setRoutePass`), `__oreum.field` |
 | guard.js | 구역 지킴이 돌하르방(#119): 구역 더미를 모두 치우면 구역 자리(길 옆, `late.guard.spots`)에 솟아오름(꽃 연출 뒤·흙먼지·빛 기둥·꽃잎·카메라 한 번 보기)·메시지, ZONE_GUARD.holdSec 뒤 가라앉음. 세운 시각은 방(roomcore `zg`)이 주인, 옛 서버·혼자 하기는 save.zg. `__oreum.guard`, 확인 `node tools/guard.js` |
-| shop.js | 상점 팝업(장비 탭)·사는 연출, 옷 |
+| shop.js | 장비점 창(#128: 도구·배낭·무기 세 묶음, 폰은 탭)·사는 연출, 가게 안내(무엇을 어디서·`goShop(id)` 길 안내 → 도착하면 창·`shopGuide()` 메뉴/귤 칸), 살 수 있는 새 물건 점(지붕 간판·귤 칸, 본 것은 기기 localStorage), 미니맵 가게 아이콘, 옷장 옷 줄 |
 | look.js | 캐릭터 고르기·머리·옷장, 표지판, 탐방로 고르기 |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
@@ -73,7 +73,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만
-- 가게·NPC: shops.js/streetlayout.js · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
+- 가게·NPC: shops.js(가게 건물 표·지붕 아이콘 간판 `createRoofSigns`·들머리 안내도)/streetlayout.js · hardware.js(장비점 임시 모양, #128) · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
 - 적·전투: enemies.js/enemymodels.js · enemypack.js(#146 적끼리 밀어내기·무리 자리 나누기, `e.pack`·`e.slotA`·`e.close`, 막힘 판정 `life.hooks.enemyPass` 는 game/field.js, 수치 ENEMY_PACK) · boar.js/boarmodel.js · hp.js · life.js(동물·귤) · lifemodels.js(노루·돌하르방 모양, model-deer.js·model-hareubang.js)
 - 전투 손맛 (#148): 타겟 고정은 game/throw.js(`state.lock`·`refreshLock`·`aimTarget`(사거리 안일 때만)·`lockFar`·Tab `cycleLock`·화면 누르기 `pickLock`), 유도는 homing.js `steer(v, p, t, dt, rate)` (life.js 손 귤·화살, weaponfx.js 총·머신건). aimTargets 항목의 `ok()`(아직 맞힐 수 있음)·`chase`(나를 쫓음). 적 받기 상태는 enemies.js(charge → wind → dash → back / stagger, `hesitate()`), 받힌 뒤 무적·깜빡임 `player.iframe`(hooks.js enemyHit·update.js). 공격 뒤 쉼 `e.rest`(ENEMIES.rest, #149), 돌진 빠르기 ENEMIES.rush. 수치 balance.js COMBAT. 확인 `node tools/fight.js [구역…] [--move]`
 - 마차 부딪힘 (#117): collide.js 의 움직이는 부딪힘 `setDyn([x,z,r,...])` — 마차(rides.js createCart)가 매 프레임 자리를 넣음(모양은 balance.js CART.block). `col.move(..., dyn=true)` 와 서 있을 때 `col.nudge()` 는 플레이어(걷기·탈것·노루 타기)만 씀. 적·노루 AI 는 안 막힘. 확인 `node tools/cartblock.js`
