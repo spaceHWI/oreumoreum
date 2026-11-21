@@ -1418,3 +1418,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 화면 UFO(#150) 빛기둥이 땅까지: 접시는 화면 크기·가로지르는 길은 그대로 두고, 높이는 로고 아랫선 조금 아래(폰 가로처럼 로고가 화면 가운데면 로고 위), 거리는 그 화면 자리 시선이 오름 능선에 가장 가까워지는 곳(`ufoDepth`, 땅에 부딪히면 땅 위 hover)으로 매 프레임 잡음. 빛기둥은 세상 기준 수직 원뿔대로 땅까지(1.5m 땅속), 위 진하고 아래 옅게(꼭짓점 색, 더하기 섞기). 닿은 자리 빛 웅덩이(drape)·빛 조각 10개, 저사양은 빛기둥만(예전엔 저사양에 빛기둥 없음). 수치 `balance.js UFO.below·hover·beam·pool·sparks`
 - 이야기 이벤트 '수상한 불빛'(#168) UFO 는 다른 모양(makeUfo)이지만 빛기둥 길이를 지나는 자리 땅 높이로 바꿈
 - 확인: `__oreum.ufo()` 뒤 `__oreum.ufoInfo().ground`(땅 x·y·z, 빛기둥 길이 L, 거리 D). 그림 `notes/shots/192-*.jpg`
+
+## #199 쪽지 넘겨 보기·종이 배경·그림
+- 쪽지 창을 `src/game/noteview.js` 로 떼어 냄(punkworld.js 는 주기·칩·도감만). 순서는 주운 순서(save.punk.notes 의 때). 새로 주운 창·칩은 그 쪽지(맨 뒤)에서 시작해 ◀ 로 앞 것, 도감에서 열면 그 쪽지부터. ◀ ▶·←→·A·D·좌우 밀기, 끝에서 멈춤(처음으로 안 돎). 창이 열린 동안 ←→·A·D 는 캐릭터를 움직이지 않음(capture 로 먼저 받음). 넘겨 본 것도 읽음(save.punk.unread 에서 뺌), 앞·뒤에 안 읽은 게 있으면 ◀·▶ 에 귤색 점. 아래 '3 / 12'·구역 이름
+- 종이: NOTES 에 `paper` 칸 — memo·notebook·receipt·letter·postcard·alien·form·flyer·crumple·photo·rubbing·diary (CSS 만, 그림 파일 없음). 손글씨는 Nanum Pen Script(구글 글꼴, 처음 열 때만 받음, 못 받으면 고딕). 영수증은 고정폭, 외계 문서·고지서·전단·탁본은 고딕
+- 그림: NOTES 에 `img: true` 면 `assets/notes/<id>.webp` 를 종이 위쪽에 테이프로 붙인 듯(열 때만 받음, 못 받으면 종이만). build.mjs 가 dist/assets/notes 로 복사, publish.yml 이 `assets/` 로 올림. 한 파일 빌드(oreumoreum.html)엔 그림 없음. 아직 그림은 하나도 없음(기획 세션 몫, 이슈 코멘트의 표)
+- 넘김: 옆에서 밀려 들어오는 짧은 움직임 + 종이 쓸리는 소리(audio.js 가 40KB 를 넘어 noteview.js 에서 late.sound 의 noise 로 냄). 저사양(LOW)·움직임 줄이기는 바로 바뀜. 긴 쪽지는 창 안 스크롤(box-sizing border-box, 폰 390 폭에서 30장 모두 화면 안)
+- 확인 `node tools/notes.js [--shot]` (데스크톱·폰, 38줄)
