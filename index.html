@@ -90,7 +90,7 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 #joy { position: fixed; left: var(--gut-l); bottom: calc(var(--safe-b) + 22px); width: 132px; height: 132px; border-radius: 50%; background: rgba(251,246,230,.35); border: 3px solid rgba(51,64,42,.55); z-index: 5; touch-action: none; }
 #joy-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); box-shadow: 0 3px 0 rgba(36,37,31,.35); }
 #pickmsg { position: fixed; left: 50%; bottom: calc(var(--safe-b) + 168px); transform: translateX(-50%); z-index: 6; padding: 4px 12px; border-radius: 999px; background: var(--glass); color: var(--ink); border: 1px solid var(--hair); font-size: 13px; font-weight: 700; white-space: nowrap; pointer-events: none; }
-body.looking #pickmsg, body.hp-down #pickmsg { display: none !important; }
+body.looking #pickmsg, body.hp-down #pickmsg, body.looking #combo, body.hp-down #combo { display: none !important; }
 .toast { position: fixed; left: 50%; top: calc(var(--safe-t) + 92px); transform: translateX(-50%); padding: 8px 14px; font-size: 14px; z-index: 8; max-width: calc(100vw - 32px); text-align: center; }
 #banner { position: fixed; left: 50%; top: calc(var(--safe-t) + 64px); transform: translateX(-50%); z-index: 9; padding: 10px 14px; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); }
 #banner .bdg { flex: none; }
@@ -224,6 +224,12 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .ach-head { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; }
 .ach-head h3 { font-family: var(--display); font-weight: 800; font-size: 18px; margin: 0; }
 .ach-head span { font-size: 12px; color: var(--ink-soft); }
+/* 오늘의 할 일 (#125): 갈래 꼬리표(싸움·치우기·만남)·셋 다 줄·이어 오기 */
+.ach-cat { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-right: 6px; color: #fff; vertical-align: 1px; }
+.ach-cat.c-fight { background: #c4513f; } .ach-cat.c-heal { background: #4f7a36; } .ach-cat.c-meet { background: #3c7fc9; }
+.ach-item.ach-all b { font-size: 13px; }
+#ach-run { display: block; margin: -2px 0 10px; font-size: 12px; font-weight: 600; color: var(--acc); }
+#ach-run:empty { display: none; }
 .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
 .badge { display: grid; justify-items: center; gap: 4px; text-align: center; font-size: 12px; padding: 6px 2px; border-radius: 8px; border: 0; background: transparent; }
 .badge small { color: var(--ink-soft); font-size: 11px; line-height: 1.25; }
@@ -472,6 +478,20 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 #ch-arrow .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid var(--acc); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(30px); }
 #ch-arrow small { position: absolute; top: 100%; left: 50%; transform: translate(-50%, 3px); font-family: var(--display); font-weight: 800; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .fx-recycle.tick b { animation: none; } }
+/* 손맛 (#141, game/feel.js): 피해 숫자·연속·줍기 콤보·가장자리 붉은빛 */
+.fx-dmg { position: fixed; z-index: 19; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 800; font-size: 17px; color: #fff; text-shadow: 0 2px 0 var(--night), 0 0 4px rgba(0,0,0,.6); pointer-events: none; white-space: nowrap; }
+.fx-dmg.crit { font-size: 27px; color: #ffd23a; animation: bump .2s ease-out; }
+.fx-dmg.streak { font-size: 22px; color: var(--gyul); animation: bump .25s ease-out; }
+#combo { position: fixed; right: var(--gut-r); top: 42%; z-index: 6; display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 6px 10px; border-radius: 16px; background: var(--glass); border: 1px solid var(--hair); pointer-events: none; font-family: var(--display); }
+#combo b { font-size: 26px; font-weight: 800; line-height: 1; color: var(--cc, #fff); }
+#combo small { font-size: 11px; font-weight: 800; color: var(--gyul); min-height: 13px; }
+#combo.hit b { animation: bump .16s ease-out; display: inline-block; }
+#combo.up { animation: comboUp .45s ease-out; }
+@keyframes comboUp { 0% { box-shadow: 0 0 0 0 var(--cc, #fff); } 100% { box-shadow: 0 0 0 14px transparent; } }
+@media (max-width: 600px) { #combo { top: 34%; min-width: 48px; padding: 4px 8px; } #combo b { font-size: 21px; } }
+#feel-edge { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(214,38,38,.75) 100%); }
+@media (prefers-reduced-motion: reduce) { .fx-dmg.crit, .fx-dmg.streak, #combo.hit b, #combo.up { animation: none; } }
+
 #btn-ctx, #btn-pick { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 /* 동작 바퀴 (#76): 바깥 8칸(쪽 넘김) + 안쪽 고정 4칸 + 가운데 쪽 표시. 그림만, 누르면 이름 토스트 */
 #actions { position: fixed; z-index: 7; left: 50%; bottom: calc(var(--safe-b) + 84px); transform: translateX(-50%); --S: min(300px, 86vw, calc(100vh - 150px)); width: var(--S); height: var(--S); }
@@ -1176,7 +1196,7 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 @keyframes whereSwap { 0% { opacity: 0; transform: translateY(5px); } 60% { opacity: 1; transform: translateY(-2px); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { #where.swap { animation: none; } }
 #xy[hidden] { display: none; } #xy { font-weight: 600; opacity: .7; } #xy .sep { font-style: normal; font-weight: 500; opacity: .6; margin: 0 3px; } /* 어드민 '좌표 보기' */
-/* 오늘의 업적 고리 */
+/* 오늘의 할 일 고리 */
 #ach-chip svg.ring { width: 18px; height: 18px; }
 #ach-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); margin-left: 1px; }
 #ach-chip .dot[hidden] { display: none; }
@@ -1497,7 +1517,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-25c39204d1.js">(function () {
+<script data-main="main-8b84ab3a3a.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1546,7 +1566,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="tb-g tb-r">
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg data-i="zone" class="zm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6.5-11 4 6 2.5-3.5L21 20z"/><path d="M9.5 9V3.5l4 1.6-4 1.6"/></svg><svg data-i="bloom" class="zf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 2a3 3 0 0 1 3 3c0 0.56 -0.26 1.44 -0.78 2.64l-.724 1.36l1.76 -1.89c.499 -.6 0.92 -1 1.27 -1.21a2.968 2.97 0 0 1 4.07 1.1a3.011 3.01 0 0 1 -1.09 4.1c-.374 0.22 -.99 0.4 -1.85 0.54l-2.664 0.37l2.4 0.33c1 0.14 1.7 0.34 2.11 0.58a3.011 3.01 0 0 1 1.09 4.1a2.968 2.97 0 0 1 -4.07 1.1c-.348 -0.2 -0.77 -0.6 -1.27 -1.21l-1.76 -1.89l.724 1.36c.516 1.2 0.78 2.08 0.78 2.64a3 3 0 0 1 -6 0c0 -0.56 0.26 -1.44 0.78 -2.64l.724 -1.36l-1.76 1.89c-.499 0.6 -0.92 1 -1.27 1.21a2.968 2.97 0 0 1 -4.07 -1.1a3.011 3.01 0 0 1 1.09 -4.1c.374 -0.22 .99 -0.4 1.85 -0.54l2.664 -0.37l-2.4 -0.33c-1 -0.14 -1.7 -0.34 -2.11 -0.58a3.011 3.01 0 0 1 -1.09 -4.1a2.968 2.97 0 0 1 4.07 -1.1c.348 0.2 0.77 0.6 1.27 1.21l1.76 1.89c-1 -2.29 -1.5 -3.63 -1.5 -4a3 3 0 0 1 3 -3"/></svg><b id="zone-n">1</b></div>
     <div class="panel tpill" id="xy-pill" data-tut="hud" title="지금 있는 곳"><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="where">들머리</b><b id="xy" hidden><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
-    <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 업적"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
+    <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 할 일"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
     <button type="button" class="panel tpill" id="fs-chip" title="전체 화면" aria-label="전체 화면" aria-pressed="false" hidden><svg data-i="fullscreen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="fs-in"><path d="M4 8v-2a2 2 0 0 1 2 -2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2 -2v-2"/></g><g class="fs-out"><path d="M15 19v-2a2 2 0 0 1 2 -2h2"/><path d="M15 5v2a2 2 0 0 0 2 2h2"/><path d="M5 15h2a2 2 0 0 1 2 2v2"/><path d="M5 9h2a2 2 0 0 0 2 -2v-2"/></g></svg></button>
     <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg data-i="feedback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10"/><path d="M3 7l9 6l9 -6"/></svg><span class="fbl">의견 보내기</span><span class="fbs">의견</span><i class="fb-bub" id="fb-bub" hidden>불편한 점을 알려 주세요</i></button>
   </div>
@@ -1619,7 +1639,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="m-wx" id="m-wx" aria-label="지금 날씨"></div>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
   <div class="tiles">
-    <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg data-i="ach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v3m-4 -3v6m8 -6v6"/><path d="M12 18.5l-3 1.5l.5 -3.5l-2 -2l3 -.5l1.5 -3l1.5 3l3 .5l-2 2l.5 3.5l-3 -1.5"/></svg>업적</button>
+    <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg data-i="ach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v3m-4 -3v6m8 -6v6"/><path d="M12 18.5l-3 1.5l.5 -3.5l-2 -2l3 -.5l1.5 -3l1.5 3l3 .5l-2 2l.5 3.5l-3 -1.5"/></svg>할 일</button>
     <button type="button" id="menu-act" class="sm-only"><svg data-i="emote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 10l.01 0"/><path d="M15 10l.01 0"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>동작</button>
     <button type="button" id="menu-dex"><svg data-i="dex" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14"/><path d="M9 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14"/><path d="M5 8h4"/><path d="M9 16h4"/><path d="M13.803 4.56l2.184 -.53c.562 -0.14 1.13 .19 1.28 0.73l3.695 13.42a1.02 1.02 0 0 1 -0.63 1.22l-.133 0.04l-2.184 .53c-.562 0.14 -1.13 -.19 -1.28 -0.73l-3.695 -13.42a1.02 1.02 0 0 1 0.63 -1.22l.133 -0.04"/><path d="M14 9l4 -1"/><path d="M16 16l3.923 -.98"/></svg>도감</button>
     <button type="button" id="menu-wardrobe"><svg data-i="bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 18v-6a6 6 0 0 1 6 -6h2a6 6 0 0 1 6 6v6a3 3 0 0 1 -3 3h-8a3 3 0 0 1 -3 -3"/><path d="M10 6v-1a2 2 0 1 1 4 0v1"/><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4"/><path d="M11 10h2"/></svg>내 가방</button>
@@ -1645,6 +1665,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
     <button type="button" id="menu-perf">성능: 자동</button>
     <button type="button" id="menu-rainfx">비 효과: 보통</button>
+    <button type="button" id="menu-calmfx" aria-pressed="false" title="화면 흔들림·맞힌 순간 멈춤·느린 화면 (멀미)">화면 효과: 보통</button>
+    <button type="button" id="menu-vib" aria-pressed="true" hidden>진동: 켬</button>
     <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-rec" aria-pressed="false" title="촬영 모드: UI 없이 게임 장면만 녹화 (V)">촬영: 끔</button>
@@ -1760,7 +1782,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="panel pop">
     <div class="pop-head"><h2>업적</h2><span class="coins-pill"><i></i><span id="ach-coins">0</span></span><button type="button" class="btn small" id="ach-dex" title="쓰레기 도감"><svg data-i="dex" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14"/><path d="M9 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14"/><path d="M5 8h4"/><path d="M9 16h4"/><path d="M13.803 4.56l2.184 -.53c.562 -0.14 1.13 .19 1.28 0.73l3.695 13.42a1.02 1.02 0 0 1 -0.63 1.22l-.133 0.04l-2.184 .53c-.562 0.14 -1.13 -.19 -1.28 -0.73l-3.695 -13.42a1.02 1.02 0 0 1 0.63 -1.22l.133 -0.04"/><path d="M14 9l4 -1"/><path d="M16 16l3.923 -.98"/></svg> 도감</button><button type="button" class="btn small" id="ach-close">닫기</button></div>
     <div class="pop-body">
-      <div class="ach-head"><h3>오늘의 업적</h3><span id="ach-date"></span></div>
+      <div class="ach-head"><h3>오늘의 할 일</h3><span id="ach-date"></span></div>
+      <span id="ach-run"></span>
       <div class="ach-list" id="ach-list"></div>
       <div class="ach-head" style="margin-top:14px"><h3>뱃지</h3><span id="ach-streak"></span></div>
       <div class="badges" id="badge-list"></div>
@@ -1920,7 +1943,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
       <span><b>줍기</b> 손 버튼(E) · 누르고 있으면 계속 주워요</span>
       <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가게·돌탑·사진사 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
       <span><b>귤</b> 쓰레기를 클린하우스에 버리면 받아요. 던지면 노루·말이 먹고 따라와요</span>
-      <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
+      <span><b>업적</b> 오늘의 할 일 3개는 매일 바뀌어요. 이어서 오면 3·7·14일째 보상</span>
     </div>
     </div>
   </div>
