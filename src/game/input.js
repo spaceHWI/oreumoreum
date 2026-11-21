@@ -79,6 +79,7 @@ export const marker = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 12), new T
 marker.rotation.x = -Math.PI / 2; marker.visible = false; scene.add(marker);
 function tapGround(x, y) {
   if (busy()) return;
+  if (late.pickLock?.(x, y)) return; // 적을 누르면 그 적을 타겟으로 (#148)
   ray.setFromCamera(new THREE.Vector2((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1), camera);
   const hit = ray.intersectObject(terrain, false)[0];
   if (!hit) return;
@@ -104,6 +105,7 @@ addEventListener('keydown', (e) => {
   if (k === 'q') late.toggleRide(); // 탈것 (#69)
   if (k === ' ') { e.preventDefault(); late.doJump(); }
   if (k === 'escape') cancelAll();
+  if (k === 'tab' && !e.altKey && !e.ctrlKey && !e.metaKey && (document.activeElement === canvas || document.activeElement === document.body) && late.cycleLock?.()) e.preventDefault(); // 다음 타겟 (#148)
 });
 addEventListener('keyup', (e) => { keys.delete(keyOf(e)); keys.delete(e.key.toLowerCase()); });
 addEventListener('blur', () => keys.clear());

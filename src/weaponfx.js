@@ -3,7 +3,8 @@
 // 수치는 balance.js WEAPONS·WEAPON_FX. 저사양(LOW)은 방울·탄 꼬리를 줄임
 import * as THREE from 'three';
 import { height } from './world.js';
-import { WEAPON_FX as F, TANGERINE as TG } from './balance.js';
+import { WEAPON_FX as F, TANGERINE as TG, COMBAT } from './balance.js';
+import { steer } from './homing.js';
 
 export function createWeaponFx({ scene, life, LOW, sound }) {
   const group = new THREE.Group(); scene.add(group);
@@ -20,7 +21,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   // from·vel: Vector3. opt: { dmg, grav, life, peersFn, vis(보이기만), quiet }
   function shoot(from, vel, opt = {}) {
     if (shots.length >= N) shots.shift();
-    shots.push({ p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null });
+    shots.push({ p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null });
   }
   function updateShots(dt) {
     let c = 0;
@@ -29,7 +30,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
       let done = s.t > s.life;
       const n = Math.max(1, Math.ceil(s.v.length() * dt / 0.45)), h = dt / n; // 빨라서 나눠 움직이며 맞았는지 봄
       for (let k = 0; k < n && !done; k++) {
-        s.v.y -= s.grav * h; s.p.addScaledVector(s.v, h);
+        s.v.y -= s.grav * h; if (s.home && !steer(s.v, s.p, s.home, h, COMBAT.homeRateBow)) s.home = null; s.p.addScaledVector(s.v, h); // 유도 (#148)
         if (!s.vis) {
           const hit = life.hitAt(s.p, s.dmg, s.v, { quiet: s.quiet });
           if (hit) { done = true; s.onHit?.(hit, s.p); life.juiceSplash(s.p, v1.copy(s.v).normalize()); if (!s.quiet) sound?.splat?.(); break; }

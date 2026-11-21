@@ -1,5 +1,5 @@
 // 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { THROW_AIM, WEAPONS } from '../balance.js';
+import { THROW_AIM, WEAPONS, COMBAT } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { state, late } from './state.js';
@@ -23,23 +23,69 @@ export function setHoldBow(v) {
   syncEquipGear(); runner.apply(save.outfit); late.net.send(true);
 }
 const aimFwd = new THREE.Vector3();
-export function aimTarget() {
-  let best = null, bd = bowArmed() ? weaponNow().range : THROW_AIM.range;
-  // 화면 가운데에 가까운 쪽을 우선: 카메라 앞쪽과 이루는 각이 클수록 거리를 더 먼 것으로 침
-  camera.getWorldDirection(aimFwd); const fl = Math.hypot(aimFwd.x, aimFwd.z) || 1;
-  let bs = Infinity;
-  for (const t of life.aimTargets()) {
-    const dx = t.pos.x - player.pos.x, dz = t.pos.z - player.pos.z, d = Math.hypot(dx, dz); if (d >= bd) continue;
-    const cos = (dx * aimFwd.x + dz * aimFwd.z) / (Math.max(d, 0.01) * fl), sc = d * (1.6 - 0.6 * cos);
-    if (sc < bs) { bs = sc; best = t; }
-  }
-  return best;
+// 타겟 고정 (#148): 감지 거리 안에서 가장 위험한 것 하나를 잡아 두고, 쫓아내거나(목록에서 빠짐) 멀어질 때까지 바꾸지 않음
+// 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 잡아 두지 않고 사거리 안에서만 (예전처럼). 화면에서 누르거나 Tab 으로 바꿈
+// state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요' (다가가기는 #132)
+state.lock = null; state.lockPick = false;
+const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range);
+const detectR = () => (bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand);
+const flat = (t) => Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
+function aimScore(t, fl) {
+  const dx = t.pos.x - player.pos.x, dz = t.pos.z - player.pos.z, d = Math.hypot(dx, dz);
+  const cos = (dx * aimFwd.x + dz * aimFwd.z) / (Math.max(d, 0.01) * fl); // 화면 가운데에 가까울수록 작게
+  return (t.chase ? 0 : 1000) + d * (1.6 - 0.6 * cos);
 }
+let lockAt = -1, lockOut = null; // 고르기는 0.1초에 한 번 (사라진 것은 바로 놓음)
+export function refreshLock(force = false) {
+  const now = performance.now();
+  if (!force && now - lockAt < 100 && (!lockOut || !lockOut.ok || lockOut.ok()) && (!state.lock || !state.lock.ok || state.lock.ok())) return lockOut;
+  lockAt = now; return (lockOut = pickTarget());
+}
+function pickTarget() {
+  const list = life.aimTargets(), R = detectR();
+  let L = state.lock;
+  if (L && (!list.includes(L) || (L.ok && !L.ok()) || flat(L) > R + COMBAT.losePad)) { L = null; state.lockPick = false; }
+  camera.getWorldDirection(aimFwd); const fl = Math.hypot(aimFwd.x, aimFwd.z) || 1;
+  let best = null, bs = Infinity;
+  for (const t of list) { if (t.kind === 'hareubang' || flat(t) >= R) continue; const sc = aimScore(t, fl); if (sc < bs) { bs = sc; best = t; } }
+  if (!L || (!state.lockPick && !L.chase && best?.chase)) L = best; // 쫓아오는 적이 생기면 그쪽으로 (직접 고른 것은 그대로)
+  state.lock = L;
+  if (L) return L;
+  // 하르방: 사거리 안 가장 알맞은 것 (잡아 두지 않음)
+  let hb = null; bs = Infinity;
+  for (const t of list) { if (t.kind !== 'hareubang' || flat(t) >= fireR()) continue; const sc = aimScore(t, fl); if (sc < bs) { bs = sc; hb = t; } }
+  return hb;
+}
+export function aimTarget() { const t = refreshLock(); return t && flat(t) < fireR() ? t : null; }
+export const lockFar = () => !!state.lock && flat(state.lock) >= fireR();
+// 다음 타겟 (Tab): 감지 거리 안 것들을 가까운 순으로 돌아가며
+export function cycleLock() {
+  refreshLock(true);
+  const R = detectR(), list = life.aimTargets().filter((t) => t.kind !== 'hareubang' && flat(t) < R).sort((a, b) => flat(a) - flat(b));
+  if (list.length < 2 && list[0] === state.lock) return !!list.length;
+  if (!list.length) return false;
+  state.lock = list[(list.indexOf(state.lock) + 1) % list.length]; state.lockPick = true; lockAt = -1; return true;
+}
+// 화면을 누른 자리 (x, y px) 가까이 적이 있으면 그 적으로 바꿈 → true (땅 누르기로 걷지 않음)
+const pv = new THREE.Vector3();
+export function pickLock(x, y) {
+  let best = null, bd = COMBAT.pickPx;
+  for (const t of life.aimTargets()) {
+    if (t.kind === 'hareubang' || flat(t) > detectR()) continue;
+    pv.set(t.pos.x, t.pos.y + t.h, t.pos.z).project(camera); if (pv.z > 1) continue;
+    const d = Math.hypot((pv.x * 0.5 + 0.5) * innerWidth - x, (-pv.y * 0.5 + 0.5) * innerHeight - y);
+    if (d < bd) { bd = d; best = t; }
+  }
+  if (!best) return false;
+  state.lock = best; state.lockPick = true; lockAt = -1; return true;
+}
+export function setLock(t) { state.lock = t || null; state.lockPick = !!t; lockAt = -1; }
+Object.assign(late, { pickLock, cycleLock });
 export const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 export function throwTangerine() {
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   state.emo?.stop();
-  state.throwAim = player.riding ? null : aimTarget();
+  state.throwAim = aimTarget() || state.lock; // 사거리 밖 타겟도 그쪽으로 던져 휘게 함 (#148). 노루 위에서도 같게
   if (player.riding) { releaseTangerine(); return; }
   player.target = null; player.onArrive = null; marker.visible = false;
   player.pose = 'throw'; player.poseT = 0; state.throwPending = true; late.sound.beep(false);
@@ -54,7 +100,7 @@ export function releaseTangerine() {
   if (!player.riding) { const arm = runner.root.userData.parts?.armR; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h; } }
   const peers = () => (late.net.solo ? [] : [...[...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }))]); // #100 튜토리얼 중엔 혼자
   const shot = t && aimShot(from, t);
-  if (shot) life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy);
+  if (shot) life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy, t); // 타겟 쪽으로 휨 (#148)
   else life.throwTangerine(from, dir, THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0), peers);
 }
 // 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔
@@ -83,7 +129,7 @@ function shootBow() {
   if (save.bowAmmo <= 0) { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = w.perGyul; updateStats(); ammoFlash = 1; }
   save.bowAmmo -= 1; persist(); updateAmmo();
   setHoldBow(true);
-  state.throwAim = aimTarget();
+  state.throwAim = aimTarget() || state.lock;
   player.target = null; player.onArrive = null; marker.visible = false;
   player.pose = 'bow'; player.poseT = 0; state.bowPending = true;
 }
@@ -95,7 +141,7 @@ export function releaseArrow() {
   { const arm = runner.root.userData.parts?.armL; if (arm) { runner.root.updateMatrixWorld(true); const h = arm.localToWorld(new THREE.Vector3(0, -0.5, 0)); if (isFinite(h.x + h.y + h.z)) from = h.addScaledVector(fwd, 0.25); } }
   const peers = () => [...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }));
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
-  life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg'), grav: w.grav, peersFn: peers });
+  life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg'), grav: w.grav, peersFn: peers, home: t });
   late.sound.bow?.();
 }
 // 거의 곧게 날아가는 화살: 날아갈 시간만큼 중력과 대상의 움직임을 미리 셈
@@ -129,9 +175,10 @@ aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
 const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
 aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 export function tickAimMark(time) {
-  const t = state.throwAim || (!player.riding ? aimTarget() : null) || (state.ctxTarget === late.throwAct ? aimTarget() : null);
+  const t = state.throwAim || refreshLock(); // 고정한 타겟은 늘 보임 (#148, 탈것 위에서도). 사거리 밖이면 흐리게
   aimMark.visible = aimTri.visible = !!t;
   if (!t) return;
+  { const far = flat(t) >= fireR() ? 0.35 : 0.85; aimMark.material.opacity = far; aimTri.material.opacity = far + 0.15; }
   const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);
   aimMark.scale.set(s, 1, s); aimMark.position.set(t.pos.x, height(t.pos.x, t.pos.z) + 0.08, t.pos.z); aimMark.rotation.y = time * 1.5;
   aimTri.position.set(t.pos.x, t.pos.y + (t.h || 0.8) * 2 + 0.9 + Math.sin(time * 6) * 0.1, t.pos.z); aimTri.rotation.y = time * 2;

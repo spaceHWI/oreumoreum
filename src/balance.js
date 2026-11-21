@@ -375,7 +375,7 @@ export const BOAR = {
   jumpClear: 0.9,
   hitGap: 0.2, // 몸이 닿은 뒤 이만큼 안이면 받힘
   hitCd: 3, // 받힌 뒤 이 초 동안은 다시 안 받힘
-  knockSpeed: 10, knockV: 4, knockDrag: 7, // 맞으면 짧게 뒤로 밀림 (#107: 예전엔 28·11 로 날아가 구르고 일어남). 속도·뜨는 속도·밀림이 줄어드는 빠르기(초당)
+  knockSpeed: 8.4, knockV: 4, knockDrag: 7, // 맞으면 짧게 뒤로 밀림 (#107: 예전엔 28·11 로 날아가 구르고 일어남). 속도·뜨는 속도·밀림이 줄어드는 빠르기(초당)
   flinchT: 0.45, flinchPeak: 0.08, flinchAng: 0.38, // 움찔: 이 초 안에 바로 섬(이 동안 조작 못 함), 가장 젖히는 때, 그때 몸 기울기(rad, 약 22°)
 };
 // 적 (#37, 구역별 #48): 쓰러뜨리지 않고 귤을 맞혀 쫓아냄. 전투 오름에서만. 새 종류는 여기에 한 줄 + src/enemymodels.js 에 모양
@@ -408,7 +408,7 @@ export const ENEMY_SPAWN = {
 // cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
 // r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
-  { tier: 1, id: 'hand', name: '손', dmg: 1, range: 16, price: 0 },
+  { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 5, price: GROWTH.price[2] },
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
@@ -577,7 +577,7 @@ export const PICK_SEEK = { range: 25, stand: 0.5, color: '#4fe3c1', retry: 0.3 }
 // 꽃 피는 동안 자동 줍기 이어가기를 쉬는 시간(초, 임의값) (#110): 더미 하나 · 구역 전체
 export const BLOOM_HOLD = { heap: 2.5, zone: 4 };
 export const THROW_AIM = {
-  range: 16, // 이 거리(수평) 안 대상을 겨눔
+  range: 24, // 이 거리(수평) 안 대상을 겨눔 (#148: 16 → 24)
   power: 11, runBonus: 3, // 대상이 없을 때 보는 방향으로 던지는 힘 (달리면 더)
   k: 0.55, kMax: 1.4, // 위로 던지는 비율(수직/수평 속도). 높은 곳을 겨눌 땐 kMax 까지 올림
   vMin: 4, vMax: 24, // 겨눌 때 수평 속도 범위
@@ -586,10 +586,29 @@ export const THROW_AIM = {
   edgeRange: 40, // 화면 밖 적을 가장자리 방향 표시로 알려 주는 거리(m)
 };
 
+// 전투 손맛 (#148, 모두 임의값). 타겟 고정은 game/throw.js, 유도는 src/homing.js, 적 돌진·물러남은 src/enemies.js
+export const COMBAT = {
+  detectHand: 28, detectPad: 8, losePad: 6, // 타겟을 잡는 거리: 손은 28m, 무기는 사거리 + detectPad. 잡은 타겟은 이만큼 더 멀어지면 놓음
+  pickPx: 70, // 화면에서 적을 누를 때 이 픽셀 안이면 그 적으로 바꿈
+  homeRate: Math.PI, homeT: 1.6, // 유도: 탄이 초당 도는 각(rad, 180°), 날아가는 동안 유도하는 시간 상한(초)
+  homeRateBow: Math.PI * 1.5, // 활·총·머신건은 빨라서 조금 더 세게 돌림
+  knockDist: 1.2, // 받혀 밀려나는 거리 (BOAR.knockSpeed ÷ knockDrag 로 맞춤)
+  iframe: 1, // 받힌 뒤 다시 안 맞는 시간(초), 그동안 캐릭터가 깜빡임
+  backT: 0.6, // 받은 적이 한 걸음 물러나는 시간(초, walk × 1.6 빠르기)
+  windT: 0.5, windD: 5.5, // 돌진 조짐: 이 거리 안에서 멈춰 몸을 낮추는 시간(초)
+  dashK: 1.5, dashT: 0.7, dashMin: 8, // 돌진: chase × dashK (최소 dashMin m/s), 최대 시간(초)
+  staggerT: 1, crit: 2, // 비껴가면 비틀거림(초), 그때 맞히면 피해 × crit (급소)
+  attackers: 2, ringR: 7, // 한 번에 덤비는 적 수. 나머지는 이 둘레에서 기다리며 돎 (#146 이 같은 값을 씀)
+  flinchT: 0.35, flinchDist: 1.5, // 맞은 적이 멈칫하는 시간(초)·뒤로 밀리는 거리(m, ÷ 크기)
+  lowHp: 0.3, holdT: 2, // 기운이 이 비율 아래면 적이 잠깐 머뭇거림(초, 한 싸움에 한 번)
+  stuckT: 2, // 적에게 막혀 이 초 넘게 못 빠져나오면 적 사이로 지나갈 수 있음
+  autoPick: 3.2, // 싸우는 중에는 이 거리 안 떨어진 귤을 자동으로 주움 (평소 1.26m)
+};
+
 // HP·쓰러짐·들것 귀환 (#36). 전투 오름에서만
 export const HP = {
   max: 100,
-  regenDelay: 8, regen: 5, // 이 초 동안 안 맞으면 초당 regen 씩 회복
+  regenDelay: 5, regen: 5, // 이 초 동안 안 맞으면 초당 regen 씩 회복 (#148: 8 → 5)
   waits: [5, 10, 20, 30], // 시작 지점 대기 시간: 처음, 연달아 쓰러질 때마다 다음 칸 (마지막이 최대)
   resetSec: 180, // 일어난 뒤 이만큼 안 쓰러지면 대기 시간이 처음 칸으로
   low: 30, // 이 아래면 막대가 빨갛게 깜빡임
