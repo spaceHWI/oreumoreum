@@ -21,7 +21,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
   const doReset = () => {
     state.resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
-    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, rainFx: save.rainFx, vib: save.vib, calmFx: save.calmFx, introSound: save.introSound, music: save.music, nickSet: save.nickSet, nickRen: save.nickRen, reset: 1, _rev: save._rev, _acct: save._acct }; // reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7)
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, rainFx: save.rainFx, vib: save.vib, calmFx: save.calmFx, introSound: save.introSound, music: save.music, nickSet: save.nickSet, nickRen: save.nickRen, reset: 1, _rev: save._rev, _acct: save._acct }; /* reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7) */
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
     location.reload();

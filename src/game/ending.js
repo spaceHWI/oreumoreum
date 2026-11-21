@@ -135,7 +135,7 @@ let room = null, live = false, off = 0, offRtt = Infinity, mineWait = null, mine
 function sync(n) { for (let i = 0; i < n; i++) setTimeout(() => { if (live) room?.send?.({ t: 'ping', c: ['end', Date.now()] }); }, 1500 + i * 1200); } // 들어온 뒤 몇 번 (방 시각에 맞춰 같은 장면을 돌리려고)
 // mine: 내가 끝냄 (onEnd 에서 보상). 방이 있으면 방에 알려 같은 시각에, 없으면 혼자
 export function startEnding({ mine = true, onEnd = null } = {}) {
-  if (live && room?.send?.({ t: 'end' })) { mineWait = { onEnd }; mineT = Date.now(); setTimeout(() => { if (mineWait && mineT && Date.now() - mineT >= 1900) { const w = mineWait; mineWait = null; schedule({ at: Date.now() + E.lead * 1000, by: save.nick, names: [save.nick], mine: true, onEnd: w.onEnd }); } }, 2000); return; } // 방이 답이 없으면 혼자
+  if (live && room?.send?.({ t: 'end' })) { mineWait = { onEnd }; mineT = Date.now(); setTimeout(() => { if (mineWait && mineT && Date.now() - mineT >= 1900) { const w = mineWait; mineWait = null; schedule({ at: Date.now() + E.lead * 1000, by: save.nick, names: [save.nick], mine: true, onEnd: w.onEnd }); } }, 2000); return; } /* 방이 답이 없으면 혼자 */
   schedule({ at: Date.now() + E.lead * 1000, by: save.nick, names: [save.nick], mine, onEnd });
 }
 late.endNet = {

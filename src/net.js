@@ -87,7 +87,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       if (e.knId === undefined) e.knId = kn ? kn[0] : 0;
       else if (kn && kn[0] !== e.knId) { e.knId = kn[0]; e.knT = 0; e.knAx = kn[1]; e.knAz = kn[2]; } }
     e.data = d;
-    const nick = safeNick(d.nick), gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0, gg = Number.isFinite(d.gg) ? Math.max(0, Math.min(3, Math.floor(d.gg))) : 0, lv = Number.isFinite(d.lv) ? Math.max(0, Math.min(LV_MAX, Math.floor(d.lv))) : 0; // gg 입은 것 중 가장 높은 등급 (#140), lv 레벨 (#159)
+    const nick = safeNick(d.nick), gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0, gg = Number.isFinite(d.gg) ? Math.max(0, Math.min(3, Math.floor(d.gg))) : 0, lv = Number.isFinite(d.lv) ? Math.max(0, Math.min(LV_MAX, Math.floor(d.lv))) : 0; /* gg 입은 것 중 가장 높은 등급 (#140), lv 레벨 (#159) */
     const title = titleText(d.tt); // 칭호 번호 (#165): 범위 밖·모르는 번호는 안 닮
     if (nick !== e.nick || gs !== e.gs || gg !== e.gg || lv !== e.lv || title !== e.title) { e.nick = nick; e.gs = gs; e.gg = gg; e.lv = lv; e.title = title; if (e.label) { e.runner.root.remove(e.label); e.label.material.map?.dispose(); e.label.material.dispose(); } e.label = makeLabel(nick, gs, gg, lv, title); e.runner.root.add(e.label); }
     const ok = JSON.stringify(d.o || null);

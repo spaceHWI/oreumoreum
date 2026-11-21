@@ -9,6 +9,10 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { packAssets } from './tools/packassets.mjs';
+// 줄 중간 주석 검사 (#193): 걸리면 빌드를 멈춘다 (tools/lint.js)
+{ const { createRequire } = await import('module'); const lint = createRequire(import.meta.url)('./tools/lint.js');
+  const st = lint.selfTest(), errs = lint.lintAll();
+  if (st.length || errs.length) { console.error([...st, ...errs].join('\n') + '\n빌드 멈춤: 줄 주석 검사 (#193, tools/lint.js)'); process.exit(1); } }
 const DEV = !!process.env.DEV, PUBLIC = process.env.PUBLIC === '1';
 const hash = (b) => crypto.createHash('sha256').update(b).digest('hex').slice(0, 10);
 fs.rmSync('dist', { recursive: true, force: true });

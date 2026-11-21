@@ -72,7 +72,7 @@ function takeNow() {
     }
     if (n >= tool.per || room < 1) break;
   }
-  if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < FEEL.combo.gap ? pickS.combo + 1 : 1; pickS.comboAt = now; late.sound.combo?.(Math.min(FEEL.combo.pitchMax, pickS.combo - 1)); late.feel?.combo(pickS.combo); } // 이어 주우면 음이 올라감 (#89), 콤보 숫자·보너스 (#141)
+  if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < FEEL.combo.gap ? pickS.combo + 1 : 1; pickS.comboAt = now; late.sound.combo?.(Math.min(FEEL.combo.pitchMax, pickS.combo - 1)); late.feel?.combo(pickS.combo); } /* 이어 주우면 음이 올라감 (#89), 콤보 숫자·보너스 (#141) */
   if (bagRoom() < 1) { late.sound.full?.(); fullToast(); }
 }
 export function tickPick(dt) {

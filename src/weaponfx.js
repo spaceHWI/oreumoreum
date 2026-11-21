@@ -21,7 +21,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   // from·vel: Vector3. opt: { dmg, grav, life, peersFn, vis(보이기만), quiet }
   function shoot(from, vel, opt = {}) {
     if (shots.length >= N) shots.shift();
-    const s = { p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null, ch: opt.ch || 0, sc: opt.size ? new THREE.Vector3(opt.size, opt.size, opt.size) : null }; // ch·size: 모아 쏘기 (#129)
+    const s = { p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null, ch: opt.ch || 0, sc: opt.size ? new THREE.Vector3(opt.size, opt.size, opt.size) : null }; /* ch·size: 모아 쏘기 (#129) */
     shots.push(s); return s;
   }
   function updateShots(dt) {

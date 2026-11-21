@@ -158,7 +158,7 @@ export function releaseArrow() {
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
   const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
   if (ch) late.chargeLaunch?.(ch, 'bow', a.mesh.position, () => life.arrows.includes(a), t);
-  if (twinRoll()) { const v2 = vel.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW), f2 = from.clone(); setTimeout(() => life.shootArrow(f2, v2, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS); } // 쌍귤 (#159)
+  if (twinRoll()) { const v2 = vel.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW), f2 = from.clone(); setTimeout(() => life.shootArrow(f2, v2, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS); } /* 쌍귤 (#159) */
   late.sound.bow?.();
 }
 // 거의 곧게 날아가는 화살: 날아갈 시간만큼 중력과 대상의 움직임을 미리 셈
