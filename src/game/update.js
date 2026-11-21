@@ -4,6 +4,7 @@ import { bootsOn } from '../gearscore.js';
 import { PERF, PLACE, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
 import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
+import { mt, mtFrame } from '../metrics.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
 import { reportCrash } from '../crash.js';
@@ -224,7 +225,7 @@ let slowT = 0, fastT = 0;
 function adaptQuality(dt) { // 자동일 때만: 느리면 한 단계씩 내리고(픽셀 배율 → 그림자 끔), 오래 빠르면 시작 단계까지 되돌림
   if (!quality.auto || PERF_LOCK || document.hidden) { slowT = fastT = 0; return; }
   if (dt >= PERF.slowDt) { slowT += dt; fastT = 0; } else if (dt < PERF.fastDt) { fastT += dt; slowT = 0; }
-  if (slowT > PERF.slowT && quality.level > 0) { quality.level--; slowT = 0; applyQuality(); }
+  if (slowT > PERF.slowT && quality.level > 0) { quality.level--; slowT = 0; applyQuality(); mt('qdown'); } // 자동으로 단계 내림 수 (#121)
   if (fastT > PERF.fastT && quality.level < quality.tier) { quality.level++; fastT = 0; applyQuality(); }
 }
 applyQuality();
@@ -240,6 +241,7 @@ function frame(now) {
   }
 }
 function step(now) {
+  mtFrame(); // 이용 통계 평균 fps (#121): 숫자 하나 더하기
   if (state.osPaused) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
   if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);

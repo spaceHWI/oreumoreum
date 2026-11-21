@@ -1331,4 +1331,21 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 전체 화면 안내 `#fs-tip`: 안드로이드 등(Fullscreen API)은 '전체 화면으로 하기' 버튼, 아이폰 사파리는 '공유 → 홈 화면에 추가 → 아이콘으로 열기' 3단계, 아이폰 크롬·인앱은 사파리로 열라는 안내+주소 복사. 홈 화면 앱·전체 화면 중·원스토어·PC 는 안 띄움. 튜토리얼 직후 한 번(감독 문 fsTip, mateSunja 앞. mateSunja 에 after: 'tips' 를 적어 PC 에서 막히지 않게), 메뉴 '전체 화면으로 하는 법', '다시 보지 않기'(save.fsTip.off). 첫 화면 시작 버튼 아래 '전체 화면으로 시작'(api, 처음 한 번). 예전 아이폰 토스트(save.fsHint)는 뺌
 - 함께 고침: update.js 한 줄 가운데 `// 지붕 간판 (#182)` 주석이 그 뒤 갱신(튜토리얼·식사·미장원·LEAP·가게 표시·버프·가로등·철 이벤트 등)을 모두 주석으로 만들어 튜토리얼이 시작되지 않던 것 → `/* */`
 - 확인 `node tools/simple.js [tag] [--off]` (폰 세로·가로 네 장면, 떠 있는 수·겹침), `node tools/simple.js --ua` (기기별 안내). 앞→뒤 그림 `notes/shots/mobile-189-{before,after}.jpg`
+## #131 사람 수에 맞춘 쓰레기 쌓이는 속도 · 빈 방은 빨리 다시 참 (2026-11-21)
+- 새 파일 `src/refill.js`(셈만, 게임·서버 같이 씀): `crowdMul(n)=n^DUMP.crowdExp(0.8)`, 한 사람 몫 `crowdShare=n^0.8/n`, 간격 배율 `crowdGap=min(crowdGapMax 1.5, 1/몫)`, 빈 동안 채움 `emptyFill(초, 구역)`·`offlineAdds`
+- 다시 쌓기를 방장만 → **각자 둘레 투기꾼·몹이 쌓은 것**으로 바꿈(`online.js linkTrash` putBack 이 늘 put 을 보냄). 방(`roomcore`)이 받아 줄지 정함: 방장 또는 '움직이는 사람'(최근 `crowdActive` 120초 안에 `crowdMove` 3m 넘게 움직였고 presence `tu`(튜토리얼 중) 아님), 한 사람 `putPerMin`, 방 전체 `putPerMin × crowd^0.8`. 예전엔 방장 아닌 사람 화면의 투기꾼은 모양만이었음
+- 사람 수 crowd: 방이 1초마다 세고 `crowdFollow` 60초에 걸쳐 따라감, hi 의 `np`·바뀌면 `{t:'np', n}`. 클라이언트 `state.crowd` → `pacing.js`(공격·투기꾼 간격 × crowdGap, 트럭 양 × 몫×간격 배율) · `dumpers.setPlayers`. 몹 무리 크기는 그대로(간격만)
+- 빈 방: `offlineMaxH` 8 → 1.5, `offlineHalfMin` 30, `offlineZone {1:0.6, 2:0.8}`(구역 1·2 먼저). 방이 마지막 사람이 나간 시각에서 첫 사람이 들어올 때 직접 채우고 hi 의 `fill` → '자리를 비운 사이 쓰레기 ○개가 다시 쌓였어요'. 혼자·손님은 `dumpers.catchUp` 이 같은 곡선(예전 무작위 방문 대신 더미마다 빈자리 × 비율). 방에 붙어 있으면 탭을 오래 숨겨도 내 화면에서 채우지 않음(`store.roomLive`)
+- 확인 도구 `tools/crowd.js`(빈 동안 표·방 가짜 시계·1/3/10/30명 1시간 표), `tools/econ.js --split K --gap 분`(하루 1시간을 나눠 하기), `__oreum.crowd.set(n)`
+- 결정·남은 점: 지수 0.8 로는 '30명도 40~70분' 이 안 됨(쌓는 양 n^0.8 vs 줍는 양 n, 가득에서 시작하면 30명 3.6분). 한 사람 일감(둘레 쌓임)은 30명 0.65배. 하루 1시간을 둘로 나누면 마지막 칸이 약 1시간(하루) 당겨지는데, 사이가 10~30분이어도 거의 같이 당겨져 90분을 늘려도 줄지 않음 → 하루 줍기 귤 상한 같은 다른 장치가 필요하면 따로. #157(쉬는 사람만 남은 방 = 빈 방)은 그 이슈에서
+
+## #121 주요 수치 재기 (하루 합계만)
+- 클라이언트 `src/metrics.js`(숫자 세기·묶음 만들기·sendBeacon) + `src/game/metrics.js`(게임 사건 잇기). 프레임 안에서는 `mtFrame()` 숫자 하나만. 상태는 2초 setInterval 로 훑음
+- 보내기: 5분마다·pagehide·탭 숨김에 한 묶음 `POST /m` (text/plain 이라 preflight 없음, 실패해도 다시 안 보냄, 2KB·80키 상한). 출처 live·dev(`__DEV__`)·adm(서버 어드민 계정)
+- 서버: `server/src/metrics.js` 가 정해진 키(`METRICS.keys`)·'이름:갈래'(`METRICS.sub`)만 받음, 음수·큰 값 버림. Accounts DO 표 `mt (d, src, k, sum, n)` 에 더하기만(`peermx` 는 최대). 하루·출처마다 새 키 3000 상한. 계정·닉네임·IP 없음. RL_API 같이 씀. 90일 지나면 Cron 에서 지움
+- 플레이 시간 구간은 '넘긴 수'(pt1·pt5·pt15)로 셈 → 구간 = 들어온 수와의 차 (나갈 때 보내기가 빠져도 어긋나지 않게)
+- 튜토리얼 칸·첫 줍기·처음/다시 온 사람은 기기 기록 `<저장 키>.mt` 기준(처음부터 다시 해도 남음). 통계 전부터 하던 사람은 이미 지난 칸을 세지 않음. 끝: 마지막 칸(정낭)에서 끝나면 tut:end, 그 전이면 tut:skip
+- 어드민 개발자 메뉴 "수치": 최근 14일 표 (`GET /admin/metrics`, 어드민만)
+- `privacy.html` 1. 받는 정보에 이용 통계 문장
+- 확인: `node tools/metrics.js`(보낸 묶음 가로채 보기), `tools/sec.js` 에 /m·/admin/metrics 줄 5개
 
