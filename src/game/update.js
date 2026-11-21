@@ -336,6 +336,7 @@ function step(now) {
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
   if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
+  late.recFrame?.(); // 촬영 모드 (#185): 그린 바로 뒤 캔버스를 담음
   if (state.captureNext) { state.captureNext = false; capture(); }
   if (!warmed) { warmed = true; setTimeout(warm, 30); }
 }

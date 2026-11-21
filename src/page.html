@@ -1159,6 +1159,21 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #fb-chip.hop { animation: fbhop .9s ease-in-out 3; }
 @keyframes fbhop { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); } 55% { transform: translateY(0); } 72% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { #fb-chip.hop { animation: none; } }
+/* 촬영 모드 (#185) */
+#rec-ui { position: fixed; z-index: 40; left: var(--gut-l); top: calc(var(--safe-t) + 64px); display: flex; gap: 6px; align-items: center; }
+#rec-btn { display: flex; align-items: center; gap: 6px; height: 34px; min-width: 34px; padding: 0 9px; border-radius: 17px; background: var(--glass-2); border: 1px solid var(--hair); color: var(--ink); font: 700 12px var(--body); }
+#rec-btn i { width: 14px; height: 14px; border-radius: 50%; background: #e2342a; box-shadow: 0 0 0 2px rgba(255,255,255,.8); }
+#rec-btn.on i { border-radius: 3px; animation: recBlink 1s steps(2) infinite; }
+#rec-btn span:empty { display: none; }
+#rec-clip { height: 34px; padding: 0 10px; border-radius: 17px; background: var(--glass-2); border: 1px solid var(--hair); color: var(--ink); font: 800 12px var(--body); }
+@keyframes recBlink { 50% { opacity: .35; } }
+#rec-frame { position: fixed; z-index: 2; pointer-events: none; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); aspect-ratio: 9 / 16; height: 100%; border-left: 2px dashed rgba(255,255,255,.35); border-right: 2px dashed rgba(255,255,255,.35); box-shadow: 0 0 0 100vmax rgba(0,0,0,.12); }
+#rec-ready { position: fixed; z-index: 60; left: 50%; bottom: calc(var(--safe-b) + 90px); transform: translateX(-50%); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; align-items: center; max-width: calc(100vw - 32px); }
+#rec-ready b { white-space: nowrap; font-size: 14px; }
+#rec-ready p { margin: 0; font-size: 12px; color: var(--ink-soft); text-align: center; }
+#rec-ready .rec-row { display: flex; gap: 6px; }
+#rec-ready button { padding: 8px 14px; border-radius: 12px; background: rgba(255,255,255,.08); color: var(--ink); font: 700 13px var(--body); border: 1px solid var(--hair); }
+#rec-ready #rec-share, #rec-ready #rec-dl:first-child { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
 #fs-chip { padding: 0 9px; } #fs-chip svg { width: 16px; height: 16px; } #fs-chip .fs-out, #fs-chip[aria-pressed="true"] .fs-in { display: none; } #fs-chip[aria-pressed="true"] .fs-out { display: inline; } .topbar.f5 #fs-chip { padding: 0 6px; } /* 전체 화면 (#105) */
 .pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: var(--acc-fg); font-weight: 800; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
 .topbar.f2 #ach-chip { display: none; }
@@ -1415,6 +1430,17 @@ button.bag-card { cursor: pointer; }
   <div id="emo-wheel"></div>
   <button type="button" id="act-chat" class="ph" aria-label="말하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5z"/></svg></button>
 </nav>
+<!-- 촬영 모드 (#185, game/rec.js): 모두 HTML 이라 영상(캔버스)에는 안 찍힘 -->
+<div id="rec-frame" hidden aria-hidden="true"></div>
+<div id="rec-ui" hidden>
+  <button type="button" id="rec-btn" aria-label="녹화 시작 (V)" title="녹화 시작/멈춤 (V)"><i></i><span id="rec-time"></span></button>
+  <button type="button" id="rec-clip" hidden aria-label="방금 30초 저장" title="방금 30초 저장">30s</button>
+</div>
+<div id="rec-ready" class="panel" hidden role="dialog" aria-label="영상 저장">
+  <b id="rec-msg">영상이 준비됐어요</b>
+  <p id="rec-tag" hidden></p>
+  <div class="rec-row"><button type="button" id="rec-share" hidden>공유</button><button type="button" id="rec-dl">내려받기</button><button type="button" id="rec-x" aria-label="닫기">✕</button></div>
+</div>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
   <button type="button" id="menu-feedback" class="m-fb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>의견 보내기</button>
@@ -1445,6 +1471,11 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="menu-rainfx">비 효과: 보통</button>
     <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
+    <button type="button" id="menu-rec" aria-pressed="false" title="촬영 모드: UI 없이 게임 장면만 녹화 (V)">촬영: 끔</button>
+    <button type="button" id="rec-shape" class="rec-opt" hidden>영상: 세로 9:16</button>
+    <button type="button" id="rec-snd" class="rec-opt" aria-pressed="true" hidden>영상 소리: 켬</button>
+    <button type="button" id="rec-wm" class="rec-opt" aria-pressed="false" hidden>로고: 끔</button>
+    <button type="button" id="rec-buf" class="rec-opt" aria-pressed="false" hidden>방금 30초: 끔</button>
     <button type="button" id="menu-mates" aria-pressed="true" title="동료 캐릭터 보이기">동료: 켬</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>

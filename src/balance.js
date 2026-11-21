@@ -1426,3 +1426,17 @@ export const BUDDIES = {
   cheerR: 150, worryR: 80, ambient: [70, 150], talkR: 3,
   avoid: { player: 1.4, door: 4, npc: 7 }, // npc: 오름지기(들머리 안내판)·사진사 둘레
 };
+
+// 게임 안 촬영 모드 (#185, game/rec.js). 캔버스만 녹화해 UI 없는 영상(릴스). 값은 임의
+// size: 세로 9:16 영상 크기 단계(큰 것부터). 폰·저사양(TIER 0)은 1단계(720×1280)부터. 녹화 중 fps 가 dropFps 아래로 dropSec 초 이어지면 한 단계 낮춤
+// bps: 단계별 비트레이트. fps: 영상 프레임. maxSec: 한 번에 최대 길이(메모리 보호). marks: 이 초에 진동·작은 소리(릴스 길이 가늠, 소리는 영상에 안 담김)
+// types: MediaRecorder 형식 고르는 순서(mp4 → webm). buf: '방금 30초' 길이(초), 두 녹화기를 buf/2 씩 엇갈려 돌림(PC 만)
+export const REC = {
+  size: [[1080, 1920], [720, 1280], [540, 960]],
+  bps: [8e6, 5e6, 3e6],
+  fps: 30, maxSec: 180, marks: [30, 60],
+  dropFps: 20, dropSec: 3,
+  buf: 30,
+  types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
+  tag: '#오름오름',
+};
