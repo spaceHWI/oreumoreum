@@ -22,11 +22,12 @@ const { chromium } = require('playwright');
   res['달리는 마차'] = await toRun();
   await p.waitForTimeout(300);
   res['버튼'] = await p.evaluate(() => window.__oreum.aim.ctx());
-  res['타기'] = await p.evaluate(() => { const O = window.__oreum; O.rides.cart.board(); return !!O.player.cart; });
+  res['타기'] = await p.evaluate(() => { const O = window.__oreum, pl = O.player; let c = pl.cart; window.__st = ''; Object.defineProperty(pl, 'cart', { configurable: true, get() { return c; }, set(v) { if (!v && c && !window.__st) window.__st = new Error().stack.split('\n').slice(2, 5).map((l) => l.trim()).join(' < '); c = v; } }); O.rides.cart.board(); return !!O.player.cart; });
+  for (let k = 0; k < 3 && !res['타기']; k++) { await p.waitForTimeout(700); res['타기'] = await p.evaluate(() => { const O = window.__oreum, c = O.rides.cart.api, h = c.heading; O.tp(c.pos.x + Math.cos(h) * 2.4, c.pos.z - Math.sin(h) * 2.4, h); O.rides.cart.board(); return !!O.player.cart; }); } // 구역에 처음 들어선 때 잠깐 바쁨
   await p.waitForTimeout(150);
   res['폴짝 중 높이'] = await p.evaluate(() => { const O = window.__oreum; return { hop: O.player.cart?.hop != null, y: +(O.player.pos.y - O.rides.cart.ground(O.player.pos.x, O.player.pos.z)).toFixed(2) }; });
-  await p.waitForTimeout(1200); console.log(JSON.stringify(res));
-  res['앉음'] = await p.evaluate(() => { const O = window.__oreum, c = O.rides.cart.api, s = c.seat(O.player.cart.seat); if (!O.player.cart) return 'off'; return { hop: O.player.cart.hop, off: +Math.hypot(s.x - O.player.pos.x, s.z - O.player.pos.z).toFixed(2), code: O.rides.state().code, btn: O.aim.ctx() }; });
+  await p.waitForTimeout(1200);
+  res['앉음'] = await p.evaluate(() => { const O = window.__oreum, c = O.rides.cart.api; if (!O.player.cart) return { off: window.__st, toast: document.getElementById('toast').textContent }; const s = c.seat(O.player.cart.seat); return { hop: O.player.cart.hop, off: +Math.hypot(s.x - O.player.pos.x, s.z - O.player.pos.z).toFixed(2), code: O.rides.state().code, btn: O.aim.ctx() }; });
   // 달리는 중 내리기
   res['내리기'] = await p.evaluate(() => {
     const O = window.__oreum, c = O.rides.cart.api, m = c.state.moving; O.rides.cart.leave(false);
