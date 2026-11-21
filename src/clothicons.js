@@ -4,6 +4,9 @@ const P = (d, f, extra = '') => `<path d="${d}" fill="${f}" ${OL} ${extra}/>`;
 function hat(L) {
   const m = L.main, a = L.acc;
   if (L.kind === 'cap') return P('M7 25c0-9 6-15 13-15s13 6 13 15z', m) + P('M20 25h15c0 2-2 3.5-4 3.5H20z', a) + `<circle cx="20" cy="10" r="1.6" fill="${a}"/>`;
+  if (L.kind === 'box') return P('M7 9h26v24H7z', m) + `<circle cx="15" cy="18" r="2.2" fill="#1c1712"/><circle cx="25" cy="18" r="2.2" fill="#1c1712"/><path d="M13 27h14" stroke="${L.ink || '#6a4a2a'}" stroke-width="1.6"/><circle cx="31" cy="12" r="3.2" fill="${a}" ${OL}/>`; // 감귤 박스 헬멧 (#164)
+  if (L.kind === 'santa') return P('M6 28c2-12 8-19 16-20 6 0 9 4 11 9l-6 3c-1-3-3-5-6-5-4 1-7 6-8 13z', m) + P('M5 26h24v5H5z', a) + `<circle cx="32" cy="18" r="3" fill="${a}" ${OL}/>`; // 산타 모자 (#180)
+  if (L.kind === 'antler') return P('M8 30c0-11 5-17 12-17s12 6 12 17', 'none', `stroke="${a}" stroke-width="2.6"`) + P('M13 15l-3-8M11 10l-4-1M27 15l3-8M29 10l4-1', 'none', `stroke="${m}" stroke-width="2.6"`); // 루돌프 머리띠
   if (L.kind === 'straw') return P('M3 27c0-3 8-5 17-5s17 2 17 5-8 4-17 4S3 30 3 27z', m) + P('M11 25c0-8 4-13 9-13s9 5 9 13z', m) + P('M11.4 21.5h17.2v3H11.4z', a);
   const wide = L.kind === 'boonie' ? 3 : L.kind === 'flower' ? 4 : 6;
   let s = P(`M${wide} 30l7-6h20l7 6z`, m) + P('M12 24l2-12h12l2 12z', m) + P('M12.6 20.5h14.8v3H12.6z', a);
@@ -18,6 +21,7 @@ function top(L) {
   if (L.panel) s += `<path d="M13.5 8.5c2 2 4 2.6 6.5 2.6s4.5-.6 6.5-2.6" fill="none" stroke="${a}" stroke-width="2.4"/>`;
   s += `<path d="M14 7.6c1 2.6 3.4 3.6 6 3.6s5-1 6-3.6" fill="none" stroke="${L.collar || a}" stroke-width="1.8"/>`;
   if (!L.long) s += `<path d="M6 13.5l2.6 4.6M34 13.5l-2.6 4.6" stroke="${a}" stroke-width="1.8"/>`;
+  if (L.gyul) s += [[16, 15], [24, 15], [20, 24], [15, 28], [25, 28]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.8" fill="${L.gyul}"/>`).join(''); // 못생긴 스웨터 귤 무늬
   return s;
 }
 function bottom(L) {
@@ -31,6 +35,7 @@ function bottom(L) {
 }
 function vest(L) {
   const m = L.main, a = L.acc;
+  if (L.kind === 'scarf') return P('M9 12c3 3 7 4 11 4s8-1 11-4v5c-3 3-7 4-11 4s-8-1-11-4z', m) + P('M22 19h6l-1 15h-6z', m) + `<path d="M21.3 31.5h5.6" stroke="${a}" stroke-width="2.4"/>`; // 목도리 (#180)
   let s = P('M13 6l-5 4v24h11V15zM27 6l5 4v24H21V15z', m);
   if (L.bands) s += `<path d="M8.6 20h10M21.4 20h10M8.6 26h10M21.4 26h10" stroke="${L.leaf ? '#fff4e0' : a}" stroke-width="2"/>`;
   if (L.pockets) s += P('M10 28h5v4h-5zM25 28h5v4h-5z', a) + (L.pockets >= 3 ? P('M25 14h4v3.5h-4z', a) : '');

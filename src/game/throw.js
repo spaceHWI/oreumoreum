@@ -1,7 +1,10 @@
 // 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { THROW_AIM, WEAPONS, COMBAT } from '../balance.js';
+import { weaponMul } from '../loot.js';
+import { augV } from '../augments.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
+import { drape } from '../drape.js';
 import { state, late } from './state.js';
 import { $, save, syncEquipGear, persist } from './save.js';
 import { scene, camera } from './scene.js';
@@ -104,8 +107,16 @@ export function releaseTangerine() {
   let tg;
   if (shot) tg = life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy, t, ch); // 타겟 쪽으로 휨 (#148)
   else tg = life.throwTangerine(from, dir, (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1), peers, undefined, null, ch);
+  late.season?.snowThrow(tg); // 눈 쌓인 곳에서 눈덩이를 골랐으면 눈덩이로 (#180)
   if (ch) late.chargeLaunch?.(ch, 'hand', tg.mesh.position, () => !tg.enemyHit && !tg.landed && tg.mesh.parent, t);
+  if (twinRoll()) { // 쌍귤 (#159): 조금 비껴 한 발 더. 귤은 더 쓰지 않음(덤 귤은 땅에 닿으면 사라짐)
+    const d2 = (shot ? shot.dir : dir).clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW), vh = shot ? shot.vh : (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1);
+    const f2 = from.clone(); setTimeout(() => { const t2 = life.throwTangerine(f2, d2, vh, peers, shot ? shot.vy : undefined, t, ch); t2.twin = true; }, TWIN_MS);
+  }
 }
+// 쌍귤 증강 (#159): 한 발 더 나갈지. 비껴 나가는 각(rad)·늦게 나가는 시간(ms)
+export const TWIN_YAW = 0.07, TWIN_MS = 90;
+export const twinRoll = () => Math.random() < augV(save, 'twin');
 // 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔
 function aimShot(from, t) {
   const aim = new THREE.Vector3(t.pos.x, t.pos.y + t.h, t.pos.z);
@@ -145,8 +156,9 @@ export function releaseArrow() {
   const peers = () => [...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }));
   const ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129)
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
-  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
+  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
   if (ch) late.chargeLaunch?.(ch, 'bow', a.mesh.position, () => life.arrows.includes(a), t);
+  if (twinRoll()) { const v2 = vel.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW), f2 = from.clone(); setTimeout(() => life.shootArrow(f2, v2, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS); } // 쌍귤 (#159)
   late.sound.bow?.();
 }
 // 거의 곧게 날아가는 화살: 날아갈 시간만큼 중력과 대상의 움직임을 미리 셈
@@ -177,6 +189,7 @@ export function updateAmmo() {
 // 겨눈 대상 발밑 표시
 export const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));
 aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
+const placeAim = drape(aimMark, height); // 비탈에서도 땅에 묻히지 않게 (#151)
 const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
 aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 export function tickAimMark(time) {
@@ -185,7 +198,7 @@ export function tickAimMark(time) {
   if (!t) return;
   { const far = flat(t) >= fireR() ? 0.35 : 0.85; aimMark.material.opacity = far; aimTri.material.opacity = far + 0.15; }
   const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);
-  aimMark.scale.set(s, 1, s); aimMark.position.set(t.pos.x, height(t.pos.x, t.pos.z) + 0.08, t.pos.z); aimMark.rotation.y = time * 1.5;
+  placeAim(t.pos.x, t.pos.z, Math.round(s * 50) / 50, 0, 0.02);
   aimTri.position.set(t.pos.x, t.pos.y + (t.h || 0.8) * 2 + 0.9 + Math.sin(time * 6) * 0.1, t.pos.z); aimTri.rotation.y = time * 2;
 }
 // 화면 밖 가까운 적 방향 표시 (#56): 가장자리에 귤색 세모 + 종류 아이콘, 가까울수록 크고 진하게, 최대 3개

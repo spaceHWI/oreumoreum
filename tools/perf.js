@@ -124,6 +124,11 @@ const SCENARIOS = {
     each: () => { const o = window.__oreum, t = o.life.enemies.test; t.clear(); o.dumpers?.clear(); o.swarm?.fill(o.swarm.cap, ['piglet', 'dog'][Math.floor(Math.random() * 2)]); } },
   crowd: { name: `다른 사람 ${CROWD}명`, prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
     each: (CROWD) => { const o = window.__oreum, P = o.player, f = o.net.test?.fake; if (!f) return; for (let k = 0; k < CROWD; k++) { const a = k * 2.4, r = 4 + (k % 10) * 3.5 + Math.floor(k / 10) * 2; f({ peer: 'fake' + k, presence: { x: P.pos.x + Math.sin(a) * r, z: P.pos.z + Math.cos(a) * r, h: a, nick: '러너' + k, pose: 'move', spd: k % 3 ? 3 : 0, o: null } }); } } },
+  // #172 동료 3명과 다른 사람 3명을 견줌 (길목마다 내 앞에 세움). mates3 = 동료 셋, peers3 = 동료를 끄고 다른 사람 셋
+  mates3: { name: '동료 3명', prep: async (p) => p.evaluate(() => { const o = window.__oreum; o.setTod(13); o.setWeather('clear'); if (o.save.mates) o.save.mates.off = 0; }),
+    each: () => { const o = window.__oreum; ['sunja', 'minsu', 'jenny'].forEach((id) => o.buddies?.come(id)); } },
+  peers3: { name: '다른 사람 3명', prep: async (p) => p.evaluate(() => { const o = window.__oreum; o.setTod(13); o.setWeather('clear'); if (o.save.mates) o.save.mates.off = 1; }),
+    each: () => { const o = window.__oreum, P = o.player, f = o.net.test?.fake; if (!f) return; for (let k = 0; k < 3; k++) { const a = P.heading + (k - 1) * 0.6; f({ peer: 'fake' + k, presence: { x: P.pos.x + Math.sin(a) * 4, z: P.pos.z + Math.cos(a) * 4, h: a, nick: '러너' + k, pose: 'move', spd: 0, o: null } }); } } },
 };
 
 async function runProfile(b, key) {
@@ -166,7 +171,7 @@ async function runProfile(b, key) {
     await p.waitForTimeout(800);
     const r = await measureRoute(p, sc.name, { each: sc.each });
     out.scen.push(r);
-    if (k === 'crowd') await p.evaluate(() => { const n = window.__oreum.net; for (const id of [...n.peersById.keys()]) n.test?.drop(id); });
+    if (k === 'crowd' || k === 'peers3') await p.evaluate(() => { const n = window.__oreum.net; for (const id of [...n.peersById.keys()]) n.test?.drop(id); });
     console.error(`[${key}] ${sc.name}: ${fmt(r.all.fps, 1)}fps 1%${fmt(r.all.low1, 1)} cpu ${fmt(r.all.cpu, 1)}ms calls≤${r.all.calls} tris≤${r.all.tris} frames ${r.all.frames}`);
   }
   out.quality = await p.evaluate(() => ({ level: window.__oreum.quality.level, pr: window.__oreum.quality.pr, tier: window.__oreum.quality.tier }));

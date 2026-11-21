@@ -1,12 +1,16 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
+import { upMul, legendOn } from '../loot.js';
+import { LOOT } from '../balance.js';
 import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
 import * as THREE from 'three';
 import { groundAt } from '../world.js';
+import { drape } from '../drape.js';
 import { state, late } from './state.js';
 import { $, save, wearV, lookS, ab, persist } from './save.js';
+import { augV } from '../augments.js';
 import { scene, wx, spots, sunEvent } from './scene.js';
 import { life, street, buff, trash, CH, CH_MINI, bloom, bfx, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
@@ -17,11 +21,11 @@ import { setHoldBow } from './throw.js';
 Object.assign(late, { startPick, pressPick }); // 앞 파일에서 부르는 함수
 
 // ---------- 줍기·배낭 ----------
-export const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1, combo: 0, comboAt: -1e9 }; late.pickS = pickS;
-export const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick'); return k === 1 ? t : { ...t, time: t.time / k }; }; // 식사 버프(#50) 줍는 속도
-export const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
+export const pickS = { held: false, cyc: -1, got: false, fullT: 0, combo: 0, comboAt: -1e9 }; late.pickS = pickS;
+export const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick') * upMul(save, 'tool'), rk = legendOn(save, 'reach') ? LOOT.fx.reach.k : 1; return k === 1 && rk === 1 ? t : { ...t, time: t.time / k, r: t.r * rk }; }; // 식사 버프(#50) 줍는 속도, 장비 등급·강화·전설 줍는 거리 (#140)
+export const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag') * upMul(save, 'bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
 export const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0); late.bagRoom = bagRoom;
-export const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && (late.tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
+export const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom()); // 튜토리얼 귤은 #151 부터 지나가면 모임 (tutorial.js)
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);
 function fullToast(force) { if (!force && performance.now() - pickS.fullT < 4000) return; pickS.fullT = performance.now(); const w = save.equip.bag ? '배낭이' : '호주머니가'; toast(CH ? `${w} 가득 찼어요 · 가까운 클린하우스에 버려요` : `${w} 가득 찼어요`); }
 const pickBlocked = () => panelOpen() || cam.mode === 'wardrobe' || lookS.open || ['sit', 'photo', 'photo-wait'].includes(player.pose) || player.riding || player.ride || player.cart || player.air || !!player.rescue || hp.isDown || hp.pending;
@@ -44,8 +48,6 @@ function tickBloomHold(dt) {
 export function startPick() {
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   stopSeek();
-  const gi = player.riding || player.air ? -1 : late.tut.gyulNear(player.pos); // 튜토리얼 귤 3개 (#62): 쓰레기보다 먼저
-  if (gi >= 0) { const g = late.tut.gyuls[gi]; player.target = null; player.onArrive = null; marker.visible = false; player.heading = Math.atan2(g.x - player.pos.x, g.z - player.pos.z) || player.heading; player.pose = 'crouch'; player.poseT = 0; player.speed = 0; setHoldBow(false); pickS.cyc = 0; pickS.got = false; pickS.gyul = gi; return; }
   const list = trash.candidates(player.pos.x, player.pos.z, toolNow().r, bagRoom());
   if (!list.length) { if (trashFull()) fullToast(); return; }
   const c = list[0];
@@ -55,7 +57,6 @@ export function startPick() {
   pickS.cyc = 0; pickS.got = false;
 }
 function takeNow() {
-  if (pickS.gyul >= 0) { const at = late.tut.takeGyul(pickS.gyul); pickS.gyul = -1; if (at) { save.coins += 1; persist(); updateStats(); late.sound.coin?.(); late.coinFx(at, 1); } return; } // 튜토리얼 귤 (#62) +1
   const tool = toolNow(); let room = bagRoom(), n = 0;
   // 더미는 한 곳에서 도구의 한 번 양(per)만큼 꺼냄 (#45). 튜토리얼 낱개는 하나씩
   for (const c of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
@@ -63,6 +64,7 @@ function takeNow() {
       const it = trash.take(c, room); if (!it) break;
       room -= it.type.vol; n++; flyToBag(it); late.sound.pick?.(it.type.id); pickMsg(it.type.name);
       if (c.h == null) break;
+      if (room >= 1 && Math.random() < augV(save, 'bighand')) { const it2 = trash.take(c, room); if (it2) { room -= it2.type.vol; flyToBag(it2); late.sound.pick?.(it2.type.id); } } // 큰손 (#159): 하나 더 (도구 한 번 양에 안 셈)
     }
     if (n >= tool.per || room < 1) break;
   }
@@ -71,7 +73,7 @@ function takeNow() {
 }
 export function tickPick(dt) {
   if (!trash) return;
-  tickBloomHold(dt); tickSeek(); tickPickMark(performance.now() / 1000);
+  tickBloomHold(dt); tickLook(dt); tickSeek(); tickPickMark(performance.now() / 1000);
   const holding = (pickS.held || keys.has('e')) && !bloomHolding();
   if (pickS.cyc < 0) {
     if (holding && state.holdBow && !pickBlocked()) setHoldBow(false); // 줍기를 누르면 활을 내리고 도구를 듦 (#38)
@@ -94,16 +96,15 @@ export const seekS = { on: null }; // { t: {kind,i,x,z,R}, route, i, cur }
 const pickMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: PICK_SEEK.color, transparent: true, opacity: 0.85, depthWrite: false }));
 const pickTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: PICK_SEEK.color, depthTest: false, transparent: true }));
 pickMark.visible = pickTri.visible = false; pickMark.renderOrder = 3; pickTri.renderOrder = 9; scene.add(pickMark, pickTri);
+const placePickMark = drape(pickMark, groundAt); // 비탈에서도 땅에 묻히지 않게 (#151)
 // 찾는 거리 안에서 가장 가까운 것 (가장자리까지 거리). 쓰레기 상태는 trash 에서만 읽음
 function seekFind() {
   const px = player.pos.x, pz = player.pos.z; let best = null;
-  const tut = late.tut;
-  if (tut.active && tut.step === 'gyul') for (const g of tut.gyuls) { if (!g.m.visible) continue; const d = Math.hypot(g.x - px, g.z - pz); if (d <= PICK_SEEK.range && (!best || d < best.d)) best = { kind: 'g', i: g.i, x: g.x, z: g.z, R: 0, d }; }
   const c = trash.candidates(px, pz, PICK_SEEK.range, bagRoom())[0];
   if (c && (!best || c.d < best.d)) best = { kind: c.h != null ? 'h' : 'k', i: c.h != null ? c.h : c.k, x: c.x, z: c.z, R: Math.max(0, Math.hypot(c.x - px, c.z - pz) - c.d), d: c.d };
   return best;
 }
-const seekAlive = (t) => t.kind === 'h' ? trash.heaps[t.i].st >= 0 && bagRoom() >= 1 : t.kind === 'k' ? !trash.store.isTutPicked(t.i) && bagRoom() >= 1 : !!late.tut.gyuls[t.i]?.m.visible;
+const seekAlive = (t) => t.kind === 'h' ? trash.heaps[t.i].st >= 0 && bagRoom() >= 1 : !trash.store.isTutPicked(t.i) && bagRoom() >= 1;
 export function stopSeek() {
   const s = seekS.on; if (!s) return; seekS.on = null; pickMark.visible = pickTri.visible = false;
   if (player.target && player.target === s.cur) { player.target = null; player.onArrive = null; marker.visible = false; }
@@ -114,7 +115,7 @@ export function startSeek(quiet = false) {
   const t = seekFind();
   if (!t) { if (!quiet) { if (bagRoom() < 1) fullToast(true); else toast('근처에 쓰레기가 없어요'); } return false; }
   // 설 자리: 쓰레기 가장자리에서 플레이어 쪽으로 도구 반경의 stand 만큼
-  const a = Math.atan2(player.pos.x - t.x, player.pos.z - t.z), off = t.kind === 'g' ? TUT.gyulR * PICK_SEEK.stand : t.R + toolNow().r * PICK_SEEK.stand;
+  const a = Math.atan2(player.pos.x - t.x, player.pos.z - t.z), off = t.R + toolNow().r * PICK_SEEK.stand;
   const to = { x: t.x + Math.sin(a) * off, z: t.z + Math.cos(a) * off };
   const r = late.trailRoute ? late.trailRoute(player.pos, to) : [to];
   const route = r.map((q) => new THREE.Vector3(q.x, groundAt(q.x, q.z), q.z));
@@ -137,8 +138,21 @@ function tickPickMark(time) {
   const s = seekS.on; if (!s) return;
   const t = s.t, R = t.kind === 'h' ? t.R : 0, sc = Math.max(0.6, R + 0.5) * (1 + Math.sin(time * 6) * 0.08), gy = groundAt(t.x, t.z);
   pickMark.visible = pickTri.visible = true;
-  pickMark.scale.set(sc, 1, sc); pickMark.position.set(t.x, gy + 0.08, t.z); pickMark.rotation.y = time * 1.5;
+  placePickMark(t.x, t.z, Math.round(sc * 50) / 50, 0, 0.02);
   pickTri.position.set(t.x, gy + (t.kind === 'h' ? R * 0.8 + 1.8 : 1.3) + Math.sin(time * 6) * 0.1, t.z); pickTri.rotation.y = time * 2;
+}
+// 튜토리얼 작은 더미를 다 치움 (#151): 본게임 더미와 같은 꽃·빛·소리, 안내 한 줄, TUT.heapLookT 초 동안 카메라가 더미 쪽을 봄. 저장·구역·업적엔 안 셈
+const heapLook = { t: 0, yaw: 0 };
+function tutHeapFx(d) {
+  bfx?.heap({ x: d.x, z: d.z, r: d.r, size: 's', color: BLOOM.zones[1]?.color || '#ffffff', gyul: 0 });
+  late.sound.heapClear?.(0, 1); state.cheerQ = 1.5;
+  toast('쓰레기를 다 치우면 꽃이 피어요');
+  holdBloom(TUT.heapLookT, d.x, d.z);
+  if (cam.mode === 'follow') { heapLook.t = TUT.heapLookT; heapLook.yaw = Math.atan2(player.pos.x - d.x, player.pos.z - d.z); }
+}
+function tickLook(dt) {
+  if (heapLook.t <= 0) return; heapLook.t -= dt;
+  let dy = heapLook.yaw - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); cam.yaw += dy * Math.min(1, dt * 4);
 }
 // 버튼(E)을 누른 순간: 걷는 중이면 멈춤, 범위 안이면 줍기, 아니면 찾아 감
 export function pressPick() {
@@ -194,6 +208,7 @@ if (trash) {
   trash.on((ev, d) => {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
+    else if (ev === 'tut-heap-clear') tutHeapFx(d);
     else if (ev === 'heap-clear') { if (!d.by) { late.pace?.cleared(d.h); const hh = trash.heaps[d.h]; if (hh) holdBloom(BLOOM_HOLD.heap, hh.x, hh.z); } late.sound.swell?.(PACE.bloomLayer.heap); tips.event('heapClear'); ach.emit('heap-clear'); toast('쓰레기 더미 하나를 다 치웠어요'); heapFx(d.h, { by: d.by, gyul: d.gyul }); }
     else if (ev === 'zone-clear') { ach.emit('zone-clear'); ach.emit('zone-clear-' + d.zone); if (!d.by) holdBloom(BLOOM_HOLD.zone, bloomHold.x, bloomHold.z); } // 글 대신 꽃밭 배너 (#65, zone-bloom)
     updateTrashUI(false);

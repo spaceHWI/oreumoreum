@@ -8,8 +8,9 @@
 // #146 무리: 같이 나온 적은 e.pack 이 같고, 적끼리 겹치지 않게 밀어내며 플레이어 둘레 자기 자리(e.slotA)로 벌려 에워쌈 → src/enemypack.js
 import * as THREE from 'three';
 import { height } from './world.js';
+import { drape } from './drape.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
-import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE } from './balance.js';
+import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS } from './balance.js';
 import { createPack, slotGoal, bodyR } from './enemypack.js';
 import { reportCrash, crashNote } from './crash.js';
 
@@ -18,6 +19,16 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 const range = (rnd, [a, b]) => a + rnd() * (b - a);
 const irange = (rnd, [a, b]) => a + Math.floor(rnd() * (b - a + 1));
 
+
+// 정예 적이 쉬며 기운을 채움 (#183, 수치 ZONE_BOSS.rest): 싸움이 풀린 뒤 delay 초 동안은 그대로, 그 뒤 초당 최대 기운의 rate 씩
+// 싸우는 동안은 부르지 않는다(부르는 쪽이 싸움이 붙을 때 e.calmT = 0). 맞으면 hurt 가 e.calmT = 0 으로 되돌림. dt 가 커도(건너뛰기) 쉬는 시간만큼은 빼고 셈
+// 우두머리(game/boss.js)가 씀. 소굴·들판 떼 정예·대장·이야기 적·레이드 보스도 같은 함수로. 차오르는 중이면 true
+export function restRegen(e, dt, max = e.def?.hp, o = ZONE_BOSS.rest) {
+  e.calmT = (e.calmT || 0) + dt;
+  const run = Math.min(dt, e.calmT - o.delay);
+  if (!(max > 0) || run <= 0 || e.hp >= max) return false;
+  e.hp = Math.min(max, e.hp + max * o.rate * run); return e.hp < max;
+}
 
 // 머리 위 기운 막대 (스프라이트 둘, 왼쪽 기준으로 줄어듦)
 const barBgMat = new THREE.SpriteMaterial({ color: '#1d1a17', transparent: true, opacity: 0.75, depthTest: false });
@@ -61,6 +72,16 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const e = spawnOne(kind, x, z, { name: o.name, hp: o.hp, dmg: o.dmg, size: base.size * o.k, reward: { gyul: o.gyul, rare: 0 }, life: Infinity, ranged: null, rootEvery: [1e9, 1e9] });
     e.root.scale.setScalar(o.k); e.h *= o.k; e.bar.g.visible = false;
     e.state = 'boss'; e.boss = o; e.ctl = o.ctl; e.remoteHurt = o.remoteHurt || null; e.puppet = !!o.puppet;
+    return e;
+  }
+  // 이야기 이벤트 (#168, game/story.js): 보통 적처럼 굴지만 모양을 o.k 배로 키우고 이름·기운·피해·보상을 바꿈. ENEMY_SPAWN.max 를 넘어도 부름
+  // o.calm: 싸우지 않고 모여 있음(멧돼지 가족회의). 플레이어가 o.calmR 안에 오거나 맞히면 흩어짐(hooks.calmScatter)
+  function spawnStory(kind, x, z, o = {}) {
+    const base = ENEMIES[kind], k = o.k || 1;
+    const e = spawnOne(kind, x, z, { ...(o.over || {}), size: base.size * k }, o.pack ?? -2);
+    if (k !== 1) { e.root.scale.setScalar(k); e.h *= k; }
+    e.story = o.id || 'story';
+    if (o.calm) { e.state = 'calm'; e.calmR = o.calmR || 7; e.life = Infinity; e.bar.g.visible = false; }
     return e;
   }
   // 플레이어가 있는 곳의 몹 종류 (#48). 구역 없는 맵이면 kinds 에서 하나, 들머리(0)면 없음
@@ -107,14 +128,16 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     return e;
   }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
-  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) group.remove(e.warn); e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
+  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
   // ch: 모아 쏜 정도 0~1 (#129) → 더 멀리 밀림, hooks.chargeHit 이 터지는 효과
   function hurt(e, dmg, quiet, ch = 0) {
+    if (e.state === 'calm') { scatter(e); return; } // #168 모여 있던 적은 맞으면 흩어짐
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
     if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
+    e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
     if (e.state === 'stagger') dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
@@ -122,7 +145,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1) * (1 + (CHARGE.push - 1) * ch); e.flX = ux / L; e.flZ = uz / L;
       if (e.state === 'wind' || e.state === 'dash') { e.state = 'charge'; e.st = 0; }
     }
-    if (e.hp <= 0) repel(e);
+    hooks.afterHurt?.(e, dmg, quiet); // #140 전설 무기: 가까운 다른 적에게 갈라짐 · #159 증강 (터지는 귤·신 귤, game/level.js)
+    if (e.hp <= 0) { if (live(e)) repel(e); }
     else { if (!quiet) sound?.beep?.(false); if (!AGGRO.has(e.state) && !e.boss) { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 쫓음 (우두머리는 제 패턴대로)
   }
   const live = (e) => e.state !== 'flee' && e.state !== 'leave';
@@ -146,9 +170,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (e.boss) { e.state = 'flee'; e.st = 0; e.ctl = null; sound?.boar?.(); hooks.bossRepel?.(e); return; } // #139 우두머리: 느린 화면·큰 전리품은 boss.js
     e.state = 'flee'; e.st = 0; e.bar.g.visible = false;
     sound?.boar?.(); if (!e.def.swarm) onToast(`${iga(e.def.name)} 놀라 도망가요`); // 들판 떼(#173)는 너무 잦아 글 없이
-    hooks.enemyRepel?.(e.kind, e.pos.clone(), e.def);
+    hooks.enemyRepel?.(e.kind, e.pos.clone(), e.def, e);
   }
 
+  function scatter(e) { e.state = 'flee'; e.st = 0; e.bar.g.visible = false; sound?.boar?.(); hooks.calmScatter?.(e); }
   const turnTo = (o, h, k) => { o.heading += wrapA(h - o.heading) * k; };
   let blocked = false, stuckT = 0, held = false;
   const atkN = () => { let n = 0; for (const e of list) if (ATK.has(e.state) || (e.rest > 0 && e.state === 'charge')) n++; return n; }; // 쉬는 적도 자리를 지킴 (#149: 기다리던 적이 바로 끼어들지 않게)
@@ -206,6 +231,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (!e.dropped && e.st > d0.rootT * 0.5) { e.dropped = true; hooks.enemyRoot?.(e.kind, e.pos.clone(), irange(rnd, d0.rootTrash)); }
       if (e.st >= d0.rootT) { e.state = 'wander'; e.st = 0; e.rootT = range(rnd, d0.rootEvery); }
       if (d < d0.sight && !player.down) { e.state = 'charge'; e.st = 0; }
+    } else if (e.state === 'calm') { // #168 모여 있음: 제자리에서 두리번, 가까이 오면 흩어짐
+      want = 0; turnTo(e, e.heading + Math.sin(time * 0.7 + e.seed) * 0.6, Math.min(1, dt));
+      if (d < e.calmR) scatter(e);
     } else { // wander
       want = d0.walk; if (rnd() < dt * 0.3) e.heading += (rnd() - 0.5) * 1.5;
       e.rootT -= dt; if (e.rootT <= 0) { e.state = 'root'; e.st = 0; e.dropped = false; }
@@ -216,6 +244,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (e.yieldT > 0) want = Math.min(want, d0.walk * 0.5);
     }
     if (e.fl > 0) { e.fl -= dt; want = 0; e.speed = 0; const nx = e.pos.x + e.flX * e.flV * dt, nz = e.pos.z + e.flZ * e.flV * dt; if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); } // 맞아 멈칫 (#148)
+    if (e.slowT > 0) { e.slowT -= dt; want *= 1 - (e.slowK || 0); } // 눈덩이에 맞아 느려짐 (#180)
+    if (e.sour > 0) { e.sour -= dt; want *= e.sourK ?? 1; if (e.speed > want) e.speed = want; } // 신 귤 (#159): 맞은 뒤 잠깐 느려짐
     if (e.snap) e.speed = want; else e.speed += (want - e.speed) * Math.min(1, dt * 3); // 우두머리 돌진은 바로 (snap)
     e.phase += dt * e.speed * 1.6;
     if (!e.puppet || e.state !== 'boss') {
@@ -249,9 +279,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * (1 - e.st / COMBAT.staggerT) : 0);
     }
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
-      if (!e.warn) { e.warn = new THREE.Mesh(warnGeo, warnMat); e.warn.renderOrder = 3; group.add(e.warn); }
+      if (!e.warn) { e.warn = new THREE.Mesh(warnGeo.clone(), warnMat); e.warn.renderOrder = 3; group.add(e.warn); e.warnAt = drape(e.warn, height); } // 땅을 따라 휨 (#151)
       e.warn.visible = e.state === 'wind';
-      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warn.scale.set(k, 1, k); e.warn.position.set(e.pos.x, e.pos.y + 0.08, e.pos.z); }
+      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warnAt(e.pos.x, e.pos.z, Math.round(k * 25) / 25, 0, 0.02); }
     }
     legs4(e, e.speed > 0.3 ? 0.7 : 0);
     const charge = (e.state === 'charge' && e.speed > 4) || e.state === 'wind' || e.state === 'dash' ? 1 : 0; e.chg += (charge - e.chg) * Math.min(1, dt * 4);
@@ -319,7 +349,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     update, hitTest, hitArea, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
     activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
-    planWave, spawnPlan, spawnBoss, spawnSwarm, remove, hurt, hesitate, get stuck() { return stuckT; },
+    planWave, spawnPlan, spawnBoss, spawnStory, spawnSwarm, remove, hurt, hesitate, get stuck() { return stuckT; },
     leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave' && !e.boss) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),
     // 확인용

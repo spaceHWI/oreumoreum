@@ -3,10 +3,10 @@
 //   (정예·5분에 떼 대장 → 보물 상자). 길로 돌아오면(backD 안) backT 초 뒤 떼가 흩어지고 한 줄 요약·구역 최고 기록
 // - 들판에서는 자동 던지기: 가장 가까운 적에게 지금 무기의 간격·피해·귤 소모로 (탄은 여기서 그림: 귤 공, 폭탄은 큰 공). 던지기 버튼을 누르고 있으면 손으로(모아 쏘기 #129 먼저)
 //   메뉴 '설정' 의 '자동 던지기' 로 끔 (save.swarm.auto = 0)
-// - 쫓겨난 떼 적은 귤(보통 보상 × mob.gyul, 땅에 흩어짐) + 귤 조각(구역별 shard 개). 조각은 magnet 안이면 빨려 오고 shardN 개가 귤 1, 하나에 경험치 1(late.xpGain, #159 가 받음)
+// - 쫓겨난 떼 적은 귤(보통 보상 × mob.gyul, 땅에 흩어짐) + 귤 조각(구역별 shard 개). 조각은 magnet 안이면 빨려 오고 shardN 개가 귤 1, 하나에 경험치 1(late.lvGain('swarm', 1), #159)
 // - 들판 증강: 조각을 augAt 만큼 모을 때마다 카드 3장 중 하나 (그 판에서만, 3단계까지). 혼자면 화면이 pickSlow 배로 느려지고, 멀티면 느려지지 않고 multiIframe 초 무적
 // - 숨 돌릴 틈: 더미를 다 치우면 그 자리 quiet.r m 가 quiet.t 초 동안 떼가 안 나옴(가까운 떼는 떠남). 소굴 den.r 안이면 떼 × more, 닫힌 소굴이면 × closed
-// - 초보 보호: 장비 점수 < 구역 권장이면 물결 시간이 slowNew 배로. 기운 lowHp 아래면 enemies.hesitate (#148). 우두머리(#139)·이야기 이벤트(#168, late.storyOn)면 멈춤
+// - 초보 보호: 장비 점수 < 구역 권장이면 물결 시간이 slowNew 배로. 기운 lowHp 아래면 enemies.hesitate (#148). 우두머리(#139)·이야기 이벤트(#168, late.story.busy)·엔딩(state.cine)이면 멈춤
 // - 문(#176): JOURNEY 'field' (퀘스트 '들판 탐사' 뒤 = FACTS.fieldQuest). 열리기 전엔 물결 1단계까지
 // - 멀티: 떼는 사람마다 따로(지금 보통 적과 같은 길: 적은 방으로 보내지 않음). 남의 떼는 보이지 않고, 그 사람이 던지는 귤만 보임 — 적 수가 많아 보내는 양이 늘지 않게
 // 저장 save.swarm = { auto: 1|0, best: { 구역: { k 쫓아낸 수, t 버틴 초, w 최고 물결 } }, earn: 떼로 번 귤 누적(서버 validate.js ③ 이 늘어난 몫을 시간당 상한까지 받아 줌), seen }
@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import { SWARM, ENEMIES, BOAR, WEAPONS, ZONES } from '../balance.js';
 import { SWARM_TEXT } from '../punktext.js';
 import { steer } from '../homing.js';
-import { gearScore, zoneRec } from '../gearscore.js';
+import { gearScore, zoneRec, gyulPickR } from '../gearscore.js';
 import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
 import { THROW } from '../runner.js';
@@ -50,7 +50,7 @@ const distTrail = (x, z) => trash.trail.dist(x, z, S.offD + 4);
 
 let whyNot = '', testOff = false; // testOff: 확인 도구(tools/fight.js 등)가 떼 없이 잴 때
 function canField() {
-  whyNot = !trash || !state.sessionOn || testOff ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() ? 'boss' : late.storyOn?.() ? 'story' : '';
+  whyNot = !trash || !state.sessionOn || testOff ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() ? 'boss' : late.story?.busy || state.cine ? 'story' : '';
   if (whyNot) return false;
   const z = zoneOf(player.pos.x, player.pos.z);
   whyNot = !z ? 'zone0' : bloom?.isBloomed(z) ? 'bloomed' : '';
@@ -145,14 +145,15 @@ function chest(p) {
   const g = S.leader.chest[run.zone] || 0;
   if (g) { life.scatterTangerines(p.setY(p.y + 0.8), g, 12); earn(g); }
   run.gyul += g; toast(SWARM_TEXT.chest, 3); late.sound?.coin?.();
-  late.swarmLoot?.(run.zone, p); // 전리품·재료 (#140)
+  late.denLoot?.({ zone: run.zone, x: p.x, y: p.y - 0.8, z: p.z }); // 전리품·재료 (#140, 소굴 몫으로)
+  late.swarmLoot?.(run.zone, p);
 }
 
 /* ---------- 쫓아냄 → 귤 조각 ---------- */
 {
   const prev = life.hooks.enemyRepel;
-  life.hooks.enemyRepel = (kind, pos, def) => {
-    prev?.(kind, pos, def); // 업적·연출 감독 (떼 적의 reward.gyul 은 0: 귤은 아래에서 알갱이 2개까지로 — 떼는 잦아 그리기 수를 늘리지 않게)
+  life.hooks.enemyRepel = (kind, pos, def, e) => {
+    prev?.(kind, pos, def, e); // 업적·연출 감독 (떼 적의 reward.gyul 은 0: 귤은 아래에서 알갱이 2개까지로 — 떼는 잦아 그리기 수를 늘리지 않게)
     if (!def.swarm) return;
     if (def.sg) { life.scatterTangerines(pos, def.sg, 2); earn(def.sg); }
     if (!run) return;
@@ -173,7 +174,7 @@ function dropShard(pos) {
   shards.push({ p: new THREE.Vector3(pos.x, pos.y + 0.6, pos.z), v: new THREE.Vector3(Math.sin(a) * v, 5 + Math.random() * 2, Math.cos(a) * v), t: 0, ground: false, pull: false });
 }
 function tickShards(dt) {
-  const R = S.magnet + av('magnet'), pp = player.pos;
+  const R = Math.max(S.magnet, gyulPickR(save)) + av('magnet'), pp = player.pos; // 귤 모으는 범위(#151)와 큰 쪽
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i]; s.t += dt;
     const dx = pp.x - s.p.x, dz = pp.z - s.p.z, d = Math.hypot(dx, dz);
@@ -191,7 +192,7 @@ const _t = new THREE.Vector3();
 let shardAcc = 0;
 const earn = (n) => { SV.earn = (Number(SV.earn) || 0) + n; }; // 서버 ③ 몫 (validate.js): 떼로 번 귤 누적
 function gotShard() {
-  late.xpGain?.(1); // 경험치 (#159)
+  late.lvGain?.('swarm', 1); // 경험치 (#159): 조각 하나에 1 (떼 적 자체는 경험치 없음, level.js)
   if (++shardAcc >= S.shardN) { shardAcc -= S.shardN; save.coins += 1; earn(1); if (run) run.gyul += 1; updateStats(); saveT = saveT > 0 ? saveT : 2; } // 판이 끝난 뒤 주운 조각도 귤로
   if (!run) return;
   run.shards++;

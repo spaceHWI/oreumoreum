@@ -146,7 +146,7 @@ export function updateScore() {
   late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick'];
+export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -158,7 +158,7 @@ export function cancelAll() {
   player.target = null; player.onArrive = null; late.marker.visible = false;
 }
 // 닫기 버튼과 바깥 누르면 닫기
-[['shoppop-close', 'shoppop'], ['sign-close', 'sign'], ['omap-close', 'omap'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
+[['shoppop-close', 'shoppop'], ['sign-close', 'sign'], ['omap-close', 'omap'], ['wish-close', 'wishes'], ['ach-close', 'ach'], ['dex-close', 'dex'], ['feedback-close', 'feedback'], ['notes-close', 'notes'], ['chat-close', 'chat'], ['rank-close', 'rank'], ['inbox-close', 'inbox'], ['xmas-close', 'xmas']].forEach(([b, p]) => $(b).addEventListener('click', () => { $(p).hidden = true; }));
 ['omap', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
@@ -242,14 +242,15 @@ function buildDex() {
   $('dex-count').textContent = `${got} / ${DEX_LIST.length}`;
   const g = $('dex-grid'); g.innerHTML = ''; let sec = '';
   DEX_LIST.forEach((d) => {
-    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : ''; g.append(h); } // 개울 칸 (#44)
+    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : sec === 'story' ? '수수께끼' : ''; g.append(h); } // 개울 칸 (#44)
     const n = dx[d.id] || 0, el = document.createElement('div'); el.className = 'dex-cell' + (n ? '' : ' locked') + (d.rare ? ' rare' : '');
     el.dataset.id = d.id;
     const ic = document.createElement('span'); ic.className = 'dex-ic'; ic.innerHTML = iconSvg(dexIcon(d));
     const nm = document.createElement('b'); nm.textContent = n ? d.name : '???';
-    const sm = document.createElement('small'); sm.textContent = d.kind === 'sight' ? (n ? '찾음' : '') : n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
+    const sm = document.createElement('small'); sm.textContent = d.kind === 'sight' || d.kind === 'story' ? (n ? '찾음' : '') : n ? `${n.toLocaleString('ko-KR')}${d.kind === 'fish' ? '마리' : '개'}` : (d.rare ? '드문 것' : '');
     el.append(ic, nm, sm); g.append(el);
   });
+  late.dexExtra?.(g); // #140 재료·전설 장비 칸 (game/loot.js)
 }
 $('menu-dex')?.addEventListener('click', openDex);
 $('ach-dex')?.addEventListener('click', openDex);

@@ -21,7 +21,7 @@ export class Sound {
       if (!this.forest) this._scheduleBell();
       this._scheduleBird();
       this._gusts();
-      this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day; if (this.zoneAmb) this.setZoneAmb(...this.zoneAmb);
+      this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day; this.music.winter = !!this.winter; if (this.zoneAmb) this.setZoneAmb(...this.zoneAmb);
     }
     this.wake();
     this.on = true;
@@ -152,6 +152,7 @@ export class Sound {
     }
   }
   setDaylight(k) { this.day = k; if (this.music) this.music.day = k; }
+  setWinter(v) { this.winter = !!v; if (this.music) this.music.winter = !!v; } // 철 이벤트 겨울 판 음악 (#180). 음악 끄기는 그대로 따름
   _scheduleCrow() {
     const next = 14000 + Math.random() * 26000;
     setTimeout(() => { if (this.on && this.ambOn) this.crow(); this._scheduleCrow(); }, next);

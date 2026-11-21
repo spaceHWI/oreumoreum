@@ -1,6 +1,7 @@
 // 계정 저장 (#7): Durable Object 하나(이름 'all') 안의 SQLite. 칸은 sub·닉네임·게임 저장·치운 양·접속 시각뿐
 import { DurableObject } from 'cloudflare:workers';
 import { NET, FEEDBACK, RANK, HAIR } from '../../src/balance.js';
+import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
 import { checkSave } from './validate.js';
 import { kstDay, weekStart, lookOf } from '../../src/rankday.js';
 
@@ -34,8 +35,17 @@ export class Accounts extends DurableObject {
       this.sql.exec("INSERT INTO rkd (sub, srv, d, n) SELECT sub, 'battle', d, n FROM rkd WHERE srv = 'clean' ON CONFLICT (sub, srv, d) DO UPDATE SET n = n + excluded.n");
       this.sql.exec("DELETE FROM rka WHERE srv = 'clean'"); this.sql.exec("DELETE FROM rkd WHERE srv = 'clean'");
     }
+    // 철 이벤트 트리 (#180): 기간 동안 모두가 주운 수를 날마다 하나로 더함 (d = 한국 날 번호). 서버가 확인한 줍기만
+    this.sql.exec('CREATE TABLE IF NOT EXISTS ssn (d INTEGER PRIMARY KEY, n INTEGER)');
     this.rkCache = new Map();
   }
+  // 이번 철 트리 합계: 기간 첫날부터 오늘까지
+  seasonTotal(t = Date.now()) {
+    const xd = xmasDay(t); if (!xd) return 0;
+    const d = kstDay(t);
+    return this.sql.exec('SELECT COALESCE(SUM(n), 0) AS n FROM ssn WHERE d >= ? AND d <= ?', d - (xd - 1), d).one().n;
+  }
+  seasonInfo(t = Date.now()) { const total = this.seasonTotal(t); return { now: t, day: xmasDay(t), total, stage: treeStage(total), goal: treeGoal() }; }
   row(sub) { return this.sql.exec('SELECT * FROM acc WHERE sub = ?', sub).toArray()[0] || null; }
   // 로그인·접속: 없으면 만들고 마지막 접속 시각을 갱신
   touch(sub) {
@@ -62,7 +72,8 @@ export class Accounts extends DurableObject {
     const t = Date.now();
     let r = this.row(sub); if (!r) { this.touch(sub); r = this.row(sub); }
     const prev = r.save ? JSON.parse(r.save) : null;
-    const { save: S, fixed, acc } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at }, t, { migrate: migrate && !prev, free });
+    const xday = xmasDay(t);
+    const { save: S, fixed, acc } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal() });
     const rev = (r.rev || 0) + 1;
     // 확인한 칸만 바꿔 넣고 나머지(설정·튜토리얼 등)는 받은 그대로
     const out = { ...save, ...S };
@@ -72,7 +83,7 @@ export class Accounts extends DurableObject {
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
     const fix = {};
-    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; }
+    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; }
     return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5 };
   }
   // 방이 받아 준 줍기로 번 몫 (#144, room.js flushEarn): [[sub, 귤]…]. 없는 계정은 지나감, earnBankMax 에서 멈춤
@@ -102,6 +113,7 @@ export class Accounts extends DurableObject {
   rankAdd(sub, srv, n, t = Date.now(), onlyAll = false) {
     this.sql.exec('INSERT INTO rka (sub, srv, n) VALUES (?, ?, ?) ON CONFLICT (sub, srv) DO UPDATE SET n = n + excluded.n', sub, srv, n);
     if (!onlyAll) this.sql.exec('INSERT INTO rkd (sub, srv, d, n) VALUES (?, ?, ?, ?) ON CONFLICT (sub, srv, d) DO UPDATE SET n = n + excluded.n', sub, srv, kstDay(t), n);
+    if (!onlyAll && xmasDay(t)) this.sql.exec('INSERT INTO ssn (d, n) VALUES (?, ?) ON CONFLICT (d) DO UPDATE SET n = n + excluded.n', kstDay(t), n); // 트리 (#180)
   }
   // range 의 (sub, s) 묶음을 만드는 SQL 과 값
   rankFrom(range, srv, t) {

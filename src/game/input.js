@@ -1,11 +1,13 @@
 // 키보드·조이스틱·멀티터치·시점·핀치, 속도 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import * as THREE from 'three';
 import { height } from '../world.js';
+import { drape } from '../drape.js';
 import { state, late } from './state.js';
 import { $, clamp } from './save.js';
 import { canvas, scene, camera, terrain } from './scene.js';
 import { player } from './place.js';
-import { cam } from './camera.js';
+import { cam, camPitchMax } from './camera.js';
+import { CAM } from '../balance.js';
 import { busy, cancelAll } from './hud.js';
 
 // ---------- 입력 ----------
@@ -28,10 +30,10 @@ canvas.addEventListener('pointermove', (e) => {
   p.x = e.clientX; p.y = e.clientY;
   if (ptrs.size === 1) {
     if (Math.hypot(p.x - p.sx, p.y - p.sy) > 8) dragMoved = true;
-    if (dragMoved && cam.mode !== 'photo') { cam.yaw -= dx * 0.006; cam.pitch = clamp(cam.pitch + dy * 0.004, -0.6, 1.25); state.camHold = 1.5; }
+    if (dragMoved && cam.mode !== 'photo') { cam.yaw -= dx * 0.006; cam.pitch = clamp(cam.pitch + dy * 0.004, CAM.pitchMin, camPitchMax()); state.camHold = 1.5; } // 탈 때도 같은 범위, 탈 때만 상한 조금 더 (#170)
   } else if (ptrs.size === 2) {
     const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
-    if (pinchD > 0) cam.dist = clamp(cam.dist * (pinchD / d), 4, 40);
+    if (pinchD > 0) userZoom(cam.dist * (pinchD / d));
     pinchD = d;
   }
 });
@@ -41,7 +43,7 @@ const endPtr = (e) => {
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', (e) => { e.preventDefault(); cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 4, 40); }, { passive: false });
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); userZoom(cam.dist * (1 + Math.sign(e.deltaY) * 0.1)); }, { passive: false });
 state.camHold = 0;
 
 // 조이스틱 (터치)
@@ -74,9 +76,13 @@ export function pressBtn(el, fn) {
   for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault()); // iOS 사파리 페이지 핀치 확대
 }
 
+// 손으로 한 확대·축소 (#151): cam.zoomed 는 사람이 바꾼 배율의 누적 (첫 화면 카메라 연출 등 저절로 바뀐 것은 안 셈, 튜토리얼 확대 단계가 봄)
+cam.zoomed = 1;
+function userZoom(d) { const n = clamp(d, 4, 40); if (cam.dist > 0) cam.zoomed *= n / cam.dist; cam.dist = n; }
 const ray = new THREE.Raycaster();
-export const marker = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 12), new THREE.MeshBasicMaterial({ color: '#fff6c8', transparent: true, opacity: 0.9, depthWrite: false })); late.marker = marker;
-marker.rotation.x = -Math.PI / 2; marker.visible = false; scene.add(marker);
+export const marker = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 12).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#fff6c8', transparent: true, opacity: 0.9, depthWrite: false })); late.marker = marker;
+marker.visible = false; marker.renderOrder = 3; scene.add(marker);
+const placeMarker = drape(marker, height); // 비탈에서도 고리가 땅에 묻히지 않게 (#151)
 function tapGround(x, y) {
   if (busy()) return;
   if (late.pickLock?.(x, y)) return; // 적을 누르면 그 적을 타겟으로 (#148)
@@ -87,7 +93,7 @@ function tapGround(x, y) {
 }
 export function setTarget(p, onArrive) {
   player.target = p.clone(); player.onArrive = onArrive;
-  marker.position.set(p.x, height(p.x, p.z) + 0.15, p.z); marker.visible = !onArrive;
+  placeMarker(p.x, p.z, 1, 0, 0.06); marker.visible = !onArrive;
 }
 const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8', KeyT: 't', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
 const keyOf = (e) => CODE2KEY[e.code] || e.key.toLowerCase();

@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { createDirector } from '../director.js';
 import { JOURNEY } from '../balance.js';
+import { levelOf, augCount } from '../augments.js';
 import { groundAt } from '../world.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
@@ -30,7 +31,10 @@ const FACTS = {
   zonesDone: () => Object.values(save.boss?.done || {}).filter((n) => n > 0).length,
   zone: () => J().maxZ || 0,
   night: () => ((sunState?.el ?? 30) < -4 ? 1 : 0),
-  fieldQuest: () => (save.quest?.field || save.swarm?.quest ? 1 : late.quest ? 0 : (save.recycle?.visits || 0) >= 1 ? 1 : 0), // #173 들판 떼: 퀘스트 '들판 탐사'(#158) 뒤. 퀘스트가 아직 없으면 첫 버리기 뒤
+  fieldQuest: () => (save.quest?.done?.includes('field1') ? 1 : 0), // #158 퀘스트 '들판 탐사' 를 끝냄
+  lv: () => levelOf(save.lv?.xp || 0).lv, // #159 레벨
+  augs: () => augCount(save), // #159 고른 증강 수
+  babies: () => save.ach?.life?.['enemy-repel-piglet'] || 0, // #168 '엄마가 왔다' 문
 };
 
 export const director = createDirector({

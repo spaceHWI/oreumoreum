@@ -11,6 +11,7 @@ import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
 import { $, save, wearV, persist } from './save.js';
+import { augV } from '../augments.js';
 import { scene, camera } from './scene.js';
 import { life, trash, CH, CHS, chNear, cart, GEARB, roofSigns, player, hp } from './place.js';
 import { cam } from './camera.js';
@@ -31,7 +32,7 @@ const dumpS = { list: [], t: 0, dur: 0, total: 0, shown: 0, el: null, sndT: 0 };
 export function dumpBag(ch = chNear()) {
   if (!ch || dumpS.el) return;
   const bag = trash.store.bag, per = []; let n = 0, g = 0;
-  const vk = 1 + wearV('vest'); // 베스트(#52): 받는 귤 더함
+  const vk = 1 + wearV('vest') + augV(save, 'recycle'); // 베스트(#52)·분리수거 달인 증강(#159): 받는 귤 더함
   // 구역 귤 배수 (#137): 주울 때 모아 둔 bag.xv 를 종류별 귤에 비례해 나눠 더함
   const base = TRASH_TYPES.reduce((s, t) => s + (bag[t.id] || 0) * t.gyul, 0), zk = base > 0 ? 1 + (bag.xv || 0) / base : 1;
   TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * zk * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });
@@ -238,6 +239,7 @@ const CTX_ICON = {
   photo: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   sit: '<path d="M4 11h16M5 11V8h14v3M6 11v8M18 11v8M4 15h16"/>',
   sign: '<rect x="4" y="4" width="16" height="11" rx="1"/><path d="M12 15v6M8 8h8M8 11h5"/>',
+  quest: '<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M12 7.5v4M12 13.6v.2"/>', // 퀘스트 주는 사람에게 말 걸기 (#158)
   rank: '<path d="M3 20h18M5 20v-6h4v6M10 20V9h4v11M15 20v-8h4v8M12 3l1 2 2 .3-1.5 1.4.4 2.1L12 7.8l-1.9 1 .4-2.1L9 5.3 11 5z"/>', // 랭킹 (#11)
   deer: '<path d="M8 3l1 3-2 1M16 3l-1 3 2 1M9 7h6l1 4-2 2v7M10 13v7M8 11l1-4"/>',
   hand: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 8v6l-2 7M17 8v6l2 7M7 10h10"/>',
