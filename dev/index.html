@@ -957,6 +957,9 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .wear-item.none svg.art { opacity: .45; }
 .wear-item[aria-expanded="true"] { outline: 2px solid #fff; outline-offset: 1px; }
 .wear-item .st { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; }
+.wear-item .abm { position: absolute; top: 5px; left: 5px; width: 9px; height: 9px; border-radius: 50%; background: #ffb347; box-shadow: 0 0 0 2px rgba(0,0,0,.35); } /* 능력을 주는 옷 (#179) */
+.shop-tabs button.new span { color: #ffb347; }
+.leap-buy .desc { display: block; opacity: .8; font-size: 12px; }
 .wear-item .st svg { width: 10px; height: 10px; }
 .wear-item .pr { position: absolute; left: 0; right: 0; bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 800; }
 .wear-item .pr .g { width: 9px; height: 9px; border-radius: 50%; background: var(--gyul); display: inline-block; }
@@ -1423,7 +1426,7 @@ body.newbie .dock button span { display: block; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-b439e1b808.js">(function () {
+<script data-main="main-a6669eec3e.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
