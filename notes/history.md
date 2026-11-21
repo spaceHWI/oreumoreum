@@ -1306,3 +1306,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 식사 무료(#93)는 두 식당 공통 한 번. 식사 업적 이벤트 'meal' 은 두 식당 모두, 만족한상회는 'meal-manjok' 도
 - 밤 불빛은 창·전구·빛웅덩이만, 낮엔 안 그림 (점광원·늘 그리는 투명 판을 두면 online.js 세 번째 브라우저가 30초 넘게 멈췄음)
 - 확인 `node tools/manjok.js [--shot]`
+
+- #124 낚시 전용 업적 7개: 첫 낚시·10번·50번·대어(잭팟)·물고기 다 낚기·비 오는 날·밤낚시. 낚시 reward(game/debug.js)가 fish-rain·fish-night·fish-all 사건을 더 냄. 보상 5~40귤. 예전 저장의 life.fish 에서 이어 셈(9 → 10 확인). 밤은 sunState.el<-4. 달 아이콘이 없어 밤낚시는 star 로 임시.

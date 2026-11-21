@@ -63,6 +63,12 @@ if (NS_TUT && tut.active) document.body.classList.add('tut');
 if ($('dev-tut')) $('dev-tut').hidden = !tut.active; // 개발자 버튼 '튜토리얼 건너뛰기' (#62)
 else if (!NS_TUT && save.tut && !save.tut.done) { save.tut.done = true; persist(); }
 // ---------- 낚시 (#44) ----------
+// 낚시 전용 업적 사건 (#124): 비 오는 날·밤·물고기 종류 다 낚기. 물고기 종류는 사건 횟수(ach.state.life['fish-<id>'])로 셈
+const fishExtra = (sp) => {
+  if (wx.kind === 'rain') ach.emit('fish-rain');
+  if ((sunState?.el ?? 30) < -4) ach.emit('fish-night');
+  if (sp && !ach.state.life['fish-all'] && FISH.species.every((s) => ach.state.life['fish-' + s.id] > 0)) ach.emit('fish-all');
+};
 // 보상은 F 로 당기는 순간: 물고기 = 귤 5 + 도감 '개울' 칸, 쓰레기 = 호주머니·배낭(클린하우스에서 귤), 드문 것 = 배낭 + 도감(드문 것 귤)
 state.fishing = createFishing({ scene, stream, player, runner, groundAt, height, sound, toast, canJack: () => !late.pace || late.pace.canJack(), onJack: () => late.pace?.note('jackpot'),
   room: () => bagRoom(),
@@ -75,15 +81,16 @@ state.fishing = createFishing({ scene, stream, player, runner, groundAt, height,
         const G = FISH.jackpot.gyul; gyulExpect(G); addCoins(G); ach.emit('earn', G);
         setTimeout(() => { sound.jackpot?.(); gyulShower(G); coinFx(at.clone().setY(at.y + 1.2), G); }, FISH.pullT * 1000);
         ach.emit('fish'); ach.emit('fish-jackpot'); ach.emit('fish-' + sp.id);
+        fishExtra(sp);
       } else {
       gyulExpect(FISH.fishGyul); addCoins(FISH.fishGyul); ach.emit('earn', FISH.fishGyul); setTimeout(() => coinFx(at.clone().setY(at.y + 1.2), FISH.fishGyul), FISH.pullT * 1000);
-      ach.emit('fish'); ach.emit('fish-' + sp.id);
+      ach.emit('fish'); ach.emit('fish-' + sp.id); fishExtra(sp);
       }
     } else if (trash) {
       const kind = c.type === 'trash' ? c.t.kind : c.kind;
       if (trash.addToBag(kind, bagCap())) setTimeout(() => updateTrashUI(true), (FISH.pullT + FISH.stowT) * 1000);
       if (c.type === 'rare') { const dx = DEX_LIST.find((d) => d.rare && d.name === c.name); if (dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); } }
-      ach.emit('fish'); ach.emit('fish-' + (c.type === 'trash' ? c.t.id : 'rare'));
+      ach.emit('fish'); ach.emit('fish-' + (c.type === 'trash' ? c.t.id : 'rare')); fishExtra(null);
     }
   } });
 // ---------- 개발용 라벨 ----------
