@@ -992,6 +992,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 원인: three `renderer.compileAsync` 는 재질 준비를 10ms 마다 되풀이 확인하는데, 그 사이 재질이 `dispose` 되면(모델이 와서 머리·옷을 갈아 끼울 때 `runner.js` 가 앞 재질을 버림) 프로그램이 없어져 `program.isReady` 에서 멈춤. 타이머 안에서 나는 오류라 `.catch` 로도 안 잡힘
 - 고침: `src/game/scene.js prepShaders()` — `renderer.compile` 로 시작만 시키고 기다리기는 직접, 버려진 재질은 기다리는 목록에서 뺌. `compileAsync` 를 부르던 두 곳(`update.js warm`, WebGL 되살아남)을 바꿈. `compileAsync` 는 직접 부르지 않는다
 - 확인: `__oreum.prepShaders()` 를 부른 바로 뒤 장면의 재질 하나를 dispose → 고치기 전엔 같은 오류, 고친 뒤엔 오류 없이 끝남
+
 ## #176 감독 (director)
 - 새 파일 `src/director.js`(차례만 셈, DOM 없음)·`src/game/director.js`(게임 연결, hud 바로 뒤). 수치·문 순서는 balance.js `JOURNEY`
 - 말을 거는 것은 `director.ask(kind, id, show, { sec, ttl })` (토스트는 `say(kind, id, text, sec)`). 우선순위 danger > story > quest > level > intro > tip > mate > mutter > radio. 낮은 것은 높은 것 끝나고 4초 뒤, 같거나 높은 것은 0.6초 뒤, danger 는 낮은 것을 끊음, 싸우는 중엔 danger·story·quest 만, 줄에서 ttl 넘으면 버림
