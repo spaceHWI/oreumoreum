@@ -187,6 +187,23 @@ async function startServers() {
       r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
       ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
     }
+    /* ---------- 주간 옷장 (#126): 이번 주 한정 옷만 살 수 있고 값을 셈, 지난주·다음 주 옷은 되돌림 ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js');
+      const { weeklyNow } = await import('../src/weekly.js');
+      const { WEEKLY_CLOTHES, wearPrice } = await import('../src/balance.js');
+      const t = Date.now(), acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: t }, now = weeklyNow(t)[0], off = WEEKLY_CLOTHES.find((c) => !weeklyNow(t).includes(c) && !weeklyNow(t - 864e5).includes(c) && !weeklyNow(t + 864e5).includes(c)), pr = wearPrice(now);
+      const P = { ...S0, coins: pr + 10 };
+      let r = checkSave(P, { ...P, coins: 10, clothes: { own: { [now.id]: 1 }, wear: { [now.slot]: now.id } } }, acc, t);
+      ok(!r.fixed.length && r.save.clothes.own[now.id] && r.save.coins === 10, `이번 주 한정 옷 사기 받아 줌 (${now.name} 귤 ${pr})`);
+      r = checkSave(P, { ...P, clothes: { own: { [now.id]: 1 }, wear: {} } }, acc, t);
+      ok(r.fixed.includes('coins') && r.save.coins === 10, '한정 옷 값을 안 내면 귤을 바로잡음');
+      r = checkSave(P, { ...P, clothes: { own: { [off.id]: 1 }, wear: { [off.slot]: off.id } } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.clothes.own[off.id] && !r.save.clothes.wear[off.slot], `이번 주가 아닌 한정 옷은 되돌림 (${off.name})`);
+      const P2 = { ...P, clothes: { own: { [off.id]: 1 }, wear: { [off.slot]: off.id } } };
+      r = checkSave(P2, { ...P2 }, acc, t);
+      ok(!r.fixed.length && r.save.clothes.own[off.id], '지난주에 산 한정 옷은 계속 가짐');
+    }
     /* ---------- 서버가 아는 귤 (#188): 판 전리품·퀘스트 보상은 몫으로 인정, 꾸민 것은 거절 ---------- */
     {
       const { checkSave } = await import('../server/src/validate.js');

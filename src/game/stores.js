@@ -7,6 +7,7 @@ import { SHOP_ICON } from '../shops.js';
 const iconLogo = (path) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#2f3336"/><g transform="translate(4.2 4.2) scale(.65)" fill="none" stroke="#f3ecdc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`);
 const GEAR_LOGO = iconLogo(SHOP_ICON.gear), MANJOK_LOGO = iconLogo(SHOP_ICON.manjok), DIR_LOGO = iconLogo(ic('map'));
 import { leapLogo } from '../leap.js';
+import { weeklyNow, weekLeftDays, onShelf } from '../weekly.js';
 import { salonLogo } from '../salon.js';
 import { FOOD_SVG, BUFF_ICON, buffText } from '../stoneicons.js';
 import { mealSec } from '../buff.js';
@@ -185,7 +186,7 @@ export function tickCut(dt) {
 // 옷은 #52 WEAR·CLOTHES 표, 신발은 SHOES 표(순서 없이 사고 #111, 산 것 중 가장 좋은 것을 신음). 업적 이벤트 clothes-buy, clothes-buy-<칸>
 export const leapS = { on: false, slot: LEAP.slots[0], pick: null, cam: null, tried: false };
 const LEAP_CHECK = `<span class="have">${'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
-const leapSlotName = (k) => k === 'shoes' ? '신발' : k === 'new' ? '새 옷' : WSLOT[k].name;
+const leapSlotName = (k) => k === 'shoes' ? '신발' : k === 'new' ? '새 옷' : k === 'week' ? '이번 주' : WSLOT[k].name;
 const SET_NAME = Object.fromEntries(OUTFIT_SETS.map((t) => [t.id, t.name]));
 // 옷 카드 한 장 (#179): 능력 옷은 사면 오를 때만 바뀔 값, 겉모습 옷(style)은 '겉모습' 과 한 벌 맞춤 이름
 const clothItem = (c, k) => { const w = WSLOT[k], now = wearV(k), up = c.tier > slotTier(save, k);
@@ -200,20 +201,23 @@ export function leapItems(k) {
     { id: 'shoes:boots', boots: true, tier: BOOTS.tier, name: BOOTS.name, desc: BOOTS.desc, price: BOOTS.price, own: bt > 0, on: bt === 2, art: late.itemArt ? late.itemArt('boots', 0, 'art') : art(late.TIER_ART.boots[0]), now, v: BOOTS.speed, stat: 'speed' }];
   }
   if (k === 'new') return CLOTHES.filter((c) => c.fresh && !CL.own[c.id]).map((c) => clothItem(c, c.slot)); // 새로 들어온 겉모습 옷 (#179): 아직 안 가진 것
+  if (k === 'week') return weeklyNow().map((c) => clothItem(c, c.slot)); // 주간 옷장 (#126): 이번 주 한정 옷 (가진 것도 보여 눌러서 입음)
   const w = WSLOT[k], now = wearV(k), out = [];
   if (w.none) out.push({ id: '', slot: k, tier: 0, name: '없음', price: 0, own: true, on: !CL.wear[k], art: clothSvg(null), now, v: now, stat: 'style' });
-  CLOTHES.filter((c) => c.slot === k && (!c.season || CL.own[c.id] || late.season?.isOn(c.season))).sort(tierSort).forEach((c) => out.push(clothItem(c, k)));
+  CLOTHES.filter((c) => c.slot === k && (CL.own[c.id] || ((!c.season || late.season?.isOn(c.season)) && onShelf(c)))).sort(tierSort).forEach((c) => out.push(clothItem(c, k)));
   return out;
 }
 const leapStatText = (stat, v) => stat === 'speed' ? `×${String(v.toFixed(2)).replace(/0$/, '')}` : wearStatText(stat, v);
 const STYLE_IC = '<path d="M9 4l3 2 3-2 5 3-2 5-2-1v9H8v-9l-2 1-2-5z"/>'; // 겉모습 옷 (#179)
+const WEEK_IC = '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="M12 13.2l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z"/>'; // 이번 주 (#126): 달력 + 별
 const leapStat = (it) => it.stat === 'style' ? `${late.SVG_A}>${STYLE_IC}</svg>겉모습${it.set ? ` · ${SET_NAME[it.set]} 한 벌` : ''}` : `${late.SVG_A}>${it.stat === 'speed' ? late.STAT_ICON.speed : WEAR_STAT_ICON[it.stat]}</svg>` + (it.v !== it.now ? `<s>${leapStatText(it.stat, it.now)}</s>→<em>${leapStatText(it.stat, it.v)}</em>` : leapStatText(it.stat, it.v));
 function buildLeapTabs(el) {
   el.classList.add('shop-tabs');
-  for (const k of [...LEAP.slots, ...(CLOTHES.some((c) => c.fresh && !CL.own[c.id]) ? ['new'] : [])]) { // 맨 끝 '새 옷' 탭 (#179): 새로 들어온 겉모습 옷
+  for (const k of ['week', ...LEAP.slots, ...(CLOTHES.some((c) => c.fresh && !CL.own[c.id]) ? ['new'] : [])]) { // 맨 앞 '이번 주' 탭 (#126): 남은 날 수 동그라미 // 맨 끝 '새 옷' 탭 (#179): 새로 들어온 겉모습 옷
     const b = document.createElement('button'); b.type = 'button'; b.dataset.slot = k; b.title = leapSlotName(k); b.setAttribute('aria-pressed', String(k === leapS.slot));
     if (k === 'new') b.classList.add('new');
-    const ic = k === 'new' ? `${late.SVG_A}>${STYLE_IC}</svg>` : k === 'shoes' ? `${late.SVG_A}>${bootsOn(save) ? late.TIER_ART.boots[0] : late.TIER_ART.shoes[Math.max(1, save.equip.shoes || 1) - 1]}</svg>` : clothSvg(CLOTH[CL.wear[k]] || CLOTHES.find((c) => c.slot === k && c.tier === 1), 'tab-art');
+    if (k === 'week') { b.classList.add('week'); b.title = `이번 주 한정 · ${weekLeftDays()}일 남음`; }
+    const ic = k === 'week' ? `${late.SVG_A}>${WEEK_IC}</svg><i class="wk-d" aria-hidden="true">${weekLeftDays()}</i>` : k === 'new' ? `${late.SVG_A}>${STYLE_IC}</svg>` : k === 'shoes' ? `${late.SVG_A}>${bootsOn(save) ? late.TIER_ART.boots[0] : late.TIER_ART.shoes[Math.max(1, save.equip.shoes || 1) - 1]}</svg>` : clothSvg(CLOTH[CL.wear[k]] || CLOTHES.find((c) => c.slot === k && c.tier === 1), 'tab-art');
     b.innerHTML = `${ic}<span>${leapSlotName(k)}</span>`;
     b.addEventListener('click', () => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); });
     el.append(b);
@@ -223,6 +227,7 @@ const leapGd = (it) => it.stat === 'speed' ? scoreDiff(save, 'shoes', it.tier) :
 function buildLeapCards(grid) {
   if (leapS.slot === 'new' && !CLOTHES.some((c) => c.fresh && !CL.own[c.id])) leapS.slot = LEAP.slots[1];
   const items = leapItems(leapS.slot);
+  if (leapS.slot === 'week') { const h = document.createElement('div'); h.className = 'leap-week'; h.innerHTML = `${late.SVG_A}>${WEEK_IC}</svg><b>이번 주 한정</b><span>${weekLeftDays()}일 남음 · 월요일에 바뀌어요</span>`; grid.append(h); }
   for (const it of items) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card leap-card'; b.dataset.id = it.id;
     b.style.setProperty('--tc', it.cloth?.style ? WEAR.styleColor : WEAR.tierColor[it.tier]);

@@ -100,6 +100,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 확인: `node tools/clothes40.js`(40벌 서기·달리기·뒤·세트 그림), `node tools/style.js [shot]`(겉모습·능력·세트·색·LEAP 새 옷 탭), `node tools/fit.mjs`(뚫림)
   - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
 - 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
+- 주간 옷장 (#126): weekly.js(주 번호·이번 주 옷·남은 날, 서버 validate.js 도 씀). 옷 표 balance.js `WEEKLY`·`WEEKLY_CLOTHES`(week 0~7, CLOTHES 에 붙음). LEAP 맨 앞 '이번 주' 탭(stores.js leapItems 'week'), 다른 주 옷은 가진 것만 보임(onShelf). 그림 확인 `node tools/weekly.js`
 - 오름펑크 글 (#165): punktext.js (#168 STORY_TEXT 뒤) — 방송(RADIO·RADIO_SITU)·쪽지(NOTES, id 는 저장에 씀)·칭호(TITLES, 번호가 멀티로 오가므로 뒤에만 더함). DOM 없음, 서버 validate·roomcore 도 씀
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md

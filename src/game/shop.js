@@ -2,6 +2,7 @@
 // 사는 것은 모두 가게 거리의 가게에서 (#128): 도구·배낭·무기 = 장비점, 옷·신발 = LEAP, 머리 = 루이네미장원, 탈것 = 탈것 가게, 식사 = 스톤
 // 어디서나 열리던 상점(메뉴·귤 칸)은 가게 안내 → 고르면 그 가게까지 자동 걷기(dump.js startAutoGo(dest)) → 도착하면 그 가게 창
 import { TOOLS, BAGS, POCKET, SHOES, BOOTS, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
+import { onShelf } from '../weekly.js'; // 주간 옷장 (#126): 지난주·다음 주 한정 옷은 점·잠긴 칸에서 뺌
 import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
 import { SHOP_ICON } from '../shops.js';
@@ -162,7 +163,7 @@ const SEEN_KEY = 'oreumoreum.shopSeen';
 const seen = (() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}') || {}; } catch (_) { return {}; } })();
 const SHOP_ITEMS = { // 가게마다 아직 안 가진 살 것 [{ key, price }]. 스톤(식사)은 늘 살 수 있어 점이 없음
   gear: () => gearKeys().flatMap((k) => GEAR_ROWS[k].list.map((t, i) => buyable(k, i) && { key: `${k}:${i + 1}`, price: t.price }).filter(Boolean)),
-  leap: () => [...CLOTHES.filter((c) => LEAP.slots.includes(c.slot) && !CL.own[c.id]).map((c) => ({ key: 'c:' + c.id, price: wearPrice(c) })),
+  leap: () => [...CLOTHES.filter((c) => LEAP.slots.includes(c.slot) && !CL.own[c.id] && onShelf(c)).map((c) => ({ key: 'c:' + c.id, price: wearPrice(c) })),
     ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : []),
     ...(LEAPB && !save.equip.boots ? [{ key: 'shoes:boots', price: BOOTS.price }] : [])],
   salon: () => (save.look ? HAIR.list.filter((h) => !save.hairs[h.key]).map((h) => ({ key: 'h:' + h.key, price: h.price })) : []),
@@ -281,7 +282,7 @@ export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 
     };
     if (w.none) cell(null);
     list.forEach(cell);
-    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => (a.tier || 99) - (b.tier || 99)).forEach((c) => {
+    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season)) && onShelf(c)).sort((a, b) => (a.tier || 99) - (b.tier || 99)).forEach((c) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', c.style ? WEAR.styleColor : WEAR.tierColor[c.tier]);
       b.title = `${c.name} · LEAP 에서 ${wearPrice(c).toLocaleString()}귤`; b.setAttribute('aria-label', `${c.name} 잠김 · LEAP 에서 살 수 있어요`);
       b.innerHTML = clothSvg(c) + `<span class="pr"><i class="g"></i>${wearPrice(c).toLocaleString()}</span>`;
