@@ -2,7 +2,7 @@
 import { tintGear, lcClean } from '../lookcolors.js'; // #155
 import { NSMODE } from '../boot.js';
 import { useNamsongi } from '../namsongi.js';
-import { WEAPONS, HAIR, WEAR, CLOTHES, WEAR_START, BACK_LOOKS } from '../balance.js';
+import { WEAPONS, HAIR, WEAR, CLOTHES, WEAR_START, BACK_LOOKS, LOOK_COLORS } from '../balance.js';
 import { RIDE_BY } from '../rides.js';
 import { equipGear, ACCESSORIES } from '../gear.js';
 import { useDonnaeko } from '../donnaeko.js';
@@ -13,6 +13,7 @@ import { createAbStats } from '../server.js';
 import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
 import { normLoot, wearUp } from '../loot.js';
+import { slotTier } from '../gearscore.js';
 
 export const $ = (id) => document.getElementById(id);
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -61,6 +62,8 @@ if (!save.clothes || typeof save.clothes !== 'object') save.clothes = {};
 export const CL = save.clothes; if (!CL.own || typeof CL.own !== 'object') CL.own = {}; if (!CL.wear || typeof CL.wear !== 'object') CL.wear = {};
 Object.keys(CL.own).forEach((id) => { if (!CLOTH[id]) delete CL.own[id]; }); Object.values(WEAR_START).forEach((id) => { CL.own[id] = 1; });
 WEAR.slots.forEach(({ k }) => { const id = CL.wear[k]; if (id && !(CLOTH[id]?.slot === k && CL.own[id])) delete CL.wear[k]; if (!CL.wear[k] && WEAR_START[k] && !(k in CL.wear)) CL.wear[k] = WEAR_START[k]; });
+// 겉모습 옷 색 (#179): CL.tint = { id: 번호 } (tint 인 가진 옷만, 1 ~ 색 수-1)
+{ const T = CL.tint && typeof CL.tint === 'object' ? CL.tint : {}, o = {}; for (const id of Object.keys(T)) { const n = Math.floor(Number(T[id])); if (CLOTH[id]?.tint && CL.own[id] && n > 0 && n < LOOK_COLORS.style.length) o[id] = n; } CL.tint = o; }
 if (!save.outfit.gear || typeof save.outfit.gear !== 'object') save.outfit.gear = {};
 { const g = save.outfit.gear; if (ACCESSORIES[g.hat]?.slot === 'hair' || g.hat === 'hat:cap') { if (g.hat !== 'hat:cap') g.hair = g.hat; delete g.hat; } } // 예전 저장: 머리가 hat 칸에 있었음
 export let wearRefund = 0; // 예전 옷 색 구매·초록 모자 머리를 귤로 돌려줌 (한 번만)
@@ -70,11 +73,11 @@ if (!save.wearV) {
   save.owned = {}; ['hat', 'shirt', 'pants', 'shoes'].forEach((k) => { save.outfit[k] = structuredClone(DEFAULT_OUTFIT[k]); });
   if (wearRefund) save.coins += wearRefund; save.wearV = 1;
 }
-const wearTier = (k) => { const id = CL.wear[k]; return id && CLOTH[id] ? CLOTH[id].tier : 0; };
+const wearTier = (k) => slotTier(save, k); // 능력은 가진 옷 중 가장 좋은 것 (#179, gearscore.js abilityCloth). 겉모습은 CL.wear
 normLoot(save); // 재료·장비 등급·강화·안 쓰는 장비 (#140, src/loot.js)
 export const wearV = (k) => wearUp(save, k, WSLOT[k].v[wearTier(k)]); // 지금 입은 옷의 능력치 (#140 등급·강화를 얹음)
 export const clothGear = () => { const hasHair = ACCESSORIES[save.outfit.gear.hair]?.slot === 'hair' && !ACCESSORIES[save.outfit.gear.hair].builtin, out = {};
-  WEAR.slots.forEach(({ k }) => { out[k] = CL.wear[k] || `${k}:none`; });
+  WEAR.slots.forEach(({ k }) => { const id = CL.wear[k], t = id && CLOTH[id]?.tint ? CL.tint[id] | 0 : 0; out[k] = id ? (t ? `${id}~${t}` : id) : `${k}:none`; }); // 겉모습 옷 색 (#179)
   if (!hasHair) out.hat = 'hat:cap'; // 머리를 고르기 전(구운 머리·모자)엔 모자를 겹쳐 쓰지 않음
   return out; };
 // 배낭 겉모습 (#164): save.backs = { own: { id: 1 }, cur }. 예전·깨진 저장은 비움

@@ -95,7 +95,8 @@ import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
 import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
-import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
+import './game/punk.js';
+import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호 // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
 import './game/start.js';
 import './game/update.js';
 import './game/debug.js';

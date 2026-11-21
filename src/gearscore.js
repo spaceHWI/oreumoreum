@@ -1,7 +1,8 @@
 // 장비 점수 (#137, notes/growth-loop.md 3절). 수치는 balance.js GROWTH·ZONES. 저장(save)만 읽는 순수 함수라 게임·도구·멀티가 같이 씀
-// 칸 10개: 도구·배낭·신발·무기 (save.equip) + 옷 6칸 (save.clothes.wear 에 입은 옷의 단계). 합이 장비 점수
+// 칸 10개: 도구·배낭·신발·무기 (save.equip) + 옷 6칸. 합이 장비 점수
+// #179: 옷은 겉모습(save.clothes.wear)과 능력을 떼어 냄. 옷 칸 능력 = 그 칸에서 가진 옷 중 점수(단계·등급·강화)가 가장 높은 것 (abilityCloth). 겉모습 옷(tier 0)은 능력 없음
 // 등급·강화 자리 (다음 이슈에서 채움): 장비는 save.gearUp = { 칸: { g, e } }, 옷은 save.clothes.up = { 옷 id: { g, e } }. 없으면 0
-import { GROWTH, ZONES, WEAR, CLOTHES, GYUL_PICK } from './balance.js';
+import { GROWTH, ZONES, WEAR, CLOTHES, GYUL_PICK, WEAR_START } from './balance.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const WEAR_K = WEAR.slots.map((w) => w.k);
@@ -15,14 +16,27 @@ export function itemScore(tier, grade = 0, enh = 0) {
   return Math.round(b * (1 + (GROWTH.grade[int(grade, 0, GROWTH.grade.length - 1)] || 0)) * (1 + GROWTH.enh * int(enh, 0, GROWTH.enhMax)));
 }
 const isObj = (v) => v && typeof v === 'object';
-// 칸 k 의 지금 단계 (옷은 입은 옷의 단계)
+const START_IDS = new Set(Object.values(WEAR_START));
+const ABLE = Object.fromEntries(WEAR_K.map((k) => [k, CLOTHES.filter((c) => c.slot === k && c.tier >= 1)]));
+const upOf = (save, id) => { const u = isObj(save?.clothes?.up) ? save.clothes.up[id] : null; return isObj(u) ? { g: int(u.g, 0, 3), e: int(u.e, 0, GROWTH.enhMax) } : { g: 0, e: 0 }; };
+// 옷 칸 k 의 능력을 주는 옷 id (#179): 가진 옷(처음 옷 포함) 중 점수가 가장 높은 것. 같으면 입은 것 → 높은 단계. 없으면 null
+export function abilityCloth(save, k) {
+  const own = isObj(save?.clothes?.own) ? save.clothes.own : {}, wear = save?.clothes?.wear?.[k]; let best = null, bs = -1, bt = 0;
+  for (const c of ABLE[k] || []) {
+    if (!own[c.id] && !START_IDS.has(c.id)) continue;
+    const u = upOf(save, c.id), sc = itemScore(c.tier, u.g, u.e);
+    if (sc > bs || (sc === bs && (c.id === wear || (best !== wear && c.tier > bt)))) { best = c.id; bs = sc; bt = c.tier; }
+  }
+  return best;
+}
+// 칸 k 의 지금 단계 (옷은 능력을 주는 옷의 단계, #179)
 export function slotTier(save, k) {
-  if (WEAR_K.includes(k)) { const id = save?.clothes?.wear?.[k]; return id && CLOTH[id] ? CLOTH[id].tier : 0; }
+  if (WEAR_K.includes(k)) { const id = abilityCloth(save, k); return id ? CLOTH[id].tier : 0; }
   return int(save?.equip?.[k], 0, 6);
 }
 // 칸 k 의 등급·강화 (cloth 를 주면 그 옷)
 export function slotUp(save, k, clothId) {
-  const u = WEAR_K.includes(k) ? (isObj(save?.clothes?.up) ? save.clothes.up[clothId ?? save?.clothes?.wear?.[k]] : null) : (isObj(save?.gearUp) ? save.gearUp[k] : null);
+  const u = WEAR_K.includes(k) ? (isObj(save?.clothes?.up) ? save.clothes.up[clothId ?? abilityCloth(save, k)] : null) : (isObj(save?.gearUp) ? save.gearUp[k] : null);
   return isObj(u) ? { g: int(u.g, 0, 3), e: int(u.e, 0, GROWTH.enhMax) } : { g: 0, e: 0 };
 }
 export function slotScore(save, k) { const u = slotUp(save, k); return itemScore(slotTier(save, k), u.g, u.e); }
@@ -34,6 +48,8 @@ export function gearScore(save) {
   return { total, pick: sum(GROWTH.pick), fight: sum(GROWTH.fight), by };
 }
 // 칸 k 를 단계 tier(옷이면 그 옷 id)로 바꾸면 점수가 얼마나 달라지나 (상점·옷장 ▲/▼)
+// 옷 하나를 새로 사면 점수가 얼마나 오르나 (#179: 능력은 가진 것 중 최고라 내려가지 않음)
+export function buyGain(save, k, c) { if (!c || !(c.tier >= 1)) return 0; const u = upOf(save, c.id); return Math.max(0, itemScore(c.tier, u.g, u.e) - slotScore(save, k)); }
 export function scoreDiff(save, k, tier, clothId) {
   const u = clothId ? slotUp(save, k, clothId) : { g: 0, e: 0 };
   return itemScore(tier, u.g, u.e) - slotScore(save, k);
