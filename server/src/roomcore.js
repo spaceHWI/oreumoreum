@@ -3,6 +3,7 @@
 //   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로). o·nick 은 바뀔 때만 와도 됨 (#115)
 //   {t:'take', h, n?}     더미 h 에서 n(없으면 1)개 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}. 로그인한 사람이면 주운 수 × 더미 값(HEAP_GYUL)을 번 몫으로 셈 (#144)
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
+//   {t:'btake', h}        동료(#172)가 더미 h 에서 하나 줄임. 번 몫엔 안 셈, 더미의 마지막 BUDDIES.keep 은 남김
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
 // 노루 (#92):
@@ -20,7 +21,7 @@
 //   {t:'bh', z, d}  우두머리를 맞힌 피해 → 방장에게만 {t:'bh', z, d(≤ bossHitMax), from}
 //   {t:'bd', z}     방장만: 쫓아냄 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, zg 로 알림)
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
-import { NET, ZONE_GUARD } from '../../src/balance.js';
+import { NET, ZONE_GUARD, BUDDIES } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText } from '../../src/safetext.js';
 
@@ -192,6 +193,12 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         const ask = Math.max(1, Math.min(NET.takeAsk, m.n | 0 || 1)), got = Math.max(0, Math.min(ask, NET.takeMax, H[h], Math.floor(p.takeTok)));
         if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); if (!H[h]) zoneEmptied(HEAP_DEFS[h].zone, t); }
         if (got < ask) { st.takeNo += ask - got; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: ask - got })); } // 늦게 온 마지막 것·너무 빠른 줍기: 주운 사람이 그만큼 되돌림
+        break;
+      }
+      case 'btake': { // 동료 줍기 (#172): 하나씩. 줍기 몫(takeTok)을 같이 쓰고 번 몫(earned)엔 안 셈, 더미의 마지막 BUDDIES.keep 은 남김. 못 하면 남은 수만 알림(되돌릴 것 없음)
+        const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
+        if (H[h] > Math.ceil(HEAP_FULL[h] * BUDDIES.keep) && p.takeTok >= 1) { p.takeTok -= 1; H[h] -= 1; heapsDirty = true; heapOut.set(h, H[h]); }
+        else out(p, JSON.stringify({ t: 'h', h, n: H[h] }));
         break;
       }
       case 'put': {

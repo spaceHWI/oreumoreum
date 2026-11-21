@@ -1179,3 +1179,30 @@ export const LOOK_COLORS = {
   bottom: [['#8a6a3c', '갈색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
   shoes: [['#3c8fd0', '파랑'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
 };
+
+// 동료 캐릭터 3명 (#172, game/buddies.js). 게임이 움직이는 캐릭터(외부 AI 호출 없음), 내 화면에만. 대사는 src/buddylines.js
+// list: id·이름·문(JOURNEY.doors)·성격(pick 줍는 빠르기 배수, fight 'chase' 달려가 던짐 | 'flee' 물러남, photo 경치 찍으며 멈추는 몫)·옷(outfit.gear)·피부·몸
+// near/far: 플레이어에서 이 거리 안에 머묾(m), 너무 멀면(far 넘으면) 플레이어 쪽으로. greet: 이 거리 안에 오면 돌아보고 손 흔듦(한 번 지나간 뒤 다시 다가와야 또)
+// share: 셋이 합쳐 플레이어가 줍는 속도의 몫까지만 실제 더미를 줄임(플레이어가 하나 주우면 share 만큼 몫이 생김, 몫은 bank 까지 모임)
+// keep: 더미의 마지막 이만큼(비율)은 남김(다 치우는 연출·보상은 플레이어 몫. 서버도 같은 값으로 거름)
+// peers: 방에 사람이 [a] 명 넘으면 1명, [b] 명 넘으면 0명. low: 저사양(TIER 0) 최대 명 수
+// follow: '같이 가요' 시간(초)·뒤 거리(m). throw: 민수 던지기 간격(초)·사거리(m)·달려오는 거리(m). hurt: 맞으면 물러나는 시간(초)
+export const BUDDIES = {
+  list: [
+    { id: 'sunja', name: '순자 삼춘', door: 'mateSunja', pick: 1.4, fight: 'flee', photo: 0, body: 'f', skin: 1,
+      gear: { hair: 'hat:bun', hat: 'hat:w-straw', top: 'top:w-stripe', bottom: 'bottom:w-gal', shoes: 'shoes:slip', hand: 'hand:tongs', back: 'back:none' } },
+    { id: 'minsu', name: '펑크 민수', door: 'mateMinsu', pick: 0.9, fight: 'chase', photo: 0, body: 'm', skin: 0,
+      gear: { hair: 'hat:short', hat: 'hat:w-cap', top: 'top:w-tee~7', bottom: 'bottom:w-long', vest: 'vest:w-old', shoes: 'shoes:s3', hand: 'hand:none', back: 'back:none' } },
+    { id: 'jenny', name: '관광객 제니', door: 'mateJenny', pick: 0.5, fight: 'flee', photo: 0.35, body: 'f', skin: 0,
+      gear: { hair: 'hat:bob', hat: 'hat:w-bucket', top: 'top:w-tee~5', bottom: 'bottom:w-cargo', face: 'face:sunglass', shoes: 'shoes:s2', hand: 'hand:none', back: 'back:round' } },
+  ],
+  near: 20, far: 120, roam: [25, 90], greet: 6, greetGap: 25,
+  walk: 2.2, run: 5.2, pickTime: 1.6, pickR: 1.4, seekR: 60,
+  share: 0.3, bank: 6, keep: 0.2,
+  peers: [4, 8], low: 1,
+  follow: { sec: 600, d: 8 },
+  throw: { every: 1, range: 16, rush: 40, speed: 16 },
+  hurt: 3, hitR: 1.6,
+  cheerR: 150, worryR: 80, ambient: [70, 150], talkR: 3,
+  avoid: { player: 1.4, door: 4 },
+};

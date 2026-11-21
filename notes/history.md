@@ -1046,3 +1046,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 쓰레기 단계: 낱개 3개 대신 튜토리얼 전용 작은 더미 하나(`spots.tut.heap`, TUT.heapD/heapLat). 쓰레기 3개(번호·저장 save.trash.tp 는 예전 낱개 그대로)가 더미 모양(작은 더미 × 0.62, 3→2→1 단계)으로 그려짐. 마지막 하나를 주우면 trash 가 'tut-heap-clear' → 본게임과 같은 꽃·빛·소리(bfx.heap·heapClear), '쓰레기를 다 치우면 꽃이 피어요', 1.5초 카메라가 더미 쪽. 저장 heaps·누적 수·구역·업적·멀티엔 안 들어감
 - 가게 거리 쪽 길목(SHOP_ST.d)은 4칸 왼쪽 담을 끊고 닫힌 정낭(칸 사이 정낭과 같은 모델). 튜토리얼 동안 안 열리고 끝나면(건너뛰어도) 칸 담과 함께 사라짐. 4m 안에 오면 '튜토리얼을 마치면 가게 거리가 열려요' 한 번. 장비점 좌판은 클린하우스 옆(칸 안)이라 그대로
 - dev `__oreum.tut.shopGate()`. 확인 `node tools/tutrun.js d|m`(확대 단계·지나가며 귤·더미 꽃·누적 수 안 셈·가게 쪽 정낭 막힘·안내 포함)
+
+## #172 동료 캐릭터 3명
+- `src/game/buddies.js`(boss 뒤·start 앞) + 대사 `src/buddylines.js`(셋 x talk 25줄 + 인사·박수·환호·걱정·아야·같이 가기 말) + 수치 `balance.js BUDDIES`. 외부 AI 호출 없음
+- 순자 삼춘(정낭을 나서면, 문 mateSunja)·펑크 민수(구역 하나 끝, mateMinsu)·관광객 제니(구역 2, mateJenny). 문이 열리면 감독 kind 'mate' 로 앞에 나와 손 흔들며 첫마디. 옛 저장은 조용히 열림
+- 모습: 플레이어와 같은 `buildRunner` + 옷(gear id). 이름표 옆 로봇 아이콘
+- 돌아다니기: 탐방로 그래프(`buildTrailGraph(nsPaths)`)의 길 위 점(플레이어에서 20~90m, 가끔 들판 8~22m), 120m 넘으면 내 쪽으로. 문 앞(가게·클린하우스 4m)은 피함, 겹치면 비켜남
+- 줍기: `trash.buddyTake(h)` → 저장소 `nibble`(누적 수·랭킹·배낭·도감 안 셈) → 방에 `{t:'btake', h}`(서버 roomcore: takeTok 같이 씀, 번 몫 안 셈, 마지막 keep 남김). 몫은 내가 하나 주울 때 0.3 씩(bank 최대 6) → 셋이 합쳐 내 줍기의 30%. 옛 서버는 btake 를 몰라 다음 hs 로 되돌아옴
+- 싸움: 적이 나를 쫓으면 민수가 달려와 손 귤(THROW_DMG.hand, 1초 1발). 둘은 15m 물러남. 돌진에 닿으면 '아야' 3초 물러남(안 다침). 우두머리전은 18m 떨어져 응원
+- 인사(6m)·말 걸기(F, 창 #mate-talk: 상황 대사·또 얘기해요·같이 가요 10분 8m 뒤 한 명)·감정 표현 따라 함·더미 다 치우면 가까운 한 명 박수·구역 완료 모여 환호·쓰러지면 달려와 걱정·밤엔 들머리 평상 둘레에 앉아 쉼(멀면 안 보일 때 옮김)
+- 대사 조건: 구역 z1~5, 본 가장 깊은 구역 c2~5(장 실마리), 날씨, 밤낮, 방금 한 일(pick·fight·bloom), 가게 거리. '클린하우스'+외계인 연결은 c4 부터
+- 말풍선은 감독 'mate' 를 거침(한가할 때 실마리 clue 도 동료 대사). 사람 4명 넘으면 1명, 8명 넘으면 0명, 저사양 1명, 메뉴 설정 '동료: 켬/끔'(save.mates.off)
+- 확인 `node tools/buddies.js [--shot]`(방 btake·대사·문·말 걸기·같이 가요·몫·keep·민수 맞힘·밤·사람 수·설정·따라 하기), `__oreum.buddies.list()·come(id)·talk(id)·follow(id)·sim(초)`. perf.js 에 mates3·peers3 시나리오, sec.js·online.js 에 동료 줄
