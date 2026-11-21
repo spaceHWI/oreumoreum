@@ -186,6 +186,7 @@ function fillTier(k) {
     const sub = `${K.sub(t)}${own ? '' : ` · <span class="sc">${scoreChip(itemScore(i + 1), scoreDiff(save, k, i + 1))}</span>`}`;
     g.append(card({ icon: art, name: t.name, sub: own || on ? sub : `${K.sub(now)} → ${K.sub(t)}`, on, own, lock: own || !t.price ? null : { shop: 'gear', price: t.price } }));
   });
+  if (k === 'bag') late.backLookRow?.(g, card); // 배낭 모양 (#164)
 }
 // 탈것: 걸어 다니기 + 가진 탈것. 고르면 그 탈것이 '부르기'(Q) 대상. [부르기]는 창을 닫고 바로 탐
 function fillRide() {
