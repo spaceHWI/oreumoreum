@@ -45,7 +45,32 @@ export class Accounts extends DurableObject {
     }
     // 철 이벤트 트리 (#180): 기간 동안 모두가 주운 수를 날마다 하나로 더함 (d = 한국 날 번호). 서버가 확인한 줍기만
     this.sql.exec('CREATE TABLE IF NOT EXISTS ssn (d INTEGER PRIMARY KEY, n INTEGER)');
+    // 지금 접속 (#186): 방마다 사람 수만(onl), 오늘 최고 동시 접속은 한국 날마다 값 하나(onlpk). 이름·계정 번호는 적지 않음
+    this.sql.exec('CREATE TABLE IF NOT EXISTS onl (room TEXT PRIMARY KEY, n INTEGER, login INTEGER, at INTEGER)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS onlpk (d INTEGER PRIMARY KEY, n INTEGER, at INTEGER)');
     this.rkCache = new Map();
+  }
+  // 방이 알려 준 사람 수 (#186, room.js report). 0명이면 지움. 오래 소식이 없는 방(꺼진 방)은 빼고 셈
+  roomCount(room, n, login, t = Date.now()) {
+    if (typeof room !== 'string' || !/^[a-z0-9-]{1,48}#\d{1,2}$/.test(room)) return;
+    n = Math.max(0, Math.min(999, n | 0)); login = Math.max(0, Math.min(n, login | 0));
+    if (n) this.sql.exec('INSERT OR REPLACE INTO onl (room, n, login, at) VALUES (?, ?, ?, ?)', room, n, login, t);
+    else this.sql.exec('DELETE FROM onl WHERE room = ?', room);
+    const tot = this.onlineRows(t).reduce((a, r) => a + r.n, 0), d = kstDay(t);
+    const pk = this.sql.exec('SELECT n FROM onlpk WHERE d = ?', d).toArray()[0];
+    if (!pk) this.sql.exec('DELETE FROM onlpk WHERE d < ?', d - NET.onlinePeakDays);
+    if (!pk || tot > pk.n) this.sql.exec('INSERT OR REPLACE INTO onlpk (d, n, at) VALUES (?, ?, ?)', d, tot, t);
+  }
+  onlineRows(t = Date.now()) {
+    this.sql.exec('DELETE FROM onl WHERE at < ?', t - NET.onlineStaleMs);
+    return this.sql.exec('SELECT room, n, login FROM onl ORDER BY room').toArray();
+  }
+  // 어드민 창 (#186): 숫자만. rooms = [{ map, ch, n, login }]
+  online(t = Date.now()) {
+    const rooms = this.onlineRows(t).map((r) => { const m = /^oreum-([a-z0-9]+)(?:-battle)?#(\d+)$/.exec(r.room); return { map: m ? m[1] : r.room.split('#')[0], ch: m ? Number(m[2]) : 0, n: r.n, login: r.login }; });
+    const n = rooms.reduce((a, r) => a + r.n, 0), login = rooms.reduce((a, r) => a + r.login, 0);
+    const pk = this.sql.exec('SELECT n, at FROM onlpk WHERE d = ?', kstDay(t)).toArray()[0];
+    return { now: t, n, login, guest: n - login, rooms, peak: pk ? { n: Math.max(pk.n, n), at: pk.n >= n ? pk.at : t } : { n, at: t } };
   }
   // 이번 철 트리 합계: 기간 첫날부터 오늘까지
   seasonTotal(t = Date.now()) {

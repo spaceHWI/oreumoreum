@@ -24,6 +24,7 @@ export const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
   lobby: createWsLobby({ token: () => state.account?.token }), onRoom: (room) => { // 멀티 서버 (#7)
     if (!room.on) return;
+    late.mpRoom = room; // 지금 접속 (#186): 내 방 채널 (admonline.js)
     if (trash) linkTrash(trash, room);
     late.deerNet?.link(room); // 노루 무리·노루 타기 (#92, deernet.js)
     late.guardNet?.link(room); // 구역 지킴이 돌하르방 세운 시각 (#119, guard.js)

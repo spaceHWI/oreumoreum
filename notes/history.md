@@ -1287,3 +1287,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 색 바꾸기: tint 인 겉모습 옷 10벌, 내 가방 옷 탭에서 색 동그라미(무료, LOOK_COLORS.style 0 = 원래 색). save.clothes.tint, 서버 validate 가 범위·옷 확인
 - LEAP: 맨 끝 '새 옷' 탭(fresh 인 안 가진 옷), 겉모습 카드는 '겉모습 · ○○ 한 벌', 사기 줄에 한 줄 글. 능력 옷 ▲ 는 사면 오르는 만큼만(buyGain)
 - 확인: tools/clothes40.js, tools/style.js(새), tools/fit.mjs 에 clothes2 넣음 — 새 옷의 뚫림은 같은 틀의 원래 옷과 같은 수준(조끼 팔 0.22·바지 허리 0.36 등 원래 있던 것). 멜빵 작업 바지·멜빵 러닝의 끈은 일부러 티셔츠 위
+
+## #186 어드민: 지금 접속 보기
+- 서버: 방(room.js)이 들어올 때·나갈 때·1분마다(`NET.onlineEveryMs`) 사람 수·로그인 수만 계정 객체에 알림(`Accounts.roomCount`, 표 `onl`). 3분(`onlineStaleMs`) 소식 없는 방은 뺌. 방 이름은 index.js 가 `x-room` 헤더('oreum-<맵>-battle#<채널>')로 붙임(꾸민 값은 지움), 부하 재기 방은 세지 않음
+- 오늘 최고 동시 접속: 한국 날마다 값 하나(표 `onlpk`, 30일 보관). #121 이 들어오면 그쪽 표에 합침
+- `GET /admin/online`: `/feedback` 과 같은 어드민 확인(ADMIN_SUBS, 로컬은 STATS_OPEN). 돌려주는 것은 숫자만 `{ n, login, guest, rooms: [{ map, ch, n, login }], peak: { n, at } }`
+- 구역별 인원은 서버가 지형(zoneAt 은 three 를 씀)을 모르므로 어드민 화면이 같은 방 사람 자리(`net.peersById`)로 셈 → '내 방' 만. 좌표는 서버가 내보내지 않음
+- 클라이언트 `src/game/admonline.js`. 서버 없음(혼자 하기)이면 줄을 숨김. #157(쉬는 사람)은 아직 없어 모두 셈: 들어오면 `roomcore counts()` 에서 빼면 됨

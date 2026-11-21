@@ -1216,6 +1216,8 @@ export const NET = {
   saveMax: 200000,    // 저장 크기 상한 (바이트)
   saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
   keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
+  // 지금 접속 (#186): 방이 사람 수를 계정 객체에 알림(들어올 때·나갈 때·onlineEveryMs 마다). onlineStaleMs 동안 소식이 없는 방은 빼고 셈. 어드민 창은 onlinePollMs 마다(열려 있을 때만)
+  onlineEveryMs: 60000, onlineStaleMs: 180000, onlinePollMs: 30000, onlinePeakDays: 30,
   // 보안 (#84): 이동·줍기·폭주·요청 수 제한. 모두 서버(roomcore·index)가 봄
   rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>-battle' 만 (#98: 서버는 전투 오름 하나. 예전 'oreum-<이름>' 접속은 battle 방으로 보냄). 그 밖은 거절 (방 만들기 폭주 막기)
   maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
