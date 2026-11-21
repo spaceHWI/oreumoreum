@@ -1522,6 +1522,13 @@ export const QUESTS = {
   ],
 };
 
+// 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
+// hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
+// shopT 귤이 새로 다음 장비 값에 닿으면 이만큼 '장비점으로' (장비점 창을 열거나 문 shopR m 안에 오면 끝, 같은 장비로 다시 권하지 않음)
+// bagRoom 배낭 남은 칸이 이보다 작으면 '클린하우스로'
+// after: 줄기 퀘스트가 끝난 뒤 차례 (강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑). 모두 임의값
+export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'daily', 'heap', 'den', 'cairn'] };
+
 // 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
 // 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐
 // 값은 모두 임의(이슈 #180). 이벤트로 얻는 귤은 기간 평균 하루 벌이의 10% 안 (tools/econ.js 가 셈)
