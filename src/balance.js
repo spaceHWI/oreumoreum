@@ -1066,10 +1066,27 @@ export const PACE = {
   busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
   riseT: 3, fallT: 5,
   edge: 0.6, camIn: 0.1, sky: 0.12,
-  hitStop: 0.06, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율
-  combo: { gap: 1.6, max: 10 }, // 줍기 콤보: 이 초 안에 이어 주우면 음이 한 칸씩 올라감 (최대 칸)
+  hitStop: 0.05, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율 (#141 0.06 → 0.05). '화면 효과 줄이기'면 없음
   bloomLayer: { heap: 14, zone: 32 }, // 꽃이 피면 음악에 한 겹 더해지는 시간(초)
   delight: { luckyT: 60, luckyMul: 8, deerT: 45, flyT: 40 },
+};
+
+// 손맛 (#141, game/feel.js). notes/growth-loop.md 8절. 귤 보너스는 tools/econ.js 가 '손맛 보너스' 줄로 벌이가 15% 넘게 늘지 않는지 봄
+export const FEEL = {
+  // 줍기 콤보: gap 초 안에 이어 주우면 숫자가 오름(한 번 줍기 = 1). step 마다 귤 bonus 씩 더(최대 max), 단계가 오를 때 색·소리·진동.
+  //   소리 높이는 pitchMax 칸까지 한 음씩. 보너스는 주울 때 bag.xv 에 얹혀 클린하우스에서 받음. 서버 줍기 몫(server/src/heaps.js)은 × (1 + max)
+  combo: { gap: 3, step: 10, bonus: 0.05, max: 0.3, pitchMax: 10, cols: ['#ffffff', '#ffd23a', '#ff9a1f', '#ff6a3a', '#ff4f8b', '#b678ff', '#5ad1ff'] },
+  // 이어 쫓아내기: 앞 적을 쫓아낸 뒤 gap 초 안이면 'n연속!'. 귤 보너스 = 그 적 귤 × min(max, (n - 1) × bonus) (떼 적은 귤이 0 이라 글만)
+  streak: { gap: 4, bonus: 0.1, max: 0.3 },
+  // 피해 숫자: 머리 위로 t 초 동안 rise px 올라가며 사라짐. 급소(비틀거릴 때·가득 모아 쏜 샷)는 크고 노랗게. 한 번에 pool 개까지 (저사양 poolLow)
+  dmg: { t: 0.8, rise: 46, pool: 24, poolLow: 10, fullCh: 0.99 },
+  roll: { t: 0.55, hop: 0.35 }, // 쫓아낸 적: 옆으로 한 바퀴 구르며 달아남 (초·m × 크기). 우두머리는 빼고
+  hurt: { t: 0.45, a: 0.75 }, // 맞으면 화면 가장자리 붉은빛 (초·진하기)
+  low: { hp: 0.25, beat: 0.9, a: 0.45 }, // HP 가 이 비율 아래면 심장 소리(초 간격)·가장자리 맥박(진하기)
+  heapSlow: { t: 0.35, k: 0.35 }, // 더미 마지막 하나: 잠깐 느려짐 (초·시간 배율). '화면 효과 줄이기'면 없음
+  crumble: { n: 12, nLow: 5, t: 0.7 }, // 더미가 한 단계 줄 때 흙먼지 (조각 수·초)
+  // 폰 진동 (되는 기기만, 설정 '진동' 으로 끔). 밀리초 배열
+  vib: { pick: [6], step: [16, 30, 16], heap: [24], repel: [22], streak: [18, 30, 28], hurt: [70] },
 };
 
 // 탐방로 선 모양 (#67). 길이는 실제 m. trailshape.js 가 이 값으로 nsPaths 를 만든다
