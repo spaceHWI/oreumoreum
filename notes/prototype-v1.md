@@ -62,6 +62,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | punk.js | 오름펑크 아이템(#164): 감귤 박스 헬멧 박스 시야(`#box-view`)·'퉁' 소리(`late.boxThud`), 해녀 테왁 배낭(배낭 겉모습 save.backs, 장비점 카드 `late.backCards`·내 가방 줄 `late.backLookRow`, 망사리 불룩 state.backFill, 개울에 뜸 `stream.hooks.float`·`late.tickSwim`·state.swim). `__oreum.punk`, 확인 `node tools/punk.js` |
 | buddies.js | 동료 캐릭터 3명(#172): 감독 문(mateSunja·mateMinsu·mateJenny)이 열리면 나옴, 길 따라 돌아다니기·줍기(`trash.buddyTake` → 방 btake, 내 줍기의 BUDDIES.share 까지·마지막 keep 남김)·민수 귤 던지기·인사·말 걸기 창(#mate-talk)·같이 가요·감정 표현 따라 하기·박수/환호/걱정·밤 평상. 내 화면에만(서버로 안 보냄), 대사 `src/buddylines.js`, 수치 balance.js BUDDIES. `late.buddies`, 확인 `node tools/buddies.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
+| ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 

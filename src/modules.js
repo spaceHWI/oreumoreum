@@ -99,5 +99,6 @@ import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁
 import './game/buddies.js'; // 동료 캐릭터 3명 (#172)
 import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: 적·우두머리 후크를 감쌈)
 import './game/start.js';
+import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
 import './game/debug.js';
