@@ -321,6 +321,10 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .wish { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #e8dfc3; font-size: 14px; }
 .wish b { font-weight: 600; color: var(--leaf); white-space: nowrap; }
 .wish.mine b { color: var(--songi); }
+.wish { grid-template-columns: auto 1fr auto auto; } .wish span { overflow-wrap: anywhere; } .wish.hid span { opacity: .5; text-decoration: line-through; }
+.wish-pray, .wish-rep { border: 0; background: none; font: inherit; font-size: 12px; padding: 4px 6px; border-radius: 8px; cursor: pointer; color: inherit; white-space: nowrap; min-height: 30px; }
+.wish-pray { border: 1px solid currentColor; } .wish-pray[aria-pressed="true"] { opacity: .55; } .wish-rep { opacity: .55; } .wish-rep[data-sure] { opacity: 1; color: #d65a3c; }
+#wishadm .pop-body { max-height: 70vh; overflow: auto; } #wishadm li { cursor: default; } #wishadm .wa-btns { display: flex; gap: 6px; margin-top: 4px; }
 #wish-form, #chat-form { display: flex; gap: 6px; }
 #inbox .pop-body { max-height: 70vh; overflow: auto; }
 .inbox-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
@@ -899,6 +903,18 @@ body.hp-down #shop-mark { display: none !important; }
 @media (max-width: 600px) { #arm-more { right: 68px; bottom: -6px; width: 24px; height: 24px; } }
 /* 탄 막대 (#123 머신건·레이저 남은 몫, 폭탄 다시 쥐기) */
 #btn-ctx .ammo.bar b { width: 44px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ff9a2e calc(var(--k, 0) * 100%), rgba(255,255,255,.25) 0); }
+/* 레이저 열 고리 (#200): 버튼 둘레. 초록 → 노랑 → 빨강, 70% 부터 떨림, 과열이면 빨갛게 깜빡이며 줄어듦 */
+#btn-ctx .heat { position: absolute; inset: -7px; pointer-events: none; --k: 0; --c: #5fd38a; }
+#btn-ctx .heat[hidden] { display: none; }
+#btn-ctx .heat svg, .pad #btn-ctx .heat svg, body.newbie .pad #btn-ctx .heat svg { width: 100%; height: 100%; margin: 0; transform: rotate(-90deg); overflow: visible; stroke-width: initial; }
+#btn-ctx .heat circle { fill: none; stroke-width: 3.2; }
+#btn-ctx .heat .bg { stroke: rgba(23,23,26,.55); }
+#btn-ctx .heat .fg { stroke: var(--c); stroke-linecap: round; stroke-dasharray: calc(var(--k) * 100) 100; transition: stroke .15s; }
+#btn-ctx .heat.shake { animation: heat-shake .09s linear infinite; }
+#btn-ctx .heat.over .fg { animation: heat-over .4s ease-in-out infinite alternate; }
+@keyframes heat-shake { 0% { transform: translate(0, 0); } 25% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, 1px); } }
+@keyframes heat-over { from { opacity: 1; } to { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { #btn-ctx .heat.shake, #btn-ctx .heat.over .fg { animation: none; } }
 /* 모아 쏘기 (#129): 버튼 둘레에 차오르는 고리, 가득 차면 반짝 */
 #btn-ctx .chg { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; background: conic-gradient(#ffd25a calc(var(--k, 0) * 360deg), rgba(255,255,255,.16) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); }
 #btn-ctx .chg[hidden] { display: none; }
@@ -1583,7 +1599,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <div id="joy" class="touch-only" data-tut="move" aria-label="이동 조이스틱"><div id="joy-knob"></div></div>
 
 <div class="pad">
-  <button type="button" id="btn-ctx" class="panel round idle" data-tut="interact" title="상호작용 (F)"><svg data-i="do"></svg><span>상호작용</span><i id="ammo" class="ammo" hidden aria-label="남은 화살"></i></button>
+  <button type="button" id="btn-ctx" class="panel round idle" data-tut="interact" title="상호작용 (F)"><svg data-i="do"></svg><span>상호작용</span><i id="ammo" class="ammo" hidden aria-label="남은 화살"></i><i id="heat" class="heat" hidden aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="18.5" pathLength="100"/><circle class="fg" cx="20" cy="20" r="18.5" pathLength="100"/></svg></i></button>
   <button type="button" id="arm-more" class="panel round" hidden aria-label="무기 바꾸기" title="무기 바꾸기"><svg data-i="more" stroke-width="2.4"></svg></button>
   <button type="button" id="btn-pick" class="panel round dim" data-tut="pick" title="줍기 (E) · 누르고 있으면 계속"><svg data-i="pick"></svg><span>줍기</span></button>
   <button type="button" id="btn-jump" class="panel round sm" data-tut="jump" title="점프 (Space)">
@@ -1693,7 +1709,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
       <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button><button type="button" class="btn small adm-danger" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <p class="adm-note">들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</p></div>
       <div class="adm-sec" id="adm-inbox-row" hidden><div class="adm-row adm-t"><span>의견</span></div>
-      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button><button type="button" class="btn small" id="dev-metrics">수치</button></div></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button><button type="button" class="btn small" id="dev-metrics">수치</button><button type="button" class="btn small" id="dev-wishadm">신고된 소원</button></div></div>
     </div>
   </div>
 </nav>
@@ -1852,8 +1868,9 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <div class="pop-head"><h2 id="wish-title">돌탑</h2><button type="button" class="btn small" id="wish-close">닫기</button></div>
     <div class="pop-body">
       <p class="muted" id="wish-count" style="margin:0 0 6px;font-size:13px"></p>
-      <form id="wish-form"><input id="wish-input" maxlength="60" placeholder="소원 한 줄 (비워도 돼요)" autocomplete="off" enterkeyhint="done"><button type="submit" class="btn small primary" id="wish-submit">돌 올리기</button></form>
+      <form id="wish-form"><input id="wish-input" maxlength="30" placeholder="소원 한 줄 (비워도 돼요)" autocomplete="off" enterkeyhint="done"><button type="submit" class="btn small primary" id="wish-submit">돌 올리기</button></form>
       <p class="muted" id="wish-solo" style="font-size:12px;margin:6px 0 0" hidden>지금은 혼자 모드라 내 화면에만 쌓여요.</p>
+      <p class="muted" id="wish-note" style="font-size:12px;margin:6px 0 0" hidden></p>
       <div id="wish-list" style="margin-top:10px"></div>
     </div>
   </div>
@@ -1881,6 +1898,13 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="panel pop">
     <div class="pop-head"><h2>수치</h2><span><button type="button" class="btn small" id="mtadm-refresh">새로 고침</button> <button type="button" class="btn small" id="mtadm-close">닫기</button></span></div>
     <div class="pop-body"><div class="adm-btns mt-src"><button type="button" class="btn small" data-mtsrc="live" aria-pressed="true">실서버</button><button type="button" class="btn small" data-mtsrc="dev" aria-pressed="false">dev</button><button type="button" class="btn small" data-mtsrc="adm" aria-pressed="false">어드민</button></div><table id="mt-table" class="mt-table"></table><p class="adm-note" id="mt-note"></p></div>
+  </div>
+</div>
+
+<div class="overlay dim" id="wishadm" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>신고된 소원</h2><span><button type="button" class="btn small" id="wishadm-refresh">새로 고침</button> <button type="button" class="btn small" id="wishadm-close">닫기</button></span></div>
+    <div class="pop-body"><ul id="wishadm-list" class="inbox-list"></ul></div>
   </div>
 </div>
 

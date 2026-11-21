@@ -64,6 +64,12 @@ export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
 // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민만
 export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }), metrics: (days = 14) => api('/admin/metrics?days=' + (days | 0)) } : null;
+// 돌탑 소원 (#127): 읽기·기도·신고는 손님도, 쓰기·내 소식은 로그인만. admin* 은 어드민만
+export const wishApi = ONLINE ? {
+  list: (c) => api('/wish?c=' + encodeURIComponent(c)), put: (c, text) => api('/wish', { method: 'POST', body: { c, text } }),
+  pray: (id) => api('/wish/pray', { method: 'POST', body: { id } }), report: (id) => api('/wish/report', { method: 'POST', body: { id } }),
+  news: () => api('/wish/news'), adminList: () => api('/admin/wishes'), admin: (id, act) => api('/admin/wish', { method: 'POST', body: { id, act } }),
+} : null;
 // 지금 접속 (#186): 어드민만. 숫자만 돌아옴 (총인원·방별·로그인/손님·오늘 최고)
 export const getOnline = ONLINE ? () => api('/admin/online') : null;
 // 이용 통계 보낼 곳 (#121, metrics.js mtFlush): 서버가 없으면 ''

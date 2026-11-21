@@ -73,17 +73,18 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   const glowMat = new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending });
   const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
   const endGeo = new THREE.SphereGeometry(1, 8, 6);
-  const beams = [];
+  const beams = [], glowCol = new THREE.Color('#ff8a1f'), hotCol = new THREE.Color('#ff2a12');
   function beam() {
     let b = beams.find((x) => !x.used); if (b) { b.used = true; return b; }
-    const root = new THREE.Group(), core = new THREE.Mesh(beamGeo, coreMat), glow = new THREE.Mesh(beamGeo, glowMat), end = new THREE.Mesh(endGeo, glowMat);
+    const gm = glowMat.clone(), root = new THREE.Group(), core = new THREE.Mesh(beamGeo, coreMat), glow = new THREE.Mesh(beamGeo, gm), end = new THREE.Mesh(endGeo, gm); /* 줄기마다 빛 재질 (과열 #200 색) */
     for (const o of [core, glow, end]) { o.renderOrder = 4; o.frustumCulled = false; }
     root.add(core, glow); group.add(root, end);
     b = { used: true, root, core, glow, end, on: false, t: 0, dropT: 0 }; beams.push(b); return b;
   }
   // 줄기 하나를 from → to 로 놓음 (매 프레임). hitPos: 맞은 곳이 있으면 거기서 즙이 튐
-  function setBeam(b, from, to, dt, hit, wMul = 1) { // wMul: 모아 쏜 굵은 줄기 (#129)
+  function setBeam(b, from, to, dt, hit, wMul = 1, heat = 0) { /* wMul: 모아 쏜 굵은 줄기 (#129). heat: 레이저 열 0~1 (#200), 뜨거울수록 붉게 */
     b.on = true; b.t += dt;
+    if (b.heat !== heat) { b.heat = heat; b.glow.material.color.copy(glowCol).lerp(hotCol, Math.min(1, heat) * 0.75); }
     const L = Math.max(0.1, from.distanceTo(to)), w = F.laser.w * wMul * (1 + Math.sin(b.t * 50) * 0.15);
     b.root.visible = b.end.visible = true; b.root.position.copy(from); b.root.lookAt(to);
     b.core.scale.set(w * 0.45, w * 0.45, L); b.glow.scale.set(w * 1.6, w * 1.6, L);
@@ -91,6 +92,24 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
     if (hit) { b.dropT -= dt; if (b.dropT <= 0) { b.dropT = 1 / (F.laser.drip * (LOW ? F.low : 1)); const a = Math.random() * 6.28; v1.copy(from).sub(to).normalize(); drop(to, Math.cos(a) * 2 + v1.x * 2, 1.5 + Math.random() * 2, Math.sin(a) * 2 + v1.z * 2, 0.4, 1); } }
   }
   function offBeam(b) { if (!b) return; b.on = false; b.used = false; b.root.visible = b.end.visible = false; }
+
+  // ---------- 레이저 과열 (#200): 총구에서 오르는 김, 튀는 불꽃 ----------
+  const SN = LOW ? 14 : 32;
+  const steamMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 6, 4), new THREE.MeshBasicMaterial({ color: '#e9e4dc', transparent: true, opacity: 0.55, depthWrite: false }), SN);
+  steamMesh.count = 0; steamMesh.visible = false; steamMesh.frustumCulled = false; steamMesh.renderOrder = 4; group.add(steamMesh);
+  const steams = Array.from({ length: SN }, () => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), t: 1, life: 0 })); let sNext = 0, sLive = false;
+  function steam(p) { const d = steams[sNext]; sNext = (sNext + 1) % SN; d.p.copy(p); d.v.set((Math.random() - 0.5) * 0.5, 0.9 + Math.random() * 0.5, (Math.random() - 0.5) * 0.5); d.t = 0; d.life = 0.7 + Math.random() * 0.3; sLive = true; }
+  function sparks(p, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28; drop(p, Math.cos(a) * 2.5, 1.5 + Math.random() * 2.5, Math.sin(a) * 2.5, 0.35, 0.6); } }
+  function updateSteam(dt) {
+    if (!sLive) return;
+    let c = 0;
+    for (const d of steams) {
+      if (d.t >= d.life) continue;
+      d.t += dt; d.p.addScaledVector(d.v, dt); const u = d.t / d.life, k = (0.6 + u * 1.8) * Math.max(0, 1 - u * u);
+      if (k <= 0) continue; v2.set(k, k, k); m4.compose(d.p, q.identity(), v2); steamMesh.setMatrixAt(c++, m4);
+    }
+    steamMesh.count = c; steamMesh.visible = c > 0; steamMesh.instanceMatrix.needsUpdate = true; if (!c) sLive = false;
+  }
 
   // ---------- 레이저에 젖은 적: 주황빛 껍질이 감싸고 방울이 뚝뚝 ----------
   const wetMat = new THREE.MeshBasicMaterial({ color: '#ff9a2e', transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -164,8 +183,8 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   }
 
   return {
-    shoot, lob, beam, setBeam, offBeam, wet, boom, puff,
-    update(dt) { updateShots(dt); updateBombs(dt); updateWets(dt); updateDrops(dt); },
+    shoot, lob, beam, setBeam, offBeam, wet, boom, puff, steam, sparks,
+    update(dt) { updateShots(dt); updateBombs(dt); updateWets(dt); updateDrops(dt); updateSteam(dt); },
     clear() { shots.length = 0; for (const b of bombs) group.remove(b.g); bombs.length = 0; for (const b of beams) offBeam(b); },
     shots, bombs, beams, booms, group,
   };

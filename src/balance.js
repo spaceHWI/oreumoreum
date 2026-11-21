@@ -567,7 +567,11 @@ export const WEAPONS = [
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
+    /* 과열 (#200, src/laserheat.js): full 계속 쏘면 열이 가득 차는 초, wait 쏘기를 멈추고 식기 시작할 때까지 초, cool 그 뒤 초당 식는 몫,
+       lock 과열되면 못 쏘는 초(그동안 1 에서 0 으로 식음), hot 이 열부터 피해 × hotMul, shake 이 열부터 고리가 떨림, grade 장비 등급 하나마다 full × (1 + grade).
+       full 4→5·lock 2.5→1.5 는 계속 쏠 때 시간당 피해가 과열 전의 80% 쯤 되게 tools/heat.js 로 맞춘 값 */
+    heat: { full: 5, wait: 0.5, cool: 0.35, lock: 1.5, hot: 0.7, hotMul: 1.15, shake: 0.7, grade: 0.1 } },
   { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
 // 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
@@ -1420,6 +1424,25 @@ export const RANK = {
   dayKeep: 9,         // 서버: 날마다 쌓는 기록은 이 날만큼 둠 (이번 주 + 하루)
   medals: 3,          // 1~3위는 귤색 메달
   checkGapMs: 4000,   // 버린 뒤 내 순위 다시 보기 간격 (연달아 버려도 이만큼은 쉼)
+};
+
+// 돌탑 소원 글·함께 기도 (#127): 서버 server/src/wishes.js (계정 DO 안 SQLite). 쓰기는 로그인한 사람만, 읽기·기도·신고는 손님도
+export const WISH = {
+  max: 30,            // 소원 글자 수
+  keepDays: 30,       // 쓴 뒤 이 날이 지나면 지움 (서버 Cron)
+  perCairn: 100,      // 돌탑마다 최근 이만큼
+  editPerDay: 3,      // 한 사람이 돌탑마다 하루 이만큼 쓰기·고치기 (첫 쓰기 포함)
+  writePerMin: 10,    // 한 계정이 1분에 보내는 쓰기 요청 (RL_API 와 따로)
+  reportHide: 3,      // 서로 다른 이만큼이 신고하면 숨김 (어드민이 되살릴 수 있음)
+  prayGyul: 20,       // 함께 기도한 사람이 받는 귤 (한 번에). 하루 최대(prayGyul × prayPerDay + gotGyul × gotPerDay)는 1일 벌이의 10% 아래 (tools/econ.js)
+  prayPerDay: 5,      //   하루 이만큼까지 귤을 받음 (기도는 더 해도 됨, 같은 소원에는 하루 한 번)
+  gotGyul: 10,        // 소원 쓴 사람이 기도 한 번마다 받는 귤 (다음에 들어올 때 '○명이 함께 빌어 줬어요')
+  gotPerDay: 15,      //   하루 이만큼 기도까지 귤을 셈 (넘는 기도는 수만 오름)
+  near: 12,           // 돌탑에 이만큼 다가가면 최근 소원이 하나씩 떠오름 (m)
+  floatEvery: 4,      //   떠오르는 간격 (초)
+  floatN: 6,          //   돌아가며 보여 주는 최근 소원 수
+  cacheMs: 60000,     // 같은 돌탑 목록을 이만큼 다시 씀 (게임)
+  list: 40,           // 창에 보이는 소원 수
 };
 
 // 의견 보내기 (#77): 게임 안 글 → 서버 /feedback → 개발자 메일 (받는 주소는 서버 시크릿 FEEDBACK_TO)

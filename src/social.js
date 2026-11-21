@@ -13,10 +13,12 @@ export function createSocial({ scene, net, save, onToast, mapId }) {
   const stones = new Map();
   const listeners = { stones: [] };
   let remote = [];
+  const srv = new Map(); // 서버 소원 (#127, game/wish.js): cairnId -> [{ id, nick, text, at, mine }]. 남의 소원 하나 = 돌 하나
   function rebuild() {
     stones.clear();
     const push = (cid, e) => { if (!stones.has(cid)) stones.set(cid, []); stones.get(cid).push(e); };
     for (const r of remote) push(r.cid, r);
+    for (const [cid, l] of srv) for (const w of l) if (!w.mine && !remote.some((r) => r.cid === cid && r.nick === w.nick && r.wish === w.text)) push(cid, { uid: 'w' + w.id, nick: w.nick || '누군가', wish: w.text, at: w.at, wid: w.id });
     // 내 돌 (db에 아직 없거나 오프라인일 때)
     for (const [cid, v] of Object.entries(save.wishes || {})) {
       if (!v || (uid && remote.some((r) => r.cid === cid && r.uid === uid))) continue;
@@ -125,8 +127,9 @@ export function createSocial({ scene, net, save, onToast, mapId }) {
   }
   function queueLength() { let n = 0; for (const e of net.peersById.values()) if (typeof e.data.pq === 'number' && e.data.pq > 0) n++; return n; }
 
+  function setServer(cid, list) { srv.set(cid, Array.isArray(list) ? list : []); rebuild(); }
   return {
-    start, stones, listeners, placeStone, tickBubbles, say, showBubble,
+    start, stones, listeners, placeStone, setServer, tickBubbles, say, showBubble,
     joinQueue, leaveQueue, queueAhead, queueLength,
     get uid() { return uid; }, get canWrite() { return dbReady && !!uid; },
     presenceExtra: () => ({ say: mySay, pq: myQueueAt || null }),

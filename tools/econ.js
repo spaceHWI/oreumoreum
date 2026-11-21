@@ -406,6 +406,9 @@ async function main() {
   { const { MEET } = require('../src/balance.js'), T = MEET.tourist, C = MEET.crow;
     const tour = 3600 / ((T.every[0] + T.every[1]) / 2) * (T.gyul + T.litterP * T.sorryGyul), crow = Math.min(C.dayMax, 3600 / C.cd) * C.drop.reduce((a, d) => a + d[1] * d[2], 0), lim3 = day1 * 0.05;
     console.log(`오름펑크: 관광객 시간당 ${Math.round(tour)} + 까마귀 하루 최대 ${Math.round(crow)} = ${Math.round(tour + crow)} · 하루 벌이(1일차 1시간) ${day1} 의 5% ${Math.round(lim3)} → ${tour + crow <= lim3 ? '통과' : '넘음'}`); }
+  // 돌탑 소원 (#127): 함께 기도(하루 prayPerDay 번) + 내 소원에 받은 기도(하루 gotPerDay 번까지) 귤의 하루 최대가 1일 벌이의 10% 안, 5일 합이 5일 벌이의 1% 안
+  { const W = B.WISH, per = W.prayGyul * W.prayPerDay + W.gotGyul * W.gotPerDay, lim2 = day1 * 0.1, five = per * 5, tot5 = storyEarn || 0;
+    console.log(`돌탑 소원: 기도 ${W.prayGyul}×${W.prayPerDay} + 받은 기도 ${W.gotGyul}×${W.gotPerDay} = 하루 최대 ${per} · 1일 벌이 ${day1} 의 10% ${Math.round(lim2)} → ${per <= lim2 ? '통과' : '넘음'}` + (tot5 ? ` · 5일 ${five} = 5일 벌이 ${tot5.toLocaleString()} 의 ${(five / tot5 * 100).toFixed(2)}% → 1% 아래 ${five / tot5 < 0.01 ? '통과' : '넘음'}` : '')); }
   console.log(`잭팟: 확률 1/${Math.round(1 / J.p)}, 귤 ${J.gyul} → 평균 시간당 약 ${Math.round(tot)} (잭팟만 +${Math.round(tot - base)}) · 시간당 잭팟 ${(3600 / avgC * J.p).toFixed(1)}번 · 오름 1일차 시간당 ${day1} 의 절반 ${Math.round(lim)} → ${tot <= lim ? '통과' : '넘음'}`);
   // 퀘스트 (#158): 첫날(구역 1) 줄기 보상 합이 첫날 귤 벌이의 QUESTS.dayCap 을 넘지 않게. 둘째 날 이후 구역 줄도 그날 벌이(가운데 값)와 견줌
   { const Q = B.QUESTS, sum = (z) => Q.main.filter((q) => q.z === z).reduce((a, q) => a + (q.reward?.gyul || 0), 0), q1 = sum(1), cap = Math.round(day1 * Q.dayCap);

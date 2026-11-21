@@ -6,6 +6,7 @@ import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
 import { cleanText, nickOk, nickBad, nickPrice } from '../../src/safetext.js';
 import { checkSave } from './validate.js';
 import { kstDay, weekStart, lookOf } from '../../src/rankday.js';
+import { wishInit, wishList, wishPut, wishPray, wishNews, wishReport, wishReported, wishAdmin, wishPurge } from './wishes.js';
 
 const hairOk = (k) => !!HAIR.byKey[k] || k === 'hat:cap';
 
@@ -53,8 +54,17 @@ export class Accounts extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS onlpk (d INTEGER PRIMARY KEY, n INTEGER, at INTEGER)');
     // 이용 통계 (#121): 날(한국 날 번호)·출처(live·dev·adm)·키마다 합과 횟수 한 줄. 계정·IP 는 넣지 않음
     this.sql.exec('CREATE TABLE IF NOT EXISTS mt (d INTEGER, src TEXT, k TEXT, sum REAL, n INTEGER, PRIMARY KEY (d, src, k))');
+    wishInit(this.sql); // 돌탑 소원 (#127, wishes.js)
     this.rkCache = new Map();
   }
+  /* ---------- 돌탑 소원 (#127): server/src/wishes.js ---------- */
+  wishList(cid, me) { return wishList(this.sql, cid, me); }
+  wishPut(sub, cid, text, t) { return wishPut(this.sql, sub, cid, text, t); }
+  wishPray(who, id, login, t) { return wishPray(this.sql, who, id, { login }, t); }
+  wishNews(sub) { return wishNews(this.sql, sub); }
+  wishReport(who, id) { return wishReport(this.sql, who, id); }
+  wishReported() { return wishReported(this.sql); }
+  wishAdmin(id, act) { return wishAdmin(this.sql, id, act); }
   // 방이 알려 준 사람 수 (#186, room.js report). 0명이면 지움. 오래 소식이 없는 방(꺼진 방)은 빼고 셈
   roomCount(room, n, login, t = Date.now()) {
     if (typeof room !== 'string' || !/^[a-z0-9-]{1,48}#\d{1,2}$/.test(room)) return;
@@ -264,13 +274,14 @@ export class Accounts extends DurableObject {
   // 최근 days 날 (오늘 포함): [{ d, src, k, sum, n }]
   metricsList(days, t = Date.now()) { return this.sql.exec('SELECT d, src, k, sum, n FROM mt WHERE d > ? ORDER BY d DESC, src, k', kstDay(t) - days).toArray(); }
   rankMe(sub, srv, t = Date.now()) { return { srv, day: this.rankOf(sub, 'day', srv, t), week: this.rankOf(sub, 'week', srv, t), all: this.rankOf(sub, 'all', srv, t) }; }
-  del(sub) { this.sql.exec('DELETE FROM acc WHERE sub = ?', sub); this.sql.exec('DELETE FROM rkd WHERE sub = ?', sub); this.sql.exec('DELETE FROM rka WHERE sub = ?', sub); this.rkCache.clear(); return { ok: true }; }
+  del(sub) { this.sql.exec('DELETE FROM acc WHERE sub = ?', sub); this.sql.exec('DELETE FROM rkd WHERE sub = ?', sub); this.sql.exec('DELETE FROM rka WHERE sub = ?', sub); this.sql.exec('DELETE FROM wish WHERE sub = ?', sub); this.rkCache.clear(); return { ok: true }; }
   purge(cutoff) {
     this.sql.exec('DELETE FROM rv WHERE exp < ?', Date.now());
     const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff);
     this.sql.exec('DELETE FROM clamp WHERE at < ?', Date.now() - NET.clampKeepDays * 864e5); this.sql.exec('DELETE FROM gift WHERE at < ? AND got = 1', Date.now() - NET.clampKeepDays * 864e5); // #188
     this.sql.exec('DELETE FROM mt WHERE d < ?', kstDay() - METRICS.keepDays); // 이용 통계 90일 (#121)
     this.sql.exec('DELETE FROM rkd WHERE d < ? OR sub NOT IN (SELECT sub FROM acc)', kstDay() - RANK.dayKeep); this.sql.exec('DELETE FROM rka WHERE sub NOT IN (SELECT sub FROM acc)'); this.rkCache.clear();
+    wishPurge(this.sql); // #127
     return n;
   }
   count() { return this.sql.exec('SELECT COUNT(*) AS n FROM acc').one().n; }
