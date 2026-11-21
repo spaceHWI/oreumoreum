@@ -8,7 +8,7 @@
 //    멀티: net.js 가 옷 묶음(#115)과 같이 tt 로 바뀔 때만 보냄, 서버 roomcore 는 범위만 봄. 감독 문 'title'(구역 3) 이 열리면 소개 한 줄
 //    새 사건: boar-stare(멧돼지 앞 10초)·trash-day-500(하루 500개)·quest-boss1(퀘스트 '구역의 주인')·note-all. 까마귀·하르방(#163)은 그 기능이 ach.emit 으로 냄
 // 저장 save.punk = { title, notes {id: 주운 때}, unread [id], radio 1|0, day {d, n}, ev {한 번만 낸 사건} }
-// dev: __oreum.punk
+// dev: __oreum.punkWorld (__oreum.punk 은 #164 아이템)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
@@ -296,8 +296,8 @@ late.tickPunk = (dt) => {
   if ((nextT -= dt) <= 0) { broadcast(); nextT = rnd(...R.every); }
 };
 
-/* ---------- 확인용 (__oreum.punk) ---------- */
-late.punk = {
+/* ---------- 확인용 (__oreum.punkWorld) ---------- */
+late.punkWorld = {
   radio: {
     spots: () => spots.map((s) => ({ id: s.id, x: +s.x.toFixed(1), z: +s.z.toFixed(1) })),
     near: () => +nearSpeaker().toFixed(1), on: () => radioOn(), next: (v) => { if (v != null) nextT = v; return +nextT.toFixed(1); },

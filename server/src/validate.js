@@ -2,6 +2,7 @@
 // - 가진 것(옷·탈것·머리·장비 단계)은 목록에 있는 것만
 // - 새로 산 것의 값을 더하고, 귤이 늘어난 몫(번 귤 = 지금 귤 + 쓴 귤 - 지난 귤)은 계정의 '벌 수 있는 몫' 안에서만 (#144)
 //   ① credit: 시간이 지나면 earnPerSec 씩 차고 earnBurst 에서 멈춤 (토큰 통. 적·업적·낚시·보너스)
+//   ③ swarm: 저장의 save.swarm.earn(들판 떼로 번 귤 누적, #173)이 늘어난 몫을 지난 저장 뒤 시간 × swarmPerSec 까지 (모아 두지 않음: 자주 저장해도 늘지 않음)
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText } from '../../src/safetext.js';
@@ -50,6 +51,7 @@ function norm(s) {
     if (isObj(c)) for (const k of ['hat', 'top', 'bottom', 'shoes']) { const n = c[k]; if (Number.isInteger(n) && n >= 0 && n < LOOK_COLORS[k].length) o[k] = n; }
     s.look.colors = o;
   }
+  if (!isObj(s.swarm)) s.swarm = {}; s.swarm.earn = int(s.swarm.earn, 0, 1e12, 0); // 들판 떼(#173)로 번 귤 누적 (③)
   if (isObj(s.season) || s.season !== undefined) s.season = isObj(s.season) && s.season.xmas !== undefined ? { xmas: cleanXmas(s.season.xmas) } : undefined; // 철 이벤트 (#180)
   if (s.season === undefined) delete s.season;
   if (s.backs !== undefined) { // 배낭 겉모습 (#164): 목록에 있는 것만, 고른 것은 가진 것만
@@ -141,13 +143,14 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
     return { save: S, fixed, acc: { credit, pickCredit, bank } };
   }
   const sx = seasonCheck(P, S, { xday, treeDone }, fixed, P.coins + credit + bank); // 철 이벤트 (#180)
-  const room = credit + bank + sx.room; // 이번에 늘 수 있는 귤
+  const swarm = Math.min(Math.max(0, S.swarm.earn - P.swarm.earn), dt * NET.swarmPerSec); // ③ 들판 떼 몫 (#173): 적힌 만큼, 시간당 상한까지
+  const room = credit + bank + sx.room + swarm; // 이번에 늘 수 있는 귤
   let spent = spentOf(P, S) + sx.spent;
   if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
   const gain = S.coins + spent - P.coins;
   if (gain > room) { S.coins = Math.max(0, Math.floor(P.coins + room - spent)); fixed.push('coins'); }
-  const used = Math.max(0, S.coins + spent - P.coins - sx.room), fromBank = Math.min(bank, used);
-  bank -= fromBank; credit -= used - fromBank;
+  const used = Math.max(0, S.coins + spent - P.coins - sx.room), fromBank = Math.min(bank, used), fromSwarm = Math.min(swarm, used - fromBank);
+  bank -= fromBank; credit -= used - fromBank - fromSwarm;
   const pg = S.trash.total - P.trash.total;
   if (pg > pickCredit) { S.trash.total = Math.floor(P.trash.total + pickCredit); fixed.push('picked'); }
   pickCredit -= Math.max(0, S.trash.total - P.trash.total);

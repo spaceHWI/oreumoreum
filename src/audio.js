@@ -297,6 +297,16 @@ export class Sound {
       [1, 2.01].forEach((m, k) => { const o = c.createOscillator(); o.type = k ? 'sine' : 'triangle'; o.frequency.value = fr * m; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07 * vol / (k * 3 + 1), t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 1.15); }); });
   }
 
+  ufo() { // 첫 화면 UFO (#150): 낮은 '웅' 한 번 (떨리며 커졌다 작아짐)
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime, T = 2.4;
+    const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(62, t); o.frequency.linearRampToValueAtTime(48, t + T);
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 260;
+    const lfo = c.createOscillator(); lfo.frequency.value = 7; const lg = c.createGain(); lg.gain.value = 0.35; lfo.connect(lg); const tr = c.createGain(); tr.gain.value = 1; lg.connect(tr.gain);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + T);
+    o.connect(f); f.connect(tr); tr.connect(g); g.connect(this.sfx); o.start(t); lfo.start(t); o.stop(t + T + 0.05); lfo.stop(t + T + 0.05);
+  }
+
   beep(hi) {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

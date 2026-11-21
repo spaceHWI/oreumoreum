@@ -100,7 +100,10 @@ import './game/buddies.js'; // 동료 캐릭터 3명 (#172)
 import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: 적·우두머리 후크를 감쌈)
 import './game/ending.js'; // 엔딩 시네마틱 (#168)
 import './game/story.js'; // 이야기 이벤트 (#168)
+import './game/swarm.js'; // 들판 떼 (#173)
+import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/start.js';
+import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
 import './game/debug.js';
