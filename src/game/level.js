@@ -266,7 +266,7 @@ late.augFoot = () => {
 .lv-tab .lt-a b { font-size: 14px; } .lv-tab .lt-a i { font-style: normal; color: #ffc14d; font-size: 12px; letter-spacing: 1px; }
 .lv-tab .lt-a .bk { display: none; font-size: 12px; line-height: 1.35; font-family: inherit; } .lv-tab .lt-a.flip .bk { display: block; } .lv-tab .lt-a.flip .ic, .lv-tab .lt-a.flip i { display: none; }
 .lv-tab .lt-a .fd { font-size: 10px; opacity: .8; display: inline-flex; gap: 2px; align-items: center; } .lv-tab .lt-a .fd svg { width: 11px; height: 11px; }
-.lv-tab .lt-none { opacity: .7; font-size: 13px; }`; document.head.appendChild(st); }
+.lv-tab .lt-none { opacity: .7; font-size: 13px; grid-column: 1 / -1; }`; document.head.appendChild(st); }
 late.augTab = (el) => {
   const s = levelOf(L.xp), p = pendingPicks(save), list = AUGMENTS.list.filter((a) => augN(save, a.id));
   const box = document.createElement('div'); box.className = 'lv-tab';
