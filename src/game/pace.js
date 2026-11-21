@@ -152,7 +152,7 @@ export function tickPace(dt, now) {
   tickDelight(dt, now);
 }
 // 맞혔을 때 짧은 멈춤·소리 (dumpers·enemies hooks.hit)
-function onHit(pos, dead) { state.hitStop = PACE.hitStop; sound.thud?.(dead); }
+function onHit(pos, dead) { if (!late.feel?.calm) state.hitStop = PACE.hitStop; sound.thud?.(dead); } // '화면 효과 줄이기'면 멈춤 없음 (#141)
 export const pace = {
   guide, note: (k) => pacing.note(k), cleared: onCleared, heapW, hit: onHit,
   canTip: () => pacing.canTip(), canJack: () => pacing.canJack(), canMark: () => pacing.canMark(),

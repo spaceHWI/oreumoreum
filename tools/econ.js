@@ -71,6 +71,7 @@ async function main() {
   const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
   const AUG_PRI = ['bighand', 'recycle', 'light', 'deer', 'magnet', 'flower', 'bite', 'jacket', 'twin', 'burst', 'sour', 'quick']; // 벌이에 드는 것부터
   const { RIDES } = B;
+  const { FEEL } = B; let FEEL_ON = !has('--nofeel'); const COMBO_TRIP = has('--combotrip'); // 손맛 (#141): --nofeel 콤보·연속 보너스 없이, --combotrip 콤보가 더미 사이에서도 안 끊긴다고 봄(위 끝)
   const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY, SWARM, SMOKER } = B;
   const SMOKE_H = has('--nosmoker') ? 0 : 3600 * SMOKER.econNear / ((SMOKER.every[0] + SMOKER.every[1]) / 2) * SMOKER.reward; // 들머리 흡연자 (#156): 하루 1시간에 받는 귤 (들머리 둘레에 있는 시간 econNear)
   let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
@@ -101,13 +102,19 @@ async function main() {
     const g = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0) * (Z.gv || 1) * hs.reduce((s, h) => s + h.n * h.gv, 0) / n; // 쓰레기 산은 귤 × gv
     const v = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0);
     const hx = hs.reduce((s, h) => s + (h.k === 'mt' ? LEVEL.xp.mt : LEVEL.xp.heap), 0) / n; // 쓰레기 하나에 얹히는 더미 경험치 (#159)
-    return { id: Z.id, name: Z.name, n, avgD, step: tour / n, g, v, rec: Z.rec, hx };
+    return { id: Z.id, name: Z.name, n, avgD, step: tour / n, g, v, rec: Z.rec, hx, hn: hs.map((h) => h.n) };
   });
   const TOTAL = zones.reduce((s, z) => s + z.n, 0);
   // 쓰레기 하나 귤: 클린하우스 귤 × (1 + 베스트) + 드문 것(모자 배수)
   const ag = (e, id) => (e.aug ? (e.aug[id] || 0) * AG.AUG_BY[id].v : 0); // 증강 값 (#159, 장비 값에 더함)
   const gOf = (z, e) => z.g * (1 + wv(e, 'vest') + ag(e, 'recycle')) + DEX.rareChance * wv(e, 'hat') * DEX.rareGyul;
   const value = (e) => zones.reduce((s, z) => s + z.n * gOf(z, e), 0);
+  // 줍기 콤보 (#141): n 개를 한 번에 per 개씩 이어 주울 때 쓰레기 하나 평균 보너스 (줍기 j 번째 = min(max, floor(j / step) × bonus)). 더미마다·클린하우스 다녀올 때마다 끊긴다고 봄
+  const comboAvg = (n, per) => { const C = FEEL.combo, a = Math.max(1, Math.ceil(n / per)); let s = 0; for (let j = 1; j <= a; j++) s += Math.min(C.max, Math.floor(j / C.step) * C.bonus); return s / a; };
+  const comboMemo = new Map();
+  const comboOf = (z, e, m) => { if (!FEEL_ON) return 0; const per = toolOf(e).per * (1 + ag(e, 'bighand')); if (COMBO_TRIP) return comboAvg(m, per); const k = z.id + ':' + per + ':' + m; if (!comboMemo.has(k)) comboMemo.set(k, z.hn.reduce((s, n) => s + n * comboAvg(Math.min(n, m), per), 0) / z.n); return comboMemo.get(k); }; // 한 번 이어지는 길이 = 더미 크기와 배낭 한 번 중 작은 것
+  // 이어 쫓아내기 (#141): c 마리 무리를 잇달아 쫓아낼 때 한 마리 평균 보너스 비율
+  const streakAvg = (c) => { if (!FEEL_ON) return 0; const n = Math.max(1, Math.round(c)); let s = 0; for (let i = 1; i <= n; i++) s += Math.min(FEEL.streak.max, (i - 1) * FEEL.streak.bonus); return s / n; };
 
   const NORIDE = has('--norides'), SKIP = has('--skip'), RIDE_FLAT = 0.35, RIDE_OFF = 0.3, RIDE_T = 2;
   // 클린하우스 ↔ 구역 왕복 시간 (편도 d)
@@ -123,7 +130,7 @@ async function main() {
   function trip(z, left, e) {
     const tool = toolOf(e), m = Math.min(left, Math.max(1, Math.floor(capOf(e) / z.v))), sp = spdOf(e);
     const t = travel(e, z.avgD) + m * z.step / sp + m * tool.time / tool.per / (1 + ag(e, 'bighand')) + CLEANHOUSE.dumpTime; // 큰손: 한 번에 더 주움
-    return { t, gy: m * gOf(z, e), m, xp: m * (LEVEL.xp.trash + z.hx) };
+    return { t, gy: m * (gOf(z, e) + z.g * (1 + wv(e, 'vest') + ag(e, 'recycle')) * comboOf(z, e, m)), m, xp: m * (LEVEL.xp.trash + z.hx) };
   }
   const clearT = (z, e) => { let t = 0, left = z.n; while (left >= 1) { const r = trip(z, left, e); t += r.t; left -= r.m; } return t; };
   // 장비 점수 (#137, src/gearscore.js 와 같은 셈. 등급·강화는 아직 없음)
@@ -153,9 +160,9 @@ async function main() {
     const n = Math.ceil(hp / w.dmg), each = w.id === 'bow' ? BOW.total : w.cd || HAND_T;
     return { t: n * each, gy: w.perGyul ? n / w.perGyul : 0 };
   };
-  function mobFight(kind, st) {
+  function mobFight(kind, st, cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2) {
     const E = ENEMIES[kind], w = weaponOf(st), k = killOf(E.hp, w);
-    return { t: 3 + k.t, gy: E.reward.gyul + rgEV(kind, E.reward.gyul, B.ENEMY_DROP.max) + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
+    return { t: 3 + k.t, gy: E.reward.gyul * (1 + streakAvg(cnt)) + rgEV(kind, E.reward.gyul, B.ENEMY_DROP.max) + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) }; // 이어 쫓아내기 보너스 (#141)
   }
 
   // 들판 떼 (#173): 구역 z(번호)·무기 단계 wt 로 들판에 있는 1초의 귤 (조각 포함, 탄 값 뺌)
@@ -255,7 +262,7 @@ async function main() {
         if (!NOFIELD && !has('--nospots') && battle) {
           const z = zones[b.i].id, DN = FIELD.den.n[z] || 0;
           for (let k = 0; k < DN; k++) { const id = z + '-' + k; if (st.tAll - (st.denAt[id] ?? -1e9) < FIELD.den.reopen) continue; st.denAt[id] = st.tAll;
-            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st); add(20 + f.t * cnt); gainXp(cnt * AG.enemyXp(ENEMIES[ENEMY_SPAWN.byZone[z]])); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; gotMat(z, LOOT.den.mats[z] + cnt * LOOT.enemy.mat); break; }
+            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st, cnt); add(20 + f.t * cnt); gainXp(cnt * AG.enemyXp(ENEMIES[ENEMY_SPAWN.byZone[z]])); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; gotMat(z, LOOT.den.mats[z] + cnt * LOOT.enemy.mat); break; }
           if (st.trDay !== d) { st.trDay = d; st.trGot = new Set(); }
           for (let k = 0; k < (FIELD.treasure.n[z] || 0); k++) { const id = z + '-' + k; if (st.trGot.has(id)) continue; st.trGot.add(id); add(25); const g = FIELD.treasure.gyul[z] + FIELD.treasure.rare * DEX.rareGyul; st.coins += g; earned += g; gotMat(z, LOOT.treasure.mats[z]); }
           FIELD.sight.list.forEach((x, k) => { if (x[0] !== z || st.sights.has(k)) return; st.sights.add(k); add(20); st.coins += FIELD.sight.gyul[z]; earned += FIELD.sight.gyul[z]; });
@@ -346,6 +353,14 @@ async function main() {
     if (!NOENH) { const ed = runs.map((x) => x.st.enhDay || Infinity).sort((a, b) => a - b)[2], day = ed === Infinity ? null : Math.floor(ed / 3600) + 1;
       const el = `${title}: 강화 칸 10개 +5 ${day ? `${day}일 (놀이 ${hm(ed)})` : `${DAYS}일 안에 못 채움`} → 목표 6~14일 ${day && day >= 6 && day <= 14 ? '통과' : '✗'}`; console.log(el); verdict.push(el); }
     if (LOG) r.buys.forEach((b) => console.log(b.when, short[b.k], b.tier, b.name, b.price));
+  }
+  // 손맛 보너스 (#141): 줍기 콤보·이어 쫓아내기로 벌이가 15% 넘게 늘지 않음. 구역마다 권장 장비로 한 번 나가기 귤, 5일(여유 25%) 벌이 (5번 가운데)
+  if (FEEL_ON && !FLOW_ONLY) {
+    const tripG = (i) => { const t = ZONES[i].id, e = { ...e0, tool: Math.min(t, TOOLS.length), bag: Math.min(t, BAGS.length), shoes: Math.min(t, SHOES.length) }; return trip(zones[i], zones[i].n, e).gy; };
+    const five = () => { const v = [1, 7, 42, 99, 123].map((sd) => seedRun('battle', 0.25, sd).days.slice(0, 5).reduce((a, d) => a + d.earned, 0)).sort((a, b) => a - b); return v[2]; };
+    const on = ZONES.map((_, i) => tripG(i)), on5 = five(); FEEL_ON = false; const off = ZONES.map((_, i) => tripG(i)), off5 = five(); FEEL_ON = true;
+    const ks = on.map((g, i) => g / off[i]), k5 = on5 / off5, ok = Math.max(...ks, k5) <= 1.15;
+    verdict.push(`손맛 보너스(콤보 ${FEEL.combo.step}개마다 +${FEEL.combo.bonus * 100}%·최대 ${FEEL.combo.max * 100}%, 연속 +${FEEL.streak.bonus * 100}%·최대 ${FEEL.streak.max * 100}%${COMBO_TRIP ? ', 더미 사이 안 끊김' : ''}): 한 번 나가기 귤 ${ks.map((k, i) => `${i + 1}:+${((k - 1) * 100).toFixed(1)}%`).join(' ')} · 5일 벌이 ${off5.toLocaleString()} → ${on5.toLocaleString()} (+${((k5 - 1) * 100).toFixed(1)}%) → 15% 아래 ${ok ? '통과' : '넘음'}`);
   }
   // 이야기 이벤트 보상 (#168): 끝 보상 합이 5일(효율) 전체 벌이의 5% 아래
   if (storyEarn > 0) { const sum = STORY.list.reduce((a, d) => a + (d.gyul || 0), 0), pct = sum / storyEarn * 100; verdict.push(`이야기 이벤트 보상 합 ${sum} = 5일 벌이 ${storyEarn.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
