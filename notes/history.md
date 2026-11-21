@@ -1394,3 +1394,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인 `node tools/daily.js [--shot]`, `tools/sec.js` 7줄, `tools/oldsave.js dailyOld,dailyBad`
 
 - #197 (오류 알림): WebGL 을 잃은 바로 그 프레임에 three 가 처음 쓰는 셰이더의 링크 글을 읽다 `.trim` 에서 멈추던 것. 브라우저가 `webglcontextlost` 를 알리기 전에는 three 가 잃은 줄 모르고 그리는데, 그때 `getProgramInfoLog`·`getShaderInfoLog` 는 글 대신 null 을 준다(three 0.170 은 null 을 보지 않음). `src/game/scene.js` 에서 렌더러를 만든 바로 뒤 이 두 함수가 null 이면 빈 글을 돌려주게 감쌈. 그 프레임만 넘기면 곧 `webglcontextlost` 가 와서 #108 안내·되살리기로 이어진다. 확인 `node tools/gllost.js $PWD lose`(진짜로 잃게 함)·`null`(iOS 처럼 셰이더 글만 null)
+
+- #192 첫 화면 로고 위 구름 모양: 크리스마스(#180)의 '첫 화면 로고에 눈 살짝'(글자 윗면 흰 눈 덩이, `season.js logoSnow`)이 구름처럼 보였음. 기간 밖엔 안 보이지만 어드민 '철 이벤트 켬' 미리 보기·12월엔 보임. 12월에도 넣지 않게 지움(`.logo-snow` CSS 도). 로고 SVG·파비콘·공유 이미지·사진 틀(`logo.js`)엔 원래 없음
+- 첫 화면 UFO(#150) 빛기둥이 땅까지: 접시는 화면 크기·가로지르는 길은 그대로 두고, 높이는 로고 아랫선 조금 아래(폰 가로처럼 로고가 화면 가운데면 로고 위), 거리는 그 화면 자리 시선이 오름 능선에 가장 가까워지는 곳(`ufoDepth`, 땅에 부딪히면 땅 위 hover)으로 매 프레임 잡음. 빛기둥은 세상 기준 수직 원뿔대로 땅까지(1.5m 땅속), 위 진하고 아래 옅게(꼭짓점 색, 더하기 섞기). 닿은 자리 빛 웅덩이(drape)·빛 조각 10개, 저사양은 빛기둥만(예전엔 저사양에 빛기둥 없음). 수치 `balance.js UFO.below·hover·beam·pool·sparks`
+- 이야기 이벤트 '수상한 불빛'(#168) UFO 는 다른 모양(makeUfo)이지만 빛기둥 길이를 지나는 자리 땅 높이로 바꿈
+- 확인: `__oreum.ufo()` 뒤 `__oreum.ufoInfo().ground`(땅 x·y·z, 빛기둥 길이 L, 거리 D). 그림 `notes/shots/192-*.jpg`
