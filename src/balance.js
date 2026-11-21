@@ -261,7 +261,7 @@ export const BLOOM_FX = {
   zone: { camT: 1.5, camDist: 0.6, camPitch: 0.2, column: 260, colT: 2.2, colH: 26, ring: 42, ringT: 2.4, glowT: 2.4, bannerT: 3.2, vib: [30, 50, 30, 50, 90] },
 };
 // 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음
-// 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
+// 주기 = every × crowdGap(사람 수) (#131 src/refill.js). players 는 기본 인원 1 (멀티는 방이 센 값 {t:'np'})
 // 한 명 기준 한 시간에 오름 전체 쓰레기 × hourFrac 만큼 쌓임 (3분마다 한 번 → 한 번에 평균 약 38개).
 // 투기꾼은 작은 더미 하나(amt), 트럭 양은 이 평균이 맞게 자동 계산 (src/dumpers.js DUMP_AMT, 약 80)
 // 구역 고르는 무게 = zoneBase + 그 구역 깨끗한 정도 (깨끗한 구역일수록 자주)
@@ -285,8 +285,15 @@ export const DUMP = {
   bagStay: 20, // 땅에 떨어진 봉투가 보이는 시간(초)
   maxTrip: 300, // 한 상태가 이보다 오래 걸리면 조용히 사라짐
   warnT: 3, // 나타날 때 화면 가장자리 방향 표시 시간(초)
-  offlineMaxH: 8, // 접속하지 않은 시간은 한 명 기준 속도로 쌓고, 이 시간 이상이면 오름 전체가 가득
+  // 아무도 없는 동안 (#131, src/refill.js emptyFill): 빈자리가 offlineHalfMin 분이면 절반, offlineMaxH 시간이면 가득 (처음에 더 빨리 참).
+  // 멀티는 방(server roomcore)이 마지막 사람이 나간 시각을 기억해 다음 사람이 들어올 때 한꺼번에, 혼자 하기·손님은 기기 기록(trash seen)으로 같은 규칙.
+  // offlineZone: 구역별 시간 배율 (작을수록 먼저 참. 구역 1·2 를 먼저). 예전: 한 명 기준 속도로 8시간에 가득
+  offlineMaxH: 1.5, offlineHalfMin: 30, offlineZone: { 1: 0.6, 2: 0.8 },
   offlineMin: 60, // 이보다 짧게 비운 건 세지 않음(초)
+  // 같이 있는 사람 수 (#131, src/refill.js): 오름 전체 쌓는 속도 = 한 명 기준 × n^crowdExp. 각자 둘레 투기꾼이 한 사람 몫(n^crowdExp ÷ n)씩 쌓음
+  // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
+  // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
+  crowdExp: 0.8, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
 };
@@ -1240,7 +1247,7 @@ export const NET = {
   presenceMax: 1500,  // 한 번에 보내는 내 상태 크기 상한 (바이트)
   msgPerSec: 15,      // 한 사람이 1초에 보낼 수 있는 메시지 (넘으면 버림)
   hitPerSec: 3, hitRange: 45, // 귤·활 맞힘 알림: 1초에 몇 번, 맞힌 사람과 거리 상한(m)
-  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭, 방장만): 1분에 넣는 수, 한꺼번에(접속 안 한 동안 쌓인 몫) 넣을 수 있는 수
+  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭): 한 사람이 1분에 넣는 수·한꺼번에. 방 전체는 putPerMin × (방이 센 사람 수)^DUMP.crowdExp (#131, 서버가 셈. 방장 + 움직이는 사람만). 빈 방이었던 몫은 방이 직접 채움
   // 저장 확인: 클라이언트가 보낸 귤·장비를 그대로 믿지 않음
   // 귤이 늘 수 있는 몫 (#144): ① 작은 몫(토큰 통: 적·업적·낚시·보너스) + ② 번 몫(earn_bank: 방이 받아 준 줍기 × 더미 구역 값, server/src/heaps.js ZONE_GYUL)
   //   클린하우스에 버린 귤은 ② 에서 먼저 씀. #137 의 고정 큰 몫(earnBurst 100000, earnPerSec 80)은 한 번에 10만 귤 부풀리기를 받아 줘서 되돌림
