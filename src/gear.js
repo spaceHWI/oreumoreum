@@ -14,7 +14,8 @@ import * as THREE from 'three';
 import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
-import { addClothes, slippers, CLOTH_BUILD, COVER } from './clothes.js';
+import { addClothes, clothAcc, slippers, dark, CLOTH_BUILD, COVER } from './clothes.js';
+import { CLOTHES, LOOK_COLORS } from './balance.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
 function dataGeo(D) {
@@ -187,6 +188,12 @@ Object.assign(ACCESSORIES, {
   'shoes:slip': { slot: 'shoes', label: '쓰레빠', skin: true, build: slippers },
 });
 addClothes(ACCESSORIES);
+// 처음 고르는 기본 옷 색 (#155): 기본 모자·반팔·반바지·쓰레빠의 색 바꾼 장비 'id~번호' (0번 = 원래 id). src/lookcolors.js 가 고름
+for (const k of ['hat', 'top', 'bottom']) {
+  const c = CLOTHES.find((x) => x.id === LOOK_COLORS.ids[k]);
+  if (c) LOOK_COLORS[k].forEach(([col], i) => { if (i) ACCESSORIES[`${c.id}~${i}`] = clothAcc(c, { ...c.look, main: col, acc: dark(col, LOOK_COLORS.dark) }); });
+}
+LOOK_COLORS.shoes.forEach(([col], i) => { if (i) ACCESSORIES[`shoes:slip~${i}`] = { ...ACCESSORIES['shoes:slip'], build: (mat) => slippers(mat, col, dark(col, LOOK_COLORS.dark)) }; });
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];
 export const BAG_GEAR = ['back:bag1', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];
 export const SHOE_GEAR = ['shoes:slip', 'shoes:s2', 'shoes:s3', 'shoes:s4', 'shoes:s5'];

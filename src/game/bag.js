@@ -146,6 +146,7 @@ function tierRow(k, name, L, shop) { // 신발: 산 단계까지 가짐, 가장 
     b.addEventListener('click', () => (own ? toast(on ? `${t.name} · 신는 중` : `${L[cur - 1].name}을(를) 신고 있어요 (더 좋은 신발)`) : lockHint(row, t.name, shop, t.price)));
     grid.append(b);
   });
+  if (k === 'shoes' && cur === 1) row.append(late.baseColorRow('shoes')); // 쓰레빠를 신고 있으면 색 바꾸기 (#155)
 }
 function hairRow() { // 머리: 가진 머리는 눌러서 바꿈, 없는 것은 루이네미장원
   if (!save.look || !late.HEAD_SVG) return;

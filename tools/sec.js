@@ -148,6 +148,10 @@ async function startServers() {
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, nick: bad } } });
     const nk2 = (await req('dev', '/me', { token: A.token })).j.save.nick;
     ok(!/[<>‮\u0000]/.test(nk2) && [...nk2].length <= 16, `저장 닉네임 다듬음 (${JSON.stringify(nk2)})`);
+    // 기본 옷 색 번호 (#155): 범위 밖·이상한 값은 버림
+    await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, look: { sex: 'm', skin: 0, colors: { hat: 99, top: -1, bottom: '3', shoes: 7, x: 5 } } } } });
+    const lc = (await req('dev', '/me', { token: A.token })).j.save.look?.colors;
+    ok(JSON.stringify(lc) === JSON.stringify({ shoes: 7 }), `범위 밖 옷 색 번호 버림 (${JSON.stringify(lc)})`);
 
     /* ---------- 방 (이동·줍기·폭주·맞힘) ---------- */
     const P = await sock('dev', 'oreum-namsongi-battle', { ch: 3, token: A.token });

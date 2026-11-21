@@ -10,6 +10,8 @@ import { cam, followCam } from './camera.js';
 import { closePanels, cancelAll, ach } from './hud.js';
 import { marker } from './input.js';
 import { net } from './room.js';
+import { LC_SLOTS, tintGear, lcClean, colorDots, markDots } from '../lookcolors.js'; // 기본 옷 색 (#155)
+import { LOOK_COLORS } from '../balance.js';
 
 Object.assign(late, { openSign, leaveTo }); // 옷장은 내 가방(#166, bag.js)으로 옮김 // 앞 파일에서 부르는 함수
 
@@ -28,19 +30,20 @@ const wearHair = (key) => { save.outfit.gear = { ...(save.outfit.gear || {}), ha
 // 머리는 루이네 미장원(#58)에서만 바꿈 (상점 옷 탭·옷장의 머리 줄은 없앰)
 // 고르기 화면: 성별(기본 머리) 둘 + 피부색 셋 + 확인. 고르면 바로 캐릭터에 입혀 보임
 export function lookPreview() {
-  const of = { ...save.outfit, skin: { color: SKIN_TONES[lookS.skin] }, gear: { ...(save.outfit.gear || {}), ...clothGear(), hair: HAIR.start[lookS.sex], hat: CL.wear.hat || 'hat:none' } };
+  const of = { ...save.outfit, skin: { color: SKIN_TONES[lookS.skin] }, gear: tintGear({ ...(save.outfit.gear || {}), ...clothGear(), hair: HAIR.start[lookS.sex], hat: CL.wear.hat || 'hat:none' }, lookS.colors) };
   runner.apply(of);
   document.querySelectorAll('#look [data-sex]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.sex === lookS.sex)); b.innerHTML = HEAD_SVG(HAIR.start[b.dataset.sex], SKIN_TONES[lookS.skin]); });
   document.querySelectorAll('#look [data-skin]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.skin === lookS.skin)));
+  document.querySelectorAll('#look-colors .lc-dots').forEach((r) => markDots(r, lookS.colors[r.dataset.k]));
 }
 export function openLook() {
   if (lookS.open) return;
   cancelAll(); player.target = null; marker.visible = false;
-  lookS.open = true; lookS.t = 0; lookS.sex = save.look?.sex || 'm'; lookS.skin = save.look?.skin || 0;
+  lookS.open = true; lookS.t = 0; lookS.sex = save.look?.sex || 'm'; lookS.skin = save.look?.skin || 0; lookS.colors = lcClean(save.look?.colors);
   cam.mode = 'look'; $('look').hidden = false; document.body.classList.add('looking'); lookPreview();
 }
 export function closeLook() {
-  save.look = { sex: lookS.sex, skin: lookS.skin };
+  save.look = { sex: lookS.sex, skin: lookS.skin, colors: lcClean(lookS.colors) };
   const start = HAIR.start[lookS.sex]; save.hairs[start] = 1;
   save.outfit.skin = { color: SKIN_TONES[lookS.skin] }; save.outfit.gear = { ...(save.outfit.gear || {}), hair: start }; syncEquipGear();
   lookS.open = false; $('look').hidden = true; document.body.classList.remove('looking'); cam.mode = 'follow';
@@ -51,6 +54,10 @@ export function closeLook() {
   ['m', 'f'].forEach((v) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.sex = v; b.setAttribute('aria-label', v === 'm' ? '기본 남성 · 짧은 머리' : '기본 여성 · 단발'); b.addEventListener('click', () => { lookS.sex = v; lookPreview(); }); sx.append(b); });
   SKIN_TONES.forEach((c, i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.skin = i; b.style.background = c; b.setAttribute('aria-label', ['밝은 피부', '중간 피부', '어두운 피부'][i]); b.addEventListener('click', () => { lookS.skin = i; lookPreview(); }); sk.append(b); });
   $('look-ok').addEventListener('click', closeLook);
+  // 기본 옷 색 (#155): 모자·티·바지·신발 줄마다 색 동그라미, 아무거나
+  const lc = $('look-colors');
+  LC_SLOTS.forEach((k) => { const r = document.createElement('div'); r.className = 'lc-row'; r.innerHTML = `<span class="lc-k">${LOOK_COLORS.names[k]}</span>`; r.append(colorDots(k, 0, (i) => { lookS.colors[k] = i; lookPreview(); })); lc.append(r); });
+  $('look-rand').addEventListener('click', () => { LC_SLOTS.forEach((k) => { lookS.colors[k] = Math.floor(Math.random() * LOOK_COLORS[k].length); }); lookPreview(); });
 }
 $('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; $('nick-mirror').textContent = save.nick; persist(); });
 

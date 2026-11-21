@@ -45,6 +45,10 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const per = (ms) => Math.ceil(ms / NET.identMs);
     ok(s1.n >= 3 && s1.withO <= per(s1.ms) && s1.withO < s1.n && s2.withO >= 1 && s2.withO <= 1 + per(s2.ms), `옷·닉네임은 바뀔 때만 실음 (자리만 ${s1.n}번·그중 옷 ${s1.withO}번, 옷 바꾼 뒤 ${s2.withO}번, ${(s2.ms / 1000).toFixed(1)}초)`);
     ok(await B.p.evaluate((h) => [...window.__oreum.net.peersById.values()][0]?.data.o?.h === h, hat), `옷 바꾸면 B 화면에 바로 (${hat})`);
+    // 기본 옷 색 (#155): A 가 고른 색이 B 에게 (장비 id 'top:w-tee~3' 로 실림, B 는 그 장비로 그림)
+    const tee = await A.p.evaluate(() => { const o = window.__oreum; o.save.look = { ...(o.save.look || { sex: 'm', skin: 0 }), colors: { hat: 0, top: 3, bottom: 0, shoes: 0 } }; o.clothes.wear('top', 'top:w-tee'); o.player.pos.x += 0.5; return o.save.outfit.gear.top; });
+    const seenTee = await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.data.o?.gr?.top === t), tee);
+    ok(tee === 'top:w-tee~3' && seenTee, `A 가 고른 기본 옷 색이 B 화면에 (${tee})`);
     const C = await open('C'); await C.p.click('#enter');
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)

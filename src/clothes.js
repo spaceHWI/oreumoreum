@@ -61,7 +61,7 @@ const mesh = (g, m) => new THREE.Mesh(g, m);
 const both = (f) => [f(1), f(-1)]; // 왼쪽·오른쪽
 const at = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); return o; };
 const G = (...ms) => { const g = new THREE.Group(); ms.flat(3).forEach((m) => m && g.add(m)); return g; };
-const dark = (c, k = 0.82) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
+export const dark = (c, k = 0.82) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
 const side2 = (m) => { m.side = THREE.DoubleSide; return m; };
 
 // 옷이 덮는 기본 몸 부위 (#106, basebody.js REGION)
@@ -156,17 +156,17 @@ function hat(mat, L) {
 export const HAT_CLIP = 0.97; // 모자 윗면 조금 아래: 머리카락(똥머리 등)이 이보다 위로 나오면 감춤 (#106)
 export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat };
 // 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
-export const slippers = (mat) => {
-  const S = mat('sole', '#3c8fd0'), B = mat('strap', '#2f6db5');
+export const slippers = (mat, sole = '#3c8fd0', strap = '#2f6db5') => { // 색은 처음 고르기(#155)에서 바꿀 수 있음
+  const S = mat('sole', sole), B = mat('strap', strap);
   return G(both((s) => [at(new RoundedBoxGeometry(0.13, 0.016, 0.235, 2, 0.007), S, s * 0.104, 0.008, 0.08), at(new RoundedBoxGeometry(0.128, 0.026, 0.05, 2, 0.011), B, s * 0.104, 0.062, 0.115)]));
 };
-// ACCESSORIES 에 옷을 붙임 (gear.js 가 부름)
-export function addClothes(ACC) {
-  CLOTHES.forEach((c) => {
-    const L = c.look || {}, f = CLOTH_BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
-    const rigid = c.slot === 'hat';
-    const covers = c.slot === 'top' ? (L.long ? COVER.teeLong : COVER.tee) : c.slot === 'bottom' ? (L.kind === 'long' ? COVER.long : COVER.shorts) : c.slot === 'jacket' ? COVER.jacket : [];
-    ACC[c.id] = { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: HAT_CLIP } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
-      build: (mat) => f(mat, { kind: c.slot === 'top' ? 'tee' : c.slot === 'hat' ? 'cap' : 'socks', main: '#bbbbbb', acc: '#888888', ...L }) };
-  });
+// 옷 하나 → ACCESSORIES 항목. look 을 주면 그 모양 값으로 (처음 고르는 기본 옷 색 #155)
+export function clothAcc(c, look = c.look) {
+  const L = look || {}, f = CLOTH_BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
+  const rigid = c.slot === 'hat';
+  const covers = c.slot === 'top' ? (L.long ? COVER.teeLong : COVER.tee) : c.slot === 'bottom' ? (L.kind === 'long' ? COVER.long : COVER.shorts) : c.slot === 'jacket' ? COVER.jacket : [];
+  return { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: HAT_CLIP } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
+    build: (mat) => f(mat, { kind: c.slot === 'top' ? 'tee' : c.slot === 'hat' ? 'cap' : 'socks', main: '#bbbbbb', acc: '#888888', ...L }) };
 }
+// ACCESSORIES 에 옷을 붙임 (gear.js 가 부름)
+export function addClothes(ACC) { CLOTHES.forEach((c) => { ACC[c.id] = clothAcc(c); }); }
