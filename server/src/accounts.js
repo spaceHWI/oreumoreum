@@ -1,6 +1,7 @@
 // 계정 저장 (#7): Durable Object 하나(이름 'all') 안의 SQLite. 칸은 sub·닉네임·게임 저장·치운 양·접속 시각뿐
 import { DurableObject } from 'cloudflare:workers';
-import { NET, FEEDBACK, RANK, HAIR, NICK } from '../../src/balance.js';
+import { NET, FEEDBACK, RANK, HAIR, NICK, METRICS } from '../../src/balance.js';
+import { isMaxKey } from './metrics.js';
 import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
 import { cleanText, nickOk, nickBad, nickPrice } from '../../src/safetext.js';
 import { checkSave } from './validate.js';
@@ -45,6 +46,8 @@ export class Accounts extends DurableObject {
     }
     // 철 이벤트 트리 (#180): 기간 동안 모두가 주운 수를 날마다 하나로 더함 (d = 한국 날 번호). 서버가 확인한 줍기만
     this.sql.exec('CREATE TABLE IF NOT EXISTS ssn (d INTEGER PRIMARY KEY, n INTEGER)');
+    // 이용 통계 (#121): 날(한국 날 번호)·출처(live·dev·adm)·키마다 합과 횟수 한 줄. 계정·IP 는 넣지 않음
+    this.sql.exec('CREATE TABLE IF NOT EXISTS mt (d INTEGER, src TEXT, k TEXT, sum REAL, n INTEGER, PRIMARY KEY (d, src, k))');
     this.rkCache = new Map();
   }
   // 이번 철 트리 합계: 기간 첫날부터 오늘까지
@@ -198,12 +201,25 @@ export class Accounts extends DurableObject {
     if (!mine) return { rank: 0, n: 0 };
     return { rank: 1 + this.sql.exec(`SELECT COUNT(*) AS n FROM (${q}) WHERE s > ?`, ...a, mine).one().n, n: mine };
   }
+  // 이용 통계 묶음 더하기 (#121, server/src/metrics.js cleanMetrics 를 거친 줄). 하루·출처마다 새 키는 METRICS.dayKeys 까지 (넘으면 있던 키만 더함)
+  metricsAdd(src, rows, t = Date.now()) {
+    const d = kstDay(t), full = this.sql.exec('SELECT COUNT(*) AS n FROM mt WHERE d = ? AND src = ?', d, src).one().n >= METRICS.dayKeys;
+    for (const [k, s, n] of rows) {
+      const mx = isMaxKey(k);
+      if (full) this.sql.exec(`UPDATE mt SET sum = ${mx ? 'MAX(sum, ?)' : 'sum + ?'}, n = n + ? WHERE d = ? AND src = ? AND k = ?`, s, n, d, src, k);
+      else this.sql.exec(`INSERT INTO mt (d, src, k, sum, n) VALUES (?, ?, ?, ?, ?) ON CONFLICT (d, src, k) DO UPDATE SET sum = ${mx ? 'MAX(sum, excluded.sum)' : 'sum + excluded.sum'}, n = n + excluded.n`, d, src, k, s, n);
+    }
+    return { ok: true };
+  }
+  // 최근 days 날 (오늘 포함): [{ d, src, k, sum, n }]
+  metricsList(days, t = Date.now()) { return this.sql.exec('SELECT d, src, k, sum, n FROM mt WHERE d > ? ORDER BY d DESC, src, k', kstDay(t) - days).toArray(); }
   rankMe(sub, srv, t = Date.now()) { return { srv, day: this.rankOf(sub, 'day', srv, t), week: this.rankOf(sub, 'week', srv, t), all: this.rankOf(sub, 'all', srv, t) }; }
   del(sub) { this.sql.exec('DELETE FROM acc WHERE sub = ?', sub); this.sql.exec('DELETE FROM rkd WHERE sub = ?', sub); this.sql.exec('DELETE FROM rka WHERE sub = ?', sub); this.rkCache.clear(); return { ok: true }; }
   purge(cutoff) {
     this.sql.exec('DELETE FROM rv WHERE exp < ?', Date.now());
     const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff);
     this.sql.exec('DELETE FROM clamp WHERE at < ?', Date.now() - NET.clampKeepDays * 864e5); this.sql.exec('DELETE FROM gift WHERE at < ? AND got = 1', Date.now() - NET.clampKeepDays * 864e5); // #188
+    this.sql.exec('DELETE FROM mt WHERE d < ?', kstDay() - METRICS.keepDays); // 이용 통계 90일 (#121)
     this.sql.exec('DELETE FROM rkd WHERE d < ? OR sub NOT IN (SELECT sub FROM acc)', kstDay() - RANK.dayKeep); this.sql.exec('DELETE FROM rka WHERE sub NOT IN (SELECT sub FROM acc)'); this.rkCache.clear();
     return n;
   }

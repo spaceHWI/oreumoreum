@@ -317,7 +317,7 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .inbox-list li.crash .t { font-family: ui-monospace, monospace; font-size: 12px; }
 .inbox-list .t { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; margin: 2px 0; }
 .inbox-list small { opacity: .7; font-size: 11px; }
-#gyuladm .pop-body { max-height: 70vh; overflow: auto; } .grant-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; } .grant-form #grant-sub, .grant-form #grant-why { grid-column: 1 / -1; } .grant-form input { min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--hair); font: inherit; } .gadm-h { font-size: 13px; margin: 8px 0 4px; opacity: .8; }
+#mtadm .pop { width: min(96vw, 980px); max-width: none; } #mtadm .pop-body { max-height: 70vh; overflow: auto; } .mt-src { display: flex; gap: 6px; margin: 0 0 8px; } .mt-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; } .mt-table th, .mt-table td { padding: 3px 8px; border-bottom: 1px solid var(--hair); text-align: right; vertical-align: top; } .mt-table th:first-child, .mt-table td:first-child { text-align: left; position: sticky; left: 0; background: #2b2b30; z-index: 1; } .mt-table td.g { text-align: left; white-space: normal; min-width: 120px; max-width: 220px; font-size: 11px; } .mt-table tr.h td { font-weight: 700; padding-top: 10px; border-bottom: 0; } .mt-table thead th { position: sticky; top: 0; background: #2b2b30; z-index: 2; } #gyuladm .pop-body { max-height: 70vh; overflow: auto; } .grant-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; } .grant-form #grant-sub, .grant-form #grant-why { grid-column: 1 / -1; } .grant-form input { min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--hair); font: inherit; } .gadm-h { font-size: 13px; margin: 8px 0 4px; opacity: .8; }
 #dev-inbox { position: relative; } #dev-inbox .badge-dot { top: 2px; right: 4px; }
 #btn-menu { position: relative; } #btn-menu .badge-dot { top: 3px; right: 10px; }
 #feedback.overlay { z-index: 12; } /* 첫 화면 위에서도 열리게 (#77) */
@@ -1570,7 +1570,7 @@ body.newbie .dock button span { display: block; }
       <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button><button type="button" class="btn small adm-danger" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <p class="adm-note">들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</p></div>
       <div class="adm-sec" id="adm-inbox-row" hidden><div class="adm-row adm-t"><span>의견</span></div>
-      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button></div></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button><button type="button" class="btn small" id="dev-metrics">수치</button></div></div>
     </div>
   </div>
 </nav>
@@ -1749,6 +1749,14 @@ body.newbie .dock button span { display: block; }
   <div class="panel pop">
     <div class="pop-head"><h2>받은 의견</h2><span><button type="button" class="btn small" id="inbox-refresh">새로 고침</button> <button type="button" class="btn small" id="inbox-close">닫기</button></span></div>
     <div class="pop-body"><ul id="inbox-list" class="inbox-list"></ul><button type="button" class="btn small" id="inbox-more" hidden>더 보기</button></div>
+  </div>
+</div>
+
+<div class="overlay dim" id="mtadm" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>수치</h2><span><button type="button" class="btn small" id="mtadm-refresh">새로 고침</button> <button type="button" class="btn small" id="mtadm-close">닫기</button></span></div>
+    <div class="adm-btns mt-src"><button type="button" class="btn small" data-mtsrc="live" aria-pressed="true">실서버</button><button type="button" class="btn small" data-mtsrc="dev" aria-pressed="false">dev</button><button type="button" class="btn small" data-mtsrc="adm" aria-pressed="false">어드민</button></div>
+    <div class="pop-body"><table id="mt-table" class="mt-table"></table><p class="adm-note" id="mt-note"></p></div>
   </div>
 </div>
 

@@ -6,11 +6,12 @@
 // - 세션: 서명·만료 + 계정 DO 확인(지운 계정·버린 토큰 거절). WebSocket 은 주소창 대신 하위 프로토콜로 토큰을 받음 (로그에 안 남게)
 // - 어드민: 로그인 계정의 sub 가 시크릿 ADMIN_SUBS(쉼표로 여럿)에 있을 때만
 // - 로그: 아무것도 console 에 찍지 않음. IP 원문·토큰은 저장하지 않음
-import { NET, CRASHES } from '../../src/balance.js';
+import { NET, CRASHES, METRICS } from '../../src/balance.js';
 import { RANGES, SRVS } from '../../src/rankday.js';
 import { verifyGoogle, signSession, readSession, ipKey } from './auth.js';
 import { cleanItems, sendMail } from './feedback.js';
 import { groupCrashes } from './crashes.js';
+import { cleanMetrics } from './metrics.js';
 import { cleanText } from '../../src/safetext.js';
 export { Room } from './room.js';
 export { Accounts } from './accounts.js';
@@ -166,6 +167,13 @@ export default {
         const range = RANGES.includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'day';
         return json(await accounts(env).rank(s.sub, range, srv));
       }
+      // 이용 통계 (#121): 로그인 없이. 묶음 하나(text/plain, sendBeacon)를 날짜별 합계에 더하기만. 요청 수는 위 RL_API 를 같이 씀
+      if (url.pathname === '/m' && req.method === 'POST') {
+        const m = cleanMetrics(await readJson(req, METRICS.maxBytes * 2));
+        if (!m) return json({ error: 'bad' }, 400);
+        await accounts(env).metricsAdd(m.src, m.rows);
+        return json({ ok: true });
+      }
       // 철 이벤트 (#180): 서버 날짜(달력)·모두의 트리 합계. 로그인 안 해도 됨 (손님도 트리를 봄)
       if (url.pathname === '/season' && req.method === 'GET') return json(await accounts(env).seasonInfo());
       // 의견 보내기 (#77): 로그인 안 해도 됨. 저장하고 개발자 메일로 (FEEDBACK_TO 시크릿)
@@ -191,6 +199,7 @@ export default {
         if (!(s && adminSubs(env).has(s.sub))) return json({ error: 'admin' }, 403);
         const A = accounts(env);
         if (url.pathname === '/admin/clamps' && req.method === 'GET') return json(await A.clampList(Math.max(1, Math.min(NET.clampKeepDays, Math.floor(Number(url.searchParams.get('days'))) || NET.clampKeepDays))));
+        if (url.pathname === '/admin/metrics' && req.method === 'GET') return json({ days: METRICS.viewDays, rows: await A.metricsList(Math.max(1, Math.min(METRICS.keepDays, Math.floor(Number(url.searchParams.get('days'))) || METRICS.viewDays))) }); // 이용 통계 (#121)
         if (url.pathname === '/admin/grants' && req.method === 'GET') return json(await A.grantList());
         if (url.pathname === '/admin/grant' && req.method === 'POST') {
           const b = await readJson(req, 4096);

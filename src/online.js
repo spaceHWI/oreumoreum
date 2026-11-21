@@ -63,7 +63,9 @@ export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
 // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민만
-export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }) } : null;
+export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }), metrics: (days = 14) => api('/admin/metrics?days=' + (days | 0)) } : null;
+// 이용 통계 보낼 곳 (#121, metrics.js mtFlush): 서버가 없으면 ''
+export const metricsUrl = ONLINE ? SRV + '/m' : '';
 // 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
 export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
