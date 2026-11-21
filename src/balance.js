@@ -1027,6 +1027,38 @@ export const STYLE_CLOTHES = [
   { id: 'socks:s-furboot', slot: 'socks', price: 600, name: '털 장화', desc: '눈 오는 오름 필수', look: { kind: 'socks', main: '#8a6a3c', acc: '#f2ece0', h: 0.17, thick: true, fur: true } },
 ].map((c) => ({ tier: 0, style: true, fresh: '2026-11-21', ...c }));
 CLOTHES.push(...STYLE_CLOTHES);
+// 주간 옷장 (#126): LEAP '이번 주' 칸에 매주 월요일 00:00(KST) 바뀌는 한정 옷. 주 번호로 정해져 모두 같음 (src/weekly.js)
+// 지금 옷의 색·무늬 변형(새 kind 없음). 능력은 그 칸 tier 단계(4단계를 넘지 않음, 겉모습 위주), 값은 그 칸 4단계 값 × priceK. 산 옷은 계속 가짐
+// week: 몇째 주 차례(0 ~ weeks-1)에 나오는지. epoch = 0번 주가 시작한 월요일 00:00 KST
+export const WEEKLY = { epoch: Date.UTC(2026, 10, 15, 15), weeks: 8, tier: 3, priceK: 0.8, grace: 6 * 3600e3 }; // grace: 바뀐 직후 지난주 옷도 서버가 받아 줌(기기 시계 어긋남, ms)
+const WK = (week, slot, id, name, look) => ({ id: `${slot}:k-${id}`, slot, week, tier: WEEKLY.tier, price: Math.round(WEAR.price[4] * WEEKLY.priceK / 10) * 10, name, look });
+export const WEEKLY_CLOTHES = [
+  WK(0, 'hat', 'bucket-gyul', '귤빛 버킷햇', { kind: 'bucket', main: '#f29a2e', acc: '#3f9a5a' }),
+  WK(0, 'top', 'stripe-sea', '바다 줄무늬 반팔', { kind: 'tee', main: '#e8f2f6', acc: '#2f8fb0', stripes: 4 }),
+  WK(0, 'socks', 'dot-camellia', '동백 물방울 양말', { kind: 'socks', main: '#c8333a', acc: '#f6f2ea', h: 0.15, dots: '#ffffff' }),
+  WK(1, 'jacket', 'fleece-moss', '이끼 플리스', { kind: 'jacket', main: '#6f8a4a', acc: '#efe6d2', puff: true }),
+  WK(1, 'bottom', 'cargo-sand', '모래색 카고 반바지', { kind: 'shorts', main: '#c9b48a', acc: '#a8946a', pockets: true }),
+  WK(1, 'hat', 'straw-black', '검은 밀짚모자', { kind: 'straw', main: '#3a3a40', acc: '#f29a2e' }),
+  WK(2, 'vest', 'canola', '유채꽃 패딩 조끼', { kind: 'vest', main: '#f2d03a', acc: '#3f9a5a', puff: true, pockets: 1 }),
+  WK(2, 'top', 'long-basalt', '현무암 긴팔', { kind: 'tee', long: true, main: '#4a4b4f', acc: '#f29a2e', panel: true }),
+  WK(2, 'socks', 'knee-sea', '바다 무릎 양말', { kind: 'socks', main: '#2f8fb0', acc: '#f4f2ec', h: 0.19, stripes: 2 }),
+  WK(3, 'hat', 'boonie-sunset', '노을 등산 모자', { kind: 'boonie', main: '#c4513f', acc: '#f2c94c', cord: '#2b2b33' }),
+  WK(3, 'jacket', 'wind-mint', '민트 바람막이', { kind: 'jacket', main: '#8fd3c0', acc: '#4a9a88' }),
+  WK(3, 'bottom', 'long-persimmon', '감물 긴바지', { kind: 'long', main: '#b8743c', acc: '#5a3a1c', belt: true }),
+  WK(4, 'top', 'jersey-halla', '한라 저지', { kind: 'tee', main: '#3f78c0', acc: '#ffffff', stripes: 2, collar: '#f29a2e', panel: true }),
+  WK(4, 'vest', 'fish-night', '밤바다 낚시 조끼', { kind: 'vest', main: '#2f3f6a', acc: '#c9ccd2', pockets: 3 }),
+  WK(4, 'hat', 'cap-camellia', '동백 모자', { kind: 'cap', main: '#c8333a', acc: '#3f9a5a' }),
+  WK(5, 'jacket', 'rain-gyul', '귤색 방수 자켓', { kind: 'jacket', main: '#f2722c', acc: '#2b2f3a', hood: true, cuffs: true }),
+  WK(5, 'socks', 'stripe-gyul', '귤 줄무늬 양말', { kind: 'socks', main: '#fff4e0', acc: '#f29a2e', h: 0.14, stripes: 3 }),
+  WK(5, 'bottom', 'hike-forest', '숲 등산 바지', { kind: 'long', main: '#3f5a3a', acc: '#f2c94c', knee: true, pockets: true }),
+  WK(6, 'hat', 'bucket-night', '별밤 버킷햇', { kind: 'bucket', main: '#2b2f3a', acc: '#f2c94c' }),
+  WK(6, 'top', 'tee-blossom', '벚꽃 반팔', { kind: 'tee', main: '#f0a8b8', acc: '#f6f4ee', panel: true }),
+  WK(6, 'vest', 'bands-pink', '분홍 반사 조끼', { kind: 'vest', main: '#f07aa0', acc: '#f6f4ee', bands: true }),
+  WK(7, 'jacket', 'hood-gyul', '귤 후드 집업', { kind: 'jacket', main: '#f6b04a', acc: '#c87a20', hood: true }),
+  WK(7, 'bottom', 'shorts-sea', '바다 반바지', { kind: 'shorts', main: '#2f8fb0', acc: '#e8f2f6' }),
+  WK(7, 'socks', 'hike-red', '빨간 등산 양말', { kind: 'socks', main: '#c8333a', acc: '#3a3a40', h: 0.14, thick: true }),
+];
+CLOTHES.push(...WEEKLY_CLOTHES);
 // 한 벌 맞춤 (#179): 같은 묶음 3벌을 겉모습으로 입으면 캐릭터 둘레 작은 효과(src/game/outfitset.js) + 칭호(#165 에서 씀). 능력은 없음
 export const OUTFIT_SETS = [
   { id: 'haenyeo', name: '해녀', title: '물질 장인', fx: '#8fd0e8', items: ['hat:s-goggle', 'top:s-haenyeo', 'bottom:s-rubber'] },

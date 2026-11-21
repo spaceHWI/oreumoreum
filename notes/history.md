@@ -1404,3 +1404,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 동료(#172): 말 걸기 창 '귤 주기' 1개씩 하루 20개, 고맙다는 말만 (buddies.js 에 late.mateTalkNow·mateSay). 업적 뱃지 '귤 인심'(b-give, 100개). 메뉴 '귤 선물: 받음/안 받음'
 - 받은 귤은 '귤 벌기' 업적·경험치·순위에 안 들어감
 - 로컬 검사만(FAKE_AUTH) `GIFT_NEW_SEC` 로 새 계정 기다림을 바꿈 (npm run dev·sec.js dev 는 0, sec.js plain 은 기본값으로 막히는지 봄)
+
+## #126 주간 옷장 (2026-11-21)
+- LEAP 맨 앞에 '이번 주' 탭(달력 아이콘 + 남은 날 동그라미). 매주 월요일 00:00(KST)에 바뀌는 한정 옷 3벌. 주 번호(epoch 2026-11-16 월)로 정해져 모두 같음, 8주 치 24벌을 돌려 씀
+- 한정 옷은 지금 kind(cap·straw·bucket·boonie·tee·shorts·long·vest·jacket·socks)의 색·무늬 변형. 능력은 그 칸 3단계(4단계를 넘지 않게, 겉모습 위주), 값 2,560(4단계 3,200 × 0.8). 산 옷은 계속 갖고 칸 탭·내 가방에서 입음
+- 다른 주 한정 옷은 안 가졌으면 LEAP·내 가방 잠긴 칸·살 것 점에서 빠짐(weekly.js onShelf)
+- 서버(validate.js): 새로 가진 한정 옷은 서버 시계로 이번 주 것만(바뀌기 앞뒤 6시간은 이웃 주도), 아니면 되돌림('items'). 값이 따로 적힌 옷(겉모습·한정)은 예전 값 표(OLD_PRICE)로 깎지 않음 — 전에는 한정 옷이 3단계 옛 값 200 으로 셈될 뻔함
+- 멀티: 옷 id 는 gear 로 그대로 실림. 옛 클라이언트는 cleanGear 가 모르는 id 를 버려 그 칸이 기본으로 보임
+- `tools/weekly.js` 8주 치 차림 한 장, `tools/sec.js` 에 한정 옷 네 줄, `tools/online.js` 세 번째 브라우저 클릭 기다림 120초
+

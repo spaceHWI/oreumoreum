@@ -985,6 +985,10 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .wear-item .st { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; }
 .wear-item .abm { position: absolute; top: 5px; left: 5px; width: 9px; height: 9px; border-radius: 50%; background: #ffb347; box-shadow: 0 0 0 2px rgba(0,0,0,.35); } /* 능력을 주는 옷 (#179) */
 .shop-tabs button.new span { color: #ffb347; }
+#shoppop-tabs button.week { position: relative; } #shoppop-tabs button.week span { color: #ffb347; } /* 주간 옷장 (#126): 이번 주 탭 + 남은 날 동그라미 */
+#shoppop-tabs button.week .wk-d { position: absolute; top: 2px; right: 3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: var(--acc); color: var(--acc-fg); font: 800 10px/15px var(--display); font-style: normal; text-align: center; }
+.leap-week { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 6px 4px 2px; color: #fff; } .leap-week svg { width: 20px; height: 20px; color: #ffb347; flex: none; }
+.leap-week b { font-family: var(--display); font-size: 14px; } .leap-week span { font-size: 12px; opacity: .7; }
 .leap-buy .desc { display: block; opacity: .8; font-size: 12px; }
 .wear-item .st svg { width: 10px; height: 10px; }
 .wear-item .pr { position: absolute; left: 0; right: 0; bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 800; }
