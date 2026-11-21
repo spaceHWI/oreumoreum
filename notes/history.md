@@ -1167,6 +1167,19 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 가이드 퀘스트(#158)와 잇기: balance.js `QUESTS.side` 에 'st-mom'·'st-pair'·'st-night'·'st-howl'·'st-meet'·'st-sign'·'st-ufo' (오름지기에게 이야기하기, 귤 5). game/quest.js 의 셈·need 에 'story:id' (그 이벤트를 끝냈나) 를 더함
 - 확인: `__oreum.story.play('mom')` 등, `tools/fight.js mom`, `tools/econ.js`(보상 합 5% 아래), `tools/online.js`(엔딩 같이 보기)
 
+## #185 게임 안 촬영 모드 (릴스)
+- `src/game/rec.js`, 수치 `balance.js REC`. 메뉴 > 설정 '촬영: 켬' → 화면 왼쪽 위 빨간 점(누르면 시작/멈춤·길이 표시, PC 단축키 **V**: R 은 걷기/달리기라 겹침). 버튼·안내선·창은 HTML 이라 영상에 안 찍힘
+- 게임 캔버스(preserveDrawingBuffer 없음)를 update.js 가 그린 바로 뒤(`late.recFrame`) 숨은 2D 캔버스에 가운데 9:16 로 잘라 그림(30fps). 1080×1920 / 폰·저사양 720×1280, 녹화 중 3초 넘게 20fps 아래면 한 단계↓(540×960 까지, save.rec.lv 로 다음에도). 폰 세로 화면·'화면 그대로' 는 자르지 않음. 녹화 중 세로 틀 안내선(`#rec-frame`)
+- 형식: `REC.types` 순서로 isTypeSupported (mp4 avc1+aac → avc1+opus → mp4 → webm). webm 이면 인스타 안내 한 번. 소리는 `sound.master` → MediaStreamDestination(설정 '영상 소리'), 마이크 없음
+- 이름표·말풍선은 3D 스프라이트라 늘 담김. 내 이름표는 원래 없음(그래서 숨기기 스위치는 만들지 않음). 피해 숫자도 게임에 없음. 로고 글자 워터마크(기본 끔)
+- 3분 한도, 30·60초에 진동+작은 삐(ctx.destination 로 바로, 영상엔 안 담김). 멈추면 PC 는 바로 내려받기(`오름오름-YYYYMMDD-HHMM.mp4`), 폰은 공유가 되면 창 [공유 | 내려받기](Web Share 는 누른 순간에만 열려서). 처음 저장 때 '#오름오름 으로 올려 주세요'. 백그라운드로 가면 멈추고 저장
+- '방금 30초'(PC·TIER>0 만, 기본 끔): 녹화기 둘을 15초 엇갈려 30초마다 다시 시작, 30s 버튼을 누르면 더 오래 돈 쪽(15~30초)을 저장. 인코딩이 두 배라 폰에선 뺌
+- 확인 `node tools/rec.js`(3초 녹화·9:16·디코드 첫 프레임·화면 그대로·방금 30초)
+
+## #152 남송이오름 탐방 안내판 글 (2026-11-21)
+- `src/namsongi.js NS_SIGN_TEXT`: 주소·이름·표고·지형은 그대로, 본문 두 줄에 위트('쓰레기가 먼저 올라와 있어요', '보이는 건 다 치워도 됩니다'), 탐방 수칙 7줄(클린하우스 귤·귤 던지기·먹이 금지·투기꾼엔 귤·밤 능선 불빛(실마리, 답은 말하지 않음)·돌하르방·돌탑), 맨 아래 관리소 한 줄(`.sign-foot`, page.html)
+- 소로기촐리 문장은 빼고 소나무 숲·녹차밭은 본문 1 에 줄여 넣음. 'UFO 가 쓰레기를 버려요' 초안은 3장 답이라 '불빛' 실마리로 바꿈
+- 폰 375×667 에서 스크롤 없이 한 화면 (notes/shots/sign-152-phone.jpg)
 ## #173 들판 떼 (2026-11-21)
 - 새 파일 `src/game/swarm.js`(게임 연결 전부)·`src/punktext.js`(이름·말투 표 SWARM_TEXT, #165 가 이어서)·`tools/swarm.js`(자동 판). 수치 `balance.js SWARM`, 설계 `notes/growth-loop.md` 6-1절
 - 들판 = 탐방로에서 12m 넘게(9m 안이면 길). 판(`run`)이 시작되면 카메라 뒤쪽 18~26m(좁으면 넓혀)에서 그 구역 떼가 나옴. 물결은 머문 시간 4→8→14(+정예)→20(+정예 2), 5분 떼 대장 → 보물 상자(`late.swarmLoot` 자리) → 3분 단계로. 상한 PC 24·폰 16·저사양 10
