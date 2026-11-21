@@ -1,5 +1,6 @@
 // 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { THROW_AIM, WEAPONS, COMBAT } from '../balance.js';
+import { weaponMul } from '../loot.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
@@ -105,6 +106,7 @@ export function releaseTangerine() {
   let tg;
   if (shot) tg = life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy, t, ch); // 타겟 쪽으로 휨 (#148)
   else tg = life.throwTangerine(from, dir, (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1), peers, undefined, null, ch);
+  late.season?.snowThrow(tg); // 눈 쌓인 곳에서 눈덩이를 골랐으면 눈덩이로 (#180)
   if (ch) late.chargeLaunch?.(ch, 'hand', tg.mesh.position, () => !tg.enemyHit && !tg.landed && tg.mesh.parent, t);
 }
 // 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔
@@ -146,7 +148,7 @@ export function releaseArrow() {
   const peers = () => [...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }));
   const ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129)
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
-  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
+  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
   if (ch) late.chargeLaunch?.(ch, 'bow', a.mesh.position, () => life.arrows.includes(a), t);
   late.sound.bow?.();
 }

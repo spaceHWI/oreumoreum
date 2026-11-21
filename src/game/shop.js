@@ -100,13 +100,14 @@ function spendFx(toEl, price, from, pill = document.querySelector('#shoppop .coi
 export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번호, 없으면 바로 다음 단계)
   const row = GEAR_ROWS[k]; if (!row) return; const next = row.list[i];
   if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); return; }
-  if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
+  const off = late.questOff?.('gear', next.price) || 0, pay = next.price - off; // 퀘스트 할인권 (#158)
+  if (save.coins < pay) { toast(`귤이 ${pay - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= next.price; save.equip[k] = i + 1; if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
+  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; late.lootTidy?.(); if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
-  toast(`${next.name} · 장착했어요`);
+  toast(off ? `${next.name} · 할인권으로 ${off}귤 아꼈어요` : `${next.name} · 장착했어요`);
   justKey = `${k}:${i}`; justT = performance.now();
   if (!$('shoppop').hidden && shopPopNow === 'gear') {
     refreshShopPop(); shopOpened('gear');
@@ -250,11 +251,11 @@ export function wearCloth(slot, id) {
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
 }
 export function buyCloth(id) {
-  const c = CLOTH[id]; if (!c || CL.own[id]) return false; const price = wearPrice(c);
+  const c = CLOTH[id]; if (!c || CL.own[id]) return false; const off = late.questOff?.('leap', wearPrice(c)) || 0, price = wearPrice(c) - off; // 퀘스트 할인권 (#158)
   if (save.coins < price) { toast(`귤이 ${price - save.coins}개 모자라요`); return false; }
-  const from = save.coins; save.coins -= price; CL.own[id] = 1; late.sound.coin?.(); ach.emit('clothes-buy'); ach.emit('clothes-buy-' + c.slot); // 업적 이벤트 (#59)
+  const from = save.coins; save.coins -= price; if (off) late.questUse('leap'); CL.own[id] = 1; late.sound.coin?.(); ach.emit('clothes-buy'); ach.emit('clothes-buy-' + c.slot); // 업적 이벤트 (#59)
   void from; wearCloth(c.slot, id); refreshDots();
-  toast(`${c.name} · 바로 입었어요`);
+  toast(off ? `${c.name} · 할인권으로 ${off}귤 아꼈어요` : `${c.name} · 바로 입었어요`);
   return true;
 }
 export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 가진 옷은 눌러서 바로 갈아입음. lock(옷, 줄) 을 주면 안 가진 옷도 흐리게 (사는 것은 LEAP #128)
@@ -276,7 +277,7 @@ export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 
     };
     if (w.none) cell(null);
     list.forEach(cell);
-    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot)).sort((a, b) => a.tier - b.tier).forEach((c) => {
+    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => a.tier - b.tier).forEach((c) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', WEAR.tierColor[c.tier]);
       b.title = `${c.name} · LEAP 에서 ${wearPrice(c).toLocaleString()}귤`; b.setAttribute('aria-label', `${c.name} 잠김 · LEAP 에서 살 수 있어요`);
       b.innerHTML = clothSvg(c) + `<span class="pr"><i class="g"></i>${wearPrice(c).toLocaleString()}</span>`;
