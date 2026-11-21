@@ -31,6 +31,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
+| metricsadmin.js | 이용 통계 표 (#121): 어드민 개발자 메뉴 "수치" 패널. `adminApi.metrics` → `GET /admin/metrics`, 줄(잴 것) × 칸(날짜), 출처 단추 실서버·dev·어드민 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향. 골라 쓰는 무기(`save.weaponUse`), 3~6단계면 `late.fireArm` |
 | arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르기(`chooseArm`, 던지기 버튼 옆 ▾ → 내 가방 무기 탭), 멀티 presence `wf`. 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
@@ -120,6 +121,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js(이름 거르기 `nickOk`·`nickBad`, 목록은 nickwords.js, #162) · feedback.js · rank.js/rankday.js(랭킹 #11)
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - 오류 안전장치 (#108): crash.js — `main.js` 가 맨 먼저 `listenCrashes()`(error·unhandledrejection), `panels.js` 가 보낼 곳(POST /feedback, kind 'crash')을 붙임. `update.js frame()` 은 다음 프레임을 먼저 부르고 `step()` 을 try 로 돌림(오류 하나에 게임이 멈추지 않게). 적 한 마리 오류는 그 적만 지움(enemies.js), 적 모양 오류는 대신할 모양(enemymodels.js buildFallback). WebGL 화면 잃음은 scene.js(#gl-lost 안내 → 되살아남, 안 되면 다시 불러오기). 확인 `node tools/enemyrun.js [iphone|android|all] [--dead|--live]`
+- 이용 통계 (#121): `src/metrics.js` 가 숫자만 셈(`mt`·`mtMax`·`mtFrame`) → `game/metrics.js`(start.js 전에 읽음)가 업적 이벤트(`ach.emit`)·쓰레기 이벤트·`life.hooks.enemyWave` 를 감싸고, 2초마다 프레임 밖에서 상태를 훑어 셈. 5분마다·pagehide·탭 숨김에 `sendBeacon` 으로 `POST /m` 한 묶음(2KB 안, 다시 안 보냄). 서버 `server/src/metrics.js cleanMetrics`(정해진 키만) → `accounts.js metricsAdd`(표 `mt`: 날·출처·키·합·횟수), 90일 지나면 Cron 이 지움. 키 목록·수치는 `balance.js METRICS`. `window.__oreum.metrics`(peek·flush·sent), 확인 `node tools/metrics.js`
 - 서버가 아는 귤 (#188): server/src/earn.js `recognize` — 저장의 기록(판 것 `save.sold`·`quest.done`·`boss.done`·`field.den/tr/sight`)으로 몫을 인정해 bank 에 더함, 계정 기록은 acc.cred(JSON). validate.js `checkSave` 가 부르고 깎으면 `clamp` 를 돌려줌 → accounts.js 가 표 clamp·오류 모으기(fb kind crash)에 남김. 운영자 귤 보내기 표 gift (받는 사람은 `/me`·`/save` 응답 gifts → online.js 가 save.giftGot 에 받은 id). 클라이언트: src/loot.js `noteSold`, start.js `cutNotice`(save.lastCut → panels.js 의견 글 끝에 붙임)
 - 오류 알림 읽기 (#122): 서버 `GET /crashes?days=3`(로그인·Origin 없이, server/src/crashes.js 가 버전+오류 글로 묶음, 내보내는 칸은 오류 글·버전·기기 종류·브라우저/OS·마지막 한 일만, 60초 캐시, 값은 balance.js CRASHES). 자리 찾기 `node tools/crashmap.js <버전> <main-해시.js:줄:칸>`(그 버전 커밋을 임시 worktree 에서 소스맵 켜고 dev·release 빌드해 해시가 같은 것으로 원래 파일·줄·함수)
 - 바닥 표시 (#151): drape.js — 평평한 고리·원을 점마다 땅 높이에 맞춰 휨(튜토리얼 원·가는 곳 marker·타겟 aimMark·줍기 pickMark·돌진 조짐). 귤 모으는 범위는 gearscore.js `gyulPickR(save)` 하나(life.js 떨어진 귤·흩어진 귤, tutorial.js 귤, 가게 배낭 설명)

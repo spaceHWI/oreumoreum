@@ -352,6 +352,18 @@ async function startServers() {
       ok(!take.j.fixed.includes('coins') && !(take.j.gifts || []).length && again.j.fixed.includes('coins') && gl.some((x) => x.id === gift.id && x.got), '보낸 귤은 한 번만 받아 주고 받은 기록이 남음');
     }
 
+    { // 이용 통계 (#121): 로그인 없이 POST /m (text/plain 묶음), 날짜별 합계만. 보기는 어드민만
+      const mpost = (body, origin = LOCAL) => fetch(url('plain', '/m'), { method: 'POST', headers: { 'content-type': 'text/plain', ...(origin ? { Origin: origin } : {}) }, body: typeof body === 'string' ? body : JSON.stringify(body) }).then((r) => r.status);
+      const a1 = await mpost({ v: 1, s: 'dev', c: { in: 1, 'tut:3': 1, play: [65.5, 0], peermx: 4, 'zone:2': 1 } });
+      const a2 = await mpost({ v: 1, s: 'dev', c: { in: 2, peermx: 2, pick: -5, hack: 99, 'nope:x': 1, 'ref:evil site/<b>': 1, 'em:boar': [1e9, 1] } });
+      ok(a1 === 200 && a2 === 200, '이용 통계 묶음을 받음 (로그인 없이, text/plain)');
+      ok((await mpost({ v: 1, s: 'prod', c: { in: 1 } })) === 400 && (await mpost({ v: 1, s: 'dev', c: { hack: 1 } })) === 400 && (await mpost('x'.repeat(6000))) === 413 && (await mpost({ v: 1, s: 'dev', c: { in: 1 } }, EVIL)) === 403, '정해지지 않은 출처·키, 너무 큰 묶음, 다른 Origin 은 거절');
+      ok((await req('plain', '/admin/metrics', { token: U.token })).status === 403 && (await req('plain', '/admin/metrics')).status === 403, '수치 보기는 어드민만');
+      const mr = await req('plain', '/admin/metrics?days=14', { token: Bs.token }), row = (k) => (mr.j?.rows || []).find((x) => x.src === 'dev' && x.k === k);
+      ok(mr.status === 200 && row('in')?.sum === 3 && row('in')?.n === 2 && row('play')?.sum === 65.5 && row('peermx')?.sum === 4 && row('tut:3')?.sum === 1, `날짜별로 더함 (들어온 수 ${row('in')?.sum}, 최대 ${row('peermx')?.sum})`);
+      ok(!row('pick') && !row('hack') && !row('em:boar') && !row('ref:evil site/<b>') && !(mr.j?.rows || []).some((x) => 'sub' in x || 'ip' in x), '음수·큰 값·모르는 키는 버리고, 계정·IP 칸은 없음');
+    }
+
     /* ---------- 이름 (#162): 거르기·처음 짓기·바꾸기 ---------- */
     {
       const { nickOk } = await import('../src/safetext.js');

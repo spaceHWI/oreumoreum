@@ -1300,3 +1300,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 식사 무료(#93)는 두 식당 공통 한 번. 식사 업적 이벤트 'meal' 은 두 식당 모두, 만족한상회는 'meal-manjok' 도
 - 밤 불빛은 창·전구·빛웅덩이만, 낮엔 안 그림 (점광원·늘 그리는 투명 판을 두면 online.js 세 번째 브라우저가 30초 넘게 멈췄음)
 - 확인 `node tools/manjok.js [--shot]`
+
+## #121 주요 수치 재기 (하루 합계만)
+- 클라이언트 `src/metrics.js`(숫자 세기·묶음 만들기·sendBeacon) + `src/game/metrics.js`(게임 사건 잇기). 프레임 안에서는 `mtFrame()` 숫자 하나만. 상태는 2초 setInterval 로 훑음
+- 보내기: 5분마다·pagehide·탭 숨김에 한 묶음 `POST /m` (text/plain 이라 preflight 없음, 실패해도 다시 안 보냄, 2KB·80키 상한). 출처 live·dev(`__DEV__`)·adm(서버 어드민 계정)
+- 서버: `server/src/metrics.js` 가 정해진 키(`METRICS.keys`)·'이름:갈래'(`METRICS.sub`)만 받음, 음수·큰 값 버림. Accounts DO 표 `mt (d, src, k, sum, n)` 에 더하기만(`peermx` 는 최대). 하루·출처마다 새 키 3000 상한. 계정·닉네임·IP 없음. RL_API 같이 씀. 90일 지나면 Cron 에서 지움
+- 플레이 시간 구간은 '넘긴 수'(pt1·pt5·pt15)로 셈 → 구간 = 들어온 수와의 차 (나갈 때 보내기가 빠져도 어긋나지 않게)
+- 튜토리얼 칸·첫 줍기·처음/다시 온 사람은 기기 기록 `<저장 키>.mt` 기준(처음부터 다시 해도 남음). 통계 전부터 하던 사람은 이미 지난 칸을 세지 않음. 끝: 마지막 칸(정낭)에서 끝나면 tut:end, 그 전이면 tut:skip
+- 어드민 개발자 메뉴 "수치": 최근 14일 표 (`GET /admin/metrics`, 어드민만)
+- `privacy.html` 1. 받는 정보에 이용 통계 문장
+- 확인: `node tools/metrics.js`(보낸 묶음 가로채 보기), `tools/sec.js` 에 /m·/admin/metrics 줄 5개
+
