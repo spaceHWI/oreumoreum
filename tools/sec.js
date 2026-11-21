@@ -280,7 +280,7 @@ async function startServers() {
       r = checkSave({ ...P, coins: 800 }, { ...P, coins: 0, backs: { own: { tewak: 1, rocket: 1 }, cur: 'rocket' } }, acc, t);
       ok(!r.fixed.length && r.save.backs.own.tewak && !r.save.backs.own.rocket && r.save.backs.cur === null, '귤 800 으로 테왁 사기·목록에 없는 겉모습 지움');
       const { WEAR } = await import('../src/balance.js'), bp = WEAR.price[3];
-      r = checkSave({ ...P, coins: 0 }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t); // (옛 값 OLD_PRICE 가 지워지기 전에는 더 싼 쪽으로 셈 #145)
+      r = checkSave({ ...P, coins: 0 }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t);
       let r2 = checkSave({ ...P, coins: bp }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t);
       ok(r.fixed.includes('items') && !r.save.clothes.own['hat:p-box'] && !r2.fixed.length && r2.save.clothes.own['hat:p-box'], `감귤 박스 헬멧은 모자 3단계 값(${bp})으로 삼·귤 없으면 되돌림`);
       // 겉모습 옷 (#179): 값은 price, 색 번호는 색 바꿀 수 있는 가진 옷·범위 안만
