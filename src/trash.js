@@ -16,6 +16,8 @@ import { STORY_DEX } from './punktext.js';
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
 TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push({ id: `${t.id}:${i}`, kind: t.id, name, rare: false })); DEX.rare.filter((r) => r.kind === t.id).forEach((r, i) => DEX_LIST.push({ id: `${t.id}:r${i}`, kind: t.id, name: r.name, rare: true })); });
+// 담배꽁초 (#156): 들머리 흡연자가 버린 꽁초를 주우면 등록 'butt:0'. 더미에서는 안 나옴(kind 가 쓰레기 종류가 아님), 쓰레기 칸 끝
+DEX_LIST.push({ id: 'butt:0', kind: 'butt', name: '담배꽁초', rare: false });
 // 개울 칸 (#44): 낚시로 잡는 물고기 3종 'fish:번호'. 쓰레기가 아니라 kind 'fish', sec 'stream'
 FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
 // 볼거리 칸 (#138): 오름 들판의 전망 바위·샘·산담·방사탑 'sight:번호' (FIELD.sight.list 순서). 처음 찾으면 등록
