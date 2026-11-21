@@ -3,7 +3,7 @@ import { gearScore, gyulPickR } from '../gearscore.js';
 import { DEX_LIST } from '../trash.js';
 import { assetInfo } from '../assets.js';
 import * as crash from '../crash.js';
-import { CART, PERF, TOOLS, BAGS, SHOES, FISH, STONE, HAIR, WEAR } from '../balance.js';
+import { CART, PERF, TOOLS, BAGS, SHOES, FISH, STONE, HAIR, WEAR, WEATHER } from '../balance.js';
 import { TIER, PERF_AUTO, autoTier } from '../quality.js';
 import { RIDE_BY, rideSpeed, cartState as cartStateAt } from '../rides.js';
 import { STREET } from '../streetlayout.js';
@@ -115,6 +115,12 @@ $('menu-gfx').addEventListener('click', () => { save.gfx = GFX[(GFX.indexOf(save
 const PERF_ORDER = ['auto', 0, 1, 2];
 const perfTierOf = (v) => (v === 'auto' ? (PERF_AUTO ? TIER : autoTier()) : v);
 function perfLabel() { const v = save.perf ?? 'auto'; return v === 'auto' ? `성능: 자동(${PERF.names[perfTierOf('auto')]})` : `성능: ${PERF.names[v]}`; }
+// #187 비 효과: 보통·약하게·끔 (빗줄기·눈송이만. 회색 하늘·젖은 땅은 그대로). 고른 적 없고 움직임 줄이기 설정이면 '약하게'
+const RAIN_FX = ['full', 'soft', 'off'];
+function rainFxNow() { if (RAIN_FX.includes(save.rainFx)) return save.rainFx; try { return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'soft' : 'full'; } catch { return 'full'; } }
+function applyRainFx() { const k = rainFxNow(); wx.setFx(k); const b = $('menu-rainfx'); if (b) b.textContent = `비 효과: ${WEATHER.fx[k].name}`; }
+applyRainFx();
+$('menu-rainfx')?.addEventListener('click', () => { save.rainFx = RAIN_FX[(RAIN_FX.indexOf(rainFxNow()) + 1) % RAIN_FX.length]; persist(); applyRainFx(); toast(`비 효과 ${WEATHER.fx[save.rainFx].name}`); });
 $('menu-perf').textContent = perfLabel();
 $('menu-perf').addEventListener('click', () => {
   const cur = save.perf ?? 'auto', next = PERF_ORDER[(PERF_ORDER.indexOf(cur) + 1) % PERF_ORDER.length], t = perfTierOf(next);

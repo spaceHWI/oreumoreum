@@ -354,10 +354,14 @@ export const COLLIDE = {
 export const WEATHER = {
   lat: 33.3, lon: 126.3, // 남송이오름(서귀포시 안덕면 서광리) 근처
   pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
-  particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
+  particles: 700, particlesLow: 250, box: 40, rainFall: 20, snowFall: 3.2, // #187: 1400·500·26 → 어지러워서 줄임
   // #147 비·눈 모양: 빗줄기는 바람 쪽으로 기운 짧은 선 (len 길이 범위 m, w 굵기 m, thick 비율만큼은 thickK 배 굵게)
-  rainDrift: 6, rainAlpha: 0.8, rainCol: '#e4eaf0', streak: { len: [0.9, 1.7], w: 0.03, thick: 0.08, thickK: 2.4, minPx: 1.1 },
-  snowN: 900, snowLow: 400, snowSize: [4, 5], // 눈송이 수·화면 크기(px)
+  // #187 어지러움 줄이기: 옅게(rainAlpha 0.8→0.35)·하늘빛에 가까운 색·짧고 느리게·카메라 near m 안은 안 그림(nearFade m 동안 서서히)·멀수록 옅게(far 거리에서 farA 배)
+  rainDrift: 3, rainWindK: 0.6, // 옆 흐름 = rainDrift × max(1, 바람 배율 − rainWindK): 보통 비는 3, 바람 센 날만 크게
+  rainAlpha: 0.35, rainCol: '#c3cad0', streak: { len: [0.6, 1.1], w: 0.03, thick: 0.08, thickK: 1.4, minPx: 1.1, near: 4, nearFade: 2, far: [12, 26], farA: 0.5 },
+  snowN: 900, snowLow: 400, snowSize: [4, 5], snowAlpha: 0.8, // 눈송이 수·화면 크기(px)·불투명도 (#187: 0.95 → 0.8)
+  // #187 설정 '비 효과': 보통·약하게·끔. 빗줄기·눈송이 수와 진하기에 곱함 (끔이어도 회색 하늘·젖은 땅은 남음). prefers-reduced-motion 이면 기본 '약하게'
+  fx: { full: { n: 1, a: 1, name: '보통' }, soft: { n: 0.45, a: 0.6, name: '약하게' }, off: { n: 0, a: 0, name: '끔' } },
   keepMin: 120, // 날씨를 못 받으면 앞에 받은 날씨를 이만큼(분) 그대로 둔다
   nightDim: 0.16, // 밤 흐림·비 하늘 = 낮 회색 × 이 값
   cloudLow: 0.45, cloudBig: 0.9, // 비·흐림엔 구름 덩어리를 이만큼 낮게(높이 비율)·크게(배율 더함)
