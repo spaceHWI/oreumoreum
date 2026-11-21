@@ -197,7 +197,8 @@ function placeEntry(out, E, trail, height, ring) {
 
 /* ---------- 모양 (로우폴리 임시) ---------- */
 function piece(g, color) { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals(); const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
-function jitter(g, amt, seed) { const r = mulberry(seed), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + (r() - 0.5) * amt, p.getY(i) + (r() - 0.5) * amt, p.getZ(i) + (r() - 0.5) * amt); return g; }
+// 흩뜨리기: 같은 자리의 꼭짓점은 같은 만큼 움직임 (#154). 인덱스 없는 Icosahedron·모서리 점이 면마다 따로인 Box·Torus 도 면 사이가 벌어지지 않게
+function jitter(g, amt, seed) { const r = mulberry(seed), p = g.attributes.position, M = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + ',' + Math.round(p.getY(i) * 1e4) + ',' + Math.round(p.getZ(i) * 1e4); let d = M.get(k); if (!d) M.set(k, d = [(r() - 0.5) * amt, (r() - 0.5) * amt, (r() - 0.5) * amt]); p.setXYZ(i, p.getX(i) + d[0], p.getY(i) + d[1], p.getZ(i) + d[2]); } return g; }
 function makeGeos() {
   const can = mergeGeometries([piece(new THREE.CylinderGeometry(0.12, 0.12, 0.34, 7), '#ffffff'), piece(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 7).translate(0, 0.18, 0), '#d0d3d8')]).rotateZ(Math.PI / 2).translate(0, 0.11, 0);
   const pet = mergeGeometries([piece(new THREE.CylinderGeometry(0.14, 0.14, 0.42, 7), '#ffffff'), piece(new THREE.CylinderGeometry(0.06, 0.135, 0.14, 7).translate(0, 0.28, 0), '#ffffff'), piece(new THREE.CylinderGeometry(0.065, 0.065, 0.06, 6).translate(0, 0.38, 0), '#3a7fd0')]).rotateZ(Math.PI / 2).translate(0, 0.13, 0);
@@ -216,7 +217,7 @@ const PAL = [
 // 더미 모양: 크기 k, 단계 st(0 가득 ~ 3 거의 다 치움). 어두운 쓰레기 덩어리 위에 봉투·상자·타이어·스티로폼·그물·캔·병
 const STG_R = [1, 0.8, 0.6, 0.42], STG_H = [1, 0.72, 0.48, 0.26];
 const stageOf = (f) => { let st = 0; for (let i = 1; i < HEAP.stages.length; i++) if (f <= HEAP.stages[i]) st = i; return st; };
-function makeHeapGeo(k, st, low) {
+function heapParts(k, st, low) {
   const S = HEAP.sizes[k], R = S.r * STG_R[st], Hh = S.h * STG_H[st], r = mulberry(901 + st * 31 + k.length * 7 + (k === 'mt' ? 5 : 0)), sc = { s: 0.72, l: 1.0, xl: 1.5, mt: 1.9 }[k];
   const parts = [piece(jitter(new THREE.IcosahedronGeometry(1, 1), 0.16, 5 + st).scale(R, Hh * 0.82, R), '#5a5248'), piece(jitter(new THREE.IcosahedronGeometry(1, 0), 0.2, 9 + st).scale(R * 0.55, Hh * 0.35, R * 0.55).translate(R * 0.1, Hh * 0.62, -R * 0.08), '#3a3a40')];
   const N = Math.round({ s: 12, l: 28, xl: 64, mt: 96 }[k] * [1, 0.72, 0.5, 0.3][st] * (low ? 0.7 : 1));
@@ -235,8 +236,10 @@ function makeHeapGeo(k, st, low) {
     g.scale(s, s, s).rotateY(r() * 6.28).rotateX((r() - 0.5) * 0.8).translate(Math.cos(a) * rho, y + 0.05 * s, Math.sin(a) * rho);
     parts.push(piece(g, c));
   }
-  return mergeGeometries(parts);
+  return parts;
 }
+const makeHeapGeo = (k, st, low) => mergeGeometries(heapParts(k, st, low));
+export const __geo = { makeGeos, makeHeapGeo, heapParts }; // tools/heapgeo.js 검사용 (#154)
 
 /* ---------- 쓰레기 세상 ---------- */
 // paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
