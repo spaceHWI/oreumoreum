@@ -534,6 +534,10 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .xm-cal button.gift::after { content: ''; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 2px; background: #c8333a; box-shadow: inset 0 0 0 1px #e8b84a; }
 @keyframes xmPulse { 50% { box-shadow: 0 0 0 2px var(--gyul), 0 0 20px rgba(255, 154, 31, .9); } }
 .xm-snow { margin-top: 10px; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+/* 박스 시야 (#164): 감귤 박스 헬멧 눈구멍으로 보는 느낌. 두께 --bw 는 game/punk.js 가 넣음 */
+#box-view { position: fixed; inset: 0; pointer-events: none; z-index: 3; border: var(--bw, 6vw) solid #b8874e; border-radius: 0; box-shadow: inset 0 0 0 3px #8e6434, inset 0 0 24px 6px rgba(70, 45, 20, .45); opacity: .85; background: linear-gradient(90deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) 100%); }
+#box-view::before { content: ''; position: absolute; inset: calc(-1 * var(--bw, 6vw)); border: 1px dashed rgba(106, 74, 42, .5); border-width: 0; background: repeating-linear-gradient(90deg, rgba(106,74,42,.12) 0 2px, transparent 2px 7px); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; -webkit-mask-composite: xor; padding: var(--bw, 6vw); }
+#box-view[hidden] { display: none; }
 #xmas-glow { position: fixed; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 90px 20px rgba(255, 140, 60, .32); opacity: 0; transition: opacity 1.2s; }
 #xmas-glow.on { opacity: 1; }
 .logo-snow { position: absolute; left: 0; top: 1.5%; width: 100%; height: auto; pointer-events: none; }
@@ -1283,7 +1287,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-f7377f4166.js">(function () {
+<script data-main="main-212e83df31.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1414,6 +1418,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
     <button type="button" id="menu-perf">성능: 자동</button>
+    <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
@@ -1543,6 +1548,7 @@ button.bag-card { cursor: pointer; }
   </div>
 </div>
 <div id="xmas-glow" aria-hidden="true"></div>
+<div id="box-view" aria-hidden="true" hidden></div>
 
 <div class="overlay dim" id="omap" hidden>
   <div class="panel pop">
