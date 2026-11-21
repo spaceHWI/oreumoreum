@@ -1578,6 +1578,7 @@ export const LOOT = {
 export const QUESTS = {
   r: 3.4, near: 40, dayCap: 0.15, coopR: 40, // r 상호작용 거리, near 이 안이면 주는 사람이 움직임, coopR 남이 치운 더미도 이 안이면 셈
   coupon: { gear: 0.1, leap: 0.1, salon: 0.5 },
+  shopNpc: { side: 1.5, in: 0.6, gap: 3 }, // #190 가게 주인 자리: 문 오른쪽 side m · 터 앞 선에서 안쪽 in m · 다른 NPC·다른 가게 문과 gap m 넘게 (game/quest.js)
   givers: {
     jigi: { name: '오름지기', at: 'sign', side: 2.6, fwd: 0.9, look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
     'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
@@ -1816,3 +1817,7 @@ export const MUTTER = {
   bagFull: 0.8, hand: 10, walk: 300, hpLow: 0.5, boss: 0.65, piglets: 4, fieldPicked: 120, nightZone: 3,
   y: 3.4, // 말풍선 높이 (채팅 말풍선과 같음)
 };
+
+// 대화·말풍선 한 틀 (#190). bubble: 머리 위 말풍선 한 줄 ch 자 · lines 줄, 넘치면 pages 장까지 넘기고 그래도 넘치면 말줄임. chatLines 채팅(사람이 쓴 글)은 한 장에 조금 더
+// win: 대화 창(.talk) 대사 한 장 최대 lines 줄(넘으면 ▶ 다음 장), line 대사 한 줄 권장 글자 수(넘으면 문장에서 나눠 보여 줌, tools/talkshot.js 가 셈)
+export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 } };

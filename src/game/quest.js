@@ -9,7 +9,7 @@
 // - 할인권: late.questOff(가게, 값) → 깎을 귤, late.questUse(가게) 한 장 씀 (shop.js 장비·옷, stores.js 머리·에이드)
 // dev: __oreum.quest (state·give(id)·done(id)·count(k, n)·go()·open(giver)·where())
 import * as THREE from 'three';
-import { QUESTS, CLOTHES, LEVEL } from '../balance.js';
+import { QUESTS, CLOTHES, LEVEL, TALK } from '../balance.js';
 import { createQuests } from '../quest.js';
 import { STREET } from '../streetlayout.js';
 import { buildRunner, DEFAULT_OUTFIT } from '../runner.js';
@@ -133,12 +133,26 @@ for (const [id, d] of Object.entries(Q.givers)) {
   if (col) col.add(x, z, 0.35);
   addGiver(id, pos, b, 2.55);
 }
-// 가게 주인: 가게 문 옆
+// 가게 주인: 가게 문 옆 정해진 자리 (#190). 길에서 가게를 볼 때 문 오른쪽 Q.shopNpc.side m, 터 앞 선에서 안쪽으로 Q.shopNpc.in m(문 자리는 길 쪽에 있음), 길을 보고 섬
+// 막혀 있으면(건물·간판·벤치 충돌) 왼쪽 → 조금 더 바깥 순으로. 다른 NPC·다른 가게 문과 Q.shopNpc.gap m 안이면 다음 자리
+const placedNpc = [];
 for (const [id, d] of Object.entries(Q.givers)) {
   if (!d.shop) continue; const sh = shopOf(d.shop), lot = sh && STREET.lot(sh.lot); if (!sh || !lot) continue;
-  const bl = Math.hypot(lot.back.x, lot.back.z) || 1, ox = -lot.back.x / bl, oz = -lot.back.z / bl; // 골목 쪽
-  const x = sh.door.x + ox * 1.1 + oz * 2.1, z = sh.door.z + oz * 1.1 - ox * 2.1;
-  person(id, v3(x, z), Math.atan2(ox, oz));
+  const bl = Math.hypot(lot.back.x, lot.back.z) || 1, bx = lot.back.x / bl, bz = lot.back.z / bl; // 터 안쪽
+  const rx = -bz, rz = bx, S = Q.shopNpc; // 길에서 가게를 볼 때 오른쪽
+  const doorsElse = shopsBuilt.filter((o) => o !== sh && o.door).map((o) => o.door);
+  const free = (x, z) => (!col || !col.blocked(x, z, 0.45)) && placedNpc.every((q) => Math.hypot(q.x - x, q.z - z) >= S.gap) && doorsElse.every((q) => Math.hypot(q.x - x, q.z - z) >= S.gap)
+    && (!sh.signPos || Math.hypot(sh.signPos.x - x, sh.signPos.z - z) >= 0.9);
+  const ds = (sh.door.x - lot.front.x) * rx + (sh.door.z - lot.front.z) * rz; // 문이 터 앞 가운데에서 옆으로 얼마
+  const at = (sd, dep) => [lot.front.x + rx * (ds + sd) + bx * dep, lot.front.z + rz * (ds + sd) + bz * dep];
+  let x = 0, z = 0, found = false;
+  for (const dep of [S.in, S.in + 0.5, S.in - 0.5]) for (const sd of [S.side, -S.side, S.side * 1.4, -S.side * 1.4]) {
+    if (found) break;
+    [x, z] = at(sd, dep); found = free(x, z);
+  }
+  if (!found) [x, z] = at(S.side, S.in);
+  placedNpc.push({ x, z });
+  person(id, v3(x, z), Math.atan2(-bx, -bz));
 }
 const giverPos = (id) => givers.get(id)?.pos || null;
 
@@ -160,13 +174,42 @@ function show(g, it) {
   $('quest-who').textContent = g.name;
   const nm = $('quest-name'); nm.textContent = q.name; nm.classList.toggle('side', !it.main);
   const lines = it.st === 'ready' ? q.fin : q.say;
-  $('quest-say').innerHTML = lines.map((l) => `<p>${esc(l)}</p>`).join('');
+  talk.lines = splitSay(lines); talk.pages = null; talk.i = 0;
   const p = quests.prog(q.id);
   $('quest-task').innerHTML = it.st === 'ready' ? '' : `${esc(q.task)}${it.st === 'on' && q.ask.n > 1 && q.ask.k !== 'zone' ? ` <b>(${p}/${q.ask.n})</b>` : ''}${it.st === 'offer' && q.to && q.to !== q.giver ? `<br><small>끝나면 ${esc(whoOf(q.to))}</small>` : ''}`;
   $('quest-rew').innerHTML = it.st === 'on' ? '' : rewardHtml(q.reward);
   const go = $('quest-go'); go.textContent = it.st === 'ready' ? '보상 받기' : it.st === 'offer' ? '받기' : '좋아요'; go.classList.toggle('claim', it.st === 'ready');
   win.el.hidden = false;
+  paginate(); // 창이 보인 뒤에 재야 함
 }
+// 대사 장 넘기기 (#190): 한 줄이 TALK.win.line 자를 넘으면 문장에서 나누고, 한 장이 TALK.win.lines 줄을 넘으면 ▶ 다음 장
+const talk = { lines: [], pages: null, i: 0 };
+function splitSay(lines) {
+  const out = [];
+  for (const l of lines || []) {
+    if ([...l].length <= TALK.win.line) { out.push(l); continue; }
+    const parts = String(l).split(/(?<=[.?!…~])\s+/).filter(Boolean);
+    out.push(...parts);
+  }
+  return out;
+}
+function sayRows(el) { // 지금 글이 몇 줄인지 (p 마다 줄 높이로 나눔)
+  let n = 0; for (const p of el.children) { const lh = parseFloat(getComputedStyle(p).lineHeight) || 24; n += Math.round(p.getBoundingClientRect().height / lh); } return n;
+}
+function paginate() {
+  const el = $('quest-say'), max = innerHeight < 480 ? TALK.win.lines - 1 : TALK.win.lines, pages = []; let cur = []; // 낮은 화면(폰 가로)은 한 줄 덜
+  for (const l of talk.lines) {
+    el.innerHTML = [...cur, l].map((x) => `<p>${esc(x)}</p>`).join('');
+    if (cur.length && sayRows(el) > max) { pages.push(cur); cur = [l]; } else cur.push(l);
+  }
+  if (cur.length) pages.push(cur);
+  talk.pages = pages; talk.i = 0; showPage();
+}
+function showPage() {
+  const P = talk.pages || [talk.lines]; $('quest-say').innerHTML = (P[talk.i] || []).map((x) => `<p>${esc(x)}</p>`).join('');
+  $('quest-next').hidden = talk.i >= P.length - 1;
+}
+$('quest-next').addEventListener('click', () => { if (talk.pages && talk.i < talk.pages.length - 1) { talk.i++; showPage(); } });
 function openGiver(id) {
   const g = givers.get(id); if (!g) return; const l = quests.at(id);
   if (!l.length) { greet(g, true); return; }
@@ -374,6 +417,8 @@ late.questDebug = {
   where: () => Object.fromEntries([...givers.values()].map((g) => [g.id, { x: +g.pos.x.toFixed(1), z: +g.pos.z.toFixed(1), mark: g.cur }])),
   track: () => trCur && { text: trCur.text, prog: trCur.prog, ready: trCur.ready, go: trCur.go, k: trCur.k || null, mark: trCur.mark, target: trTarget && [+trTarget.x.toFixed(1), +trTarget.z.toFixed(1)], shown: !TR.hidden },
   give: (id) => quests.accept(id), done: (id) => { const r = quests.complete(id); if (r) give(r, quests.BY.get(id)); trackDirty(); return r; },
-  count: (k, n = 1) => { count(k, n); trackDirty(); }, open: (gid) => openGiver(gid), log: () => openLog(), go: () => trackGo(), win: () => !win.el.hidden && { who: win.giver?.id, id: win.item?.q.id, st: win.item?.st },
+  count: (k, n = 1) => { count(k, n); trackDirty(); }, open: (gid) => openGiver(gid), log: () => openLog(), go: () => trackGo(), win: () => !win.el.hidden && { who: win.giver?.id, id: win.item?.q.id, st: win.item?.st, page: talk.i, pages: talk.pages?.length || 1 },
+  nextPage: () => $('quest-next').click(),
+  showQ: (id, st = 'offer') => { const q = quests.BY.get(id), g = q && givers.get(q.giver); if (!g) return false; closePanels(); show(g, { q, st, main: QUESTS.main.includes(q) }); return true; }, // 창 그림 확인용 (#190)
   press: () => $('quest-go').click(), close: closeWin, catchUp: () => quests.catchUp(), reset: () => { quests.reset(); trackDirty(); }, goPos, ending,
 };
