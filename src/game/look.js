@@ -10,7 +10,7 @@ import { cam, followCam } from './camera.js';
 import { busy, closePanels, cancelAll, ach } from './hud.js';
 import { marker } from './input.js';
 import { net } from './room.js';
-import { openShop, buildWearRows } from './shop.js';
+import { buildWearRows } from './shop.js';
 
 Object.assign(late, { buildWardrobe, openWardrobe, closeWardrobe, openSign, leaveTo }); // 앞 파일에서 부르는 함수
 
@@ -75,8 +75,7 @@ function openWardrobe() {
   $('wardrobe').hidden = false;
 }
 function closeWardrobe() { $('wardrobe').hidden = true; cam.mode = 'follow'; if (camBefore) Object.assign(cam, camBefore); }
-$('wardrobe-shop').addEventListener('click', () => { closeWardrobe(); openShop('wear'); });
-$('wardrobe-shop').hidden = !!LEAPB; // 옷은 LEAP 에서 삼 (#59)
+$('wardrobe-shop').addEventListener('click', () => { closeWardrobe(); late.goShop(LEAPB ? 'leap' : 'gear'); }); // 사러 가기: LEAP 길 안내 (#128)
 $('wardrobe-done').addEventListener('click', closeWardrobe);
 $('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; $('nick-mirror').textContent = save.nick; persist(); });
 

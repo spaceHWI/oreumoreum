@@ -1,7 +1,10 @@
 // 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { itemScore, scoreDiff } from '../gearscore.js';
-import { SHOES, STONE, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG } from '../balance.js';
+import { SHOES, STONE, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG, GEAR_SHOP } from '../balance.js';
 import { SHOP_ICON } from '../shops.js';
+// 장비점·가게 안내 로고 (#128): 둥근 현무암 판에 흰 아이콘 (가게 창 위 칸)
+const iconLogo = (path) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#2f3336"/><g transform="translate(4.2 4.2) scale(.65)" fill="none" stroke="#f3ecdc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`);
+const GEAR_LOGO = iconLogo(SHOP_ICON.gear), DIR_LOGO = iconLogo('<path d="M4 4h16v12H4zM12 16v5M8 21h8"/><circle cx="8" cy="8" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="16" cy="8" r="1.2"/>');
 import { leapLogo } from '../leap.js';
 import { salonLogo } from '../salon.js';
 import { FOOD_SVG, BUFF_ICON, buffText } from '../stoneicons.js';
@@ -15,7 +18,7 @@ import { TIP_ICON } from '../tips.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, WSLOT, CL, wearV, persist } from './save.js';
 import { spots } from './scene.js';
-import { benchPos, cairns, NS_TUT, shopsBuilt, STN, SAL, LEAPB, buff, chActs, shopAct, CH, runner, player, hp } from './place.js';
+import { benchPos, cairns, NS_TUT, street, shopsBuilt, STN, SAL, LEAPB, buff, chActs, shopAct, CH, runner, player, hp } from './place.js';
 import { cam } from './camera.js';
 import { ui, toast, tipMarkT, tipMarkPos, updateStats, panelOpen, closePanels, ach } from './hud.js';
 import { keys, joy, pressBtn, marker, setTarget } from './input.js';
@@ -38,7 +41,12 @@ const SHOP_POP = {
   salon: { head: { logo: salonLogo(), name: '루이네 미장원', wide: true }, fill: (grid) => buildSalonMenu(grid), when: stoneOpen, can: () => !!SAL && !!save.look && !cutS.on && !mealS.on },
   ride: { head: { logo: RIDE_LOGO, name: '탈것 가게' }, fill: (grid) => buildRideMenu(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on }, // #69
   leap: { head: { logo: leapLogo(), name: 'LEAP', wide: true, cls: 'leap' }, tabs: (el) => buildLeapTabs(el), fill: (grid) => buildLeapCards(grid), onOpen: () => startLeap(), when: stoneOpen, can: () => !!LEAPB && !cutS.on && !mealS.on },
+  // 장비점 (#128): 도구·배낭·무기 (game/shop.js 가 채움). 튜토리얼 동안은 클린하우스 옆 좌판에서도 열림
+  gear: { head: { logo: GEAR_LOGO, name: GEAR_SHOP.name, tag: '집게 · 배낭 · 무기', cls: 'gearshop' }, tabs: (el) => late.gearTabs(el), fill: (grid) => late.fillGearShop(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on },
+  // 가게 안내 (#128): 무엇을 어디서 사는지 (메뉴의 상점·귤 칸·가게 거리 안내도)
+  dir: { head: { logo: DIR_LOGO, name: '가게 안내', tag: '무엇을 어디서 사나요', cls: 'dir' }, fill: (grid) => late.fillShopDir(grid), can: () => !mealS.on && !cutS.on },
 };
+export { SHOP_POP };
 export let shopPopNow = null;
 export function openShopPop(key) {
   const P = SHOP_POP[key]; if (!P || (P.can && !P.can())) return;
@@ -46,11 +54,13 @@ export function openShopPop(key) {
   const h = P.head, root = $('shoppop');
   $('shoppop-logo').src = h.logo || ''; $('shoppop-logo').alt = h.name; $('shoppop-logo').parentElement.hidden = !h.logo;
   $('shoppop-name').textContent = h.name; $('shoppop-tag').textContent = h.tag || ''; root.classList.toggle('serif', !!h.serif); root.classList.toggle('wide', !!h.wide); root.querySelector('.pop').setAttribute('aria-label', h.name);
-  root.classList.toggle('leap', h.cls === 'leap');
-  P.onOpen?.(); refreshShopPop(); root.hidden = false;
+  for (const c of ['leap', 'gearshop', 'dir']) root.classList.toggle(c, h.cls === c);
+  P.onOpen?.(); refreshShopPop(); root.hidden = false; late.shopOpened?.(key); // 살 수 있는 새 물건 점 지우기 (#128)
 }
-export function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop-coins').textContent = String(save.coins); const tabs = $('shoppop-tabs'); tabs.hidden = !P.tabs; tabs.innerHTML = ''; if (P.tabs) P.tabs(tabs); const grid = $('shoppop-cards'); grid.innerHTML = ''; P.fill(grid); }
+export function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop-coins').textContent = String(save.coins); const tabs = $('shoppop-tabs'); tabs.hidden = !P.tabs; tabs.innerHTML = ''; if (P.tabs) P.tabs(tabs); const grid = $('shoppop-cards'); grid.innerHTML = ''; grid.className = 'menu-grid'; grid.style.removeProperty('--n'); P.fill(grid); }
 const shopActs = shopsBuilt.map((sh) => ({ shop: sh.id, ic: sh.ic, label: sh.act, pos: sh.door, r: sh.r, when: SHOP_POP[sh.pop]?.when, act: () => openShopPop(sh.pop) }));
+const dirAct = street?.boardFront && { ic: 'dir', label: '가게 안내', pos: street.boardFront, r: SHOP_ST.dirR, act: () => openShopPop('dir') }; // 가게 거리 들머리 안내도 (#128)
+late.openShopPop = openShopPop;
 export function openStone() { openShopPop('stone'); }
 function buildStoneMenu(grid) {
   const cur = buff.now();
@@ -211,7 +221,7 @@ function buildLeapCards(grid) {
   const bar = document.createElement('div'); bar.className = 'leap-buy';
   bar.innerHTML = `<div><b><i class="tdot" style="background:${WEAR.tierColor[it.tier]}"></i>${it.name}</b><span class="tier-stats"><span>${leapStat(it)}</span>${late.scoreChip(itemScore(it.tier), leapGd(it))}</span></div>`;
   const bb = document.createElement('button'); bb.type = 'button'; bb.className = 'tier-buy' + (save.coins < it.price ? ' short' : '');
-  { bb.innerHTML = `<i class="g"></i>${it.price.toLocaleString()}`; bb.setAttribute('aria-label', `${it.name} 사기`); bb.addEventListener('click', () => buyLeap(it)); }
+  { bb.innerHTML = save.coins < it.price ? `${(it.price - save.coins).toLocaleString()}귤 더 필요` : `<i class="g"></i>${it.price.toLocaleString()} 사기`; bb.setAttribute('aria-label', `${it.name} 사기`); bb.addEventListener('click', () => buyLeap(it)); } // #128 모자라면 버튼 자리에 '○○귤 더 필요'
   bar.append(bb); grid.append(bar);
 }
 // 입어 보기: 고른 옷(또는 신발)만 바꾼 차림을 캐릭터에 입힘 (저장은 안 함). null 이면 지금 차림으로 되돌림
@@ -289,7 +299,7 @@ export const interactables = [
   ...cairns.map((c) => ({ cairn: c, pos: c.pos, r: 7, act: () => openWishes(c) })),
   ...chActs, ...(shopAct ? [shopAct] : []),
   ...(CH ? [{ label: '랭킹', ic: 'rank', pos: CH.boardFront, r: 2.6, act: () => late.openRank?.() }] : []), // 랭킹 게시판 (#11)
-  ...shopActs,
+  ...shopActs, ...(dirAct ? [dirAct] : []),
 ];
 state.ctxTarget = null, state.deerAct = null;
 state.fishing = null; // 낚시 (#44) — 아래 튜토리얼 만든 뒤에 만듦

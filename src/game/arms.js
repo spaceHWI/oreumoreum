@@ -301,10 +301,9 @@ function chooseArm(tier) {
   updateArmBtn(); buildArmWin();
   late.sound?.beep?.(true);
 }
-function showArmShop(w) {
+function showArmShop(w) { // 안 가진 무기: 가게 거리 장비점으로 길 안내 (#128)
   armWin.hidden = true;
-  if (save.coins >= w.price) state.shopHintUntil = performance.now() + 6000;
-  toast(`${w.name}은(는) 장비 가판대에서 살 수 있어요`);
+  if (late.goShop) late.goShop('gear', `${w.name}은(는) 장비점에서 사요`); else toast(`${w.name}은(는) 장비점에서 사요`);
 }
 // ▾ 는 손 말고 무기를 하나라도 가졌을 때만, 전투 오름에서만(무기가 있는 곳)
 export function updateArmBtn() {

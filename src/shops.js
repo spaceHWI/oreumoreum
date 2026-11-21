@@ -1,9 +1,10 @@
 // 가게 거리 (#57): 골목 판석·빈 터('준비 중' 팻말)·벤치·화분·입구 간판, 그리고 가게 건물 build 함수 표
-// 가게를 더하려면: balance.js SHOPS 에 한 줄 + 여기 SHOP_BUILD[id]·SHOP_ICON[id] (+ main 의 팝업). 건물은 Tripo 모델(#71, src/model-*.js + propmodel.js)
+// 가게를 더하려면: balance.js SHOPS 에 한 줄 + 여기 SHOP_BUILD[id]·SHOP_ICON[id] (+ game/stores.js SHOP_POP 팝업, game/shop.js 가게 안내의 파는 것 SHOP_ITEMS). 건물은 Tripo 모델(#71, src/model-*.js + propmodel.js)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { SHOP_ST, SHOPS, STONE, SALON, LEAP } from './balance.js';
+import { SHOP_ST, SHOPS, STONE, SALON, LEAP, GEAR_SHOP } from './balance.js';
+import { createGearShop, HAMMER } from './hardware.js';
 import { createStone } from './stone.js';
 import { FORK_KNIFE } from './stoneicons.js';
 import { createSalon } from './salon.js';
@@ -21,6 +22,7 @@ export const SHOP_ICON = {
   salon: SCISSORS,
   leap: SHIRT,
   ride: RIDE_ICON.scoot, // 탈것 가게 (#69)
+  gear: HAMMER, // 장비점 (#128)
 };
 
 // 가게마다 건물 하나. lot = streetlayout 의 터, 반환 { door: 상호작용 자리, signPos: 가장자리 표시 기준, update?(dt, night), api }
@@ -43,6 +45,12 @@ export const SHOP_BUILD = {
     const api = createLeap({ scene, height, site, low, col, addWalkable });
     return { api, door: api.door, signPos: api.signPos, r: LEAP.r, update: (dt, night) => api.update(dt, night) };
   },
+  gear: ({ scene, height, lot, low, col }) => { // 장비점 (#128, 임시 모양 hardware.js)
+    const k = GEAR_SHOP.fore + GEAR_SHOP.D / 2;
+    const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
+    const api = createGearShop({ scene, height, site, low, col });
+    return { api, door: api.door, signPos: api.signPos, r: GEAR_SHOP.r, update: () => {} };
+  },
   ride: ({ scene, height, lot, low, col }) => { // 탈것 가게 (#69, 임시 모양)
     const k = RIDE_SHOP.fore + RIDE_SHOP.D / 2;
     const site = { x: lot.front.x + lot.back.x * k, z: lot.front.z + lot.back.z * k, rot: lot.rot };
@@ -50,6 +58,27 @@ export const SHOP_BUILD = {
     return { api, door: api.door, signPos: api.signPos, r: RIDE_SHOP.r, update: () => {} };
   },
 };
+
+// 지붕 위 큰 아이콘 간판 (#128): 가게마다 늘 카메라를 보는 둥근 판(현무암 바탕·귤색 테·흰 아이콘), 살 수 있는 새 물건이 있으면 오른쪽 위 귤색 점
+// shops = place.js shopsBuilt. 반환 { dot(id, on) }
+export function createRoofSigns({ scene, height, street, shops }) {
+  const S = SHOP_ST, signs = {};
+  const dotMat = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g) => { g.fillStyle = '#fff'; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ff8a1f'; g.beginPath(); g.arc(32, 32, 23, 0, Math.PI * 2); g.fill(); }), depthWrite: false, transparent: true });
+  for (const sh of shops) {
+    const L = street.lot(sh.lot); if (!L || !SHOP_ICON[sh.id]) continue;
+    const k = L.d * S.roofBack, x = L.front.x + L.back.x * k, z = L.front.z + L.back.z * k, y = height(L.x, L.z) + (S.roof[sh.id] || 6);
+    const tex = canvasTex(128, 128, (g, up) => {
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(66, 68, 58, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2f3336'; g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ff8a1f'; g.stroke();
+      svgImg(SHOP_ICON[sh.id], '#f3ecdc', (img) => { g.drawImage(img, 26, 26, 76, 76); up(); });
+    });
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
+    sp.scale.setScalar(S.roofSize); sp.position.set(x, y, z); sp.renderOrder = 3; scene.add(sp);
+    const dot = new THREE.Sprite(dotMat); dot.scale.setScalar(S.roofSize * 0.34); dot.position.set(x, y + S.roofSize * 0.36, z); dot.center.set(-0.9, 0.5); dot.renderOrder = 4; dot.visible = false; scene.add(dot);
+    signs[sh.id] = { sp, dot, pos: sp.position };
+  }
+  return { signs, dot: (id, on) => { const s = signs[id]; if (s && s.dot.visible !== on) s.dot.visible = on; } };
+}
 
 function piece(g, color, jit = 0, seed = 1) {
   g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals();
@@ -152,5 +181,7 @@ export function createShopStreet({ scene, height, street, low, col }) {
     for (const s of soonSigns) sGeo.push(new THREE.PlaneGeometry(0.9, 0.68).applyMatrix4(new THREE.Matrix4().makeRotationY(s.rot).setPosition(s.x, s.y, s.z)));
     scene.add(new THREE.Mesh(mergeGeometries(sGeo), sMat));
   }
-  return { board, soon: soonSigns.length };
+  // 안내도 앞 (#128): 판 앞(걸어오는 쪽) 1.4m, 상호작용 '가게 안내'
+  const front = new THREE.Vector3(bp.x + Math.sin(bry) * 1.4, 0, bp.z + Math.cos(bry) * 1.4); front.y = height(front.x, front.z);
+  return { board, soon: soonSigns.length, boardFront: front, boardTop: new THREE.Vector3(bp.x, by + 3.6, bp.z) };
 }
