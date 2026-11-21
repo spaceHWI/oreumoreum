@@ -136,9 +136,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hurt(e, dmg, quiet, ch = 0) {
     if (e.state === 'calm') { scatter(e); return; } // #168 모여 있던 적은 맞으면 흩어짐
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
-    if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
+    if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
-    if (e.state === 'stagger') dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
+    const stag = e.state === 'stagger'; if (stag) dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
+    hooks.dmgNum?.(e, dmg, stag, ch); // 머리 위 피해 숫자 (#141, game/feel.js)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
       const ux = e.pos.x - player.pos.x, uz = e.pos.z - player.pos.z, L = Math.hypot(ux, uz) || 1;
@@ -277,6 +278,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       const k = Math.min(1, dt * 6), lim = 0.6;
       e.pitch += (Math.max(-lim, Math.min(lim, tp)) - e.pitch) * k; e.roll += (Math.max(-lim, Math.min(lim, tr)) - e.roll) * k;
       e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * (1 - e.st / COMBAT.staggerT) : 0);
+      if (e.rollT > 0 && e.state === 'flee') { const u = 1 - e.rollT / e.rollD, w = u * u * (3 - 2 * u); e.root.rotation.z += w * Math.PI * 2 * e.rollS; e.root.position.y += e.h * 0.5 * (1 - Math.cos(w * Math.PI * 2)) + Math.sin(u * Math.PI) * e.rollH * e.def.size; e.rollT -= dt; } // 쫓아낸 적이 옆으로 한 바퀴 구름 (#141, hooks.enemyRepel 이 rollT 를 넣음)
     }
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
       if (!e.warn) { e.warn = new THREE.Mesh(warnGeo.clone(), warnMat); e.warn.renderOrder = 3; group.add(e.warn); e.warnAt = drape(e.warn, height); } // 땅을 따라 휨 (#151)

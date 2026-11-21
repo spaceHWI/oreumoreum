@@ -50,6 +50,7 @@ life.hooks.enemyHit = (dir, def) => {
   if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
   const hatG = CLOTH[CL.wear.hat]?.guard || 0; // 감귤 박스 헬멧 (#164): 받는 피해 더 줄임
   const downed = hp.hit(def.dmg * Math.max(0, 1 - wearV('jacket') - augV(save, 'jacket')) * (1 - hatG)); // 잠바(#52)·두꺼운 잠바 증강(#159, 더함): 받는 피해 줄임
+  late.feel?.hurt(); // 가장자리 붉은빛·진동 (#141)
   // 전투 오름만 (#36), 피해는 적 표(ENEMIES). 0 이 되면 넉백이 끝난 뒤 쓰러짐
   if (hatG) late.boxThud?.(); else sound.stone(); if (downed) return; // 박스를 쓰면 '퉁'
   if (hp.hp < hp.max * COMBAT.lowHp && life.enemies.hesitate()) { say('danger', 'lowHp', '기운이 얼마 없어요. 물러나서 숨 돌리기', 2.8, { ttl: 3 }); return; } // #148 한 싸움에 한 번

@@ -244,6 +244,7 @@ function step(now) {
   if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);
   late.tickLevel?.(Math.min(0.05, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
   if (!state.augPause) tickPace(Math.min(0.05, rawDt), now / 1000);
+  late.tickFeel?.(Math.min(0.05, rawDt)); // 손맛 (#141): 숫자·흙먼지·가장자리
   state.camHold = Math.max(0, state.camHold - dt);
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저

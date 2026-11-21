@@ -50,7 +50,7 @@ export function dumpBag(ch = chNear()) {
   const cap = LOW ? CLEANHOUSE.flyMaxLow : CLEANHOUSE.flyMax, m = Math.min(n, cap);
   const vis = per.map((p) => Math.max(1, Math.round(m * p.c / n)));
   const seq = []; per.forEach((p, j) => { let left = p.g; for (let i = 0; i < vis[j]; i++) { const share = i === vis[j] - 1 ? left : Math.floor(p.g / vis[j]); left -= share; seq.push({ k: p.k, share }); } });
-  for (let i = seq.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [seq[i], seq[j]] = [seq[j], seq[i]]; } // 종류를 섞어서 차례로
+  // 종류별로 좌르륵 (#141): 섞지 않고 종류 하나씩 차례로 (per 는 종류 순서)
   const flyT = 0.5, spread = Math.max(0, CLEANHOUSE.dumpTime - flyT - 0.1), cols = trash.fxMats;
   const back = player.pos.clone(); back.y = player.visY + 1.45;
   dumpS.list = seq.map((q, i) => {
