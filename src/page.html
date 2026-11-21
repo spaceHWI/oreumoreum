@@ -950,6 +950,9 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 #boss-bar.roar { animation: bump .45s ease-out; }
 body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloom-banner { translate: 0 var(--boss-h, 54px); } /* 토스트·팁은 기운 줄 아래로 */
 #boss-bar small { position: absolute; right: 10px; top: 6px; font-size: 12px; color: var(--ink-soft); }
+#boss-bar small.rg { right: auto; left: 10px; color: #9fe6a0; } #boss-bar.regen .bn { padding: 0 42px; } /* #183 쉬며 기운이 차는 중: 막대 끝이 옅게 깜빡임 */
+#boss-bar.regen .fill::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 22px; border-radius: 6px; background: linear-gradient(90deg, transparent, rgba(190,255,180,.85)); animation: bossRg 1s ease-in-out infinite; }
+@keyframes bossRg { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 @media (max-width: 600px) { #boss-bar { left: calc(var(--safe-l, 0px) + 12px); transform: none; width: calc(100vw - 160px); padding: 5px 10px 7px; } #boss-bar .bn { font-size: 13px; } } /* 오른쪽 미니맵을 비켜 왼쪽에 */
 #zdone .pop { width: min(400px, 100%); }
 #zdone h2 { color: var(--tier, #fff); }
@@ -964,7 +967,7 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #fade-go { position: fixed; inset: 0; z-index: 9; background: #0e0f0c; opacity: 0; pointer-events: none; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 18px; transition: opacity var(--ft, .9s) ease; }
 #fade-go.on { opacity: 1; pointer-events: auto; } #fade-go[hidden] { display: none; }
 #fade-go svg { width: 54px; height: 54px; display: block; margin: 0 auto 8px; animation: bump .6s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #fade-go svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #boss-bar.regen .fill::after, #fade-go svg { animation: none; } }
 /* 오름 지도 (#136): 구역을 세 묶음 색으로, 지금 자리 */
 /* 미니맵 (#138): 위 줄 오른쪽 아래, 둥근 창. 가 본 곳·더미·소굴·보물·볼거리. 누르면 오름 지도 */
 #minimap { position: fixed; z-index: 4; top: calc(var(--tb-top) + var(--tb-h) + 10px); right: var(--tb-r); width: 148px; height: 148px; border-radius: 50%; border: 2px solid var(--hair); background: rgba(20,24,18,.55); box-shadow: 0 4px 14px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; }
@@ -1277,7 +1280,7 @@ button.bag-card { cursor: pointer; }
 <div id="bloom-glow" aria-hidden="true"></div>
 <div id="bloom-banner" role="status" hidden></div>
 <div id="zone-title" role="status" hidden><b></b><small></small></div>
-<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small></div>
+<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small><small id="boss-rg" class="rg" hidden>회복 중</small></div>
 <div class="overlay dim" id="zdone" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2 id="zdone-t">구역 완료</h2><button type="button" class="btn small" id="zdone-close">닫기</button></div>
