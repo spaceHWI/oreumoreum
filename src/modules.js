@@ -109,6 +109,7 @@ import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
 import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
+import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';

@@ -1189,6 +1189,14 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #buff-pill .ring svg.r .bg { stroke: rgba(255,255,255,.18); } #buff-pill .ring svg.r .fg { stroke: var(--acc); stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
 #buff-pill .ring svg.ic { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
 #buff-pill.end b { color: var(--acc); }
+/* 하르방 기운 (#163): 식사 버프 칸과 같은 모양, 고리는 돌 색 */
+#punk-pill { gap: 6px; padding: 0 12px 0 4px; }
+#punk-pill .ring { position: relative; width: 28px; height: 28px; flex: none; }
+#punk-pill .ring svg.r { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+#punk-pill .ring svg.r circle { fill: none; stroke-width: 3; }
+#punk-pill .ring svg.r .bg { stroke: rgba(255,255,255,.18); } #punk-pill .ring svg.r .fg { stroke: #c9c2b4; stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
+#punk-pill .ring svg.ic { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+#punk-pill.end b { color: var(--acc); }
 /* 값이 바뀔 때만 짧게 튐 */
 .topbar .tpill.bump { animation: bump .35s ease-out; }
 /* 좁으면 (hud.js topFit 이 f1~f6 을 차례로 붙임): 1 구역 번호 칸을 곳 이름 칸에 합치기(색 점·밑줄) 2 업적 고리는 메뉴로 3 배낭 용량·꽃 점 빼기
@@ -1222,11 +1230,11 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 .pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: var(--acc-fg); font-weight: 800; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
 .topbar.f2 #ach-chip { display: none; }
 .topbar.f3 #bag-pill small, .topbar.f3 #bloom-row { display: none; }
-.topbar.f4 #buff-pill { padding: 0 3px; } .topbar.f4 #buff-pill b { display: none; }
+.topbar.f4 #buff-pill, .topbar.f4 #punk-pill { padding: 0 3px; } .topbar.f4 #buff-pill b, .topbar.f4 #punk-pill b { display: none; }
 .topbar.f4 #hp-bar { min-width: 50px; flex-basis: 50px; }
 .topbar.f5 .tpill { padding: 0 7px 0 6px; gap: 3px; } .topbar.f5 .tpill b { font-size: 13px; }
 .topbar.f5 #clean-pill small, .topbar.f5 #xy-pill .na, .topbar.f5 #xy { display: none; } .topbar.f5 #where { max-width: 6.5em; }
-.topbar.f5 #buff-pill { padding: 0 2px; }
+.topbar.f5 #buff-pill, .topbar.f5 #punk-pill { padding: 0 2px; }
 .topbar.f6 #where { max-width: 4.6em; } .topbar.f6 #xy-pill::before { display: none; }
 .topbar.f7 #xy-pill { display: none; }
 /* 줄 아래 가운데: 토스트·업적 배너 */
@@ -1249,7 +1257,7 @@ body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
   .topbar .tpill b { font-size: 14px; }
   .topbar .tpill small { font-size: 11px; }
   .topbar .tpill svg, #gyul-pill i { width: 15px; height: 15px; }
-  #buff-pill { padding: 0 10px 0 3px; } #buff-pill .ring { width: 25px; height: 25px; }
+  #buff-pill, #punk-pill { padding: 0 10px 0 3px; } #buff-pill .ring, #punk-pill .ring { width: 25px; height: 25px; }
   #hp-bar { flex-basis: 110px; min-width: 56px; }
   #btn-menu { top: var(--tb-top) !important; right: var(--tb-r) !important; width: var(--tb-h) !important; height: var(--tb-h) !important; }
   #btn-menu svg { width: 17px !important; height: 17px !important; }
@@ -1442,6 +1450,7 @@ body.newbie .dock button span { display: block; }
   <div class="tb-g tb-c">
     <div id="hp-bar" class="panel tpill" role="meter" aria-label="HP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" hidden><svg data-i="hp"></svg><i class="track"><i class="fill" id="hp-fill"></i></i></div>
     <div class="panel tpill" id="buff-pill" hidden><span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg><svg data-i="quick" class="ic"></svg></span><b></b></div>
+    <div class="panel tpill" id="punk-pill" title="하르방 기운 · 귤 모으는 범위 +0.5m · 이동 +3%" hidden><span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 12V6a1.5 1.5 0 0 1 3 0v5M10 11V4.5a1.5 1.5 0 0 1 3 0V11M13 11V6a1.5 1.5 0 0 1 3 0v8c0 4-2 6-5 6-3 0-4-2-5-4l-1-3a1.5 1.5 0 0 1 2.5-1.5L8 14"/></svg></span><b></b></div>
   </div>
   <div class="tb-g tb-r">
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg data-i="zone" class="zm"></svg><svg data-i="bloom" class="zf"></svg><b id="zone-n">1</b></div>

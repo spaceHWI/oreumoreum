@@ -1300,3 +1300,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 식사 무료(#93)는 두 식당 공통 한 번. 식사 업적 이벤트 'meal' 은 두 식당 모두, 만족한상회는 'meal-manjok' 도
 - 밤 불빛은 창·전구·빛웅덩이만, 낮엔 안 그림 (점광원·늘 그리는 투명 판을 두면 online.js 세 번째 브라우저가 30초 넘게 멈췄음)
 - 확인 `node tools/manjok.js [--shot]`
+
+## #163 오름펑크 상호작용: 하르방 하이파이브·관광객 사진 부탁·까마귀 도둑
+- 새 파일: `src/game/punkmeet.js`(게임 연결, `late.meet`), `src/punkmodels.js`(관광객·까마귀·카메라 아이콘·반짝임·그림자), `src/punksound.js`('탁'·'까악', audio.js 가 40KB 가까워 따로). 수치 balance.js `MEET`
+- 하르방: 들머리·가게 거리(life.hareubangs) + 서 있는 구역 지킴이(#119) 앞 2.5m '인사하기' → emotes 'five'(남에게도 보임) → 손이 닿는 순간 '탁'·들썩·눈 반짝·말풍선 10줄. 하루 한 번(KST) 10분 버프: 귤 모으는 범위 +0.5m(hooks.js pickR2 에 `late.punkPickR`)·이동 +3%(update.js `late.punkSpeed`), 위 줄 `#punk-pill` 한 칸(식사 버프와 따로). 저장 save.meet(망가진 값은 새로, #165 의 save.punk 와 따로)
+- 관광객: 8~12분마다 한 명, 플레이어에서 160m 안 가장 가까운 자리(들머리 클린하우스 옆·정상 사진사 반대쪽·field.sights 볼거리)에 걸어와 손 흔듦·카메라 아이콘. '사진 찍어 주기' → 3·2·1(#countdown)·번쩍(#flash)·셔터 → 귤 10. 1/3 은 쓰레기를 버리고 돌아섬: 9초 안에 귤로 맞히면 사과·도로 줍고 귤 15, 안 맞히면 trash.drop 2개(투기꾼 봉투와 같은 길, 방에선 방장만). 60초 안 찍으면 감. 튜토리얼 중엔 없음. 모양은 dumpers.js `buildWalker(색)`(export, 마스크 끄기)
+- 까마귀: 배낭이 가득 찬 채(bagRoom<1) 30초 → 3~20초 뒤, 5분에 한 번·하루 5번까지. 2초 경고(까악·그림자·감독 danger) → 내려와 배낭에서 가장 많은 쓰레기 1개(xv 도 비율만큼) → 8초 머리 위 맴돎 → 멀어짐. 맞히면(life.addTargets, 타겟 고정 #148) 떨군 쓰레기는 배낭으로(자리 없으면 더미), 반짝이는 것 표 C.drop: 귤 20(귀한 귤 `late.rareGyul`·영수증 `late.receiptDrop` 이 아직 없으면 귤). 처음 올 때 팁 'crow'(tips.js)
+- 감독 문(#176 JOURNEY): 관광객은 'tourist'(구역 2), 까마귀는 'crow'(구역 3) 문이 열린 뒤부터. 이야기 이벤트 'tour'(#168) 의 `late.tourists.bus` 는 아직 없음(한 번에 한 명만)
+- 귤 벌이: 관광객 시간당 90 + 까마귀 하루 최대 100 = 190, 1일차 1시간 4,109 의 5%(205) 안 (`node tools/econ.js` 오름펑크 줄)
+- 합치다 고친 것: update.js 매 프레임 한 줄 가운데 `// 지붕 간판…(#182)` 주석이 뒤를 모두 지워 tickCartMark·식사·버프·튜토리얼·가로등·철 이벤트·#164 tickPunk 가 돌지 않던 것을 `/* */` 로. #165 punkworld.js 가 #164 의 `late.tickPunk` 를 덮어쓰던 것을 `late.tickPunkWorld` 로 나눔
+- 확인 `node tools/punkmeet.js`, `__oreum.punk.tourist(litter)`·`crow()`·`five()`·`litterNow()`·`goTourist()`·`shoot()`·`hitCrow()`·`hitTourist()`·`state()`·`resetDay()`

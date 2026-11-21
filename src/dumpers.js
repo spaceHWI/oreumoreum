@@ -23,16 +23,18 @@ const mesh = (g, c, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(g, tm(c))
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
 // 투기꾼: 어두운 점퍼·모자·흰 마스크, 손에 검은 쓰레기봉투 (키 약 2.2, 캐릭터와 비슷)
-export function buildWalker({ jacket = '#4c5560', withBag = true } = {}) { // 흡연자(#156)도 씀: 점퍼 색만 바꾸고 봉투 없이
+// c: 색 바꾸기 leg·shoe·top(jacket)·face·hat·mask·withBag — 흡연자(#156)는 점퍼 색만·봉투 없이, 관광객(#163)은 색·마스크 없이
+export function buildWalker(c = {}) {
+  const C = { leg: '#3b3f48', shoe: '#25262b', top: c.jacket || '#4c5560', face: '#e8c6a4', hat: '#2c2f36', ...c };
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const legs = [-0.17, 0.17].map((x) => { const p = new THREE.Group(); p.position.set(x, 0.85, 0); p.add(mesh(box(0.24, 0.85, 0.26), '#3b3f48', 0, -0.42, 0), mesh(box(0.26, 0.14, 0.36), '#25262b', 0, -0.82, 0.05)); body.add(p); return p; });
-  body.add(mesh(box(0.66, 0.8, 0.42), jacket, 0, 1.25, 0)); // 점퍼
-  body.add(mesh(new THREE.SphereGeometry(0.3, 8, 6), '#e8c6a4', 0, 1.88, 0)); // 얼굴
-  body.add(mesh(box(0.42, 0.16, 0.08), '#f4f4f0', 0, 1.8, 0.27)); // 마스크
-  body.add(mesh(new THREE.CylinderGeometry(0.32, 0.34, 0.2, 8), '#2c2f36', 0, 2.08, 0)); // 모자
-  body.add(mesh(box(0.5, 0.06, 0.3), '#2c2f36', 0, 2.0, 0.24)); // 챙
-  const arms = [-0.42, 0.42].map((x) => { const p = new THREE.Group(); p.position.set(x, 1.58, 0); p.add(mesh(box(0.18, 0.66, 0.2), jacket, 0, -0.32, 0)); body.add(p); return p; });
-  const bag = new THREE.Group(); bag.position.set(0, -0.72, 0.05); arms[1].add(bag); bag.visible = withBag; // 오른손 봉투
+  const legs = [-0.17, 0.17].map((x) => { const p = new THREE.Group(); p.position.set(x, 0.85, 0); p.add(mesh(box(0.24, 0.85, 0.26), C.leg, 0, -0.42, 0), mesh(box(0.26, 0.14, 0.36), C.shoe, 0, -0.82, 0.05)); body.add(p); return p; });
+  body.add(mesh(box(0.66, 0.8, 0.42), C.top, 0, 1.25, 0)); // 점퍼
+  body.add(mesh(new THREE.SphereGeometry(0.3, 8, 6), C.face, 0, 1.88, 0)); // 얼굴
+  if (C.mask !== false) body.add(mesh(box(0.42, 0.16, 0.08), '#f4f4f0', 0, 1.8, 0.27)); // 마스크
+  body.add(mesh(new THREE.CylinderGeometry(0.32, 0.34, 0.2, 8), C.hat, 0, 2.08, 0)); // 모자
+  body.add(mesh(box(0.5, 0.06, 0.3), C.hat, 0, 2.0, 0.24)); // 챙
+  const arms = [-0.42, 0.42].map((x) => { const p = new THREE.Group(); p.position.set(x, 1.58, 0); p.add(mesh(box(0.18, 0.66, 0.2), C.top, 0, -0.32, 0)); body.add(p); return p; });
+  const bag = new THREE.Group(); bag.position.set(0, -0.72, 0.05); arms[1].add(bag); bag.visible = C.withBag !== false; // 오른손 봉투
   const bg = new THREE.IcosahedronGeometry(0.38, 0); bg.scale(1, 1.15, 0.9);
   bag.add(mesh(bg, '#26262c', 0, -0.32, 0), mesh(new THREE.ConeGeometry(0.1, 0.2, 5), '#26262c', 0, 0.08, 0));
   return { root, body, legs, arms, bag, h: 2.2 };

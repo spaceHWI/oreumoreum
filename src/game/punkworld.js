@@ -288,7 +288,7 @@ function tickStare(dt) {
 }
 
 /* ---------- 매 프레임 ---------- */
-late.tickPunk = (dt) => {
+late.tickPunkWorld = (dt) => { // #164 punk.js 의 late.tickPunk 와 이름이 겹쳐 바꿈 (#163)
   if (stripT > 0 && (stripT -= dt) <= 0) strip.hidden = true;
   if (!state.sessionOn) return;
   tickStare(dt);

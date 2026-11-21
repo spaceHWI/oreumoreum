@@ -74,7 +74,7 @@ life.hooks.enemyRepel = (kind, pos, def) => {
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
 };
-life.hooks.pickR2 = () => Math.max(gyulPickR(save) + augV(save, 'magnet') + buff.add('gyulR'), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; // 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐) + 자석 귤 증강 (#159, 더함). 싸우는 중엔 #148 값과 큰 쪽
+life.hooks.pickR2 = () => Math.max(gyulPickR(save) + augV(save, 'magnet') + buff.add('gyulR') + (late.punkPickR?.() || 0), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; // 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐) + 자석 귤 증강 (#159, 더함) + 하르방 기운 (#163). 싸우는 중엔 #148 값과 큰 쪽
 life.hooks.throwR2 = () => (life.enemies.active() ? COMBAT.autoPick ** 2 : 1.6); // 내가 던진 귤은 예전 범위 (노루가 먹으러 올 틈), 싸우는 중엔 넓게 (#148)
 life.hooks.paced = !!trash; life.hooks.hit = (p, dead) => late.pace?.hit(p, dead); // 몹도 연출 감독이 부름 (#89). 쓰레기 없는 맵은 예전대로
 life.hooks.enemyRoot = (kind, pos, n) => { if (trash) trash.drop(pos.x, pos.z, n, ENEMIES[kind]?.rootR || 14); };
