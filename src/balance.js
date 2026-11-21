@@ -470,6 +470,29 @@ export const ENEMIES = {
   drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
+// 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
+// m: 보통 알갱이 하나(쫓아낸 귤 ÷ 알갱이 수) 의 몇 배. 아기 멧돼지(알갱이 1)면 이슈 값 그대로 5·10·20·50, 센 적일수록 알갱이가 커서 귀한 귤도 큼 (growth-loop 5절 '대박')
+// 모양: k 크기 배율, flatY 납작함(세로 배율), knob 꼭지 혹 크기, glow 아래 빛 원 배율, sparkle 반짝이 수, pillar 빛기둥 높이, coins 주울 때 '짤랑' 수
+// chance[누가]: 한 번 쫓아낼 때 [한라봉, 천혜향, 레드향, 황금향] 이 나올 확률 (하나만 나옴). 센 적일수록 높음. 귀한 귤이 보통 알갱이 하나를 대신해서
+//   늘어나는 몫 = Σ p × (m - 1) ÷ 알갱이 수 → 적 귤 벌이가 아기 멧돼지 +8%, 들개 +5%, 멧돼지 +8%, 광견병 +10%, 외계인 +12% (node tools/raregyul.js). 전체 벌이는 tools/econ.js
+export const RARE_GYUL = {
+  kinds: [
+    { id: 'hallabong', name: '한라봉', m: 5, color: '#ff9a1a', emissive: '#a84a00', emissiveI: 0.8, k: 1.3, flatY: 1, knob: 0.5, glow: 1.2, sparkle: 0, pillar: 0, coins: 2 },
+    { id: 'cheonhye', name: '천혜향', m: 10, color: '#ff7400', emissive: '#d45a00', emissiveI: 1.3, k: 1.35, flatY: 0.74, knob: 0, glow: 1.8, sparkle: 0, pillar: 0, coins: 3 },
+    { id: 'redhyang', name: '레드향', m: 20, color: '#f2471c', emissive: '#c42a0a', emissiveI: 1.1, k: 1.4, flatY: 0.9, knob: 0.25, glow: 1.8, sparkle: 3, pillar: 2.6, coins: 4 },
+    { id: 'hwanggeum', name: '황금향', m: 50, color: '#ffcf2e', emissive: '#e0a000', emissiveI: 1.5, k: 1.5, flatY: 0.95, knob: 0.2, glow: 2.4, sparkle: 4, pillar: 6, coins: 6 },
+  ],
+  chance: {
+    piglet: [0.05, 0.012, 0.003, 0.0008],
+    dog: [0.07, 0.02, 0.006, 0.0015],
+    boar: [0.09, 0.028, 0.009, 0.0025],
+    rabid: [0.11, 0.035, 0.012, 0.0035],
+    alien: [0.13, 0.045, 0.016, 0.005],
+    walker: [0.04, 0.008, 0.002, 0.0005], // 무단투기꾼 (귤 5, 알갱이 하나 = 귤 1)
+    truck: [0.05, 0.012, 0.003, 0.0008], // 투기 트럭 (귤 30)
+  },
+  fly: { up: [5, 7], spread: [1.2, 2.6], grav: 16, magnetT: 0.7, fly: 14, autoT: 20, life: 90 }, // 튀어 오름·퍼짐·빨려 듦(줍는 범위 life.hooks.pickR2, magnetT 초 뒤부터)·autoT 초 뒤엔 어디 있든 날아옴·life 초 뒤 사라짐
+};
 export const ENEMY_SPAWN = {
   every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤). 남송이는 연출 감독(#89 PACE.battle)이 부르고, 이 값은 쓰레기 없는 맵에서만
   group: [2, 3], // 한 무리 마릿수

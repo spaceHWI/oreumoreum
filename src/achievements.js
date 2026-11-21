@@ -89,6 +89,7 @@ BADGES.push(
   { id: 'b-dumper', ev: 'dumper-repel', goal: 30, name: '투기꾼의 악몽', desc: '무단 투기꾼을 서른 번 쫓아냈어요', color: '#8a4a3a', reward: 60 },
   { id: 'b-guard-1', ev: 'quest-boss1', goal: 1, name: '숲길 지킴이', desc: '오름지기 퀘스트 \'구역의 주인\' 을 끝냈어요', color: '#4f7a36', reward: 20 },
   { id: 'b-notes', ev: 'note-all', goal: 1, name: '쪽지 수집가', desc: '주운 쪽지 30장을 다 모았어요', color: '#c9a86a', reward: 80 },
+  { id: 'b-rare-gyul', ev: 'gyul-kind', goal: 4, name: '귀한 귤 감별사', desc: '한라봉·천혜향·레드향·황금향을 다 모았어요', color: '#ff9a1a', reward: 60 }, // #130 game/raregyul.js 가 처음 주운 종류마다 사건을 냄
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
 );
 

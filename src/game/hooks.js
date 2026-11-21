@@ -69,7 +69,7 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 life.hooks.enemyWave = (w) => { say('danger', 'wave', `${ENEMY_NAME(w.kind)} ${w.n}마리가 나타났어요! 귤을 맞히면 도망가요`, 2.8, { ttl: 4 }); enemyWarn.start(w); };
 life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(ENEMY_NAME(kind))} 숲으로 돌아갔어요`); };
 life.hooks.enemyRepel = (kind, pos, def) => {
-  life.scatterTangerines(pos, def.reward.gyul, ENEMY_DROP.max);
+  life.scatterTangerines(pos, def.swarm ? def.reward.gyul : late.rareDrop?.(kind, pos, def.reward.gyul, ENEMY_DROP.max) ?? def.reward.gyul, ENEMY_DROP.max); // 귀한 귤 (#130, game/raregyul.js): 알갱이 하나가 가끔 한라봉·천혜향…
   if (trash && Math.random() < def.reward.rare) { const rares = DEX_LIST.filter((d) => d.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
@@ -112,7 +112,7 @@ export const dumpers = trash ? createDumpers({
     dumped: (d, n) => { late.mutterDumped?.(d, n); if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
     dress: (d) => late.season?.dress(d), // 산타 투기꾼 (#180)
     repel: (kind, pos, def, d) => {
-      life.scatterTangerines(pos, def.reward); late.season?.repel(d, pos); // 산타면 선물 상자 (#180)
+      life.scatterTangerines(pos, late.rareDrop?.(kind, pos, def.reward) ?? def.reward); late.season?.repel(d, pos); // 귀한 귤 낮은 확률 (#130) // 산타면 선물 상자 (#180)
       sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
       ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.lvGain?.('dumper'); late.story?.dumperRepel?.(); // 경험치 (#159), 이야기 이벤트 (#168)
     },
