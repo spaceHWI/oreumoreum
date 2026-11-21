@@ -53,6 +53,11 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const alv = await A.p.evaluate(() => { const o = window.__oreum; o.save.journey = { ...(o.save.journey || {}), seen: { ...(o.save.journey?.seen || {}), level: '2026-01-01' } }; o.level.setXp(5000); o.player.pos.x += 0.5; return o.level.state().lv; });
     const seenLv = await until(B, (lv) => [...window.__oreum.net.peersById.values()].some((e) => e.lv === lv), alv);
     ok(alv > 1 && seenLv, `B 가 A 의 레벨을 봄 (레벨 ${alv})`);
+    // 칭호 (#165): A 가 단 칭호가 B 화면 이름표 위에 (번호 tt 만 오가고 글은 목록에서)
+    const tt = await A.p.evaluate(() => { const o = window.__oreum, i = o.punkWorld.title.list.findIndex((t) => t.badge === 'b-first'); o.ach.state.badges['b-first'] ||= { at: Date.now(), claimed: false }; o.punkWorld.title.set(i); o.player.pos.x += 0.5; return o.punkWorld.title.list[i].t; });
+    ok(await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.title === t && e.label?.scale.y > 0.9), tt), `A 가 단 칭호가 B 화면 이름표 위에 (${tt})`);
+    await A.p.evaluate(() => { window.__oreum.punkWorld.title.set(-1); window.__oreum.player.pos.x += 0.5; });
+    ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
     const C = await open('C'); await C.p.click('#enter');
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)

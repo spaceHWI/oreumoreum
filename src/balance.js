@@ -1484,6 +1484,18 @@ export const SEASON = {
   },
 };
 
+// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·칭호. 글은 src/punktext.js, 게임 연결은 game/punkworld.js
+// radio.every 방송 사이 [최소, 최대] 초 · sec 자막 띠가 흐르는 초 · r 스피커 기둥에서 이 m 안에서만 들림 · first 문(JOURNEY 'radio')이 열린 뒤 첫 방송까지 초
+//   situ 상황 방송이 생기면 다음 방송을 이 초 안으로 당김 · situTtl 상황 방송이 기다리는 최대 초 · spots 스피커 자리 [들머리 길 approach 거리(정낭 TUT.gateD 에서), 쪽, 옆 m], 가게 거리 골목 [s, 쪽]
+// note.p 쓰레기 하나 주울 때 쪽지가 나올 확률 (쓰레기 수·귤은 보통 쓰레기와 같음)
+// stare 멧돼지와 눈싸움: 멧돼지(아기 포함)가 r m 안에서 sec 초 동안 안 맞음 · unpaid 하루 쓰레기 수 (칭호 '오늘도 무급')
+export const PUNK = {
+  radio: { every: [480, 900], sec: 6, r: 60, first: 20, situ: 8, situTtl: 600, trail: [18, -1, 4.6], street: [5.4, 1], poleH: 5.2 },
+  note: { p: 0.02 },
+  stare: { r: 8, sec: 10, kinds: ['boar', 'piglet'] },
+  unpaid: 500,
+};
+
 // 레벨과 증강 (#159, src/augments.js·src/game/level.js). 값은 모두 임의 (tools/econ.js 로 맞춤)
 // 경험치: 쓰레기 하나 trash, 더미를 다 치우면 heap(쓰레기 산 mt), 적을 쫓아내면 그 적 귤 보상 × enemyK, 우두머리 boss, 투기꾼 dumper, 퀘스트 quest[최소, 최대] (#158 이 값을 골라 줌)
 // 레벨 L → L+1 에 round(base × L^pow), 최고 max. 레벨업마다 증강 하나를 고름 (고를 수 = 레벨 - 1)

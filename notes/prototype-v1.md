@@ -67,6 +67,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | rec.js | 게임 안 촬영 모드(#185): 메뉴 설정 '촬영' → 빨간 점(`#rec-ui`, V)으로 녹화. 게임 캔버스만 숨은 2D 캔버스에 가운데 9:16 로 잘라 그림(update.js 가 그린 뒤 `late.recFrame`) → `captureStream`+`MediaRecorder`(mp4 → webm), 게임 소리 `sound.master` → MediaStreamDestination, 로고 글자, 3분 한도·30/60초 알림, 프레임이 떨어지면 화질 한 단계↓, '방금 30초'(PC, 녹화기 둘 엇갈림), 저장/공유 창 `#rec-ready`. 저장 save.rec, 수치 balance.js REC, `__oreum.rec`, 확인 `node tools/rec.js` |
 | swarm.js | 들판 떼(#173): 길에서 SWARM.offD m 넘게 벗어나면 판(`run`) 시작 → 물결(시간·정예·떼 대장·보물 상자)·화면 밖에서 나오기(enemies.js `spawnSwarm`, def.swarm), 자동 던지기(탄은 여기 InstancedMesh, 무기 간격·피해·귤), 귤 조각(빨려 옴·3개 = 귤 1·`late.xpGain`), 들판 증강 카드(`#swarm-pick`), 썩은 귤 자루, 화면 위 한 줄(`#swarm-bar`), 숨 돌릴 틈(late.pace.cleared 감쌈), 이동 배수 `late.swarmSpeed`(update.js). 저장 save.swarm(auto·best). 메뉴 설정 '자동 던지기'. `__oreum.swarm`(start·stop·t·aug·fill·speed), 확인 `node tools/swarm.js` |
 | smoker.js | 들머리 흡연자(#156): 들머리 클린하우스(CH) 둘레 SMOKER.near m 안·길에서 2~5m 비켜난 자리에 가끔 한 명(투기꾼 모양 `dumpers.js buildWalker({ jacket, withBag })`). 담배 피우는 동작·연기·머리 위 금연 표시·가장자리 표시(hooks.js `makeEdgeWarn`). 귤 한 번 → 놀라 도망·꽁초 1·귤 SMOKER.reward·업적 'smoker-repel'(뱃지 b-nosmoke). 안 쫓으면 꽁초 3개 버리고 떠남. 꽁초는 낱개 쓰레기(가까이 가면 배낭에 비닐 1, 도감 'butt:0', 저장 안 함). 맞히기·조준은 `life.addTargets`, 매 프레임은 `dumpers.update` 를 감쌈. `__oreum.smoker`(spawn·hit·leave·go·state·butts) |
+| punkworld.js | 오름펑크 세계(#165): 오름 방송(스피커 기둥·자막 띠 `#radio-strip`·상황 방송·설정 '오름 방송', 감독 문 radio)·쪽지(쓰레기 2%, `#punk-note`·칩 `#punk-chip`·도감 칸 late.dexExtra 감쌈)·칭호(업적 창 [칭호] `#punk-title`, save.punk.title → net.js `tt` 이름표 위). 글은 `src/punktext.js`, 수치 balance.js PUNK. `late.tickPunk`, `__oreum.punkWorld` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
@@ -89,6 +90,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
   - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
 - 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
+- 오름펑크 글 (#165): punktext.js (#168 STORY_TEXT 뒤) — 방송(RADIO·RADIO_SITU)·쪽지(NOTES, id 는 저장에 씀)·칭호(TITLES, 번호가 멀티로 오가므로 뒤에만 더함). DOM 없음, 서버 validate·roomcore 도 씀
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
