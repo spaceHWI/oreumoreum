@@ -3,6 +3,7 @@
 // 상태: wander(돌아다님) · root(땅 헤집기, 쓰레기 흘림) · charge(플레이어를 쫓음, ranged 는 거리를 두고 광선) · flee(놀라 도망) · leave(시간이 다 돼 스스로 떠남)
 // #148 받기: charge 로 다가와 windD 안이면 wind(멈춰 몸을 낮추고 발밑 붉은 표시) → dash(곧게 돌진, 닿으면 받음) → back(한 걸음 물러남)
 //   비껴가면 stagger(비틀거림, 이때 맞으면 급소). 한 번에 덤비는 적은 COMBAT.attackers, 나머지는 ringR 둘레를 돎. 맞으면 멈칫하며 뒤로 밀림(fl)
+//   #149 back·stagger 가 끝나면 rest(ENEMIES.*.rest 초) 동안 쉬며 ringR 둘레를 돎 (덤비는 자리는 지킴)
 // 구역 번호는 hooks.zoneAt(x, z) 로 받음 (없으면 구역 없는 맵: ENEMY_SPAWN.kinds)
 import * as THREE from 'three';
 import { height } from './world.js';
@@ -137,11 +138,11 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
 
   const turnTo = (o, h, k) => { o.heading += wrapA(h - o.heading) * k; };
   let blocked = false, stuckT = 0, held = false;
-  const atkN = () => { let n = 0; for (const e of list) if (ATK.has(e.state)) n++; return n; };
+  const atkN = () => { let n = 0; for (const e of list) if (ATK.has(e.state) || (e.rest > 0 && e.state === 'charge')) n++; return n; }; // 쉬는 적도 자리를 지킴 (#149: 기다리던 적이 바로 끼어들지 않게)
   // 기운이 낮을 때 (#148, hooks 가 부름): 한 싸움에 한 번, 덤비던 적이 모두 잠깐 머뭇거림. 했으면 true
   function hesitate() { if (held) return false; let n = 0; for (const e of list) if (!e.boss && AGGRO.has(e.state)) { e.hold = COMBAT.holdT; n++; } if (n) held = true; return n > 0; }
   function tick(e, dt, time) {
-    const d0 = e.def; e.st += dt; e.hitCd -= dt; e.life -= dt;
+    const d0 = e.def; e.st += dt; e.hitCd -= dt; e.life -= dt; if (e.rest > 0) e.rest -= dt;
     const to = new THREE.Vector3(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z), d = to.length();
     if ((e.state === 'wander' || e.state === 'root' || AGGRO.has(e.state)) && (player.down || e.life <= 0)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 쓰러뜨렸거나 시간이 다 됨
     let want = 0;
@@ -162,23 +163,23 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     } else if (e.hold > 0 && AGGRO.has(e.state)) { // 기운이 낮을 때 머뭇거림 (#148)
       e.hold -= dt; want = d < COMBAT.ringR ? d0.walk : 0; turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 3)); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; }
     } else if (e.state === 'charge') { // 쫓음 (#148): 자리가 있으면 windD 안에서 조짐, 없으면 ringR 둘레를 돎
-      const face = Math.atan2(to.x, to.z), slot = atkN() < COMBAT.attackers;
+      const face = Math.atan2(to.x, to.z), resting = e.rest > 0, slot = !resting && atkN() < COMBAT.attackers; // 공격 뒤 쉬는 동안은 둘레를 돎 (#149)
       if (slot && d < COMBAT.windD && e.hitCd <= 0 && !player.down) { e.state = 'wind'; e.st = 0; want = 0; }
       else if (!slot && d < COMBAT.ringR + 2) { const off = Math.max(-1, Math.min(1, (COMBAT.ringR - d) / 3)), side = e.phase % 2 < 1 ? 1 : -1; want = d0.walk; turnTo(e, face + side * Math.PI / 2 * (1 + off), Math.min(1, dt * 3)); }
-      else { want = d > 3 ? d0.chase : e.hitCd > 0 ? 0 : 2; turnTo(e, face, Math.min(1, dt * 3)); }
+      else { want = resting ? d0.walk : d > 3 ? d0.chase : e.hitCd > 0 ? 0 : 2; turnTo(e, face, Math.min(1, dt * 3)); }
       if (d > d0.lose && e.st > 2) { e.state = 'wander'; e.st = 0; }
     } else if (e.state === 'wind') { // 멈춰 몸을 낮춤
       want = 0; e.speed *= Math.max(0, 1 - dt * 12); turnTo(e, Math.atan2(to.x, to.z), Math.min(1, dt * 8));
-      if (e.st >= COMBAT.windT) { e.state = 'dash'; e.st = 0; e.speed = Math.max(COMBAT.dashMin, d0.chase * COMBAT.dashK); }
+      if (e.st >= COMBAT.windT) { e.state = 'dash'; e.st = 0; e.speed = Math.max(COMBAT.dashMin, (d0.rush ?? d0.chase) * COMBAT.dashK); }
     } else if (e.state === 'dash') { // 곧게 돌진: 방향은 그대로
-      want = Math.max(COMBAT.dashMin, d0.chase * COMBAT.dashK); e.speed = want;
+      want = Math.max(COMBAT.dashMin, (d0.rush ?? d0.chase) * COMBAT.dashK); e.speed = want; // 돌진은 예전 빠르기 (#149)
       const ahead = to.x * Math.sin(e.heading) + to.z * Math.cos(e.heading);
       if (e.st > COMBAT.dashT || ahead < -1.2) { e.state = 'stagger'; e.st = 0; e.speed = 0; want = 0; }
     } else if (e.state === 'stagger') { // 비껴가 비틀거림
-      want = 0; e.speed = 0; if (e.st >= COMBAT.staggerT) { e.state = 'charge'; e.st = 0; }
+      want = 0; e.speed = 0; if (e.st >= COMBAT.staggerT) { e.state = 'charge'; e.st = 0; e.rest = d0.rest || 0; }
     } else if (e.state === 'back') { // 받은 뒤 한 걸음 물러남
       want = d0.walk * 1.6; turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 6));
-      if (e.st >= COMBAT.backT) { e.state = 'charge'; e.st = 0; }
+      if (e.st >= COMBAT.backT) { e.state = 'charge'; e.st = 0; e.rest = d0.rest || 0; } // 받기·비껴감 뒤 쉼 (#149)
     } else if (e.state === 'root') { // 머리를 숙여 땅을 헤집음. 중간에 쓰레기를 흘림
       want = 0;
       if (!e.dropped && e.st > d0.rootT * 0.5) { e.dropped = true; hooks.enemyRoot?.(e.kind, e.pos.clone(), irange(rnd, d0.rootTrash)); }

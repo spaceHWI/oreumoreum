@@ -1,5 +1,5 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER } from '../balance.js';
+import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
@@ -39,7 +39,7 @@ Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르
 function updatePlayer(dt) {
   const p = player;
   p.poseT += dt;
-  if (p.iframe > 0) { p.iframe -= dt; runner.root.visible = p.iframe <= 0 || Math.floor(p.iframe * 12) % 2 === 0; } // 받힌 뒤 깜빡임 (#148)
+  if (p.iframe > 0) { p.iframe -= dt; runner.root.visible = p.iframe <= 0 || COMBAT.iframe - p.iframe >= COMBAT.blinkT || Math.floor(p.iframe * 12) % 2 === 0; } // 받힌 뒤 깜빡임 (#148, 앞 blinkT 초만 #149)
   if (hp.isDown) { marker.visible = false; placeRunner(dt); return; } // 쓰러져 들것에 실려 가는 중 (#36)
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
   if (p.cart) { tickCartRide(dt); return; } // 마차에 앉아 실려 가는 중 (#69)

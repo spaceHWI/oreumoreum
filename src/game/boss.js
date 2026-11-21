@@ -137,7 +137,7 @@ function startAct(k, o, warnLeft = null) {
   const A = { k, t: 0, hit: false, seq: o.seq ?? ++seqN, ...o };
   if (k === 'charge') {
     A.warn = warnLeft ?? B.charge.warn; A.dir = Math.atan2(o.bx - o.ax, o.bz - o.az); A.len = Math.hypot(o.bx - o.ax, o.bz - o.az);
-    A.speed = ENEMIES[B.list[c.z].kind].chase * B.charge.speed; A.dashT = A.len / A.speed;
+    const bd = ENEMIES[B.list[c.z].kind]; A.speed = (bd.rush ?? bd.chase) * B.charge.speed; A.dashT = A.len / A.speed; // #149: 졸개 chase 를 낮춰도 우두머리 돌진은 그대로 (rush)
     layStrip(o.ax, o.az, o.bx, o.bz, B.charge.w);
   } else if (k === 'beam') {
     A.warn = warnLeft ?? B.beam.warn; A.pts.forEach((p, i) => { if (discs[i]) layDisc(discs[i], p[0], p[1], B.beam.r); });
@@ -226,7 +226,7 @@ function aiCtl(e, dt) {
   e.heading += Math.atan2(Math.sin(face - e.heading), Math.cos(face - e.heading)) * Math.min(1, dt * 3);
   c.gapT -= dt; c.callT -= dt; c.beamT -= dt;
   if (c.gapT <= 0) { pickAct(c, t); const g = B.gap[c.ph]; c.gapT = g[0] + Math.random() * (g[1] - g[0]); return 0; }
-  return t.d > 6 ? base.walk * B.walk + (t.d > 16 ? base.chase * 0.35 : 0) : 0;
+  return t.d > 6 ? base.walk * B.walk + (t.d > 16 ? (base.rush ?? base.chase) * 0.35 : 0) : 0;
 }
 function pickAct(c, t) {
   const e = c.e;
