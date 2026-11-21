@@ -209,6 +209,18 @@ async function startServers() {
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, look: { sex: 'm', skin: 0, colors: { hat: 99, top: -1, bottom: '3', shoes: 7, x: 5 } } } } });
     const lc = (await req('dev', '/me', { token: A.token })).j.save.look?.colors;
     ok(JSON.stringify(lc) === JSON.stringify({ shoes: 7 }), `범위 밖 옷 색 번호 버림 (${JSON.stringify(lc)})`);
+    // 레벨·증강 (#159): 경험치는 최고 레벨까지, 증강은 아는 것만·종류마다 3 이하·합이 (레벨 - 1) 이하
+    { const { xpAt, levelOf } = await import('../src/augments.js');
+      const lvPut = async (lv) => { const r = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, lv } } }); return { r, lv: (await req('dev', '/me', { token: A.token })).j.save.lv }; };
+      const a = await lvPut({ xp: 1e12, aug: {} });
+      ok(a.r.j.fixed.includes('lv') && levelOf(a.lv.xp).lv === 30, `범위 밖 경험치는 최고 레벨 30 까지 (${a.lv.xp})`);
+      const b2 = await lvPut({ xp: xpAt(3), aug: { recycle: 3, bighand: 3, fly: 9 } }); // 레벨 3 → 증강 2개까지
+      const n2 = Object.values(b2.lv.aug).reduce((s, n) => s + n, 0);
+      ok(b2.r.j.fixed.includes('lv') && n2 <= 2 && !('fly' in b2.lv.aug), `레벨보다 많은 증강·없는 증강 거절 (레벨 3 → ${JSON.stringify(b2.lv.aug)})`);
+      const c2 = await lvPut({ xp: xpAt(20), aug: { recycle: 7, twin: -1 } });
+      ok(c2.r.j.fixed.includes('lv') && !(c2.lv.aug.recycle > 3) && !('twin' in c2.lv.aug), `증강은 종류마다 3 이하 (${JSON.stringify(c2.lv.aug)})`);
+      const d2 = await lvPut({ xp: xpAt(5), aug: { recycle: 2, twin: 2 } });
+      ok(!d2.r.j.fixed.includes('lv') && d2.lv.aug.recycle === 2 && d2.lv.aug.twin === 2, '맞는 레벨·증강은 그대로'); }
 
     /* ---------- 방 (이동·줍기·폭주·맞힘) ---------- */
     const P = await sock('dev', 'oreum-namsongi-battle', { ch: 3, token: A.token });
@@ -219,6 +231,10 @@ async function startServers() {
     await sleep(400);
     const seen = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).find(([id]) => id === P.msgs[0].id)?.[1];
     ok(seen && !/[<>‮]/.test(seen.nick) && [...seen.nick].length <= 16 && !/[<>]/.test(seen.say.t) && [...seen.say.t].length <= 60, '다른 사람에게 가는 닉네임·말풍선 다듬음');
+    // 이름표 레벨 (#159): 0~30 밖은 0
+    P.send(presence(-860.1, 0, { lv: 99 })); await sleep(400);
+    const lvSeen = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1];
+    ok(lvSeen && !lvSeen.lv, `범위 밖 레벨(99)은 이름표에 안 감 (${lvSeen?.lv})`);
     P.send(presence(-860, 0, { nick: '시1발 운영자' })); Q.send(presence(-860, 5)); await sleep(400);
     const seenBad = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id, d]) => id === P.msgs[0].id && 'nick' in d).pop()?.[1];
     ok(seenBad && seenBad.nick === '', `걸리는 이름은 방에서 빈 이름으로 (#162, ${JSON.stringify(seenBad?.nick)})`);

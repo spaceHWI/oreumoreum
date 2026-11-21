@@ -9,7 +9,7 @@
 // - 할인권: late.questOff(가게, 값) → 깎을 귤, late.questUse(가게) 한 장 씀 (shop.js 장비·옷, stores.js 머리·에이드)
 // dev: __oreum.quest (state·give(id)·done(id)·count(k, n)·go()·open(giver)·where())
 import * as THREE from 'three';
-import { QUESTS, CLOTHES } from '../balance.js';
+import { QUESTS, CLOTHES, LEVEL } from '../balance.js';
 import { createQuests } from '../quest.js';
 import { STREET } from '../streetlayout.js';
 import { buildRunner, DEFAULT_OUTFIT } from '../runner.js';
@@ -42,7 +42,7 @@ const VAL = {
   tool: () => save.equip.tool | 0, bag: () => save.equip.bag | 0, weapon: () => Math.max(0, (save.equip.weapon | 0) - 1),
   zone: () => save.journey?.maxZ || 0,
 };
-const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; return quests.state().c[k] || 0; };
+const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; return quests.state().c[k] || 0; };
 const life = () => save.ach?.life || {};
 // 옛 저장에서 이미 한 것 (catchUp): 그 구역을 끝냈으면 그 구역 퀘스트는 모두, 아니면 평생 기록으로 어림
 function oldDone(q) {
@@ -59,7 +59,7 @@ export const quests = createQuests({
   save, persist, defs: Q,
   hooks: {
     val, oldDone,
-    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) : need === 'loot' ? !!late.loot : false),
+    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
     door: (id) => director.isOpen(id),
     open: () => director.isOpen('quest'),
     ready: (q) => onReady(q),
@@ -189,6 +189,7 @@ function give(r, q) {
   if (r.coupon) toast(`${CP_NAME[r.coupon[0]] || '할인권'}을 받았어요`, 2.6);
   if (r.item && CL && !CL.own[r.item]) { CL.own[r.item] = 1; persist(); toast(`${CLOTH_NAME[r.item] || '선물'}을 받았어요 · 내 가방에서 입어요`, 3); }
   late.sound?.swell?.(0.6);
+  { const X = LEVEL.xp.quest, main = QUESTS.main.some((m) => m.id === q.id); late.lvGain?.('quest', q.xp ?? (q.ending ? X[1] : main ? Math.round((X[0] + X[1]) / 2) : X[0])); } // 경험치 (#159): 곁가지 20 · 줄기 40 · 끝 장면 60 (q.xp 로 따로 줄 수 있음)
   if (q.ending) ending(q.ending);
 }
 // 끝 장면: 하늘에 큰 글씨 한 줄

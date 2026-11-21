@@ -8,6 +8,7 @@ import { BOAR, ENEMIES } from './balance.js';
 import { LOW } from './gfx2.js';
 import { unpackProp, propGeometry, propMaterial, glowSprite } from './propmodel.js';
 import { reportCrash } from './crash.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 들개·외계인 모델은 따로 받음
 
 const matCache = new Map();
@@ -135,6 +136,55 @@ function buildAlien() {
   };
 }
 
+// 들판 떼 (#173) 전용 임시 모양: 로우폴리 한 메시씩 (그리기 횟수를 적게)
+const lamb = (c) => { const k = 'l' + c; let m = matCache.get(k); if (!m) { m = new THREE.MeshLambertMaterial({ color: c, flatShading: true }); matCache.set(k, m); } return m; };
+const bx = (w, h, d, x = 0, y = 0, z = 0) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+// 까마귀: 몸·머리·부리·꼬리 한 메시 + 날개 둘. 멀리선 def.fly m 높이로 날고, 조짐·돌진 때 내려와 쪼고 다시 올라감 (fx)
+function buildCrowFoe() {
+  const root = new THREE.Group(), fly = new THREE.Group(); root.add(fly);
+  const s = BOAR.scale * ENEMIES.crow.size * 0.55;
+  const body = new THREE.Mesh(geo('crowBody', () => mergeGeometries([bx(0.34, 0.3, 0.7, 0, 0, 0), bx(0.26, 0.26, 0.3, 0, 0.1, 0.46), bx(0.08, 0.07, 0.24, 0, 0.06, 0.7), bx(0.3, 0.06, 0.34, 0, 0.04, -0.48)])), lamb('#1d1d24'));
+  body.scale.setScalar(s); body.castShadow = !LOW; fly.add(body);
+  const wGeo = geo('crowWing', () => new THREE.BoxGeometry(0.8, 0.05, 0.42).translate(0.4, 0, 0));
+  const wl = new THREE.Mesh(wGeo, lamb('#26262e')), wr = new THREE.Mesh(wGeo, lamb('#26262e'));
+  wl.scale.set(-s, s, s); wr.scale.setScalar(s); wl.position.set(-0.12 * s, 0.08 * s, 0); wr.position.set(0.12 * s, 0.08 * s, 0); fly.add(wl, wr);
+  const head = new THREE.Object3D(); fly.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  const hi = ENEMIES.crow.fly || 2.8;
+  return {
+    root, legs, head, tail, h: hi + 0.4,
+    fx: (dt, time, e) => {
+      const low = e.state === 'wind' || e.state === 'dash' || e.state === 'stagger';
+      e.alt = (e.alt ?? hi) + ((low ? 0.55 : hi) - (e.alt ?? hi)) * Math.min(1, dt * (low ? 6 : 2.5));
+      fly.position.y = e.alt + Math.sin(time * 3 + e.phase) * 0.12;
+      const f = Math.sin(time * (low ? 9 : 14) + e.phase) * (low ? 0.25 : 0.7); wl.rotation.z = f; wr.rotation.z = -f;
+      fly.rotation.x = low ? 0.35 : -0.08;
+    },
+  };
+}
+// 외계인 드론: 작은 비행 접시 한 메시 + 아래 빛. 약한 광선
+function buildDrone() {
+  const root = new THREE.Group(), hover = new THREE.Group(); hover.position.y = 1.5; root.add(hover);
+  const s = BOAR.scale * ENEMIES.drone.size * 0.5;
+  const disc = new THREE.Mesh(geo('droneDisc', () => mergeGeometries([new THREE.CylinderGeometry(0.62, 0.36, 0.16, 10).toNonIndexed(), new THREE.SphereGeometry(0.3, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 0.07, 0).toNonIndexed()])), lamb('#9aa6b4'));
+  disc.scale.setScalar(s); disc.castShadow = !LOW; hover.add(disc);
+  const port = new THREE.Mesh(geo('dronePort', () => new THREE.CircleGeometry(0.22, 10).rotateX(Math.PI / 2)), glow('#7dff5a', { transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }).clone());
+  port.scale.setScalar(s); port.position.y = -0.09 * s; hover.add(port);
+  const head = new THREE.Object3D(); hover.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  let shot = 0;
+  return {
+    root, legs, head, tail, h: 1.9, muzzle: new THREE.Vector3(0, 1.4, 0.1),
+    onShot: () => { shot = 1; },
+    fx: (dt, time, e) => {
+      hover.position.y = 1.5 + Math.sin(time * 2.6 + e.phase) * 0.18; hover.rotation.y += dt * 3; hover.rotation.z = Math.sin(time * 1.9 + e.phase) * 0.12;
+      shot = Math.max(0, shot - dt * 2.5); port.material.opacity = 0.45 + shot * 0.55;
+    },
+  };
+}
+
 // 종류 → 모양. 바꾸려면 여기만
 export const ENEMY_MODELS = {
   piglet: buildPiglet,
@@ -142,6 +192,8 @@ export const ENEMY_MODELS = {
   boar: buildBoar,
   rabid: () => buildDog({ rabid: true }),
   alien: buildAlien,
+  crow: buildCrowFoe, // #173 들판 떼
+  drone: buildDrone,
 };
 // #108: 모양을 만들다 오류가 나면(받은 자료가 깨짐 등) 대신할 모양으로 계속
 export function buildEnemyModel(kind) {

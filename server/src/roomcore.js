@@ -20,8 +20,10 @@
 //   {t:'bs', z, s?, a?, gone?, done?, f?}  방장만 → 다른 사람 모두에게 (자리·기운·패턴, 사라짐, 쫓아냄과 낀 사람 id)
 //   {t:'bh', z, d}  우두머리를 맞힌 피해 → 방장에게만 {t:'bh', z, d(≤ bossHitMax), from}
 //   {t:'bd', z}     방장만: 쫓아냄 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, zg 로 알림)
+// 엔딩 (#168): {t:'end'} 내가 오름의 비밀을 밝힘(구역 5 우두머리 뒤) → 그날(한국 날짜) 이 방 첫 번째면 방 전체에 {t:'end', at, by, names}, 아니면 보낸 사람에게만 {…, solo:1}
+//   그날 두 번째부터는 나머지 사람에게 {t:'endr', by} (오름 방송 한 줄). at = 지금 + STORY.end.lead 초 (모두 같은 시각에 시네마틱을 시작). 도중에 들어온 사람은 hi 의 end = [at, by, names] 로 남은 부분부터
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
-import { NET, ZONE_GUARD, BUDDIES } from '../../src/balance.js';
+import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 
@@ -51,6 +53,9 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const at = G.get(z); if (at && t - at < holdMs()) return; // 서 있는 동안은 그대로
     G.set(z, t); guardsDirty = true; guardOut.push([z, t]);
   }
+  let endDay = '', endMsg = null; // 엔딩 (#168): 오늘 모두에게 튼 날짜, 그 메시지 {at, by, names}
+  const kstDay = (t) => new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
+  const endLive = (t) => (endMsg && t < endMsg.at + STORY.end.len * 1000 ? [endMsg.at, endMsg.by, endMsg.names] : undefined);
   const isZone = (z) => Number.isInteger(z) && !!ZH[z];
   const numArr = (a, n) => Array.isArray(a) && a.length <= n && a.every(isNum);
   const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0, moveBack: 0, kicks: 0, takeNo: 0 };
@@ -86,7 +91,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
     peers.set(p.id, p);
     if (!host) host = p.id;
-    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t) }));
+    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t) }));
     return p;
   }
   function leave(p) {
@@ -116,7 +121,8 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
     if ('gs' in d) d.gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0; // 장비 점수 (#137, 이름표 옆 숫자. 보여 주기만)
     if ('gg' in d) d.gg = Number.isFinite(d.gg) ? Math.max(0, Math.min(3, Math.floor(d.gg))) : 0; // 입은 것 중 가장 높은 등급 (#140, 이름표 색)
-    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; if (!('gs' in d) && 'gs' in p.d) d.gs = p.d.gs; if (!('gg' in d) && 'gg' in p.d) d.gg = p.d.gg; }
+    if ('lv' in d) d.lv = Number.isInteger(d.lv) && d.lv >= 0 && d.lv <= LEVEL.max ? d.lv : 0; // 레벨 (#159, 이름표 옆. 0~30 만, 밖이면 0)
+    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; if (!('gs' in d) && 'gs' in p.d) d.gs = p.d.gs; if (!('gg' in d) && 'gg' in p.d) d.gg = p.d.gg; if (!('lv' in d) && 'lv' in p.d) d.lv = p.d.lv; }
     if ('say' in d) d.say = d.say && typeof d.say === 'object' && isNum(d.say.at) ? { t: cleanText(d.say.t, NET.sayMax), at: d.say.at } : null;
     // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
     const ht = d.ht;
@@ -187,6 +193,15 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         if (p.id !== host || !isZone(m.z)) return;
         raiseGuard(m.z, t);
         break;
+      case 'end': { // 엔딩 (#168): 방에서 하루 한 번만 모두에게
+        const by = cleanText(p.d?.nick || '', NET.nickMax) || '누군가', at = t + STORY.end.lead * 1000;
+        if (endMsg && t < endMsg.at + STORY.end.len * 1000) { out(p, JSON.stringify({ t: 'end', at: endMsg.at, by: endMsg.by, names: endMsg.names })); break; } // 지금 도는 중이면 그것을 같이 봄
+        if (endDay === kstDay(t)) { out(p, JSON.stringify({ t: 'end', at, by, names: [by], solo: 1 })); all(JSON.stringify({ t: 'endr', by }), p); break; } // 그날 두 번째부터: 끝낸 사람만, 나머지는 방송 한 줄
+        endDay = kstDay(t);
+        const names = [...peers.values()].map((q) => cleanText(q.d?.nick || '', NET.nickMax)).filter(Boolean).slice(0, NET.roomCap);
+        endMsg = { at, by, names }; all(JSON.stringify({ t: 'end', at, by, names }));
+        break;
+      }
       case 'p': presence(p, m.d); break;
       case 'take': { // n: 한 번에 주운 수 (#137 묶어 보냄, 없으면 1)
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
