@@ -109,7 +109,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
       if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
       gifts(r.gifts);
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick || r.fix.gift)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {
@@ -251,15 +251,20 @@ export function createWsLobby({ token = () => null } = {}) {
           } else if (m.t === 'l') { if (known.delete(m.id)) emit([], [], [{ peer: m.id }]); }
           else if (m.t === 'host') { host = m.id; fire('host', m); }
           else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; ws.onclose = null; ws.close(); connect(); } // 정원이 차면 다음 방(채널)
+          else if (m.t === 'idle') { closed = true; fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
           else if (m.t === 'ban' || m.t === 'kick') { backoff = Math.max(backoff, (m.sec || 60) * 1000); fire(m.t, m); } // 끊김 (#84): 풀릴 때까지 기다렸다 다시
           else fire(m.t, m);
         };
-        ws.onclose = () => {
-          open = false; myId = null;
-          if (known.size) { const left = [...known.keys()].map((peer) => ({ peer })); known.clear(); emit([], [], left); }
-          closeCb?.(); fire('close', {});
+        ws.onclose = (e) => {
+          if (e?.code === 4004 && !closed) { closed = true; fire('idle', {}); } // idle 메시지를 못 받았어도 닫는 까닭 코드로 (#157)
+          gone();
           if (!closed) { setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }
         };
+      }
+      function gone() {
+        open = false; myId = null;
+        if (known.size) { const left = [...known.keys()].map((peer) => ({ peer })); known.clear(); emit([], [], left); }
+        closeCb?.(); fire('close', {});
       }
       connect();
       return {
@@ -267,6 +272,10 @@ export function createWsLobby({ token = () => null } = {}) {
         presence(obj) { if (open) ws.send(JSON.stringify({ t: 'p', d: obj })); return Promise.resolve(); },
         send(msg) { if (open) ws.send(JSON.stringify(msg)); return open; },
         on, close() { closed = true; ws?.close(); },
+        // 쉬러 가기 (#157): 방에서 나감(다시 붙지 않음) / 다시 들어옴 (같은 방·채널, 핸들러 그대로)
+        sleep() { if (closed) return; closed = true; const w = ws; if (w) { w.onmessage = null; w.onclose = null; try { w.close(1000, 'rest'); } catch (e) { /* 이미 닫힘 */ } } gone(); }, // 닫힘 알림을 기다리지 않고 바로 (다시 들어올 때 옛 연결 값이 섞이지 않게)
+        wake() { if (!closed) return; closed = false; backoff = 1000; connect(); },
+        get asleep() { return closed; },
         get id() { return myId; }, get host() { return host; }, get isHost() { return !!myId && host === myId; }, get open() { return open; }, get ch() { return ch; },
       };
     },

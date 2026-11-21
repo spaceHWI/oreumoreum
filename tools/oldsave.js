@@ -28,6 +28,9 @@ const SAVES = {
     trash: { total: 900, srv: { clean: { sig: 'old', heaps: [0, 0] } }, bag: { can: 2 }, rk: { d: 0, w: 0, day: { clean: 5, battle: 1 }, week: { clean: 50, battle: 10 }, all: { clean: 800, battle: 100 } } } },
   // #140: 깨진 재료·등급·강화·안 쓰는 장비 · 예전 우두머리 귀한 재료(이름)는 재료 주머니로
   loot: { nick: '전리품 사람', coins: 90, entered: 1, tut: { step: 99, done: true, v: 3 }, equip: { tool: 2, bag: 1, shoes: 1, weapon: 2 }, mats: { m1: -3, zz: 5, m2: 'x', m3: 4 }, gearUp: { tool: { g: 9, e: 7 }, foo: 1, bag: 'x' }, clothes: { own: {}, wear: {}, up: 'x' }, loot: [{ s: 'tool', t: 99 }, 5, { s: 'hat', t: 2, g: 1, e: 2 }, { s: 'weapon', t: 2, g: 2, e: 0 }], lootAuto: 'q', boss: { mats: { '대장 들개 이빨': 2 }, done: {}, beat: {}, log: {} } },
+  // #125: 예전 '오늘의 업적 5개' 기록 · 깨진 이어 오기
+  dailyOld: { nick: '예전 업적', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, ach: { daily: { date: '2026-11-21', items: [{ id: 'd-trash-50', prog: 9, done: false, claimed: false }, { id: 'd-sit', prog: 1, done: true, claimed: false }] }, life: { trash: 5 }, badges: {}, allDays: 2, lastAll: '2026-11-19' } },
+  dailyBad: { nick: '깨진 할 일', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, ach: { daily: { date: 7, items: [null, 3, { id: 't-photo', prog: 'x' }] }, run: { n: 'q', last: [], got: 'x' }, life: {}, badges: {} } },
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
 };
 (async () => {

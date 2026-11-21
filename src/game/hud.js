@@ -14,6 +14,9 @@ import { state, late } from './state.js';
 import { $, isTouch, save, lookS, persist, MAP_ID } from './save.js';
 import { life, stream, STN, NS_TUT, trash, CH, player, hp } from './place.js';
 import { cam } from './camera.js';
+import { wx, sunState } from './scene.js';
+import { CAT_NAME, RUN_DAYS } from '../daily.js';
+import { DAILY } from '../balance.js';
 
 Object.assign(late, { toast, closePanels, gyulExpect: (n) => gyulExpect(n) }); // 앞 파일에서 부르는 함수
 
@@ -163,17 +166,32 @@ export function cancelAll() {
 ['omap', 'sign', 'wishes', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank'].forEach((id) => $(id).addEventListener('pointerdown', (e) => { if (e.target === $(id)) $(id).hidden = true; }));
 
 // ---------- 업적 ----------
-export const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r) }); late.ach = ach;
+// 오늘의 할 일 (#125): 비·해 진 뒤면 두 배로 세는 것, 보상은 가 본 가장 깊은 구역, 튜토리얼 중엔 세지 않음
+const dailyCond = (k) => (k === 'rain' ? wx.kind === 'rain' : k === 'night' ? (sunState?.el ?? 30) < -4 : false);
+const dailyOn = () => !!save.tut?.done && !late.tut?.active;
+export const ach = createAchievements({ save, persist, mapId: MAP_ID, onDone: (r) => onAchievement(r), cond: dailyCond, zone: () => save.journey?.maxZ || 1, active: dailyOn }); late.ach = ach;
+// 들어와서 조금 뒤(튜토리얼을 마쳤으면) 하루 한 번: 이어 오기를 세고, 오늘의 할 일을 토스트로. 날이 바뀌면 다시
+let dailyT = 0;
+function dailyTick(dt) {
+  if ((dailyT += dt) < DAILY.toastDelay || !dailyOn() || !state.sessionOn || lookS.open) return;
+  dailyT = DAILY.toastDelay - 5; // 5초마다 다시 봄 (자정 넘김)
+  const got = ach.visit();
+  if (got) { addCoins(got.reward, `이어 오기 ${got.n}일째`); refreshAchUI(); }
+  const d = ach.ensureDaily();
+  if (!d.seen && !panelOpen()) { d.seen = 1; persist(); toast(`오늘의 할 일 · ${d.items.map((it) => ach.defD(it.id)?.name.split(' · ')[0]).join(' · ')}`); refreshAchUI(); }
+}
+late.dailyTick = dailyTick;
 let bannerQueue = [], bannerT = 0;
 const bIcon = (b) => BADGE_ICONS[b.id] || BADGE_ICONS[b.fam] || '';
 function onAchievement(r) {
   late.sound.fanfare?.();
-  if (r.kind === 'daily') bannerQueue.push({ icon: DAILY_ICON, color: '#4f7a36', title: `오늘의 업적 · ${r.def.name}`, sub: `보상 귤 ${r.def.reward}` });
+  if (r.kind === 'daily') bannerQueue.push({ icon: DAILY_ICON, color: '#4f7a36', title: `오늘의 할 일 · ${r.def.name.split(' · ')[0]}`, sub: `보상 귤 ${r.def.reward}` });
   else if (r.kind === 'badge') bannerQueue.push({ icon: bIcon(r.def), color: r.def.color, title: `뱃지 · ${r.def.name}${r.def.fam ? ` ${r.def.tier}단계` : ''}`, sub: r.def.desc });
-  else if (r.kind === 'allday') bannerQueue.push({ icon: ALLDAY_ICON, color: '#8f7bd6', title: '오늘의 업적을 모두 마쳤어요', sub: `모두 마친 날 ${ach.state.allDays}일` });
+  else if (r.kind === 'allday') bannerQueue.push({ icon: ALLDAY_ICON, color: '#8f7bd6', title: '오늘의 할 일을 모두 마쳤어요', sub: `셋 다 보상 귤 ${ach.allGyul()} · 업적 창에서 받기` });
   refreshAchUI();
 }
 export function tickBanner(dt) {
+  dailyTick(dt);
   if (document.body.classList.contains('tut')) return; // 튜토리얼 중엔 조용히. 보상은 업적 창에 남아 있음
   if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) { $('banner').hidden = true; document.body.classList.remove('banner-on'); } return; }
   const b = bannerQueue.shift(); if (!b) return;
@@ -207,16 +225,18 @@ function claimBtn(cls, reward, take) {
 function buildAch() {
   const d = ach.ensureDaily();
   const [yy, mm, dd] = d.date.split('-');
-  $('ach-date').textContent = `${Number(mm)}월 ${Number(dd)}일 · 매일 자정에 바뀌어요`;
+  $('ach-date').textContent = `${Number(mm)}월 ${Number(dd)}일 · 자정에 바뀌어요`;
   const list = $('ach-list'); list.innerHTML = '';
   const ready = (it) => it.done && !it.claimed; // #153 받을 수 있는 줄을 맨 위로
   [...d.items].sort((a, b) => ready(b) - ready(a)).forEach((it) => {
     const def = ach.defD(it.id); if (!def) return;
     const row = document.createElement('div'); row.className = 'ach-item' + (it.done ? ' done' : '');
     const t = document.createElement('div');
+    const tag = document.createElement('i'); tag.className = 'ach-cat c-' + def.cat; tag.textContent = CAT_NAME[def.cat] || '';
     const nm = document.createElement('b'); nm.textContent = def.name;
-    const sm = document.createElement('small'); sm.textContent = ` ${it.prog.toLocaleString('ko-KR')} / ${def.goal.toLocaleString('ko-KR')}${def.map ? ` · ${MAPS[def.map].short}` : ''}`;
-    t.append(nm, sm);
+    const x2 = def.x2 && !it.done && dailyCond(def.x2); // 지금 두 배로 세는 중
+    const sm = document.createElement('small'); sm.textContent = ` ${it.prog.toLocaleString('ko-KR')} / ${def.goal.toLocaleString('ko-KR')}${x2 ? ' · 지금 두 배' : ''}`;
+    t.append(tag, nm, sm);
     const right = document.createElement('div');
     if (it.claimed) { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = '받음'; }
     else if (it.done) right.append(claimBtn('btn small', def.reward, () => { const got = ach.claim('daily', it.id); if (got) addCoins(got.reward, got.name); return got; }));
@@ -224,6 +244,19 @@ function buildAch() {
     const bar = document.createElement('div'); bar.className = 'bar'; const fillEl = document.createElement('i'); fillEl.style.width = `${Math.round((it.prog / def.goal) * 100)}%`; bar.append(fillEl);
     row.append(t, right, bar); list.append(row);
   });
+  { // 셋 다 보상 (#125)
+    const row = document.createElement('div'); row.className = 'ach-item ach-all' + (d.all ? ' done' : '');
+    const t = document.createElement('div'); const nm = document.createElement('b'); nm.textContent = '셋 다 하면'; const sm = document.createElement('small'); sm.textContent = ` ${d.items.filter((x) => x.claimed).length} / ${d.items.length}`; t.append(nm, sm);
+    const right = document.createElement('div');
+    if (d.all) { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = '받음'; }
+    else if (ach.allReady()) right.append(claimBtn('btn small', ach.allGyul(), () => { const got = ach.claim('all'); if (got) addCoins(got.reward, got.name); return got; }));
+    else { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = `귤 ${ach.allGyul()}`; }
+    row.append(t, right); list.append(row);
+  }
+  { // 이어 오기 (#125): 연속 날 수 · 다음 보상 날
+    const R = ach.state.run, nx = RUN_DAYS.find((n) => n > R.n);
+    $('ach-run').textContent = R.n ? `이어 오기 ${R.n}일째${nx ? ` · ${nx}일째 보상` : ''}` : '';
+  }
   $('ach-streak').textContent = `모두 마친 날 ${ach.state.allDays}일`;
   const bl = $('badge-list'); bl.innerHTML = '';
   // 단계형(fam)은 한 칸: 받을 수 있는 단계가 있으면 그 단계, 아니면 다음 목표(다 했으면 마지막 단계)

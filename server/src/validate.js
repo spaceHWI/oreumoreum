@@ -6,12 +6,13 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 import { checkLv } from '../../src/augments.js';
 import { TITLES, NOTES } from '../../src/punktext.js';
 import { recognize, cleanSold, normCred } from './earn.js';
+import { WEEKLY_IDS, weeklyBuyable } from '../../src/weekly.js';
 
 // 예전 값 (#144): 실서버 클라이언트가 아직 #137 앞 값 표(v0.23.7)일 수 있음. 그때 값으로 산 장비가 되돌려지지 않게, 쓴 귤은 지금 값과 이 값 중 작은 쪽으로 셈
 //   release 가 #137 뒤 값 표로 나가고 옛 클라이언트가 다 바뀌면(roomcore MIN_VER) 지움
@@ -62,6 +63,7 @@ function norm(s) {
     if (isObj(B.own)) for (const id of Object.keys(B.own)) if (BACK[id] && B.own[id]) own[id] = 1;
     s.backs = { own, cur: own[B.cur] ? B.cur : null };
   }
+  { const g = isObj(s.gift) ? s.gift : {}; s.gift = { in: int(g.in, 0, 1e12, 0), out: int(g.out, 0, 1e12, 0) }; } // 귤 주기 (#175): 이 저장에 들어간 받은·준 귤 누적 (서버 값 acc.gin·gout 까지)
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   if (s.punk !== undefined) { // 오름펑크 (#165): 칭호 번호는 범위만, 쪽지는 목록에 있는 것만. 귤과는 상관없음
     const k = isObj(s.punk) ? s.punk : {}, ids = new Set(NOTES.map((n) => n.id)), notes = {};
@@ -84,7 +86,7 @@ function spentOf(P, S) {
   // 장비는 순서 없이 산다 (#111): 올라간 단계의 값만 (건너뛴 아래 단계 값은 더하지 않음)
   for (const [k, [, list]] of Object.entries(TIERS)) if (S.equip[k] > P.equip[k]) sp += priceOf(list[S.equip[k] - 1]?.price || 0, OLD_PRICE[k][S.equip[k] - 1]);
   if (S.equip.weapon > P.equip.weapon) sp += priceOf(WEAPONS[S.equip.weapon - 1]?.price || 0, OLD_PRICE.weapon[S.equip.weapon - 1]);
-  for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) { const c = CLOTH[id]; sp += priceOf(wearPrice(c) || 0, c.tier === 1 ? (wearPrice(c) ? OLD_PRICE.wearNone : 0) : OLD_PRICE.wear[c.tier - 1]); }
+  for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) { const c = CLOTH[id]; sp += c.price != null ? c.price : priceOf(wearPrice(c) || 0, c.tier === 1 ? (wearPrice(c) ? OLD_PRICE.wearNone : 0) : OLD_PRICE.wear[c.tier - 1]); } /* 값이 따로 적힌 옷(겉모습 #179·한정 #126)은 예전 값 표가 없음 */
   if (S.equip.boots && !P.equip.boots) sp += BOOTS.price; // 고진의 파란장화 (#167): 신고 벗기(1↔2)는 공짜
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
@@ -143,7 +145,21 @@ function fixNick(prev, P, S, free, fixed) {
   return bad;
 }
 
-// prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, bank, savedAt, cred }, t: 지금(ms)
+// 귤 주기 (#175): 서버가 옮긴 귤(acc.gin 받은 누적·acc.gout 준 누적)은 번 귤이 아님. 클라이언트가 이미 넣은 몫(save.gift)은 지난 귤에 더하고 빼서 보고,
+//   아직 못 넣은 몫(끊겨서 못 받은 알림·보내는 중이던 저장)은 서버가 넣어 'gift' 로 알림 (클라이언트는 fix.gift·fix.coins 로 맞춤)
+function giftBase(P, S, acc) {
+  const GI = Math.max(0, Math.floor(Number(acc.gin) || 0)), GO = Math.max(0, Math.floor(Number(acc.gout) || 0));
+  const cin = Math.max(Math.min(P.gift.in, GI), Math.min(S.gift.in, GI)), cout = Math.max(Math.min(P.gift.out, GO), Math.min(S.gift.out, GO));
+  P.coins = Math.max(0, P.coins + (cin - Math.min(P.gift.in, GI)) - (cout - Math.min(P.gift.out, GO)));
+  return { GI, GO, miss: (GI - cin) - (GO - cout), bad: S.gift.in !== cin || S.gift.out !== cout };
+}
+function giftDone(S, g, fixed) {
+  if (g.miss) S.coins = Math.max(0, S.coins + g.miss);
+  if (g.miss || g.bad || S.gift.in !== g.GI || S.gift.out !== g.GO) fixed.push('gift');
+  S.gift = { in: g.GI, out: g.GO };
+}
+
+// prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, bank, savedAt, cred, gin, gout }, t: 지금(ms)
 // → { save, fixed: [바로잡은 칸], acc: 새 credit·pickCredit·bank·cred, rec: 서버가 인정한 몫(#188), clamp: 깎인 귤, nickBad: 걸린 이름을 무작위로 바꿨음 }
 // free: 어드민 계정 (#84, 시크릿 ADMIN_SUBS). 귤·치운 양 몫을 보지 않음 (개발자 버튼 '귤 채우기')
 // grant: 운영자가 보낸 귤 가운데 이 저장이 받았다고 한 몫 (#188 POST /admin/grant)
@@ -161,12 +177,14 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   let pickCredit = Math.min(NET.pickBurst, (acc.pickCredit ?? NET.pickBurst) + dt * NET.pickPerSec);
   let bank = Math.max(0, Math.min(NET.earnBankMax, Number(acc.bank) || 0));
   const keep = () => ({ credit, pickCredit, bank, cred });
-  if (free) return { save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow };
+  const gift = giftBase(P, S, acc); // 귤 주기 (#175)
+  const done = (o) => { giftDone(S, gift, fixed); return o; };
+  if (free) return done({ save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow });
   if (P.mealFree && !S.mealFree) { S.mealFree = 1; fixed.push('mealFree'); } // 한 번 쓴 첫 식사는 되돌릴 수 없음 (어드민은 위에서 free 로 빠짐)
   if (migrate && !prev) {
     // 기기 기록 옮기기: 지난 기록을 확인할 길이 없어 목록 확인과 귤 상한만
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
-    return { save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow };
+    return done({ save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow });
   }
   const rc = recognize(P, S, sold, cred, t); cred = rc.cred; // 서버가 아는 큰 귤 (#188): bank 에 더해 늦게 들어오는 귤도 받음
   bank = Math.min(NET.earnBankMax, bank + rc.room);
@@ -174,6 +192,11 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   const sx = seasonCheck(P, S, { xday, treeDone }, fixed, P.coins + credit + bank); // 철 이벤트 (#180)
   const swarm = Math.min(Math.max(0, S.swarm.earn - P.swarm.earn), dt * NET.swarmPerSec); // ③ 들판 떼 몫 (#173): 적힌 만큼, 시간당 상한까지
   const room = credit + bank + sx.room + swarm + grant; // 이번에 늘 수 있는 귤
+  { // 주간 옷장 (#126): 새로 가진 한정 옷은 서버 시계로 이번 주 것만 (바뀐 직후 grace 안은 지난주 것도). 아니면 되돌림
+    const wk = weeklyBuyable(t, WEEKLY.grace);
+    for (const id of Object.keys(S.clothes.own)) if (WEEKLY_IDS.has(id) && !P.clothes.own[id] && !wk.has(id)) { delete S.clothes.own[id]; if (!fixed.includes('items')) fixed.push('items'); }
+    for (const [k, id] of Object.entries(S.clothes.wear)) if (id && WEEKLY_IDS.has(id) && !S.clothes.own[id]) delete S.clothes.wear[k];
+  }
   let spent = spentOf(P, S) + sx.spent;
   if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
   const gain = S.coins + spent - P.coins;
@@ -184,5 +207,5 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   if (pg > pickCredit) { S.trash.total = Math.floor(P.trash.total + pickCredit); fixed.push('picked'); }
   pickCredit -= Math.max(0, S.trash.total - P.trash.total);
   const ask = int(next.coins, 0, 1e9, 0), cut = fixed.includes('coins') || fixed.includes('items') ? { amt: Math.max(0, ask - S.coins), before: P.coins, ask, after: S.coins, why: fixed.filter((f) => f === 'coins' || f === 'items').join(','), room: Math.floor(room), rec: rc.room, bad: rc.bad.length } : null;
-  return { save: S, fixed, acc: keep(), rec: rc, clamp: cut, nickBad: nickBadNow };
+  return done({ save: S, fixed, acc: keep(), rec: rc, clamp: cut, nickBad: nickBadNow });
 }

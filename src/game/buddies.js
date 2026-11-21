@@ -24,7 +24,7 @@ import { director } from './director.js';
 import { net, social } from './room.js';
 import { interactables } from './stores.js';
 
-const ON = !!(trash && NS_TUT && col);
+const ON = !!(B.on !== false && trash && NS_TUT && col); // #190 BUDDIES.on 으로 통째로 끔
 const M = save.mates = (save.mates && typeof save.mates === 'object' && !Array.isArray(save.mates)) ? save.mates : {};
 M.off = M.off ? 1 : 0;
 const DEF = new Map(B.list.map((d) => [d.id, d]));
@@ -225,6 +225,8 @@ function syncTalk() {
   f.textContent = on ? '그만 같이 가기' : '같이 가요'; f.setAttribute('aria-pressed', String(on));
 }
 function closeTalk() { if (TW) TW.hidden = true; talkS.m = null; }
+late.mateTalkNow = () => talkS.m; // 말 걸기 창의 동료 (#175 귤 주기)
+late.mateSay = (m, text) => social.showBubble('mate:' + m.def.id, m.r.root, text, 3.4);
 // ---------- 함께 가기 (한 번에 한 명) ----------
 const followS = { m: null, until: 0 };
 function follow(m, on = true) {

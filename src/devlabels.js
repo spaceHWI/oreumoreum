@@ -9,7 +9,7 @@ export const UI_LABELS = [
   ['UI-05', '버프', '#buff-pill'],
   ['UI-06', '구역', '#zone-pill'],
   ['UI-07', '지금 있는 곳·방위', '#xy-pill'],
-  ['UI-08', '오늘의 업적', '#ach-chip'],
+  ['UI-08', '오늘의 할 일', '#ach-chip'],
   ['UI-09', '소리 (메뉴 안)', '#menu-sound'],
   ['UI-10', '알림 토스트', '#toast'],
   ['UI-11', '업적 달성 배너', '#banner'],

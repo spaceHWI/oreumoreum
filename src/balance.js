@@ -397,6 +397,18 @@ export const ACH = {
   sunPick: { goal: 10 }, // 해돋이·해넘이 때 줍기
 };
 
+// 오늘의 할 일 (#125, src/daily.js): 날짜로 정해지는 3개(싸움·치우기·만남 하나씩) + 이어 오기(연속으로 온 날)
+// 보상은 가 본 가장 깊은 구역(save.journey.maxZ)에 맞춤: 한 개 gyul[z-1], 셋 다 하면 all 배 더, 이어 오기 run[날] 배.
+// 하루 합(3 + all = 5배)이 그 구역에서 하루 1시간 벌이의 약 5~8% (tools/econ.js 가 15% 안·5일 목표가 하루 넘게 당겨지지 않는지 봄)
+export const DAILY = {
+  gyul: [50, 70, 150, 300, 1200], // 구역 1~5 에서 할 일 하나
+  all: 2, // 셋 다 하면 한 개 값의 이만큼 더
+  run: { 3: 1, 7: 3, 14: 5 }, // 이어 오기: 연속 n일째에 한 개 값의 이만큼 (뱃지는 한 번)
+  runMax: 14, // 14일 다음 날부터는 다시 1부터 세지 않고 15, 16… (보상은 14일에서 끝)
+  meetR: 14, // '다른 사람에게 인사' 로 치는 거리 (m). 방에 아무도 없으면 그냥 인사도 셈
+  toastDelay: 6, // 들어오고 이만큼(초) 뒤 오늘의 할 일 토스트 한 번
+};
+
 // 소원 돌탑: 한 사람당 돌 하나. 돌탑 하나에 최대 이만큼만 쌓임 (#28)
 // 가득 차면 새 돌이 맨 위에 올라가고 가장 오래된 돌이 빠짐. 100개일 때 밑돌 포함 높이 약 6m(사람 키의 3~4배)
 export const CAIRN = {
@@ -1015,6 +1027,38 @@ export const STYLE_CLOTHES = [
   { id: 'socks:s-furboot', slot: 'socks', price: 600, name: '털 장화', desc: '눈 오는 오름 필수', look: { kind: 'socks', main: '#8a6a3c', acc: '#f2ece0', h: 0.17, thick: true, fur: true } },
 ].map((c) => ({ tier: 0, style: true, fresh: '2026-11-21', ...c }));
 CLOTHES.push(...STYLE_CLOTHES);
+// 주간 옷장 (#126): LEAP '이번 주' 칸에 매주 월요일 00:00(KST) 바뀌는 한정 옷. 주 번호로 정해져 모두 같음 (src/weekly.js)
+// 지금 옷의 색·무늬 변형(새 kind 없음). 능력은 그 칸 tier 단계(4단계를 넘지 않음, 겉모습 위주), 값은 그 칸 4단계 값 × priceK. 산 옷은 계속 가짐
+// week: 몇째 주 차례(0 ~ weeks-1)에 나오는지. epoch = 0번 주가 시작한 월요일 00:00 KST
+export const WEEKLY = { epoch: Date.UTC(2026, 10, 15, 15), weeks: 8, tier: 3, priceK: 0.8, grace: 6 * 3600e3 }; // grace: 바뀐 직후 지난주 옷도 서버가 받아 줌(기기 시계 어긋남, ms)
+const WK = (week, slot, id, name, look) => ({ id: `${slot}:k-${id}`, slot, week, tier: WEEKLY.tier, price: Math.round(WEAR.price[4] * WEEKLY.priceK / 10) * 10, name, look });
+export const WEEKLY_CLOTHES = [
+  WK(0, 'hat', 'bucket-gyul', '귤빛 버킷햇', { kind: 'bucket', main: '#f29a2e', acc: '#3f9a5a' }),
+  WK(0, 'top', 'stripe-sea', '바다 줄무늬 반팔', { kind: 'tee', main: '#e8f2f6', acc: '#2f8fb0', stripes: 4 }),
+  WK(0, 'socks', 'dot-camellia', '동백 물방울 양말', { kind: 'socks', main: '#c8333a', acc: '#f6f2ea', h: 0.15, dots: '#ffffff' }),
+  WK(1, 'jacket', 'fleece-moss', '이끼 플리스', { kind: 'jacket', main: '#6f8a4a', acc: '#efe6d2', puff: true }),
+  WK(1, 'bottom', 'cargo-sand', '모래색 카고 반바지', { kind: 'shorts', main: '#c9b48a', acc: '#a8946a', pockets: true }),
+  WK(1, 'hat', 'straw-black', '검은 밀짚모자', { kind: 'straw', main: '#3a3a40', acc: '#f29a2e' }),
+  WK(2, 'vest', 'canola', '유채꽃 패딩 조끼', { kind: 'vest', main: '#f2d03a', acc: '#3f9a5a', puff: true, pockets: 1 }),
+  WK(2, 'top', 'long-basalt', '현무암 긴팔', { kind: 'tee', long: true, main: '#4a4b4f', acc: '#f29a2e', panel: true }),
+  WK(2, 'socks', 'knee-sea', '바다 무릎 양말', { kind: 'socks', main: '#2f8fb0', acc: '#f4f2ec', h: 0.19, stripes: 2 }),
+  WK(3, 'hat', 'boonie-sunset', '노을 등산 모자', { kind: 'boonie', main: '#c4513f', acc: '#f2c94c', cord: '#2b2b33' }),
+  WK(3, 'jacket', 'wind-mint', '민트 바람막이', { kind: 'jacket', main: '#8fd3c0', acc: '#4a9a88' }),
+  WK(3, 'bottom', 'long-persimmon', '감물 긴바지', { kind: 'long', main: '#b8743c', acc: '#5a3a1c', belt: true }),
+  WK(4, 'top', 'jersey-halla', '한라 저지', { kind: 'tee', main: '#3f78c0', acc: '#ffffff', stripes: 2, collar: '#f29a2e', panel: true }),
+  WK(4, 'vest', 'fish-night', '밤바다 낚시 조끼', { kind: 'vest', main: '#2f3f6a', acc: '#c9ccd2', pockets: 3 }),
+  WK(4, 'hat', 'cap-camellia', '동백 모자', { kind: 'cap', main: '#c8333a', acc: '#3f9a5a' }),
+  WK(5, 'jacket', 'rain-gyul', '귤색 방수 자켓', { kind: 'jacket', main: '#f2722c', acc: '#2b2f3a', hood: true, cuffs: true }),
+  WK(5, 'socks', 'stripe-gyul', '귤 줄무늬 양말', { kind: 'socks', main: '#fff4e0', acc: '#f29a2e', h: 0.14, stripes: 3 }),
+  WK(5, 'bottom', 'hike-forest', '숲 등산 바지', { kind: 'long', main: '#3f5a3a', acc: '#f2c94c', knee: true, pockets: true }),
+  WK(6, 'hat', 'bucket-night', '별밤 버킷햇', { kind: 'bucket', main: '#2b2f3a', acc: '#f2c94c' }),
+  WK(6, 'top', 'tee-blossom', '벚꽃 반팔', { kind: 'tee', main: '#f0a8b8', acc: '#f6f4ee', panel: true }),
+  WK(6, 'vest', 'bands-pink', '분홍 반사 조끼', { kind: 'vest', main: '#f07aa0', acc: '#f6f4ee', bands: true }),
+  WK(7, 'jacket', 'hood-gyul', '귤 후드 집업', { kind: 'jacket', main: '#f6b04a', acc: '#c87a20', hood: true }),
+  WK(7, 'bottom', 'shorts-sea', '바다 반바지', { kind: 'shorts', main: '#2f8fb0', acc: '#e8f2f6' }),
+  WK(7, 'socks', 'hike-red', '빨간 등산 양말', { kind: 'socks', main: '#c8333a', acc: '#3a3a40', h: 0.14, thick: true }),
+];
+CLOTHES.push(...WEEKLY_CLOTHES);
 // 한 벌 맞춤 (#179): 같은 묶음 3벌을 겉모습으로 입으면 캐릭터 둘레 작은 효과(src/game/outfitset.js) + 칭호(#165 에서 씀). 능력은 없음
 export const OUTFIT_SETS = [
   { id: 'haenyeo', name: '해녀', title: '물질 장인', fx: '#8fd0e8', items: ['hat:s-goggle', 'top:s-haenyeo', 'bottom:s-rubber'] },
@@ -1119,10 +1163,17 @@ export const UFO = {
   first: 2,       // 첫 화면이 뜨고 처음 나타나기까지(초)
   cross: 6,       // 화면을 가로지르는 시간(초)
   gap: [20, 30],  // 그 뒤 다시 지나가는 간격(초, 이 사이 아무 값)
-  dist: 120,      // 카메라에서 떨어진 거리(m). 장면 안 하늘에 떠 보이게
+  dist: 120,      // 능선을 못 찾을 때 카메라에서 떨어진 거리(m)
   size: 0.14,     // 접시 지름 = 화면 높이의 이 비율
   sizeW: 0.3,     // 다만 화면 폭의 이 비율을 넘지 않게 (폰 세로)
   bob: 0.12,      // 위아래 흔들림(지름 배율)
+  // #192: 로고 아래 오름 능선·정상 위를 지나며 빛기둥이 땅에 닿음
+  below: 0.06,    // 로고 아랫선에서 이만큼(화면 높이 비율) 아래를 지남
+  near: 30, reach: 3000, // 시선 위에서 능선을 찾는 거리(m)
+  hover: 0.35,    // 시선이 땅에 부딪히면 땅 위 이 높이(화면 반높이 비율)에 뜸
+  beam: { top: 0.3, w: 0.55, spread: 0.1, sink: 1.5, hi: 0.55, lo: 0.06 }, // 빛기둥: 위 반지름 비율, 접시 대비 아래 폭, 길이당 넓어짐, 땅속으로 겹침(m), 위·아래 밝기
+  pool: { hi: 0.4 }, // 닿은 자리 빛 웅덩이 가운데 밝기
+  sparks: 10,     // 흩날리는 빛 조각 수 (저사양은 없음)
 };
 
 // 사진사 NPC (#70): 정상 표지석 근처에 삼각대를 세워 두고, 상호작용하면 사진을 찍어 줌. 무료
@@ -1319,6 +1370,29 @@ export const NET = {
   bossPerSec: 8,      // 우두머리 메시지는 따로 1초에 이만큼 (방장 알림 5번 + 여유)
   bossMax: 700,       // 우두머리 메시지 크기 상한 (바이트)
   bossHitMax: 300,    // 한 번에 알리는 피해 상한 (귤 폭탄 90 × 무리 + 모아 쏘기 여유)
+  // 오래 멈춤 (#157, 임의 값): 조작(이동·줍기·던지기·화면 돌리기·버튼·글쓰기) 없이 idleWarnSec 면 '계속 하시겠어요?' 창, idleRestSec 면 방에서 나가 쉬는 화면
+  idleWarnSec: 300,   // 5분: 창과 줄어드는 숫자
+  idleRestSec: 360,   // 6분: 저장하고 방에서 나감 (누르면 다시 들어옴)
+  idleHiddenSec: 120, // 탭이 뒤로 가 있으면 2분에 바로 쉬러 감 (창 없이)
+  idleKickSec: 480,   // 서버 안전장치: 마지막 조작 표시 뒤 8분이면 연결을 닫음 (4004)
+  idleBeatMs: 30000,  // 조작 표시(presence a:1)는 조작이 있었을 때 이 간격에 한 번만 실음
+};
+
+// 귤 주기 (#175): 다른 사람 옆에서 상호작용(F) '귤 주기'. 누르고 있으면 빨라짐. 서버(roomcore → Accounts.gift)가 옮김 (값은 임의)
+export const GIVE = {
+  r: 2.5,             // 이 거리 안의 사람에게 버튼이 '귤 주기' 가 됨 (m)
+  serverR: 4,         // 서버: 둘이 이 거리 안이어야 함 (끊김 여유)
+  holdDelay: 0.4,     // 누르고 있으면 이 초 뒤부터 이어서
+  rate: [[0, 5], [2, 15], [4, 30]], // [누른 뒤 초, 초당 개수]: 0.4초 뒤 초당 5 → 2초 뒤 15 → 4초 뒤 30
+  sendSec: 0.25,      // 이만큼 모아 한 메시지로 보냄
+  perSec: 30, burst: 12, // 서버: 한 사람이 1초에 줄 수 있는 귤(토큰 통), 한 메시지에 담을 수 있는 수
+  dayGiveMax: 5000, dayGivePart: 0.5, // 하루에 줄 수 있는 귤: 가진 귤(오늘 준 것 포함)의 이 몫과 dayGiveMax 중 작은 쪽
+  dayGetMax: 10000,   // 하루에 받을 수 있는 귤
+  newSec: 86400,      // 계정을 만든 지 이 초가 안 되면 받기만 (새 계정으로 귤 옮기기 막기)
+  lineSec: 3,         // 화면 한 줄('○○ 님에게 귤 12개')이 이 초 동안 다음 것을 합침
+  flyMax: 10,         // 동시에 날아가는 귤 모양 상한 (빠를 때는 몇 개만 그림)
+  mate: { dayMax: 20 }, // 동료 캐릭터(#172)에게: 한 번에 1개, 하루 이만큼 (고맙다는 말만)
+  achGoal: 100,       // 업적 '귤 인심'
 };
 
 // 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체. 서버는 전투 오름 하나 (#98, 예전 깨끗한 오름 기록은 합침)
@@ -1417,7 +1491,7 @@ export const JOURNEY = {
     { id: 'tips', need: { tut: 1 }, after: null }, // #66 상황 팁 (튜토리얼 뒤)
     { id: 'fsTip', need: { tut: 1 }, after: 'tips' }, // #189 폰: 전체 화면으로 하는 법 (튜토리얼 직후 한 번, game/simple.js. PC·이미 전체 화면이면 안 열림)
     { id: 'mateSunja', need: { jeong: 1 }, after: 'tips' }, // #172 순자 삼춘 (정낭을 나서면). after 를 적어 둠: 바로 앞 fsTip 은 PC 에선 안 열림
-    { id: 'quest', need: { jeong: 1 } }, // #158 오름지기 첫 퀘스트
+    { id: 'quest', need: { jeong: 1 }, after: 'tips' }, // #158 오름지기 첫 퀘스트. after 를 적어 둠: 동료가 꺼지면(#190) 바로 앞 등록 문이 fsTip(PC 에선 안 열림)이 됨
     { id: 'heapNear', need: { jeong: 1 } }, // #160 들머리 더미
     { id: 'shopQuest', need: { dumps: 1 } }, // #158 장비점 주인 퀘스트 (첫 버리기 뒤)
     { id: 'level', need: { attacked: 1 }, count: 1 }, // #159 첫 레벨업과 증강
@@ -1543,6 +1617,7 @@ export const LOOT = {
 export const QUESTS = {
   r: 3.4, near: 40, dayCap: 0.15, coopR: 40, // r 상호작용 거리, near 이 안이면 주는 사람이 움직임, coopR 남이 치운 더미도 이 안이면 셈
   coupon: { gear: 0.1, leap: 0.1, salon: 0.5 },
+  shopNpc: { side: 1.5, in: 0.6, gap: 3 }, // #190 가게 주인 자리: 문 오른쪽 side m · 터 앞 선에서 안쪽 in m · 다른 NPC·다른 가게 문과 gap m 넘게 (game/quest.js)
   givers: {
     jigi: { name: '오름지기', at: 'sign', side: 2.6, fwd: 0.9, look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
     'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
@@ -1729,7 +1804,9 @@ export const BOX_VIEW = { desk: 0.06, phone: 0.04 };
 // keep: 더미의 마지막 이만큼(비율)은 남김(다 치우는 연출·보상은 플레이어 몫. 서버도 같은 값으로 거름)
 // peers: 방에 사람이 [a] 명 넘으면 1명, [b] 명 넘으면 0명. low: 저사양(TIER 0) 최대 명 수
 // follow: '같이 가요' 시간(초)·뒤 거리(m). throw: 민수 던지기 간격(초)·사거리(m)·달려오는 거리(m). hurt: 맞으면 물러나는 시간(초)
+// on: false 면 동료를 모두 끔 (#190: 대화 창 깨짐으로 일단 뺌. 코드는 남김. 감독 문 mate* 도 등록 안 됨, 메뉴 '동료' 스위치 숨김)
 export const BUDDIES = {
+  on: false,
   list: [
     { id: 'sunja', name: '순자 삼춘', door: 'mateSunja', pick: 1.4, fight: 'flee', photo: 0, body: 'f', skin: 1,
       gear: { hair: 'hat:bun', hat: 'hat:w-straw', top: 'top:w-stripe', bottom: 'bottom:w-gal', shoes: 'shoes:slip', hand: 'hand:tongs', back: 'back:none' } },
@@ -1778,4 +1855,28 @@ export const MUTTER = {
   near: { heap: 25, den: 30, hareubang: 8, cairn: 10, stream: 8 },
   bagFull: 0.8, hand: 10, walk: 300, hpLow: 0.5, boss: 0.65, piglets: 4, fieldPicked: 120, nightZone: 3,
   y: 3.4, // 말풍선 높이 (채팅 말풍선과 같음)
+};
+
+// 대화·말풍선 한 틀 (#190). bubble: 머리 위 말풍선 한 줄 ch 자 · lines 줄, 넘치면 pages 장까지 넘기고 그래도 넘치면 말줄임. chatLines 채팅(사람이 쓴 글)은 한 장에 조금 더
+// win: 대화 창(.talk) 대사 한 장 최대 lines 줄(넘으면 ▶ 다음 장), line 대사 한 줄 권장 글자 수(넘으면 문장에서 나눠 보여 줌, tools/talkshot.js 가 셈)
+export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 } };
+
+// 동굴 탐험 (#195, src/cavegen.js · game/cave.js). 고렙용 별도 동굴 맵. 값·이름은 모두 임의
+// open: 'admin' 이면 개발자 메뉴가 켜진 사람만 들어감(1·2번 조각이 끝나기 전), true 면 minLv·needZone 을 채운 사람, false 면 막음
+// x0·z0: 동굴 자리(오름 땅 ±2380 밖, 서버 자리 한도 ±4000 안). floorGap: 층마다 x 로 떨어뜨림
+// floors 층 수 · rooms 층마다 방 수 [최소, 최대] (3층이면 9~12) · extra 층마다 더 잇는 통로 수(갈림길) · grid 한 층 칸 수 · cell 칸 크기(m)
+// roomR 방 반지름 · bossR 맨 아래 방 · corrW 통로 반폭 · ceil 천장 높이(통로·방 [가장자리, 가운데]) · wobble 벽 울퉁불퉁(칸 비율)
+// cam: 카메라 거리·최대·숙임 · lamp: 헤드랜턴(반경 r m) · fog: 안개 [시작, 끝] m (그 밖은 검게, 멀리 그리지 않음)
+// fade·hold: 들어가고 나올 때 어두워지는 시간(초) · near: 입구·줄·구멍 상호작용 거리 · moss·crystal: 발광 이끼·수정 수(층마다)
+export const CAVE = {
+  open: 'admin', minLv: 12, needZone: 3,
+  x0: 3200, z0: 3200, floorGap: 300,
+  floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
+  roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,
+  cam: { dist: 7.5, max: 9, pitch: 0.2 },
+  lamp: { r: 13, i: 46, color: '#ffe2b0' },
+  fog: [5, 14], ambient: 0.55,
+  fade: 0.5, hold: 0.35, near: 2.6,
+  moss: 70, crystal: 26,
+  lines: { locked: '바람이 새어 나와요. 아직은 무리예요', admin: '지금은 어드민만 들어갈 수 있어요', enter: '용암 동굴', down: '더 깊이 내려갑니다', out: '밖으로 나왔어요' },
 };

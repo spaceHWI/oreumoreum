@@ -11,6 +11,8 @@ ALLOW_ORIGINS = "https://spacehwi.github.io"
 # 로컬에서만: FAKE_AUTH=1 이면 'fake:아무거나' 로 로그인 (npm run dev 가 켬)
 FAKE_AUTH = ""
 STATS_OPEN = ""
+# 로컬 검사에서만 (FAKE_AUTH 일 때): 귤 주기(#175) 새 계정 기다림(초). 비우면 balance.js GIVE.newSec
+GIFT_NEW_SEC = ""
 
 # 어드민 (#84): 시크릿 ADMIN_SUBS = 어드민 구글 계정 sub (쉼표로 여럿). 없으면 아무도 어드민이 아님 (wrangler secret put ADMIN_SUBS)
 # 세션 서명 키 SESSION_SECRET 은 32자 이상. 없거나 짧으면 서버는 /health 말고 모두 503

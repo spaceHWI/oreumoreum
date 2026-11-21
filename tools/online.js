@@ -79,7 +79,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
     const C = await open('C'); await C.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */;
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
-    await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
+    await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat], 90000); /* 화면 셋: C 가 방에 붙기까지 30초를 넘기도 함 (#193) */ // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
     const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
     ok(cs.some(([n, h]) => n === an && h === hat), `새로 들어온 C 에게 A 의 옷·닉네임 (${JSON.stringify(cs)})`);
     await C.ctx.close(); await wait(A.p, 800);

@@ -261,7 +261,7 @@ function frame(now) {
 }
 function step(now) {
   mtFrame(); // 이용 통계 평균 fps (#121): 숫자 하나 더하기
-  if (state.osPaused) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
+  if (state.osPaused || state.idleRest) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97)·오래 멈춰 쉬는 중 (#157, idle.js): 그리지도 움직이지도 않음
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
   if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);
   late.tickLevel?.(Math.min(0.05, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
@@ -294,6 +294,7 @@ function step(now) {
     late.tickRare?.(dt);
     if (late.tickSwarm) { late.tickSwarm(dt); tk.swarm++; }
   }
+  late.tickGive?.(dt); /* 가까운 사람에게 귤 주기 (#175) */
   if (bloom) bloom.update(dt, player.pos, now / 1000);
   if (bfx) {
     bfx.update(dt, now / 1000);
@@ -410,7 +411,8 @@ function step(now) {
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
-  if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }
+  if (state.cave) late.caveFrame(dt); /* 동굴 (#195, game/cave.js): 동굴 장면만 그림 */
+  else if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);
   late.recFrame?.(); // 촬영 모드 (#185): 그린 바로 뒤 캔버스를 담음
   if (state.captureNext) { state.captureNext = false; capture(); }
