@@ -68,6 +68,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
+| where.js | 지금 있는 곳 이름(#153): `placeAt(x, z)` 가게 앞·가게 거리·클린하우스·돌탑·정상 전망대·개울가·정낭·구역 문턱('능선 들머리')·구역 이름. 반경은 `balance.js PLACE`. update.js 가 0.3초마다 위쪽 칸(`#where`)에 씀, 확인 `__oreum.where` |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 
 규칙
