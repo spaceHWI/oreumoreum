@@ -11,8 +11,9 @@
 //   이어 오기: 서버가 저장을 받은 날로 따로 셈(cred.run). save.ach.run.got 에 새로 들어온 날 수가 서버의 연속 날 수 이하면, 이번 연속에서 한 번
 //   보상 구역은 지난 저장의 journey.maxZ (받은 저장은 지난 것 + 1 까지만 믿음)
 // - 동굴 (#195): save.cave.out(들고 나온 동굴 쓰레기 귤 누적)이 늘어난 몫 × caveK. 통(cred.cave)은 초당 cavePerSec 씩 차고 caveBurst 에서 멈춤
+// - 들판 떼 한 판 (#202): save.swarm.won[구역] = { at, b } 의 at 이 새로우면 덤 b (SWARM.run.bonusMax 까지). 구역마다 쉬는 시간(SWARM.run.rest × swarmRestK) 안에 두 번 인정하지 않음 (서버 시계)
 // 기록이 없는 것(적·업적·낚시 등)은 지금처럼 credit 에서
-import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT } from '../../src/balance.js';
+import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM } from '../../src/balance.js';
 import { sellValue, GEAR_SLOTS, curItem, clothId, WEAR_K } from '../../src/loot.js';
 import { slotTier } from '../../src/gearscore.js';
 import { kstDay } from '../../src/rankday.js';
@@ -30,7 +31,7 @@ export function normCred(c) {
   return {
     fresh: num(o.fresh, E.freshBurst), legend: num(o.legend, E.legendBurst), at: num(o.at, 0),
     q: Array.isArray(o.q) ? o.q.filter((id) => QREW.has(id)) : [],
-    boss: isObj(o.boss) ? o.boss : {}, den: isObj(o.den) ? o.den : {},
+    boss: isObj(o.boss) ? o.boss : {}, den: isObj(o.den) ? o.den : {}, sw: isObj(o.sw) ? o.sw : {},
     tr: isObj(o.tr) && Array.isArray(o.tr.got) ? { d: num(o.tr.d), got: o.tr.got.slice(0, 64) } : { d: 0, got: [] },
     sight: Array.isArray(o.sight) ? o.sight.slice(0, 64) : [],
     dl: isObj(o.dl) && typeof o.dl.d === 'string' ? { d: o.dl.d.slice(0, 10), ids: Array.isArray(o.dl.ids) ? o.dl.ids.slice(0, 3) : [], all: o.dl.all ? 1 : 0 } : { d: '', ids: [], all: 0 }, // 오늘의 할 일 (#125)
@@ -58,7 +59,7 @@ export function cleanSold(list) {
 // → { room: 인정한 귤, cred, why: { sold, quest, boss, den, tr, sight }, bad: [거절한 판 것] }
 export function recognize(P, S, sold, cred, t) {
   const C = normCred(JSON.parse(JSON.stringify(cred || {})));
-  const why = { sold: 0, quest: 0, boss: 0, den: 0, tr: 0, sight: 0, daily: 0, run: 0, cave: 0 };
+  const why = { sold: 0, quest: 0, boss: 0, den: 0, tr: 0, sight: 0, daily: 0, run: 0, cave: 0, swarm: 0 };
   // 통 채우기 (지난 시각부터)
   const dt = Math.max(0, Math.min(NET.earnWindow * 6, (t - (C.at || t)) / 1000));
   C.fresh = Math.min(E.freshBurst, C.fresh + dt * E.freshPerSec);
@@ -144,6 +145,14 @@ export function recognize(P, S, sold, cred, t) {
   }
   // 8) 동굴: 들고 나온 몫 (#195). 하루 판 수는 3번 조각
   { const o = Math.max(0, (Number(S.cave?.out) || 0) - (Number(P.cave?.out) || 0)), g = Math.min(o * E.caveK, Math.max(0, C.cave)); C.cave -= g; why.cave = Math.floor(g); }
+  // 9) 들판 떼 한 판 버팀 (#202)
+  const W = isObj(S.swarm?.won) ? S.swarm.won : {}, PW = isObj(P.swarm?.won) ? P.swarm.won : {};
+  for (let z = 1; z <= 5; z++) {
+    const w = W[z]; if (!isObj(w)) continue;
+    if (!((Number(w.at) || 0) > (Number(PW[z]?.at) || 0))) continue;
+    if (t - (Number(C.sw[z]) || 0) < SWARM.run.rest * 1000 * E.swarmRestK) continue;
+    C.sw[z] = t; why.swarm += Math.max(0, Math.min(SWARM.run.bonusMax[z] || 0, Math.floor(Number(w.b) || 0)));
+  }
   const room = Object.values(why).reduce((a, b) => a + b, 0);
   return { room, cred: C, why, bad };
 }

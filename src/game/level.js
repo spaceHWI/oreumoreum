@@ -1,6 +1,7 @@
 // 레벨과 증강 (#159): 경험치 받기·레벨업 연출·위 줄 레벨 칸·증강 고르기 창·싸움 증강(터지는 귤·신 귤)·귤 한 입·꽃길
 // 셈(레벨 곡선·뽑기·옛 저장 경험치·서버 확인)은 src/augments.js, 수치는 balance.js LEVEL·AUGMENTS. 파일 순서는 boss 뒤 (적·우두머리 후크를 감쌈)
-// - 경험치: gain(why, n). 쓰레기·더미(trash 사건), 적(enemyRepel 감쌈), 투기꾼(hooks.js), 우두머리(boss.js), 퀘스트(#158: late.lvGain('quest', n))
+// - 경험치 = 번 귤 (#202): save.coins 가 늘어난 만큼을 매 프레임 셈. 번 귤이 아닌 것(운영자·받은 귤·판 귤·환불·철 선물·개발자 버튼)은 더하기 바로 전에 late.notEarned(n)
+//   레벨 띠는 귤이 귤 칸에 닿을 때(hud.js gyulLand → late.lvLand) 작은 귤이 띠로 날아가 차오름. 레벨업 빛도 띠가 찰 때
 // - 문 'level'(balance.js JOURNEY, 감독 #176): 열리기 전에도 경험치는 쌓이고, 열리면 위 줄에 레벨 칸이 보이고 첫 증강 고르기
 // - 고르기 창: 레벨업 때 고를 것이 하나뿐이면 안전할 때(싸움·탈것·창이 없을 때 LEVEL.safe 초 뒤) 감독 차례로 엶. 밀린 것(옛 저장·'나중에')은 레벨 칸 배지만, 누르면 엶
 //   창이 떠 있는 동안 혼자면 게임이 멈추고(state.augPause → update.js), 다른 사람이 있으면 LEVEL.guard 초 무적만
@@ -8,11 +9,13 @@
 // dev: __oreum.level.state()·gain(n)·set({ id: n })·open()·pick(i)·reroll()·close()
 import * as THREE from 'three';
 import { LEVEL, AUGMENTS } from '../balance.js';
-import { AUG_BY, trimAug, lvSave, levelOf, pendingPicks, augN, augV, rollDraw, augText, enemyXp, oldXp, needXp } from '../augments.js';
+import { AUG_BY, trimAug, lvSave, levelOf, pendingPicks, augN, augV, rollDraw, augText, migrateLv, needXp } from '../augments.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
 import { scene } from './scene.js';
 import { trash, life, player, hp } from './place.js';
+import { LOW } from '../gfx2.js';
+import { soldHook } from '../loot.js';
 import { toast, updateStats, panelOpen, topFit, ach } from './hud.js';
 import { say, director } from './director.js';
 import { cam } from './camera.js';
@@ -21,7 +24,7 @@ import { ic } from '../icons.js';
 // ---------- 저장 ----------
 const fresh = !save.lv || typeof save.lv !== 'object';
 const L = lvSave(save);
-if (fresh || !L.old) { L.xp = Math.max(L.xp, oldXp(save)); L.old = 1; persist(); } // 옛 저장: 지금까지 한 일로 한 번 (#159)
+if (migrateLv(save) || fresh) persist(); /* 옛 저장(#202 앞): 기록으로 번 귤을 어림, 옛 레벨보다 내려가지 않게 */
 if (trimAug(save)) persist(); // 레벨보다 많은 증강(깨진 저장)은 덜어 냄
 let lvShown = levelOf(L.xp).lv;
 let saveT = 0; const persistSoon = () => { if (!saveT) saveT = setTimeout(() => { saveT = 0; persist(); }, 1500); };
@@ -49,7 +52,7 @@ const doorOpen = () => director.isOpen('level');
 function paintHud() {
   const on = doorOpen() && !!trash; if (pill.hidden === on) { pill.hidden = !on; topFit.dirty(); }
   if (!on) return;
-  const s = levelOf(L.xp);
+  const s = levelOf(shown);
   if (lvN.textContent !== String(s.lv)) { lvN.textContent = String(s.lv); topFit.dirty(); }
   lvBar.style.width = (Math.min(1, s.k) * 100).toFixed(1) + '%';
   const p = pendingPicks(save); lvPend.hidden = !p; if (p) lvPend.textContent = '+' + p;
@@ -57,7 +60,8 @@ function paintHud() {
 }
 pill.addEventListener('click', () => {
   if (pendingPicks(save) > 0) { openPick(true); return; }
-  const s = levelOf(L.xp); toast(s.need ? `레벨 ${s.lv} · 다음 레벨까지 경험치 ${s.need - s.into}` : `최고 레벨 ${s.lv}이에요`);
+  if (late.openBag?.('stat')) return; // 능력 탭 (#202)
+  const s = levelOf(L.xp); toast(s.need ? `레벨 ${s.lv} · 다음 레벨까지 귤 ${(s.need - s.into).toLocaleString()}` : `최고 레벨 ${s.lv}이에요`);
 });
 pill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pill.click(); } });
 
@@ -83,34 +87,58 @@ function tickGlow(dt) {
   column.scale.set(1 - k * 0.5, 0.6 + k * 0.6, 1 - k * 0.5); colMat.opacity = 0.35 * Math.sin(Math.PI * Math.min(1, k * 1.4));
 }
 
-// ---------- 경험치 ----------
+// ---------- 경험치 = 번 귤 (#202) ----------
 let auto = false; // 레벨업으로 고를 것이 생겼고, 안전해지면 창을 열지
-function gain(why, n) {
-  const x = Math.max(0, Math.round(n)); if (!x || !trash) return 0;
-  const before = levelOf(L.xp).lv, pend0 = pendingPicks(save);
-  L.xp += x; persistSoon();
-  const now = levelOf(L.xp).lv;
-  if (now > before) {
-    persist(); lvShown = now;
-    if (doorOpen()) { levelFx(now); if (pend0 === 0) auto = true; } // 밀린 게 없을 때만 저절로 (#159: 창이 연달아 뜨지 않게)
-  }
-  paintHud();
+let seen = Math.max(0, save.coins | 0), skip = 0, shown = L.xp, pendT = 0;
+late.notEarned = (n) => { skip += Math.max(0, Math.floor(+n) || 0); }; // save.coins 에 더하기 바로 전에 (다음 프레임에 지움)
+soldHook.fn = (v) => late.notEarned(v); // 장비 판 귤 (#140 sell)
+late.coinsSync = () => { seen = Math.max(0, save.coins | 0); skip = 0; };
+function watchCoins() {
+  const c = Math.max(0, save.coins | 0), d = c - seen; seen = c;
+  const e = Math.max(0, d - skip); skip = 0;
+  if (e > 0) gain(e);
+}
+function gain(n) {
+  const x = Math.max(0, Math.round(n)); if (!x) return 0;
+  L.xp = Math.min(L.xp + x, 1e12); persistSoon();
+  if (!trash) shown = L.xp;
   return x;
 }
-late.lvGain = (why, n) => gain(why, n ?? LEVEL.xp[why] ?? 0);
+// 띠가 차오름: 귤이 귤 칸에 닿을 때 (hud.js gyulLand), 1.5초 안에 안 닿으면 그냥
+function land(n) {
+  if (shown >= L.xp) return;
+  shown = Math.min(L.xp, shown + Math.max(1, n)); pendT = 0;
+  if (!LOW && doorOpen() && !pill.hidden) flyDot();
+  paintHud();
+}
+late.lvLand = (n) => land(n);
+function flyDot() {
+  const a = document.querySelector('.gyul i')?.getBoundingClientRect(), b = lvBar.getBoundingClientRect(); if (!a || !b.width) return;
+  const dot = document.createElement('div'); dot.className = 'fx-gyul'; dot.style.left = a.left + 'px'; dot.style.top = a.top + 'px'; dot.style.transform = 'scale(.5)'; document.body.append(dot);
+  requestAnimationFrame(() => { dot.style.transition = 'transform .35s ease-in, opacity .35s'; dot.style.transform = `translate(${b.left + b.width * Math.min(1, levelOf(shown).k) - a.left}px, ${b.top - a.top - 4}px) scale(.35)`; dot.style.opacity = '0.6'; });
+  setTimeout(() => dot.remove(), 380);
+}
+function tickShown(dt) {
+  if (shown < L.xp) { if ((pendT += dt) > 1.5) { shown = L.xp; pendT = 0; paintHud(); } } else { pendT = 0; if (shown > L.xp) { shown = L.xp; paintHud(); } }
+  const now = levelOf(shown).lv;
+  if (now > lvShown) {
+    const ups = now - lvShown; lvShown = now; persist();
+    if (doorOpen()) { levelFx(now); if (pendingPicks(save) <= ups) auto = true; } // 밀린 게 없을 때만 저절로 (#159: 창이 연달아 뜨지 않게)
+    paintHud();
+  } else if (now < lvShown) lvShown = now;
+}
+late.lvGain = () => 0; // #202 앞의 경험치 길 (지금은 번 귤로만 셈)
+// 서버가 경험치를 줄였을 때 (online.js fix.lv: 보낸 값에서 cut 만큼)
+late.lvFix = (f) => { const cut = Math.max(0, +f?.cut || 0); if (!cut) return; L.xp = Math.max(0, L.xp - cut); shown = Math.min(shown, L.xp); trimAug(save); persist(); paintHud(); late.bagRefresh?.(); };
 
-// 쓰레기·더미 (내가 주운 것만: heap-clear 의 d.by 는 남이 치움)
+// 쓰레기·더미: 꽃길 (내가 치운 것만: heap-clear 의 d.by 는 남이 치움)
 if (trash) trash.on((ev, d) => {
-  if (ev === 'trash') gain('trash', LEVEL.xp.trash);
-  else if (ev === 'heap-clear' && !d.by) {
-    gain('heap', trash.heaps[d.h]?.k === 'mt' ? LEVEL.xp.mt : LEVEL.xp.heap);
-    const f = AUG_BY.flower; if (augN(save, 'flower')) state.flowerT = f.sec; // 꽃길: 몇 초 빠르게 (update.js late.augSpeed)
-  }
+  if (ev === 'heap-clear' && !d.by) { const f = AUG_BY.flower; if (augN(save, 'flower')) state.flowerT = f.sec; } // 꽃길: 몇 초 빠르게 (update.js late.augSpeed)
 });
-// 적: 쫓아내면 경험치 + 귤 한 입
+// 적: 쫓아내면 귤 한 입
 { const prev = life.hooks.enemyRepel;
   life.hooks.enemyRepel = (kind, pos, def) => {
-    prev?.(kind, pos, def); if (def.swarm !== 'mob') gain('enemy', enemyXp(def)); // 들판 떼 보통 적(#173)은 귤 조각으로 경험치 (swarm.js)
+    prev?.(kind, pos, def);
     const b = augV(save, 'bite'); if (b > 0 && !hp.isDown && !hp.pending) hp.set(hp.hp + b);
   }; }
 // 싸움 증강 (enemies.js hurt 뒤 hooks.afterHurt): 터지는 귤(둘레 피해), 신 귤(느려짐)
@@ -208,6 +236,7 @@ director.register({
 // ---------- 매 프레임 (update.js) ----------
 export function tickLevel(dt) {
   if (state.flowerT > 0) state.flowerT -= dt;
+  watchCoins(); tickShown(dt);
   tickGlow(dt);
   if (open) { if (!pendingPicks(save) || hp.isDown || sheet.hidden) { sheet.hidden = false; close(); } else if (multi()) { state.augPause = false; player.iframe = Math.max(player.iframe || 0, 0.2); } return; }
   if (auto && doorOpen() && pendingPicks(save)) {
@@ -225,10 +254,35 @@ late.augFoot = () => {
   const p = pendingPicks(save);
   return `<div class="bag-aug"><span class="lvb">레벨 ${s.lv}</span>${chips || '<span>증강 없음</span>'}${p ? `<span>고를 증강 ${p}</span>` : ''}</div>`;
 };
+// 능력 탭 (#202, bag.js): 레벨·번 귤 띠·고른 증강 (누르면 뒷면에 숫자)
+{ const st = document.createElement('style'); st.textContent = `
+.lv-tab { display: grid; gap: 10px; }
+.lv-tab .lt-h { display: flex; align-items: baseline; gap: 8px; font-family: var(--display); } .lv-tab .lt-h b { font-size: 22px; } .lv-tab .lt-h small { opacity: .75; font-size: 12px; }
+.lv-tab .lt-bar { height: 8px; border-radius: 6px; background: rgba(255,255,255,.16); overflow: hidden; } .lv-tab .lt-bar i { display: block; height: 100%; background: var(--gyul, #ff9a1f); border-radius: 6px; }
+.lv-tab .lt-go { justify-self: start; }
+.lv-tab .lt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.lv-tab .lt-a { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border-radius: 14px; border: 2px solid var(--br); background: var(--paper-2); color: #fff; font-family: var(--display); cursor: pointer; position: relative; min-height: 112px; text-align: center; }
+.lv-tab .lt-a .ic { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: var(--br); } .lv-tab .lt-a .ic svg { width: 24px; height: 24px; }
+.lv-tab .lt-a b { font-size: 14px; } .lv-tab .lt-a i { font-style: normal; color: #ffc14d; font-size: 12px; letter-spacing: 1px; }
+.lv-tab .lt-a .bk { display: none; font-size: 12px; line-height: 1.35; font-family: inherit; } .lv-tab .lt-a.flip .bk { display: block; } .lv-tab .lt-a.flip .ic, .lv-tab .lt-a.flip i { display: none; }
+.lv-tab .lt-a .fd { font-size: 10px; opacity: .8; display: inline-flex; gap: 2px; align-items: center; } .lv-tab .lt-a .fd svg { width: 11px; height: 11px; }
+.lv-tab .lt-none { opacity: .7; font-size: 13px; grid-column: 1 / -1; }`; document.head.appendChild(st); }
+late.augTab = (el) => {
+  const s = levelOf(L.xp), p = pendingPicks(save), list = AUGMENTS.list.filter((a) => augN(save, a.id));
+  const box = document.createElement('div'); box.className = 'lv-tab';
+  box.innerHTML = `<div class="lt-h"><b>레벨 ${s.lv}</b><small>${s.need ? `번 귤 ${s.into.toLocaleString()} / ${s.need.toLocaleString()}` : '최고 레벨'}</small></div>`
+    + `<div class="lt-bar" title="번 귤로 차요"><i style="width:${(Math.min(1, s.k) * 100).toFixed(1)}%"></i></div>`
+    + (p ? `<button type="button" class="btn small lt-go">증강 고르기 +${p}</button>` : '')
+    + `<div class="lt-list">${list.map((a) => { const n = augN(save, a.id); return `<button type="button" class="lt-a" style="--br:${brColor(a.id)}" title="${a.name}: ${augText(a, n)}"><span class="ic">${AUG_ICON[a.id] || ''}</span><b>${a.name}</b><i>${stars(n)}</i><span class="bk">${augText(a, n)}</span>${a.field ? FIELD_TAG : ''}</button>`; }).join('') || '<span class="lt-none">아직 고른 증강이 없어요. 레벨이 오르면 골라요</span>'}</div>`;
+  box.querySelector('.lt-go')?.addEventListener('click', () => { late.closeBag?.(); openPick(true); });
+  for (const b of box.querySelectorAll('.lt-a')) b.addEventListener('click', () => b.classList.toggle('flip'));
+  el.append(box);
+};
 late.level = {
   state: () => ({ xp: L.xp, ...levelOf(L.xp), aug: { ...L.aug }, pend: pendingPicks(save), draw: L.draw && [...L.draw], rr: L.rr, open, auto, paused: !!state.augPause, door: doorOpen(), shown: lvShown, need: needXp(levelOf(L.xp).lv) }),
-  gain: (n, why = 'dev') => gain(why, n),
+  gain: (n) => { save.coins += Math.max(0, n | 0); updateStats(); watchCoins(); return n; }, /* 귤 n 을 번 것처럼 */
+  shown: () => shown, notEarned: (n) => late.notEarned(n),
   set: (aug) => { L.aug = {}; for (const [k, n] of Object.entries(aug || {})) if (AUG_BY[k]) L.aug[k] = Math.max(0, Math.min(AUGMENTS.max, n | 0)); persist(); paintHud(); late.bagRefresh?.(); },
-  setXp: (x) => { L.xp = Math.max(0, +x || 0); persist(); paintHud(); },
+  setXp: (x) => { L.xp = shown = Math.max(0, +x || 0); lvShown = levelOf(L.xp).lv; persist(); paintHud(); },
   open: () => openPick(true), pick, reroll, close, safe: () => safe(), safeT: () => safeT, paint: paintHud, v: (id) => augV(save, id),
 };

@@ -1,4 +1,5 @@
 // 내 가방 (#166): 배낭 칸(#bag-pill)·B 키·메뉴에서 여는 한 창. 탭 옷·무기·도구·배낭·탈것, 가진 것은 눌러 바로 장착
+// 능력 탭 (#202, 레벨이 보일 때만): 레벨·번 귤 띠·고른 증강 목록 (level.js late.augTab). 위쪽 레벨 칸을 누르면 이 탭
 // 예전 옷장(#wardrobe 패널·카메라 cam.mode 'wardrobe')을 그대로 키워 씀: 창 옆(폰은 위쪽)에 내 캐릭터가 보이고 고르면 바로 바뀜
 // 예전 탈것 창(#ridewin)·무기 창(#armwin)은 없앰: ride.js openRideWin·arms.js openArmWin 이 이 창의 탭을 엶
 // 도구·배낭·신발은 단계를 사면 그 단계를 쓰고(save.equip), 아래 단계는 '가짐' 으로만 보임 (더 좋은 것이 늘 장착)
@@ -25,6 +26,7 @@ const TABS = [
   { k: 'tool', name: '도구', ic: ic('tongs') },
   { k: 'bag', name: '배낭', ic: ic('bag') },
   { k: 'ride', name: '탈것', ic: ic('ride') },
+  { k: 'stat', name: '능력', ic: ic('star'), on: () => !!late.lvShown?.() },
 ];
 const SVG = (inner, cls = '') => `<svg ${cls ? `class="${cls}" ` : ''}viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
 const CARD_SVG = (inner) => `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
@@ -43,7 +45,7 @@ function clearYaw(yaw, d) {
   for (let k = 0; k <= 12; k++) { const a = yaw + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 6; if (free(a)) return a; }
   return yaw;
 }
-const tabOk = (k) => TABS.some((t) => t.k === k);
+const tabOk = (k) => TABS.some((t) => t.k === k && (!t.on || t.on()));
 export function openBag(tab) {
   if (tabOk(tab)) bagS.tab = tab;
   if (bagS.open) { buildBag(); return true; }
@@ -79,6 +81,7 @@ function goBuy(id, msg) { closeBag(); if (id === 'leap' && !LEAPB) id = 'gear'; 
 function buildTabs() {
   tabsEl.innerHTML = '';
   for (const t of TABS) {
+    if (t.on && !t.on()) continue;
     const b = document.createElement('button'); b.type = 'button'; b.dataset.tab = t.k; b.title = t.name; b.setAttribute('aria-pressed', String(t.k === bagS.tab));
     b.innerHTML = `${SVG(t.ic)}<span>${t.name}</span>`;
     b.addEventListener('click', () => { bagS.tab = t.k; buildBag(); body.scrollTop = 0; });
@@ -90,7 +93,7 @@ export function buildBag() {
   buildTabs();
   panel.dataset.tab = bagS.tab; $('bag-nick').hidden = bagS.tab !== 'wear';
   body.innerHTML = '';
-  ({ wear: fillWear, arm: fillArm, tool: () => fillTier('tool'), bag: () => fillTier('bag'), ride: fillRide })[bagS.tab]();
+  ({ wear: fillWear, arm: fillArm, tool: () => fillTier('tool'), bag: () => fillTier('bag'), ride: fillRide, stat: () => late.augTab?.(body) })[bagS.tab]();
   fillFoot();
 }
 // 탭이 그 내용일 때만 다시 그림 (무기·탈것이 다른 곳에서 바뀌었을 때)
@@ -220,7 +223,7 @@ function fillFoot() {
   const row = (ic, name, v) => `<span class="bs">${SVG(S[ic] || '')}<em>${name}</em><b>${v}</b></span>`;
   footEl.innerHTML = `<div class="bag-score">${scoreChip(g.total, 0)}<small>줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}</small></div>`
     + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${wd}/초` : wd)}</div>`
-    + (late.lvShown?.() ? late.augFoot?.() || '' : ''); // 레벨·증강 (#159): 장비 점수와 따로
+    + (late.lvShown?.() && bagS.tab !== 'stat' ? late.augFoot?.() || '' : ''); // 레벨·증강 (#159): 장비 점수와 따로 (능력 탭에선 위에 크게)
 }
 
 Object.assign(late, { openBag, closeBag, bagRefresh, bagRect, buildWardrobe: buildBag, openWardrobe: () => openBag('wear'), closeWardrobe: closeBag }); // 앞 파일에서 부르는 함수 (예전 옷장 이름도 그대로)

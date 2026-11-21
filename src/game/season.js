@@ -93,7 +93,7 @@ function tickTree(dt) {
     if (say('quest', 'xmasTree', top ? '모두의 트리에 귤 별이 떴어요!' : `모두가 주운 쓰레기로 트리 장식이 늘었어요 (${st}/${X.tree.stages})`, 3.6)) { xs.seen = st; persist(); }
   }
   if (st >= X.tree.stages && !xs.tree && state.sessionOn && realDay()) { // 다 채우면 접속한 모두에게 선물 (서버가 합계로 확인)
-    xs.tree = 1; save.coins += X.tree.gift; persist(); gyulShower(X.tree.gift); toast(`트리 선물 · 귤 +${X.tree.gift}`, 3.5);
+    xs.tree = 1; late.notEarned?.(X.tree.gift); save.coins += X.tree.gift; persist(); gyulShower(X.tree.gift); toast(`트리 선물 · 귤 +${X.tree.gift}`, 3.5);
   }
 }
 
@@ -121,7 +121,7 @@ function openDay(d) {
   if (cost && save.coins < cost) { toast(`귤이 ${cost - save.coins}개 더 필요해요`); return false; }
   save.coins -= cost; xs.days.push(d); xs.days.sort((a, b) => a - b);
   const r = calReward(d);
-  if (r.coins) { save.coins += r.coins; gyulShower(r.coins); }
+  if (r.coins) { late.notEarned?.(r.coins); save.coins += r.coins; gyulShower(r.coins); }
   if (r.cloth && CN[r.cloth]) { CL.own[r.cloth] = 1; toast(`${CN[r.cloth].name}을(를) 받았어요 · 내 가방에서 입어요`, 3.4); }
   if (r.snow) { xs.snow = 1; toast('눈덩이를 받았어요 · 굼부리·정상에서 손으로 던지면 눈덩이', 3.6); }
   persist(); updateStats(); sound.coin?.(); buildCal(); refreshDot();
@@ -152,7 +152,7 @@ function openGift(gf) {
   const left = XMAS_CLOTHES.filter((id) => !CL.own[id]);
   if (Math.random() < X.santa.gift && left.length && xs.gift.length < X.santa.giftMax) {
     const id = left[Math.floor(Math.random() * left.length)]; CL.own[id] = 1; xs.gift.push(id); toast(`선물 상자: ${CN[id].name}!`, 3.2);
-  } else { const [a, b] = X.santa.coins, n = a + Math.floor(Math.random() * (b - a + 1)); save.coins += n; gyulShower(n); toast(`선물 상자 · 귤 +${n}`, 2.6); }
+  } else { const [a, b] = X.santa.coins, n = a + Math.floor(Math.random() * (b - a + 1)); late.notEarned?.(n); save.coins += n; gyulShower(n); toast(`선물 상자 · 귤 +${n}`, 2.6); }
   persist(); updateStats(); sound.coin?.();
   scene.remove(gf.m);
 }

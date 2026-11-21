@@ -83,7 +83,7 @@ export function enableDev() {
       location.reload();
     });
     $('dev-tut').addEventListener('click', () => { late.tut.skipAll(); toast('튜토리얼 건너뛰기'); }); // #62 건너뛰기는 개발자 버튼에만
-    $('dev-gyul').addEventListener('click', () => { save.coins += 10000; persist(); updateStats(); late.sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
+    $('dev-gyul').addEventListener('click', () => { late.notEarned?.(10000); save.coins += 10000; persist(); updateStats(); late.sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
   }
 }
 if (!ONLINE && hwiFlag) enableDev(); // 혼자 하기(서버 주소 없음)는 예전처럼
