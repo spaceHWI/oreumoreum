@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { cleanText } from './safetext.js';
 import { TEXCS } from './boot.js';
+import { bubbleCanvas, bubbleScale, bubblePages } from './bubble.js';
+import { TALK } from './balance.js';
 
 // 채팅 말풍선(presence.say), 소원 돌탑(db stones/{self}), 표지석 줄서기(presence.pq)
 const clean = (s, n) => cleanText(s, n); // 제어·방향 글자·꺾쇠 빼기 (#84, safetext.js)
@@ -68,28 +70,32 @@ export function createSocial({ scene, net, save, onToast, mapId }) {
 
   // ----- 채팅 말풍선 -----
   const bubbles = new Map(); // peer -> {sprite, text, until}
-  function makeBubble(text) {
-    const c = document.createElement('canvas'); const g = c.getContext('2d');
-    g.font = '500 26px "Noto Sans KR", sans-serif';
-    const w = Math.min(520, Math.max(120, g.measureText(text).width + 40)); c.width = w; c.height = 72;
-    g.font = '500 26px "Noto Sans KR", sans-serif';
-    g.fillStyle = '#fbf6e6'; g.strokeStyle = '#33402a'; g.lineWidth = 4;
-    const r = 18; g.beginPath(); g.moveTo(r, 2); g.lineTo(w - r, 2); g.quadraticCurveTo(w - 2, 2, w - 2, r); g.lineTo(w - 2, 50 - r); g.quadraticCurveTo(w - 2, 50, w - r, 50); g.lineTo(w / 2 + 10, 50); g.lineTo(w / 2, 64); g.lineTo(w / 2 - 10, 50); g.lineTo(r, 50); g.quadraticCurveTo(2, 50, 2, 50 - r); g.lineTo(2, r); g.quadraticCurveTo(2, 2, r, 2); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = '#33402a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, 27);
-    const tx = new THREE.CanvasTexture(c); tx.colorSpace = TEXCS;
+  // 말풍선 그림은 src/bubble.js 한 틀 (#190: 긴 글이 한 줄로 눌려 깨지던 것). 채팅은 TALK.bubble.chatLines 줄까지
+  function makeBubble(text, chat, L) {
+    const b = bubbleCanvas(text, L ? { L } : { lines: chat ? TALK.bubble.chatLines : TALK.bubble.lines });
+    const tx = new THREE.CanvasTexture(b.canvas); tx.colorSpace = TEXCS;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, depthTest: false }));
-    sp.scale.set(w / 72 * 0.9, 0.9, 1); sp.renderOrder = 10;
+    const [sx, sy] = bubbleScale(b); sp.scale.set(sx, sy, 1); sp.center.set(0.5, 0); sp.renderOrder = 10; // 꼬리 끝을 기준으로 위로 자람
     return sp;
   }
+  // NPC·동료(key 'npc…'·'mate…')는 14자 × 2줄씩 두 장까지 넘김, 사람 채팅은 한 장 3줄 (#190)
   function showBubble(key, root, text, yOff) {
     const t = clean(text, 60); if (!t) return;
     const old = bubbles.get(key); if (old) { old.sprite.parent?.remove(old.sprite); old.sprite.material.map.dispose(); }
-    const sp = makeBubble(t); sp.position.y = yOff; root.add(sp);
-    bubbles.set(key, { sprite: sp, text: t, until: performance.now() + 6000 });
+    const npc = String(key).startsWith('npc') || String(key).startsWith('mate');
+    const pages = npc ? bubblePages(t) : null;
+    const sp = makeBubble(t, !npc, pages?.[0]); sp.position.y = yOff - 0.42; root.add(sp);
+    const now = performance.now(), dur = pages?.length > 1 ? 8000 : 6000;
+    bubbles.set(key, { sprite: sp, text: t, until: now + dur, pages: pages?.length > 1 ? pages : null, flip: now + dur / 2, root, yOff });
   }
   function tickBubbles() {
     const now = performance.now();
-    for (const [k, b] of bubbles) if (now > b.until) { b.sprite.parent?.remove(b.sprite); b.sprite.material.map.dispose(); bubbles.delete(k); }
+    for (const [k, b] of bubbles) {
+      if (now > b.until) { b.sprite.parent?.remove(b.sprite); b.sprite.material.map.dispose(); bubbles.delete(k); continue; }
+      if (b.pages && now > b.flip) { // 다음 장
+        const sp = makeBubble(b.text, false, b.pages[1]); sp.position.y = b.yOff - 0.42; b.sprite.parent?.add(sp); b.sprite.parent?.remove(b.sprite); b.sprite.material.map.dispose(); b.sprite = sp; b.pages = null;
+      }
+    }
     // 다른 사람 말풍선: presence.say = {t, at}
     for (const e of net.peersById.values()) {
       const say = e.data.say;
