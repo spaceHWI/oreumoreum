@@ -1,7 +1,7 @@
 // 장비 점수 (#137, notes/growth-loop.md 3절). 수치는 balance.js GROWTH·ZONES. 저장(save)만 읽는 순수 함수라 게임·도구·멀티가 같이 씀
 // 칸 10개: 도구·배낭·신발·무기 (save.equip) + 옷 6칸 (save.clothes.wear 에 입은 옷의 단계). 합이 장비 점수
 // 등급·강화 자리 (다음 이슈에서 채움): 장비는 save.gearUp = { 칸: { g, e } }, 옷은 save.clothes.up = { 옷 id: { g, e } }. 없으면 0
-import { GROWTH, ZONES, WEAR, CLOTHES } from './balance.js';
+import { GROWTH, ZONES, WEAR, CLOTHES, GYUL_PICK } from './balance.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const WEAR_K = WEAR.slots.map((w) => w.k);
@@ -45,3 +45,6 @@ export function zoneTone(score, zone) {
   return k < GROWTH.red ? 'r' : k >= GROWTH.green ? 'g' : 'y';
 }
 export const zoneRec = (zone) => ZONES.find((z) => z.id === zone)?.rec || 0;
+
+// 귤 모으는 범위(m, #151): 기본 + 배낭 단계마다 더함 (호주머니·배낭 1단계 = 기본). 전리품 장비(#140)의 같은 능력치도 여기에 더한다
+export const gyulPickR = (save) => GYUL_PICK.r + GYUL_PICK.perBag * Math.max(0, (save?.equip?.bag || 0) - 1);

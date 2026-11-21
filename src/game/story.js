@@ -333,7 +333,7 @@ function finish(why) {
     if (d.gyul > 0 && id !== 'meet') addCoins(d.gyul, T[id]?.done || '이야기'); // 가족회의는 귤 상자가 보상
     else if (T[id]?.done && id !== 'night' && id !== 'pair' && id !== 'ufo') line(id + 'Done', T[id].done, 2.8);
     late.sound?.fanfare?.();
-    late.quest?.storyDone?.(id, T[id]?.clue); // 가이드 퀘스트 (#158) 가 있으면 '오름지기에게 이야기하기' 곁가지
+    // 가이드 퀘스트 (#158): balance.js QUESTS.side 'st-<id>' 가 이 이벤트를 끝냈는지(save.story.done) 보고 '오름지기에게 이야기하기' 를 엶
     if (id === 'end') late.titles?.give?.('은하 환경미화원'); // 칭호 (#165) 가 있으면
   }
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { height, surfaceAt } from './world.js';
 import { createEnemies } from './enemies.js';
-import { SCATTER, THROW_DMG, BOW, TANGERINE as TG, COMBAT } from './balance.js';
+import { SCATTER, THROW_DMG, BOW, TANGERINE as TG, COMBAT, GYUL_PICK } from './balance.js';
 import { steer } from './homing.js';
 import { LOW } from './gfx2.js';
 import { buildDeer, buildHareubang, shakeHareubang, wantDeer } from './lifemodels.js';
@@ -423,7 +423,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (!tg.drop && !tg.enemyHit && (enemies.hitTest(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1) * (tg.mul || 1)) || extraHit(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1) * (tg.mul || 1)))) tg.enemyHit = true; // 적 (#37) · 투기꾼 (#47)
+      if (!tg.drop && !tg.enemyHit) { const he = enemies.hitTest(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1) * (tg.mul || 1)); if (he || extraHit(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1) * (tg.mul || 1))) { tg.enemyHit = true; if (tg.snow && he) hooks.snowHit?.(he, p); } } // 적 (#37) · 투기꾼 (#47) · 눈덩이는 느려짐 (#180)
       for (const hb of hareubangs) {
         const hd = Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z);
         if (hd < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3 && !tg.hbHit) {
@@ -435,6 +435,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const gy = height(p.x, p.z) + TR;
       if (p.y <= gy) {
         p.y = gy;
+        if (tg.snow) { hooks.snowLand?.(p); dropTrail(tg); group.remove(tg.mesh); tangerines.splice(i, 1); continue; } // 눈덩이는 땅에 닿으면 부서짐 (#180, 주울 수 없음)
         if (!tg.drop && Math.abs(tg.vel.y) > 2.5) { tg.vel.y = -tg.vel.y * 0.35; tg.vel.x *= 0.6; tg.vel.z *= 0.6; sound.step(surfaceAt(p.x, p.z), false); }
         else { tg.landed = true; tg.vel.set(0, 0, 0); dropTrail(tg); }
       }
@@ -444,7 +445,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const tg = tangerines[i];
       if (!tg.landed || tg.eaten || tg.claimedBy || tg.rest < 0.6 || player.riding) continue;
       const p = tg.mesh.position;
-      if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < (hooks.pickR2?.() || 1.6)) { group.remove(tg.mesh); tangerines.splice(i, 1); hooks.reclaim?.(p.clone(), tg.v || 1); } // 싸우는 중엔 더 넓게 (#148)
+      if ((p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2 < (tg.drop ? hooks.pickR2?.() || 1.6 : hooks.throwR2?.() || 1.6)) { tangerines.splice(i, 1); const v = tg.v || 1; suck(tg.mesh, (at) => hooks.reclaim?.(at, v)); } // 범위 안이면 빨려 옴 (#151), 싸우는 중엔 더 넓게 (#148)
     }
     for (const hb of hareubangs) {
       if (hb.hitT > 0) { hb.hitT = Math.max(0, hb.hitT - dt); shakeHareubang(hb); }
@@ -473,13 +474,23 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     pickMesh.instanceMatrix.needsUpdate = true; pickLeaf.instanceMatrix.needsUpdate = true; pickGlow.instanceMatrix.needsUpdate = true;
   }
   for (let i = 0; i < PICK_N; i++) placePick(i);
+  // 귤 빨려 오기 (#151): 범위 안에 든 귤은 GYUL_PICK.suckT 초 동안 캐릭터 가슴께로 날아와 들어가고, 닿으면 fn(자리)
+  const sucks = [];
+  function suck(m, fn) { sucks.push({ m, from: m.position.clone(), t: 0, fn }); }
+  function tickSucks(dt) {
+    for (let i = sucks.length - 1; i >= 0; i--) {
+      const s = sucks[i]; s.t += dt; const k = Math.min(1, s.t / GYUL_PICK.suckT), e = k * k;
+      s.m.position.set(s.from.x + (player.pos.x - s.from.x) * e, s.from.y + (player.pos.y + 1 - s.from.y) * e + Math.sin(k * Math.PI) * 0.6, s.from.z + (player.pos.z - s.from.z) * e);
+      if (k >= 1) { group.remove(s.m); sucks.splice(i, 1); s.fn(s.m.position.clone()); }
+    }
+  }
   function updatePicks(dt, time) {
-    let got = 0;
+    let got = 0; tickSucks(dt);
     for (let i = 0; i < PICK_N; i++) {
       const pk = picks[i];
       if (pk.gone) { pk.t -= dt; if (pk.t <= 0) placePick(i); continue; }
       const dx = pk.x - player.pos.x, dz = pk.z - player.pos.z;
-      if (dx * dx + dz * dz < 1.8) { pk.gone = true; pk.t = 90 + rnd() * 60; pickMesh.setMatrixAt(i, ZERO); pickLeaf.setMatrixAt(i, ZERO); pickGlow.setMatrixAt(i, ZERO); pickMesh.instanceMatrix.needsUpdate = pickLeaf.instanceMatrix.needsUpdate = pickGlow.instanceMatrix.needsUpdate = true; got++; hooks.pickupAt?.(new THREE.Vector3(pk.x, pk.y, pk.z)); continue; }
+      if (dx * dx + dz * dz < (hooks.pickR2?.() || 1.8) && !player.riding) { pk.gone = true; pk.t = 90 + rnd() * 60; pickMesh.setMatrixAt(i, ZERO); pickLeaf.setMatrixAt(i, ZERO); pickGlow.setMatrixAt(i, ZERO); pickMesh.instanceMatrix.needsUpdate = pickLeaf.instanceMatrix.needsUpdate = pickGlow.instanceMatrix.needsUpdate = true; const m = new THREE.Mesh(tanGeo, tanMat); m.scale.setScalar(PR / TR); m.position.set(pk.x, pk.y + TG.hover, pk.z); group.add(m); suck(m, (at) => { hooks.pickupAt?.(at); hooks.pickup?.(1); }); continue; } // 빨려 옴 (#151)
       // 살짝 떠서 천천히 돎. 가까운 것(60m)만 매 프레임 갱신해 저사양에서도 가볍게
       const near = dx * dx + dz * dz < 3600;
       if (near || i % 6 === Math.floor(time * 6) % 6) {

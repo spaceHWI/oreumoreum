@@ -52,7 +52,8 @@ function closeDen(d, s) {
   act.delete(d.id); F.den[d.id] = Date.now(); persist(); field.dirty();
   life.scatterTangerines(v3(d, 0.8), FIELD.den.gyul[d.zone] || 0, ENEMY_DROP.max);
   toast('소굴을 닫았어요! 떨어진 귤을 주워요', 3); late.sound?.coin?.();
-  late.denLoot?.(d, s); // 다음 이슈(전리품·재료)가 씀
+  late.denLoot?.(d, s); // 재료 묶음·장비 (#140 game/loot.js)
+  late.questEv?.('den@' + d.zone); // 퀘스트 (#158)
 }
 function tickDens(dt) {
   if ((denT -= dt) > 0) return; denT = 0.25; denWait -= 0.25;
@@ -86,7 +87,7 @@ function openTreasure(t) {
   life.scatterTangerines(chestPos(t).setY(t.y + 0.8), FIELD.treasure.gyul[t.zone] || 0, ENEMY_DROP.max);
   toast('숨은 보물! 귤이 쏟아져요', 3); late.sound?.coin?.();
   if (Math.random() < FIELD.treasure.rare) { const rares = DEX_LIST.filter((x) => x.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); setTimeout(() => onDexGet(dx, isNew), 1200); }
-  late.treasureLoot?.(t); // 다음 이슈(장비 드롭)가 씀
+  late.treasureLoot?.(t, chestPos(t)); // 재료·장비 (#140 game/loot.js)
 }
 if (field) for (const t of field.treasures) interactables.push({ label: '보물 열기', ic: 'chest', pos: chestPos(t), r: FIELD.treasure.r, when: () => !trGot(t), act: () => openTreasure(t) });
 
@@ -169,6 +170,7 @@ function drawIcons(x, uv, s, clip = null) {
     const k = h.k === 'mt' ? 1.25 : 0.9; x.fillStyle = '#2e2e34'; x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(u - s * 0.5 * k, v + s * 0.45 * k); x.quadraticCurveTo(u - s * 0.62 * k, v - s * 0.3 * k, u - s * 0.14 * k, v - s * 0.38 * k); x.lineTo(u, v - s * 0.62 * k); x.lineTo(u + s * 0.14 * k, v - s * 0.38 * k); x.quadraticCurveTo(u + s * 0.62 * k, v - s * 0.3 * k, u + s * 0.5 * k, v + s * 0.45 * k); x.closePath(); x.fill(); x.stroke(); });
   late.bossIcons?.(x, uv, s, inC); // 우두머리 빈터 (#139)
   late.shopIcons?.(x, uv, s, inC); // 가게 거리 가게 (#128, game/shop.js)
+  late.questIcons?.(x, uv, s, inC); // 퀘스트 주는 사람 (#158, game/quest.js)
   // 소굴: 열림 빨강·닫힘 회색 (가 본 곳만)
   for (const d of field.dens) { if (!seenAt(d.x, d.z)) continue; const [u, v] = uv(d.x, d.z); if (!inC(u, v)) continue; const o = denOpen(d);
     x.fillStyle = o ? '#e0483a' : '#7b7b80'; x.strokeStyle = '#fff'; x.beginPath(); x.arc(u, v, s * 0.5, 0, 7); x.fill(); x.stroke();

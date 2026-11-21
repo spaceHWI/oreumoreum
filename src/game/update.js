@@ -1,5 +1,6 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG } from '../balance.js';
+import { shoeSpeed } from '../loot.js';
+import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
@@ -32,6 +33,7 @@ import { tickNewVer } from './newver.js';
 import { sound, tickKnock, enemyWarn, dumpWarn, dumpers, threatNear } from './hooks.js';
 import { tickPace, pace } from './pace.js';
 import { tickDirector } from './director.js'; // #176
+import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
@@ -119,7 +121,7 @@ function updatePlayer(dt) {
   const slow = joy.active && p.joyMag < 0.6;
   let want, acc = 8;
   if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
-  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed * buff.mul('speed') * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
+  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * buff.mul('speed') * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
   p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -141,6 +143,7 @@ function updatePlayer(dt) {
     checkViewpoint();
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
   if (p.pose === 'sit') p.pos.y = mealS.on ? STN.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
+  late.tickSwim?.(dt); // 테왁 배낭으로 물에 뜸 (#164, game/punk.js): 높이를 물낯에
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
     const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
@@ -160,7 +163,7 @@ function countSteps(moved) {
   p.strideAcc += moved;
   const stride = p.running ? 1.7 : 1.1;
   let n = 0;
-  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0); }
+  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; if (state.swim) continue; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0); }
   if (n) ach.emit('steps', n);
 }
 function checkViewpoint() {
@@ -241,7 +244,7 @@ function step(now) {
   state.camHold = Math.max(0, state.camHold - dt);
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저
-  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); state.farCull?.update(dt);
+  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); tickBuddies(dt); late.tickLoot?.(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); late.season?.tick(dt, now / 1000); late.tickPunk?.(dt); state.farCull?.update(dt);
   net.update(dt); net.send(false);
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   deerNet.tick(dt); // 멀티 노루 (#92)
@@ -327,7 +330,7 @@ function step(now) {
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
-  tickDirector(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
+  tickDirector(dt); late.tickQuest?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();

@@ -133,6 +133,10 @@ async function startServers() {
     ok(fakeItem.status === 200 && !me3.save.rides.own.length && !me3.save.clothes.own['gold-crown'], '목록에 없는 물건 지움');
     const tr = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, trash: { total: 100000 } } } });
     ok(tr.j.fixed.includes('picked'), '치운 양(랭킹) 부풀리기 바로잡힘');
+    // #140 전리품: 강화 +6·없는 등급·재료 음수·없는 재료·없는 칸은 바로잡음
+    const lt = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, gearUp: { tool: { g: 7, e: 6 }, crown: { g: 1, e: 1 } }, mats: { m1: -5, m2: 3, gold: 9 }, loot: [{ s: 'tool', t: 9, g: 1, e: 0 }, { s: 'hat', t: 2, g: 4, e: 0 }, { s: 'bag', t: 2, g: 1, e: 2 }], clothes: { own: {}, wear: {}, up: { 'hat:w-cap': { g: 2, e: 9 }, nope: { g: 1 } } } } } });
+    const me4 = (await req('dev', '/me', { token: A.token })).j.save;
+    ok(lt.status === 200 && ['gearUp', 'mats', 'loot', 'clothesUp'].every((k) => lt.j.fixed.includes(k)) && me4.gearUp.tool.e === 5 && me4.gearUp.tool.g === 3 && !me4.gearUp.crown && !('m1' in me4.mats) && !me4.mats.gold && me4.mats.m2 === 3 && me4.loot.length === 1 && me4.clothes.up['hat:w-cap'].e === 5 && !me4.clothes.up.nope, `전리품 값 바로잡음 (${lt.j.fixed.join(',')})`);
     // 여러 탭·기기: 같은 계정 토큰 둘로 번갈아 부풀려도 몫은 계정 하나
     const A2 = await login('dev', 'alice');
     let c = (await req('dev', '/me', { token: A.token })).j.save.coins;
@@ -143,6 +147,59 @@ async function startServers() {
     const big = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: c + NET.earnBurst * 2 } } });
     ok(big.j.fixed.includes('coins'), '옛 저장 되돌리기도 몫 안에서만');
     ok((await req('dev', '/save', { method: 'PUT', token: A.token, body: '{"save":' + '"' + 'x'.repeat(260000) + '"}' })).status >= 400, '아주 큰 저장 거절');
+    /* ---------- 철 이벤트 (#180): 달력 날짜 속이기·트리 합계 부풀리기 ---------- */
+    {
+      const { xmasDay, calReward, treeGoal } = await import('../src/seasoncal.js');
+      const { checkSave } = await import('../server/src/validate.js');
+      const xd = xmasDay();
+      const ss = (await req('dev', '/season')).j;
+      ok(ss && Number.isFinite(ss.now) && ss.day === xd && ss.total >= 0, `/season 서버 날짜·트리 합계 (12월 ${ss?.day}일, 합계 ${ss?.total})`);
+      // 실서버 날짜: 기간 밖이면 어떤 칸도, 기간 안이면 내일 칸은 거절
+      const C = await login('dev', 'carol'); const base = { ...S0, coins: 0 };
+      await req('dev', '/save', { method: 'PUT', token: C.token, body: { save: base } });
+      const future = xd ? Math.min(25, xd + 1) : 10;
+      const cal = await req('dev', '/save', { method: 'PUT', token: C.token, body: { save: { ...base, season: { xmas: { days: [future], gift: ['hat:x-santa'], tree: 1 } } } } });
+      const me = (await req('dev', '/me', { token: C.token })).j.save;
+      ok(cal.j.fixed.includes('season') && !(me.season?.xmas?.days || []).includes(future) && !me.season?.xmas?.tree && 'season' in (cal.j.fix || {}), `달력 앞날·기간 밖 칸·트리 선물 거절 (${xd ? '기간 안' : '기간 밖'}, 칸 ${future})`);
+      ok(!(me.season?.xmas?.gift || []).length || xd > 0, '기간 밖 선물 옷 거절');
+      // 트리 부풀리기: 줍기는 줍기 몫(pickCredit) 안에서만 더해지고, 꾸민 합계는 받지 않음
+      const big = await req('dev', '/save', { method: 'PUT', token: C.token, body: { save: { ...base, trash: { total: treeGoal() * 5 } } } });
+      const ss2 = (await req('dev', '/season')).j;
+      ok(big.j.fixed.includes('picked') && ss2.total < treeGoal(), `트리 합계 부풀리기 막힘 (합계 ${ss2.total} < ${treeGoal()})`);
+      // 기간 안 판정 (순수 함수, 날짜를 넣어 봄): 오늘 무료·지난 날 귤 50·앞날 거절·지웠다 다시 열어도 귤 두 번 안 받음
+      const P = { ...S0, coins: 0, season: { xmas: { days: [] } } }, acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: Date.now() };
+      const day10 = calReward(10), t = Date.now();
+      let r = checkSave(P, { ...P, coins: 0 + (calReward(12).coins || 0), season: { xmas: { days: [12] } } }, acc, t, { xday: 12 });
+      ok(!r.fixed.length && r.save.season.xmas.days.includes(12) && r.save.coins === (calReward(12).coins || 0), `기간 안 오늘(12일) 칸 받아 줌 (귤 +${calReward(12).coins || 0})`);
+      r = checkSave(P, { ...P, season: { xmas: { days: [13] } } }, acc, t, { xday: 12 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.days.includes(13), '기간 안 내일(13일) 칸 거절');
+      r = checkSave({ ...P, coins: 100 }, { ...P, coins: 100 - 50 + (day10.coins || 0), season: { xmas: { days: [10] } }, clothes: day10.cloth ? { own: { [day10.cloth]: 1 }, wear: {} } : P.clothes }, acc, t, { xday: 12 });
+      ok(!r.fixed.length && r.save.season.xmas.days.includes(10) && (!day10.cloth || r.save.clothes.own[day10.cloth]), `지난 날(10일) 귤 50 으로 열기·달력 옷은 값 안 셈 (${day10.cloth || day10.coins})`);
+      r = checkSave({ ...P, coins: 10 }, { ...P, coins: 10, season: { xmas: { days: [5] } }, clothes: { own: { 'hat:x-santa': 1 }, wear: {} } }, acc, t, { xday: 12 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.days.includes(5) && !r.save.clothes.own['hat:x-santa'], '귤이 모자라면 지난 날 칸(옷) 거절');
+      const P2 = { ...P, coins: 40, season: { xmas: { days: [12] } } };
+      r = checkSave(P2, { ...P2, coins: 40 + 99, season: undefined }, acc, t, { xday: 12 });
+      ok(r.save.season?.xmas?.days.includes(12) && r.fixed.includes('coins'), '달력 기록을 빼고 보내도 지우지 않고 귤도 안 늘어남');
+      r = checkSave(P, { ...P, coins: 300, season: { xmas: { days: [], tree: 1 } } }, acc, t, { xday: 12, treeDone: false });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.tree && r.save.coins === 0, '트리가 안 찼는데 트리 선물 거절');
+      r = checkSave(P, { ...P, coins: 300, season: { xmas: { days: [], tree: 1 } } }, acc, t, { xday: 12, treeDone: true });
+      ok(!r.fixed.length && r.save.season.xmas.tree === 1 && r.save.coins === 300, '트리가 찼으면 선물 귤 300 받아 줌');
+      r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
+      ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
+    }
+    /* ---------- 배낭 겉모습 (#164): 값 내고 사기·없는 것 지움 ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js');
+      const P = { ...S0, coins: 0 }, acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: Date.now() }, t = Date.now();
+      let r = checkSave(P, { ...P, backs: { own: { tewak: 1 }, cur: 'tewak' } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.backs.own.tewak && r.save.backs.cur === null, '귤 없이 테왁 배낭 사기 되돌림');
+      r = checkSave({ ...P, coins: 800 }, { ...P, coins: 0, backs: { own: { tewak: 1, rocket: 1 }, cur: 'rocket' } }, acc, t);
+      ok(!r.fixed.length && r.save.backs.own.tewak && !r.save.backs.own.rocket && r.save.backs.cur === null, '귤 800 으로 테왁 사기·목록에 없는 겉모습 지움');
+      const { WEAR } = await import('../src/balance.js'), bp = WEAR.price[3];
+      r = checkSave({ ...P, coins: 0 }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t); // (옛 값 OLD_PRICE 가 지워지기 전에는 더 싼 쪽으로 셈 #145)
+      const r2 = checkSave({ ...P, coins: bp }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.clothes.own['hat:p-box'] && !r2.fixed.length && r2.save.clothes.own['hat:p-box'], `감귤 박스 헬멧은 모자 3단계 값(${bp})으로 삼·귤 없으면 되돌림`);
+    }
     // 닉네임·말 넣기
     const bad = '<img src=x onerror=alert(1)>‮관리자\u0000'.repeat(3);
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, nick: bad } } });
@@ -201,6 +258,12 @@ async function startServers() {
     ok(noN >= want - NET.takePerSec - 1, `빠른 줍기(초당 ${NET.takePerSec}개 넘게) 되돌림 (${want}개 중 ${noN}개)`);
     fast.send({ t: 'take', h: h2, n: 9999 }); await sleep(300);
     ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 2, '한 번에 아주 많이 줍기도 한도 안에서만');
+    { // #172 동료 줍기(btake): 더미는 줄지만 번 몫엔 안 셈 → 동료가 주운 몫이 내 귤로 잡히지 않음. 방에서도 마지막 BUDDIES.keep 은 남김
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL } = await import('../server/src/heaps.js'); const { BUDDIES } = await import('../src/balance.js');
+      let T0 = 1e12; const core = createRoomCore({ now: () => T0 }); const bp = core.join(() => {}, { acct: 'buddy-test' });
+      const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
+      ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
+    }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });

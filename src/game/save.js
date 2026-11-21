@@ -2,7 +2,7 @@
 import { tintGear, lcClean } from '../lookcolors.js'; // #155
 import { NSMODE } from '../boot.js';
 import { useNamsongi } from '../namsongi.js';
-import { WEAPONS, HAIR, WEAR, CLOTHES, WEAR_START } from '../balance.js';
+import { WEAPONS, HAIR, WEAR, CLOTHES, WEAR_START, BACK_LOOKS } from '../balance.js';
 import { RIDE_BY } from '../rides.js';
 import { equipGear, ACCESSORIES } from '../gear.js';
 import { useDonnaeko } from '../donnaeko.js';
@@ -12,6 +12,7 @@ import { pickMapId } from '../maps.js';
 import { createAbStats } from '../server.js';
 import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
+import { normLoot, wearUp } from '../loot.js';
 
 export const $ = (id) => document.getElementById(id);
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -70,12 +71,16 @@ if (!save.wearV) {
   if (wearRefund) save.coins += wearRefund; save.wearV = 1;
 }
 const wearTier = (k) => { const id = CL.wear[k]; return id && CLOTH[id] ? CLOTH[id].tier : 0; };
-export const wearV = (k) => WSLOT[k].v[wearTier(k)]; // 지금 입은 옷의 능력치
+normLoot(save); // 재료·장비 등급·강화·안 쓰는 장비 (#140, src/loot.js)
+export const wearV = (k) => wearUp(save, k, WSLOT[k].v[wearTier(k)]); // 지금 입은 옷의 능력치 (#140 등급·강화를 얹음)
 export const clothGear = () => { const hasHair = ACCESSORIES[save.outfit.gear.hair]?.slot === 'hair' && !ACCESSORIES[save.outfit.gear.hair].builtin, out = {};
   WEAR.slots.forEach(({ k }) => { out[k] = CL.wear[k] || `${k}:none`; });
   if (!hasHair) out.hat = 'hat:cap'; // 머리를 고르기 전(구운 머리·모자)엔 모자를 겹쳐 쓰지 않음
   return out; };
-export const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip), ...clothGear() }; tintGear(save.outfit.gear, save.look?.colors); /* 기본 옷은 고른 색 (#155) */ if (state.holdBow) save.outfit.gear.hand = 'hand:' + ((WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id === 'hand' ? 'bow' : (WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id); if (state.holdRod) save.outfit.gear.hand = 'hand:none'; };
+// 배낭 겉모습 (#164): save.backs = { own: { id: 1 }, cur }. 예전·깨진 저장은 비움
+export const BACK_BY = Object.fromEntries(BACK_LOOKS.map((b) => [b.id, b]));
+{ const B = save.backs; if (B !== undefined) { const own = {}; if (B && typeof B.own === 'object') for (const k of Object.keys(B.own)) if (BACK_BY[k] && B.own[k]) own[k] = 1; save.backs = { own, cur: own[B?.cur] ? B.cur : null }; } }
+export const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip), ...clothGear() }; tintGear(save.outfit.gear, save.look?.colors); /* 기본 옷은 고른 색 (#155) */ { const b = BACK_BY[save.backs?.cur]; if (b && save.backs.own?.[b.id] && (save.equip.bag || 0) >= b.need) save.outfit.gear.back = 'back:' + b.id + (state.backFill || 0); } /* 배낭 겉모습 (#164) */ if (state.holdBow) save.outfit.gear.hand = 'hand:' + ((WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id === 'hand' ? 'bow' : (WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id); if (state.holdRod) save.outfit.gear.hand = 'hand:none'; };
 syncEquipGear();
 // 캐릭터 고르기 (#51): save.look = { sex: 'm'|'f', skin: 0~2 }. 없으면 입장 뒤 튜토리얼보다 먼저 고르기 화면. save.hairs = 가진 머리(hat 칸 장비)
 export const lookS = { open: false, t: 0, sex: 'm', skin: 0, colors: { hat: 0, top: 0, bottom: 0, shoes: 0 }, oldPlayer: !freshSave && !save.look }; // 예전부터 하던 사람은 쓰던 초록 모자도 가짐

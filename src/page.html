@@ -272,6 +272,15 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 
 /* 표지판·소원 */
 .sign-eyebrow { margin: 0 0 2px; font-size: 12px; color: var(--ink-soft); }
+/* 동료 말 걸기 (#172): 아래쪽 작은 창, 화면을 가리지 않게 */
+#mate-talk { place-items: end center; padding-bottom: calc(120px + var(--safe-b)); pointer-events: none; }
+#mate-talk .pop { width: min(420px, 100%); pointer-events: auto; }
+#mate-talk h2 { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+#mate-talk .mt-bot { width: 22px; height: 18px; border-radius: 5px; background: #9fd3ff; position: relative; flex: none; }
+#mate-talk .mt-bot::before { content: ""; position: absolute; left: 5px; top: 6px; width: 4px; height: 4px; background: #24251f; box-shadow: 8px 0 0 #24251f; }
+#mate-talk .mt-line { margin: 0 0 12px; line-height: 1.55; font-size: 16px; }
+#mate-talk .mt-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+@media (max-width: 600px) { #mate-talk { padding-bottom: calc(150px + var(--safe-b)); } #mate-talk .mt-line { font-size: 15px; } }
 #sign-body h2 { font-family: var(--display); font-weight: 800; font-size: 28px; margin: 0 0 6px; }
 #sign-body h2 small { font-size: 14px; color: var(--ink-soft); font-family: var(--body); }
 #sign-body p { margin: 0 0 8px; line-height: 1.55; font-size: 14px; }
@@ -376,7 +385,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 .intro-go { width: 100%; font-size: 18px; font-weight: 800; padding: 12px 16px; }
 .intro-go:disabled { opacity: .4; pointer-events: none; }
 #enter[aria-busy="true"] { animation: hintPulse 1.1s ease-in-out infinite; } /* 게임을 다 받기 전 (#90: 느린 연결에서 눌러도 반응이 없던 문제) */
-body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
+body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus, #tut-pinch) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #arm-more, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #pickmsg, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
 body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #intro .ver-line) { display: none; }
 @media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; box-sizing: border-box; } #shoppop .pop { box-sizing: border-box; } } /* border-box: 폰에서 카드·가게 창이 화면 옆으로 몇 px 넘치던 것 (#105) */
@@ -520,6 +529,28 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .rk-seg { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.08); }
 .rk-seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 7px 6px; font-size: 13px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
 .rk-seg button[aria-pressed="true"] { background: rgba(255,255,255,.18); color: #fff; }
+/* 크리스마스 (#180): 접속 달력·트리 */
+.xm-tree { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 13px; }
+.xm-tree .bar { flex: 1; height: 10px; border-radius: 99px; background: var(--paper-2); overflow: hidden; }
+.xm-tree .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3f9a5a, var(--gyul)); }
+.xm-cal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.xm-cal button { position: relative; height: 50px; border-radius: 10px; border: 2px solid var(--hair); background: var(--paper-2); color: var(--ink); font: 700 15px var(--display); display: grid; place-items: center; padding: 2px; }
+.xm-cal button small { position: absolute; bottom: 2px; left: 0; right: 0; font: 600 10px var(--body); color: var(--ink-soft); }
+.xm-cal button.done { background: rgba(63, 154, 90, .35); border-color: #3f9a5a; }
+.xm-cal button.today { border-color: var(--gyul); box-shadow: 0 0 0 2px var(--gyul), 0 0 12px rgba(255, 154, 31, .6); animation: xmPulse 1.4s ease-in-out infinite; }
+.xm-cal button.miss { border-style: dashed; }
+.xm-cal button.lock { opacity: .4; }
+.xm-cal button.gift::after { content: ''; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 2px; background: #c8333a; box-shadow: inset 0 0 0 1px #e8b84a; }
+@keyframes xmPulse { 50% { box-shadow: 0 0 0 2px var(--gyul), 0 0 20px rgba(255, 154, 31, .9); } }
+.xm-snow { margin-top: 10px; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+/* 박스 시야 (#164): 감귤 박스 헬멧 눈구멍으로 보는 느낌. 두께 --bw 는 game/punk.js 가 넣음 */
+#box-view { position: fixed; inset: 0; pointer-events: none; z-index: 3; border: var(--bw, 6vw) solid #b8874e; border-radius: 0; box-shadow: inset 0 0 0 3px #8e6434, inset 0 0 24px 6px rgba(70, 45, 20, .45); opacity: .85; background: linear-gradient(90deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) 100%); }
+#box-view::before { content: ''; position: absolute; inset: calc(-1 * var(--bw, 6vw)); border: 1px dashed rgba(106, 74, 42, .5); border-width: 0; background: repeating-linear-gradient(90deg, rgba(106,74,42,.12) 0 2px, transparent 2px 7px); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; -webkit-mask-composite: xor; padding: var(--bw, 6vw); }
+#box-view[hidden] { display: none; }
+#xmas-glow { position: fixed; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 90px 20px rgba(255, 140, 60, .32); opacity: 0; transition: opacity 1.2s; }
+#xmas-glow.on { opacity: 1; }
+.logo-snow { position: absolute; left: 0; top: 1.5%; width: 100%; height: auto; pointer-events: none; }
+.intro-logo { position: relative; }
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
 .rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
@@ -629,8 +660,18 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 body.tut-dim [data-tut].tut-on:not(.tut-focus), body.tut-dim #shoppop.gearshop :is(#shoppop-tabs button, .buy-card, .buy-btn):not(.tut-focus) { opacity: .42; filter: saturate(.6); transition: opacity .25s; }
 body.tut-dim .tut-focus { opacity: 1 !important; }
 @media (prefers-reduced-motion: reduce) { #tut-focus .ring, #tut-focus .finger, #tut-toast .n.pop, #tut-toast.in, #tut-toast.shake { animation: none; } }
-body.looking #tut-focus, body.looking #tut-toast, body.hp-down #tut-focus { display: none !important; }
-#tut-focus:not(.idle) .finger { display: none; } /* #100 손가락은 진행이 없을 때만 (TUT.fingerT) */
+body.looking #tut-focus, body.looking #tut-toast, body.looking #tut-pinch, body.hp-down #tut-focus { display: none !important; }
+#tut-focus:not(.idle) .finger { display: none; }
+/* #151 확대 단계 (폰): 화면 가운데 두 손가락이 벌어졌다 오므려짐. 토스트의 건너뛰기 */
+#tut-pinch { position: fixed; left: 50%; top: 50%; z-index: 40; width: 0; height: 0; pointer-events: none; }
+#tut-pinch[hidden] { display: none; }
+#tut-pinch b { position: absolute; width: 34px; height: 40px; margin: -20px 0 0 -17px; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.25)); animation: tutPinch1 1.6s ease-in-out infinite; }
+#tut-pinch b.f2 { animation-name: tutPinch2; }
+#tut-pinch svg { width: 100%; height: 100%; display: block; }
+@keyframes tutPinch1 { 0%, 100% { transform: translate(-10px, 10px) rotate(-40deg); } 50% { transform: translate(-46px, 46px) rotate(-40deg); } }
+@keyframes tutPinch2 { 0%, 100% { transform: translate(10px, -10px) rotate(140deg); } 50% { transform: translate(46px, -46px) rotate(140deg); } }
+@media (prefers-reduced-motion: reduce) { #tut-pinch b { animation: none; } }
+#tut-toast .tut-pass { flex: none; margin-left: 4px; padding: 3px 10px; border: 0; border-radius: 999px; background: rgba(255,255,255,.18); color: inherit; font: 700 12px/1.4 'Gothic A1', sans-serif; cursor: pointer; } /* #100 손가락은 진행이 없을 때만 (TUT.fingerT) */
 /* #100 튜토리얼 토스트: 상황 팁(#66) 자리·모양 + 남은 수. 끝나면 '잘했어요', 오래 멈추면 흔들고 더 쉬운 말로 */
 #tut-toast { font-size: 15px; font-weight: 700; z-index: 9; }
 #tut-toast .n { flex: none; padding: 1px 8px; border-radius: 999px; background: rgba(255,138,31,.9); color: #fff; font: 800 13px/1.4 'Gothic A1', sans-serif; }
@@ -950,6 +991,9 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 #boss-bar.roar { animation: bump .45s ease-out; }
 body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloom-banner { translate: 0 var(--boss-h, 54px); } /* 토스트·팁은 기운 줄 아래로 */
 #boss-bar small { position: absolute; right: 10px; top: 6px; font-size: 12px; color: var(--ink-soft); }
+#boss-bar small.rg { right: auto; left: 10px; color: #9fe6a0; } #boss-bar.regen .bn { padding: 0 42px; } /* #183 쉬며 기운이 차는 중: 막대 끝이 옅게 깜빡임 */
+#boss-bar.regen .fill::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 22px; border-radius: 6px; background: linear-gradient(90deg, transparent, rgba(190,255,180,.85)); animation: bossRg 1s ease-in-out infinite; }
+@keyframes bossRg { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 @media (max-width: 600px) { #boss-bar { left: calc(var(--safe-l, 0px) + 12px); transform: none; width: calc(100vw - 160px); padding: 5px 10px 7px; } #boss-bar .bn { font-size: 13px; } } /* 오른쪽 미니맵을 비켜 왼쪽에 */
 #zdone .pop { width: min(400px, 100%); }
 #zdone h2 { color: var(--tier, #fff); }
@@ -959,12 +1003,60 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 .zd-open { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; } .zd-open span { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.12); }
 .zd-next { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0 0 12px; } .zd-next .tone { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 #zdone-ok, #wake-pick .btn { width: 100%; }
+/* 퀘스트 (#158, game/quest.js): 위 추적 줄 · 주는 사람 창 · 퀘스트 창(L) · 마지막 하늘 글씨 */
+#quest-track { position: fixed; z-index: 5; left: var(--tb-l); top: calc(var(--tb-top) + var(--tb-h) + 10px); max-width: min(380px, calc(100vw - 180px)); min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 8px; border-radius: 14px; border: 1px solid var(--hair); background: var(--glass); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: var(--ink); font: 700 14px/1.2 var(--body); cursor: pointer; user-select: none; -webkit-user-select: none; }
+#quest-track[hidden] { display: none; }
+#quest-track .qm { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #ffd23f; color: #3a2a00; font: 900 15px/1 var(--display); font-style: normal; }
+#quest-track .qm.side { background: #fff; }
+#quest-track .qt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#quest-track .qp { flex: none; color: var(--gyul); }
+#quest-track .qa { flex: none; width: 18px; height: 18px; transform: rotate(var(--a, 0rad)); }
+#quest-track .qa[hidden] { display: none; }
+#quest-track .qd { flex: none; min-width: 30px; color: var(--ink-soft); font-size: 12px; }
+#quest-track .ql { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.12); color: inherit; cursor: pointer; }
+#quest-track.ready { background: rgba(255, 210, 63, .92); border-color: transparent; color: #2a1e00; }
+#quest-track.ready .qm { background: #2a1e00; color: #ffd23f; } #quest-track.ready .qp { color: #2a1e00; } #quest-track.ready .qd { color: rgba(42,30,0,.72); } #quest-track.ready .ql { background: rgba(42,30,0,.12); }
+#quest-track.going .qa { animation: qpulse 1s ease-in-out infinite; }
+#quest-track.bump { animation: bump .45s ease-out; }
+@keyframes qpulse { 50% { opacity: .35; } }
+@media (max-width: 600px) { #quest-track { max-width: calc(100vw - 160px); min-height: 44px; gap: 6px; padding: 3px 3px 3px 7px; font-size: 13px; } #quest-track .ql { width: 38px; height: 38px; } }
+#quest .pop { width: min(420px, 100%); }
+#quest .q-name { margin: 2px 0 8px; font: 800 19px/1.3 var(--display); color: #ffd23f; }
+#quest .q-name.side { color: #fff; }
+#quest .q-say p { margin: 0 0 6px; line-height: 1.5; }
+#quest .q-task { margin: 10px 0 6px; padding: 9px 11px; border-radius: 12px; background: rgba(255,255,255,.08); font-weight: 700; }
+#quest .q-task:empty, #quest .q-rew:empty { display: none; }
+#quest .q-task b { color: var(--gyul); }
+#quest .q-rew { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 12px; font-weight: 800; }
+#quest .q-rew .gy { width: 16px; height: 16px; border-radius: 50%; background: var(--gyul); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15); }
+#quest .q-rew span { display: inline-flex; align-items: center; gap: 5px; }
+#quest .q-go { width: 100%; min-height: 48px; font-size: 17px; }
+#quest .q-go.claim { animation: qglow 1.2s ease-in-out infinite; }
+@keyframes qglow { 50% { box-shadow: 0 0 0 4px rgba(255,210,63,.45), 0 0 18px rgba(255,170,40,.6); } }
+#qlog .pop { width: min(440px, 100%); }
+#qlog h3 { margin: 12px 0 6px; font: 800 15px var(--display); color: var(--ink-soft); }
+#qlog h3:first-child { margin-top: 2px; }
+#qlog .q-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.07); font-weight: 700; }
+#qlog .q-row small { display: block; color: var(--ink-soft); font-weight: 500; }
+#qlog .q-row b { flex: none; color: var(--gyul); }
+#qlog .q-row.ready { background: rgba(255,210,63,.2); }
+#qlog .q-row.done { opacity: .55; }
+#qlog .q-row.side { border-left: 3px solid #fff; } #qlog .q-row.main { border-left: 3px solid #ffd23f; }
+#qlog .q-empty { color: var(--ink-soft); margin: 4px 0; }
+@media (max-width: 600px) {
+  #quest, #qlog { place-items: end stretch; padding: 0; }
+  #quest .pop, #qlog .pop { width: 100%; max-height: 84%; border-radius: 24px 24px 0 0; padding-bottom: var(--safe-b); animation: qsheet .22s ease-out; }
+}
+@keyframes qsheet { from { transform: translateY(30%); opacity: 0; } to { transform: none; opacity: 1; } }
+#quest-end { position: fixed; z-index: 30; left: 0; right: 0; top: 16%; padding: 0 16px; text-align: center; pointer-events: none; font: 900 clamp(26px, 6vw, 56px)/1.25 var(--display); color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,.6), 0 0 40px rgba(120,220,255,.55); opacity: 0; transition: opacity 1.6s; }
+#quest-end.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #quest-track.going .qa, #quest .q-go.claim, #quest-track.bump { animation: none; } }
 #zdone .pop-head h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #wake-pick .pop { width: min(360px, 100%); } .wake-btns { display: grid; gap: 8px; }
 #fade-go { position: fixed; inset: 0; z-index: 9; background: #0e0f0c; opacity: 0; pointer-events: none; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 18px; transition: opacity var(--ft, .9s) ease; }
 #fade-go.on { opacity: 1; pointer-events: auto; } #fade-go[hidden] { display: none; }
 #fade-go svg { width: 54px; height: 54px; display: block; margin: 0 auto 8px; animation: bump .6s ease-in-out infinite alternate; }
-@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #fade-go svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #boss-bar.regen .fill::after, #fade-go svg { animation: none; } }
 /* 오름 지도 (#136): 구역을 세 묶음 색으로, 지금 자리 */
 /* 미니맵 (#138): 위 줄 오른쪽 아래, 둥근 창. 가 본 곳·더미·소굴·보물·볼거리. 누르면 오름 지도 */
 #minimap { position: fixed; z-index: 4; top: calc(var(--tb-top) + var(--tb-h) + 10px); right: var(--tb-r); width: 148px; height: 148px; border-radius: 50%; border: 2px solid var(--hair); background: rgba(20,24,18,.55); box-shadow: 0 4px 14px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; }
@@ -1131,6 +1223,66 @@ button.bag-card { cursor: pointer; }
   #wardrobe { height: 60%; width: auto; }
   .bag-tabs { padding: 6px 8px 4px; }
 }
+/* 전리품·강화 (#140): 얻은 장비 견주는 창(#loot-pop), 장비점 강화 쪽(.forge-*) */
+#loot-pop { position: fixed; left: 50%; bottom: calc(var(--safe-b, 0px) + 104px); transform: translateX(-50%); z-index: 22; width: min(420px, calc(100% - 24px)); box-sizing: border-box; display: grid; grid-template-columns: 58px 1fr; grid-template-areas: "art bn" "ba ba"; gap: 8px 12px; align-items: center; padding: 12px 14px; border-radius: 20px; background: rgba(30,30,28,.92); color: #fff; border: 2px solid var(--gc, #fff); box-shadow: 0 0 22px color-mix(in srgb, var(--gc, #fff) 45%, transparent), 0 8px 24px rgba(0,0,0,.35); }
+#loot-pop[hidden] { display: none; }
+#loot-pop.in { animation: lootIn .35s cubic-bezier(.2,1.5,.4,1); }
+@keyframes lootIn { from { transform: translate(-50%, 30px) scale(.9); opacity: 0; } }
+#loot-pop .lp-art, .forge-item .fi-art { grid-area: art; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px var(--gc, transparent); }
+#loot-pop .lp-art svg, .forge-item .fi-art svg { width: 40px; height: 40px; }
+#loot-pop[data-g="3"] .lp-art { animation: lootShine 1.4s ease-in-out infinite; }
+@keyframes lootShine { 50% { box-shadow: inset 0 0 0 2px var(--gc), 0 0 18px var(--gc); } }
+#loot-pop .lp-bn, .forge-item .fi-bn { grid-area: bn; display: grid; gap: 2px; min-width: 0; }
+#loot-pop .lp-bn small, .forge-item .fi-bn small { color: var(--gc, #fff); font-family: var(--display); font-weight: 800; font-size: 12px; }
+#loot-pop .lp-bn b, .forge-item .fi-bn b { font-family: var(--display); font-weight: 800; font-size: 17px; }
+#loot-pop .gs, .forge-sc .gs { display: inline-flex; align-items: center; gap: 4px; font: 800 14px var(--display); } #loot-pop .gs svg, .forge-sc .gs svg { width: 15px; height: 15px; color: var(--gyul); flex: none; } #loot-pop .gs .gd, .forge-sc .gs .gd { font-size: 13px; }
+.lp-fx { font-style: normal; font-size: 12px; color: var(--gyul); }
+#loot-pop .lp-ba { grid-area: ba; display: flex; gap: 8px; } #loot-pop .lp-ba .lp-wear { flex: 1; min-height: 46px; font-size: 15px; } #loot-pop .lp-ba .lp-sell { min-height: 46px; display: inline-flex; align-items: center; gap: 5px; }
+#loot-pop .g, .forge-grid .g { width: 12px; height: 12px; border-radius: 50%; background: var(--gyul); display: inline-block; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15); }
+#loot-pop .lp-x { position: absolute; top: 4px; right: 8px; border: 0; background: none; color: rgba(255,255,255,.6); font-size: 20px; line-height: 1; padding: 4px; }
+.forge-switch { grid-column: 1 / -1; display: flex; gap: 6px; }
+.forge-switch button { position: relative; flex: 1; min-height: 40px; border: 1px solid var(--hair); background: rgba(255,255,255,.08); color: #fff; border-radius: 999px; font: 800 14px var(--display); }
+.forge-switch button[aria-pressed="true"] { background: #fff; color: #17171a; }
+.forge-switch .cnt { position: absolute; top: -4px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: var(--acc); color: var(--acc-fg); font: 800 11px/18px var(--display); font-style: normal; }
+#shoppop.forge-on #shoppop-tabs { display: none !important; }
+#shoppop-cards.forge-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.forge-slots { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; }
+.forge-slot { position: relative; display: grid; justify-items: center; gap: 1px; padding: 6px 2px 4px; border-radius: 12px; border: 1px solid transparent; background: rgba(255,255,255,.07); color: #fff; box-shadow: inset 0 -3px 0 var(--gc); font: inherit; }
+.forge-slot.on { border-color: #fff; background: rgba(255,255,255,.16); }
+.forge-slot.none { opacity: .35; }
+.forge-slot .fs-art svg { width: 26px; height: 26px; } .forge-slot small { font-size: 10.5px; opacity: .8; }
+.forge-slot .fs-e { position: absolute; top: 2px; left: 3px; font: 800 10px var(--display); font-style: normal; color: var(--gyul); }
+.forge-slot .fs-dot { position: absolute; top: 3px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--acc); }
+.forge-main { display: grid; gap: 8px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.07); grid-row: span 2; }
+.forge-item { display: grid; grid-template-columns: 58px 1fr; grid-template-areas: "art bn"; gap: 12px; align-items: center; }
+.forge-item.forge-pop .fi-art { animation: forgePop .5s cubic-bezier(.2,1.6,.4,1); }
+@keyframes forgePop { 40% { transform: scale(1.25); box-shadow: inset 0 0 0 2px var(--gc), 0 0 24px var(--gyul); } }
+.forge-step { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 0; }
+.forge-step .fv { display: grid; justify-items: center; font: 800 22px var(--display); } .forge-step .fv small { font-size: 12px; opacity: .65; } .forge-step .fv.nx { color: #9be28a; } .forge-step .fv.max { color: var(--gyul); font-size: 17px; }
+.forge-step .fa { font-size: 20px; opacity: .6; }
+.forge-sc { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 13px; }
+.forge-need { display: grid; gap: 5px; }
+.forge-need .fn { display: grid; grid-template-columns: 26px 1fr auto; grid-template-areas: "ic nm n" "wh wh go"; align-items: center; gap: 2px 8px; padding: 6px 8px; border-radius: 12px; background: rgba(255,255,255,.06); }
+.forge-need .fn-ic { grid-area: ic; display: grid; place-items: center; } .forge-need .fn-ic svg { width: 22px; height: 22px; } .forge-need .fn-nm { grid-area: nm; font-size: 13.5px; } .forge-need .fn b { grid-area: n; font: 800 14px var(--display); }
+.forge-need .fn.ok b { color: #9be28a; } .forge-need .fn.short b { color: #ff8a7a; }
+.forge-need .fn-where { grid-area: wh; font-size: 11.5px; opacity: .7; } .forge-need .fn-go { grid-area: go; }
+.forge-go { min-height: 52px; font-size: 17px; } .forge-go.short { background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); }
+.forge-note { text-align: center; opacity: .6; font-size: 11.5px; }
+.forge-pouch, .forge-spare { display: grid; gap: 6px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.05); align-content: start; }
+.forge-pouch h4, .forge-spare h4 { margin: 0; font: 800 14px var(--display); } .forge-spare h4 small { opacity: .6; }
+.fp-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 5px; border-radius: 999px; background: rgba(255,255,255,.08); font: 800 13px var(--display); } .fp svg { width: 18px; height: 18px; } .fp.zero { opacity: .4; }
+.fs-auto { display: flex; align-items: center; gap: 6px; font-size: 12.5px; opacity: .85; }
+.fs-row { display: grid; grid-template-columns: 34px 1fr auto auto auto; gap: 6px; align-items: center; padding: 5px 6px; border-radius: 12px; background: rgba(255,255,255,.06); box-shadow: inset 3px 0 0 var(--gc); }
+.fs-row .fs-art svg { width: 28px; height: 28px; } .fs-row .fs-bn { display: grid; min-width: 0; } .fs-row .fs-bn b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fs-row .fs-bn small { font-size: 11px; opacity: .65; }
+.fs-row .btn { display: inline-flex; align-items: center; gap: 4px; }
+.dex-cell.legend b { color: #ff9a2e; } .dex-cell .dex-ic i { display: grid; place-items: center; width: 48px; height: 48px; } .dex-cell .dex-ic i svg { width: 36px; height: 36px; }
+@media (max-width: 600px) {
+  #shoppop-cards.forge-grid { grid-template-columns: 1fr; }
+  .forge-slots { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .forge-main { grid-row: auto; }
+  #loot-pop { bottom: calc(var(--safe-b, 0px) + 150px); }
+}
 </style>
 
 <!-- 인앱 브라우저 안내 (#118): 카카오톡·인스타그램 등 안 브라우저면 바깥 브라우저로 열도록 이끈다. 큰 파일을 받기 전에 먼저 본다 -->
@@ -1231,6 +1383,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="menu-ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h5l3 8M10 9L8 6H6"/></svg>탈것</button>
     <button type="button" id="menu-shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>상점</button>
     <button type="button" id="menu-sign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V4M12 5h7l2 2.5-2 2.5h-7M12 12H6l-2 2.5L6 17h6"/></svg>탐방 안내</button>
+    <button type="button" id="menu-xmas" hidden><i class="dot" id="xmas-dot" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l5 7h-3l4 6h-3l3 5H6l3-5H6l4-6H7z"/><path d="M12 21v-2"/></svg>달력</button>
     <button type="button" id="menu-rank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M5 20v-6h4v6M10 20V9h4v11M15 20v-8h4v8M12 3l1 2 2 .3-1.5 1.4.4 2.1L12 7.8l-1.9 1 .4-2.1L9 5.3 11 5z"/></svg>랭킹</button>
     <button type="button" id="menu-sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9c1.2 1.6 1.2 4.4 0 6"/></svg>소리</button>
     <button type="button" id="menu-tips" aria-pressed="true" aria-label="팁 켜기/끄기" title="팁"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.500 10.900c.6.5 1 1.200 1 2.100h5c0-.9.4-1.600 1-2.100A6 6 0 0 0 12 3z"/></svg>팁</button>
@@ -1245,7 +1398,9 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
     <button type="button" id="menu-perf">성능: 자동</button>
+    <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
+    <button type="button" id="menu-mates" aria-pressed="true" title="동료 캐릭터 보이기">동료: 켬</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
@@ -1261,6 +1416,8 @@ button.bag-card { cursor: pointer; }
       <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="overcast">흐림</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="snow">눈</button><button type="button" data-wx="fog">안개</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button></div>
+      <div class="adm-row"><span>철 이벤트</span><b id="adm-season-v">기간대로</b></div>
+      <div class="adm-row adm-btns"><button type="button" data-season="">기간대로</button><button type="button" data-season="on">켜기</button><button type="button" data-season="off">끄기</button></div>
       <div class="adm-row"><span>들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</span></div>
       <div class="adm-row adm-btns" id="adm-inbox-row" hidden><button type="button" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button></div>
     </div>
@@ -1277,13 +1434,27 @@ button.bag-card { cursor: pointer; }
 <div id="bloom-glow" aria-hidden="true"></div>
 <div id="bloom-banner" role="status" hidden></div>
 <div id="zone-title" role="status" hidden><b></b><small></small></div>
-<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small></div>
+<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small><small id="boss-rg" class="rg" hidden>회복 중</small></div>
 <div class="overlay dim" id="zdone" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2 id="zdone-t">구역 완료</h2><button type="button" class="btn small" id="zdone-close">닫기</button></div>
     <div class="pop-body"><div class="zd-rows" id="zdone-rows"></div><div class="zd-open" id="zdone-open"></div><p class="zd-next" id="zdone-next"></p><button type="button" class="btn primary" id="zdone-ok">좋아요</button></div>
   </div>
 </div>
+<div id="quest-track" role="button" tabindex="0" title="퀘스트: 누르면 그쪽으로 걸어가요" hidden><i class="qm">!</i><span class="qt"></span><b class="qp"></b><svg class="qa" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l7.5 16L12 14l-7.5 4z"/></svg><small class="qd"></small><button type="button" class="ql" aria-label="퀘스트 목록 (L)" title="퀘스트 목록 (L)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></button></div>
+<div class="overlay dim" id="quest" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2 id="quest-who"></h2><button type="button" class="btn small" id="quest-close">닫기</button></div>
+    <div class="pop-body"><p class="q-name" id="quest-name"></p><div class="q-say" id="quest-say"></div><div class="q-task" id="quest-task"></div><div class="q-rew" id="quest-rew"></div><button type="button" class="btn primary q-go" id="quest-go">받기</button></div>
+  </div>
+</div>
+<div class="overlay dim" id="qlog" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>퀘스트</h2><button type="button" class="btn small" id="qlog-close">닫기</button></div>
+    <div class="pop-body" id="qlog-body"></div>
+  </div>
+</div>
+<div id="quest-end" aria-live="polite"></div>
 <div class="overlay dim" id="wake-pick" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>어디서 시작할까요?</h2></div>
@@ -1347,10 +1518,29 @@ button.bag-card { cursor: pointer; }
   </div>
 </div>
 
+<div class="overlay dim" id="xmas" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>크리스마스 달력</h2><button type="button" class="btn small" id="xmas-close">닫기</button></div>
+    <div class="pop-body">
+      <div class="xm-tree" aria-label="모두의 트리"><span>트리</span><span class="bar"><i id="xmas-bar"></i></span><b id="xmas-stage">0/10</b></div>
+      <div class="xm-cal" id="xmas-cal"></div>
+      <div class="xm-snow" id="xmas-snowrow" hidden><button type="button" class="btn small" id="xmas-snow" aria-pressed="false">눈덩이</button><span class="muted">굼부리·정상에서 손 던지기가 눈덩이로</span></div>
+    </div>
+  </div>
+</div>
+<div id="xmas-glow" aria-hidden="true"></div>
+<div id="box-view" aria-hidden="true" hidden></div>
+
 <div class="overlay dim" id="omap" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>오름 지도</h2><button type="button" class="btn small" id="omap-close">닫기</button></div>
     <div class="pop-body"><p id="omap-now"></p><canvas id="omap-c" width="440" height="440" aria-label="오름 지도: 구역과 지금 자리"></canvas><div class="omap-rows" id="omap-rows"></div></div>
+  </div>
+</div>
+<div class="overlay" id="mate-talk" hidden role="dialog" aria-label="동료와 이야기">
+  <div class="panel pop">
+    <div class="pop-head"><h2><i class="mt-bot" aria-hidden="true"></i><span class="mt-name"></span></h2><button type="button" class="btn small" id="mt-close">닫기</button></div>
+    <div class="pop-body"><p class="mt-line"></p><div class="mt-acts"><button type="button" class="btn small" id="mt-more">또 얘기해요</button><button type="button" class="btn small primary" id="mt-follow" aria-pressed="false">같이 가요</button></div></div>
   </div>
 </div>
 <div class="overlay dim" id="sign" hidden>
@@ -1405,7 +1595,9 @@ button.bag-card { cursor: pointer; }
     <div id="intro-help" hidden>
       <span class="touch-only"><b>이동</b> 왼쪽 아래 조이스틱 · 땅을 탭해도 걸어가요</span>
       <span class="desk-only"><b>이동</b> W/S 앞뒤 · A/D 방향 · 땅 클릭 · Shift 걷기·달리기 · Space 점프</span>
-      <span><b>시점</b> 화면을 끌어서 둘러보기 · 두 손가락이나 휠로 확대</span>
+      <span><b>시점</b> 화면을 끌어서 둘러보기</span>
+      <span class="desk-only"><b>확대·축소</b> 마우스 휠</span>
+      <span class="touch-only"><b>확대·축소</b> 두 손가락 벌리기·오므리기</span>
       <span><b>줍기</b> 손 버튼(E) · 누르고 있으면 계속 주워요</span>
       <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가게·돌탑·사진사 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
       <span><b>귤</b> 쓰레기를 클린하우스에 버리면 받아요. 던지면 노루·말이 먹고 따라와요</span>

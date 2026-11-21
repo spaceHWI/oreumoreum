@@ -54,6 +54,12 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |
 | zonedone.js | 구역 완료(#139): 구역 완료 요약 한 장(`#zdone`), 깨어나는 곳(마지막으로 지난 구역 클린하우스, hp.js `startAt` → `late.wakeAt`), 다시 들어올 때 고르기(`#wake-pick`, start.js → `late.afterEnter`), 구역을 끝낸 사람의 빠른 마차(구역 클린하우스 옆 → 가게 거리)·지름길(구역 들어오는 곳 → 위쪽 끝), 구역 기록(줍기·쫓아내기). 저장 `save.boss`. 파일 순서는 pace 뒤(적 후크를 감쌈) |
 | boss.js | 구역 우두머리(#139): 구역 80% 에 빈터(field.bosses)에 나옴, 그 구역 적을 키운 모양(enemies.js `spawnBoss`)·왕관·발밑 고리, 패턴(돌진·무리 부르기·광선, 바닥 경고)·단계(50%·20%)·화면 위 기운 줄(`#boss-bar`), 쫓아내면 느린 화면(`state.slowMo`)·귤·귀한 재료·돌하르방(`late.guard.raise`)·요약. 멀티는 방장이 굴림(`bs`·`bh`·`bd`). `__oreum.boss`, 확인 `node tools/boss.js` |
+| loot.js | 전리품(#140): 적(`life.hooks.enemyRepel` 감쌈)·소굴(`late.denLoot`)·보물(`late.treasureLoot`)·우두머리(`late.bossLoot`)가 재료·장비를 떨굼 → 분수·등급 색 빛기둥·빨려 듦(`tickLoot`), 장비 견주는 창 `#loot-pop`(바로 입기·귤로 바꾸기), 단계를 사면 예전 것 정리(`late.tierUpLoot`·`lootTidy`), 전설 효과 갈라짐(`hooks.afterHurt`), 도감 재료·전설 칸(`late.dexExtra`). 셈은 `src/loot.js`, `__oreum.loot`, 확인 `node tools/lootlive.js` |
+| forge.js | 강화(#140): 장비점 창 [사기 | 강화] (shop.js `gearTabs`·`fillGearShop` 를 감쌈), 칸 10개·지금 → 다음·필요한 것·[강화]·[가는 길], 재료 주머니·안 쓰는 장비·자동 정리 설정. `__oreum.forge` |
+| quest.js | 퀘스트(#158): `src/quest.js`(차례·진행, DOM 없음)를 게임에 붙임. 주는 사람(오름지기·구역 표지판·가게 주인)과 머리 위 !·?, 상호작용 → 받기·끝내기 창(`#quest`), 추적 줄(`#quest-track`, 누르면 dump.js `startAutoGo`), 퀘스트 창(`#qlog`, L·메뉴), 지도 표시 `late.questIcons`, 셈(ach.emit 감쌈·trash.on·`late.questEv`), 할인권 `late.questOff`·`questUse`, 감독 문 quest·shopQuest·shopQuests. 표는 balance.js QUESTS. `__oreum.quest`, 확인 `node tools/questrun.js` |
+| season.js | 철 이벤트(#180 크리스마스): 켜짐(서버 날짜·어드민 미리 보기), 꾸밈 만들기·숨기기, 쌓인 눈(`NSW.zoneSnow`), 트리(`GET /season` 합계)·접속 달력(`#xmas`)·산타 투기꾼 선물 상자·눈덩이·루돌프·성탄 인사·뱅쇼 빛. `late.season`(isOn·dress·repel·snowThrow·tick·fixed), `__oreum.season`, 확인 `node tools/xmas.js` |
+| punk.js | 오름펑크 아이템(#164): 감귤 박스 헬멧 박스 시야(`#box-view`)·'퉁' 소리(`late.boxThud`), 해녀 테왁 배낭(배낭 겉모습 save.backs, 장비점 카드 `late.backCards`·내 가방 줄 `late.backLookRow`, 망사리 불룩 state.backFill, 개울에 뜸 `stream.hooks.float`·`late.tickSwim`·state.swim). `__oreum.punk`, 확인 `node tools/punk.js` |
+| buddies.js | 동료 캐릭터 3명(#172): 감독 문(mateSunja·mateMinsu·mateJenny)이 열리면 나옴, 길 따라 돌아다니기·줍기(`trash.buddyTake` → 방 btake, 내 줍기의 BUDDIES.share 까지·마지막 keep 남김)·민수 귤 던지기·인사·말 걸기 창(#mate-talk)·같이 가요·감정 표현 따라 하기·박수/환호/걱정·밤 평상. 내 화면에만(서버로 안 보냄), 대사 `src/buddylines.js`, 수치 balance.js BUDDIES. `late.buddies`, 확인 `node tools/buddies.js` |
 | ending.js | 엔딩 시네마틱(#168): 구역 5 우두머리 뒤 외계인의 사과 '불편을 줘서 죄송합니다.'. 위아래 검은 띠·조작 잠금(`state.cine`, update.js)·무적·적·투기꾼 멈춤, 카메라(`cam.mode` 'cine', `late.cineCam`) 굼부리 → UFO 떼 → 큰 글씨 → 떠나는 UFO → 오름 전경·이름. 멀티는 방(`{t:'end'}` → `{t:'end', at, by, names}`, 하루 한 번, 두 번째부터 `endr` 방송)이 시작 시각을 정함. UFO 모양 `makeUfo`. `__oreum.story.ending` |
 | story.js | 이야기 이벤트(#168): 조건(그 일이 일어날 때) → 예고(감독 'story' + 카메라 glance) → 벌어지는 일 → 끝(보상·`late.quest?.storyDone`). 한 번에 하나, 하루 STORY.perDay, 감독 문(storyMom·nightLight·aliens). 이벤트 mom·pair·night·howl·truck·meet·tour·sign·ufo·end, 수치 balance.js STORY, 글 src/punktext.js. 적은 enemies.js `spawnStory`(키움·calm), 트럭 첫 등장은 dumpers.come 을 감쌈. 저장 `save.story`. `__oreum.story.play(id)` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
@@ -75,8 +81,11 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 옷·장비: 칸마다 따로 만든 껍데기. `skin: true` 면 몸과 같은 `skinWeights` 규칙(체형 맞춤 뒤)으로 휨, 아니면 `bone` 에 붙음. 장비 하나는 정점 색으로 구워 한 메시(그리기 1번, 양면 재질만 따로). `covers` 로 덮는 몸 부위를 감춤(옷 사이로 몸이 안 뚫림), 모자는 `clip` 위로 나온 머리카락을 감춤. 상의·하의·신발은 늘 하나(없으면 'top:base'·'bottom:shorts'·'shoes:s1')
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
   - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
+- 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
+- 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
+- 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만
 - 가게·NPC: shops.js(가게 건물 표·지붕 아이콘 간판 `createRoofSigns`·들머리 안내도)/streetlayout.js · hardware.js(장비점 임시 모양, #128) · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js
@@ -93,6 +102,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - 오류 안전장치 (#108): crash.js — `main.js` 가 맨 먼저 `listenCrashes()`(error·unhandledrejection), `panels.js` 가 보낼 곳(POST /feedback, kind 'crash')을 붙임. `update.js frame()` 은 다음 프레임을 먼저 부르고 `step()` 을 try 로 돌림(오류 하나에 게임이 멈추지 않게). 적 한 마리 오류는 그 적만 지움(enemies.js), 적 모양 오류는 대신할 모양(enemymodels.js buildFallback). WebGL 화면 잃음은 scene.js(#gl-lost 안내 → 되살아남, 안 되면 다시 불러오기). 확인 `node tools/enemyrun.js [iphone|android|all] [--dead|--live]`
 - 오류 알림 읽기 (#122): 서버 `GET /crashes?days=3`(로그인·Origin 없이, server/src/crashes.js 가 버전+오류 글로 묶음, 내보내는 칸은 오류 글·버전·기기 종류·브라우저/OS·마지막 한 일만, 60초 캐시, 값은 balance.js CRASHES). 자리 찾기 `node tools/crashmap.js <버전> <main-해시.js:줄:칸>`(그 버전 커밋을 임시 worktree 에서 소스맵 켜고 dev·release 빌드해 해시가 같은 것으로 원래 파일·줄·함수)
+- 바닥 표시 (#151): drape.js — 평평한 고리·원을 점마다 땅 높이에 맞춰 휨(튜토리얼 원·가는 곳 marker·타겟 aimMark·줍기 pickMark·돌진 조짐). 귤 모으는 범위는 gearscore.js `gyulPickR(save)` 하나(life.js 떨어진 귤·흩어진 귤, tutorial.js 귤, 가게 배낭 설명)
 - UI: tutorial.js · tips.js · uitips.js · game/newver.js(새 버전 알림, #134) · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · music.js · page.html
 
 ## 결정 사항

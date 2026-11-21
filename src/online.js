@@ -62,6 +62,8 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
+// 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
+export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 
@@ -95,7 +97,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const r = await api('/save', { method: 'PUT', body: { save: strip(s) }, keepalive });
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {
@@ -262,6 +264,8 @@ export function linkTrash(trash, room) {
   const pend = new Map(); let flushQ = false;
   const flush = () => { flushQ = false; if (live) for (const [h, n0] of pend) for (let n = n0; n > 0; n -= NET.takeMax) { const k = Math.min(n, NET.takeMax); room.send(k > 1 ? { t: 'take', h, n: k } : { t: 'take', h }); } pend.clear(); }; // 방이 한 메시지에 takeMax 개까지만 받으므로 나눠 보냄 (#144)
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) { pend.set(h, (pend.get(h) || 0) + 1); if (!flushQ) { flushQ = true; queueMicrotask(flush); } } return ok; };
+  // 동료 줍기 (#172): 방에는 {t:'btake', h} 로 (번 몫에 안 셈, 서버도 마지막 BUDDIES.keep 은 남김). 옛 서버는 모르는 메시지라 넘김 → 다음 hs 로 되돌아옴
+  if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live) room.send({ t: 'btake', h }); return ok; }; }
   st.putBack = (h, n) => {
     if (!live) return o.putBack(h, n);
     if (!room.isHost) return 0;

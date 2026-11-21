@@ -8,6 +8,7 @@ import { NET, BOAR } from './balance.js';
 import { orientBody, flinchK } from './bodytilt.js';
 import { cleanText } from './safetext.js';
 import { gearScore } from './gearscore.js';
+import { topGrade, gradeColor } from './loot.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
@@ -41,16 +42,17 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   const safeNick = (n) => cleanText(n, NET.nickMax) || '러너'; // 남이 보낸 이름은 다듬어서 캔버스 글자로만 (#84)
 
   // 이름표: 닉네임 + 옆에 작은 장비 점수 (#137, gs 가 있을 때만)
-  function makeLabel(text, gs) {
+  function makeLabel(text, gs, gg = 0) {
     const c = document.createElement('canvas'); c.width = 256; c.height = 64;
     const g = c.getContext('2d');
     g.font = '700 28px "Noto Sans KR", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = 'rgba(36,37,31,.55)'; g.fillRect(0, 0, 256, 64);
+    if (gg > 0) { g.fillStyle = gradeColor(gg); g.fillRect(0, 58, 256, 6); g.strokeStyle = gradeColor(gg); g.lineWidth = 3; g.strokeRect(1.5, 1.5, 253, 61); } // 등급 색 테두리 (#140)
     const sc = gs > 0 ? String(gs) : '';
     g.font = '800 19px "Noto Sans KR", sans-serif'; const sw = sc ? g.measureText(sc).width + 10 : 0;
     g.font = '700 28px "Noto Sans KR", sans-serif'; const nw = Math.min(236 - sw, g.measureText(text).width), x0 = 128 - (nw + sw) / 2;
     g.fillStyle = '#fbf6e6'; g.fillText(text, x0 + nw / 2, 34, 236 - sw);
-    if (sc) { g.font = '800 19px "Noto Sans KR", sans-serif'; g.fillStyle = '#ffb347'; g.textAlign = 'left'; g.fillText(sc, x0 + nw + 10, 36); }
+    if (sc) { g.font = '800 19px "Noto Sans KR", sans-serif'; g.fillStyle = gg > 0 ? gradeColor(gg) : '#ffb347'; g.textAlign = 'left'; g.fillText(sc, x0 + nw + 10, 36); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = TEXCS;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, opacity: 0 }));
     sp.scale.set(3.2, 0.8, 1); sp.position.y = 2.75;
@@ -78,8 +80,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       if (e.knId === undefined) e.knId = kn ? kn[0] : 0;
       else if (kn && kn[0] !== e.knId) { e.knId = kn[0]; e.knT = 0; e.knAx = kn[1]; e.knAz = kn[2]; } }
     e.data = d;
-    const nick = safeNick(d.nick), gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0;
-    if (nick !== e.nick || gs !== e.gs) { e.nick = nick; e.gs = gs; if (e.label) e.runner.root.remove(e.label); e.label = makeLabel(nick, gs); e.runner.root.add(e.label); }
+    const nick = safeNick(d.nick), gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0, gg = Number.isFinite(d.gg) ? Math.max(0, Math.min(3, Math.floor(d.gg))) : 0; // gg 입은 것 중 가장 높은 등급 (#140)
+    if (nick !== e.nick || gs !== e.gs || gg !== e.gg) { e.nick = nick; e.gs = gs; e.gg = gg; if (e.label) e.runner.root.remove(e.label); e.label = makeLabel(nick, gs, gg); e.runner.root.add(e.label); }
     const ok = JSON.stringify(d.o || null);
     if (ok !== e.outfitKey) { e.outfitKey = ok; const o = expandOutfit(d.o); if (o) { e.runner.apply(o); e.shadow = null; } }
     const x = Math.max(-2000, Math.min(2000, d.x)), z = Math.max(-2000, Math.min(2000, d.z)); // 남송이는 들머리가 x -860 쯤이라 ±600 이면 잘렸음 (#79)
@@ -124,7 +126,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     const p = player;
     // 옷·닉네임은 처음·바뀜·다시 붙음 때만 (#115). 서버(roomcore)가 없으면 앞 값을 씀. 받아 주지 않은 메시지에 실렸을 수 있어 identMs 마다 한 번 더.
     // room 캐퍼빌리티(서버 없음)는 presence 를 통째로 바꾸므로 늘 실음
-    const id = { nick: save.nick, o: compactOutfit(save.outfit), gs: gearScore(save).total }, ik = JSON.stringify(id); // gs 장비 점수 (#137, 이름표 옆)
+    const id = { nick: save.nick, o: compactOutfit(save.outfit), gs: gearScore(save).total, gg: topGrade(save) }, ik = JSON.stringify(id); // gs 장비 점수 (#137, 이름표 옆)
     const withId = !wsLobby || ik !== idKey || now - idT > NET.identMs;
     const obj = {
       ...(withId ? id : {}),

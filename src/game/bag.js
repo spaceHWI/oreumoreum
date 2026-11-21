@@ -16,6 +16,7 @@ import { toolNow, bagCap } from './pickup.js';
 import { chooseArm, armSub } from './arms.js';
 import { chooseRide, rideStat, WALK_ICON, toggleRide } from './ride.js';
 import { gearScore, itemScore, scoreDiff } from '../gearscore.js';
+import { shoeSpeed, weaponMul } from '../loot.js';
 
 const TABS = [
   { k: 'wear', name: '옷', ic: '<path d="M8 4l-5 3 2 4 2-1v10h10V10l2 1 2-4-5-3c-1 2-2.5 3-4 3S9 6 8 4z"/>' },
@@ -186,6 +187,7 @@ function fillTier(k) {
     const sub = `${K.sub(t)}${own ? '' : ` · <span class="sc">${scoreChip(itemScore(i + 1), scoreDiff(save, k, i + 1))}</span>`}`;
     g.append(card({ icon: art, name: t.name, sub: own || on ? sub : `${K.sub(now)} → ${K.sub(t)}`, on, own, lock: own || !t.price ? null : { shop: 'gear', price: t.price } }));
   });
+  if (k === 'bag') late.backLookRow?.(g, card); // 배낭 모양 (#164)
 }
 // 탈것: 걸어 다니기 + 가진 탈것. 고르면 그 탈것이 '부르기'(Q) 대상. [부르기]는 창을 닫고 바로 탐
 function fillRide() {
@@ -204,12 +206,12 @@ function fillRide() {
 // 아래: 장비 점수와 주요 능력 4줄 (줍는 속도·배낭 용량·이동·무기 피해). 레벨·증강(#159)이 생기면 여기 한 줄
 function fillFoot() {
   const g = gearScore(save), t = toolNow(), w = WEAPONS[(save.weaponUse || save.equip.weapon || 1) - 1];
-  const pick = t.rate ? `초당 ${t.rate}` : `${(t.per / t.time).toFixed(1).replace(/\.0$/, '')}/초`;
-  const spd = (SHOES[Math.max(1, save.equip.shoes || 1) - 1].speed * buff.mul('speed')).toFixed(2).replace(/0$/, '');
+  const pick = `${(t.per / t.time).toFixed(1).replace(/\.0$/, '')}/초`, wd = +(w.dmg * weaponMul(save)).toFixed(1); // #140 등급·강화가 얹힌 값
+  const spd = (shoeSpeed(save) * buff.mul('speed')).toFixed(2).replace(/0$/, '');
   const S = late.STAT_ICON || {};
   const row = (ic, name, v) => `<span class="bs">${SVG(S[ic] || '')}<em>${name}</em><b>${v}</b></span>`;
   footEl.innerHTML = `<div class="bag-score">${scoreChip(g.total, 0)}<small>줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}</small></div>`
-    + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${w.dmg}/초` : w.dmg)}</div>`;
+    + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${wd}/초` : wd)}</div>`;
 }
 
 Object.assign(late, { openBag, closeBag, bagRefresh, bagRect, buildWardrobe: buildBag, openWardrobe: () => openBag('wear'), closeWardrobe: closeBag }); // 앞 파일에서 부르는 함수 (예전 옷장 이름도 그대로)
