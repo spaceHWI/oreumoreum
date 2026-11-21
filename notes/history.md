@@ -987,3 +987,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 예전 탈것 창 `#ridewin`·무기 창 `#armwin` 은 없앰. `openRideWin`·`openArmWin` 은 내 가방의 그 탭을 엶. 빠른 바꾸기(Q 타기·내리기, 탈것 버튼 길게·▾, 무기 ▾)는 그대로
 - 싸우는 중에도 열림(멀티는 안 멈춤), 받히면(hooks.js enemyHit) 닫힘. 배낭 칸 누르기 토스트(#60)는 없앰
 - 확인 `node tools/bag.js [shot]` (데스크톱·폰·옛 저장). tools/arms.js·shops.js 는 내 가방 선택자로 고침
+
+## #171 [오류] 셰이더 준비 중 'isReady' 오류
+- 원인: three `renderer.compileAsync` 는 재질 준비를 10ms 마다 되풀이 확인하는데, 그 사이 재질이 `dispose` 되면(모델이 와서 머리·옷을 갈아 끼울 때 `runner.js` 가 앞 재질을 버림) 프로그램이 없어져 `program.isReady` 에서 멈춤. 타이머 안에서 나는 오류라 `.catch` 로도 안 잡힘
+- 고침: `src/game/scene.js prepShaders()` — `renderer.compile` 로 시작만 시키고 기다리기는 직접, 버려진 재질은 기다리는 목록에서 뺌. `compileAsync` 를 부르던 두 곳(`update.js warm`, WebGL 되살아남)을 바꿈. `compileAsync` 는 직접 부르지 않는다
+- 확인: `__oreum.prepShaders()` 를 부른 바로 뒤 장면의 재질 하나를 dispose → 고치기 전엔 같은 오류, 고친 뒤엔 오류 없이 끝남

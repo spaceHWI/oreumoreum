@@ -5,6 +5,9 @@
 ## 시작
 1. 맡을 이슈는 `notes/queue.md` 에서 위에서부터 처음으로 열려 있는 이슈 하나다. `gh api repos/spaceHWI/oreumoreum/issues/<번호>` 로 이슈 본문과 코멘트를 읽는다. 기획 전체는 `notes/spec.md`, 코드 구조는 `notes/prototype-v1.md`
 2. 최신 `dev` 에서 `work/<번호>-<짧은 이름>` 브랜치를 만든다
+   - **여러 실행이 나란히 돈다.** 맡기 전에 그 이슈를 다른 실행이 하고 있는지 본다: origin 에 `work/<번호>-*` 브랜치가 있거나(`git ls-remote origin 'refs/heads/work/<번호>-*'`), 이슈에 '작업 시작' 코멘트가 3시간 안에 달려 있으면 하는 중이다. 그러면 건너뛰고 그다음 열린 이슈를 본다(실행 글이 줄을 정해 줬으면 그 줄 안에서)
+   - 맡기로 했으면 **바로** 이슈에 '작업 시작 (<모델>)' 한 줄 코멘트를 달고, 빈 커밋이라도 해서 `work/` 브랜치를 먼저 origin 에 올린다(다른 실행이 같은 이슈를 잡지 않게)
+   - `notes/queue.md` 의 '줄' 표(나란히 도는 묶음)를 보고, 실행 글에 줄 이름이 있으면 그 줄의 이슈만 한다
 3. 앞 이슈에서 만든 코드를 먼저 읽고 그 위에 얹는다
 
 ## 만들 때
@@ -31,10 +34,10 @@
 
 ## 끝
 1. 커밋하고 `work/` 브랜치를 올린다: `git -c push.negotiate=true push -u origin <브랜치>`
-2. 확인이 통과했으면 `dev` 에 합쳐 올린다 (`git checkout dev && git pull --ff-only origin dev && git merge --no-ff <브랜치> && git push origin dev`). 개발 서버에 자동 게시된다
+2. 확인이 통과했으면 `dev` 에 합쳐 올린다. 다른 실행이 그새 dev 를 바꿨을 수 있으니 합치기 직전에 `git pull` 로 받고, 충돌은 양쪽 의도를 살려 고친 뒤 빌드·`err.js` 를 한 번 더 돌린다. push 가 거절되면 다시 받아 합친다 (`git checkout dev && git pull --ff-only origin dev && git merge --no-ff <브랜치> && git push origin dev`). 개발 서버에 자동 게시된다
 3. 이슈 메모(바꾼 것·결정 사항)는 `notes/history.md` 끝에 몇 줄 더하고, 파일 구성이 바뀌었으면 `notes/prototype-v1.md` 의 코드 구조도 고친다 (2의 합치기 전에)
 4. 이슈에 결과 코멘트(바꾼 것, dev 에서 확인하는 방법, 임시로 둔 것·남은 점)를 달고 이슈를 닫는다
-5. `notes/queue.md` 에서 다음으로 열려 있는 이슈를 찾아, 그 이슈의 모델에 맞는 예약 작업을 `fire_trigger` 도구로 실행한다 (ToolSearch 로 `select:mcp__claude-code-remote__fire_trigger`, 예약 작업 ID 는 프롬프트에 있음). 남은 이슈가 없거나 도구가 없으면 넘어간다
+5. (실행 글에 줄 이름이 있으면 그 줄에서, 다른 실행이 하는 중인 것은 빼고) `notes/queue.md` 에서 다음으로 열려 있는 이슈를 찾아, 그 이슈의 모델에 맞는 예약 작업을 `fire_trigger` 도구로 실행한다 (ToolSearch 로 `select:mcp__claude-code-remote__fire_trigger`, 예약 작업 ID 는 프롬프트에 있음). 남은 이슈가 없거나 도구가 없으면 넘어간다
 - 확인이 통과하지 못하고 고칠 수 없으면: `dev` 에 합치지 않고, 이슈에 막힌 점을 코멘트로 남기고, 이슈를 닫지 않고, 다음 작업도 실행하지 않는다
 - `release`·`main` 은 건드리지 않는다. PR 은 만들지 않는다
 - 답변은 한글로 짧게
