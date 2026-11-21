@@ -125,6 +125,55 @@ export const FIELD = {
   fog: { n: 128, r: 42 },
   chD: 80, // 권장 배낭으로 길가 더미를 반쯤 치우면 가득 차는 곳에서 구역 클린하우스까지 (7-1절, tools/field.js 가 잼)
 };
+// 들판 떼 (#173, src/game/swarm.js, notes/growth-loop.md '들판 떼' 절): 길에서 offD m 넘게 벗어나면 그 구역 떼가 몰려옴(뱀서류). 모두 임의값
+// offD 들판으로 치는 길에서 거리(m), backD 이보다 가까우면 길로 돌아온 것, backT 길로 돌아온 뒤 떼가 흩어지기까지(초), firstT 들판에 들어선 뒤 첫 적이 보이기까지
+// ring 플레이어 둘레 이 거리(화면 밖 쪽)에서 나옴, gap 한 마리씩 나오는 간격(초), stages 들판에 머문 시간 t초부터 동시에 n마리, elite [간격초, 마리]
+// leaderT 이 초에 떼 대장 1마리, after 대장을 쫓아내면 이 시각(초)으로 되돌아감. cap 동시에 화면에 있는 떼 적 상한(PC·폰·저사양, 성능)
+// mob 떼 적 = 그 구역 보통 적 × (기운·피해·귤 보상(구역별)·크기), life 스스로 떠나기까지. elite 정예 = 보통 적 크기에 기운 × hp. leader 떼 대장 = 크기 × k, 기운 × hp, chest 쫓아내면 보물 상자 귤(구역별)
+// kinds 구역별 떼 (여러 개면 [종류, 비율]), straight 곧게 달려드는 구역(무리 자리 나누기 없이), shard 쫓아낸 한 마리가 떨구는 귤 조각 수, shardN 조각 이만큼이 귤 1
+// magnet 조각이 빨려 오는 거리(m), shardLife 조각이 땅에 남는 초, augAt 조각을 이만큼 모을 때마다 증강 고르기(그 뒤는 augStep 씩 늘림)
+// auto 들판 자동 던지기 간격(초, 무기마다. 무기 원래 간격), shotV 탄 속도, mgN·laserN 연사 무기 한 발 몫, quiet 더미를 다 치우면 그 자리 r m 가 t 초 동안 조용
+// den 소굴 r m 안이면 떼 × more, 그 소굴이 닫혔으면 × closed. slowNew 장비 점수가 구역 권장보다 낮으면 물결 시간이 이 배로 느리게 흐름. lowHp 기운이 이 비율 아래면 떼 전체가 머뭇거림(#148)
+// sack 구역 4 '썩은 귤 자루': 쫓아낸 광견병 들개가 p 확률로 떨굼 → fuse 초 뒤 터져 r m 안 플레이어를 t 초 동안 slow 배로 느리게
+// pickSlow 증강 고르는 창이 떠 있는 동안 화면 빠르기(혼자), multiIframe 멀티에서는 느려지지 않고 이 초 동안 무적
+// econ tools/econ.js: 들판 10분 귤이 길가 10분의 max 배를 넘지 않게, 하루 놀이 중 share 만큼 들판에 있다고 셈
+export const SWARM = {
+  offD: 12, backD: 9, backT: 6, firstT: 1.2,
+  ring: [18, 26], gap: 0.25,
+  stages: [{ t: 0, n: 4 }, { t: 30, n: 8 }, { t: 90, n: 14, elite: [30, 1] }, { t: 180, n: 20, elite: [60, 2] }],
+  leaderT: 300, after: 180,
+  cap: { pc: 24, phone: 16, low: 10 },
+  mob: { hp: 0.3, dmg: 0.4, gyul: [0, 0.08, 0.22, 0.32, 0.4, 0.15], size: 0.7, life: 80 }, // gyul 구역별: 25% 로 두면 구역 1·2 는 길가의 2.5배라 1~3 은 길가와 비슷하게, 4·5 는 서버 ③(NET.swarmPerSec) 안으로 (tools/econ.js, 소수 몫은 확률로 1)
+  elite: { hp: 2 },
+  leader: { k: 1.5, hp: 5, chest: [0, 15, 45, 450, 1200, 3300] },
+  kinds: { 1: [['piglet', 1]], 2: [['dog', 1]], 3: [['boar', 0.65], ['crow', 0.35]], 4: [['rabid', 1]], 5: [['drone', 1]] },
+  straight: [1],
+  shard: [0, 1, 1, 2, 2, 3], shardN: 3, magnet: 3.5, shardLife: 40,
+  augAt: [10, 25, 45, 70, 100], augStep: 35,
+  auto: { hand: 0.8, bow: 0.62, gun: 0.7, mg: 1 / 6, laser: 0.2, bomb: 2 }, shotV: 26, mgN: 30, laserN: 5,
+  quiet: { r: 25, t: 30 },
+  den: { r: 30, more: 1.3, closed: 0.5 },
+  slowNew: 0.6, lowHp: 0.3,
+  sack: { p: 0.2, fuse: 1.2, r: 3, slow: 0.6, t: 3 },
+  pickSlow: 0.3, multiIframe: 2,
+  econ: { max: 1.5, share: 0.1 },
+  // 들판 증강 (그 판에서만, 3단계까지). v 단계마다 값
+  augs: [
+    { id: 'fork', name: '귤 두 갈래', d: '한 번에 귤이 한 줄 더', v: [1, 2, 3] },
+    { id: 'rate', name: '빠른 손', d: '던지는 속도 +30%', v: [1.3, 1.6, 1.9] },
+    { id: 'pierce', name: '관통 귤', d: '귤이 적을 뚫고 지나감', v: [1, 2, 4] },
+    { id: 'burst', name: '터지는 귤', d: '맞으면 둘레 2.5m 에 터짐', v: [2.5, 3.2, 4] },
+    { id: 'orbit', name: '도는 귤', d: '몸 둘레를 귤이 돎', v: [3, 4, 5] },
+    { id: 'back', name: '뒤로도 던지기', d: '등 뒤로도 한 줄', v: [1, 2, 3] },
+    { id: 'magnet', name: '조각 자석', d: '귤 조각을 +3m 멀리서', v: [3, 6, 9] },
+    { id: 'move', name: '가벼운 발', d: '이동 +15%', v: [1.15, 1.3, 1.45] },
+    { id: 'shove', name: '밀쳐 내기', d: '맞으면 둘레 적을 밀어냄', v: [4, 5, 6] },
+    { id: 'rain', name: '귤비', d: '10초마다 둘레 적 모두에 피해', v: [10, 8, 6] },
+    { id: 'heal', name: '귤즙 한 모금', d: '기운 +20 회복', v: [20, 30, 40] },
+    { id: 'power', name: '단단한 귤', d: '귤 피해 +30%', v: [1.3, 1.6, 2] },
+  ],
+};
+
 // 구역 지킴이 돌하르방 (#119, src/game/guard.js · 서버 server/src/roomcore.js): 구역 더미를 모두 치운 순간 그 구역 자리에 서고 holdSec 뒤 가라앉음
 // 자리: 구역 길 위 반(upper, 길이 안 들어가는 구역은 옆 길)에서 길 옆 d m · 반경 r · 이미 있는 하르방에서 keep m 밖 (seed 고정 → 모두 같은 자리)
 // 연출: 꽃 피는 연출(BLOOM_FX.zone)이 먼저, 치운 뒤 afterBloom 초부터 riseT 초 동안 솟음. fresh 초 안에 들은 것만 연출·메시지(그 뒤 들어온 사람은 서 있는 모습만)
@@ -404,6 +453,9 @@ export const ENEMIES = {
   boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 6, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
   rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 7.5, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
   alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
+  // 들판 떼 전용 (#173, src/game/swarm.js): 구역 3 까마귀(하늘에서 내려와 쪼고 올라감), 구역 5 외계인 드론(작은 비행 접시, 약한 광선). 표의 값은 '보통 적' 기준이고 떼는 SWARM.mob 비율로 낮춤
+  crow: { name: '까마귀', hp: 16, walk: 3.4, chase: 7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
+  drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 export const ENEMY_SPAWN = {
@@ -1058,6 +1110,7 @@ export const NET = {
   // 귤이 늘 수 있는 몫 (#144): ① 작은 몫(토큰 통: 적·업적·낚시·보너스) + ② 번 몫(earn_bank: 방이 받아 준 줍기 × 더미 구역 값, server/src/heaps.js ZONE_GYUL)
   //   클린하우스에 버린 귤은 ② 에서 먼저 씀. #137 의 고정 큰 몫(earnBurst 100000, earnPerSec 80)은 한 번에 10만 귤 부풀리기를 받아 줘서 되돌림
   earnPerSec: 15,     // ① 이 빠르기로 참 (지난 저장 뒤 지난 시간 × 이 값). 5구역 외계인 무리(3마리 × 400, 3~4분마다)가 초당 약 6
+  swarmPerSec: 45,    // ③ 들판 떼 (#173): 저장에 적힌 떼 귤(save.swarm.earn 누적)이 늘어난 몫은 지난 저장 뒤 지난 시간 × 이 값까지 더 받아 줌 (모아 두지 않음). 구역 5 들판 1초 약 40 (tools/econ.js)
   earnBurst: 20000,   // ① 한꺼번에 받는 몫: 업적·뱃지 몰아 받기, 첫 보너스, 지키기 보너스, 작은 배낭 한 번(종류 운 여유). 긴급(2026-11-21): 4000 → 20000. 전리품 팔기(#140, 5~6단계 전설 7,800~18,000)·퀘스트·보물·우두머리 보상이 4000 을 넘어 사용자 귤이 깎여 사라졌음. 제대로 된 셈(서버가 판 전리품·보상을 아는 것)은 후속 이슈
   earnPickSlack: 1.5, // ② 줍기 하나의 값 = 구역 평균 귤 × 이 여유 × gv × 베스트. 종류는 주울 때 운이라 평균보다 비싼 것이 많이 나올 수 있음
   earnBankMax: 60000, // ② 쌓이는 상한: 정상 구역에서 가장 큰 배낭(부피 540, 보통 쓰레기 330개 안팎 × 줍기 값 123 ≈ 4만)을 채운 몫에 여유
