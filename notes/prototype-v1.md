@@ -71,6 +71,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 머리: 머리 장비(gear.js 'hat:short|bob|bun', Tripo 머리, 머리 뼈에 붙음)를 쓰면 그것만. 아니면 runnermodel.js(Tripo)의 목 위 삼각형만 남긴 메시(구운 초록 모자). 눈 깜빡임(#74)·피부색은 머리 재질 셰이더
   - 옷·장비: 칸마다 따로 만든 껍데기. `skin: true` 면 몸과 같은 `skinWeights` 규칙(체형 맞춤 뒤)으로 휨, 아니면 `bone` 에 붙음. 장비 하나는 정점 색으로 구워 한 메시(그리기 1번, 양면 재질만 따로). `covers` 로 덮는 몸 부위를 감춤(옷 사이로 몸이 안 뚫림), 모자는 `clip` 위로 나온 머리카락을 감춤. 상의·하의·신발은 늘 하나(없으면 'top:base'·'bottom:shorts'·'shoes:s1')
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
+  - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만
