@@ -6,6 +6,7 @@
 // - 멀티: 모으는 동안 presence cg(모은 정도), 센 샷은 무기 사건 wf 7번째 칸(arms.js sendShot). 받는 쪽은 같은 빛·센 탄을 그림
 import * as THREE from 'three';
 import { CHARGE, WEAPONS, BOW } from '../balance.js';
+import { augV } from '../augments.js';
 import { createChargeFx } from '../chargefx.js';
 import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
@@ -152,7 +153,7 @@ function tickCharge(dt) {
     if (C.dead) { if (!h) C.on = false; }
     else if (!able() || curW().id !== C.w.id) chargeCancel(); // 받힘·탈것·창 열림·무기 바뀜
     else {
-      C.t += dt;
+      C.t += dt / Math.max(0.5, 1 - augV(save, 'quick')); // 빠른 손 (#159): 모으는 시간이 줄어듦
       const kMax = maxK(C.w), raw = Math.max(0, Math.min(1, (C.t - CHARGE.start) / span));
       C.k = Math.min(kMax, raw);
       if (charging()) {
