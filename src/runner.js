@@ -8,7 +8,7 @@ const RM = getAsset('runner');
 import { patchDQS } from './dqskin.js';
 import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
 import { baseBodyGeo, patchBody, hideMask, REGION_N, bodyWarp } from './basebody.js';
-import { BODY } from './clothes.js';
+import { BODY, bodyY } from './clothes.js';
 import { BOW, BLINK } from './balance.js';
 
 // 가격 0 = 기본 제공. 상점에서 귤로 구매
@@ -52,10 +52,11 @@ const EMO_POSES = new Set(['insa', 'five', 'come', 'point', 'trash', 'follow', '
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const MODEL_S = 2.5; // 모델 키 0.98 → 게임 키 약 2.45
 // 모델별 치수 (model/params.json). Tripo 모델은 머리만 쓰고 몸은 basebody.js 라 골반 관절 높이는 몸 표(#177 다리 길어짐)를 따름
-const P = { ...RM.P, hipY: BODY.hipY };
+const P = { ...RM.P, hipY: bodyY(BODY.hipY) }; // #191: 다리 길이(BODY.leg)에 맞춘 실제 높이
 // 앉기·눕기처럼 골반 높이를 정해 두는 자세는 예전 관절 높이 기준 값 → 관절이 올라간 만큼 내려 엉덩이 자리를 그대로 둠
 const LIFT = (P.hipY - RM.P.hipY) * MODEL_S;
-const STRIDE = { amp: 0.82, rate: 0.85 }; // 0.82 x 0.85 x (다리 0.33/0.23) ≈ 1
+// 다리가 길수록 걸음은 조금 느리고 덜 벌림: 벌림 x 박자 x 다리 길이 ≈ 예전(Tripo 다리 0.23). 다리 27%(#177)에서 0.82 x 0.85 였던 나눔 그대로 (#191)
+const LEG_K = (RM.P.hipY - 0.01) / (P.hipY - 0.01), STRIDE = { amp: Math.pow(LEG_K, 0.55), rate: Math.pow(LEG_K, 0.45) };
 // 팔 관절은 소매 중심선(armY·armZ) 위, 몸통 옆면보다 조금 안쪽(pivotX)에 둬서 팔을 내려도 어깨 위가 덜 늘어나게
 const AZ = P.armZ ?? 0, LZ = P.legZ ?? 0, PX = P.pivotX ?? P.shoulderX;
 const JOINT = { hips: [0, P.hipY, 0], chest: [0, P.hipY + 0.01, 0], head: [0, P.neckY, 0], armL: [PX, P.armY, AZ], armR: [-PX, P.armY, AZ], legL: [P.legX, P.hipY - 0.01, LZ], legR: [-P.legX, P.hipY - 0.01, LZ] };

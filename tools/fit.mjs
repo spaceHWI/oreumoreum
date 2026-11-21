@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { CLOTHES } from '../src/balance.js';
 import * as CL from '../src/clothes.js';
 import '../src/clothes2.js'; // 겉모습 옷 모양 (#179)
-const { CLOTH_BUILD, TORSO, HIPS, ARM, LEG, prof } = CL, BODY = CL.BODY || { crotch: 0.12 }, HIP_TOP = HIPS[HIPS.length - 1][0];
+const { CLOTH_BUILD, TORSO, HIPS, ARM, LEG, prof } = CL, BODY = CL.BODY || { crotch: 0.12 }, bY = CL.bodyY || ((y) => y), HIP_TOP = HIPS[HIPS.length - 1][0];
 import { baseBodyGeo, bodyWarp, REGION } from '../src/basebody.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -24,8 +24,8 @@ function clothMesh(c, sex) {
 function bodyMesh(sex) { const g = baseBodyGeo(sex).clone(); return new THREE.Mesh(g.index ? g.toNonIndexed() : g, mat()); }
 // 광선: 몸통(가운데 축에서 수평, 팔 높이에선 앞뒤만), 다리(다리 축에서 수평, 반대쪽 다리 쪽은 뺌), 팔(팔 축에서 수직 단면)
 const rays = [];
-for (let y = BODY.crotch + 0.01; y <= 0.6; y += 0.01) { const p = prof(y < HIP_TOP - 0.03 ? HIPS : TORSO, y), zc = (p[2] + p[3]) / 2; for (let a = 0; a < 24; a++) { const th = (a / 24) * Math.PI * 2; if (y > 0.43 && Math.abs(Math.cos(th)) > 0.45) continue; rays.push({ part: 'trunk', y, o: new THREE.Vector3(0, y, zc), d: new THREE.Vector3(Math.cos(th), 0, Math.sin(th)) }); } }
-for (const s of [1, -1]) for (let y = 0.03; y <= 0.33; y += 0.01) for (let a = 0; a < 16; a++) { const th = (a / 16) * Math.PI * 2; if (s * Math.cos(th) < -0.4) continue; rays.push({ part: 'leg', y, o: new THREE.Vector3(s * LEG.x, y, LEG.z), d: new THREE.Vector3(Math.cos(th), 0, Math.sin(th)) }); }
+for (let y = BODY.crotch + 0.01; y <= 0.6; y += 0.01) { const p = prof(y < HIP_TOP - 0.03 ? HIPS : TORSO, y), zc = (p[2] + p[3]) / 2; for (let a = 0; a < 24; a++) { const th = (a / 24) * Math.PI * 2; if (y > 0.43 && Math.abs(Math.cos(th)) > 0.45) continue; rays.push({ part: 'trunk', y, o: new THREE.Vector3(0, bY(y), zc), d: new THREE.Vector3(Math.cos(th), 0, Math.sin(th)) }); } }
+for (const s of [1, -1]) for (let y = 0.03; y <= 0.33; y += 0.01) for (let a = 0; a < 16; a++) { const th = (a / 16) * Math.PI * 2; if (s * Math.cos(th) < -0.4) continue; rays.push({ part: 'leg', y, o: new THREE.Vector3(s * LEG.x, bY(y), LEG.z), d: new THREE.Vector3(Math.cos(th), 0, Math.sin(th)) }); }
 for (const s of [1, -1]) for (let x = 0.2; x <= 0.39; x += 0.01) for (let a = 0; a < 16; a++) { const th = (a / 16) * Math.PI * 2; rays.push({ part: 'arm', y: x, o: new THREE.Vector3(s * x, ARM.y, ARM.z), d: new THREE.Vector3(0, Math.cos(th), Math.sin(th)) }); }
 const rc = new THREE.Raycaster(); rc.far = 0.5;
 // 메시마다 광선별 가장 먼 맞은 거리(바깥면). 다리 광선은 반대쪽 다리를 맞히지 않게 0.09 안쪽만
