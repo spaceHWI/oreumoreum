@@ -308,8 +308,9 @@ async function main() {
   // 다 치운 구역은 목표 + 1 까지만 (너무 빠르지 않게, 5일은 상한 없음)
   // #173 들판 떼로 2일 끝 벌이가 몇 % 늘어 효율 플레이가 2일에 4단계에 닿을 때가 있음 → 2일 상한만 4 (기준은 '5일 목표가 하루 넘게 당겨지지 않음', 아래 들판 떼 줄)
   // #160 들머리 더미로 첫날 벌이가 조금 빨라져 효율 플레이는 1일에 신발 3단계까지 닿을 때가 있음 → 1일 상한만 3 (5일 목표가 하루 넘게 당겨지지 않는지는 아래 '마지막 칸' 이 봄)
-  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 4], zone: 2, open: 3 }, { tier: [4, 4], zone: 3 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
-  function flowCheck(runs) {
+  // #125 오늘의 할 일 보상(1·2일 끝 350·1,000)으로 효율 플레이가 3일에 5단계에 닿음(--nodaily 면 4단계) → 효율만 3일 상한 5 (effHi). 기준은 '5일 목표가 하루 넘게 당겨지지 않음' (아래 오늘의 할 일 줄)
+  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 4], zone: 2, open: 3 }, { tier: [4, 4], zone: 3, effHi: 5 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
+  function flowCheck(runs, eff = false) {
     const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
     const lines = ['흐름 (5번 중 가운데): 일 · 장비 단계(목표) · 다 치운 구역(목표) · 열린 구역 · 장비 점수 · 번 귤 · 할 일 없던 분'];
     let ok = true; const sh = [];
@@ -318,7 +319,7 @@ async function main() {
       const tier = med(ds.map((x) => Math.min(x.e.tool, x.e.bag, x.e.shoes))), zone = med(ds.map((x) => { let z = 0; while (x.cleared.has(z + 1)) z++; return z; }));
       const sc = med(ds.map((x) => x.score)), er = med(ds.map((x) => x.earned)), idle = med(ds.map((x) => x.idle));
       const open = ZONES.filter((Z) => sc >= Z.rec * GROWTH.red).length;
-      const good = tier >= f.tier[0] && tier <= f.tier[1] && zone >= f.zone && (d >= 4 || zone <= f.zone + 1) && (!f.open || open >= f.open); ok = ok && good;
+      const hi = eff && f.effHi ? f.effHi : f.tier[1], good = tier >= f.tier[0] && tier <= hi && zone >= f.zone && (d >= 4 || zone <= f.zone + 1) && (!f.open || open >= f.open); ok = ok && good;
       sh.push(`${d + 1}일 ${tier}단계·구역${zone}${good ? '' : '✗'}`);
       lines.push(`  ${d + 1}일 · ${tier}단계(${f.tier[0] === f.tier[1] ? f.tier[0] : f.tier.join('~')}) · 구역 ${zone}까지(${f.zone}) · 열림 ${open}${f.open ? `(${f.open})` : ''} · 점수 ${sc} · 귤 ${er.toLocaleString()} · ${idle}분 ${good ? '통과' : '✗'}`);
     });
@@ -340,7 +341,7 @@ async function main() {
     console.log('하루 끝 (한 번 돌린 예). 칸은 단계 (배낭 0 = 호주머니, 옷 0 = 없음)');
     if (!FLOW_ONLY) console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), 점수: d.score, '산 것': d.n, '오늘 다 치운 구역': d.zones, '번 귤': d.earned, '우두머리(누적)': d.boss, '할 일 없음(분)': d.idle, '남은 귤': d.coins, ...(NOENH ? {} : { '강화 합(50)': d.enh, '남은 외계 부품·핵': `${d.m5}·${d.r5}` }) })));
     // 흐름 (#137): 5번 돌린 것 모두 하루 끝을 보고, 가운데 값으로 판정
-    const fl = flowCheck(runs);
+    const fl = flowCheck(runs, slack === 0);
     console.log(fl.lines.join('\n'));
     verdict.push(`${title}: 흐름 ${fl.ok ? '통과' : '실패'} (${fl.short})`);
     // 단계별 도달 시각 (5번 돌린 가운데)
