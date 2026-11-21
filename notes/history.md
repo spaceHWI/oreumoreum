@@ -1167,3 +1167,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 가이드 퀘스트(#158)와 잇기: balance.js `QUESTS.side` 에 'st-mom'·'st-pair'·'st-night'·'st-howl'·'st-meet'·'st-sign'·'st-ufo' (오름지기에게 이야기하기, 귤 5). game/quest.js 의 셈·need 에 'story:id' (그 이벤트를 끝냈나) 를 더함
 - 확인: `__oreum.story.play('mom')` 등, `tools/fight.js mom`, `tools/econ.js`(보상 합 5% 아래), `tools/online.js`(엔딩 같이 보기)
 
+## #152 남송이오름 탐방 안내판 글 (2026-11-21)
+- `src/namsongi.js NS_SIGN_TEXT`: 주소·이름·표고·지형은 그대로, 본문 두 줄에 위트('쓰레기가 먼저 올라와 있어요', '보이는 건 다 치워도 됩니다'), 탐방 수칙 7줄(클린하우스 귤·귤 던지기·먹이 금지·투기꾼엔 귤·밤 능선 불빛(실마리, 답은 말하지 않음)·돌하르방·돌탑), 맨 아래 관리소 한 줄(`.sign-foot`, page.html)
+- 소로기촐리 문장은 빼고 소나무 숲·녹차밭은 본문 1 에 줄여 넣음. 'UFO 가 쓰레기를 버려요' 초안은 3장 답이라 '불빛' 실마리로 바꿈
+- 폰 375×667 에서 스크롤 없이 한 화면 (notes/shots/sign-152-phone.jpg)
