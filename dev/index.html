@@ -489,6 +489,8 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
   #menu .grab { width: 36px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.3); margin: 0 auto; }
   #menu .m-stat { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: rgba(255,255,255,.75); padding: 0 4px; }
   #menu .m-stat b { font-family: var(--display); font-weight: 800; font-size: 15px; color: #fff; margin-left: 5px; }
+  #menu .m-wx { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,.8); padding: 0 4px; } /* 지금 날씨 (#147) */
+  #menu .m-wx svg { width: 16px; height: 16px; }
   #menu .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   #menu .tiles button { display: grid; justify-items: center; gap: 6px; padding: 14px 4px 11px; border-radius: 16px; background: rgba(255,255,255,.08); font-size: 12px; font-weight: 500; font-family: var(--body); position: relative; white-space: nowrap; }
   #menu .tiles svg { display: block; width: 24px; height: 24px; }
@@ -1033,7 +1035,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-e074f2f751.js">(function () {
+<script data-main="main-edaee43af1.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1140,6 +1142,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
   <button type="button" id="menu-feedback" class="m-fb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>의견 보내기</button>
+  <div class="m-wx" id="m-wx" aria-label="지금 날씨"></div>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
@@ -1175,7 +1178,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
       <input type="range" id="adm-tod" min="0" max="24" step="0.25" value="12" aria-label="오름 시간대 (0~24시)">
       <div class="adm-row adm-btns"><button type="button" data-h="6.1">해 뜰 때</button><button type="button" data-h="12">낮</button><button type="button" data-h="18.3">해 질 때</button><button type="button" data-h="23">밤</button><button type="button" id="adm-real">실제 시간으로</button></div>
       <div class="adm-row"><span>날씨</span></div>
-      <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="fog">안개</button></div>
+      <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="overcast">흐림</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="snow">눈</button><button type="button" data-wx="fog">안개</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button></div>
       <div class="adm-row"><span>들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</span></div>
