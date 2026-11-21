@@ -1,6 +1,7 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { shoeSpeed } from '../loot.js';
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG } from '../balance.js';
+import { bootsOn } from '../gearscore.js';
+import { PERF, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
@@ -140,7 +141,7 @@ function updatePlayer(dt) {
     countSteps(moved);
     checkViewpoint();
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
-  if (p.pose === 'sit') p.pos.y = mealS.on ? STN.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
+  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
     const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
@@ -160,7 +161,7 @@ function countSteps(moved) {
   p.strideAcc += moved;
   const stride = p.running ? 1.7 : 1.1;
   let n = 0;
-  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0); }
+  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; const bt = bootsOn(save); sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (bt && p.running) sound.squelch?.(); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0, bt ? BOOTS.print : 1); }
   if (n) ach.emit('steps', n);
 }
 function checkViewpoint() {

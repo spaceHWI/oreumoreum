@@ -188,6 +188,7 @@ export function openJeong(anim = true) { if (!jeong || !jeong.open(anim)) return
 export const street = NS_TUT ? createShopStreet({ scene, height, street: STREET, low: LOW, col }) : null;
 export const shopsBuilt = street ? SHOPS.filter((sh) => STREET.lot(sh.lot) && SHOP_BUILD[sh.id]).map((sh) => ({ ...sh, ...SHOP_BUILD[sh.id]({ scene, height, lot: STREET.lot(sh.lot), low: LOW, col, addWalkable }) })) : [];
 export const STN = shopsBuilt.find((sh) => sh.id === 'stone')?.api || null; // 레스토랑 스톤 (#50)
+export const MANJ = shopsBuilt.find((sh) => sh.id === 'manjok')?.api || null; // 만족한상회 (#167)
 export const SAL = shopsBuilt.find((sh) => sh.id === 'salon')?.api || null; // 루이네 미장원 (#58)
 export const LEAPB = shopsBuilt.find((sh) => sh.id === 'leap')?.api || null; // LEAP (#59): 있으면 옷·신발은 여기서만 삼
 export const GEARB = shopsBuilt.find((sh) => sh.id === 'gear') || null; // 장비점 (#128): 도구·배낭·무기는 여기서만 삼

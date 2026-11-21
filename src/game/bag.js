@@ -3,7 +3,7 @@
 // 예전 탈것 창(#ridewin)·무기 창(#armwin)은 없앰: ride.js openRideWin·arms.js openArmWin 이 이 창의 탭을 엶
 // 도구·배낭·신발은 단계를 사면 그 단계를 쓰고(save.equip), 아래 단계는 '가짐' 으로만 보임 (더 좋은 것이 늘 장착)
 // 아직 없는 것은 흐린 카드 + 파는 가게와 값 + [사러 가기](goShop 길 안내 #128). 여기서 사지는 않음
-import { TOOLS, BAGS, POCKET, SHOES, WEAPONS, HAIR, RIDES, wearPrice } from '../balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, BOOTS, WEAPONS, HAIR, RIDES, wearPrice } from '../balance.js';
 import { RIDE_ICON } from '../rides.js';
 import { late } from './state.js';
 import { $, save } from './save.js';
@@ -137,17 +137,24 @@ function wearRow(name, stat) {
   body.append(row); return [row, row.querySelector('.wear-grid')];
 }
 function tierRow(k, name, L, shop) { // 신발: 산 단계까지 가짐, 가장 높은 것을 신음
-  const cur = Math.max(1, save.equip[k] || 1), T = late.TIER_ART?.[k] || [];
-  const [row, grid] = wearRow(name, `${SVG(late.STAT_ICON?.speed || '')}×${L[cur - 1].speed}`);
+  const cur = Math.max(1, save.equip[k] || 1), T = late.TIER_ART?.[k] || [], bt = save.equip.boots || 0;
+  const [row, grid] = wearRow(name, `${SVG(late.STAT_ICON?.speed || '')}×${shoeSpeed(save)}`);
   L.forEach((t, i) => {
-    const own = i < cur, on = i === cur - 1;
+    const own = i < cur, on = bt !== 2 && i === cur - 1;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item' + (own ? ' has' : ' lock') + (on ? ' on' : '');
     b.style.setProperty('--tc', '#7b7b80'); b.title = own ? `${t.name}${on ? ' · 신는 중' : ' · 가짐'}` : `${t.name} · ${SHOP_NAME[shop]} ${t.price}귤`;
     b.innerHTML = SVG(T[i] || '', 'art') + (on ? `<i class="st">${CHECK}</i>` : '') + (own ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>${gdBadge(scoreDiff(save, k, i + 1))}`);
-    b.addEventListener('click', () => (own ? toast(on ? `${t.name} · 신는 중` : `${L[cur - 1].name}을(를) 신고 있어요 (더 좋은 신발)`) : lockHint(row, t.name, shop, t.price)));
+    b.addEventListener('click', () => { if (!own) { lockHint(row, t.name, shop, t.price); return; } if (bt === 2) { late.wearBoots(false); buildBag(); return; } toast(on ? `${t.name} · 신는 중` : `${L[cur - 1].name}을(를) 신고 있어요 (더 좋은 신발)`); });
     grid.append(b);
   });
-  if (k === 'shoes' && cur === 1) row.append(late.baseColorRow('shoes')); // 쓰레빠를 신고 있으면 색 바꾸기 (#155)
+  { // 고진의 파란장화 (#167): 가지면 눌러서 신고 벗음
+    const own = bt > 0, on = bt === 2, b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item' + (own ? ' has' : ' lock') + (on ? ' on' : ''); b.dataset.boots = '1';
+    b.style.setProperty('--tc', '#2f6fe0'); b.title = `${BOOTS.name} · ${BOOTS.desc}`;
+    b.innerHTML = SVG(late.TIER_ART?.boots || '', 'art') + (on ? `<i class="st">${CHECK}</i>` : '') + (own ? '' : `<span class="pr"><i class="g"></i>${BOOTS.price.toLocaleString()}</span>`);
+    b.addEventListener('click', () => { if (!own) { lockHint(row, BOOTS.name, shop, BOOTS.price); return; } late.wearBoots(!on); buildBag(); });
+    grid.append(b);
+  }
+  if (k === 'shoes' && cur === 1 && bt !== 2) row.append(late.baseColorRow('shoes')); // 쓰레빠를 신고 있으면 색 바꾸기 (#155)
 }
 function hairRow() { // 머리: 가진 머리는 눌러서 바꿈, 없는 것은 루이네미장원
   if (!save.look || !late.HEAD_SVG) return;

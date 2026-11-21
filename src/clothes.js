@@ -72,7 +72,7 @@ export const dark = (c, k = 0.82) => '#' + new THREE.Color(c).multiplyScalar(k).
 const side2 = (m) => { m.side = THREE.DoubleSide; return m; };
 
 // 옷이 덮는 기본 몸 부위 (#106, basebody.js REGION)
-export const COVER = { tee: ['chest', 'waist', 'upperarm'], teeLong: ['chest', 'waist', 'upperarm', 'forearm'], shorts: ['pelvis', 'waist', 'thigh'], long: ['pelvis', 'waist', 'thigh', 'shin'], jacket: ['chest', 'waist', 'upperarm', 'forearm'] };
+export const COVER = { boots: ['foot', 'shin'],  tee: ['chest', 'waist', 'upperarm'], teeLong: ['chest', 'waist', 'upperarm', 'forearm'], shorts: ['pelvis', 'waist', 'thigh'], long: ['pelvis', 'waist', 'thigh', 'shin'], jacket: ['chest', 'waist', 'upperarm', 'forearm'] };
 // 몸통에 붙는 띠 (줄무늬·반사띠·벨트)
 const band = (m, y0, y1, pad, open = 0) => mesh(shell(TORSO, y0, y1, pad, { rows: 1, open }), m);
 
@@ -185,8 +185,19 @@ function hat(mat, L) {
   }
   return G(out);
 }
+// ---- 장화 (#167 '고진의 파란장화'): 무릎 아래까지 오는 고무장화. 발 상자 + 정강이를 감싸는 관 + 윗단·밑창은 더 어두운 색 ----
+export function boots(mat, L) {
+  const M = mat('main', L.main), A = mat('acc', L.acc), top = BODY.knee - 0.015, r = (y) => legR(y) + 0.022, out = [];
+  out.push(...both((s) => [
+    at(new RoundedBoxGeometry(0.146, 0.034, 0.25, 2, 0.014), A, s * 0.106, 0.017, 0.08), // 밑창
+    at(new RoundedBoxGeometry(0.138, 0.085, 0.235, 3, 0.04), M, s * 0.106, 0.07, 0.078), // 발등
+    mesh(tube('y', 0.05, top, r(0.06) + 0.006, r(top) + 0.012, [s * LEG.x, LEG.z], { rows: 4, capLo: true }), M), // 목
+    mesh(tube('y', top - 0.03, top + 0.004, r(top - 0.03) + 0.016, r(top) + 0.018, [s * LEG.x, LEG.z], { rows: 1 }), A), // 윗단
+  ]));
+  return G(out);
+}
 export const HAT_CLIP = 0.97; // 모자 윗면 조금 아래: 머리카락(똥머리 등)이 이보다 위로 나오면 감춤 (#106)
-export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat, santa: hat, antler: hat, scarf };
+export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, boots, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat, santa: hat, antler: hat, scarf };
 // 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
 export const slippers = (mat, sole = '#3c8fd0', strap = '#2f6db5') => { // 색은 처음 고르기(#155)에서 바꿀 수 있음
   const S = mat('sole', sole), B = mat('strap', strap);

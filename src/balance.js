@@ -276,6 +276,9 @@ export const SHOES = [
   { tier: 4, name: '등산화', speed: 1.3, price: GROWTH.price[4] },
   { tier: 5, name: '바람 신발', speed: 1.45, price: GROWTH.price[5] },
 ];
+// 특별 신발 '고진의 파란장화' (#167): 단계 줄에 끼우지 않음. 저장 save.equip.boots = 0 없음 · 1 가짐(안 신음) · 2 신음
+// 신으면 이동 speed 배, 장비 점수·길 밖 풀밭 느림은 tier 단계 신발과 같게. 값은 tier 단계 값. 파는 곳 LEAP 신발 칸
+export const BOOTS = { id: 'boots', name: '고진의 파란장화', speed: 1.35, tier: 4, price: GROWTH.price[4], desc: '고진 씨가 신던 그 장화. 왜 빠른지는 아무도 모른다.', print: 1.25 }; // print: 발자국 크기 배
 
 // 클린하우스(재활용장): 들머리 한 곳 + 오름 안 작은 것 4곳(#78). 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
 export const CLEANHOUSE = {
@@ -696,6 +699,25 @@ export const STONE = {
   walkMax: 3, // 자리까지 걸어가다 이 초가 넘으면 바로 앉힘
 };
 
+// 만족한상회 (#167): 가게 거리 6번 터(골목 끝)의 갈치 식당. 스톤과 같은 '식사 → 버프' (식당 공통 틀, 버프는 한 번에 하나). 메뉴·값·버프 모두 임의
+// buff: guard 받는 피해 줄이는 비율 · gyulR 귤 모이는 범위 더하는 m. also: 같이 붙는 버프 { 종류: v }. 건물은 코드로 만든 임시 모양 src/manjok.js
+export const MANJOK = {
+  name: '만족한상회', tag: '갈치는 뼈가 없고, 당신은 귤이 없다',
+  buffSec: 600,
+  menu: [
+    { id: 'manjok', ko: '만족한상', en: '순살 은갈치 조림', price: 260, buff: 'guard', v: 0.2, food: '#c8452c' },
+    { id: 'tonggalchi', ko: '통갈치한상', en: '통갈치 조림 한상', price: 320, buff: 'dmg', v: 0.3, also: { speed: 0.1 }, food: '#b83a26' },
+    { id: 'galchigui', ko: '갈치구이', en: '은갈치 구이', price: 180, buff: 'pick', v: 0.2, food: '#d9c9a8' },
+    { id: 'godeungeo', ko: '고등어구이', en: '고등어 구이', price: 150, buff: 'regen', v: 2, food: '#8a7a5a' },
+    { id: 'hwanggae', ko: '제주 황게장', en: '간장 게장', price: 220, buff: 'gyulR', v: 1, food: '#e0902c' },
+  ],
+  W: 6.6, D: 4.4, H: 2.5, // 돌집 폭·깊이·처마 높이 (m)
+  fore: 3.4, // 터 앞에서 집 앞벽까지 (평상 자리)
+  r: 6.5, // 평상 가운데에서 이 거리 안이면 상호작용이 '식사'
+  eatT: 4.5, walkMax: 3,
+};
+export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
+
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
 // 골목 좌표: s = 길 가운데에서 골목 안쪽으로 거리, t = 오름 쪽(+) / 시작 쪽(-). 골목 가운데 선은 t = 0
 // 터 side: 1 = 골목 오름 쪽 줄(앞이 시작·개울 쪽), -1 = 시작 쪽 줄(앞이 오름 쪽), 0 = 골목 끝(앞이 길 쪽). w = 골목 따라 폭, d = 깊이
@@ -710,7 +732,7 @@ export const SHOP_ST = {
     { s: 23, side: 1, w: 10, d: 9 }, // 3 빈 터
     { s: 23, side: -1, w: 10, d: 9 }, // 4 장비점 (#128)
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
-    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 빈 터 (골목 끝)
+    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
@@ -721,7 +743,7 @@ export const SHOP_ST = {
   planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
   // 지붕 위 큰 아이콘 간판 (#128): 터 땅에서 높이(m, 가게 id 마다)·크기(m). 살 수 있는 새 물건이 있으면 귤색 점
-  roof: { stone: 8.4, salon: 7.2, leap: 7.6, ride: 5.4, gear: 5.6 }, roofSize: 2.3, roofBack: 0.45, // roofBack: 터 앞에서 깊이의 이 비율만큼 안쪽
+  roof: { stone: 8.4, salon: 7.2, leap: 7.6, ride: 5.4, gear: 5.6, manjok: 5.2 }, roofSize: 2.3, roofBack: 0.45, // roofBack: 터 앞에서 깊이의 이 비율만큼 안쪽
   dirR: 3.4, // 들머리 '가게 안내도' 판 앞 이 거리 안이면 상호작용 '가게 안내'
   cartHintR: 9, // 정상·능선 클린하우스 이 거리 안에서 버리고 나면 '가게 거리 가는 마차' 안내 (세션에 한 번)
 };
@@ -736,6 +758,7 @@ export const SHOPS = [
   { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon', sells: '머리 모양' },
   { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride', sells: '탈것' }, // #69 (임시 모양)
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
+  { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)

@@ -1,7 +1,7 @@
 // 장비 점수 (#137, notes/growth-loop.md 3절). 수치는 balance.js GROWTH·ZONES. 저장(save)만 읽는 순수 함수라 게임·도구·멀티가 같이 씀
 // 칸 10개: 도구·배낭·신발·무기 (save.equip) + 옷 6칸 (save.clothes.wear 에 입은 옷의 단계). 합이 장비 점수
 // 등급·강화 자리 (다음 이슈에서 채움): 장비는 save.gearUp = { 칸: { g, e } }, 옷은 save.clothes.up = { 옷 id: { g, e } }. 없으면 0
-import { GROWTH, ZONES, WEAR, CLOTHES, GYUL_PICK } from './balance.js';
+import { GROWTH, ZONES, WEAR, CLOTHES, GYUL_PICK, SHOES, BOOTS } from './balance.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const WEAR_K = WEAR.slots.map((w) => w.k);
@@ -20,12 +20,16 @@ export function slotTier(save, k) {
   if (WEAR_K.includes(k)) { const id = save?.clothes?.wear?.[k]; return id && CLOTH[id] ? CLOTH[id].tier : 0; }
   return int(save?.equip?.[k], 0, 6);
 }
+// 신발 (#167): 장화(save.equip.boots === 2)를 신었으면 장화(점수는 BOOTS.tier, 등급·강화 없음), 아니면 단계 신발
+// 등급·강화·전리품(#140 loot.js)의 '신발 칸'은 늘 단계 신발(save.equip.shoes). 빠르기는 loot.js shoeSpeed
+export const bootsOn = (save) => save?.equip?.boots === 2;
+export const shoeTier = (save) => (bootsOn(save) ? BOOTS.tier : int(save?.equip?.shoes, 1, SHOES.length));
 // 칸 k 의 등급·강화 (cloth 를 주면 그 옷)
 export function slotUp(save, k, clothId) {
   const u = WEAR_K.includes(k) ? (isObj(save?.clothes?.up) ? save.clothes.up[clothId ?? save?.clothes?.wear?.[k]] : null) : (isObj(save?.gearUp) ? save.gearUp[k] : null);
   return isObj(u) ? { g: int(u.g, 0, 3), e: int(u.e, 0, GROWTH.enhMax) } : { g: 0, e: 0 };
 }
-export function slotScore(save, k) { const u = slotUp(save, k); return itemScore(slotTier(save, k), u.g, u.e); }
+export function slotScore(save, k) { if (k === 'shoes' && bootsOn(save)) return itemScore(BOOTS.tier); const u = slotUp(save, k); return itemScore(slotTier(save, k), u.g, u.e); }
 // 장비 점수 { total, pick 줍는 힘, fight 싸우는 힘, by: {칸: 점수} }
 export function gearScore(save) {
   const by = {}; let total = 0;
