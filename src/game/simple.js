@@ -56,7 +56,9 @@ MM?.addEventListener('click', (e) => { if (B.classList.contains('simple') && !MM
 }
 
 let tickT = 0, altT = 0, ran = false;
-function tick(dt) {
+let tLast = 0;
+function tick() {
+  const now = performance.now(), dt = Math.min(0.25, tLast ? (now - tLast) / 1000 : 0); tLast = now; // 게임 시간(멈춤·느리게)과 상관없이 실제 시간
   const on = B.classList.contains('simple') && !B.classList.contains('tut');
   for (const [id, t] of flashT) { const n = t - dt; if (n <= 0) { flashT.delete(id); $(id)?.classList.remove('flash'); topFit.dirty(); } else flashT.set(id, n); }
   // 조이스틱 끝까지 = 달리기 (단순 화면에는 달리기 버튼이 없음)
@@ -64,7 +66,7 @@ function tick(dt) {
   else if (ran) { ran = 0; setGait(0); }
   if ((tickT -= dt) > 0) return; tickT = 0.25;
   for (const [id, f] of FLASH) { const v = f() || ''; if (seen.has(id) && seen.get(id) !== v && v && on && !$(id).hidden) flash(id); seen.set(id, v); }
-  B.classList.toggle('has-ride', (save.rides?.own?.length || 0) > 0);
+  B.classList.toggle('has-ride', $('btn-ride')?.hidden === false); // 탈것 버튼이 보이면(가진 탈것이 있으면) 점프 대신
   const bag = $('bag-pill'); if (bag) { const n = +$('bag-n')?.textContent || 0, c = +$('bag-cap')?.textContent || 0; bag.classList.toggle('half', c > 0 && n / c >= 0.6); }
   const fight = !!player.down || !!late.bossFight?.() || (state.tension || 0) > 0.3 || !!life?.enemies?.near?.(player.pos, 22) || !!late.swarm?.state?.();
   B.classList.toggle('fight', fight);
