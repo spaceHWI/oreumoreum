@@ -10,6 +10,7 @@ import { stream, player, runner, trash } from './place.js';
 import { toast, updateStats } from './hud.js';
 import { bagCap } from './pickup.js';
 import { sound } from './hooks.js';
+import { ic } from '../icons.js';
 
 const B = () => save.backs || (save.backs = { own: {}, cur: null });
 const backOn = (id) => { const b = BACK_BY[id]; return !!b && !!save.backs?.own?.[id] && save.backs.cur === id && (save.equip.bag || 0) >= b.need; };
@@ -69,7 +70,7 @@ bvBtn.addEventListener('click', () => { save.boxView = save.boxView === 0 ? 1 : 
 boxBtnText();
 
 /* ---------- 사기·고르기 ---------- */
-const TEWAK_SVG = '<circle cx="12" cy="8" r="5"/><path d="M7.5 8h9M8 13c-1 3 0 7 4 8 4-1 5-5 4-8M9 16h6M9.5 19h5"/>';
+const TEWAK_SVG = ic('tewak');
 function buyBack(id) {
   const b = BACK_BY[id]; if (!b || B().own[id]) return false;
   if (save.coins < b.price) { toast(`귤이 ${b.price - save.coins}개 모자라요`); return false; }
@@ -94,7 +95,7 @@ late.backCards = (g) => {
 };
 // 내 가방 배낭 탭: '배낭 모양' 한 줄 (기본 / 가진 겉모습)
 late.backLookRow = (g, card) => {
-  g.append(card({ icon: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/>', name: '배낭 모양 · 기본', sub: '단계 배낭 그대로', on: !save.backs?.cur, own: true, click: () => pickBack(null) }));
+  g.append(card({ icon: ic('bag'), name: '배낭 모양 · 기본', sub: '단계 배낭 그대로', on: !save.backs?.cur, own: true, click: () => pickBack(null) }));
   for (const b of BACK_LOOKS) {
     const own = !!save.backs?.own?.[b.id], ok = (save.equip.bag || 0) >= b.need;
     g.append(card({ icon: TEWAK_SVG, name: `배낭 모양 · ${b.name}`, sub: ok ? b.desc : `${BAGS[b.need - 1].name}부터 멜 수 있어요`, on: backOn(b.id), own: own && ok, lock: own ? null : { shop: 'gear', price: b.price }, click: () => pickBack(b.id) }));

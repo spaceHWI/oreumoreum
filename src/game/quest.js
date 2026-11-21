@@ -28,6 +28,7 @@ import { interactables } from './stores.js';
 import { startAutoGo, stopAutoGo, autoGo } from './dump.js';
 import { cam } from './camera.js';
 import { gyulShower } from './hooks.js';
+import { icon } from '../icons.js';
 
 const Q = QUESTS;
 const v3 = (x, z, y = 0) => new THREE.Vector3(x, height(x, z) + y, z);
@@ -307,7 +308,7 @@ addEventListener('keydown', (e) => { // L: 퀘스트 창 (임의)
 });
 // 메뉴 칸 '퀘스트' (도감 앞)
 { const dex = $('menu-dex'); if (dex) { const b = document.createElement('button'); b.type = 'button'; b.id = 'menu-quest';
-  b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h10l3 3v15H6z"/><path d="M9 9h7M9 13h7M9 17h4"/></svg>퀘스트';
+  b.innerHTML = icon('quests2') + '퀘스트';
   b.addEventListener('click', () => { closePanels(); openLog(); }); dex.before(b); } }
 
 /* ---------- 지도 표시 ---------- */

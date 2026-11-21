@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { RIDES, CART } from './balance.js';
 import { nsAlong, nsLen } from './namsongi.js';
+import { ic } from './icons.js';
 
 export const RIDE_BY = Object.fromEntries(RIDES.list.map((r) => [r.id, r]));
 
@@ -356,9 +357,9 @@ export function createCart({ scene, height, low = false, col = null, makeDriver 
 // ---------- 탈것 가게 (가게 거리 빈 터, 임시 모양) ----------
 // 앞이 트인 나무 헛간: 뒷벽·옆벽 반쯤·귤색 차양 지붕, 안에 스케이트보드(벽에 기댐)·스쿠터·조랑말. 간판에 스쿠터 그림
 export const RIDE_ICON = {
-  skate: '<path d="M3 13h18l-1.5 2.5h-15z"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17" cy="18.5" r="1.6"/>',
-  scoot: '<circle cx="5.5" cy="18" r="2.2"/><circle cx="18.5" cy="18" r="2.2"/><path d="M5.5 18h10l3-13M15.5 5h5"/>',
-  horse: '<path d="M5 20v-6l2-3h7l3-4 3 1-1 3-2 1v8M8 14v6M14 14v6M17 7l1-3"/>',
+  skate: ic('skate'),
+  scoot: ic('ride'),
+  horse: ic('horse'),
 };
 export const RIDE_SHOP = { W: 7.2, D: 5.6, fore: 0.6, r: 6.5 };
 export function createRideShop({ scene, height, site, low = false, col = null }) {

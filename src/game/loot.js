@@ -18,24 +18,26 @@ import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
 import { gdBadge, scoreChip } from './shop.js';
 import { director } from './director.js';
+import { ic } from '../icons.js';
 
 const D = LOOT.drop, ZONE_OF = Object.fromEntries(Object.entries(ENEMY_SPAWN.byZone).map(([z, k]) => [k, +z]));
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const SVG = (p) => `${late.SVG_A || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'}>${p}</svg>`;
 // 재료 그림 (로우폴리 임시): 털·이빨·엄니·발톱·부품, 귀한 재료는 같은 그림에 별
 export const MAT_ART = {
-  m1: '<path d="M5 18c2-5 3-9 7-13M9 19c1-4 3-8 6-11M13 19c1-3 2-6 6-8M4 20h16"/>',
-  m2: '<path d="M8 4h8l-1 7-3 9-3-9z"/>',
-  m3: '<path d="M6 4c8 1 12 7 11 16-2-6-6-9-11-10z"/>',
-  m4: '<path d="M5 20c3-6 3-12 1-16 5 3 7 8 6 14M11 20c3-5 4-10 3-14 4 3 5 8 3 14"/>',
-  m5: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+  m1: ic('m1'),
+  m2: ic('m2'),
+  m3: ic('m3'),
+  m4: ic('m4'),
+  m5: ic('m5'),
 };
 export const matSvg = (id) => { const M = MAT[id]; if (!M) return ''; const base = MAT_ART[M.kind === 'rare' ? `m${M.z}` : id]; return SVG(base + (M.kind === 'rare' ? '<path d="M19 2l.9 2 2.1.3-1.5 1.5.4 2.2-1.9-1-1.9 1 .4-2.2L16 4.3l2.1-.3z" fill="currentColor"/>' : '')); };
 // 장비 그림: 도구·배낭·신발·무기는 장비점 그림, 옷은 옷 그림
 export function itemSvg(it) {
   if (WEAR_K.includes(it.s)) { const c = CLOTH[clothId(it.s, it.t)]; return c ? clothSvg(c) : ''; }
   const A = late.TIER_ART?.[it.s]; if (!A) return '';
-  return SVG(A[Math.max(0, Math.min(A.length - 1, it.t - 1))]);
+  const i = Math.max(0, Math.min(A.length - 1, it.t - 1));
+  return late.itemArt ? late.itemArt(it.s, i, '') : SVG(A[i]);
 }
 
 /* ---------- 저장: 예전 우두머리 귀한 재료(save.boss.mats, 이름)를 재료 주머니로 한 번 옮김 ---------- */

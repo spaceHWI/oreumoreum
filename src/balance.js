@@ -1556,3 +1556,6 @@ export const REC = {
   types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
   tag: '#오름오름',
 };
+
+// 아이콘 글자 라벨 (#184): 처음 보는 사람용. 처음 days 일 동안 보이고, 그 뒤엔 튜토리얼을 마치고 taps 번 넘게 눌렀으면 사라짐
+export const ICON_LABEL = { days: 3, taps: 10 };

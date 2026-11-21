@@ -17,13 +17,14 @@ import { chooseArm, armSub } from './arms.js';
 import { chooseRide, rideStat, WALK_ICON, toggleRide } from './ride.js';
 import { gearScore, itemScore, scoreDiff } from '../gearscore.js';
 import { shoeSpeed, weaponMul } from '../loot.js';
+import { ic } from '../icons.js';
 
 const TABS = [
-  { k: 'wear', name: '옷', ic: '<path d="M8 4l-5 3 2 4 2-1v10h10V10l2 1 2-4-5-3c-1 2-2.5 3-4 3S9 6 8 4z"/>' },
-  { k: 'arm', name: '무기', ic: '<circle cx="9" cy="15" r="5"/><path d="M9 10c0-2 1-3 3-4M15 8l4-4M17 11h4"/>' },
-  { k: 'tool', name: '도구', ic: '<path d="M10 3l1 18M14 3l-1 18M9 8h6"/>' },
-  { k: 'bag', name: '배낭', ic: '<path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/>' },
-  { k: 'ride', name: '탈것', ic: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h5l3 8M10 9L8 6H6"/>' },
+  { k: 'wear', name: '옷', ic: ic('wear') },
+  { k: 'arm', name: '무기', ic: ic('bow') },
+  { k: 'tool', name: '도구', ic: ic('tongs') },
+  { k: 'bag', name: '배낭', ic: ic('bag') },
+  { k: 'ride', name: '탈것', ic: ic('ride') },
 ];
 const SVG = (inner, cls = '') => `<svg ${cls ? `class="${cls}" ` : ''}viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
 const CARD_SVG = (inner) => `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
@@ -100,7 +101,7 @@ function card({ icon, name, sub, on, own, lock, click, extra }) {
   const c = document.createElement(own && !on && click ? 'button' : 'div');
   if (c.tagName === 'BUTTON') c.type = 'button';
   c.className = 'menu-card bag-card' + (on ? ' on' : '') + (lock ? ' lock' : '') + (own && !on && !click ? ' have' : '');
-  c.innerHTML = `${CARD_SVG(icon)}<span class="mn"><b>${name}</b><small>${sub || ''}</small></span><span class="mv"></span>`;
+  c.innerHTML = `${/^<(img|svg)\b/.test(icon) ? icon : CARD_SVG(icon)}<span class="mn"><b>${name}</b><small>${sub || ''}</small></span><span class="mv"></span>`;
   const mv = c.querySelector('.mv');
   if (on) mv.insertAdjacentHTML('beforeend', `<span class="bf">${CHECK}장착 중</span>`);
   else if (own && !click) mv.insertAdjacentHTML('beforeend', '<span class="bf dim">가짐</span>');
@@ -143,7 +144,7 @@ function tierRow(k, name, L, shop) { // 신발: 산 단계까지 가짐, 가장 
     const own = i < cur, on = i === cur - 1;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item' + (own ? ' has' : ' lock') + (on ? ' on' : '');
     b.style.setProperty('--tc', '#7b7b80'); b.title = own ? `${t.name}${on ? ' · 신는 중' : ' · 가짐'}` : `${t.name} · ${SHOP_NAME[shop]} ${t.price}귤`;
-    b.innerHTML = SVG(T[i] || '', 'art') + (on ? `<i class="st">${CHECK}</i>` : '') + (own ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>${gdBadge(scoreDiff(save, k, i + 1))}`);
+    b.innerHTML = (late.itemArt ? late.itemArt(k, i, 'art') : SVG(T[i] || '', 'art')) + (on ? `<i class="st">${CHECK}</i>` : '') + (own ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>${gdBadge(scoreDiff(save, k, i + 1))}`);
     b.addEventListener('click', () => (own ? toast(on ? `${t.name} · 신는 중` : `${L[cur - 1].name}을(를) 신고 있어요 (더 좋은 신발)`) : lockHint(row, t.name, shop, t.price)));
     grid.append(b);
   });
@@ -174,16 +175,16 @@ function fillArm() {
   WEAPONS.forEach((w, i) => {
     const has = i < own, on = use === i + 1;
     const sub = has ? `${armSub(w)}<br>${ammoText(w)}${on ? '' : ` · 피해 ${diffLine(nowW.dmg, w.dmg)}`}` : armSub(w);
-    g.append(card({ icon: late.TIER_ART?.weapon?.[i] || '', name: w.name, sub, on, own: has, lock: has ? null : { shop: 'gear', price: w.price }, click: has ? () => { chooseArm(i + 1); buildBag(); } : null }));
+    g.append(card({ icon: late.itemArt?.('weapon', i, 'food') || late.TIER_ART?.weapon?.[i] || '', name: w.name, sub, on, own: has, lock: has ? null : { shop: 'gear', price: w.price }, click: has ? () => { chooseArm(i + 1); buildBag(); } : null }));
   });
 }
 // 도구·배낭: 산 단계까지 가짐. 가장 높은 단계가 장착 (#111 순서 없이 사도 산 단계 아래는 가짐)
 const TIER_K = { tool: { L: TOOLS, lo: 1, sub: (t) => `${t.rate ? `초당 ${t.rate}개` : `한 번에 ${t.per}개`} · ${t.r}m` }, bag: { L: BAGS, lo: 0, sub: (t) => `담는 양 ${t.cap}` } };
 function fillTier(k) {
   const g = list(), K = TIER_K[k], cur = save.equip[k] ?? K.lo, now = k === 'bag' && !cur ? POCKET : K.L[cur - 1];
-  if (k === 'bag') g.append(card({ icon: '<path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/>', name: POCKET.name, sub: K.sub(POCKET), on: cur === 0, own: true }));
+  if (k === 'bag') g.append(card({ icon: ic('pocket'), name: POCKET.name, sub: K.sub(POCKET), on: cur === 0, own: true }));
   K.L.forEach((t, i) => {
-    const own = i < cur, on = i === cur - 1, art = late.TIER_ART?.[k]?.[i] || '';
+    const own = i < cur, on = i === cur - 1, art = late.itemArt?.(k, i, 'food') || late.TIER_ART?.[k]?.[i] || '';
     const sub = `${K.sub(t)}${own ? '' : ` · <span class="sc">${scoreChip(itemScore(i + 1), scoreDiff(save, k, i + 1))}</span>`}`;
     g.append(card({ icon: art, name: t.name, sub: own || on ? sub : `${K.sub(now)} → ${K.sub(t)}`, on, own, lock: own || !t.price ? null : { shop: 'gear', price: t.price } }));
   });
@@ -200,7 +201,7 @@ function fillRide() {
       extra = document.createElement('button'); extra.type = 'button'; extra.className = 'chip go call'; extra.textContent = player.ride ? '내리기' : '부르기';
       extra.addEventListener('click', (e) => { e.stopPropagation(); closeBag(); toggleRide(); });
     }
-    g.append(card({ icon: RIDE_ICON[R.id], name: R.name, sub: rideStat(R), on, own, lock: own ? null : { shop: 'ride', price: R.price }, click: own ? () => { chooseRide(R.id); buildBag(); } : null, extra }));
+    g.append(card({ icon: late.rideArt?.(R.id, 'food') || RIDE_ICON[R.id], name: R.name, sub: rideStat(R), on, own, lock: own ? null : { shop: 'ride', price: R.price }, click: own ? () => { chooseRide(R.id); buildBag(); } : null, extra }));
   }
 }
 // 아래: 장비 점수와 주요 능력 4줄 (줍는 속도·배낭 용량·이동·무기 피해), 레벨·증강 한 줄 (#159, level.js late.augFoot)

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { WEATHER } from './balance.js';
+import { ic } from './icons.js';
 
 // 실제 제주 날씨 연동 (#18) — Open-Meteo 현재 날씨(키 없음). 실패하면 맑음.
 // 종류: clear 맑음 · cloudy 구름 많음 · overcast 흐림 · fog 안개 · rain 비 · snow 눈 · wind 강풍
@@ -30,13 +31,13 @@ export function classify(c) {
 }
 
 const ICON = {
-  clear: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
-  cloudy: '<circle cx="9" cy="9" r="3"/><path d="M9 3v1M3 9h1M4.8 4.8l.7.7M13.2 4.8l-.7.7"/><path d="M8 20h9a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.4 1.2A3 3 0 0 0 8 20z"/>',
-  overcast: '<path d="M7 19h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.5A3.4 3.4 0 0 0 7 19z"/>',
-  fog: '<path d="M4 8h12M7 12h13M4 16h10M9 20h9"/>',
-  rain: '<path d="M7 15h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.5A3.4 3.4 0 0 0 7 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
-  snow: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/>',
-  wind: '<path d="M3 9h10a3 3 0 1 0-3-3M3 14h14a3 3 0 1 1-3 3M3 19h6"/>',
+  clear: ic('clear'),
+  cloudy: ic('cloudy'),
+  overcast: ic('overcast'),
+  fog: ic('fog'),
+  rain: ic('rain'),
+  snow: ic('snow'),
+  wind: ic('wind'),
 };
 export const wxIcon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.clear}</svg>`;
 
