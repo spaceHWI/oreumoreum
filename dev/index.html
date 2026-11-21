@@ -1092,6 +1092,18 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #quest-track.bump { animation: bump .45s ease-out; }
 @keyframes qpulse { 50% { opacity: .35; } }
 @media (max-width: 600px) { #quest-track { max-width: calc(100vw - 160px); min-height: 44px; gap: 6px; padding: 3px 3px 3px 7px; font-size: 13px; } #quest-track .ql { width: 38px; height: 38px; } }
+/* 대화 창 한 틀 (#190): 퀘스트 받기·끝내기(#quest)·동료(#mate-talk). 이름표(pop-head)·글(talk-say, 한 장 TALK.win.lines 줄, 넘으면 ▶)·버튼(늘 아래)
+   폭 min(92vw, 420px), 글은 낱말 단위 줄바꿈(keep-all), 창이 화면보다 크면 글만 줄고 버튼은 아래에 남음 */
+.talk { width: min(92vw, 420px); max-width: 100%; box-sizing: border-box; }
+.talk .pop-body { display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.talk :is(p, h2, .q-task, .q-rew, .q-name, .mt-line) { word-break: keep-all; overflow-wrap: anywhere; white-space: normal; }
+.talk .pop-head h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.talk .talk-say { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.talk .talk-next { align-self: flex-end; margin: -2px 0 4px; min-width: 44px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,.14); color: #ffd23f; font: 800 14px/1 var(--body); cursor: pointer; animation: talknext 1.1s ease-in-out infinite; }
+.talk .talk-next[hidden] { display: none; }
+.talk :is(.q-go, .mt-acts) { flex: none; margin-top: auto; }
+@keyframes talknext { 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .talk .talk-next { animation: none; } }
 #quest .pop { width: min(420px, 100%); }
 #quest .q-name { margin: 2px 0 8px; font: 800 19px/1.3 var(--display); color: #ffd23f; }
 #quest .q-name.side { color: #fff; }
@@ -1519,7 +1531,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-ae4f700081.js">(function () {
+<script data-main="main-178034f863.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1724,9 +1736,9 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 </div>
 <div id="quest-track" role="button" tabindex="0" title="퀘스트: 누르면 그쪽으로 걸어가요" hidden><i class="qm">!</i><span class="qt"></span><b class="qp"></b><svg data-i="quest-go" class="qa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g fill="currentColor" stroke="none"><path d="M11.092 2.58a1 1 0 0 1 1.75 -0.12l.062 0.12l8.005 17.36c.198 0.57 .05 1.2 -0.38 1.61a1.53 1.53 0 0 1 -1.46 0.39l-7.077 -2.4l-6.899 2.34a1.535 1.53 0 0 1 -1.52 -0.23l-.112 -.1c-.398 -0.39 -0.56 -0.95 -0.39 -1.56l.047 -.15l7.97 -17.28z"/></g></svg><small class="qd"></small><button type="button" class="ql" aria-label="퀘스트 목록 (L)" title="퀘스트 목록 (L)"><svg data-i="quests" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5h8"/><path d="M13 9h5"/><path d="M13 15h8"/><path d="M13 19h5"/><path d="M3 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M3 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/></svg></button></div>
 <div class="overlay dim" id="quest" hidden>
-  <div class="panel pop">
+  <div class="panel pop talk">
     <div class="pop-head"><h2 id="quest-who"></h2><button type="button" class="btn small" id="quest-close">닫기</button></div>
-    <div class="pop-body"><p class="q-name" id="quest-name"></p><div class="q-say" id="quest-say"></div><div class="q-task" id="quest-task"></div><div class="q-rew" id="quest-rew"></div><button type="button" class="btn primary q-go" id="quest-go">받기</button></div>
+    <div class="pop-body"><p class="q-name" id="quest-name"></p><div class="q-say talk-say" id="quest-say"></div><button type="button" class="talk-next" id="quest-next" hidden aria-label="다음 말">▶</button><div class="q-task" id="quest-task"></div><div class="q-rew" id="quest-rew"></div><button type="button" class="btn primary q-go" id="quest-go">받기</button></div>
   </div>
 </div>
 <div class="overlay dim" id="qlog" hidden>
@@ -1841,7 +1853,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   </div>
 </div>
 <div class="overlay" id="mate-talk" hidden role="dialog" aria-label="동료와 이야기">
-  <div class="panel pop">
+  <div class="panel pop talk">
     <div class="pop-head"><h2><i class="mt-bot" aria-hidden="true"></i><span class="mt-name"></span></h2><button type="button" class="btn small" id="mt-close">닫기</button></div>
     <div class="pop-body"><p class="mt-line"></p><div class="mt-acts"><button type="button" class="btn small" id="mt-more">또 얘기해요</button><button type="button" class="btn small primary" id="mt-follow" aria-pressed="false">같이 가요</button></div></div>
   </div>
