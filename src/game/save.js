@@ -46,7 +46,7 @@ if (!save.rides || typeof save.rides !== 'object') save.rides = {};
 save.rides.own = Array.isArray(save.rides.own) ? save.rides.own.filter((id, i, a) => RIDE_BY[id] && a.indexOf(id) === i) : [];
 if (!save.rides.own.includes(save.rides.cur)) save.rides.cur = save.rides.own[save.rides.own.length - 1] || null;
 save.rides.walk = save.rides.walk ? 1 : 0; // 1 = 탈것 없이 걸어 다니기를 골라 둠 (#109)
-save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.bowAmmo)) || 0)); // 귤 하나로 남은 화살 수
+save.bowAmmo = Math.max(0, Math.min(5, Math.floor(Number(save.bowAmmo)) || 0)); // 예전(귤 하나에 5발)에 남은 화살. 다 쓸 때까지 귤을 안 씀 (#178: 지금은 한 발에 귤 1개라 새로 채워지지 않음)
 // 무기 3~6단계 (#123): weaponUse = 골라 쓰는 무기 단계(가진 것 안), ammo = 총·머신건 귤 하나로 남은 발 수, 레이저는 남은 귤 몫 0~1 (활은 예전대로 bowAmmo)
 { const v = Math.floor(Number(save.weaponUse)); save.weaponUse = Math.max(1, Math.min(save.equip.weapon, Number.isFinite(v) && v > 0 ? v : save.equip.weapon)); }
 if (!save.ammo || typeof save.ammo !== 'object' || Array.isArray(save.ammo)) save.ammo = {};

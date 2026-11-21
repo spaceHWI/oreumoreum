@@ -166,7 +166,7 @@ function hairRow() { // 머리: 가진 머리는 눌러서 바꿈, 없는 것은
 const ammoText = (w) => {
   if (w.id === 'hand') return '한 번에 귤 1개';
   if (w.id === 'bomb') return `한 발 귤 ${w.cost}개`;
-  const left = w.id === 'bow' ? save.bowAmmo || 0 : save.ammo?.[w.id] || 0, per = w.id === 'laser' ? `귤 1개 = ${Math.round(1 / w.gyulPerSec)}초` : `귤 1개 = ${w.perGyul}발`;
+  const left = w.id === 'bow' ? save.bowAmmo || 0 : save.ammo?.[w.id] || 0, per = w.id === 'laser' ? `귤 1개 = ${Math.round(1 / w.gyulPerSec)}초` : w.perGyul === 1 ? '한 발에 귤 1' : `귤 1개 = ${w.perGyul}발`;
   return `${per}${left > 0 ? ` · 남은 ${w.id === 'laser' ? Math.round(left / w.gyulPerSec) + '초' : Math.floor(left) + '발'}` : ''}`;
 };
 function fillArm() {

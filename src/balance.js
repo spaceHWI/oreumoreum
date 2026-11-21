@@ -434,12 +434,12 @@ export const ENEMY_PACK = {
   spawnGap: 0.4, // 처음 놓을 때 몸 원 사이 여유(m)
 };
 // 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
-// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
+// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수 (활 1: 한 발에 귤 하나 #178)
 // cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
 // r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 5, price: GROWTH.price[2] },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
   { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },

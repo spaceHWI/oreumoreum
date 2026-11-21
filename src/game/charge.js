@@ -2,7 +2,7 @@
 // - 손·활·총·폭탄: 누르는 동안 모으고 놓을 때 쏨. CHARGE.start 초 전에 놓으면 예전 한 발 그대로
 // - 머신건·레이저: 누르는 동안 예전처럼 쏘면서 모으고, 놓는 순간 마무리(집중 연사·굵은 줄기, game/arms.js chargedArm)
 // - 모으는 동안 이동 CHARGE.slow 배, 사거리 늘어남(throw.js fireR). 받히거나 탈것·노루·마차에 타면 풀림(그때는 예전처럼 누르면 바로·이어 쏨)
-// - 귤: 손은 0 → cost 개, 무기는 한 발 몫 1 → cost 배 (모은 만큼). 모자라면 있는 만큼만 모임
+// - 귤: 손은 0 → cost 개, 무기는 한 발 몫 1 → cost 배 (모은 만큼, 활은 귤 1~3개로 반올림 #178). 모자라면 있는 만큼만 모임
 // - 멀티: 모으는 동안 presence cg(모은 정도), 센 샷은 무기 사건 wf 7번째 칸(arms.js sendShot). 받는 쪽은 같은 빛·센 탄을 그림
 import * as THREE from 'three';
 import { CHARGE, WEAPONS, BOW } from '../balance.js';
@@ -92,7 +92,7 @@ export function fireCharged(w, k) {
   tmpRng = ch.rng;
   const t = aimTarget() || state.lock;
   if (w.id === 'mg' || w.id === 'laser') { chargedArm(w, ch); tmpRng = 1; return true; }
-  if (!spend(w, w.id === 'hand' ? CHARGE.cost * k : 1 + (CHARGE.cost - 1) * k)) { tmpRng = 1; unpin(); fireWeapon(); return false; }
+  if (!spend(w, w.id === 'hand' ? CHARGE.cost * k : w.id === 'bow' ? Math.round(1 + (CHARGE.cost - 1) * k) : 1 + (CHARGE.cost - 1) * k)) { tmpRng = 1; unpin(); fireWeapon(); return false; } // 활은 귤 1~3개 통으로 (#178)
   C.shots.push({ w: w.id, k: +k.toFixed(2) }); if (C.shots.length > 20) C.shots.shift();
   player.target = null; player.onArrive = null; marker.visible = false; state.emo?.stop();
   if (w.id === 'hand') {
