@@ -224,6 +224,12 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .ach-head { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; }
 .ach-head h3 { font-family: var(--display); font-weight: 800; font-size: 18px; margin: 0; }
 .ach-head span { font-size: 12px; color: var(--ink-soft); }
+/* 오늘의 할 일 (#125): 갈래 꼬리표(싸움·치우기·만남)·셋 다 줄·이어 오기 */
+.ach-cat { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-right: 6px; color: #fff; vertical-align: 1px; }
+.ach-cat.c-fight { background: #c4513f; } .ach-cat.c-heal { background: #4f7a36; } .ach-cat.c-meet { background: #3c7fc9; }
+.ach-item.ach-all b { font-size: 13px; }
+#ach-run { display: block; margin: -2px 0 10px; font-size: 12px; font-weight: 600; color: var(--acc); }
+#ach-run:empty { display: none; }
 .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
 .badge { display: grid; justify-items: center; gap: 4px; text-align: center; font-size: 12px; padding: 6px 2px; border-radius: 8px; border: 0; background: transparent; }
 .badge small { color: var(--ink-soft); font-size: 11px; line-height: 1.25; }
@@ -1174,7 +1180,7 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 @keyframes whereSwap { 0% { opacity: 0; transform: translateY(5px); } 60% { opacity: 1; transform: translateY(-2px); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { #where.swap { animation: none; } }
 #xy[hidden] { display: none; } #xy { font-weight: 600; opacity: .7; } #xy .sep { font-style: normal; font-weight: 500; opacity: .6; margin: 0 3px; } /* 어드민 '좌표 보기' */
-/* 오늘의 업적 고리 */
+/* 오늘의 할 일 고리 */
 #ach-chip svg.ring { width: 18px; height: 18px; }
 #ach-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); margin-left: 1px; }
 #ach-chip .dot[hidden] { display: none; }
@@ -1452,7 +1458,7 @@ body.newbie .dock button span { display: block; }
   <div class="tb-g tb-r">
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg data-i="zone" class="zm"></svg><svg data-i="bloom" class="zf"></svg><b id="zone-n">1</b></div>
     <div class="panel tpill" id="xy-pill" data-tut="hud" title="지금 있는 곳"><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="where">들머리</b><b id="xy" hidden><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
-    <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 업적"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
+    <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 할 일"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
     <button type="button" class="panel tpill" id="fs-chip" title="전체 화면" aria-label="전체 화면" aria-pressed="false" hidden><svg data-i="fullscreen"></svg></button>
     <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg data-i="feedback"></svg><span class="fbl">의견 보내기</span><span class="fbs">의견</span><i class="fb-bub" id="fb-bub" hidden>불편한 점을 알려 주세요</i></button>
   </div>
@@ -1525,7 +1531,7 @@ body.newbie .dock button span { display: block; }
   <div class="m-wx" id="m-wx" aria-label="지금 날씨"></div>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
   <div class="tiles">
-    <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg data-i="ach"></svg>업적</button>
+    <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg data-i="ach"></svg>할 일</button>
     <button type="button" id="menu-dex"><svg data-i="dex"></svg>도감</button>
     <button type="button" id="menu-wardrobe"><svg data-i="bag"></svg>내 가방</button>
     <button type="button" id="menu-ride"><svg data-i="ride"></svg>탈것</button>
@@ -1663,7 +1669,8 @@ body.newbie .dock button span { display: block; }
   <div class="panel pop">
     <div class="pop-head"><h2>업적</h2><span class="coins-pill"><i></i><span id="ach-coins">0</span></span><button type="button" class="btn small" id="ach-dex" title="쓰레기 도감"><svg data-i="dex" width="16" height="16"></svg> 도감</button><button type="button" class="btn small" id="ach-close">닫기</button></div>
     <div class="pop-body">
-      <div class="ach-head"><h3>오늘의 업적</h3><span id="ach-date"></span></div>
+      <div class="ach-head"><h3>오늘의 할 일</h3><span id="ach-date"></span></div>
+      <span id="ach-run"></span>
       <div class="ach-list" id="ach-list"></div>
       <div class="ach-head" style="margin-top:14px"><h3>뱃지</h3><span id="ach-streak"></span></div>
       <div class="badges" id="badge-list"></div>
@@ -1797,7 +1804,7 @@ body.newbie .dock button span { display: block; }
       <span><b>줍기</b> 손 버튼(E) · 누르고 있으면 계속 주워요</span>
       <span><b>상호작용</b> 오른쪽 아래 버튼(F). 클린하우스·가게·돌탑·사진사 가까이 가면 그 동작, 아무것도 없으면 귤 던지기</span>
       <span><b>귤</b> 쓰레기를 클린하우스에 버리면 받아요. 던지면 노루·말이 먹고 따라와요</span>
-      <span><b>업적</b> 오늘의 업적은 매일 바뀌어요. 다 하면 귤과 뱃지를 받아요</span>
+      <span><b>업적</b> 오늘의 할 일 3개는 매일 바뀌어요. 이어서 오면 3·7·14일째 보상</span>
     </div>
     </div>
   </div>

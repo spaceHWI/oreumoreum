@@ -1,5 +1,5 @@
 // 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF } from '../balance.js';
+import { PERF, DAILY } from '../balance.js';
 import { TIER } from '../quality.js';
 import { createPhotographer } from '../photographer.js';
 import * as THREE from 'three';
@@ -46,9 +46,10 @@ state.emo = createEmotes({
   scene, player, save, persist, net, toast, sound: () => late.sound, camera, placeArrow: (el, wp, lift) => late.placeArrow(el, wp, lift), ui: document.body,
   can: emoCan, riding: emoRiding, heapPos: () => nearestHeapPos(), groundAt, myRoot: () => runner.root,
   faceTo: (x, z) => { player.heading = Math.atan2(x - player.pos.x, z - player.pos.z); },
-  onEmote: () => ach.emit('emote'),
+  onEmote: () => { ach.emit('emote'); if (emoteMeet()) ach.emit('emote-meet'); }, // #125 오늘의 할 일 '다른 사람에게 인사': 가까이 사람이 있을 때(방에 아무도 없으면 그냥 인사도)
 });
 state.emo.onChoose = (id) => doEmote(id);
+function emoteMeet() { const ps = [...net.peersById.values()]; return !ps.length || ps.some((e) => e.pos.distanceTo(player.pos) <= DAILY.meetR); }
 state.emo.bindWheel($('emo-wheel'));
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
 social.start();

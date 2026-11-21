@@ -1306,3 +1306,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 식사 무료(#93)는 두 식당 공통 한 번. 식사 업적 이벤트 'meal' 은 두 식당 모두, 만족한상회는 'meal-manjok' 도
 - 밤 불빛은 창·전구·빛웅덩이만, 낮엔 안 그림 (점광원·늘 그리는 투명 판을 두면 online.js 세 번째 브라우저가 30초 넘게 멈췄음)
 - 확인 `node tools/manjok.js [--shot]`
+
+## #125 오늘의 할 일·이어 오기
+- 예전 '오늘의 업적 5개'(achievements.js DAILY_POOL)를 '오늘의 할 일 3개' 로 바꿈. 목록·고르기·보상·이어 오기 셈은 `src/daily.js`(게임·서버·tools 같이 씀), 값은 `balance.js DAILY`
+- 날짜(한국 자정)로 정해져 모두 같음: 싸움·치우기·만남 하나씩, 어제와 같은 것은 피함. `x2: 'rain'|'night'` 할 일은 비·해 진 뒤에 두 배로 셈(창에 '지금 두 배')
+- '다른 사람에게 인사' 는 동작을 할 때 14m 안에 사람이 있으면(방에 아무도 없으면 그냥) 'emote-meet' 사건 (game/room.js)
+- 보상은 가 본 가장 깊은 구역(journey.maxZ)에 맞춤: 하나 50·70·200·500·1500, 셋 다 ×2 더, 이어 오기 3·7·14일째 ×2·×4·×6 + 뱃지(b-run-3·7·14, 귤 0). `tools/econ.js` 하루 보상 ≤ 그날 벌이 8%, 5일 목표 하루 안
+- 이어 오기: 튜토리얼을 마치고 들어와 있으면 하루 한 번 셈(hud.js dailyTick, 들어오고 6초 뒤), 같이 토스트 한 번. 하루 빠지면 1부터
+- 튜토리얼 중엔 할 일을 세지 않음(평생 기록은 셈). 저장 `save.ach.daily = { date, items, all, seen }`, `save.ach.run = { n, last, got }`. 예전 업적 저장은 그날 새 목록으로
+- 서버(#188 방식, `server/src/earn.js` 7): 받은 할 일·셋 다는 서버 날짜 오늘·어제 목록에 있는 것만 할 일마다 하루 한 번(cred.dl·dlp), 이어 오기는 서버가 저장을 받은 날로 따로 센 연속(cred.run) 안에서 한 번. 구역은 지난 저장 maxZ(+1 까지)
+- 확인 `node tools/daily.js [--shot]`, `tools/sec.js` 7줄, `tools/oldsave.js dailyOld,dailyBad`

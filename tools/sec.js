@@ -212,6 +212,26 @@ async function startServers() {
       ok(!r3.fixed.length, '우두머리 귤은 기록 뒤 저장에서 주워도 받아 줌 (bank)');
       r = checkSave(r3.save, { ...r3.save, coins: 100 + 5000, boss: { done: { 5: 2 } } }, { ...r3.acc, credit: 0, savedAt: t }, t + 6000);
       ok(r.fixed.includes('coins'), `같은 우두머리는 ${NET.earnRec.bossGap}초에 한 번만 인정`);
+      // 오늘의 할 일 (#125): 오늘 목록의 받은 할 일·셋 다는 몫으로 인정, 두 번·다른 날·없는 할 일은 거절, 이어 오기는 서버가 센 날까지만
+      const DL = await import('../src/daily.js'), day = DL.kstDayN(t), date = DL.kstDate(t), ids = DL.todaysTasks(date).map((x) => x.id);
+      const PZ = { ...P, journey: { maxZ: 3 } }, dg = DL.taskGyul(3) * 3 + DL.allGyul(3);
+      const dsave = (c, dd = date, list = ids, all = 1) => ({ ...PZ, coins: c, ach: { daily: { date: dd, items: list.map((id) => ({ id, prog: 1, done: true, claimed: true })), all } } });
+      r = checkSave(PZ, dsave(100 + dg), acc, t);
+      ok(!r.fixed.length && r.save.coins === 100 + dg && r.rec.why.daily === dg, `오늘의 할 일 셋 + 셋 다 보상(${dg})은 몫으로 인정`);
+      const r4 = checkSave(r.save, dsave(100 + dg * 2), { ...r.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
+      ok(r4.fixed.includes('coins') && r4.save.coins <= 100 + dg + NET.earnPerSec, '같은 날 할 일 보상 두 번 받기 거절');
+      r = checkSave(PZ, dsave(100 + dg, DL.dateOfDay(day - 3)), acc, t);
+      ok(r.fixed.includes('coins') && r.save.coins === 100, '사흘 전 할 일을 받았다고 하면 거절');
+      r = checkSave(PZ, dsave(100 + DL.taskGyul(3) * 3, date, ['t-nope', 't-x', 't-y'], 0), acc, t);
+      ok(r.fixed.includes('coins') && r.save.coins === 100, '오늘 목록에 없는 할 일은 거절');
+      const rg = DL.runGyul(3, 3);
+      let ra = checkSave(PZ, { ...PZ, coins: 100 + rg, ach: { run: { n: 3, last: day, got: [3] } } }, acc, t);
+      ok(ra.fixed.includes('coins') && ra.save.coins === 100, '서버가 하루만 본 계정의 이어 오기 3일째 보상은 거절');
+      let ac = { ...acc }, sv = PZ; for (let k = 2; k >= 0; k--) { const x = checkSave(sv, { ...sv }, { ...ac, credit: 0, bank: 0, savedAt: t - k * 864e5 }, t - k * 864e5); ac = x.acc; sv = x.save; }
+      ra = checkSave(sv, { ...sv, coins: sv.coins + rg, ach: { run: { n: 3, last: day, got: [3] } } }, { ...ac, credit: 0, bank: 0, savedAt: t }, t + 1000);
+      ok(!ra.fixed.length && ra.rec.why.run === rg, `사흘 이어서 저장한 계정의 이어 오기 3일째 보상(${rg})은 인정`);
+      const rb = checkSave(ra.save, { ...ra.save, coins: ra.save.coins + rg }, { ...ra.acc, credit: 0, bank: 0, savedAt: t + 1000 }, t + 2000);
+      ok(rb.fixed.includes('coins'), '이어 오기 보상 두 번 받기 거절');
     }
     /* ---------- 배낭 겉모습 (#164): 값 내고 사기·없는 것 지움 ---------- */
     {
