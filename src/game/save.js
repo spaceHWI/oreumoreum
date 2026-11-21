@@ -13,6 +13,7 @@ import { createAbStats } from '../server.js';
 import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
 import { normLoot, wearUp } from '../loot.js';
+import { ADJ, NOUN } from '../nickwords.js';
 
 export const $ = (id) => document.getElementById(id);
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -22,8 +23,7 @@ export const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // ---------- 저장 ----------
 export const KEY = saveKey(__DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1'); // 개발 서버는 기록을 따로. 로그인했으면 계정 사본 (#7)
-export const ADJ = ['작은', '느긋한', '고요한', '따스한', '부지런한', '수줍은', '씩씩한', '조용한'];
-export const NOUN = ['억새', '까마귀', '송이', '바람', '노루', '들꽃', '조랑말', '돌담'];
+export { ADJ, NOUN }; // 무작위 이름 낱말은 nickwords.js 에 (#162, 서버와 같이 씀)
 export const pick = (a) => a[Math.floor(Math.random() * a.length)];
 export const save = loadSave(KEY);
 const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 사람

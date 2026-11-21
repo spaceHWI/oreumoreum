@@ -3,7 +3,7 @@ import { HAIR } from '../balance.js';
 import { SKIN_TONES } from '../runner.js';
 import { MAPS } from '../maps.js';
 import { late } from './state.js';
-import { $, ADJ, NOUN, pick, save, CL, clothGear, syncEquipGear, lookS, persist, MAP_ID } from './save.js';
+import { $, save, CL, clothGear, syncEquipGear, lookS, persist, MAP_ID } from './save.js';
 import { spots } from './scene.js';
 import { runner, player } from './place.js';
 import { cam, followCam } from './camera.js';
@@ -11,7 +11,8 @@ import { closePanels, cancelAll, ach } from './hud.js';
 import { marker } from './input.js';
 import { net } from './room.js';
 import { LC_SLOTS, tintGear, lcClean, colorDots, markDots } from '../lookcolors.js'; // 기본 옷 색 (#155)
-import { LOOK_COLORS } from '../balance.js';
+import { LOOK_COLORS, NICK } from '../balance.js';
+import { cleanText, nickOk, randomNick } from '../safetext.js'; // 이름 (#162)
 
 Object.assign(late, { openSign, leaveTo }); // 옷장은 내 가방(#166, bag.js)으로 옮김 // 앞 파일에서 부르는 함수
 
@@ -41,8 +42,18 @@ export function openLook() {
   cancelAll(); player.target = null; marker.visible = false;
   lookS.open = true; lookS.t = 0; lookS.sex = save.look?.sex || 'm'; lookS.skin = save.look?.skin || 0; lookS.colors = lcClean(save.look?.colors);
   cam.mode = 'look'; $('look').hidden = false; document.body.classList.add('looking'); lookPreview();
+  $('look-nickrow').hidden = !!save.nickSet; $('look-nick').value = save.nick; checkLookNick(); // 처음 한 번만 이름을 지음. 정한 뒤 바꾸기는 이름 바꾸기 창 (#162)
+}
+// 이름 칸 (#162): 걸리면 칸 아래 한 줄만 보이고(어느 낱말인지는 말하지 않음) 시작 버튼이 눌리지 않음
+const lookNick = () => cleanText($('look-nick').value, NICK.max + 4);
+function checkLookNick() {
+  const ok = !!save.nickSet || nickOk(lookNick()), typed = $('look-nick').value.trim() !== '';
+  $('look-nick-err').hidden = ok || !typed; $('look-nick').setAttribute('aria-invalid', String(!ok)); $('look-ok').disabled = !ok;
+  return ok;
 }
 export function closeLook() {
+  if (!checkLookNick()) return false;
+  if (!save.nickSet) { save.nick = lookNick(); save.nickSet = 1; }
   save.look = { sex: lookS.sex, skin: lookS.skin, colors: lcClean(lookS.colors) };
   const start = HAIR.start[lookS.sex]; save.hairs[start] = 1;
   save.outfit.skin = { color: SKIN_TONES[lookS.skin] }; save.outfit.gear = { ...(save.outfit.gear || {}), hair: start }; syncEquipGear();
@@ -59,7 +70,9 @@ export function closeLook() {
   LC_SLOTS.forEach((k) => { const r = document.createElement('div'); r.className = 'lc-row'; r.innerHTML = `<span class="lc-k">${LOOK_COLORS.names[k]}</span>`; r.append(colorDots(k, 0, (i) => { lookS.colors[k] = i; lookPreview(); })); lc.append(r); });
   $('look-rand').addEventListener('click', () => { LC_SLOTS.forEach((k) => { lookS.colors[k] = Math.floor(Math.random() * LOOK_COLORS[k].length); }); lookPreview(); });
 }
-$('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; $('nick-mirror').textContent = save.nick; persist(); });
+$('look-nick').addEventListener('input', checkLookNick);
+$('look-nick').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('look-nick').blur(); } });
+$('look-nick-dice').addEventListener('click', () => { $('look-nick').value = randomNick(); checkLookNick(); });
 
 function openSign() { closePanels(); $('sign').hidden = false; ach.emit('sign'); }
 $('sign-body').innerHTML = spots.sign.html;

@@ -923,6 +923,25 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
   .look-skin button { width: 28px; height: 28px; }
   .look-ok { width: 50px; height: 50px; }
 }
+/* 이름 (#162): 캐릭터 고르기 맨 위 이름 칸, 이름 바꾸기 창 */
+.look-nick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: center; border-bottom: 1px solid var(--hair); padding-bottom: 10px; }
+.look-nick[hidden] { display: none; }
+.nk-in { flex: 1 1 auto; min-width: 0; max-width: 260px; height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hair); background: rgba(255,255,255,.12); color: #fff; font: 800 17px var(--display); text-align: center; }
+.nk-in:focus { outline: 0; border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc); }
+.nk-in[aria-invalid="true"] { border-color: #ff7a6b; box-shadow: 0 0 0 2px #ff7a6b; }
+.nk-dice { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255,255,255,.1); color: #fff; display: grid; place-items: center; flex: none; padding: 0; }
+.nk-dice svg { width: 24px; height: 24px; }
+.nk-err { flex: 1 1 100%; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: #ffb3a8; }
+.nk-err[hidden] { display: none; }
+.look-ok:disabled { filter: grayscale(1); opacity: .5; box-shadow: none; }
+.nk-pop { width: min(360px, calc(100vw - 32px)); }
+.nk-pop .pop-body { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.nk-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.nk-row .nk-in { max-width: none; }
+.nk-note { margin: 0; text-align: center; font-size: 12.5px; }
+.nk-go { width: 100%; justify-content: center; display: flex; align-items: center; gap: 6px; }
+.nk-go:disabled { filter: grayscale(1); opacity: .6; }
+.nk-go .g { width: 15px; height: 15px; border-radius: 50%; background: var(--gyul); display: inline-block; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 1.5px #fff; }
 /* 상점 옷 탭 머리 줄 (#51) */
 /* 옷 (#52): 칸마다 한 줄, 옷 그림 아래 단계 색 띠 */
 .wear-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1486,6 +1505,7 @@ button.bag-card { cursor: pointer; }
     <input type="range" id="music-vol" min="0" max="100" step="5" value="60" aria-label="배경 음악 크기">
   </div>
   <div class="m-more">
+    <button type="button" id="menu-nick">이름 바꾸기</button>
     <button type="button" id="menu-help">조작법</button>
     <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
@@ -1587,7 +1607,7 @@ button.bag-card { cursor: pointer; }
 <aside class="panel" id="wardrobe" hidden aria-label="내 가방">
   <div class="pop-head"><h2>내 가방</h2><div><button type="button" class="chip" id="wardrobe-shop">사러 가기</button> <button type="button" class="btn small" id="wardrobe-done">닫기</button></div></div>
   <div id="bag-tabs" class="shop-tabs bag-tabs" role="tablist" aria-label="내 가방 묶음"></div>
-  <div class="w-nick" id="bag-nick"><span>오늘 이름은 <b id="nick-mirror"></b></span><button type="button" class="chip" id="nick-reroll">다른 이름</button></div>
+  <div class="w-nick" id="bag-nick"><b id="nick-mirror"></b><button type="button" class="chip" id="nick-reroll">이름 바꾸기</button></div>
   <div id="wardrobe-body" class="pop-body"></div>
   <div id="bag-foot" class="bag-foot"></div>
 </aside>
@@ -1619,6 +1639,18 @@ button.bag-card { cursor: pointer; }
   </div>
 </div>
 
+<!-- 이름 바꾸기 (#162): 처음 한 번 무료, 그다음 귤. 하루 한 번. 로그인했으면 서버가 확인하고 귤을 뺌 -->
+<div class="overlay dim" id="nickwin" hidden>
+  <div class="panel pop nk-pop" role="dialog" aria-label="이름 바꾸기">
+    <div class="pop-head"><h2>이름 바꾸기</h2><button type="button" class="btn small" id="nickwin-close">닫기</button></div>
+    <div class="pop-body">
+      <div class="nk-row"><input type="text" id="nick-new" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="새 이름" aria-describedby="nick-new-err"><button type="button" class="nk-dice" id="nick-new-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.500"/><circle cx="9" cy="9" r="1.300" fill="currentColor"/><circle cx="15" cy="15" r="1.300" fill="currentColor"/><circle cx="15" cy="9" r="1.300" fill="currentColor"/><circle cx="9" cy="15" r="1.300" fill="currentColor"/></svg></button></div>
+      <p class="nk-err" id="nick-new-err" role="alert" hidden></p>
+      <p class="muted nk-note" id="nick-new-note"></p>
+      <button type="button" class="btn nk-go" id="nick-new-go"></button>
+    </div>
+  </div>
+</div>
 <div class="overlay dim" id="rank" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>랭킹</h2><button type="button" class="btn small" id="rank-close">닫기</button></div>
@@ -1718,6 +1750,7 @@ button.bag-card { cursor: pointer; }
 <!-- 캐릭터 고르기 (#51): 가운데 캐릭터가 돌아가며 보이고, 아래 카드에서 기본 머리(성별)·피부색을 고름 -->
 <div id="look" hidden>
   <div class="panel look-card" role="dialog" aria-label="캐릭터 고르기">
+    <div class="look-nick" id="look-nickrow"><input type="text" id="look-nick" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="이름" aria-describedby="look-nick-err"><button type="button" class="nk-dice" id="look-nick-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.500"/><circle cx="9" cy="9" r="1.300" fill="currentColor"/><circle cx="15" cy="15" r="1.300" fill="currentColor"/><circle cx="15" cy="9" r="1.300" fill="currentColor"/><circle cx="9" cy="15" r="1.300" fill="currentColor"/></svg></button><p class="nk-err" id="look-nick-err" role="alert" hidden>이 이름은 쓸 수 없어요</p></div>
     <div class="look-top">
       <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
       <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>
