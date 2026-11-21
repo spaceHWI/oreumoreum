@@ -1201,7 +1201,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - farCull(#79)이 장면의 무리를 거리로 감추는데 UFO 는 카메라를 따라다녀 `userData.noCull` 로 뺌
 
 ## #184 아이콘 리뉴얼 (2026-11-21)
-- 아이콘 세트 `src/icons.js`(128개): UI 는 Tabler Icons 3.52.0(MIT, `THIRD_PARTY.md`)에서 쓰는 것만 옮김(101) + 세트에 없는 것은 같은 24 격자·선 2 로 직접(27: 귤·귤 던지기·하르방·정낭·클린하우스·집게·갈퀴·돌탑·귤 총·머신건·레이저·마차·테왁 등). 만드는 도구 `tools/icongen.mjs`(MAP·OWN 표, `npm i --no-save @tabler/icons@3.52.0` 뒤 돌림)
+- 아이콘 세트 `src/icons.js`(139개): UI 는 Tabler Icons 3.52.0(MIT, `THIRD_PARTY.md`)에서 쓰는 것만 옮김(112) + 세트에 없는 것은 같은 24 격자·선 2 로 직접(27: 귤·귤 던지기·하르방·정낭·클린하우스·집게·갈퀴·돌탑·귤 총·머신건·레이저·마차·테왁 등). 만드는 도구 `tools/icongen.mjs`(MAP·OWN 표, `npm i --no-save @tabler/icons@3.52.0` 뒤 돌림)
 - 모두 id 로 부름: `icon(id)`/`ic(id)`. page.html 의 47개는 `<svg data-i="id"></svg>` 로 적고 build.mjs 가 채움. 게임 파일의 아이콘 표(상호작용 CTX_ICON·능력치·버프·팁·튜토리얼·날씨·증강·재료·탈것·가게·내 가방 탭·구역 완료)는 값만 `ic(id)` 로
 - 그림으로 갈아 끼우기: `src/iconart.js ICON_ART[id] = 주소` → `icon()`·뱃지가 그 그림을 씀. 뽑을 목록·설명 notes/icons.md 2절
 - 헷갈림 진단 표 notes/icons.md 1절. 결정: 배낭 칸·내 가방은 같은 창을 열어 같은 배낭 그림, 상점은 가게 건물(쇼핑백이 배낭과 닮음), 의견은 편지(말하기 말풍선과 구별), 업적 메달·랭킹 트로피·장비 점수 방패, 상호작용 기본은 누르는 손(과녁과 구별), 클린하우스는 지붕 아래 통(집 모양 셋 정리), 동작은 웃는 얼굴(걷기 사람과 구별)
