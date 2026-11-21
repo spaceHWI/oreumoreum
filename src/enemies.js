@@ -120,6 +120,13 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     sound?.boar?.(); if (!quiet) hooks.enemyWave?.(info);
     return info;
   }
+  // 들판 떼 (#173, game/swarm.js): 한 마리를 바로 쫓게. over 는 표 값을 덮음(swarm·기운·크기…), k 는 모양 크기 배(대장). ENEMY_SPAWN.max 와 따로 셈
+  function spawnSwarm(kind, x, z, over, pk = null, k = 1) {
+    const e = spawnOne(kind, x, z, over, pk);
+    if (k !== 1) { e.root.scale.setScalar(k); e.h *= k; }
+    e.state = 'charge'; e.st = 0; e.heading = player ? Math.atan2(player.pos.x - x, player.pos.z - z) : e.heading;
+    return e;
+  }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
   function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
 
@@ -162,7 +169,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function repel(e) {
     if (e.boss) { e.state = 'flee'; e.st = 0; e.ctl = null; sound?.boar?.(); hooks.bossRepel?.(e); return; } // #139 우두머리: 느린 화면·큰 전리품은 boss.js
     e.state = 'flee'; e.st = 0; e.bar.g.visible = false;
-    sound?.boar?.(); onToast(`${iga(e.def.name)} 놀라 도망가요`);
+    sound?.boar?.(); if (!e.def.swarm) onToast(`${iga(e.def.name)} 놀라 도망가요`); // 들판 떼(#173)는 너무 잦아 글 없이
     hooks.enemyRepel?.(e.kind, e.pos.clone(), e.def, e);
   }
 
@@ -342,7 +349,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     update, hitTest, hitArea, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
     activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
-    planWave, spawnPlan, spawnBoss, spawnStory, remove, hurt, hesitate, get stuck() { return stuckT; },
+    planWave, spawnPlan, spawnBoss, spawnStory, spawnSwarm, remove, hurt, hesitate, get stuck() { return stuckT; },
     leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave' && !e.boss) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),
     // 확인용

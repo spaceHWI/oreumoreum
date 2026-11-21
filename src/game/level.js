@@ -112,7 +112,7 @@ if (trash) trash.on((ev, d) => {
 // 적: 쫓아내면 경험치 + 귤 한 입
 { const prev = life.hooks.enemyRepel;
   life.hooks.enemyRepel = (kind, pos, def) => {
-    prev?.(kind, pos, def); gain('enemy', enemyXp(def));
+    prev?.(kind, pos, def); if (def.swarm !== 'mob') gain('enemy', enemyXp(def)); // 들판 떼 보통 적(#173)은 귤 조각으로 경험치 (swarm.js)
     const b = augV(save, 'bite'); if (b > 0 && !hp.isDown && !hp.pending) hp.set(hp.hp + b);
   }; }
 // 싸움 증강 (enemies.js hurt 뒤 hooks.afterHurt): 터지는 귤(둘레 피해), 신 귤(느려짐)

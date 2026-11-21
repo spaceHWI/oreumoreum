@@ -120,6 +120,8 @@ const SCENARIOS = {
   clean: { name: '다 치운 뒤(꽃)', prep: async (p) => p.evaluate(() => { const o = window.__oreum; o.setTod(13); o.setWeather('clear'); o.trash.api.heaps.forEach((h, i) => o.trash.setHeap(i, 0)); o.bloom?.finish?.(); }) },
   battle: { name: '전투 오름 몹 4 + 트럭', battle: true, prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
     each: () => { const o = window.__oreum, t = o.life.enemies.test; t.clear(); o.dumpers?.clear(); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; t.spawn(['boar', 'dog', 'piglet', 'alien'][k], Math.sin(a) * 9, Math.cos(a) * 9); } o.dumpers?.near('truck', 14); } },
+  swarm: { name: '들판 떼 (#173, 상한 마릿수)', battle: true, prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
+    each: () => { const o = window.__oreum, t = o.life.enemies.test; t.clear(); o.dumpers?.clear(); o.swarm?.fill(o.swarm.cap, ['piglet', 'dog'][Math.floor(Math.random() * 2)]); } },
   crowd: { name: `다른 사람 ${CROWD}명`, prep: async (p) => p.evaluate(() => { window.__oreum.setTod(13); window.__oreum.setWeather('clear'); }),
     each: (CROWD) => { const o = window.__oreum, P = o.player, f = o.net.test?.fake; if (!f) return; for (let k = 0; k < CROWD; k++) { const a = k * 2.4, r = 4 + (k % 10) * 3.5 + Math.floor(k / 10) * 2; f({ peer: 'fake' + k, presence: { x: P.pos.x + Math.sin(a) * r, z: P.pos.z + Math.cos(a) * r, h: a, nick: '러너' + k, pose: 'move', spd: k % 3 ? 3 : 0, o: null } }); } } },
   // #172 동료 3명과 다른 사람 3명을 견줌 (길목마다 내 앞에 세움). mates3 = 동료 셋, peers3 = 동료를 끄고 다른 사람 셋
