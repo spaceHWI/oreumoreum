@@ -1192,3 +1192,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `tools/econ.js`: 놀이의 10% 를 들판으로 셈(`SWARM.econ.share`, --noswarm 비교), 초당 쫓아내는 수 상한 0.6(tools/swarm.js 로 잰 0.44~0.58). '들판 떼 10분 귤' 표(초당 ≤ NET.swarmPerSec 도)·'마지막 칸이 하루 넘게 당겨지지 않음' 판정 더함. 2일 장비 단계 상한 3 → 4: 들판 몫이 길가보다 적어도 2일 벌이가 몇 % 늘어 효율 플레이가 경계(4단계)에 닿음 (#160 의 1일 상한과 같은 까닭)
 - `tools/perf.js` 시나리오 `swarm`(`__oreum.swarm.fill`: 상한만큼 둘레에)
 - 확인: `tools/perf.js desk day,battle,swarm` draw call 최대(평균) 낮 191(96) · 몹 4+트럭 205(104) · 떼 24마리 224(123), JS 7.9ms(전투 8.4) → 떼 적은 한 마리 약 1 그리기라 InstancedMesh 로 바꾸지 않고 상한 그대로. 폰(저사양 10마리) 131(전투 166). `tools/swarm.js`(속도 3배, 상한 24, 조각 쪽으로 피하며 달림, 200초): 구역 1 88마리·기운 0% · 2 115마리·15% · 3 385마리·28% · 4 38마리·5% · 5 109마리·43%, 쓰러짐 0. 대장·상자는 `__oreum.swarm.t(299)` 로 따로 봄. `tools/fight.js` 는 `__oreum.swarm.disable()` 로 떼 없이 잼
+
+## #131 사람 수에 맞춘 쓰레기 쌓이는 속도 · 빈 방은 빨리 다시 참 (2026-11-21)
+- 새 파일 `src/refill.js`(셈만, 게임·서버 같이 씀): `crowdMul(n)=n^DUMP.crowdExp(0.8)`, 한 사람 몫 `crowdShare=n^0.8/n`, 간격 배율 `crowdGap=min(crowdGapMax 1.5, 1/몫)`, 빈 동안 채움 `emptyFill(초, 구역)`·`offlineAdds`
+- 다시 쌓기를 방장만 → **각자 둘레 투기꾼·몹이 쌓은 것**으로 바꿈(`online.js linkTrash` putBack 이 늘 put 을 보냄). 방(`roomcore`)이 받아 줄지 정함: 방장 또는 '움직이는 사람'(최근 `crowdActive` 120초 안에 `crowdMove` 3m 넘게 움직였고 presence `tu`(튜토리얼 중) 아님), 한 사람 `putPerMin`, 방 전체 `putPerMin × crowd^0.8`. 예전엔 방장 아닌 사람 화면의 투기꾼은 모양만이었음
+- 사람 수 crowd: 방이 1초마다 세고 `crowdFollow` 60초에 걸쳐 따라감, hi 의 `np`·바뀌면 `{t:'np', n}`. 클라이언트 `state.crowd` → `pacing.js`(공격·투기꾼 간격 × crowdGap, 트럭 양 × 몫×간격 배율) · `dumpers.setPlayers`. 몹 무리 크기는 그대로(간격만)
+- 빈 방: `offlineMaxH` 8 → 1.5, `offlineHalfMin` 30, `offlineZone {1:0.6, 2:0.8}`(구역 1·2 먼저). 방이 마지막 사람이 나간 시각에서 첫 사람이 들어올 때 직접 채우고 hi 의 `fill` → '자리를 비운 사이 쓰레기 ○개가 다시 쌓였어요'. 혼자·손님은 `dumpers.catchUp` 이 같은 곡선(예전 무작위 방문 대신 더미마다 빈자리 × 비율). 방에 붙어 있으면 탭을 오래 숨겨도 내 화면에서 채우지 않음(`store.roomLive`)
+- 확인 도구 `tools/crowd.js`(빈 동안 표·방 가짜 시계·1/3/10/30명 1시간 표), `tools/econ.js --split K --gap 분`(하루 1시간을 나눠 하기), `__oreum.crowd.set(n)`
+- 결정·남은 점: 지수 0.8 로는 '30명도 40~70분' 이 안 됨(쌓는 양 n^0.8 vs 줍는 양 n, 가득에서 시작하면 30명 3.6분). 한 사람 일감(둘레 쌓임)은 30명 0.65배. 하루 1시간을 둘로 나누면 마지막 칸이 약 1시간(하루) 당겨지는데, 사이가 10~30분이어도 거의 같이 당겨져 90분을 늘려도 줄지 않음 → 하루 줍기 귤 상한 같은 다른 장치가 필요하면 따로. #157(쉬는 사람만 남은 방 = 빈 방)은 그 이슈에서

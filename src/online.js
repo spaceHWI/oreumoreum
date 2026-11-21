@@ -266,12 +266,13 @@ export function linkTrash(trash, room) {
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) { pend.set(h, (pend.get(h) || 0) + 1); if (!flushQ) { flushQ = true; queueMicrotask(flush); } } return ok; };
   // 동료 줍기 (#172): 방에는 {t:'btake', h} 로 (번 몫에 안 셈, 서버도 마지막 BUDDIES.keep 은 남김). 옛 서버는 모르는 메시지라 넘김 → 다음 hs 로 되돌아옴
   if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live) room.send({ t: 'btake', h }); return ok; }; }
+  // 다시 쌓기 (#131): 방장만이 아니라 각자 둘레 투기꾼·몹이 쌓은 것을 보냄. 받아 줄지는 방이 정함(움직이는 사람·방 전체 한도), 못 받으면 {t:'h'} 로 되돌아옴
   st.putBack = (h, n) => {
     if (!live) return o.putBack(h, n);
-    if (!room.isHost) return 0;
     const add = o.putBack(h, n); if (add) room.send({ t: 'put', h, n: add }); return add;
   };
   st.seen = () => (live ? seen : o.seen());
   st.setSeen = (t) => { if (live) seen = t; o.setSeen(t); };
+  st.roomLive = () => live; // 방에 붙어 있으면 빈 동안 몫은 방이 채움 (탭을 오래 숨겼다 와도 내 화면에서 채우지 않음)
   return { get live() { return live; } };
 }

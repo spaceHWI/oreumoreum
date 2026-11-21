@@ -8,9 +8,10 @@
 //   node tools/econ.js --skip      장비(도구·배낭·신발·무기)를 순서 없이 (#111): 튜토리얼 뒤에는 최고 단계 하나만 귤을 모아 바로 삼
 //   node tools/econ.js --flow       하루 끝 흐름 확인만 (#137)
 //   node tools/econ.js --noaug      레벨은 세되 증강(#159)을 고르지 않음 (비교용. 기본은 벌이 증강을 먼저 고름: 큰손·분리수거 달인·가벼운 발·노루 친구)
+//   node tools/econ.js --split 3   하루 1시간을 3번에 나눠 함 (#131: 나갔다 오면 그 사이 쓰레기가 다시 참). 사이 시간 --gap 분(기본 DUMP.offlineMaxH, 가득)
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
 // 가정 (모두 어림):
-// - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
+// - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH). --split 이면 나눈 판마다 그 사이(--gap 분) 빈자리를 src/refill.js 곡선으로 채움
 // - 한 번 나가기 = 클린하우스 → 구역 → 배낭이 찰 때까지 더미 돌며 줍기 → 클린하우스. 거리는 직선 × 1.15 (trash.estimate 와 같음)
 //   클린하우스는 들머리 + 오름 안 4곳 (#78): 더미마다 가장 가까운 곳까지 거리 (--one: 들머리 하나만, 비교용)
 // - 더미 사이 걷기 = 구역 더미를 가까운 것부터 한 바퀴 도는 거리 ÷ 쓰레기 수 × 주운 수
@@ -61,6 +62,8 @@ async function live() {
 async function main() {
   if (has('--live')) await live();
   const B = await import('../src/balance.js');
+  const RF = await import('../src/refill.js'); // #131 빈 동안 다시 참
+  const SPLIT = Math.max(1, +arg('--split', 1) || 1), GAP = +arg('--gap', B.DUMP.offlineMaxH * 60);
   const AG = await import('../src/augments.js');
   const { LEVEL } = B, NOAUG = has('--noaug');
   const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
@@ -222,7 +225,9 @@ async function main() {
       if (d === 0) { // 튜토리얼: 쓰레기 6개 → 첫 보너스 → 집게·배낭
         t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag'); st.tutDone = true;
       }
+      let nextSplit = 3600 / SPLIT;
       while (t < 3600) {
+        if (SPLIT > 1 && t >= nextSplit) { nextSplit += 3600 / SPLIT; st.left = zones.map((z, i) => Math.min(z.n, st.left[i] + (z.n - st.left[i]) * RF.emptyFill(GAP * 60, z.id))); cleanSeen = new Set(); st.cur = null; } // #131 나갔다 옴
         let b = best(st, e, cleanSeen) || (st.cur = null, best(st, e, new Set()));
         if (!b) { const sc = scoreOf(e, st.weapon); let j = 0; zones.forEach((z, k) => { if (sc >= z.rec * GROWTH.red) j = k; }); b = { i: j, r: { t: 30, gy: 0, m: 0 }, idle: true }; idleT += 30 * S; }
         const { r } = b; add(r.t); st.left[b.i] -= r.m; st.coins += r.gy; earned += r.gy; gainXp(r.xp);
