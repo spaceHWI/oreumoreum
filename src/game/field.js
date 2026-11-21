@@ -52,7 +52,7 @@ function closeDen(d, s) {
   act.delete(d.id); F.den[d.id] = Date.now(); persist(); field.dirty();
   life.scatterTangerines(v3(d, 0.8), FIELD.den.gyul[d.zone] || 0, ENEMY_DROP.max);
   toast('소굴을 닫았어요! 떨어진 귤을 주워요', 3); late.sound?.coin?.();
-  late.denLoot?.(d, s); // 다음 이슈(전리품·재료)가 씀
+  late.denLoot?.(d, s); // 재료 묶음·장비 (#140 game/loot.js)
   late.questEv?.('den@' + d.zone); // 퀘스트 (#158)
 }
 function tickDens(dt) {
@@ -87,7 +87,7 @@ function openTreasure(t) {
   life.scatterTangerines(chestPos(t).setY(t.y + 0.8), FIELD.treasure.gyul[t.zone] || 0, ENEMY_DROP.max);
   toast('숨은 보물! 귤이 쏟아져요', 3); late.sound?.coin?.();
   if (Math.random() < FIELD.treasure.rare) { const rares = DEX_LIST.filter((x) => x.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); setTimeout(() => onDexGet(dx, isNew), 1200); }
-  late.treasureLoot?.(t); // 다음 이슈(장비 드롭)가 씀
+  late.treasureLoot?.(t, chestPos(t)); // 재료·장비 (#140 game/loot.js)
 }
 if (field) for (const t of field.treasures) interactables.push({ label: '보물 열기', ic: 'chest', pos: chestPos(t), r: FIELD.treasure.r, when: () => !trGot(t), act: () => openTreasure(t) });
 

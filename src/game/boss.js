@@ -5,7 +5,7 @@
 //   여럿이면 기운이 사람 수에 맞춰 늚(남은 비율은 지킴). 쓰러지면 마지막으로 지난 구역 클린하우스에서 깨어남(hp.js startAt → late.wakeAt)
 // - #183 싸움이 풀리면(모두 leash 밖·쓰러짐) 기운은 그대로, 빈터로 걸어 돌아가 ZONE_BOSS.rest.delay 초 쉰 뒤 천천히 참(enemies.js restRegen). 단계는 기운 비율대로
 //   풀린 뒤 parting 초 안에 마지막으로 때린 사람 쪽으로 돌진 한 번(맞히고 달아나기 막기). 사라졌다 다시 나와도 남은 기운은 kept 로 이어짐(그동안 찬 만큼 더해)
-// - 쫓아내면: 느린 화면 + 큰 전리품(귤 + 귀한 재료 자리 save.boss.mats, #140 강화가 씀) → 돌하르방(guard.js raise) → 구역 완료 요약 한 장
+// - 쫓아내면: 느린 화면 + 큰 전리품(귤 + 귀한 재료·재료·장비, #140 game/loot.js `late.bossLoot`. save.boss.mats 는 쫓아낸 기록) → 돌하르방(guard.js raise) → 구역 완료 요약 한 장
 // - 구역 완료(save.boss.done)로 열리는 것: 그 구역 클린하우스 옆 '빠른 마차'(가게 거리까지 기다림 없이), 구역 들어오는 곳 옆 '지름길'(구역 위쪽 끝으로), 요약에 다음 구역 권장 점수
 //   (빠른 마차·지름길은 지금은 화면이 어두워졌다 밝아지는 임시 연출. 길·마차 모양은 나중에)
 // - 멀티: 방장이 굴림. {t:'bs'} 로 자리·기운·패턴을 알리고, 받는 쪽은 그대로 보이고(puppet) 맞힌 피해를 {t:'bh'} 로 방장에게. 경고·맞음은 각자 화면에서 제 캐릭터만 셈
@@ -141,6 +141,7 @@ function spawn(z, puppet = false, at = null) {
     if (bfx && Math.hypot(x - player.pos.x, zz - player.pos.z) < 160) { bfx.ring(x, zz, 7, 1.0, '#e9d2a6', 0, 1.4); bfx.burst(x, height(x, zz) + 0.3, zz, { petals: lite() ? 10 : 40, sparks: 0, up: 3, spread: 2, color: '#b8a07c' }); }
     late.sound?.boar?.();
   }
+  if (!puppet) late.story?.bossCome?.(z, name(z)); // 이야기 이벤트 (#168): 회의 주최자·UFO 도입
   if (Math.hypot(x - player.pos.x, zz - player.pos.z) < B.near + 10) say('danger', 'bossCome', `${zoneShort(z)} 우두머리 '${name(z)}'${josaIGa(name(z))} 빈터에 나타났어요!`, 3.2, { ttl: 8 });
   enemyWarn.start({ x, z: zz });
   return cur;
@@ -377,12 +378,13 @@ function defeated(c, mine) {
   if (!mine) { if (near) say('quest', 'bossBeat', `${name(z)}${josaEulReul(name(z))} 쫓아냈어요!`, 2.8, { ttl: 6 }); return; }
   // 보상: 귤(분수처럼) + 귀한 재료 자리
   life.scatterTangerines(pos, D.gyul, B.loot);
-  S.mats[D.mat] = (S.mats[D.mat] || 0) + 1;
+  S.mats[D.mat] = (S.mats[D.mat] || 0) + 1; // 우두머리 기록 (쓰는 재료 주머니는 save.mats, #140)
+  late.bossLoot?.(z, pos); // #140 귀한 재료·재료·장비가 분수처럼 (game/loot.js)
   const first = !isDone(z); S.done[z] = (S.done[z] || 0) + 1;
   const log = logOf(z), got = { gyul: D.gyul, mat: D.mat, first, log: { ...log, repel: log.repel + 1 }, s0: log.s0 };
   delete S.log[z]; persist();
   say('quest', 'bossBeat', `${name(z)}${josaEulReul(name(z))} 쫓아냈어요! 귤 ${D.gyul} · ${D.mat}`, 3.4, { ttl: 8 });
-  late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel');
+  late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel'); late.lvGain?.('boss'); // 경험치 (#159) late.story?.bossBeat?.(z); // #168 관광버스·엔딩
   pendingSummary = { z, got, at: nowS() + ZONE_GUARD.afterBloom + B.summaryAt }; // 하르방이 솟는 동안 보고 나서
 }
 let pendingSummary = null;

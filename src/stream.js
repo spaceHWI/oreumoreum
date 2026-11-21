@@ -179,7 +179,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
   }
 
   /* 빠짐 → 떠내려감 → 줄에 걸림 → 건져 올림 */
-  let lastSide = -1, res = null, t = 0;
+  let lastSide = -1, res = null, t = 0; const hooks = {};
   const inWater = (x, z) => { const [al, lat] = local(x, z); return Math.abs(lat) < S.far && Math.abs(al - centerOff(lat)) < hw(lat) - 0.2 && groundAt(x, z) - height(x, z) < 0.05; };
   const flowHead = Math.atan2(ux, uz), chest = new THREE.Vector3(), bobTo = new THREE.Vector3();
   function begin(p) {
@@ -206,7 +206,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
     for (const r of rings) { r.t += dt; const k = Math.max(0, r.t) / 0.9; r.m.material.opacity = r.t < 0 || k > 1 ? 0 : 0.7 * (1 - k); r.m.scale.setScalar(1 + k * 3); }
     if (!p) return false;
     if (!res) { const [al, lat] = local(p.pos.x, p.pos.z), d = al - centerOff(lat); if (Math.abs(d) > hw(lat)) lastSide = Math.sign(d); }
-    if (!res && !p.air && !p.riding && inWater(p.pos.x, p.pos.z)) begin(p);
+    if (!res && !p.air && !p.riding && inWater(p.pos.x, p.pos.z) && !hooks.float?.(p)) begin(p); // 테왁 배낭이면 빠지지 않고 뜸 (#164, game/punk.js)
     if (!res) return false;
     const R = res; R.t += dt;
     const flail = (k) => { p.heading = flowHead + Math.sin(R.t * 2.6) * 0.8 * k; };
@@ -241,5 +241,5 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
     }
     return true;
   }
-  return { update, local, splash, ring, waterY, inWater, onBridge, centerOff, halfW: hw, walls, npcPos: [nx, nz], get busy() { return !!res; }, get phase() { return res && (res.t < res.T1 ? 'sink' : res.t < res.T2 ? 'drift' : res.t < res.T3 ? 'catch' : 'reel'); }, slabs, bridge: { span, halfW: B.halfW }, npc, W, near: (side, lat = 0) => at(side * (W + 1.6), lat), at };
+  return { hooks, update, local, splash, ring, waterY, inWater, onBridge, centerOff, halfW: hw, walls, npcPos: [nx, nz], get busy() { return !!res; }, get phase() { return res && (res.t < res.T1 ? 'sink' : res.t < res.T2 ? 'drift' : res.t < res.T3 ? 'catch' : 'reel'); }, slabs, bridge: { span, halfW: B.halfW }, npc, W, near: (side, lat = 0) => at(side * (W + 1.6), lat), at };
 }

@@ -2,6 +2,7 @@
 import { TEXCS } from '../boot.js';
 import { createTrash, createLocalTrashStore } from '../trash.js';
 import { CLEANHOUSE, CAIRN, TUT, SHOPS, LIFE_MODELS, ZONE_LOOK } from '../balance.js';
+import { weaponMul } from '../loot.js';
 import { rideRig, createCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import { createShopStreet, SHOP_BUILD, createRoofSigns } from '../shops.js';
@@ -69,7 +70,7 @@ if (spots.jumpStones) { const J = spots.jumpStones, c = Math.cos(J.dir), s = Mat
   for (let i = -3; i <= 3; i++) { const x = J.pos.x + c * i * 0.85 + s * Math.sin(i * 2.1) * 0.25, z = J.pos.z - s * i * 0.85 + c * Math.sin(i * 2.1) * 0.25; const st = new THREE.Mesh(geo, mat); st.position.set(x, height(x, z) + 0.12, z); st.rotation.set(i * 1.3, i * 2.2, i * 0.7); st.scale.set(1.1, 0.62 + 0.12 * Math.sin(i * 3), 0.9); st.castShadow = true; st.receiveShadow = true; scene.add(st); } }
 // 생태계 · 하르방 · 표지판
 export const life = createLife({ scene, onToast: (m) => late.toast(m), rnd, hooks: {}, spots });
-life.hooks.dmgMul = () => buff.mul('dmg'); // 식사 버프(#50) 귤 던지기 피해
+life.hooks.dmgMul = () => buff.mul('dmg') * weaponMul(save); // 식사 버프(#50) 귤 던지기 피해
 spots.hareubangs.forEach((h) => life.addHareubang(h.pos, h.heading));
 if (!spots.sign.silent) { const sg = buildSign(spots.sign.board); sg.position.copy(spots.sign.pos); sg.rotation.y = spots.sign.rot; scene.add(sg); }
 

@@ -7,6 +7,7 @@
 //   node tools/econ.js --norides   탈것(#69) 없이 (비교용)
 //   node tools/econ.js --skip      장비(도구·배낭·신발·무기)를 순서 없이 (#111): 튜토리얼 뒤에는 최고 단계 하나만 귤을 모아 바로 삼
 //   node tools/econ.js --flow       하루 끝 흐름 확인만 (#137)
+//   node tools/econ.js --noaug      레벨은 세되 증강(#159)을 고르지 않음 (비교용. 기본은 벌이 증강을 먼저 고름: 큰손·분리수거 달인·가벼운 발·노루 친구)
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
 // 가정 (모두 어림):
 // - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
@@ -30,8 +31,12 @@
 //   열린 것 하나를 나가기마다 닫음(다가가기 20초 + 무리 쫓아내기, FIELD.den.reopen 마다 다시), 숨은 보물은 일하는 구역 것을 하루 한 번(25초씩), 볼거리는 처음 한 번(20초)
 //   (--nofield: 들판 없이, --nospots: 들판 더미만 두고 소굴·보물·볼거리 없이, 비교용)
 // - 우두머리 (#139): 일하는 구역이 ZONE_BOSS.appear 만큼 깨끗하고 장비 점수가 빨강이 아니면 쫓아냄 (돌하르방이 서 있는 holdSec 동안은 다시 안 나옴). --noboss 는 비교용
+// - 레벨·증강 (#159): 경험치는 LEVEL.xp 그대로 (쓰레기·더미·적·투기꾼·우두머리) + 퀘스트(#158)는 하루 QUEST_N 개 × quest 평균으로 어림.
+//   레벨업마다 src/augments.js rollDraw 3개 중 벌이에 드는 것을 먼저 고름(가장 빨라지는 쪽, 증강이 5일 목표를 얼마나 당기는지 보려고)
 // - 흐름 (#137, notes/growth-loop.md 4절): 하루 끝 장비 단계(도구·배낭·신발 가장 낮은 것)와 그때까지 다 치운 구역이
 //   1일 구역 1·2단계, 2일 구역 3까지·3단계, 3일 4단계, 4일 구역 4, 5일 5단계·구역 5 인지 봄 (단계는 빠르지도 늦지도 않게)
+// - 재료·강화 (#140, src/loot.js): 적 쫓아내기 LOOT.enemy.mat · 소굴 LOOT.den.mats · 보물 LOOT.treasure.mats · 우두머리 귀한 재료 1 + LOOT.boss.mats (그 구역 재료, 기댓값으로 셈)
+//   강화는 그 칸이 마지막 단계(도구·배낭·신발·옷 5, 무기 6)일 때만 (낮은 단계를 강화하면 새 단계를 살 때 귤로 바뀌어 헛됨: 넉넉히 셈). 칸 10개가 모두 +5 인 날 → 목표 6~14일 (--noenh 강화 없이)
 const fs = require('fs'), path = require('path');
 const MAP = path.join(__dirname, 'econ-map.json');
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i < 0 ? d : process.argv[i + 1]; };
@@ -53,8 +58,13 @@ async function live() {
 async function main() {
   if (has('--live')) await live();
   const B = await import('../src/balance.js');
+  const AG = await import('../src/augments.js');
+  const { LEVEL } = B, NOAUG = has('--noaug');
+  const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
+  const AUG_PRI = ['bighand', 'recycle', 'light', 'deer', 'magnet', 'flower', 'bite', 'jacket', 'twin', 'burst', 'sour', 'quick']; // 벌이에 드는 것부터
   const { RIDES } = B;
-  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD } = B;
+  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY } = B;
+  const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
   const FRONTS = has('--one') || !map.fronts ? [map.front] : map.fronts; // 가장 가까운 클린하우스 기준 (#78)
@@ -78,11 +88,13 @@ async function main() {
     let tour = 0; { const left = hs.slice(); let cur = left.shift(); while (cur && left.length) { let bi = 0, bd = 1e9; left.forEach((h, i) => { const dd = Math.hypot(h.x - cur.x, h.z - cur.z); if (dd < bd) { bd = dd; bi = i; } }); tour += bd * DETOUR; cur = left.splice(bi, 1)[0]; } }
     const g = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0) * (Z.gv || 1) * hs.reduce((s, h) => s + h.n * h.gv, 0) / n; // 쓰레기 산은 귤 × gv
     const v = Z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0);
-    return { id: Z.id, name: Z.name, n, avgD, step: tour / n, g, v, rec: Z.rec };
+    const hx = hs.reduce((s, h) => s + (h.k === 'mt' ? LEVEL.xp.mt : LEVEL.xp.heap), 0) / n; // 쓰레기 하나에 얹히는 더미 경험치 (#159)
+    return { id: Z.id, name: Z.name, n, avgD, step: tour / n, g, v, rec: Z.rec, hx };
   });
   const TOTAL = zones.reduce((s, z) => s + z.n, 0);
   // 쓰레기 하나 귤: 클린하우스 귤 × (1 + 베스트) + 드문 것(모자 배수)
-  const gOf = (z, e) => z.g * (1 + wv(e, 'vest')) + DEX.rareChance * wv(e, 'hat') * DEX.rareGyul;
+  const ag = (e, id) => (e.aug ? (e.aug[id] || 0) * AG.AUG_BY[id].v : 0); // 증강 값 (#159, 장비 값에 더함)
+  const gOf = (z, e) => z.g * (1 + wv(e, 'vest') + ag(e, 'recycle')) + DEX.rareChance * wv(e, 'hat') * DEX.rareGyul;
   const value = (e) => zones.reduce((s, z) => s + z.n * gOf(z, e), 0);
 
   const NORIDE = has('--norides'), SKIP = has('--skip'), RIDE_FLAT = 0.35, RIDE_OFF = 0.3, RIDE_T = 2;
@@ -90,20 +102,21 @@ async function main() {
   function travel(e, d) {
     const walk = 2 * d / spdOf(e), R = e.ride ? RIDES.list[e.ride - 1] : null; if (!R) return walk;
     const m = (1 - RIDE_OFF) + RIDE_OFF * RIDES.off, b = RIDES.base * m;
-    const fl = b * R.flat, up = R.up ? b * R.up : RIDES.carry * SHOES[e.shoes - 1].speed, dn = b * R.down;
+    const rk = 1 + ag(e, 'deer'), fl = b * R.flat * rk, up = R.up ? b * R.up * rk : RIDES.carry * SHOES[e.shoes - 1].speed, dn = b * R.down * rk;
     const t = d * (RIDE_FLAT / fl + (1 - RIDE_FLAT) / up) + d * (RIDE_FLAT / fl + (1 - RIDE_FLAT) / dn) + RIDE_T;
     return Math.min(walk, t);
   }
-  const toolOf = (e) => TOOLS[e.tool - 1], capOf = (e) => (e.bag ? BAGS[e.bag - 1] : POCKET).cap + wv(e, 'bottom'), spdOf = (e) => RUN * SHOES[e.shoes - 1].speed;
+  const toolOf = (e) => TOOLS[e.tool - 1], capOf = (e) => (e.bag ? BAGS[e.bag - 1] : POCKET).cap + wv(e, 'bottom'), spdOf = (e) => RUN * SHOES[e.shoes - 1].speed * (1 + ag(e, 'light'));
   // 한 번 나가기 (구역 z, 남은 수 left): 걸리는 초·귤·주운 수
   function trip(z, left, e) {
     const tool = toolOf(e), m = Math.min(left, Math.max(1, Math.floor(capOf(e) / z.v))), sp = spdOf(e);
-    const t = travel(e, z.avgD) + m * z.step / sp + m * tool.time / tool.per + CLEANHOUSE.dumpTime;
-    return { t, gy: m * gOf(z, e), m };
+    const t = travel(e, z.avgD) + m * z.step / sp + m * tool.time / tool.per / (1 + ag(e, 'bighand')) + CLEANHOUSE.dumpTime; // 큰손: 한 번에 더 주움
+    return { t, gy: m * gOf(z, e), m, xp: m * (LEVEL.xp.trash + z.hx) };
   }
   const clearT = (z, e) => { let t = 0, left = z.n; while (left >= 1) { const r = trip(z, left, e); t += r.t; left -= r.m; } return t; };
   // 장비 점수 (#137, src/gearscore.js 와 같은 셈. 등급·강화는 아직 없음)
-  const SC = GROWTH.score, scoreOf = (e, w) => SC[e.tool] + SC[e.bag] + SC[e.shoes] + SC[w] + WEAR.slots.reduce((s, x) => s + SC[e[x.k]], 0);
+  const SC = GROWTH.score, EN = (e, k) => (e.enh && e.enh[k]) || 0, isc = (t, e, k) => LT.itemPts({ t, g: 0, e: EN(e, k) });
+  const scoreOf = (e, w) => isc(e.tool, e, 'tool') + isc(e.bag, e, 'bag') + isc(e.shoes, e, 'shoes') + isc(w, e, 'weapon') + WEAR.slots.reduce((s, x) => s + isc(e[x.k], e, x.k), 0); void SC;
   // 구역 고르기: 빨강이 아닌 구역 중 쓰레기가 남은 가장 높은 구역, 없으면 남은 가장 낮은 구역 (--greedy: 구역 귤 ÷ 다 치우는 시간이 가장 큰 구역부터)
   const GREEDY = has('--greedy');
   const best = (st, e, done) => {
@@ -138,7 +151,8 @@ async function main() {
   const GEAR = ['tool', 'bag', 'shoes'], WK = WEAR.slots.map((w) => w.k);
   function run(mode, slack) {
     const battle = mode === 'battle', S = 1 + slack; // 모든 행동 시간에 여유를 곱함 (벌지 않는 시간이 고르게 섞임)
-    const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0, denAt: {}, trDay: -1, trGot: new Set(), sights: new Set(), bossAt: {} };
+    const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W, enh: {}, aug: {} }, st = { xp: 0, lv: 1, lvSave: { lv: { aug: null } }, mats: {}, enhDay: 0, enhN: 0, coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0, denAt: {}, trDay: -1, trGot: new Set(), sights: new Set(), bossAt: {} };
+    st.lvSave.lv.aug = e.aug; // 증강 뽑기(#159)가 지금 겹친 수를 봄
     const buys = [], days = [], LIST = { tool: TOOLS, bag: BAGS, shoes: SHOES };
     // 다음 단계: 도구·배낭·신발·무기는 순서대로. 옷은 순서 없이 살 수 있지만 계산은 한 단계씩 다 산다고 봄 (값을 넉넉히 셈)
     // --skip (#111): 튜토리얼 뒤 장비는 최고 단계만 (건너뛴 단계 값은 안 냄)
@@ -165,54 +179,73 @@ async function main() {
     const econ = (k) => GEAR.includes(k) || ECON_W.includes(k) || k === 'weapon' || k === 'ride';
     const gearMin = () => Math.min(e.tool, e.bag, e.shoes), gearMax = () => GEAR.every((k) => !next(k));
     const ok = (k) => econ(k) || gearMax() || next(k).tier <= gearMin();
-    const shop = () => { for (;;) { const ks = kinds.filter((k) => next(k) && st.coins >= next(k).price && ok(k)); if (!ks.length) return; buy(ks.sort((a, b) => gain(b) - gain(a))[0]); } };
+    const gotMat = (z, n, rare = 0) => { const M = LT.matOfZone(z); st.mats[M.id] = (st.mats[M.id] || 0) + n; if (rare) st.mats[M.rare] = (st.mats[M.rare] || 0) + rare; };
+    // 강화 (#140): 마지막 단계 칸만, 강화가 낮은 칸부터
+    const FINAL = Object.fromEntries([...GEAR, ...WK].map((k) => [k, 5])); FINAL.weapon = topOf('weapon') + 1;
+    const enhAll = () => [...GEAR, ...WK, 'weapon'].every((k) => EN(e, k) >= GROWTH.enhMax);
+    const enhShop = () => { if (NOENH || !battle) return; for (;;) {
+      const ks = [...GEAR, ...WK, 'weapon'].filter((k) => cur(k) === FINAL[k] && EN(e, k) < GROWTH.enhMax).sort((a, b) => EN(e, a) - EN(e, b));
+      const k = ks.find((k) => { const c = LT.enhCost(cur(k), EN(e, k)); return st.coins >= c.gyul && (st.mats[c.mat] || 0) >= c.n && (!c.rn || (st.mats[c.rare] || 0) >= c.rn); }); if (!k) return;
+      const c = LT.enhCost(cur(k), EN(e, k)); st.coins -= c.gyul; st.mats[c.mat] -= c.n; if (c.rn) st.mats[c.rare] -= c.rn; e.enh[k] = EN(e, k) + 1; st.enhN++;
+      if (enhAll() && !st.enhDay) st.enhDay = Math.min(st.tAll, dayEnd); } };
+    const shop = () => { for (;;) { const ks = kinds.filter((k) => next(k) && st.coins >= next(k).price && ok(k)); if (!ks.length) break; buy(ks.sort((a, b) => gain(b) - gain(a))[0]); } enhShop(); };
+    // 경험치 (#159): 레벨업마다 3개 중 벌이에 드는 것을 고름
+    const gainXp = (x) => {
+      if (!(x > 0)) return; st.xp += x;
+      for (let lv = AG.levelOf(st.xp).lv; st.lv < lv; st.lv++) {
+        if (NOAUG) continue;
+        const d = AG.rollDraw(st.lvSave); if (!d) continue;
+        const id = d.slice().sort((a, b) => AUG_PRI.indexOf(a) - AUG_PRI.indexOf(b))[0]; e.aug[id] = (e.aug[id] || 0) + 1;
+      }
+    };
     const cleared = new Set(); let idleT = 0, dumpT = 0, mobT = 0, cleanSeen, dayEnd = 3600, earned = 0;
     const zoneClean = (i) => 1 - st.left[i] / zones[i].n;
-    for (let d = 0; d < 7; d++) {
+    for (let d = 0; d < DAYS; d++) {
       st.left = zones.map((z) => z.n); cleanSeen = new Set(); st.cur = null;
       let t = 0; const t0 = st.tAll, earned0 = earned; idleT = 0; dayEnd = t0 + 3599; // 하루 1시간을 넘긴 마지막 나가기에서 산 건 그날 끝으로 셈
       const add = (dt) => { t += dt * S; st.tAll += dt * S; };
+      gainXp(QUEST_N[Math.min(d, QUEST_N.length - 1)] * QUEST_XP); // 퀘스트 (#158, 어림): 하루 처음에 한꺼번에
       if (d === 0) { // 튜토리얼: 쓰레기 6개 → 첫 보너스 → 집게·배낭
         t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag'); st.tutDone = true;
       }
       while (t < 3600) {
         let b = best(st, e, cleanSeen) || (st.cur = null, best(st, e, new Set()));
         if (!b) { const sc = scoreOf(e, st.weapon); let j = 0; zones.forEach((z, k) => { if (sc >= z.rec * GROWTH.red) j = k; }); b = { i: j, r: { t: 30, gy: 0, m: 0 }, idle: true }; idleT += 30 * S; }
-        const { r } = b; add(r.t); st.left[b.i] -= r.m; st.coins += r.gy; earned += r.gy;
+        const { r } = b; add(r.t); st.left[b.i] -= r.m; st.coins += r.gy; earned += r.gy; gainXp(r.xp);
         if (!b.idle && st.left[b.i] < 1) { cleanSeen.add(zones[b.i].id); cleared.add(zones[b.i].id); }
         // 투기꾼
         dumpT += r.t * S;
         while (dumpT >= DUMP.every) {
           dumpT -= DUMP.every; const truck = Math.random() < DUMP.truckP, def = truck ? DUMP.truck : DUMP.walker;
-          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); st.coins += def.reward - Math.ceil(k.gy); earned += def.reward - Math.ceil(k.gy); }
+          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); gainXp(LEVEL.xp.dumper); st.coins += def.reward - Math.ceil(k.gy); earned += def.reward - Math.ceil(k.gy); }
           else { const wts = zones.map((z, i) => DUMP.zoneBase + zoneClean(i)), sum = wts.reduce((a, c) => a + c, 0); let x = Math.random() * sum, i = 0; while (i < 4 && x > wts[i]) { x -= wts[i]; i++; } st.left[i] = Math.min(zones[i].n, st.left[i] + (truck ? 80 : DUMP.walker.amt)); }
         }
         // 몹
         if (battle) {
           mobT += r.t * S * MOB_IN; const kind = ENEMY_SPAWN.byZone[zones[b.i].id];
-          while (mobT >= ENEMY_SPAWN.every) { mobT -= ENEMY_SPAWN.every; const cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, f = mobFight(kind, st); add(f.t * cnt); st.coins += f.gy * cnt; earned += f.gy * cnt; }
+          while (mobT >= ENEMY_SPAWN.every) { mobT -= ENEMY_SPAWN.every; const cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, f = mobFight(kind, st); add(f.t * cnt); gainXp(cnt * AG.enemyXp(ENEMIES[kind])); st.coins += f.gy * cnt; earned += f.gy * cnt; gotMat(zones[b.i].id, cnt * LOOT.enemy.mat); }
         }
         // 들판 (#138): 일하는 구역의 열린 소굴 하나 · 오늘 안 연 보물 · 처음 보는 볼거리
         if (!NOFIELD && !has('--nospots') && battle) {
           const z = zones[b.i].id, DN = FIELD.den.n[z] || 0;
           for (let k = 0; k < DN; k++) { const id = z + '-' + k; if (st.tAll - (st.denAt[id] ?? -1e9) < FIELD.den.reopen) continue; st.denAt[id] = st.tAll;
-            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st); add(20 + f.t * cnt); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; break; }
+            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st); add(20 + f.t * cnt); gainXp(cnt * AG.enemyXp(ENEMIES[ENEMY_SPAWN.byZone[z]])); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; gotMat(z, LOOT.den.mats[z] + cnt * LOOT.enemy.mat); break; }
           if (st.trDay !== d) { st.trDay = d; st.trGot = new Set(); }
-          for (let k = 0; k < (FIELD.treasure.n[z] || 0); k++) { const id = z + '-' + k; if (st.trGot.has(id)) continue; st.trGot.add(id); add(25); const g = FIELD.treasure.gyul[z] + FIELD.treasure.rare * DEX.rareGyul; st.coins += g; earned += g; }
+          for (let k = 0; k < (FIELD.treasure.n[z] || 0); k++) { const id = z + '-' + k; if (st.trGot.has(id)) continue; st.trGot.add(id); add(25); const g = FIELD.treasure.gyul[z] + FIELD.treasure.rare * DEX.rareGyul; st.coins += g; earned += g; gotMat(z, LOOT.treasure.mats[z]); }
           FIELD.sight.list.forEach((x, k) => { if (x[0] !== z || st.sights.has(k)) return; st.sights.add(k); add(20); st.coins += FIELD.sight.gyul[z]; earned += FIELD.sight.gyul[z]; });
         }
         // 우두머리 (#139): 일하는 구역이 ZONE_BOSS.appear 만큼 깨끗하고 열린(빨강 아닌) 구역이면, 하르방이 서 있는 동안(holdSec) 빼고 한 번 (다가가기 20초 + 쫓아내기 × BOSS_OVER)
         if (battle && !b.idle && !has('--noboss')) {
           const z = zones[b.i].id, D = ZONE_BOSS.list[z];
           if (D && zoneClean(b.i) >= ZONE_BOSS.appear && scoreOf(e, st.weapon) >= zones[b.i].rec * GROWTH.red && st.tAll - (st.bossAt[z] ?? -1e9) >= ZONE_GUARD.holdSec) {
-            st.bossAt[z] = st.tAll; const k = killOf(D.hp, weaponOf(st)); add(20 + k.t * BOSS_OVER); const g = D.gyul - Math.ceil(k.gy * BOSS_OVER); st.coins += g; earned += g; st.bosses = (st.bosses || 0) + 1;
+            st.bossAt[z] = st.tAll; const k = killOf(D.hp, weaponOf(st)); add(20 + k.t * BOSS_OVER); const g = D.gyul - Math.ceil(k.gy * BOSS_OVER); st.coins += g; earned += g; st.bosses = (st.bosses || 0) + 1; gotMat(z, LOOT.boss.mats[z], 1); gainXp(LEVEL.xp.boss);
           }
         }
         shop();
       }
       st.tAll = t0 + 3600; // 하루 1시간에서 넘친 부분은 버림
-      days.push({ day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0 });
-      if (kinds.every((k) => !next(k)) && d >= 4) break;
+      days.push({ day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0, enh: [...GEAR, ...WK, 'weapon'].reduce((s, k) => s + EN(e, k), 0), m5: Math.floor(st.mats.m5 || 0), r5: Math.floor(st.mats.r5 || 0), lv: st.lv, aug: { ...e.aug } });
+      if (kinds.every((k) => !next(k)) && d >= 4 && (NOENH || !battle || enhAll())) break;
     }
     const last = buys.length && kinds.every((k) => !next(k)) ? buys[buys.length - 1].at : Infinity;
     return { buys, days, e, st, last };
@@ -231,7 +264,7 @@ async function main() {
   console.log(`권장 점수 ${ZONES.map((Z) => `${Z.id}:${Z.rec}`).join(' ')} · 단계 점수 ${GROWTH.score.join('/')} · 귤 배수 ${ZONES.map((Z) => Z.gv).join('/')}`);
   console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 무기 ${sum(WEAPONS)} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + sum(WEAPONS) + WSUM}`);
   const short = { tool: '도구', bag: '배낭', shoes: '신발', weapon: '무기', ride: '탈것', ...Object.fromEntries(WEAR.slots.map((w) => [w.k, w.name])) };
-  const verdict = []; let day1Rate = 0;
+  const verdict = []; let day1Rate = 0, storyEarn = 0;
   const FLOW_ONLY = has('--flow');
   // 하루 끝 목표 (#137): tier = 도구·배낭·신발 가장 낮은 단계, zone = 그날까지 다 치운 적 있는 가장 높은 구역 (이 구역까지는 다 치움)
   // tier = 도구·배낭·신발 가장 낮은 단계 [최소, 최대], zone = 그날까지 다 치운 가장 높은 구역(1부터 이어서) 최소, open = 하루 끝 장비 점수로 열린(빨강이 아닌) 구역 최소
@@ -251,16 +284,23 @@ async function main() {
       sh.push(`${d + 1}일 ${tier}단계·구역${zone}${good ? '' : '✗'}`);
       lines.push(`  ${d + 1}일 · ${tier}단계(${f.tier[0] === f.tier[1] ? f.tier[0] : f.tier.join('~')}) · 구역 ${zone}까지(${f.zone}) · 열림 ${open}${f.open ? `(${f.open})` : ''} · 점수 ${sc} · 귤 ${er.toLocaleString()} · ${idle}분 ${good ? '통과' : '✗'}`);
     });
-    return { ok, lines, short: sh.join(' / ') };
+    // 레벨 (#159): 하루 끝 레벨 (5번 중 가운데). 목표 1일 5~6, 5일 14~16
+    const LV_GOAL = { 0: [5, 6], 4: [14, 16] };
+    const lvs = FLOW.map((f, d) => med(runs.map((r) => r.days[d]?.lv || 0)));
+    const lvOk = Object.entries(LV_GOAL).every(([d, [a, b]]) => lvs[d] >= a && lvs[d] <= b);
+    lines.push(`  레벨(하루 끝): ${lvs.map((v, d) => `${d + 1}일 ${v}`).join(' · ')} → 목표 1일 5~6 · 5일 14~16 ${lvOk ? '통과' : '✗'}`);
+    { const r = runs[2], last = r.days[Math.min(4, r.days.length - 1)]; if (last?.aug) lines.push(`  증강(한 번 돌린 예, 5일 끝): ${Object.entries(last.aug).map(([k, n]) => `${AG.AUG_BY[k].name}×${n}`).join(' ') || '없음'}`); }
+    return { ok: ok && lvOk, lines, short: sh.join(' / ') + ` / 레벨 ${lvs[0]}·${lvs[4]}${lvOk ? '' : '✗'}` };
   }
   for (const mode of ['battle']) for (const slack of SLACKS) {
     const runs = [1, 7, 42, 99, 123].map((s) => seedRun(mode, slack, s));
     const r = runs[2]; if (!day1Rate && slack === 0) day1Rate = r.days[0].earned; // 1일차에 실제로 번 귤 (1시간)
+    if (slack === 0) storyEarn = r.days.slice(0, 5).reduce((a, d) => a + d.earned, 0); // #168
     const lasts = runs.map((x) => x.last).sort((a, b) => a - b), last = lasts[2];
     const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
     console.log(`\n== ${title} (투기꾼 쫓아내기 ${CHASE * 100}%) ==`);
     console.log('하루 끝 (한 번 돌린 예). 칸은 단계 (배낭 0 = 호주머니, 옷 0 = 없음)');
-    if (!FLOW_ONLY) console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), 점수: d.score, '산 것': d.n, '오늘 다 치운 구역': d.zones, '번 귤': d.earned, '우두머리(누적)': d.boss, '할 일 없음(분)': d.idle, '남은 귤': d.coins })));
+    if (!FLOW_ONLY) console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), 점수: d.score, '산 것': d.n, '오늘 다 치운 구역': d.zones, '번 귤': d.earned, '우두머리(누적)': d.boss, '할 일 없음(분)': d.idle, '남은 귤': d.coins, ...(NOENH ? {} : { '강화 합(50)': d.enh, '남은 외계 부품·핵': `${d.m5}·${d.r5}` }) })));
     // 흐름 (#137): 5번 돌린 것 모두 하루 끝을 보고, 가운데 값으로 판정
     const fl = flowCheck(runs);
     console.log(fl.lines.join('\n'));
@@ -275,8 +315,12 @@ async function main() {
     const goal = GOAL[slack];
     const line = `${title}: 마지막 칸 ${last === Infinity ? '7일 안에 못 삼' : `${fmt(last)} (놀이 ${hm(last)})`}${goal ? ` → 목표 ${hm(goal)} 안 ${last <= goal ? '통과' : '넘음'}` : ''}`;
     console.log(line); verdict.push(line);
+    if (!NOENH) { const ed = runs.map((x) => x.st.enhDay || Infinity).sort((a, b) => a - b)[2], day = ed === Infinity ? null : Math.floor(ed / 3600) + 1;
+      const el = `${title}: 강화 칸 10개 +5 ${day ? `${day}일 (놀이 ${hm(ed)})` : `${DAYS}일 안에 못 채움`} → 목표 6~14일 ${day && day >= 6 && day <= 14 ? '통과' : '✗'}`; console.log(el); verdict.push(el); }
     if (LOG) r.buys.forEach((b) => console.log(b.when, short[b.k], b.tier, b.name, b.price));
   }
+  // 이야기 이벤트 보상 (#168): 끝 보상 합이 5일(효율) 전체 벌이의 5% 아래
+  if (storyEarn > 0) { const sum = STORY.list.reduce((a, d) => a + (d.gyul || 0), 0), pct = sum / storyEarn * 100; verdict.push(`이야기 이벤트 보상 합 ${sum} = 5일 벌이 ${storyEarn.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;

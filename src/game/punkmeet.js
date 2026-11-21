@@ -18,7 +18,7 @@ import { $, save, persist } from './save.js';
 import { scene } from './scene.js';
 import { life, player, trash, CH, NS_TUT, photoSpot, summitTan, hp } from './place.js';
 import { toast, tips, busy } from './hud.js';
-import { say } from './director.js';
+import { say, director } from './director.js';
 import { social } from './room.js';
 import { interactables } from './stores.js';
 import { bagRoom, updateTrashUI } from './pickup.js';
@@ -29,6 +29,10 @@ const H = PUNK.hb, T = PUNK.tourist, C = PUNK.crow;
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const tutOn = () => !!late.tut?.active || (!!NS_TUT && !save.tut?.done);
+// 감독 문 (#176 balance.js JOURNEY): 관광객은 구역 2, 까마귀는 구역 3 에 들어선 뒤부터 (확인용 __oreum.punk 는 문과 상관없이 부름)
+director.register({ id: 'tourist' });
+director.register({ id: 'crow' });
+const doorOpen = (id) => !director.isOpen || director.isOpen(id);
 const reward = (wp, n) => life.hooks.reclaim?.(wp, n); // 귤 + 귤 효과 (hooks.js)
 
 /* ---------- 저장 ---------- */
@@ -158,7 +162,7 @@ function walkTo(dt, goal, speed) {
 function tickTourist(dt, time) {
   for (let i = strayLitter.length - 1; i >= 0; i--) { const L = strayLitter[i]; L.t += dt; if (L.t > 20 || Math.hypot(L.x - player.pos.x, L.z - player.pos.z) < 1.2) { scene.remove(L.g); strayLitter.splice(i, 1); } }
   if (!tour) {
-    if (tutOn() || !tSpots.length) return;
+    if (tutOn() || !tSpots.length || !doorOpen('tourist')) return;
     if ((tourT -= dt) <= 0) { if (!spawnTourist()) tourT = T.retry; }
     return;
   }
@@ -254,7 +258,7 @@ function landDrop() {
 }
 function tickCrow(dt, time) {
   // 오기 조건: 배낭이 가득 찬 채 fullT 초, 쉬는 시간·하루 수, 튜토리얼·쓰러짐 아님
-  const full = !!trash && bagRoom() < 1 && !tutOn() && !hp.isDown;
+  const full = !!trash && bagRoom() < 1 && !tutOn() && !hp.isDown && doorOpen('crow');
   fullT = full ? fullT + dt : 0;
   if (!crow) {
     if (fullT > C.fullT && Date.now() - S.crowAt > C.cd * 1000 && crowToday() < C.dayMax && !player.cart) {
@@ -320,7 +324,7 @@ life.addTargets({
 });
 
 /* ---------- 매 프레임 ---------- */
-late.tickPunk = (dt, time) => {
+late.tickMeet = (dt, time) => {
   if (pendingFive) { pendingFive.t -= dt; if (pendingFive.t <= 0) { const hb = pendingFive.hb; pendingFive = null; if (player.pose === 'five') fiveHit(hb); } }
   for (let i = shakes.length - 1; i >= 0; i--) { const s = shakes[i]; s.t = Math.max(0, s.t - dt); shakeHareubang({ head: s.hb.head, hitT: s.t }); if (s.t <= 0) shakes.splice(i, 1); }
   for (let i = glints.length - 1; i >= 0; i--) { const g = glints[i]; g.t += dt; const k = g.t / 0.7; if (k >= 1) { g.s.parent?.remove(g.s); g.s.material.dispose(); glints.splice(i, 1); continue; } const e = Math.sin(k * Math.PI); g.s.scale.setScalar(0.15 + e * 0.45); g.s.material.rotation = k * 2; g.s.material.opacity = e; }
