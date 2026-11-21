@@ -31,11 +31,11 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향. 골라 쓰는 무기(`save.weaponUse`), 3~6단계면 `late.fireArm` |
-| arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르는 창(`#armwin`·던지기 버튼 옆 ▾), 멀티 presence `wf`. 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
+| arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르기(`chooseArm`, 던지기 버튼 옆 ▾ → 내 가방 무기 탭), 멀티 presence `wf`. 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
 | charge.js | 모아 쏘기(#129): 던지기 버튼(F)을 길게 눌렀다 놓기. `pressFire`(stores.js throwAct.act) → 누르는 동안 모음(`tickCharge`, update.js 에서 tickArms 앞) → 놓으면 `fireCharged`. 손·활은 `state.chargeShot` 을 throw.js release 가 씀, 총·머신건·레이저·폭탄은 arms.js `chargedArm`. 이동 느려짐 `late.chargeSlow`, 사거리 `late.chargeRange`, 맞음 `life.hooks.chargeHit`(enemies.js hurt 의 ch), 멀티 presence `cg`·wf 7번째 칸. 효과 `src/chargefx.js`, 수치 balance.js CHARGE. 확인 `node tools/charge.js` |
 | panels.js | 채팅, 메뉴 항목, 릴리스 노트, 의견 보내기, 도움말 |
 | screen.js | 전체 화면 버튼·메뉴 항목(안 되는 곳은 홈 화면 추가 안내), 돌릴 때 바로 맞추기 (#105) |
-| ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차 |
+| ride.js | 탈것(스케이트보드·스쿠터·조랑말), 마차. 고르기 `chooseRide` (창은 내 가방 탈것 탭) |
 | moves.js | 노루 타기, 점프, 벤치에 앉기, 돌탑 소원, 사진사 사진 |
 | room.js | 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 |
 | stores.js | 레스토랑 스톤, 가게 팝업 틀(`SHOP_POP`: 가게마다 head·fill·tabs, 장비점 gear·가게 안내 dir 는 shop.js 가 채움), 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 가게 안내도 상호작용, 상호작용(F)·줍기(E) 키 |
@@ -45,8 +45,9 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | dump.js | 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 |
 | field.js | 맵 전체 쓰기(#138): 적 소굴(가까이 가면 적 → 다 쫓아내면 닫힘·귤 묶음, `late.denLoot` 자리)·숨은 보물(하루 한 번 상호작용, `late.treasureLoot` 자리)·볼거리(처음 가까이 가면 도감·귤), 길 밖 걷기 느림(`late.fieldSlow`), 가 본 곳(save.field.fog)·큰 지도 아이콘(`late.fieldMap`)·미니맵(#minimap), 자동 걷기 길 밖 우회(autowalk.js `setRoutePass`), `__oreum.field` |
 | guard.js | 구역 지킴이 돌하르방(#119): 구역 더미를 모두 치우면 구역 자리(길 옆, `late.guard.spots`)에 솟아오름(꽃 연출 뒤·흙먼지·빛 기둥·꽃잎·카메라 한 번 보기)·메시지, ZONE_GUARD.holdSec 뒤 가라앉음. 세운 시각은 방(roomcore `zg`)이 주인, 옛 서버·혼자 하기는 save.zg. `__oreum.guard`, 확인 `node tools/guard.js` |
-| shop.js | 장비점 창(#128: 도구·배낭·무기 세 묶음, 폰은 탭)·사는 연출, 가게 안내(무엇을 어디서·`goShop(id)` 길 안내 → 도착하면 창·`shopGuide()` 메뉴/귤 칸), 살 수 있는 새 물건 점(지붕 간판·귤 칸, 본 것은 기기 localStorage), 미니맵 가게 아이콘, 옷장 옷 줄 |
-| look.js | 캐릭터 고르기·머리·옷장, 표지판, 탐방로 고르기 |
+| shop.js | 장비점 창(#128: 도구·배낭·무기 세 묶음, 폰은 탭)·사는 연출, 가게 안내(무엇을 어디서·`goShop(id)` 길 안내 → 도착하면 창·`shopGuide()` 메뉴/귤 칸), 살 수 있는 새 물건 점(지붕 간판·귤 칸, 본 것은 기기 localStorage), 미니맵 가게 아이콘, 내 가방 옷 줄(`buildWearRows`) |
+| look.js | 캐릭터 고르기·머리, 표지판, 탐방로 고르기 |
+| bag.js | 내 가방(#166): 배낭 칸·B·메뉴로 여는 한 창(`#wardrobe` 패널, 카메라 `cam.mode 'wardrobe'`), 탭 옷·무기·도구·배낭·탈것, 장비 점수·능력 4줄, 없는 것 [사러 가기]. `late.openBag(tab)`·`closeBag`·`bagRefresh`(예전 `openWardrobe`·`closeWardrobe`·`buildWardrobe` 이름도). 탈것·무기 고르기는 ride.js `chooseRide`·arms.js `chooseArm`. 확인 `node tools/bag.js` |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |

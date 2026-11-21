@@ -159,7 +159,7 @@ function fillGearShop(grid) {
   // 가진 것을 고르고 장착하는 창(내 가방 #166)으로 가는 문
   const foot = document.createElement('div'); foot.className = 'shop-foot';
   const bag = document.createElement('button'); bag.type = 'button'; bag.className = 'chip'; bag.id = 'gear-bag'; bag.textContent = '내 가방 열기';
-  bag.addEventListener('click', () => { closePanels(); if (late.openBag) late.openBag(); else if (save.equip.weapon > 1) late.openArmWin?.(); else late.openWardrobe?.(); });
+  bag.addEventListener('click', () => { closePanels(); late.openBag?.(gearTab === 'weapon' ? 'arm' : gearTab === 'shoes' ? 'wear' : gearTab); }); // 보던 묶음의 탭으로
   foot.append(bag); grid.append(foot);
 }
 let drawnCoins = -1; // 그린 때의 귤: 귤 수가 바뀌면 다시 그려 흑백·색을 맞춤 (#111)
@@ -253,7 +253,7 @@ export function buyCloth(id) {
   toast(`${c.name} · 바로 입었어요`);
   return true;
 }
-export function buildWearRows(body) { // 옷장: 가진 옷만, 눌러서 바로 갈아입음 (사는 것은 LEAP #128)
+export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 가진 옷은 눌러서 바로 갈아입음. lock(옷, 줄) 을 주면 안 가진 옷도 흐리게 (사는 것은 LEAP #128)
   const CHECK = `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`;
   WEAR.slots.forEach((w) => {
     const list = CLOTHES.filter((c) => c.slot === w.k && CL.own[c.id]).sort((a, b) => a.tier - b.tier);
@@ -272,6 +272,12 @@ export function buildWearRows(body) { // 옷장: 가진 옷만, 눌러서 바로
     };
     if (w.none) cell(null);
     list.forEach(cell);
+    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot)).sort((a, b) => a.tier - b.tier).forEach((c) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', WEAR.tierColor[c.tier]);
+      b.title = `${c.name} · LEAP 에서 ${wearPrice(c).toLocaleString()}귤`; b.setAttribute('aria-label', `${c.name} 잠김 · LEAP 에서 살 수 있어요`);
+      b.innerHTML = clothSvg(c) + `<span class="pr"><i class="g"></i>${wearPrice(c).toLocaleString()}</span>`;
+      b.addEventListener('click', () => lock(c, row)); grid.append(b);
+    });
     row.append(head, grid);
     body.append(row);
   });

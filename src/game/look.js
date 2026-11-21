@@ -1,18 +1,17 @@
-// 캐릭터 고르기·머리·옷장, 표지판, 탐방로 고르기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+// 캐릭터 고르기·머리, 표지판, 탐방로 고르기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { HAIR } from '../balance.js';
 import { SKIN_TONES } from '../runner.js';
 import { MAPS } from '../maps.js';
 import { late } from './state.js';
 import { $, ADJ, NOUN, pick, save, CL, clothGear, syncEquipGear, lookS, persist, MAP_ID } from './save.js';
 import { spots } from './scene.js';
-import { LEAPB, runner, player, col } from './place.js';
+import { runner, player } from './place.js';
 import { cam, followCam } from './camera.js';
-import { busy, closePanels, cancelAll, ach } from './hud.js';
+import { closePanels, cancelAll, ach } from './hud.js';
 import { marker } from './input.js';
 import { net } from './room.js';
-import { buildWearRows } from './shop.js';
 
-Object.assign(late, { buildWardrobe, openWardrobe, closeWardrobe, openSign, leaveTo }); // 앞 파일에서 부르는 함수
+Object.assign(late, { openSign, leaveTo }); // 옷장은 내 가방(#166, bag.js)으로 옮김 // 앞 파일에서 부르는 함수
 
 // ---------- 캐릭터 고르기·머리 (#51) ----------
 const HEAD_SVG = (key, skin = SKIN_TONES[0]) => { // 머리 그림 (상점·고르기 화면)
@@ -53,30 +52,6 @@ export function closeLook() {
   SKIN_TONES.forEach((c, i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.skin = i; b.style.background = c; b.setAttribute('aria-label', ['밝은 피부', '중간 피부', '어두운 피부'][i]); b.addEventListener('click', () => { lookS.skin = i; lookPreview(); }); sk.append(b); });
   $('look-ok').addEventListener('click', closeLook);
 }
-let camBefore = null;
-function buildWardrobe() { // 옷장 (#52): 가진 머리·옷만, 눌러서 갈아입기
-  const body = $('wardrobe-body'); body.innerHTML = '';
-  buildWearRows(body, false);
-}
-// 옷장 카메라는 캐릭터 앞쪽에 섬. 그 사이에 클린하우스·나무 같은 사물이 있으면 가리지 않는 쪽으로 몸을 돌림 (#90)
-function clearYaw(yaw, d) {
-  if (!col) return yaw;
-  const free = (a) => { for (let t = 1; t <= d + 1; t += 0.5) if (col.blocked(player.pos.x + Math.sin(a) * t, player.pos.z + Math.cos(a) * t, 0.9)) return false; return true; };
-  for (let k = 0; k <= 12; k++) { const a = yaw + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 6; if (free(a)) return a; }
-  return yaw;
-}
-function openWardrobe() {
-  if (busy()) return;
-  player.target = null; marker.visible = false;
-  camBefore = { yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist };
-  player.heading = clearYaw(player.heading, innerWidth <= 600 ? 10 : 4.6);
-  cam.mode = 'wardrobe'; buildWardrobe();
-  $('nick-mirror').textContent = save.nick;
-  $('wardrobe').hidden = false;
-}
-function closeWardrobe() { $('wardrobe').hidden = true; cam.mode = 'follow'; if (camBefore) Object.assign(cam, camBefore); }
-$('wardrobe-shop').addEventListener('click', () => { closeWardrobe(); late.goShop(LEAPB ? 'leap' : 'gear'); }); // 사러 가기: LEAP 길 안내 (#128)
-$('wardrobe-done').addEventListener('click', closeWardrobe);
 $('nick-reroll').addEventListener('click', () => { save.nick = `${pick(ADJ)} ${pick(NOUN)}`; $('nick-mirror').textContent = save.nick; persist(); });
 
 function openSign() { closePanels(); $('sign').hidden = false; ach.emit('sign'); }

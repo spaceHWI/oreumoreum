@@ -6,9 +6,9 @@ import * as THREE from 'three';
 import { height, groundAt, surfaceAt } from '../world.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
-import { col, NS_TUT, stream, street, cart, rig, player, hp, shopsBuilt } from './place.js';
+import { col, NS_TUT, stream, street, cart, rig, player, hp } from './place.js';
 import { cam } from './camera.js';
-import { toast, updateStats, panelOpen, busy, ach, closePanels, tipMark } from './hud.js';
+import { toast, updateStats, panelOpen, busy, ach } from './hud.js';
 import { marker } from './input.js';
 import { setHoldBow } from './throw.js';
 
@@ -83,8 +83,8 @@ export function tickRideZone(dt) {
   p.rideClear += dt; if (p.rideClear > RIDES.clearT) { const id = p.rideAuto; p.rideAuto = null; mountRide(id, true); }
 }
 export const rideOffAct = { label: '내리기', ic: 'down', act: () => dismountRide() };
-// 버튼: 가진 뒤에만 보임. 짧게 누르면 타기·내리기, 길게 누르거나 옆 ▾ 를 누르면 탈것 창 (#109)
-const rideBtn = $('btn-ride'), rideMore = $('ride-more'), rideWin = $('ridewin'), rideCards = $('ridewin-cards');
+// 버튼: 가진 뒤에만 보임. 짧게 누르면 타기·내리기, 길게 누르거나 옆 ▾ 를 누르면 내 가방 탈것 탭 (#109, #166)
+const rideBtn = $('btn-ride'), rideMore = $('ride-more');
 export function updateRideBtn() {
   const own = save.rides.own.length > 0;
   if (rideBtn.hidden === own) rideBtn.hidden = !own;
@@ -94,39 +94,20 @@ export function updateRideBtn() {
   rideBtn.classList.toggle('on', !!player.ride);
   if (rideBtn.dataset.id !== id) { rideBtn.dataset.id = id; rideBtn.querySelector('svg').innerHTML = RIDE_ICON[id]; }
   rideBtn.title = `${RIDE_BY[id].name} ${player.ride ? '내리기' : '타기'} (Q) · 길게 누르면 바꾸기`;
-  if (!rideWin.hidden) buildRideWin();
+  late.bagRefresh?.('ride');
 }
-const WALK_ICON = '<circle cx="13" cy="4.5" r="1.8"/><path d="M12 8l-2 5 3 2 1 5M10 13l-3 2M12 8l4 3 2-1M13 15l-2 5"/>';
-function buildRideWin() {
-  rideCards.innerHTML = '';
-  const card = (cls, icon, name, sub, right, on, click) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card ' + cls + (on ? ' on' : ''); b.title = name;
-    b.innerHTML = `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg><span class="mn"><b>${name}</b><small>${sub}</small></span><span class="mv">${right}</span>`;
-    b.addEventListener('click', click); rideCards.append(b);
-  };
-  const sel = player.ride || (save.rides.walk ? '' : save.rides.cur);
-  card('walk', WALK_ICON, '걸어 다니기', '탈것 없이', sel ? '' : '<span class="bf">✓</span>', !sel, () => chooseRide(''));
-  for (const R of RIDES.list) {
-    const own = save.rides.own.includes(R.id), cur = own && sel === R.id;
-    card(own ? '' : 'off', RIDE_ICON[R.id], R.name, rideStat(R), own ? (cur ? '<span class="bf">✓</span>' : '') : `<span class="price"><i></i>${R.price.toLocaleString()}</span>`, cur, () => (own ? chooseRide(R.id) : showRideShop(R)));
-  }
-}
-export function openRideWin() { if (cam.mode === 'wardrobe') return; closePanels(); buildRideWin(); rideWin.hidden = false; }
+export const WALK_ICON = '<circle cx="13" cy="4.5" r="1.8"/><path d="M12 8l-2 5 3 2 1 5M10 13l-3 2M12 8l4 3 2-1M13 15l-2 5"/>';
+// 예전 탈것 창(#ridewin)은 내 가방(#166, bag.js) 탈것 탭으로 합침
+export function openRideWin() { late.openBag?.('ride'); }
 // 고르기. '' = 걸어 다니기. 타고 있으면 내렸다가 새 탈것으로 탐 (못 타는 곳이면 고르기만)
-function chooseRide(id) {
+export function chooseRide(id) {
   const was = player.ride;
   if (!id) { save.rides.walk = 1; persist(); if (was) dismountRide(); updateRideBtn(); return; }
   if (!RIDE_BY[id] || !save.rides.own.includes(id)) return;
   save.rides.cur = id; save.rides.walk = 0; persist();
   if (was === id) { updateRideBtn(); return; }
-  if (was) { rideWin.hidden = true; dismountRide(); mountRide(id, true); }
+  if (was) { dismountRide(); mountRide(id, true); }
   updateRideBtn();
-}
-// 아직 안 산 탈것: 가게 거리 방향 표시 (옆 가장자리 표시가 6초 동안 탈것 가게를 가리킴)
-function showRideShop(R) {
-  const sh = shopsBuilt.find((x) => x.id === 'ride');
-  rideWin.hidden = true;
-  if (sh?.signPos) { tipMark(sh.signPos); toast(`${R.name}은(는) 가게 거리의 탈것 가게에서 살 수 있어요`); } else toast('탈것 가게는 가게 거리에 있어요');
 }
 {
   let holdTimer = null;
@@ -140,7 +121,7 @@ function showRideShop(R) {
 }
 // 탈것 가게 팝업 카드 (가게 거리 3번 터). 가진 것은 눌러서 고르기
 export const RIDE_LOGO = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#ff8a1f"/><g transform="translate(3.6 3.4) scale(.7)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${RIDE_ICON.scoot}</g></svg>`);
-const rideStat = (R) => `→ ×${R.flat} · ↗ ${R.up ? '×' + R.up : '들고'} · ↘ ×${R.down}`;
+export const rideStat = (R) => `→ ×${R.flat} · ↗ ${R.up ? '×' + R.up : '들고'} · ↘ ×${R.down}`;
 export function buildRideMenu(grid) {
   for (const R of RIDES.list) {
     const own = save.rides.own.includes(R.id), cur = own && save.rides.cur === R.id;
