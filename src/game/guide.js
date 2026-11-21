@@ -20,7 +20,7 @@ function mark() {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: markTex, depthTest: false, transparent: true })); s.scale.set(0.9, 0.9, 1); s.renderOrder = 20; return s;
 }
 
-export function createGuide({ dumpers, trash, player, cam, spots, save, persist, toast, state, height, rnd = Math.random }) {
+export function createGuide({ dumpers, trash, player, cam, spots, save, persist, toast, state, height, rnd = Math.random, door = () => true }) { // door: 감독(#176)의 'dumper' 문이 열렸나. 안 열렸으면 안내 없이 평소처럼
   const H = () => { const p = (save.pace ||= {}); if (!p.hint || typeof p.hint !== 'object') p.hint = { w: 0, t: 0 }; return p.hint; };
   let cur = null, ctx = null, bob = 0; // cur: 지금 안내 중인 투기꾼
   const lit = (on) => { ctx ||= document.getElementById('btn-ctx'); ctx?.classList.toggle('lit', on); };
@@ -42,7 +42,7 @@ export function createGuide({ dumpers, trash, player, cam, spots, save, persist,
     },
     // 투기꾼이 나타남. 안내했으면 true (기본 토스트는 건너뜀)
     appear(d) {
-      const h = H();
+      const h = H(); if (!door()) return false;
       if (d.kind === 'truck') { if (h.t) return false; h.t = 1; persist(); toast(TXT.truck); return true; }
       if (h.w !== 0 && h.w !== 2) return false;
       d.guideN = h.w === 0 ? 1 : 2; h.w = h.w === 0 ? 1 : 3; persist();

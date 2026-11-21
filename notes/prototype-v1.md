@@ -27,6 +27,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | place.js | 소품(표지석·벤치·징검돌·하르방·돌탑), 사물 충돌, 돌담, 들머리 개울, 가게 거리, 쓰레기·오름 안 클린하우스·꽃, 마차, 러너(player), HP |
 | camera.js | 카메라, 첫 화면 궤도 |
 | hud.js | 위 한 줄·토스트·배너 자리, 상황 팁, 패널 닫기, 업적, 도감, 귤 숫자 늦게 올리기(gyulFx·gyulLand·gyulExpect) |
+| director.js | 감독(#176): `src/director.js` 를 게임에 붙임. 말을 거는 것은 `director.ask(kind, id, show)`·`say(kind, id, text, sec)` 로 한 번에 하나씩(우선순위·간격·싸움 중 제한), 문 열기(`register({ id, gate, intro, kind, clue })`, 순서·조건은 balance.js JOURNEY, 사실 값 FACTS), 한가할 때 실마리, 끝을 모르는 창은 `holdWin`. `late.director`, `__oreum.director`, 확인 `node tools/journey.js` |
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
@@ -72,6 +73,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 옷·장비: 칸마다 따로 만든 껍데기. `skin: true` 면 몸과 같은 `skinWeights` 규칙(체형 맞춤 뒤)으로 휨, 아니면 `bone` 에 붙음. 장비 하나는 정점 색으로 구워 한 메시(그리기 1번, 양면 재질만 따로). `covers` 로 덮는 몸 부위를 감춤(옷 사이로 몸이 안 뚫림), 모자는 `clip` 위로 나온 머리카락을 감춤. 상의·하의·신발은 늘 하나(없으면 'top:base'·'bottom:shorts'·'shoes:s1')
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
+- 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만
 - 가게·NPC: shops.js(가게 건물 표·지붕 아이콘 간판 `createRoofSigns`·들머리 안내도)/streetlayout.js · hardware.js(장비점 임시 모양, #128) · stone.js/stoneicons.js/stonelogo.js · salon.js · leap.js · propmodel.js/model-*.js · photographer.js · fishing.js

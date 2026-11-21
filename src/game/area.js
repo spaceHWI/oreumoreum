@@ -15,6 +15,7 @@ import { $, save } from './save.js';
 import { scene, NSW, spots, setZoneFog } from './scene.js';
 import { trash, bloom, col, player, CHS } from './place.js';
 import { toast, closePanels } from './hud.js';
+import { say } from './director.js'; // #176
 
 export const zoneLook = trash && NSW ? createZoneLook({ scene, height, zoneAt: trash.zoneAt, paths: nsPaths, heaps: trash.heaps, col, low: LOW, onPath: (x, z) => surfaceAt(x, z) !== 0, isBloomed: (z) => !!bloom?.isBloomed(z), ns: NSW, avoid: spots.lamps || [] }) : null;
 if (zoneLook && bloom) bloom.on((ev) => { if (ev === 'zone-bloom' || ev === 'zone-wilt') { zoneLook.dirty(); ambTo(curZ); } }); // 다 피면 그을린 자국·까마귀가 사라지고 안개가 걷힘
@@ -46,7 +47,7 @@ late.zoneEnter = (z, prev) => {
   // 위 묶음으로 올라섰는데 장비 점수가 권장보다 낮음 (빨강): 구역마다 한 번
   if (z && tierOf(z) >= 2 && tierOf(z) > tierOf(prev) && !warned.has(z) && zoneTone(gearScore(save).total, z) === 'r') {
     warned.add(z); const en = enemyName(zoneEnemy(z));
-    setTimeout(() => toast(`이 위는 ${en}${josaIGa(en)} 나와요. 장비 점수를 ${zoneRec(z)}까지 올리면 좋아요`, 4), 900);
+    setTimeout(() => say('danger', 'zoneWarn:' + z, `이 위는 ${en}${josaIGa(en)} 나와요. 장비 점수를 ${zoneRec(z)}까지 올리면 좋아요`, 4, { ttl: 10 }), 900);
   }
   if (tierOf(prev) === 1 && tierOf(z) === 2) late.tips?.event('zoneUp'); // 튜토리얼 뒤 처음 정낭을 지날 때 (#66 팁은 한 번)
   leftZ = prev; leftAt = t;

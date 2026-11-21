@@ -22,6 +22,7 @@ import { scene, quality } from './scene.js';
 import { enemyWarn } from './hooks.js';
 import { trash, bfx, player, life, hp } from './place.js';
 import { toast, panelOpen } from './hud.js';
+import { say, director, holdWin } from './director.js'; // #176 우두머리 알림·구역 완료 창은 감독을 거침
 import { interactables } from './stores.js';
 import { field } from './field.js';
 import { S, ON, isDone, logOf, openSummary, chSpot, fastSpot, cutSpot, warp, tickZoneDone, zoneDoneTest } from './zonedone.js';
@@ -119,14 +120,14 @@ function spawn(z, puppet = false, at = null) {
     if (bfx && Math.hypot(x - player.pos.x, zz - player.pos.z) < 160) { bfx.ring(x, zz, 7, 1.0, '#e9d2a6', 0, 1.4); bfx.burst(x, height(x, zz) + 0.3, zz, { petals: lite() ? 10 : 40, sparks: 0, up: 3, spread: 2, color: '#b8a07c' }); }
     late.sound?.boar?.();
   }
-  if (Math.hypot(x - player.pos.x, zz - player.pos.z) < B.near + 10) toast(`${zoneShort(z)} 우두머리 '${name(z)}'${josaIGa(name(z))} 빈터에 나타났어요!`, 3.2);
+  if (Math.hypot(x - player.pos.x, zz - player.pos.z) < B.near + 10) say('danger', 'bossCome', `${zoneShort(z)} 우두머리 '${name(z)}'${josaIGa(name(z))} 빈터에 나타났어요!`, 3.2, { ttl: 8 });
   enemyWarn.start({ x, z: zz });
   return cur;
 }
 function despawn(quiet = true) {
   if (!cur) return;
   const e = cur.e; if (life.enemies.list.includes(e) && e.state === 'boss') life.enemies.remove(e);
-  if (!quiet) toast(`${name(cur.z)}${josaIGa(name(cur.z))} 숲으로 돌아갔어요`);
+  if (!quiet) say('danger', 'bossGone', `${name(cur.z)}${josaIGa(name(cur.z))} 숲으로 돌아갔어요`, 2.8, { ttl: 5 });
   endAct(); cur = null; crown.visible = aura.visible = false; bar(false);
 }
 
@@ -155,12 +156,12 @@ function callMinions(c) {
   const before = new Set(life.enemies.list), [a, b] = B.call.n, n = Math.min(B.call.max - c.minions.length, a + Math.floor(Math.random() * (b - a + 1)));
   life.enemies.spawnPlan({ kind, n, x: c.e.pos.x, z: c.e.pos.z, zone: c.z, forceKind: true }, true);
   const got = life.enemies.list.filter((m) => !before.has(m)); got.forEach((m) => { m.state = 'charge'; m.st = 0; }); c.minions.push(...got);
-  if (got.length) toast(`${name(c.z)}${josaIGa(name(c.z))} 무리를 불렀어요!`, 2.2);
+  if (got.length) say('danger', 'bossCall', `${name(c.z)}${josaIGa(name(c.z))} 무리를 불렀어요!`, 2.2, { ttl: 3 });
 }
 function roar(c, phase) {
   late.sound?.boar?.(); c.roarT = 0.6;
   const el = $('boss-bar'); el.classList.remove('roar'); void el.offsetWidth; el.classList.add('roar');
-  if (phase) toast(c.ph === 1 ? `${name(c.z)}${josaIGa(name(c.z))} 화가 났어요! 무리를 불러요` : `${name(c.z)}${josaIGa(name(c.z))} 몹시 화가 났어요! 바닥의 빨간 원을 피해요`, 2.8);
+  if (phase) say('danger', 'bossPhase', c.ph === 1 ? `${name(c.z)}${josaIGa(name(c.z))} 화가 났어요! 무리를 불러요` : `${name(c.z)}${josaIGa(name(c.z))} 몹시 화가 났어요! 바닥의 빨간 원을 피해요`, 2.8, { ttl: 4 });
   if (bfx && !lite()) bfx.ring(c.e.pos.x, c.e.pos.z, 5, 0.6, '#ff8a5a', 0, 1.2);
 }
 // 내 캐릭터가 맞았나 (각자 화면에서 제 캐릭터만)
@@ -327,14 +328,14 @@ function defeated(c, mine) {
   if (near && bfx) { const col2 = tierColor(z); bfx.ring(pos.x, pos.z, 8, 1.2, '#fff3b0', 0, 2); bfx.burst(pos.x, pos.y + 1, pos.z, { petals: lite() ? 30 : 110, sparks: lite() ? 12 : 60, up: 7, spread: 1.6, color: col2 }); }
   late.sound?.fanfare?.();
   late.guard?.raise(z, !late.guard?.server?.());
-  if (!mine) { if (near) toast(`${name(z)}${josaEulReul(name(z))} 쫓아냈어요!`); return; }
+  if (!mine) { if (near) say('quest', 'bossBeat', `${name(z)}${josaEulReul(name(z))} 쫓아냈어요!`, 2.8, { ttl: 6 }); return; }
   // 보상: 귤(분수처럼) + 귀한 재료 자리
   life.scatterTangerines(pos, D.gyul, B.loot);
   S.mats[D.mat] = (S.mats[D.mat] || 0) + 1;
   const first = !isDone(z); S.done[z] = (S.done[z] || 0) + 1;
   const log = logOf(z), got = { gyul: D.gyul, mat: D.mat, first, log: { ...log, repel: log.repel + 1 }, s0: log.s0 };
   delete S.log[z]; persist();
-  toast(`${name(z)}${josaEulReul(name(z))} 쫓아냈어요! 귤 ${D.gyul} · ${D.mat}`, 3.4);
+  say('quest', 'bossBeat', `${name(z)}${josaEulReul(name(z))} 쫓아냈어요! 귤 ${D.gyul} · ${D.mat}`, 3.4, { ttl: 8 });
   late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel');
   pendingSummary = { z, got, at: nowS() + ZONE_GUARD.afterBloom + B.summaryAt }; // 하르방이 솟는 동안 보고 나서
 }
@@ -384,11 +385,11 @@ function tickHost(dt) {
         if (ps.some((p) => Math.hypot(p.x - c.e.pos.x, p.z - c.e.pos.z) < a.r + B.fight || distA(c.z, p) < a.r + B.fight)) { // 싸움 시작
           c.fight = true; c.gapT = 1.2; c.callT = 4; c.beamT = 2; c.n = Math.max(1, inL.length);
           c.max = c.base * (1 + B.perPlayer * (c.n - 1)); c.e.hp = c.max; c.e.def = { ...c.e.def, hp: c.max };
-          roar(c, false); toast(`${name(c.z)}${josaIGa(name(c.z))} 덤벼요! 바닥 경고를 보고 피해요`, 3);
+          roar(c, false); say('danger', 'bossFight', `${name(c.z)}${josaIGa(name(c.z))} 덤벼요! 바닥 경고를 보고 피해요`, 3, { ttl: 4 });
           sendState(true);
         }
       } else if (!inL.length) { // 모두 멀어지거나 쓰러짐: 빈터로 돌아가 기운을 채움
-        if (distA(c.z, player.pos) < B.leash + 40 || hp.isDown) toast(`${name(c.z)}${josaIGa(name(c.z))} 빈터로 돌아갔어요. 다시 도전해요`, 3);
+        if (distA(c.z, player.pos) < B.leash + 40 || hp.isDown) say('danger', 'bossReset', `${name(c.z)}${josaIGa(name(c.z))} 빈터로 돌아갔어요. 다시 도전해요`, 3, { ttl: 5 });
         endAct(); c.fight = false; c.ph = 0; c.n = 1; c.max = c.base; c.e.hp = c.base; c.e.pos.set(a.x, height(a.x, a.z), a.z); c.minions.length = 0; c.fighters.clear(); c.hitByMe = false;
         sendState(true);
       } else if (inL.length > c.n) { const n = inL.length, k = (1 + B.perPlayer * (n - 1)) / (1 + B.perPlayer * (c.n - 1)); c.n = n; c.max *= k; c.e.hp *= k; }
@@ -401,7 +402,7 @@ function tickHost(dt) {
 }
 late.tickBoss = (dt) => {
   if (!ON) return;
-  if (pendingSummary && nowS() >= pendingSummary.at && !hp.isDown && !panelOpen() && !state.photoState) { const p = pendingSummary; pendingSummary = null; openSummary(p.z, p.got); }
+  if (pendingSummary && nowS() >= pendingSummary.at && !hp.isDown && !panelOpen() && !state.photoState && director.can('quest')) { const p = pendingSummary; pendingSummary = null; openSummary(p.z, p.got); holdWin('quest', 'zoneSummary', 'zdone'); } // 구역 완료 창은 감독 차례 (#176)
   tickZoneDone(dt); flushHit(dt); tickBeams(dt);
   if (cur && !life.enemies.list.includes(cur.e)) { endAct(); cur = null; crown.visible = aura.visible = false; bar(false); } // 확인용 지우기 등
   if (isHost()) tickHost(dt);

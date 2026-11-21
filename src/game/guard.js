@@ -17,6 +17,7 @@ import { save, persist } from './save.js';
 import { scene, spots, quality } from './scene.js';
 import { trash, bloom, bfx, col, player, CHS } from './place.js';
 import { toast } from './hud.js';
+import { say } from './director.js'; // #176
 import { field } from './field.js';
 import { cam } from './camera.js';
 
@@ -114,7 +115,7 @@ function place(g) {
 }
 function startFx(g) {
   const { s } = g, z = g.s.zone, color = BLOOM.zones[z]?.color || '#ffffff', far = Math.hypot(s.x - player.pos.x, s.z - player.pos.z), sm = lite();
-  toast(why.get(z) === 'boss' ? `${zoneName(z)} 구역 완료! 돌하르방이 지켜 줄 거예요` : `${zoneName(z)} 구역을 다 치웠어요! 돌하르방이 지켜 줄 거예요`, 3.6); why.delete(z);
+  say('quest', 'guard:' + z, why.get(z) === 'boss' ? `${zoneName(z)} 구역 완료! 돌하르방이 지켜 줄 거예요` : `${zoneName(z)} 구역을 다 치웠어요! 돌하르방이 지켜 줄 거예요`, 3.6, { ttl: 8 }); why.delete(z);
   late.sound?.stone?.(); late.sound?.heapClear?.(2, Math.max(0.2, 1 - far / 120));
   if (bfx && far < 160) {
     bfx.ring(s.x, s.z, 5.5, 1.1, '#e9d2a6', 0, 1.2); // 흙먼지 고리

@@ -61,7 +61,9 @@ const tipEl = $('tip'); let tipT = 0, tipNow = null, tipMarkT = 0, tipMarkPos = 
 function showTip(tip) {
   tipNow = tip; tipEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIP_ICON[tip.ic] || ''}</svg><span>${tip.text}</span>`;
   tipEl.classList.toggle('go', !!tip.go); tipEl.hidden = false; tipT = TIP.sec; late.sound.beep?.(false); topStack();
+  late.director?.begin('tip', 'tip:' + tip.id, TIP.sec); // 감독(#176)에게 알림
 }
+const tipHide = () => { tipEl.hidden = true; tipT = 0; late.director?.end('tip:' + tipNow?.id); };
 export const tips = createTips({ save, persist, show: showTip }); late.tips = tips;
 export function tipMark(pos) { tipMarkPos = pos; tipMarkT = 6; }
 export function nearestHeapPos() { if (!trash) return null; let b = null, bd = 1e9; trash.heaps.forEach((h, i) => { if (!(trash.store.left(i) > 0)) return; const d = Math.hypot(h.x - player.pos.x, h.z - player.pos.z); if (d < bd) { bd = d; b = { x: h.x, z: h.z }; } }); return b; }
@@ -72,14 +74,15 @@ const TIP_GO = {
   stone: () => { if (STN?.terrace) tipMark(STN.terrace.clone()); },
   map: () => late.openMap?.(), // 오름 지도 (#136)
 };
-tipEl.addEventListener('click', () => { const g = tipNow?.go; tipEl.hidden = true; tipT = 0; topStack(); if (g && TIP_GO[g]) TIP_GO[g](); });
-{ const b = $('menu-tips'); const sync = () => b.setAttribute('aria-pressed', String(!tips.isOff())); sync(); b.addEventListener('click', () => { tips.off(!tips.isOff()); sync(); if (tips.isOff()) { tipEl.hidden = true; tipT = 0; } }); } // 메뉴에서 팁 끄기
+tipEl.addEventListener('click', () => { const g = tipNow?.go; tipHide(); topStack(); if (g && TIP_GO[g]) TIP_GO[g](); });
+{ const b = $('menu-tips'); const sync = () => b.setAttribute('aria-pressed', String(!tips.isOff())); sync(); b.addEventListener('click', () => { tips.off(!tips.isOff()); sync(); if (tips.isOff()) tipHide(); }); } // 메뉴에서 팁 끄기
 function tipStreamPos() { if (!stream) return null; const [al, lat] = stream.local(player.pos.x, player.pos.z); const [x, z] = stream.at(stream.centerOff(lat) + 0, Math.max(-20, Math.min(20, lat))); return { x, z, d: Math.hypot(x - player.pos.x, z - player.pos.z) }; }
 let tipIdle = 0, tipBagN = -1;
 function tipState() {
   const full = !!trash && late.bagRoom() < 1, sp = tipStreamPos();
   return {
-    busy: !!(late.tut.active) || (!!late.pace && !late.pace.canTip()) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
+    busy: !!(late.tut.active) || !late.director?.isOpen('tips') || !late.director?.can('tip') || // 감독(#176): 문이 열렸고 지금 팁 차례일 때만
+       (!!late.pace && !late.pace.canTip()) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
     bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && late.canBuyGear().length > 0,
     hpLow: hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
     hasBow: late.weaponNow().id !== 'hand', idle: tipIdle,
