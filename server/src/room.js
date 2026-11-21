@@ -21,7 +21,7 @@ export class Room extends DurableObject {
     const headers = req.headers.get('x-proto') ? { 'Sec-WebSocket-Protocol': 'oreum' } : {};
     const xc = parseInt(req.headers.get('x-cap'), 10); if (xc > 0) this.core.setCap(xc); // 부하 재기 방만 (index.js)
     let why = 'full';
-    const p = this.core.join((s) => { if (s.startsWith('{"t":"ban"')) why = 'ban'; ws.send(s); }, { acct, key, close: (c, r) => ws.close(c, r) });
+    const p = this.core.join((s) => { if (s.startsWith('{"t":"ban"')) why = 'ban'; ws.send(s); }, { acct, key, admin: req.headers.get('x-admin') === '1', close: (c, r) => ws.close(c, r) });
     if (!p) { ws.close(why === 'ban' ? 4003 : 4001, why); return new Response(null, { status: 101, webSocket: client, headers }); }
     ws.addEventListener('message', (e) => this.core.message(p, typeof e.data === 'string' ? e.data : ''));
     const bye = () => { this.core.leave(p); if (!this.core.size) this.stop(); };

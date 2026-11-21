@@ -107,8 +107,9 @@ export default {
         if (!loadtest && (await limited(env, 'RL_WS', ipk, NET.wsPerMin))) return json({ error: 'too many' }, 429);
         const s = await who();
         const stub = env.ROOM.get(env.ROOM.idFromName(room + '#' + ch));
-        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-cap', 'x-ipk', 'x-proto', 'authorization']) h.delete(k); h.set('x-ipk', ipk); // 꾸민 x-* 헤더는 지움
+        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-admin', 'x-cap', 'x-ipk', 'x-proto', 'authorization']) h.delete(k); h.set('x-ipk', ipk); // 꾸민 x-* 헤더는 지움
         if (s) h.set('x-acct', s.sub);
+        if (s && adminSubs(env).has(s.sub)) h.set('x-admin', '1'); // 레이드 바로 열기 (#181)
         if (req.headers.get('Sec-WebSocket-Protocol')) h.set('x-proto', '1');
         if (loadtest) h.set('x-cap', '500'); // 부하 재기: 정원 없이
         return stub.fetch(new Request(url.origin + '/ws?room=' + room, { headers: h })); // 토큰은 주소에 싣지 않음

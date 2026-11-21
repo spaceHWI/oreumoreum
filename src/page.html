@@ -1020,10 +1020,16 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 /* 구역 우두머리 (#139): 화면 위 이름·기운 줄 · 구역 완료 요약 · 다시 들어올 때 시작 자리 · 빠른 마차·지름길 어두워짐 */
 #boss-bar { position: fixed; z-index: 5; left: 50%; top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 12px); transform: translateX(-50%); width: min(440px, calc(100vw - 150px)); padding: 6px 14px 9px; border-radius: 16px; pointer-events: none; text-align: center; font-family: var(--display); }
 #boss-bar[hidden] { display: none; }
-#boss-bar .bn { display: flex; justify-content: center; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 오름 레이드 (#181): 우두머리 줄과 같은 꼴, 그 아래 */
+#raid-bar { position: fixed; z-index: 5; left: 50%; top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 12px); transform: translateX(-50%); width: min(440px, calc(100vw - 150px)); padding: 6px 14px 9px; border-radius: 16px; pointer-events: none; text-align: center; font-family: var(--display); }
+body.boss-on #raid-bar { top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 20px + var(--boss-h, 54px)); }
+#raid-bar[hidden], #raid-bar .track[hidden] { display: none; }
+#raid-bar .bn svg { width: 16px; height: 16px; color: #ff6a3a; flex: none; }
+#raid-bar.ph1 .fill { background: linear-gradient(90deg, #ff4a2a, #ff7a3a); } #raid-bar.pick .fill { background: linear-gradient(90deg, #6fbf5a, #a6dc6a); }
+#boss-bar .bn, #raid-bar .bn { display: flex; justify-content: center; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #boss-bar .bn svg { width: 16px; height: 16px; color: var(--tier, var(--gyul)); flex: none; }
-#boss-bar .track { display: block; position: relative; height: 10px; margin-top: 5px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
-#boss-bar .fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff6a3a, var(--gyul)); transition: width .2s ease-out; }
+#boss-bar .track, #raid-bar .track { display: block; position: relative; height: 10px; margin-top: 5px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
+#boss-bar .fill, #raid-bar .fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff6a3a, var(--gyul)); transition: width .2s ease-out; }
 #boss-bar .mk { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(0,0,0,.45); }
 #boss-bar.ph1 .fill { background: linear-gradient(90deg, #ff4a2a, #ff7a3a); } #boss-bar.ph2 .fill { background: #ff3a2a; animation: hpLow .8s ease-in-out infinite; }
 #boss-bar.roar { animation: bump .45s ease-out; }
@@ -1555,6 +1561,7 @@ button.bag-card { cursor: pointer; }
 <div id="bloom-banner" role="status" hidden></div>
 <div id="zone-title" role="status" hidden><b></b><small></small></div>
 <div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small><small id="boss-rg" class="rg" hidden>회복 중</small></div>
+<div id="raid-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.4 0-8 3.6-8 8 0 3 1.6 5.5 4 6.9V21h8v-3.1c2.4-1.4 4-3.9 4-6.9 0-4.4-3.6-8-8-8zm-3 9.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm6 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg><b id="raid-name"></b></span><i class="track" id="raid-track"><i class="fill" id="raid-fill"></i></i></div>
 <div class="overlay dim" id="zdone" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2 id="zdone-t">구역 완료</h2><button type="button" class="btn small" id="zdone-close">닫기</button></div>
