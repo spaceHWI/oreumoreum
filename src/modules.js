@@ -103,6 +103,7 @@ import './game/nexthint.js'; // 다음 할 일 (#142): 추적 줄에 잠깐 바�
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
 import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
 import './game/buddies.js'; // 동료 캐릭터 3명 (#172)
+import './game/give.js'; // 귤 주기 (#175): 다른 사람·동료에게
 import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: 적·우두머리 후크를 감쌈)
 import './game/feel.js'; // 손맛 (#141): 콤보·피해 숫자·연속·진동 (level 뒤: 적 후크를 감쌈)
 import './game/ending.js'; // 엔딩 시네마틱 (#168)

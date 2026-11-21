@@ -10,7 +10,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const KEEP = process.argv.includes('--keep');
 const SERVER_DIR = path.join(__dirname, '..', 'server');
 const CFG = {
-  dev: { port: 8797, vars: ['FAKE_AUTH:1', 'STATS_OPEN:1'] },
+  dev: { port: 8797, vars: ['FAKE_AUTH:1', 'STATS_OPEN:1', 'GIFT_NEW_SEC:0'] }, // GIFT_NEW_SEC: 귤 주기(#175) 새 계정 기다림을 끔 (plain 은 기본값으로 막히는지 봄)
   plain: { port: 8798, vars: ['FAKE_AUTH:1', 'ADMIN_SUBS:fake-boss'] },
   prod: { port: 8799, vars: ['SESSION_SECRET:prod-like-secret-0123456789abcdef0123'] },
   nokey: { port: 8800, vars: [] },
@@ -447,6 +447,81 @@ async function startServers() {
       ok(paid.j.ok && paid.j.paid === 2000 && m3.save.coins === 500 && m3.save.nick === '세번째 이름', `귤 2,000 빠지고 바뀜 (남은 귤 ${m3.save.coins})`);
       const keepNew = await req('plain', '/save', { method: 'PUT', token: N2.token, body: { save: { ...m2.save, coins: 500 } } }); // 옛 이름이 든 저장이 늦게 와도
       ok(keepNew.j.fix?.nick === '세번째 이름', '늦게 온 옛 저장이 바꾼 이름을 되돌리지 못함');
+    }
+
+    /* ---------- 귤 주기 (#175): 서버가 옮김 ---------- */
+    {
+      const { GIVE } = await import('../src/balance.js');
+      const S1 = { coins: 5, equip: { tool: 1, bag: 0, shoes: 1, weapon: 1 }, clothes: { own: {}, wear: {} }, rides: { own: [], cur: null }, hairs: {}, trash: { total: 0 } };
+      const put = (k, tk, sv) => req(k, '/save', { method: 'PUT', token: tk, body: { save: sv } });
+      const meOf = async (k, tk) => (await req(k, '/me', { token: tk })).j.save;
+      const lg = async (k, n) => { for (let i = 0; i < 20; i++) { const r = await login(k, n); if (r?.token) return r; await sleep(5000); } return {}; }; // 앞 검사들로 로그인 수 제한(분당)에 걸릴 수 있음
+      const GA = await lg('dev', 'gift-a'), GB = await lg('dev', 'gift-b'), GP = await lg('dev', 'gift-poor'), C2 = await lg('dev', 'gift-c');
+      // 처음 몫(earnBurst)을 다 써 둠: 부풀린 귤이 '번 귤' 로 받아들여지지 않게
+      for (const [tk, c] of [[GA.token, 1000], [GB.token, 100], [GP.token, 3]]) { await put('dev', tk, { ...S1, coins: 5 + NET.earnBurst }); await put('dev', tk, { ...S1, coins: c }); }
+      const RM = 'oreum-namsongi-battle', CH = 11;
+      const a = await sock('dev', RM, { token: GA.token, ch: CH }), bq = await sock('dev', RM, { token: GB.token, ch: CH }), pq = await sock('dev', RM, { token: GP.token, ch: CH }), gq = await sock('dev', RM, { ch: CH });
+      const idOf = (o) => o.last('hi')?.id;
+      for (const [o, x] of [[a, 0], [bq, 1], [pq, 0.5], [gq, 1.5]]) o.send(presence(x, 0));
+      await sleep(400);
+      const after = (o, tt, n0) => o.msgs.filter((m) => m.t === tt).slice(n0);
+      const give = async (from, to, n, wait = 500) => { const k0 = from.msgs.filter((m) => m.t === 'gave').length; from.send({ t: 'give', to, n }); await sleep(wait); return after(from, 'gave', k0)[0] || null; };
+      const g1 = await give(a, idOf(bq), 5);
+      const got1 = bq.last('got');
+      ok(g1?.n === 5 && g1.out === 5 && got1?.n === 5 && got1.in === 5 && got1.from === idOf(a), `A 가 B 에게 귤 5개 → 서버가 옮기고 둘에게 알림 (${JSON.stringify(g1)}, ${JSON.stringify(got1)})`);
+      ok(bq.msgs.filter((m) => m.t === 'u').some((u) => u.p.some(([id, d]) => id === idOf(a) && d.ac === 1)) && !bq.msgs.filter((m) => m.t === 'u').some((u) => u.p.some(([id, d]) => id === idOf(gq) && d.ac)), '로그인한 사람만 ac 표시 (손님은 없음)');
+      const n0 = bq.msgs.filter((m) => m.t === 'got').length;
+      ok((await give(a, idOf(a), 1))?.no === 'none', '자기에게 주기 거절');
+      a.send({ t: 'give', to: idOf(bq), n: -3 }); a.send({ t: 'give', to: idOf(bq), n: GIVE.burst + 1 }); a.send({ t: 'give', to: idOf(bq), n: 1.5 }); await sleep(300);
+      ok(bq.msgs.filter((m) => m.t === 'got').length === n0, '음수·너무 많음·소수 n 은 옮기지 않음');
+      ok((await give(gq, idOf(bq), 1))?.no === 'login', '손님은 줄 수 없음');
+      ok((await give(a, idOf(gq), 1))?.no === 'none', '손님에게는 줄 수 없음');
+      const pp = await give(pq, idOf(bq), 5);
+      ok(pp?.n === 0 && pp.no === 'coins', `가진 것(3)보다 많이 주기 거절 (${JSON.stringify(pp)})`);
+      bq.send(presence(GIVE.serverR + 4, 0)); await sleep(300);
+      ok((await give(a, idOf(bq), 1))?.no === 'far', '멀리서 주기 거절');
+      bq.send(presence(1, 0)); await sleep(300);
+      // 초당 상한: 한꺼번에 많이 보내면 perSec 까지만
+      const k1 = a.msgs.filter((m) => m.t === 'gave').length;
+      for (let i = 0; i < 6; i++) a.send({ t: 'give', to: idOf(bq), n: GIVE.burst });
+      await sleep(700);
+      const burst = after(a, 'gave', k1), moved = burst.reduce((s0, m) => s0 + m.n, 0);
+      ok(moved <= GIVE.perSec + 2 && burst.some((m) => m.no === 'fast'), `초당 상한 (한꺼번에 ${GIVE.burst * 6}개 → ${moved}개)`);
+      // 하루 상한: 가진 귤의 dayGivePart
+      await sleep(1100);
+      let outA = burst.reduce((m0, m) => Math.max(m0, m.out || 0), 5), dayNo = null;
+      for (let i = 0; i < 60 && !dayNo; i++) { const r = await give(a, idOf(bq), GIVE.burst, 420); if (r?.out) outA = Math.max(outA, r.out); if (r?.no === 'day') dayNo = r; }
+      ok(dayNo && outA <= Math.floor(1000 * GIVE.dayGivePart) && outA >= Math.floor(1000 * GIVE.dayGivePart) - GIVE.burst, `하루 상한 (가진 1000 → ${outA}개에서 '오늘은 더 줄 수 없어요')`);
+      // 저장: 준 사람이 귤을 안 뺀 저장을 보내면 서버가 뺌, 받은 사람이 스스로 더한 몫은 바로잡힘
+      const sA = await put('dev', GA.token, { ...S1, coins: 1000 });
+      const mA = await meOf('dev', GA.token);
+      ok(sA.j.fixed.includes('gift') && mA.coins === 1000 - outA && mA.gift.out === outA && sA.j.fix.gift?.out === outA, `준 만큼 정확히 빠짐 (1000 → ${mA.coins}, 준 ${outA})`);
+      const inB = outA;
+      const sB = await put('dev', GB.token, { ...S1, coins: 100 + inB + 3000, gift: { in: inB + 3000, out: 0 } });
+      const mB = await meOf('dev', GB.token);
+      ok(sB.j.fixed.includes('coins') && sB.j.fixed.includes('gift') && mB.gift.in === inB && mB.coins <= 100 + inB + NET.earnPerSec * 90, `받은 귤 스스로 더하기·받은 누적 부풀리기 거절 (${mB.coins}, 받은 ${mB.gift.in})`);
+      const sB2 = await put('dev', GB.token, { ...mB, coins: mB.coins });
+      ok(!sB2.j.fixed.includes('gift') && !sB2.j.fixed.includes('coins'), '맞게 넣은 받은 귤은 그대로');
+      // 못 받은 알림(끊김): 받은 사람이 귤을 안 넣은 저장을 보내면 서버가 넣어 줌
+      const before = (await meOf('dev', GB.token)).coins;
+      const g2 = await give(a, idOf(bq), 1); // 하루 상한 뒤라 'day' 일 수 있음 → 그때는 P(poor 아님) 대신 새 계정으로
+      await put('dev', C2.token, { ...S1, coins: 5 + NET.earnBurst }); await put('dev', C2.token, { ...S1, coins: 200 });
+      const cq = await sock('dev', RM, { token: C2.token, ch: CH }); cq.send(presence(0.8, 0)); await sleep(400);
+      const g3 = await give(cq, idOf(bq), 7);
+      const lost = await put('dev', GB.token, { ...(await meOf('dev', GB.token)), coins: before + (g2?.n || 0) });
+      const mB3 = await meOf('dev', GB.token);
+      ok(g3?.n === 7 && lost.j.fixed.includes('gift') && lost.j.fix.coins === mB3.coins && mB3.coins === before + (g2?.n || 0) + 7, `못 받은 알림의 귤은 서버가 넣어 줌 (${before} → ${mB3.coins})`);
+      // 받지 않기
+      await put('dev', GB.token, { ...mB3, giftOff: 1 });
+      ok((await give(cq, idOf(bq), 1))?.no === 'off', "'귤 선물 받지 않기' 면 거절");
+      for (const o of [a, bq, pq, gq, cq]) o.close();
+      // 새 계정 (plain: 기본 GIVE.newSec): 받기만 됨
+      const NA = await lg('plain', 'gift-new-a'), NB = await lg('plain', 'gift-new-b');
+      await put('plain', NA.token, { ...S1, coins: 500 }); await put('plain', NB.token, { ...S1, coins: 5 });
+      const na = await sock('plain', RM, { token: NA.token, ch: CH }), nb = await sock('plain', RM, { token: NB.token, ch: CH });
+      na.send(presence(0, 0)); nb.send(presence(1, 0)); await sleep(400);
+      ok((await give(na, idOf(nb), 1))?.no === 'new', '만든 지 하루 안 된 계정은 줄 수 없음');
+      na.close(); nb.close();
     }
 
     /* ---------- 의견 도배·요청 수 ---------- */

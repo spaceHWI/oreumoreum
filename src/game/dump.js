@@ -230,6 +230,7 @@ const CTX_ICON = {
   bomb: ic('bomb'),
   throw: ic('gyul-throw'),
   dump: ic('cleanhouse'),
+  give: ic('gift'), // 귤 주기 (#175)
   chest: ic('chest'), // 숨은 보물 (#138)
   shop: ic('shop'),
   cairn: ic('cairn'),

@@ -1,6 +1,6 @@
 // 계정 저장 (#7): Durable Object 하나(이름 'all') 안의 SQLite. 칸은 sub·닉네임·게임 저장·치운 양·접속 시각뿐
 import { DurableObject } from 'cloudflare:workers';
-import { NET, FEEDBACK, RANK, HAIR, NICK, METRICS } from '../../src/balance.js';
+import { NET, FEEDBACK, RANK, HAIR, NICK, METRICS, GIVE } from '../../src/balance.js';
 import { isMaxKey } from './metrics.js';
 import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
 import { cleanText, nickOk, nickBad, nickPrice } from '../../src/safetext.js';
@@ -30,6 +30,8 @@ export class Accounts extends DurableObject {
     if (!cols.includes('look')) this.sql.exec('ALTER TABLE acc ADD COLUMN look TEXT');
     for (const c of ['nick_n', 'nick_day', 'nick_free']) if (!cols.includes(c)) this.sql.exec(`ALTER TABLE acc ADD COLUMN ${c} INTEGER DEFAULT 0`); // 이름 바꾸기 (#162): 바꾼 횟수·마지막 바꾼 날(한국 날)·다음 한 번 무료
     if (!cols.includes('bank')) this.sql.exec('ALTER TABLE acc ADD COLUMN bank REAL DEFAULT 0'); // 번 몫 (#144): 방이 받아 준 줍기 × 더미 값. 버린 귤은 이 안에서
+    // 귤 주기 (#175): 받은·준 귤 누적(gin·gout, 저장의 save.gift 와 맞춰 봄), 그날(한국 날 g_day) 준·받은 수
+    for (const c of ['gin', 'gout', 'g_day', 'g_out', 'g_in']) if (!cols.includes(c)) this.sql.exec(`ALTER TABLE acc ADD COLUMN ${c} INTEGER DEFAULT 0`);
     if (!cols.includes('cred')) this.sql.exec('ALTER TABLE acc ADD COLUMN cred TEXT'); // 서버가 인정한 기록 (#188 earn.js): 받은 퀘스트·우두머리·소굴·보물·볼거리, 새 전리품 통
     // 귤 맞춤 기록 (#188): 서버가 귤을 깎은 때마다 한 줄 (clampKeepDays 일 보관). 운영자 귤 보내기 (got: 받는 사람이 받았나)
     this.sql.exec('CREATE TABLE IF NOT EXISTS clamp (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, sub TEXT, nick TEXT, amt INTEGER, before INTEGER, ask INTEGER, after INTEGER, why TEXT, ver TEXT, info TEXT)');
@@ -132,7 +134,7 @@ export class Accounts extends DurableObject {
     const got = new Set(Array.isArray(save.giftGot) ? save.giftGot.slice(-100).map(Number) : []);
     const take = this.giftsOf(sub).filter((g) => got.has(g.id)), grant = take.reduce((a, g) => a + g.n, 0);
     let cred = null; try { cred = r.cred ? JSON.parse(r.cred) : null; } catch (e) { cred = null; }
-    const { save: S, fixed, acc, clamp, nickBad: nb } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, cred }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal(), grant });
+    const { save: S, fixed, acc, clamp, nickBad: nb } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, cred, gin: r.gin || 0, gout: r.gout || 0 }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal(), grant });
     for (const g of take) this.sql.exec('UPDATE gift SET got = 1, got_at = ? WHERE id = ? AND sub = ?', t, g.id, sub);
     const rev = (r.rev || 0) + 1;
     // 확인한 칸만 바꿔 넣고 나머지(설정·튜토리얼 등)는 받은 그대로
@@ -146,7 +148,7 @@ export class Accounts extends DurableObject {
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
     const fix = {};
-    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } }
+    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } if (fixed.includes('gift')) { fix.coins = S.coins; fix.gift = S.gift; } }
     if (clamp && clamp.amt > 0) fix.cut = { n: clamp.amt, why: clamp.why }; // 클라이언트가 '귤 ○개를 맞췄어요' 와 의견 보내기에 붙임
     return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5, gifts: this.giftsOf(sub).filter((g) => !got.has(g.id)) };
   }
@@ -169,6 +171,29 @@ export class Accounts extends DurableObject {
     return { ok: true, id: this.sql.exec('SELECT MAX(id) AS id FROM gift').one().id };
   }
   grantList(k = 100) { return this.sql.exec('SELECT gift.id AS id, gift.at AS at, gift.sub AS sub, acc.nick AS nick, n, why, got, got_at FROM gift LEFT JOIN acc ON acc.sub = gift.sub ORDER BY gift.id DESC LIMIT ?', k).toArray(); }
+  // 귤 주기 (#175, roomcore 'give'): from 이 to 에게 n 개. 서버 저장의 귤 + 아직 저장에 안 들어간 받은·준 귤로 가진 것을 셈 (클라이언트가 보낸 값은 안 믿음)
+  // → { got, why?, out: from 의 준 누적, in: to 의 받은 누적, nick }. why: self|none|new|off|coins|day|full (got 이 n 보다 적을 때)
+  gift(from, to, n, t = Date.now(), newSec = GIVE.newSec) {
+    n = Math.floor(Number(n)); if (!(n > 0) || from === to) return { got: 0, why: 'self' };
+    const a = this.row(from), b = this.row(to);
+    if (!a || !b || !a.save || !b.save) return { got: 0, why: 'none' };
+    if (t - (a.created || 0) < newSec * 1000) return { got: 0, why: 'new', out: a.gout || 0 };
+    const sb = JSON.parse(b.save); if (sb.giftOff) return { got: 0, why: 'off', out: a.gout || 0 };
+    const sa = JSON.parse(a.save), day = kstDay(t);
+    const gf = (s) => (s.gift && typeof s.gift === 'object' ? s.gift : {}), num = (v) => Math.max(0, Math.floor(Number(v) || 0));
+    const have = Math.max(0, num(sa.coins) + ((a.gin || 0) - num(gf(sa).in)) - ((a.gout || 0) - num(gf(sa).out)));
+    const aOut = a.g_day === day ? a.g_out || 0 : 0, bIn = b.g_day === day ? b.g_in || 0 : 0;
+    const dayCap = Math.min(GIVE.dayGiveMax, Math.floor((have + aOut) * GIVE.dayGivePart));
+    const got = Math.max(0, Math.min(n, have, dayCap - aOut, GIVE.dayGetMax - bIn));
+    if (have < n) return { got: 0, why: 'coins', out: a.gout || 0, in: b.gin || 0 }; // 가진 것보다 많이는 통째로 거절
+    const why = got >= n ? undefined : dayCap - aOut < n ? 'day' : 'full';
+    if (got) {
+      const aIn = a.g_day === day ? a.g_in || 0 : 0, bOut = b.g_day === day ? b.g_out || 0 : 0;
+      this.sql.exec('UPDATE acc SET gout = COALESCE(gout, 0) + ?, g_day = ?, g_out = ?, g_in = ? WHERE sub = ?', got, day, aOut + got, aIn, from);
+      this.sql.exec('UPDATE acc SET gin = COALESCE(gin, 0) + ?, g_day = ?, g_in = ?, g_out = ? WHERE sub = ?', got, day, bIn + got, bOut, to);
+    }
+    return { got, why, out: (a.gout || 0) + got, in: (b.gin || 0) + got };
+  }
   // 방이 받아 준 줍기로 번 몫 (#144, room.js flushEarn): [[sub, 귤]…]. 없는 계정은 지나감, earnBankMax 에서 멈춤
   earn(list) {
     if (!Array.isArray(list)) return 0;

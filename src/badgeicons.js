@@ -13,7 +13,7 @@ const num = (t) => `<circle cx="37.5" cy="37.5" r="8.5" fill="${W}"/><text x="37
 const B = {
   'b-arm-bow': ['bow'], 'b-arm-gun': ['gun'], 'b-arm-mg': ['mg'], 'b-arm-laser': ['laser'], 'b-arm-bomb': ['bomb'], // 무기 첫 구매 (#123)
   'b-first': ['walk'], 'b-10k': ['shoe'], 'b-50k': ['mountain'], 'b-sunrise': ['sunrise'], 'b-sunset': ['sunset'],
-  'b-deer-friend': ['deer'], 'b-stones': ['cairn'], 'b-boar': ['boar'], 'b-photo': ['photo'],
+  'b-deer-friend': ['deer'], 'b-stones': ['cairn'], 'b-boar': ['boar'], 'b-photo': ['photo'], 'b-give': ['gift'], // 귤 인심 (#175)
   'b-streak-3': ['calendar', '3'], 'b-streak-7': ['calendar', '7'], 'b-streak-30': ['calendar', '30'],
   'b-run-3': ['walk', '3'], 'b-run-7': ['walk', '7'], 'b-run-14': ['walk', '14'], // 이어 오기 (#125)
   trash: ['trash'], recycle: ['recycle'], heap: ['heap'], dex: ['dex'], // 단계 있는 뱃지 (fam)

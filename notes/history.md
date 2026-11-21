@@ -1394,3 +1394,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인 `node tools/daily.js [--shot]`, `tools/sec.js` 7줄, `tools/oldsave.js dailyOld,dailyBad`
 
 - #197 (오류 알림): WebGL 을 잃은 바로 그 프레임에 three 가 처음 쓰는 셰이더의 링크 글을 읽다 `.trim` 에서 멈추던 것. 브라우저가 `webglcontextlost` 를 알리기 전에는 three 가 잃은 줄 모르고 그리는데, 그때 `getProgramInfoLog`·`getShaderInfoLog` 는 글 대신 null 을 준다(three 0.170 은 null 을 보지 않음). `src/game/scene.js` 에서 렌더러를 만든 바로 뒤 이 두 함수가 null 이면 빈 글을 돌려주게 감쌈. 그 프레임만 넘기면 곧 `webglcontextlost` 가 와서 #108 안내·되살리기로 이어진다. 확인 `node tools/gllost.js $PWD lose`(진짜로 잃게 함)·`null`(iOS 처럼 셰이더 글만 null)
+
+## #175 가까운 사람에게 귤 주기 (2026-11-21)
+- 다른 플레이어 2.5m(GIVE.r) 안이면 상호작용 버튼이 '귤 주기 · 이름'. 한 번 1개, 누르고 있으면 0.4초 뒤 초당 5 → 2초 15 → 4초 30, 0.25초마다 묶어 `{t:'give', to, n}` (src/game/give.js, balance.js GIVE)
+- 서버가 옮김: roomcore 가 로그인·같은 방·4m·초당 30(토큰 통)·n ≤ 12 를 보고 Accounts.gift 로. 계정은 서버 저장 귤 + 아직 저장에 안 들어간 받은·준 몫으로 가진 귤을 셈(모자라면 통째로 거절), 하루 줄 수 = min(5000, (가진 귤+오늘 준 귤)×0.5), 하루 받을 수 10000, 만든 지 1일 안 된 계정은 받기만, 받는 사람 save.giftOff 면 거절
+- 계정 칸 gin·gout(누적)·g_day·g_out·g_in. 저장에는 save.gift = {in, out}(클라이언트가 넣은 누적). 클라이언트는 알림의 누적 차이만큼만 귤을 더하고 빼서 같은 것을 두 번 세지 않음
+- 저장 확인(validate.js giftBase): 받은·준 귤은 '번 귤' 이 아님(지난 귤에 더하고 빼서 봄). 저장에 아직 안 들어간 몫(끊겨 못 받은 알림·보내는 중이던 저장)은 서버가 넣고 fixed 'gift' → fix.coins·fix.gift 로 클라이언트를 맞춤
+- presence 의 ac=1 은 서버가 붙임(로그인한 사람). 손님에게는 버튼이 안 나옴. 받는 쪽: 한 줄 '○○ 님이 귤 N개를 줬어요'(같은 사람이면 개수만), 귤 효과, 꾸벅 인사(insa)
+- 동료(#172): 말 걸기 창 '귤 주기' 1개씩 하루 20개, 고맙다는 말만 (buddies.js 에 late.mateTalkNow·mateSay). 업적 뱃지 '귤 인심'(b-give, 100개). 메뉴 '귤 선물: 받음/안 받음'
+- 받은 귤은 '귤 벌기' 업적·경험치·순위에 안 들어감
+- 로컬 검사만(FAKE_AUTH) `GIFT_NEW_SEC` 로 새 계정 기다림을 바꿈 (npm run dev·sec.js dev 는 0, sec.js plain 은 기본값으로 막히는지 봄)
