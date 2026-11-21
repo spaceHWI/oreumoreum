@@ -8,6 +8,7 @@
 // #146 무리: 같이 나온 적은 e.pack 이 같고, 적끼리 겹치지 않게 밀어내며 플레이어 둘레 자기 자리(e.slotA)로 벌려 에워쌈 → src/enemypack.js
 import * as THREE from 'three';
 import { height } from './world.js';
+import { drape } from './drape.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
 import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS } from './balance.js';
 import { createPack, slotGoal, bodyR } from './enemypack.js';
@@ -110,7 +111,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     return info;
   }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
-  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) group.remove(e.warn); e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
+  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
@@ -253,9 +254,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * (1 - e.st / COMBAT.staggerT) : 0);
     }
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
-      if (!e.warn) { e.warn = new THREE.Mesh(warnGeo, warnMat); e.warn.renderOrder = 3; group.add(e.warn); }
+      if (!e.warn) { e.warn = new THREE.Mesh(warnGeo.clone(), warnMat); e.warn.renderOrder = 3; group.add(e.warn); e.warnAt = drape(e.warn, height); } // 땅을 따라 휨 (#151)
       e.warn.visible = e.state === 'wind';
-      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warn.scale.set(k, 1, k); e.warn.position.set(e.pos.x, e.pos.y + 0.08, e.pos.z); }
+      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warnAt(e.pos.x, e.pos.z, Math.round(k * 25) / 25, 0, 0.02); }
     }
     legs4(e, e.speed > 0.3 ? 0.7 : 0);
     const charge = (e.state === 'charge' && e.speed > 4) || e.state === 'wind' || e.state === 'dash' ? 1 : 0; e.chg += (charge - e.chg) * Math.min(1, dt * 4);

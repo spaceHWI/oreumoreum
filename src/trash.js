@@ -242,7 +242,8 @@ function makeHeapGeo(k, st, low) {
 // paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
 // chs: 클린하우스 자리 [{x, z}…] (들머리 + 오름 안, #138 고리 기준·들판 더미가 비켜 감)
 // entry: 들머리 더미 자리 (#160, placeEntry). 없으면 구역 1 더미도 오름 위에만
-export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null, chs = [], entry = null }) {
+// tutHeap {x, z}: 튜토리얼 낱개를 작은 더미 하나로 그림 (#151). 남은 수에 따라 줄어들고 다 주우면 'tut-heap-clear'. 저장(heaps)·구역·업적엔 안 들어감
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null, chs = [], entry = null, tutHeap = null }) {
   const trail = makeTrail(paths);
   const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(col && col.blocked(x, z, 0.45)); // 사물과 겹치지 않게 (#15)
   const heaps = placeHeaps(trail, ok, height, origin, chs, entry && { ...entry, ok: (x, z) => entry.walk(x, z) && !(col && col.blocked(x, z, 0.45)), blocked: (x, z, r) => !!col && col.blocked(x, z, r) });
@@ -256,6 +257,11 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   const CAP = Math.max(1, fixed.length);
   const meshes = geos.map((g) => { const im = new THREE.InstancedMesh(g, mat, CAP); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; im.setColorAt(0, new THREE.Color()); scene.add(im); return im; });
   const FY = fixed.map((f) => height(f.x, f.z)), FC = fixed.map((f, k) => (Math.imul(k + 7, 2654435761) >>> 24) % PAL[f.t].length);
+  // #151 튜토리얼 작은 더미: 단계 0~2 (3개 → 2 → 1), 크기는 작은 더미의 TH_K 배
+  const TH_K = 0.62, thGeo = tutHeap ? [0, 1, 2].map((st) => makeHeapGeo('s', st, low).scale(TH_K, TH_K, TH_K)) : null;
+  const thMesh = tutHeap ? new THREE.Mesh(thGeo[0], mat) : null;
+  if (thMesh) { thMesh.position.set(tutHeap.x, height(tutHeap.x, tutHeap.z), tutHeap.z); thMesh.castShadow = !low; thMesh.receiveShadow = !low; scene.add(thMesh); }
+  const tutLeft = () => fixed.reduce((n, f, k) => n + (store.isTutPicked(k) ? 0 : 1), 0);
   // 더미 (크기·단계별 InstancedMesh)
   const HM = {}; ['s', 'l', 'xl', 'mt'].forEach((k) => { const cap = Math.max(1, heaps.filter((h) => h.k === k).length); HM[k] = [0, 1, 2, 3].map((st) => { const im = new THREE.InstancedMesh(makeHeapGeo(k, st, low), mat, cap); im.count = 0; im.frustumCulled = false; im.castShadow = !low; im.receiveShadow = !low; scene.add(im); return im; }); });
   // 더미 충돌: 단계마다 원 하나씩 등록해 두고 지금 단계 것만 켬
@@ -269,8 +275,9 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   function rebuild(px, pz) {
     lastX = px; lastZ = pz; dirty = false;
     const cnt = [0, 0, 0, 0, 0];
+    if (thMesh) { const n = tutLeft(); thMesh.visible = n > 0; if (n > 0) thMesh.geometry = thGeo[Math.max(0, Math.min(2, fixed.length - n))]; }
     fixed.forEach((f, k) => {
-      if (store.isTutPicked(k) || (f.x - px) ** 2 + (f.z - pz) ** 2 > DRAW_R * DRAW_R) return;
+      if (thMesh || store.isTutPicked(k) || (f.x - px) ** 2 + (f.z - pz) ** 2 > DRAW_R * DRAW_R) return;
       const t = f.t, c = cnt[t]; e.set(0, f.r || 0, 0); q.setFromEuler(e); v.set(f.x, FY[k], f.z); m4.compose(v, q, one);
       meshes[t].setMatrixAt(c, m4); meshes[t].setColorAt(c, colr.set(PAL[t][FC[k]])); cnt[t] = c + 1;
     });
@@ -313,7 +320,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
       const R = curR(c.h) * 0.5, a = Math.random() * 6.28; pos = new THREE.Vector3(h.x + Math.cos(a) * R, h.y + HEAP.sizes[h.k].h * STG_H[Math.max(0, h.st)] * 0.7, h.z + Math.sin(a) * R);
     } else {
       const f = fixed[c.k]; if (!store.markTutPicked(c.k)) return null;
-      t = f.t; color = PAL[t][FC[c.k]]; pos = new THREE.Vector3(f.x, FY[c.k] + 0.15, f.z);
+      t = f.t; color = PAL[t][FC[c.k]]; pos = new THREE.Vector3(f.x, FY[c.k] + (thMesh ? 0.45 : 0.15), f.z);
     }
     const type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
@@ -323,6 +330,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
     dirty = true;
     emit('trash', { kind: type.id, dex: dx, dexNew });
+    if (c.k != null && thMesh && !tutLeft()) emit('tut-heap-clear', { x: tutHeap.x, z: tutHeap.z, r: HEAP.sizes.s.r * TH_K });
     if (c.h != null) {
       const before = heaps[c.h].st; syncCols();
       if (heaps[c.h].st < 0) { emit('heap-clear', { h: c.h, zone: heaps[c.h].zone }); if (!zoneLeft(heaps[c.h].zone)) emit('zone-clear', { zone: heaps[c.h].zone }); }
