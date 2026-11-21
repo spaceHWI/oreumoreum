@@ -1356,3 +1356,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 모아 쏘기(#129): 누르고 있는 동안은 다가가지도 쏘지도 않고 모으기만, 놓으면 charge.js 가 타겟에게 쏨. 짧게 놓은 한 발은 approach 가 쏨(charge.js 는 `late.approachOn` 이면 쏘지 않음)
 - throw.js: `fireR` 내보냄, 켜져 있는 동안 잡아 두는 거리(detectR)를 `late.approachR` 만큼 늘림. arms.js: `late.armReady`(다음 발 쏴도 되나, 폭탄 다시 쥐는 중 토스트가 뜨지 않게)
 - 확인 `node tools/approach.js` (3마리 차례로·W 로 풀림·기운 낮음·줍기·외계인·모으기·적 없음)
+
+- #124 낚시 전용 업적 7개: 첫 낚시·10번·50번·대어(잭팟)·물고기 다 낚기·비 오는 날·밤낚시. 낚시 reward(game/debug.js)가 fish-rain·fish-night·fish-all 사건을 더 냄. 보상 5~40귤. 예전 저장의 life.fish 에서 이어 셈(9 → 10 확인). 밤은 sunState.el<-4. 달 아이콘이 없어 밤낚시는 star 로 임시.
