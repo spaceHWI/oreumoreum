@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { height } from './world.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
-import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, COMBAT } from './balance.js';
+import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, COMBAT, CHARGE } from './balance.js';
 import { reportCrash, crashNote } from './crash.js';
 
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -97,13 +97,15 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
-  function hurt(e, dmg, quiet) {
+  // ch: 모아 쏜 정도 0~1 (#129) → 더 멀리 밀림, hooks.chargeHit 이 터지는 효과
+  function hurt(e, dmg, quiet, ch = 0) {
+    if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
     if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     if (e.state === 'stagger') dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
       const ux = e.pos.x - player.pos.x, uz = e.pos.z - player.pos.z, L = Math.hypot(ux, uz) || 1;
-      e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1); e.flX = ux / L; e.flZ = uz / L;
+      e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1) * (1 + (CHARGE.push - 1) * ch); e.flX = ux / L; e.flZ = uz / L;
       if (e.state === 'wind' || e.state === 'dash') { e.state = 'charge'; e.st = 0; }
     }
     if (e.hp <= 0) repel(e);
@@ -115,15 +117,15 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (!live(e)) continue;
       if (Math.hypot(p.x - e.pos.x, p.z - e.pos.z) >= BOAR.hitR * e.def.size || p.y > e.pos.y + e.h + BOAR.hitPad) continue;
       tg.vel.set(-tg.vel.x * 0.3, 2.5, -tg.vel.z * 0.3);
-      hurt(e, dmg, quiet);
+      hurt(e, dmg, quiet, tg.ch || 0);
       return e;
     }
     return null;
   }
   // 둘레 r 안 모두 (#123 귤 폭탄). 맞은 적 목록
-  function hitArea(p, r, dmg) {
+  function hitArea(p, r, dmg, ch = 0) {
     const out = [];
-    for (const e of list.slice()) { if (!live(e) || Math.hypot(p.x - e.pos.x, p.z - e.pos.z) > r + BOAR.hitR * e.def.size * 0.5) continue; hurt(e, dmg, out.length > 0); out.push(e); }
+    for (const e of list.slice()) { if (!live(e) || Math.hypot(p.x - e.pos.x, p.z - e.pos.z) > r + BOAR.hitR * e.def.size * 0.5) continue; hurt(e, dmg, out.length > 0, ch); out.push(e); }
     return out;
   }
   function repel(e) {

@@ -69,6 +69,7 @@ import './game/input.js';
 import './game/menu.js';
 import './game/throw.js';
 import './game/arms.js'; // 무기 3~6단계 (#123)
+import './game/charge.js'; // 모아 쏘기 (#129)
 import './game/panels.js';
 import './game/screen.js';
 import './game/ride.js';

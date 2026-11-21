@@ -142,12 +142,13 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     m.position.y = tg.baseY + TG.hover + Math.sin(time * TG.bobSpeed + tg.ph) * TG.bob;
     tg.glow.position.y = tg.baseY - m.position.y + 0.03; // 위로 뜬 만큼 내려 땅에 붙임
   }
-  function throwTangerine(from, dir, power, peersFn, vy, home = null) { // home: 유도 대상 (#148)
-    const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true;
+  function throwTangerine(from, dir, power, peersFn, vy, home = null, ch = null) { // home: 유도 대상 (#148), ch: 모아 쏘기 { k, mul, size } (#129)
+    const m = new THREE.Mesh(tanGeo, tanMat); m.castShadow = true; if (ch) m.scale.setScalar(ch.size);
     const leaf = new THREE.Mesh(leafGeo, leafMat); leaf.position.y = TR + 0.01; leaf.rotation.x = -1; m.add(leaf);
     m.position.copy(from); group.add(m);
     const v = dir.clone().multiplyScalar(power); v.y += vy ?? power * 0.55;
-    tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null, trail: makeTrail(), trailT: 0, hist: [], home });
+    const tg = { mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn, hitDone: false, claimedBy: null, trail: makeTrail(), trailT: 0, hist: [], home, ch: ch?.k || 0, mul: ch?.mul || 1 };
+    tangerines.push(tg); return tg;
   }
   // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
   // n 귤을 흩뿌림. maxN 개보다 많으면 알갱이는 maxN 개로 두고 하나에 귤 여러 개를 나눠 담음 (#137 적 귤이 커짐)
@@ -187,8 +188,8 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   }
   // vel: 처음 속도(Vector3), opt: { dmg, grav, peersFn }
   function shootArrow(from, vel, opt = {}) {
-    const m = makeArrow(); m.position.copy(from); m.quaternion.setFromUnitVectors(zAxis, aTmp.copy(vel).normalize()); group.add(m);
-    arrows.push({ mesh: m, vel: vel.clone(), t: 0, dmg: opt.dmg ?? 2, grav: opt.grav ?? 5, peersFn: opt.peersFn || null, home: opt.home || null });
+    const m = makeArrow(); m.position.copy(from); m.quaternion.setFromUnitVectors(zAxis, aTmp.copy(vel).normalize()); group.add(m); if (opt.size) m.scale.setScalar(opt.size);
+    const a = { mesh: m, vel: vel.clone(), t: 0, dmg: opt.dmg ?? 2, grav: opt.grav ?? 5, peersFn: opt.peersFn || null, home: opt.home || null, ch: opt.ch || 0 }; arrows.push(a); return a;
   }
   function endArrow(i, hit) {
     const a = arrows[i]; group.remove(a.mesh); arrows.splice(i, 1);
@@ -202,7 +203,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       let done = false;
       for (let k = 0; k < n && !done; k++) {
         a.vel.y -= a.grav * h; if (a.home && a.t < COMBAT.homeT && !steer(a.vel, p, a.home, h, COMBAT.homeRateBow)) a.home = null; p.addScaledVector(a.vel, h); // 유도 (#148)
-        const dummy = { vel: aStep.set(0, 0, 0) };
+        const dummy = { vel: aStep.set(0, 0, 0), ch: a.ch };
         if (enemies.hitTest(p, dummy, a.dmg) || extraHit(p, dummy, a.dmg)) { done = true; break; }
         for (const hb of hareubangs) {
           if (Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z) < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3) { hb.hitT = 1; sound.stone(); onToast('하르방 코를 맞혔어요. 복이 온대요'); hooks.hareubang?.(); done = true; break; }
@@ -422,7 +423,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
           if (Math.hypot(p.x - pe.pos.x, p.z - pe.pos.z) < 0.7 && p.y > pe.pos.y + 0.2 && p.y < pe.pos.y + 2.2) { tg.hitDone = true; hooks.hitRunner?.(pe.id); tg.vel.set(-tg.vel.x * 0.2, 2, -tg.vel.z * 0.2); sound.beep(false); break; }
         }
       }
-      if (!tg.drop && !tg.enemyHit && (enemies.hitTest(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1)) || extraHit(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1)))) tg.enemyHit = true; // 적 (#37) · 투기꾼 (#47)
+      if (!tg.drop && !tg.enemyHit && (enemies.hitTest(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1) * (tg.mul || 1)) || extraHit(p, tg, THROW_DMG.hand * (hooks.dmgMul?.() ?? 1) * (tg.mul || 1)))) tg.enemyHit = true; // 적 (#37) · 투기꾼 (#47)
       for (const hb of hareubangs) {
         const hd = Math.hypot(p.x - hb.pos.x, p.z - hb.pos.z);
         if (hd < 0.8 && p.y > hb.pos.y + 0.3 && p.y < hb.pos.y + 3.3 && !tg.hbHit) {
@@ -500,16 +501,16 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   const addTargets = (t) => { extra.push(t); };
   // 무기 3~6단계 (#123, src/weaponfx.js): 한 점 맞힘(적·투기꾼·하르방)과 둘레 맞힘(폭탄). 맞힌 것(적은 그 적)을 돌려줌
   const hDummy = { vel: new THREE.Vector3() };
-  function hitAt(p, dmg, vel = null, { quiet = false, hb = true } = {}) {
-    if (vel) hDummy.vel.copy(vel); else hDummy.vel.set(0, 0, 0);
+  function hitAt(p, dmg, vel = null, { quiet = false, hb = true, ch = 0 } = {}) {
+    if (vel) hDummy.vel.copy(vel); else hDummy.vel.set(0, 0, 0); hDummy.ch = ch;
     const e = enemies.hitTest(p, hDummy, dmg, quiet); if (e) return e;
     for (const t of extra) if (t.hitTest(p, hDummy, dmg, quiet)) return true;
     if (hb) for (const h of hareubangs) if (Math.hypot(p.x - h.pos.x, p.z - h.pos.z) < 0.8 && p.y > h.pos.y + 0.3 && p.y < h.pos.y + 3.3) { h.hitT = 1; sound.stone(); onToast('하르방 코를 맞혔어요. 복이 온대요'); hooks.hareubang?.(); return true; }
     return null;
   }
   const areaOut = [];
-  function hitArea(p, r, dmg) {
-    const n = enemies.hitArea(p, r, dmg).length;
+  function hitArea(p, r, dmg, ch = 0) {
+    const n = enemies.hitArea(p, r, dmg, ch).length; hDummy.ch = 0;
     let m = 0; for (const t of extra) { areaOut.length = 0; t.aimTargets(areaOut); for (const a of areaOut) if (Math.hypot(a.pos.x - p.x, a.pos.z - p.z) < r + a.size * 0.5) { hDummy.vel.set(0, 0, 0); if (t.hitTest(aTmp.set(a.pos.x, a.pos.y + a.h, a.pos.z), hDummy, dmg, n + m > 0)) m++; } }
     return n + m;
   }
