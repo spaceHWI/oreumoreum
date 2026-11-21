@@ -2,7 +2,7 @@
 // - 별도 맵: 동굴은 오름 땅 밖 자리(CAVE.x0·z0)에 따로 만든 장면(caveScene). 들어가면 update.js 가 오름 장면 대신 이것만 그림(late.caveFrame)
 //   오름 장면의 것은 그리지 않을 뿐 그대로 둠(나올 때 바로 돌아가게). 동굴 층은 나오거나 층을 바꿀 때 지움(dispose)
 // - 땅 높이: world.js setCaveGround → height()/groundAt() 이 동굴 자리에서는 동굴 바닥. 벽은 spots.clamp 를 감싸 칸으로 막음
-// - 멀티: 동굴 안에서는 입구 자리에 서 있는 것으로 보냄(net.js netCave, cv:1). 같이 들어가기는 4번 조각
+// - 멀티: 서버 이동 판정에는 입구 자리, 동굴 자리는 cx·cz·층 cv·날짜 cd 로 따로 (net.js netCave). 같은 날·층 사람끼리만 보임 (4번 조각)
 // - 열림: CAVE.open ('admin' = 개발자 메뉴가 켜진 사람만, true = 레벨·구역 조건, false = 막음)
 // dev: __oreum.cave (enter·exit·down·state·stats)
 import * as THREE from 'three';
@@ -82,7 +82,7 @@ function disposeFloor() {
 }
 function buildFloor(fi) {
   disposeFloor();
-  const F = genFloor(CAVE, fi, caveSeed(kstDate(), fi));
+  const day = kstDate(), F = genFloor(CAVE, fi, caveSeed(day, fi)); netCave.fi = fi; netCave.day = day; /* 같이 들어가기 (4번 조각): 같은 날·층 사람끼리 */
   const M = caveMesh(F, CAVE), geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(M.pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(M.col, 3)); geo.computeVertexNormals(); geo.computeBoundingSphere();
   const g = new THREE.Group(); g.name = 'cave-floor-' + fi;
@@ -164,7 +164,7 @@ export function enterCave(now = false) {
     const back = { x: entFront.x, z: entFront.z, yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist };
     state.cave = { fi: 0, F: null, back, t: 0, before };
     const b = buildFloor(0); state.cave.F = b.F; state.cave.tris = b.tris;
-    setCaveGround(caveGround); netCave.at = { x: entFront.x, z: entFront.z };
+    setCaveGround(caveGround); netCave.at = { x: entFront.x, z: entFront.z }; netCave.scene = cs;
     cs.add(runner.root);
     placeAt(b.F, b.F.start.x + 2.2, b.F.start.z, 0);
     cam.dist = CAVE.cam.dist; cam.pitch = CAVE.cam.pitch; followCam(0, true);
@@ -187,7 +187,7 @@ export function exitCave(now = false) {
     late.caveOut?.(hp.isDown || hp.pending); /* 2번 조각: 들고 나온 쓰레기·쓰러지면 절반 잃음, 적 지우기, 장면 되돌리기 */
     disposeFloor();
     scene.add(runner.root);
-    setCaveGround(null); netCave.at = null; state.cave = null;
+    setCaveGround(null); netCave.at = null; netCave.scene = null; state.cave = null;
     player.pos.set(c.back.x, height(c.back.x, c.back.z), c.back.z); player.visY = player.pos.y; player.prevX = c.back.x; player.prevY = player.pos.y; player.prevZ = c.back.z;
     player.heading = entFace; player.speed = 0; player.target = null;
     cam.yaw = c.back.yaw; cam.pitch = c.back.pitch; cam.dist = c.back.dist; followCam(0, true);

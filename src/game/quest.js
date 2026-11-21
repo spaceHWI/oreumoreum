@@ -266,6 +266,7 @@ function goPos(go) {
   if (givers.has(go)) return giverPos(go);
   if (go.startsWith('shop:')) { const sh = shopOf(go.slice(5)); return sh ? sh.door.clone() : null; }
   if (go === 'cairn') { const c = nearest(cairns.map((c) => c.pos)); return c ? c.clone() : null; }
+  if (go === 'cave') return late.caveEnt?.() || null; // 용암 동굴 입구 (#195)
   if (go === 'ch') { const c = nearest(CHS.map((c) => c.front)); return c ? c.clone() : null; }
   if (!trash) return null;
   const hs = trash.heaps.map((h, i) => ({ x: h.x, z: h.z, h, i }));

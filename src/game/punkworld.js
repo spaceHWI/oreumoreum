@@ -182,7 +182,7 @@ const fightNow = () => !!player.down || !!late.pace?.threat?.() || (state.tensio
 function syncChip() { chip.hidden = !P.unread.length; chip.querySelector('i').textContent = P.unread.length > 1 ? String(P.unread.length) : ''; }
 // 쪽지 창 (#199): 종이 모양·이전/다음 넘기기·그림은 game/noteview.js
 const view = createNoteView({
-  P, NOTES, zoneName, persist, sound: () => late.sound,
+  P, NOTES, zoneName: (z) => (z === 'cave' ? '용암 동굴' : zoneName(z)), persist, sound: () => late.sound, /* 동굴 쪽지 (#195) */
   onRead: () => syncChip(),
   // 감독은 창이 닫힐 때까지 기다림 (도감에서 연 것은 도감 위에 뜸)
   onOpen: (dex) => { if (!dex) { closePanels(); holdWin('story', 'note', 'punk-note'); } late.sound?.snip?.(); },
@@ -221,7 +221,7 @@ syncChip();
     for (const n of NOTES) {
       const got = !!P.notes[n.id], c = document.createElement('div'); c.className = 'dex-cell note' + (got ? '' : ' locked');
       c.innerHTML = `<span class="dex-ic">${iconSvg(BADGE_ICONS['b-notes'])}</span><b></b><small></small>`;
-      c.querySelector('b').textContent = got ? n.t : '???'; c.querySelector('small').textContent = got ? (P.unread.includes(n.id) ? '안 읽음' : n.from) : `구역 ${n.z}`;
+      c.querySelector('b').textContent = got ? n.t : '???'; c.querySelector('small').textContent = got ? (P.unread.includes(n.id) ? '안 읽음' : n.from) : n.z === 'cave' ? '동굴' : `구역 ${n.z}`; /* 동굴 쪽지 (#195) */
       if (got) c.addEventListener('click', () => openNote(n.id, { dex: true }));
       g.append(c);
     }

@@ -56,7 +56,8 @@ const HATS = {
     const M = mat('main', L.main), A = mat('acc', L.acc);
     const d = at(new THREE.SphereGeometry(0.27, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), M, 0, HC.y, HC.z); d.scale.set(1, 0.85, 1.07);
     const ridge = at(new THREE.BoxGeometry(0.05, 0.03, 0.46), M, 0, HC.y + 0.22, HC.z); const brim = at(new THREE.CylinderGeometry(0.31, 0.32, 0.016, 22, 1), M, 0, HC.y + 0.005, HC.z + 0.02); brim.scale.z = 1.1;
-    return G(d, ridge, brim, headband(A, HC.y + 0.05, 0.268, 0.03));
+    const lamp = L.lamp ? [at(new RoundedBoxGeometry(0.11, 0.08, 0.06, 2, 0.015), A, 0, HC.y + 0.1, HC.z + 0.27), at(new THREE.CircleGeometry(0.032, 12), mat('lamp', L.lamp), 0, HC.y + 0.1, HC.z + 0.301)] : null; /* 헤드랜턴 헬멧 (#195 동굴 옷): 이마 등 */
+    return G(d, ridge, brim, headband(A, HC.y + 0.05, 0.268, 0.03), lamp);
   },
   lamp(mat, L) { // 캠핑 헤드랜턴: 머리띠 + 이마 등 (불빛 색)
     const M = mat('main', L.main), A = mat('acc', L.acc), y = HC.y + 0.04, z = HC.z + 0.262;

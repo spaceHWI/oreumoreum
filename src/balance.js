@@ -1036,6 +1036,12 @@ export const STYLE_CLOTHES = [
   { id: 'socks:s-furboot', slot: 'socks', price: 600, name: '털 장화', desc: '눈 오는 오름 필수', look: { kind: 'socks', main: '#8a6a3c', acc: '#f2ece0', h: 0.17, thick: true, fur: true } },
 ].map((c) => ({ tier: 0, style: true, fresh: '2026-11-21', ...c }));
 CLOTHES.push(...STYLE_CLOTHES);
+// 동굴 옷 (#195 4번 조각): 가게에 없고 동굴에서만 (CAVE.cloth). 겉모습(tier 0), 값 0 = 서버가 산 값으로 셈하지 않음. 가게 목록은 weekly.js onShelf 가 뺌(cave)
+export const CAVE_CLOTHES = [
+  { id: 'hat:c-lamp', slot: 'hat', name: '헤드랜턴 헬멧', desc: '동굴 상자에서 나온 안전모 · 불이 진짜 켜져 있어요', look: { kind: 'hardhat', main: '#d89a2a', acc: '#2b2f3a', lamp: '#fff3a0' } },
+  { id: 'top:c-suit', slot: 'top', name: '동굴 탐험복', desc: '동굴의 주인을 쫓아낸 사람만 입는 옷', look: { kind: 'tee', long: true, main: '#6f6446', acc: '#e4ec5a', stripes: 2, collar: '#e4ec5a' } },
+].map((c) => ({ tier: 0, style: true, cave: true, price: 0, ...c }));
+CLOTHES.push(...CAVE_CLOTHES);
 // 주간 옷장 (#126): LEAP '이번 주' 칸에 매주 월요일 00:00(KST) 바뀌는 한정 옷. 주 번호로 정해져 모두 같음 (src/weekly.js)
 // 지금 옷의 색·무늬 변형(새 kind 없음). 능력은 그 칸 tier 단계(4단계를 넘지 않음, 겉모습 위주), 값은 그 칸 4단계 값 × priceK. 산 옷은 계속 가짐
 // week: 몇째 주 차례(0 ~ weeks-1)에 나오는지. epoch = 0번 주가 시작한 월요일 00:00 KST
@@ -1545,6 +1551,7 @@ export const JOURNEY = {
     { id: 'title', need: { zone: 3 } }, // #165 칭호
     { id: 'gift', need: { zone: 3 } }, // #175 귤 주기 (멀티)
     { id: 'aliens', need: { zone: 4 } }, // #168 '미친 개 주의'·'불법 주차 단속'·엔딩 (구역 4·5)
+    { id: 'cave', need: { lv: 12, zonesDone: 3 }, after: null }, // #195 용암 동굴 (레벨·구역 3 완료 = CAVE.minLv·needZone, game/caveextra.js gate 가 caveCan 으로 다시 봄)
   ],
 };
 
@@ -1703,6 +1710,8 @@ export const QUESTS = {
     { id: 'x-stone', giver: 'jigi', after: 'heap1', name: '돌 하나', say: ['돌탑에 돌 하나 올려 봐요. 소원은 공짜예요.'], task: '돌탑에 돌 하나', ask: { k: 'stone', n: 1 }, go: 'cairn', fin: ['무슨 소원 빌었어요? 아니, 말하지 마요.'], reward: { gyul: 5 } },
     { id: 'x-meal', giver: 'jigi', after: 'dump2', name: '밥은 먹고 다녀요', say: ['가게 거리 스톤에서 한 끼 먹고 와요. 든든해야 오래 줍죠.'], task: '스톤에서 식사 한 번', ask: { k: 'meal', n: 1 }, go: 'shop:stone', fin: ['얼굴이 폈네요.'], reward: { gyul: 10 }, need: 'shop:stone' },
     { id: 'x-browse', giver: 'jigi', after: 'dump2', name: '마을 구경', say: ['가게 거리에 미장원이랑 옷 가게도 있어요.', '사지 않아도 구경은 공짜.'], task: '루이네미장원이나 LEAP 구경', ask: { k: 'browse', n: 1 }, go: 'shop:salon', fin: ['구경 잘 했어요? 다음엔 지갑도 데려가요.'], reward: { gyul: 5 }, need: 'shop:salon' },
+    // 굼부리 표지판 곁가지 (#195 감독 문 cave, 구역 4 우두머리 뒤)
+    { id: 'x-cave', giver: 'b:crater', door: 'cave', after: 'boss4', name: '바람 새는 굴', say: ['[표지판] 굼부리 바닥 굴에서 찬바람이 새어 나옴.', '안에는 클린하우스가 없음. 들고 나온 것만 귤로 침.'], task: '용암 동굴에서 쓰레기 들고 나오기', ask: { k: 'caveOut', n: 1 }, go: 'cave', fin: ['[표지판] 동굴 벽에도 그들의 글씨가 있다고 함.'], reward: { gyul: 600 } },
     // 장비점 주인 (첫 버리기 뒤, 감독 문 shopQuest)
     { id: 'g-tool', giver: 'shop:gear', door: 'shopQuest', name: '손에 맞는 집게', say: ['그 집게, 손에 안 맞지? 딱 보면 알아.', '한 단계 위 걸로 바꿔 봐. 줍는 게 달라져.'], task: '도구 한 단계 올리기', ask: { k: 'tool', n: 1 }, go: 'shop:gear', fin: ['거봐, 손목이 안 아프지?'], reward: { coupon: ['gear', 1] } },
     { id: 'g-bag', giver: 'shop:gear', door: 'shopQuest', after: 'g-tool', name: '배낭은 클수록 좋다', say: ['배낭 작으면 클린하우스만 들락날락해.', '큰 걸로 하나 장만해.'], task: '배낭 한 단계 올리기', ask: { k: 'bag', n: 1 }, go: 'shop:gear', fin: ['이제 좀 오름 사람 같네.'], reward: { coupon: ['gear', 1] } },
@@ -1947,7 +1956,7 @@ export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win:
 // cam: 카메라 거리·최대·숙임 · lamp: 헤드랜턴(반경 r m) · fog: 안개 [시작, 끝] m (그 밖은 검게, 멀리 그리지 않음)
 // fade·hold: 들어가고 나올 때 어두워지는 시간(초) · near: 입구·줄·구멍 상호작용 거리 · moss·crystal: 발광 이끼·수정 수(층마다)
 export const CAVE = {
-  open: 'admin', minLv: 12, needZone: 3,
+  open: true, minLv: 12, needZone: 3, /* 4번 조각(#195)에서 레벨·구역 조건으로 엶 ('admin' = 개발자 메뉴만) */
   x0: 3200, z0: 3200, floorGap: 300,
   floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
   roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,
@@ -1986,6 +1995,12 @@ export const CAVE = {
   //   쫓아내면 그날(KST) 처음 한 번만 큰 보상: 귤 gyul + dropLoot('boss', loot 구역). 그 뒤는 small 귤만 (기록 없음 = credit)
   owner: { kind: 'robot', k: 2.1, name: '거대한 분리수거 로봇', hp: 5200, dmg: 48, walk: 1.0, wake: 6, gyul: 9000, small: 600, loot: 5, rain: { every: [7, 10], n: [3, 5], r: 1.6, dmg: 34 }, call: { at: [0.66, 0.33], kind: 'drone', n: 3 } },
   lines3: { today: '오늘의 동굴', half: '오늘 온전한 판은 다 돌았어요 · 쓰레기 귤 절반', crumble: '바닥이 무너졌어요!', crack: '바닥에 금이 가요', water: '물길이 깊어요 · 테왁 배낭이 있으면 건너요', swim: '테왁을 잡고 물길을 건너요', chest: '숨은 상자! 귤이 쏟아져요', chestGot: '오늘은 이미 연 상자예요', owner: '동굴의 주인이 깨어났어요!', ownerGone: '동굴의 주인을 쫓아냈어요! 오늘의 큰 보상', ownerAgain: '동굴의 주인을 또 쫓아냈어요 · 큰 보상은 하루 한 번', rock: '떨어진 돌' },
+  // 4번 조각 (game/caveextra.js): 같이 들어가기·벽 쪽지·동굴 옷·감독 문 cave·퀘스트 '바람 새는 굴'
+  // note: 층마다 벽에 붙은 쪽지(punktext.js NOTES 의 z 'cave', 층 순서 ids). r 읽는 거리, y 벽에 붙는 높이
+  // cloth: 동굴에서만 나오는 옷 (CAVE_CLOTHES). chest 처음 연 상자 · owner 처음 쫓아낸 주인
+  note: { ids: ['nc1', 'nc2', 'nc3'], r: 2.4, y: 1.35 },
+  cloth: { chest: 'hat:c-lamp', owner: 'top:c-suit' },
+  lines4: { note: '벽에 무언가 붙어 있어요', cloth: (n) => `${n}을(를) 찾았어요 · 내 가방에서 입어요`, door: '굼부리 가운데 굴에서 찬바람이 새어 나와요 · 깊이 들어가 볼까요?' },
   lines2: { full: '배낭이 가득 찼어요 · 들고 밖으로 나가요', none: '주울 것이 보이지 않아요', guard: '지킴이가 구멍을 막고 있어요', guardGone: '지킴이가 물러났어요 · 아래로 가는 길이 열렸어요', lost: '쓰러져 동굴 쓰레기 절반을 잃었어요', carry: '동굴 쓰레기를 들고 나왔어요 · 클린하우스에 버려요', lostLoad: '동굴에서 길을 잃고 나왔어요 · 동굴 쓰레기 절반을 잃었어요' },
 };
 { const z = ZONES[4], g = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0), v = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0); CAVE.junk.perVol = Math.round(2 * z.gv * g / v); } /* Z5V: 구역 5 부피 1 귤 × 2 */
