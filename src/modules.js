@@ -116,6 +116,7 @@ import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽�
 import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
 import './game/metrics.js'; // 이용 통계 (#121): 업적·쓰레기·적 후크를 감싸서 셈 (start.js 전)
 import './game/metricsadmin.js'; // 어드민 '수치' 표 (#121)
+import './game/wish.js'; // 돌탑 소원 글·함께 기도 (#127)
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';

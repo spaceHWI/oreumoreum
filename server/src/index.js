@@ -176,6 +176,26 @@ export default {
       }
       // 철 이벤트 (#180): 서버 날짜(달력)·모두의 트리 합계. 로그인 안 해도 됨 (손님도 트리를 봄)
       if (url.pathname === '/season' && req.method === 'GET') return json(await accounts(env).seasonInfo());
+      // 돌탑 소원 (#127, wishes.js): 읽기·기도·신고는 손님도('ip:<주소 해시>'), 쓰기·내 소식은 로그인한 사람만
+      if (url.pathname.startsWith('/wish')) {
+        const s = await who(), me = s ? s.sub : 'ip:' + ipk, A = accounts(env);
+        const qa = Number(url.searchParams.get('at') || NaN), at = env.FAKE_AUTH === '1' && qa > 0 ? qa : Date.now(); // 로컬 검사(tools/sec.js)만 날을 바꿔 봄
+        const idOf = (b) => { const id = Math.floor(Number(b?.id)); return id > 0 ? id : 0; };
+        if (url.pathname === '/wish' && req.method === 'GET') { const r = await A.wishList(String(url.searchParams.get('c') || ''), me); return json(r, r.error ? 400 : 200); }
+        if (url.pathname === '/wish' && req.method === 'POST') {
+          if (!s) return json({ error: 'login' }, 401);
+          const b = await readJson(req, 1024);
+          const r = await A.wishPut(s.sub, String(b?.c || ''), b?.text, at);
+          return json(r, r.error ? (r.error === 'slow' ? 429 : 409) : 200);
+        }
+        if ((url.pathname === '/wish/pray' || url.pathname === '/wish/report') && req.method === 'POST') {
+          const id = idOf(await readJson(req, 256)); if (!id) return json({ error: 'bad' }, 400);
+          const r = url.pathname === '/wish/pray' ? await A.wishPray(me, id, !!s, at) : await A.wishReport(me, id);
+          return json(r, r.error ? 409 : 200);
+        }
+        if (url.pathname === '/wish/news' && req.method === 'GET') { if (!s) return json({ error: 'login' }, 401); return json(await A.wishNews(s.sub)); }
+        return json({ error: 'not found' }, 404);
+      }
       // 의견 보내기 (#77): 로그인 안 해도 됨. 저장하고 개발자 메일로 (FEEDBACK_TO 시크릿)
       if (url.pathname === '/feedback' && req.method === 'POST') {
         const items = cleanItems((await readJson(req, 64e3)).items);
@@ -206,6 +226,12 @@ export default {
         if (url.pathname === '/admin/clamps' && req.method === 'GET') return json(await A.clampList(Math.max(1, Math.min(NET.clampKeepDays, Math.floor(Number(url.searchParams.get('days'))) || NET.clampKeepDays))));
         if (url.pathname === '/admin/metrics' && req.method === 'GET') return json({ days: METRICS.viewDays, rows: await A.metricsList(Math.max(1, Math.min(METRICS.keepDays, Math.floor(Number(url.searchParams.get('days'))) || METRICS.viewDays))) }); // 이용 통계 (#121)
         if (url.pathname === '/admin/grants' && req.method === 'GET') return json(await A.grantList());
+        if (url.pathname === '/admin/wishes' && req.method === 'GET') return json(await A.wishReported()); // 신고된 소원 (#127)
+        if (url.pathname === '/admin/wish' && req.method === 'POST') {
+          const b = await readJson(req, 256), id = Math.floor(Number(b?.id));
+          if (!(id > 0) || !['del', 'show'].includes(b?.act)) return json({ error: 'bad' }, 400);
+          const r = await A.wishAdmin(id, b.act); return json(r, r.error ? 404 : 200);
+        }
         if (url.pathname === '/admin/grant' && req.method === 'POST') {
           const b = await readJson(req, 4096);
           const sub = typeof b?.sub === 'string' ? b.sub.trim() : '', n = Math.floor(Number(b?.n)), why = cleanText(b?.why, 60);

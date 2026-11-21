@@ -75,40 +75,8 @@ export function standUp() {
 }
 $('btn-stand').addEventListener('click', standUp);
 
-// 소원 돌탑
-let wishCairn = null;
-export function openWishes(c) {
-  wishCairn = c; closePanels();
-  const list = late.social.stones.get(c.id) || [];
-  const mine = list.find((e) => e.mine);
-  $('wish-title').textContent = c.name;
-  $('wish-count').textContent = list.length ? `돌 ${list.length}개가 쌓여 있어요. 한 사람당 돌 하나, 다시 올리면 맨 위로 옮겨져요.` : '아직 아무도 돌을 올리지 않았어요. 첫 돌을 올려 보세요.';
-  $('wish-submit').textContent = mine ? '맨 위로 다시 올리기' : '돌 올리기';
-  $('wish-input').value = mine?.wish || '';
-  $('wish-solo').hidden = late.social.canWrite;
-  const box = $('wish-list'); box.innerHTML = '';
-  list.slice().reverse().filter((e) => e.wish).slice(0, 40).forEach((e) => {
-    const row = document.createElement('div'); row.className = 'wish' + (e.mine ? ' mine' : '');
-    const b = document.createElement('b'); b.textContent = e.mine ? '나' : e.nick; const s = document.createElement('span'); s.textContent = e.wish;
-    row.append(b, s); box.append(row);
-  });
-  $('wishes').hidden = false;
-}
-$('wish-form').addEventListener('submit', (e) => {
-  e.preventDefault(); if (!wishCairn) return;
-  const c = wishCairn; const wish = $('wish-input').value;
-  $('wishes').hidden = true;
-  const toMe = player.pos.clone().sub(c.pos).setY(0).normalize();
-  setTarget(c.pos.clone().addScaledVector(toMe, 1.8), async () => {
-    player.heading = Math.atan2(c.pos.x - player.pos.x, c.pos.z - player.pos.z);
-    player.pose = 'crouch'; player.poseT = 0;
-    await new Promise((r) => setTimeout(r, 500));
-    const had = await late.social.placeStone(c.id, wish);
-    c.drop = 1.2; late.sound.stone(); setTimeout(() => { if (player.pose === 'crouch') player.pose = 'move'; }, 400);
-    toast(had ? '소원을 바꿔 적었어요' : `${c.name}에 돌을 올렸어요`);
-    if (!had) ach.emit('stone'); late.tut.notify('stone');
-  });
-});
+// 소원 돌탑: 창·쓰기·기도·신고는 wish.js (#127). 앞 파일(stores.js)이 부르는 자리만 여기
+export function openWishes(c) { late.openWishes?.(c); }
 
 // 표지석 인증샷 (줄서기) → 사진사 NPC (#70): 사진사에게 가서 '사진' → 손짓 → 사진 자리에 서서 포즈(3종 무작위, 다시 누르면 바뀜) → 3·2·1 → 찰칵
 // 사진은 사진사 삼각대 카메라 자리에서 찍음(UI 없이). 가까이 있는 다른 사람도 그대로 함께 찍힘
