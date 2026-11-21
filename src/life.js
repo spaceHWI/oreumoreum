@@ -564,6 +564,6 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   }
   // 타고 있는 노루는 남김. 남은(못 지운) 목록을 돌려줌
   function removeDeer(list) { return list.filter((a) => { if (a.state === 'ridden') return true; const i = deer.indexOf(a); if (i >= 0) deer.splice(i, 1); group.remove(a.root); return false; }); }
-  L = { remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, hitAt, hitArea, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  L = { group, remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, hitAt, hitArea, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
   return L;
 }

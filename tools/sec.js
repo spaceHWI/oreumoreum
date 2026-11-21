@@ -236,6 +236,18 @@ async function startServers() {
       ok(rg <= NET.earnBurst && !r.fixed.length && r.save.coins === 100 + rg, `외계인 + 황금향 한 번(귤 +${rg})은 받아 줌 (earnBurst ${NET.earnBurst} 안)`);
       r2 = checkSave(r.save, { ...r.save, coins: r.save.coins + rg }, { ...r.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
       ok(r2.fixed.includes('coins') && r2.save.coins <= r.save.coins + NET.earnPerSec * 1, '귀한 귤 몫을 곧바로 또 받으면 거절');
+      { // 동굴 (#195): 들고 나온 동굴 쓰레기 귤(save.cave.out 누적)은 통(caveBurst) 안에서 인정. 통이 빈 채 또는 누적을 줄였다 올려 두 번 받기는 거절
+        const { CAVE } = await import('../src/balance.js'), E = NET.earnRec, run = 540 * CAVE.junk.perVol; // 가장 큰 배낭 한 판
+        let c1 = checkSave(P, { ...P, coins: 100, cave: { out: run } }, acc, t);
+        const c2 = checkSave(c1.save, { ...c1.save, coins: 100 + run }, { ...c1.acc, credit: 0, savedAt: t }, t + 5000);
+        ok(c1.rec.why.cave >= run && !c2.fixed.length && c2.save.coins === 100 + run, `동굴에서 들고 나온 한 판(귤 ${run})은 버린 뒤 저장에서 받아 줌`);
+        const c3 = checkSave(c2.save, { ...c2.save, coins: 100 + run * 3, cave: { out: run * 3 } }, { ...c2.acc, credit: 0, savedAt: t + 5000 }, t + 6000);
+        ok(c3.fixed.includes('coins') && c3.save.coins < 100 + run * 2 + E.cavePerSec * 2, `통이 빈 채 동굴 귤 부풀리기 거절 (${c3.save.coins})`);
+        const c4 = checkSave(c2.save, { ...c2.save, cave: { out: 0 } }, { ...c2.acc, credit: 0, savedAt: t + 5000 }, t + 6000);
+        ok(c4.save.cave.out === run, '동굴 누적을 줄이면 서버가 되돌림 (줄였다 올려 두 번 받기 막음)');
+        c1 = checkSave(P, { ...P, coins: 100 + 999999, cave: { out: 999999 } }, acc, t);
+        ok(c1.fixed.includes('coins') && c1.save.coins <= 100 + E.caveBurst + 1, `동굴 귤 한 번에 크게 부풀리기 거절 (${c1.save.coins}, 통 ${E.caveBurst})`);
+      }
       { // 오늘의 할 일 (#125)
         // 오늘의 할 일 (#125): 오늘 목록의 받은 할 일·셋 다는 몫으로 인정, 두 번·다른 날·없는 할 일은 거절, 이어 오기는 서버가 센 날까지만
         const DL = await import('../src/daily.js'), day = DL.kstDayN(t), date = DL.kstDate(t), ids = DL.todaysTasks(date).map((x) => x.id);

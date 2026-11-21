@@ -56,6 +56,7 @@ function norm(s) {
     s.look.colors = o;
   }
   if (!isObj(s.swarm)) s.swarm = {}; s.swarm.earn = int(s.swarm.earn, 0, 1e12, 0); // 들판 떼(#173)로 번 귤 누적 (③)
+  if (s.cave !== undefined) { if (!isObj(s.cave)) s.cave = {}; s.cave.out = int(s.cave.out, 0, 1e12, 0); } // 동굴에서 들고 나온 쓰레기 귤 누적 (#195, earn.js 8)
   if (isObj(s.season) || s.season !== undefined) s.season = isObj(s.season) && s.season.xmas !== undefined ? { xmas: cleanXmas(s.season.xmas) } : undefined; // 철 이벤트 (#180)
   if (s.season === undefined) delete s.season;
   if (s.backs !== undefined) { // 배낭 겉모습 (#164): 목록에 있는 것만, 고른 것은 가진 것만
@@ -186,6 +187,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
     return done({ save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow });
   }
+  if (P.cave && (!S.cave || S.cave.out < P.cave.out)) { S.cave = { ...(S.cave || {}), out: P.cave.out }; } // 동굴 누적은 줄지 않음 (#195: 줄였다 다시 올려 두 번 받기 막음)
   const rc = recognize(P, S, sold, cred, t); cred = rc.cred; // 서버가 아는 큰 귤 (#188): bank 에 더해 늦게 들어오는 귤도 받음
   bank = Math.min(NET.earnBankMax, bank + rc.room);
   grant = Math.max(0, Number(grant) || 0);
