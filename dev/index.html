@@ -1053,6 +1053,49 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 @media (prefers-reduced-motion: reduce) { #quest-track.going .qa, #quest .q-go.claim, #quest-track.bump { animation: none; } }
 #zdone .pop-head h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #wake-pick .pop { width: min(360px, 100%); } .wake-btns { display: grid; gap: 8px; }
+/* 레벨·증강 (#159) */
+#lv-pill { position: relative; gap: 3px; padding-bottom: 3px; }
+#lv-pill .lvl { font-size: 10px; font-weight: 800; color: var(--ink-soft); margin: 0; letter-spacing: .02em; }
+#lv-pill .xp { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+#lv-pill .xp i { display: block; height: 100%; width: 0; background: var(--acc); border-radius: 2px; transition: width .6s ease-out; }
+#lv-pill.up { animation: lvUp 1s ease-out; }
+@keyframes lvUp { 0% { box-shadow: 0 0 0 0 rgba(255,190,90,.9); } 60% { box-shadow: 0 0 0 10px rgba(255,190,90,0); } 100% { box-shadow: none; } }
+#lv-pill .lv-pend { position: absolute; top: -7px; right: -7px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: var(--acc); color: var(--acc-fg); font: 800 11px/18px var(--display); text-align: center; text-decoration: none; box-shadow: 0 0 0 2px rgba(20,20,24,.7); animation: lvPend 1.6s ease-in-out infinite; }
+@keyframes lvPend { 50% { transform: scale(1.18); } }
+#aug-pick { place-items: end center; padding-bottom: calc(var(--safe-b) + 12px); background: rgba(14,14,18,.25); }
+#aug-pick .ap-sheet { width: min(600px, 100%); animation: apIn .28s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes apIn { from { transform: translateY(40px); opacity: 0; } }
+#aug-pick .pop-head h2 { font-size: 20px; }
+#aug-pick .ap-left { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.ap-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ap-card { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 150px; padding: 12px 8px 10px; border-radius: 14px; border: 1px solid var(--hair); border-top: 4px solid var(--br, var(--acc)); background: var(--paper-2); color: #fff; font-family: var(--display); cursor: pointer; text-align: center; }
+.ap-card:hover, .ap-card:focus-visible { background: rgba(255,255,255,.18); outline: none; }
+.ap-card:active { transform: scale(.97); }
+.ap-card .ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--br, var(--acc)); color: #fff; flex: none; }
+.ap-card .ic svg { width: 26px; height: 26px; }
+.ap-card .tx { display: flex; flex-direction: column; gap: 4px; align-items: center; min-width: 0; }
+.ap-card b { font-size: 16px; font-weight: 800; }
+.ap-card em { font-style: normal; font-size: 13px; font-weight: 500; color: var(--ink-soft); line-height: 1.35; }
+.ap-card .st { font-size: 13px; letter-spacing: 1px; color: rgba(255,255,255,.3); }
+.ap-card .st i { font-style: normal; color: #ffc14d; }
+.ap-card .br { font-size: 11px; font-weight: 800; color: var(--br); }
+.ap-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.ap-foot .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.ap-foot svg { width: 18px; height: 18px; }
+.ap-foot .gy { width: 13px; height: 13px; border-radius: 50%; background: var(--gyul); display: inline-block; }
+.ap-foot .btn:disabled { opacity: .45; }
+@media (max-width: 600px) {
+  .ap-cards { grid-template-columns: 1fr; gap: 8px; }
+  .ap-card { flex-direction: row; min-height: 64px; padding: 10px 12px; text-align: left; border-top-width: 1px; border-left: 4px solid var(--br, var(--acc)); }
+  .ap-card .tx { align-items: flex-start; flex: 1; }
+  .ap-card .st { margin-left: auto; }
+}
+/* 내 가방 증강 줄 (#159) */
+.bag-aug { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--ink-soft); }
+.bag-aug .ag { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px 2px 3px; border-radius: 999px; background: var(--paper-2); color: #fff; }
+.bag-aug .ag svg { width: 16px; height: 16px; padding: 2px; border-radius: 50%; background: var(--br); }
+.bag-aug .ag i { font-style: normal; color: #ffc14d; font-size: 11px; }
+.bag-aug .lvb { font-weight: 800; color: #fff; }
 #fade-go { position: fixed; inset: 0; z-index: 9; background: #0e0f0c; opacity: 0; pointer-events: none; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 18px; transition: opacity var(--ft, .9s) ease; }
 #fade-go.on { opacity: 1; pointer-events: auto; } #fade-go[hidden] { display: none; }
 #fade-go svg { width: 54px; height: 54px; display: block; margin: 0 auto 8px; animation: bump .6s ease-in-out infinite alternate; }
@@ -1296,7 +1339,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-349dd7f013.js">(function () {
+<script data-main="main-f28f6f7c74.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1333,6 +1376,7 @@ button.bag-card { cursor: pointer; }
 <div id="topbar" class="topbar" data-fit="0">
   <div class="tb-g tb-l">
     <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
+    <div class="panel tpill" id="lv-pill" role="button" tabindex="0" title="레벨 · 경험치 · 누르면 증강" hidden><small class="lvl">Lv</small><b id="lv-n">1</b><i class="xp" aria-hidden="true"><i id="lv-xp"></i></i><s id="lv-pend" class="lv-pend" hidden aria-label="고를 증강"></s></div>
     <div class="panel tpill" id="score-pill" title="장비 점수 · 줍는 힘 · 싸우는 힘" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/><path d="M12 8l1.3 2.7 2.9.4-2.1 2 .5 2.9-2.6-1.4-2.6 1.4.5-2.9-2.1-2 2.9-.4z" fill="currentColor" stroke-width="1"/></svg><b id="gscore">0</b></div>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg class="pk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/><path d="M9 13l3 3 3-3"/></svg><svg class="bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" data-tut="clean" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
@@ -1488,6 +1532,15 @@ button.bag-card { cursor: pointer; }
   <div class="panel pop">
     <div class="pop-head"><h2>어디서 시작할까요?</h2></div>
     <div class="pop-body wake-btns"><button type="button" class="btn primary" id="wake-ch"></button><button type="button" class="btn" id="wake-start">들머리</button></div>
+  </div>
+</div>
+<!-- 레벨업 증강 고르기 (#159, game/level.js): 아래에서 올라오는 한 장, 카드 3장(누르면 바로 고름) -->
+<div class="overlay" id="aug-pick" role="dialog" aria-modal="true" aria-labelledby="ap-t" hidden>
+  <div class="panel pop ap-sheet">
+    <div class="pop-head"><h2 id="ap-t">레벨 <span id="ap-lv">2</span>! 하나 골라요</h2><small id="ap-left" class="ap-left"></small></div>
+    <div class="pop-body"><div class="ap-cards" id="ap-cards"></div>
+      <div class="ap-foot"><button type="button" class="btn small" id="ap-reroll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg><span>다시 뽑기</span><i class="gy"></i><b id="ap-rr-n">50</b></button><button type="button" class="btn small" id="ap-later">나중에</button></div>
+    </div>
   </div>
 </div>
 <div id="fade-go" aria-hidden="true" hidden><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg><span></span></div></div>
