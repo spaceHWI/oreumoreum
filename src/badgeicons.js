@@ -18,6 +18,10 @@ const B = {
   trash: ['trash'], recycle: ['recycle'], heap: ['heap'], dex: ['dex'], // 단계 있는 뱃지 (fam)
   'b-kind-can': ['can'], 'b-kind-pet': ['bottle'], 'b-kind-vinyl': ['vinyl'], 'b-kind-foam': ['foam'], 'b-kind-gear': ['fish'],
   'b-gear-one': ['gear'], 'b-rank-10': ['rank', '10'], 'b-rank-1': ['rank', '1'], 'b-gear-all': ['score'],
+  'b-nosmoke': ['smoke-no'], // #156
+  // #165 칭호가 열리는 업적
+  'b-earn-10k': ['coins'], 'b-stare': ['eye'], 'b-unpaid': ['unpaid'], 'b-alien-cs': ['alien'], 'b-crow': ['crow'], 'b-hare-five': ['hareubang'],
+  'b-dumper': ['trash-x'], 'b-guard-1': ['trees'], 'b-notes': ['notes'], 'b-ending': ['planet'],
 };
 export const BADGE_GLYPH = Object.fromEntries(Object.entries(B).map(([k, [id]]) => [k, id]));
 export const BADGE_ICONS = Object.fromEntries(Object.entries(B).map(([k, [id, n]]) => [k, glyph(k, id) + (n ? num(n) : '')]));

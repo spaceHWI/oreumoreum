@@ -50,8 +50,11 @@ const SIGHTI = {
 };
 // 수수께끼 칸 (#168): 외계 캔
 const STORYI = [`<rect x="14" y="8" width="20" height="32" rx="5" fill="#9fe8c8" ${s()}/><ellipse cx="24" cy="9" rx="10" ry="3" fill="#6fc7a4" ${s('stroke-width="1.8"')}/><path d="M18 22 q6 -6 12 0 q-6 6 -12 0z" fill="#2c3a35" ${s('stroke-width="1.4"')}/><circle cx="24" cy="22" r="1.6" fill="#c9ffb8"/>`];
+// 담배꽁초 (#156)
+const BUTTI = `<path d="M8 30 L34 21 L37 27 L11 36z" fill="#f4f1e8" ${s()}/><path d="M26 23.7 L34 21 L37 27 L29 29.7z" fill="#e3a25a" ${s('stroke-width="1.8"')}/><path d="M8 30 L11 36" stroke="#ff6a3a" stroke-width="3" stroke-linecap="round"/><path d="M10 24 q-3 -5 1 -9 q3 -4 0 -8" fill="none" stroke="#9aa0aa" stroke-width="2" stroke-linecap="round"/>`;
 export function dexIcon(d) {
   const [kind, k] = d.id.split(':');
+  if (kind === 'butt') return BUTTI;
   if (kind === 'story') return STORYI[Number(k)] || '';
   if (kind === 'fish') return FISHI[Number(k)] || '';
   if (kind === 'sight') return SIGHTI[d.sk] || '';

@@ -6,6 +6,7 @@
 //   node tools/econ.js --chase 0.3  투기꾼을 쫓아내는 비율 (기본 0.5)
 //   node tools/econ.js --norides   탈것(#69) 없이 (비교용)
 //   node tools/econ.js --skip      장비(도구·배낭·신발·무기)를 순서 없이 (#111): 튜토리얼 뒤에는 최고 단계 하나만 귤을 모아 바로 삼
+//   node tools/econ.js --nosmoker  들머리 흡연자(#156) 없이 (비교용)
 //   node tools/econ.js --flow       하루 끝 흐름 확인만 (#137)
 //   node tools/econ.js --noaug      레벨은 세되 증강(#159)을 고르지 않음 (비교용. 기본은 벌이 증강을 먼저 고름: 큰손·분리수거 달인·가벼운 발·노루 친구)
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
@@ -66,7 +67,8 @@ async function main() {
   const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
   const AUG_PRI = ['bighand', 'recycle', 'light', 'deer', 'magnet', 'flower', 'bite', 'jacket', 'twin', 'burst', 'sour', 'quick']; // 벌이에 드는 것부터
   const { RIDES } = B;
-  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY, SWARM } = B;
+  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY, SWARM, SMOKER } = B;
+  const SMOKE_H = has('--nosmoker') ? 0 : 3600 * SMOKER.econNear / ((SMOKER.every[0] + SMOKER.every[1]) / 2) * SMOKER.reward; // 들머리 흡연자 (#156): 하루 1시간에 받는 귤 (들머리 둘레에 있는 시간 econNear)
   let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
@@ -259,6 +261,7 @@ async function main() {
         }
         shop();
       }
+      if (battle) { st.coins += SMOKE_H; earned += SMOKE_H; } // 흡연자 (#156)
       st.tAll = t0 + 3600; // 하루 1시간에서 넘친 부분은 버림
       days.push({ day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0, enh: [...GEAR, ...WK, 'weapon'].reduce((s, k) => s + EN(e, k), 0), m5: Math.floor(st.mats.m5 || 0), r5: Math.floor(st.mats.r5 || 0), lv: st.lv, aug: { ...e.aug } });
       if (kinds.every((k) => !next(k)) && d >= 4 && (NOENH || !battle || enhAll())) break;
@@ -347,6 +350,8 @@ async function main() {
     const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;
     verdict.push(`들판 떼로 마지막 칸(여유 25%) ${a0 === Infinity ? '-' : hm(a0)} → ${a1 === Infinity ? '-' : hm(a1)}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
   }
+  // 흡연자 (#156): 하루 1시간 벌이에서 흡연자 몫이 3% 아래 (가장 적게 버는 1일 기준)
+  if (day1Rate) { const pct = SMOKE_H / day1Rate * 100; verdict.push(`흡연자 하루 귤 ${Math.round(SMOKE_H)} = 1일 벌이 ${day1Rate.toLocaleString()} 의 ${pct.toFixed(1)}% → 3% 아래 ${pct < 3 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;
@@ -366,5 +371,11 @@ async function main() {
   { const Q = B.QUESTS, sum = (z) => Q.main.filter((q) => q.z === z).reduce((a, q) => a + (q.reward?.gyul || 0), 0), q1 = sum(1), cap = Math.round(day1 * Q.dayCap);
     console.log(`퀘스트: 첫날(구역 1) 보상 귤 ${q1} · 첫날 벌이 ${day1} 의 ${Math.round(Q.dayCap * 100)}% = ${cap} → ${q1 <= cap ? '통과' : '넘침 (보상을 줄일 것)'}`);
     console.log('  구역별 줄기 보상 합: ' + [1, 2, 3, 4, 5].map((z) => `구역 ${z} ${sum(z)}`).join(' · ')); }
+  { // 오름펑크 (#165): 쪽지는 귤이 없음(쓰레기 수·귤은 보통 쓰레기와 같음). 칭호가 열리는 업적의 보상 합은 첫날 벌이의 10% 안
+    const { NOTES, TITLES } = require('../src/punktext.js'), { BADGES } = require('../src/achievements.js'), src = fs.readFileSync(path.join(__dirname, '../src/game/punkworld.js'), 'utf8');
+    const noGyul = NOTES.every((n) => !('gyul' in n) && !('reward' in n)) && !/addCoins|coins\s*[+-]?=|scatterTangerines/.test(src);
+    const ids = new Set(TITLES.map((t) => t.badge)), add = BADGES.filter((b) => ids.has(b.id) && /^b-(earn-10k|stare|unpaid|alien-cs|crow|hare-five|dumper|guard-1|notes|ending)$/.test(b.id)), tot = add.reduce((s, b) => s + b.reward, 0), cap = Math.round(day1 * 0.1);
+    console.log(`쪽지: ${NOTES.length}장, 귤 ${noGyul ? '0 (벌이 그대로)' : '있음'} · 칭호 ${TITLES.length}개, 새 업적 ${add.length}개 보상 합 귤 ${tot} · 첫날 벌이 ${day1} 의 10% ${cap} → ${noGyul && tot <= cap && TITLES.every((t) => BADGES.some((b) => b.id === t.badge)) ? '통과' : '넘음·없는 업적'}`);
+  }
 }
 main();

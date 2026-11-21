@@ -51,6 +51,7 @@ const { chromium } = require('playwright');
   console.log(JSON.stringify(out, null, 1));
   const ok = out.v?.size > 0 && Math.abs(out.v.w / out.v.h - 9 / 16) < 0.01 && out.full?.size > 0 && out.bufRunning >= 1 && out.clip?.size > 0 && out.clip.w === 9 * out.clip.h / 16 && !out.after.size && !errs.length && out.decode && !out.decode.err && out.decode.mean > 8;
   if (errs.length) console.log('ERR', errs);
+  if (!ok) console.log('why', JSON.stringify({ v: out.v, decode: out.decode, full: out.full, buf: out.bufRunning, clip: out.clip, after: out.after.size }));
   console.log(ok ? 'rec ok' : 'rec FAIL');
   await b.close(); process.exit(ok ? 0 : 1);
 })();

@@ -104,10 +104,21 @@ body.looking #pickmsg, body.hp-down #pickmsg { display: none !important; }
 .m-dev[hidden], .adm-body[hidden], .adm-row[hidden] { display: none; }
 .m-dev button { min-height: 34px; font-size: 13px; }
 .adm-head { width: 100%; }
-.adm-body { display: grid; gap: 6px; padding-top: 6px; }
+.adm-body { display: grid; gap: 0; padding-top: 4px; }
+/* 어드민 설정 (#153): 묶음마다 작은 제목 + 얇은 구분선, 버튼은 게임의 다른 버튼처럼 (둥근 모서리·바탕·테두리·눌림). 지금 고른 것은 진한 바탕 */
+.adm-sec { display: grid; gap: 6px; padding: 8px 0; border-top: 1px solid var(--hair); }
+.adm-sec:first-child { border-top: 0; padding-top: 2px; }
+.adm-sec[hidden] { display: none; }
 .adm-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; }
+.adm-t { font-size: 12px; font-weight: 800; color: var(--ink-soft); letter-spacing: .02em; } .adm-t b { color: var(--ink); font-size: 13px; }
 .adm-btns { flex-wrap: wrap; justify-content: stretch; }
-.adm-btns button { flex: 1 1 22%; padding: 4px 6px; }
+.pop-menu .m-dev .adm-btns .btn { flex: 1 1 22%; justify-content: center; min-height: 36px; padding: 6px 8px; border: 1px solid var(--hair); border-radius: 12px; background: rgba(255,255,255,.1); color: var(--ink); font-size: 13px; font-weight: 700; white-space: nowrap; transition: transform .08s, background .15s; }
+.pop-menu .m-dev .adm-btns .btn:hover { background: rgba(255,255,255,.18); }
+.pop-menu .m-dev .adm-btns .btn:active { transform: scale(.96); background: rgba(255,255,255,.24); }
+.pop-menu .m-dev .adm-btns .btn[aria-pressed="true"] { background: var(--acc); color: var(--acc-fg); border-color: transparent; font-weight: 800; }
+.pop-menu .m-dev .adm-btns .btn.adm-danger { background: rgba(214, 58, 46, .28); border-color: rgba(255, 110, 96, .55); color: #ffd6d1; }
+.pop-menu .m-dev .adm-btns .btn.adm-danger:hover { background: rgba(214, 58, 46, .45); }
+.adm-note { margin: 0; font-size: 11px; line-height: 1.45; color: var(--ink-soft); opacity: .8; }
 #adm-tod { width: 100%; }
 .m-reset { display: flex; justify-content: center; width: 100%; }
 /* 멀티 서버 계정 (#7): 첫 화면 베타 안내·구글 로그인, 메뉴의 남은 날짜 */
@@ -145,7 +156,7 @@ body.looking #pickmsg, body.hp-down #pickmsg { display: none !important; }
 .pop-menu button:hover { background: var(--paper-2); }
 
 /* 팝업 */
-.overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; padding-left: var(--gut-l); padding-right: var(--gut-r); }
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; grid-template-rows: minmax(0, 1fr); z-index: 10; padding-left: var(--gut-l); padding-right: var(--gut-r); } /* #153 줄 높이를 화면에 묶어야 .pop 의 max-height % 가 먹음 (긴 창이 화면 밖으로 나가던 것) */
 .overlay.dim { background: rgba(36, 37, 31, .55); }
 .pop { width: min(460px, 100%); max-height: calc(100% - 32px); display: flex; flex-direction: column; }
 .pop-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px 8px; border-bottom: 2px dashed var(--line); }
@@ -215,6 +226,13 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .badge.locked .bdg { background: #d8d2bf !important; color: #f4f0e2; border: 0; box-shadow: none; }
 .badge.locked .bdg svg { filter: grayscale(1); opacity: .3; }
 .badge .claim { margin-top: 2px; }
+/* 받기 버튼 (#153): 받을 수 있는 것만 귤색 바탕 + 귤 아이콘 + 은은한 맥박 (움직임 줄이기면 색만). 받으면 '받음' */
+.btn.claim-go, .chip.claim-go { display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: var(--acc); color: var(--acc-fg); border-color: transparent; font-weight: 800; white-space: nowrap; animation: claimPulse 1.2s ease-in-out infinite; }
+.claim-go .cg { position: relative; width: 13px; height: 13px; flex: none; border-radius: 50%; background: #ffc062; box-shadow: inset -2px -2px 0 rgba(150,60,0,.35), 0 0 0 1.5px rgba(32,16,0,.55); }
+.claim-go .cg::after { content: ""; position: absolute; width: 6px; height: 3px; top: -2px; left: 5px; border-radius: 2px; background: #3f8f3a; transform: rotate(-20deg); }
+.claim-done { opacity: .6; pointer-events: none; }
+@keyframes claimPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,138,31,.55); } 50% { box-shadow: 0 0 0 6px rgba(255,138,31,0); filter: brightness(1.08); } }
+@media (prefers-reduced-motion: reduce) { .claim-go { animation: none !important; } }
 
 /* 호흡·사진 */
 #countdown { font-family: var(--display); font-weight: 800; font-size: 120px; color: #fff; text-shadow: 0 4px 0 var(--ink); pointer-events: none; }
@@ -299,6 +317,7 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .inbox-list li.crash .t { font-family: ui-monospace, monospace; font-size: 12px; }
 .inbox-list .t { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; margin: 2px 0; }
 .inbox-list small { opacity: .7; font-size: 11px; }
+#gyuladm .pop-body { max-height: 70vh; overflow: auto; } .grant-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; } .grant-form #grant-sub, .grant-form #grant-why { grid-column: 1 / -1; } .grant-form input { min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--hair); font: inherit; } .gadm-h { font-size: 13px; margin: 8px 0 4px; opacity: .8; }
 #dev-inbox { position: relative; } #dev-inbox .badge-dot { top: 2px; right: 4px; }
 #btn-menu { position: relative; } #btn-menu .badge-dot { top: 3px; right: 10px; }
 #feedback.overlay { z-index: 12; } /* 첫 화면 위에서도 열리게 (#77) */
@@ -905,6 +924,25 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
   .look-skin button { width: 28px; height: 28px; }
   .look-ok { width: 50px; height: 50px; }
 }
+/* 이름 (#162): 캐릭터 고르기 맨 위 이름 칸, 이름 바꾸기 창 */
+.look-nick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: center; border-bottom: 1px solid var(--hair); padding-bottom: 10px; }
+.look-nick[hidden] { display: none; }
+.nk-in { flex: 1 1 auto; min-width: 0; max-width: 260px; height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hair); background: rgba(255,255,255,.12); color: #fff; font: 800 17px var(--display); text-align: center; }
+.nk-in:focus { outline: 0; border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc); }
+.nk-in[aria-invalid="true"] { border-color: #ff7a6b; box-shadow: 0 0 0 2px #ff7a6b; }
+.nk-dice { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255,255,255,.1); color: #fff; display: grid; place-items: center; flex: none; padding: 0; }
+.nk-dice svg { width: 24px; height: 24px; }
+.nk-err { flex: 1 1 100%; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: #ffb3a8; }
+.nk-err[hidden] { display: none; }
+.look-ok:disabled { filter: grayscale(1); opacity: .5; box-shadow: none; }
+.nk-pop { width: min(360px, calc(100vw - 32px)); }
+.nk-pop .pop-body { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.nk-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.nk-row .nk-in { max-width: none; }
+.nk-note { margin: 0; text-align: center; font-size: 12.5px; }
+.nk-go { width: 100%; justify-content: center; display: flex; align-items: center; gap: 6px; }
+.nk-go:disabled { filter: grayscale(1); opacity: .6; }
+.nk-go .g { width: 15px; height: 15px; border-radius: 50%; background: var(--gyul); display: inline-block; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 1.5px #fff; }
 /* 상점 옷 탭 머리 줄 (#51) */
 /* 옷 (#52): 칸마다 한 줄, 옷 그림 아래 단계 색 띠 */
 .wear-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1120,10 +1158,13 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 .omap-rows svg { width: 30px; height: 30px; }
 .omap-rows .rec { text-align: right; font-weight: 800; font-family: var(--display); }
 .omap-rows .rec[data-tone="r"] { color: #ff7a6a; } .omap-rows .rec[data-tone="y"] { color: #ffd23f; } .omap-rows .rec[data-tone="g"] { color: #6fe07a; }
-/* 좌표 + 작은 방위 화살표(나침반 대신, 귤색 끝이 북쪽) */
-#xy-pill .zm { display: none; }
-#xy-pill .na { width: 14px; height: 14px; }
-#xy { min-width: 4.6em; text-align: center; } #xy .sep { font-style: normal; font-weight: 500; opacity: .6; margin: 0 4px; }
+/* 지금 있는 곳 이름 + 작은 방위 화살표 (#153: 숫자 좌표 대신, 귤색 끝이 북쪽). 이름이 바뀌면 살짝 떴다 가라앉음 */
+#xy-pill .na { width: 14px; height: 14px; flex: none; }
+#where { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
+#where.swap { animation: whereSwap .45s ease-out; }
+@keyframes whereSwap { 0% { opacity: 0; transform: translateY(5px); } 60% { opacity: 1; transform: translateY(-2px); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { #where.swap { animation: none; } }
+#xy[hidden] { display: none; } #xy { font-weight: 600; opacity: .7; } #xy .sep { font-style: normal; font-weight: 500; opacity: .6; margin: 0 3px; } /* 어드민 '좌표 보기' */
 /* 오늘의 업적 고리 */
 #ach-chip svg.ring { width: 18px; height: 18px; }
 #ach-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); margin-left: 1px; }
@@ -1147,10 +1188,9 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #buff-pill.end b { color: var(--acc); }
 /* 값이 바뀔 때만 짧게 튐 */
 .topbar .tpill.bump { animation: bump .35s ease-out; }
-/* 좁으면 (main.js topFit 이 f1~f6 을 차례로 붙임): 1 구역+좌표를 하나로 2 업적 고리는 메뉴로 3 배낭 용량·꽃 점 빼기
-   4 버프는 고리만·HP 막대 짧게 5 여백·글자 줄이기 6 (아주 좁은 폰 + HP·버프) 좌표 숨김 — 두 줄이 되지 않게 */
+/* 좁으면 (hud.js topFit 이 f1~f6 을 차례로 붙임): 1 구역 번호 칸을 곳 이름 칸에 합치기(색 점·밑줄) 2 업적 고리는 메뉴로 3 배낭 용량·꽃 점 빼기
+   4 버프는 고리만·HP 막대 짧게 5 여백·글자 줄이기·방위 화살표 빼기 6 (아주 좁은 폰) 곳 이름을 짧게 자르고 색 점 빼기 7 (+ HP·버프) 곳 이름 칸 숨김 — 두 줄이 되지 않게 */
 .topbar.f1 #zone-pill { display: none; }
-.topbar.f1 #xy-pill.inzone .na { display: none; } .topbar.f1 #xy-pill.inzone .zm { display: block; }
 #fb-chip { position: relative; padding: 0 12px 0 9px; background: var(--acc); color: var(--acc-fg); border-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; font-weight: 800; font-size: 13px; line-height: 1; }
 #fb-chip svg { width: 16px; height: 16px; } #fb-chip .fbs { display: none; }
 .topbar.f3 #fb-chip .fbl { display: none; } .topbar.f3 #fb-chip .fbs { display: inline; }
@@ -1182,9 +1222,10 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 .topbar.f4 #buff-pill { padding: 0 3px; } .topbar.f4 #buff-pill b { display: none; }
 .topbar.f4 #hp-bar { min-width: 50px; flex-basis: 50px; }
 .topbar.f5 .tpill { padding: 0 7px 0 6px; gap: 3px; } .topbar.f5 .tpill b { font-size: 13px; }
-.topbar.f5 #clean-pill small, .topbar.f5 #xy-pill .na { display: none; } .topbar.f5 #xy { min-width: 0; } .topbar.f5 #xy .sep { margin: 0 1px; }
+.topbar.f5 #clean-pill small, .topbar.f5 #xy-pill .na, .topbar.f5 #xy { display: none; } .topbar.f5 #where { max-width: 6.5em; }
 .topbar.f5 #buff-pill { padding: 0 2px; }
-.topbar.f6 #xy-pill { display: none; }
+.topbar.f6 #where { max-width: 4.6em; } .topbar.f6 #xy-pill::before { display: none; }
+.topbar.f7 #xy-pill { display: none; }
 /* 줄 아래 가운데: 토스트·업적 배너 */
 .toast { top: calc(var(--tb-top) + var(--tb-h) + 10px); }
 #banner { top: calc(var(--tb-top) + var(--tb-h) + 10px); }
@@ -1400,7 +1441,7 @@ body.newbie .dock button span { display: block; }
   </div>
   <div class="tb-g tb-r">
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg data-i="zone" class="zm"></svg><svg data-i="bloom" class="zf"></svg><b id="zone-n">1</b></div>
-    <div class="panel tpill" id="xy-pill" data-tut="hud" title="좌표"><svg data-i="zone" class="zm"></svg><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="xy"><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
+    <div class="panel tpill" id="xy-pill" data-tut="hud" title="지금 있는 곳"><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="where">들머리</b><b id="xy" hidden><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
     <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 업적"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
     <button type="button" class="panel tpill" id="fs-chip" title="전체 화면" aria-label="전체 화면" aria-pressed="false" hidden><svg data-i="fullscreen"></svg></button>
     <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg data-i="feedback"></svg><span class="fbl">의견 보내기</span><span class="fbs">의견</span><i class="fb-bub" id="fb-bub" hidden>불편한 점을 알려 주세요</i></button>
@@ -1418,7 +1459,7 @@ body.newbie .dock button span { display: block; }
 <div id="pickmsg" hidden role="status"></div>
 <div class="panel" id="gl-lost" hidden role="alert"><span id="gl-lost-t">화면을 다시 준비하고 있어요</span><button type="button" class="btn primary small" id="gl-reload" hidden>다시 불러오기</button></div>
 <div class="tip-toast panel" id="tip" hidden role="status"></div>
-<div class="panel" id="banner" hidden><span class="bdg" id="banner-bdg">해</span><div><b id="banner-title">업적 달성</b><small id="banner-sub"></small></div><button type="button" class="btn small primary" id="banner-go">받기</button></div>
+<div class="panel" id="banner" hidden><span class="bdg" id="banner-bdg">해</span><div><b id="banner-title">업적 달성</b><small id="banner-sub"></small></div><button type="button" class="btn small primary claim-go" id="banner-go"><i class="cg" aria-hidden="true"></i>받기</button></div>
 
 <div id="joy" class="touch-only" data-tut="move" aria-label="이동 조이스틱"><div id="joy-knob"></div></div>
 
@@ -1491,6 +1532,7 @@ body.newbie .dock button span { display: block; }
     <input type="range" id="music-vol" min="0" max="100" step="5" value="60" aria-label="배경 음악 크기">
   </div>
   <div class="m-more">
+    <button type="button" id="menu-nick">이름 바꾸기</button>
     <button type="button" id="menu-help">조작법</button>
     <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-gfx">그래픽: 레트로</button>
@@ -1512,17 +1554,19 @@ body.newbie .dock button span { display: block; }
   <div class="m-dev" id="m-dev" hidden>
     <button type="button" id="adm-toggle" class="adm-head" aria-expanded="false" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
     <div class="adm-body" id="adm-body" hidden>
-      <div class="adm-row"><span>오름 시간</span><b id="adm-tv">실제</b></div>
+      <div class="adm-sec"><div class="adm-row adm-t"><span>오름 시간</span><b id="adm-tv">실제</b></div>
       <input type="range" id="adm-tod" min="0" max="24" step="0.25" value="12" aria-label="오름 시간대 (0~24시)">
-      <div class="adm-row adm-btns"><button type="button" data-h="6.1">해 뜰 때</button><button type="button" data-h="12">낮</button><button type="button" data-h="18.3">해 질 때</button><button type="button" data-h="23">밤</button><button type="button" id="adm-real">실제 시간으로</button></div>
-      <div class="adm-row"><span>날씨</span></div>
-      <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="overcast">흐림</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="snow">눈</button><button type="button" data-wx="fog">안개</button></div>
-      <div class="adm-row adm-btns"><button type="button" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
-      <div class="adm-row adm-btns"><button type="button" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button></div>
-      <div class="adm-row"><span>철 이벤트</span><b id="adm-season-v">기간대로</b></div>
-      <div class="adm-row adm-btns"><button type="button" data-season="">기간대로</button><button type="button" data-season="on">켜기</button><button type="button" data-season="off">끄기</button></div>
-      <div class="adm-row"><span>들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</span></div>
-      <div class="adm-row adm-btns" id="adm-inbox-row" hidden><button type="button" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" data-h="6.1" aria-pressed="false">해 뜰 때</button><button type="button" class="btn small" data-h="12" aria-pressed="false">낮</button><button type="button" class="btn small" data-h="18.3" aria-pressed="false">해 질 때</button><button type="button" class="btn small" data-h="23" aria-pressed="false">밤</button><button type="button" class="btn small" id="adm-real" aria-pressed="true">실제 시간으로</button></div></div>
+      <div class="adm-sec"><div class="adm-row adm-t"><span>날씨</span></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" data-wx="" aria-pressed="true">실제</button><button type="button" class="btn small" data-wx="clear" aria-pressed="false">맑음</button><button type="button" class="btn small" data-wx="overcast" aria-pressed="false">흐림</button><button type="button" class="btn small" data-wx="rain" aria-pressed="false">비</button><button type="button" class="btn small" data-wx="snow" aria-pressed="false">눈</button><button type="button" class="btn small" data-wx="fog" aria-pressed="false">안개</button></div></div>
+      <div class="adm-sec"><div class="adm-row adm-t"><span>철 이벤트</span><b id="adm-season-v">기간대로</b></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" data-season="" aria-pressed="true">기간대로</button><button type="button" class="btn small" data-season="on" aria-pressed="false">켜기</button><button type="button" class="btn small" data-season="off" aria-pressed="false">끄기</button></div></div>
+      <div class="adm-sec"><div class="adm-row adm-t"><span>테스트</span></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" class="btn small" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" class="btn small" id="adm-xy" aria-pressed="false">좌표 보기</button></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button><button type="button" class="btn small adm-danger" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
+      <p class="adm-note">들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</p></div>
+      <div class="adm-sec" id="adm-inbox-row" hidden><div class="adm-row adm-t"><span>의견</span></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button></div></div>
     </div>
   </div>
 </nav>
@@ -1590,7 +1634,7 @@ body.newbie .dock button span { display: block; }
 <aside class="panel" id="wardrobe" hidden aria-label="내 가방">
   <div class="pop-head"><h2>내 가방</h2><div><button type="button" class="chip" id="wardrobe-shop">사러 가기</button> <button type="button" class="btn small" id="wardrobe-done">닫기</button></div></div>
   <div id="bag-tabs" class="shop-tabs bag-tabs" role="tablist" aria-label="내 가방 묶음"></div>
-  <div class="w-nick" id="bag-nick"><span>오늘 이름은 <b id="nick-mirror"></b></span><button type="button" class="chip" id="nick-reroll">다른 이름</button></div>
+  <div class="w-nick" id="bag-nick"><b id="nick-mirror"></b><button type="button" class="chip" id="nick-reroll">이름 바꾸기</button></div>
   <div id="wardrobe-body" class="pop-body"></div>
   <div id="bag-foot" class="bag-foot"></div>
 </aside>
@@ -1622,6 +1666,18 @@ body.newbie .dock button span { display: block; }
   </div>
 </div>
 
+<!-- 이름 바꾸기 (#162): 처음 한 번 무료, 그다음 귤. 하루 한 번. 로그인했으면 서버가 확인하고 귤을 뺌 -->
+<div class="overlay dim" id="nickwin" hidden>
+  <div class="panel pop nk-pop" role="dialog" aria-label="이름 바꾸기">
+    <div class="pop-head"><h2>이름 바꾸기</h2><button type="button" class="btn small" id="nickwin-close">닫기</button></div>
+    <div class="pop-body">
+      <div class="nk-row"><input type="text" id="nick-new" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="새 이름" aria-describedby="nick-new-err"><button type="button" class="nk-dice" id="nick-new-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button></div>
+      <p class="nk-err" id="nick-new-err" role="alert" hidden></p>
+      <p class="muted nk-note" id="nick-new-note"></p>
+      <button type="button" class="btn nk-go" id="nick-new-go"></button>
+    </div>
+  </div>
+</div>
 <div class="overlay dim" id="rank" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>랭킹</h2><button type="button" class="btn small" id="rank-close">닫기</button></div>
@@ -1692,6 +1748,22 @@ body.newbie .dock button span { display: block; }
   </div>
 </div>
 
+<div class="overlay dim" id="gyuladm" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>귤 맞춤·보내기</h2><span><button type="button" class="btn small" id="gyuladm-refresh">새로 고침</button> <button type="button" class="btn small" id="gyuladm-close">닫기</button></span></div>
+    <div class="pop-body">
+      <form id="grant-form" class="grant-form">
+        <input id="grant-sub" placeholder="계정 번호" autocomplete="off" maxlength="80" required>
+        <input id="grant-n" type="number" min="1" step="1" placeholder="귤 수" required>
+        <input id="grant-why" placeholder="사유 (받는 사람에게 보임)" maxlength="60" required>
+        <button type="submit" class="btn small primary" id="grant-send">귤 보내기</button>
+      </form>
+      <h3 class="gadm-h">깎인 기록 (30일)</h3><ul id="clamp-list" class="inbox-list"></ul>
+      <h3 class="gadm-h">보낸 기록</h3><ul id="grant-list" class="inbox-list"></ul>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="intro">
   <div class="intro-wrap">
     <h1 class="intro-logo" id="intro-logo"><span class="vh">오름오름</span></h1>
@@ -1721,6 +1793,7 @@ body.newbie .dock button span { display: block; }
 <!-- 캐릭터 고르기 (#51): 가운데 캐릭터가 돌아가며 보이고, 아래 카드에서 기본 머리(성별)·피부색을 고름 -->
 <div id="look" hidden>
   <div class="panel look-card" role="dialog" aria-label="캐릭터 고르기">
+    <div class="look-nick" id="look-nickrow"><input type="text" id="look-nick" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="이름" aria-describedby="look-nick-err"><button type="button" class="nk-dice" id="look-nick-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button><p class="nk-err" id="look-nick-err" role="alert" hidden>이 이름은 쓸 수 없어요</p></div>
     <div class="look-top">
       <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
       <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>

@@ -88,6 +88,7 @@ import './game/look.js';
 import './game/bag.js'; // 내 가방 (#166)
 import './game/thumbs.js'; // 물건 그림: 실제 모델을 찍은 작은 그림 (#184)
 import './game/iconui.js'; // 아이콘 글자 라벨 (#184)
+import './game/nickname.js'; // 이름 바꾸기 (#162)
 import './game/hooks.js';
 import './game/guide.js';
 import './game/pace.js';
@@ -103,7 +104,9 @@ import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: �
 import './game/ending.js'; // 엔딩 시네마틱 (#168)
 import './game/story.js'; // 이야기 이벤트 (#168)
 import './game/swarm.js'; // 들판 떼 (#173)
+import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
+import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';

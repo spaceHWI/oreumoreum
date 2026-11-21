@@ -37,6 +37,7 @@ const MAP = {
   // 업적 뱃지 가운데
   trash: 'trash', shoe: 'shoe', mountain: 'mountain', sunrise: 'sunrise', sunset: 'sunset', boar: 'pig', calendar: 'calendar',
   bottle: 'bottle', vinyl: 'paper-bag', foam: 'box', tools: 'tools', heap: 'stack-3', star: 'filled:star', quests2: 'clipboard-list',
+  'smoke-no': 'smoking-no', coins: 'coins', eye: 'eye', unpaid: 'receipt-off', alien: 'alien', crow: 'feather', 'trash-x': 'trash-x', trees: 'trees', notes: 'notes', planet: 'planet', radio: 'speakerphone',
 };
 // 세트에 없는 것: 같은 24 격자, 선 2, 둥근 끝 (fill 은 currentColor 만)
 const OWN = {

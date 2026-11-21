@@ -85,17 +85,22 @@ function newRec() {
 }
 const S = { main: null, bufs: [], swapT: 0, marks: 0, fpsLow: 0, frames: 0, fpsT: 0, last: null };
 
+// 시작은 다음 프레임에(그린 바로 뒤): 그리기 밖에서 WebGL 캔버스를 담으면 비어 있어 첫 프레임이 검게 나옴
 function start() {
   if (!can) { toast('이 브라우저는 녹화를 할 수 없어요', 3); return false; }
-  if (S.main) return true;
-  if (!stream) makeStream();
-  try { S.main = newRec(); } catch (e) { toast('녹화를 시작할 수 없어요', 3); if (!S.bufs.length) dropStream(); return false; }
+  if (!S.main) S.want = true;
+  sync(); return true;
+}
+function begin() {
+  S.want = false;
+  if (!stream) makeStream(); else draw(true);
+  try { S.main = newRec(); } catch (e) { toast('녹화를 시작할 수 없어요', 3); if (!S.bufs.length) dropStream(); sync(); return; }
   S.marks = 0; S.fpsLow = 0; S.frames = 0; S.fpsT = performance.now();
   sync();
   if (EXT === 'webm' && !R.webm) { R.webm = 1; persist(); toast('webm 으로 저장돼요. 인스타에 올리려면 mp4 로 바꿔야 할 수 있어요', 5); }
-  return true;
 }
 async function stop() {
+  if (S.want) { S.want = false; sync(); }
   const r = S.main; if (!r) return;
   S.main = null; sync();
   try { r.mr.state !== 'inactive' && r.mr.stop(); } catch (_) {}
@@ -103,7 +108,7 @@ async function stop() {
   if (!S.bufs.length) dropStream();
   done(blob, (performance.now() - r.t0) / 1000, r);
 }
-export function toggleRec() { if (!R.on) setOn(true); return S.main ? (stop(), false) : start(); }
+export function toggleRec() { if (!R.on) setOn(true); return S.main || S.want ? (stop(), false) : start(); }
 
 // '방금 30초': 둘을 buf/2 씩 엇갈려 돌림. 각자 buf 초가 되면 새로 시작
 function bufTick(now) {
@@ -163,6 +168,7 @@ function closeReady() { ui.ready.hidden = true; ui.dl.hidden = false; pending = 
 function tick() {
   const now = performance.now();
   bufTick(now);
+  if (S.want) begin();
   if (!stream) return;
   draw(false);
   const r = S.main; if (!r) return;
@@ -188,7 +194,7 @@ function cue(s) { // 진동 + 작은 소리 (스피커로만, 영상엔 안 담�
 
 // ---------- 화면·메뉴 ----------
 function sync() {
-  const rec = !!S.main;
+  const rec = !!(S.main || S.want);
   ui.box.hidden = !R.on; ui.btn.classList.toggle('on', rec);
   ui.btn.setAttribute('aria-label', rec ? '녹화 멈춤 (V)' : '녹화 시작 (V)');
   if (!rec) ui.time.textContent = '';
