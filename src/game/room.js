@@ -1,5 +1,5 @@
 // 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF } from '../balance.js';
+import { PERF, NET } from '../balance.js';
 import { TIER } from '../quality.js';
 import { createPhotographer } from '../photographer.js';
 import * as THREE from 'three';
@@ -14,7 +14,7 @@ import { createWsLobby, linkTrash } from '../online.js';
 import { state, late } from './state.js';
 import { $, save, ab, persist, MAP_ID } from './save.js';
 import { scene, camera, spots } from './scene.js';
-import { P, summitOut, summitTan, photoSpot, cairns, layoutCairn, col, trash, runner, player, hp } from './place.js';
+import { P, summitOut, summitTan, photoSpot, cairns, layoutCairn, col, trash, runner, player, hp, NS_TUT } from './place.js';
 import { toast, nearestHeapPos, ach } from './hud.js';
 import { emoRiding, emoCan, doEmote } from './menu.js';
 import { rideCode, peerRide } from './ride.js';
@@ -24,7 +24,14 @@ export const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
   lobby: createWsLobby({ token: () => state.account?.token }), onRoom: (room) => { // 멀티 서버 (#7)
     if (!room.on) return;
+    late.mpRoom = room; // 지금 접속 (#186): 내 방 채널 (admonline.js)
     if (trash) linkTrash(trash, room);
+    // 같이 있는 사람 수 (#131): 방이 센 '움직이는 사람' 수 → 투기꾼·몹 간격과 양 (game/pace.js, dumpers.js). 끊기면 혼자
+    state.crowd = 1;
+    const setCrowd = (n) => { state.crowd = Number.isFinite(n) && n >= 1 ? Math.min(NET.roomCap, n) : 1; late.dumpers?.setPlayers(state.crowd); };
+    room.on('hi', (m) => { setCrowd(m.np); if (m.fill > 0) late.dumpers?.offlineMsg?.(m.fill); }); // fill: 빈 방이던 동안 방이 채운 수
+    room.on('np', (m) => setCrowd(m.n));
+    room.on('close', () => setCrowd(1));
     late.deerNet?.link(room); // 노루 무리·노루 타기 (#92, deernet.js)
     late.guardNet?.link(room); // 구역 지킴이 돌하르방 세운 시각 (#119, guard.js)
     late.bossNet?.link(room); // 구역 우두머리 (#139, boss.js)
@@ -34,7 +41,7 @@ export const net = createNet({
     room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
   },
-  extra: () => ({ ...social.presenceExtra(), rd: rideCode(), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}) }), // wf = 무기 사건 (#123), rd = 탈것 (#69), dr = 탄 노루 (#92), em = 동작 (#76)
+  extra: () => ({ ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}) }), // tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)

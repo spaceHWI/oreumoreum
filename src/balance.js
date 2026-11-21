@@ -261,7 +261,7 @@ export const BLOOM_FX = {
   zone: { camT: 1.5, camDist: 0.6, camPitch: 0.2, column: 260, colT: 2.2, colH: 26, ring: 42, ringT: 2.4, glowT: 2.4, bannerT: 3.2, vib: [30, 50, 30, 50, 90] },
 };
 // 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음
-// 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
+// 주기 = every × crowdGap(사람 수) (#131 src/refill.js). players 는 기본 인원 1 (멀티는 방이 센 값 {t:'np'})
 // 한 명 기준 한 시간에 오름 전체 쓰레기 × hourFrac 만큼 쌓임 (3분마다 한 번 → 한 번에 평균 약 38개).
 // 투기꾼은 작은 더미 하나(amt), 트럭 양은 이 평균이 맞게 자동 계산 (src/dumpers.js DUMP_AMT, 약 80)
 // 구역 고르는 무게 = zoneBase + 그 구역 깨끗한 정도 (깨끗한 구역일수록 자주)
@@ -285,10 +285,29 @@ export const DUMP = {
   bagStay: 20, // 땅에 떨어진 봉투가 보이는 시간(초)
   maxTrip: 300, // 한 상태가 이보다 오래 걸리면 조용히 사라짐
   warnT: 3, // 나타날 때 화면 가장자리 방향 표시 시간(초)
-  offlineMaxH: 8, // 접속하지 않은 시간은 한 명 기준 속도로 쌓고, 이 시간 이상이면 오름 전체가 가득
+  // 아무도 없는 동안 (#131, src/refill.js emptyFill): 빈자리가 offlineHalfMin 분이면 절반, offlineMaxH 시간이면 가득 (처음에 더 빨리 참).
+  // 멀티는 방(server roomcore)이 마지막 사람이 나간 시각을 기억해 다음 사람이 들어올 때 한꺼번에, 혼자 하기·손님은 기기 기록(trash seen)으로 같은 규칙.
+  // offlineZone: 구역별 시간 배율 (작을수록 먼저 참. 구역 1·2 를 먼저). 예전: 한 명 기준 속도로 8시간에 가득
+  offlineMaxH: 1.5, offlineHalfMin: 30, offlineZone: { 1: 0.6, 2: 0.8 },
   offlineMin: 60, // 이보다 짧게 비운 건 세지 않음(초)
+  // 같이 있는 사람 수 (#131, src/refill.js): 오름 전체 쌓는 속도 = 한 명 기준 × n^crowdExp. 각자 둘레 투기꾼이 한 사람 몫(n^crowdExp ÷ n)씩 쌓음
+  // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
+  // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
+  crowdExp: 0.8, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
+};
+// 흡연자 (#156, src/game/smoker.js): 오름 들머리에 가끔 나와 담배를 피움. 플레이어를 공격하지 않음. 귤을 한 번 맞히면 놀라 꽁초 1개를 떨구고 도망 (투기꾼 DUMP.startleT·fleeDist·fadeT 그대로)
+// near 들머리 클린하우스에서 이 거리(m) 안, 탐방로에서 off[0]~off[1] m 비켜난 자리. playerR 플레이어가 들머리 클린하우스 이 거리 안에 있을 때만 every[0]~[1] 초마다 한 명(한 번에 한 명)
+// stay 안 쫓으면 이 초 뒤 꽁초 leaveButts 개를 버리고 걸어 나감. walkIn 나타날 때 이만큼 떨어진 곳에서 걸어옴. reward 쫓으면 귤, buttLife 꽁초가 땅에 남는 초(주울 수 있는 낱개 쓰레기, 비닐 1개로 셈), buttMax 한꺼번에 남는 꽁초 수
+// puff 입 앞 연기 조각 수(저사양 puffLow), jacket 점퍼 색. 귤 벌이: tools/econ.js 가 하루 1시간에서 흡연자 몫이 전체의 3% 아래인지 봄 (들머리 둘레에 있는 시간 econNear)
+export const SMOKER = {
+  name: '흡연자', hp: 1, speed: 1.6, flee: 7, hitR: 1.1,
+  near: 25, off: [2, 5], playerR: 60, every: [240, 420],
+  stay: 90, leaveButts: 3, walkIn: 12, reward: 8,
+  buttLife: 600, buttMax: 12, pickR: 1.1,
+  puff: 5, puffLow: 2, jacket: '#8a8f96',
+  econNear: 0.25,
 };
 export const TRASH = {
   cell: 32, // 튜토리얼 낱개 그리기 범위 칸
@@ -325,6 +344,9 @@ export const SHOES = [
   { tier: 4, name: '등산화', speed: 1.3, price: GROWTH.price[4] },
   { tier: 5, name: '바람 신발', speed: 1.45, price: GROWTH.price[5] },
 ];
+// 특별 신발 '고진의 파란장화' (#167): 단계 줄에 끼우지 않음. 저장 save.equip.boots = 0 없음 · 1 가짐(안 신음) · 2 신음
+// 신으면 이동 speed 배, 장비 점수·길 밖 풀밭 느림은 tier 단계 신발과 같게. 값은 tier 단계 값. 파는 곳 LEAP 신발 칸
+export const BOOTS = { id: 'boots', name: '고진의 파란장화', speed: 1.35, tier: 4, price: GROWTH.price[4], desc: '고진 씨가 신던 그 장화. 왜 빠른지는 아무도 모른다.', print: 1.25 }; // print: 발자국 크기 배
 
 // 클린하우스(재활용장): 들머리 한 곳 + 오름 안 작은 것 4곳(#78). 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
 export const CLEANHOUSE = {
@@ -458,6 +480,29 @@ export const ENEMIES = {
   drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
+// 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
+// m: 보통 알갱이 하나(쫓아낸 귤 ÷ 알갱이 수) 의 몇 배. 아기 멧돼지(알갱이 1)면 이슈 값 그대로 5·10·20·50, 센 적일수록 알갱이가 커서 귀한 귤도 큼 (growth-loop 5절 '대박')
+// 모양: k 크기 배율, flatY 납작함(세로 배율), knob 꼭지 혹 크기, glow 아래 빛 원 배율, sparkle 반짝이 수, pillar 빛기둥 높이, coins 주울 때 '짤랑' 수
+// chance[누가]: 한 번 쫓아낼 때 [한라봉, 천혜향, 레드향, 황금향] 이 나올 확률 (하나만 나옴). 센 적일수록 높음. 귀한 귤이 보통 알갱이 하나를 대신해서
+//   늘어나는 몫 = Σ p × (m - 1) ÷ 알갱이 수 → 적 귤 벌이가 아기 멧돼지 +8%, 들개 +5%, 멧돼지 +8%, 광견병 +10%, 외계인 +12% (node tools/raregyul.js). 전체 벌이는 tools/econ.js
+export const RARE_GYUL = {
+  kinds: [
+    { id: 'hallabong', name: '한라봉', m: 5, color: '#ff9a1a', emissive: '#a84a00', emissiveI: 0.8, k: 1.3, flatY: 1, knob: 0.5, glow: 1.2, sparkle: 0, pillar: 0, coins: 2 },
+    { id: 'cheonhye', name: '천혜향', m: 10, color: '#ff7400', emissive: '#d45a00', emissiveI: 1.3, k: 1.35, flatY: 0.74, knob: 0, glow: 1.8, sparkle: 0, pillar: 0, coins: 3 },
+    { id: 'redhyang', name: '레드향', m: 20, color: '#f2471c', emissive: '#c42a0a', emissiveI: 1.1, k: 1.4, flatY: 0.9, knob: 0.25, glow: 1.8, sparkle: 3, pillar: 2.6, coins: 4 },
+    { id: 'hwanggeum', name: '황금향', m: 50, color: '#ffcf2e', emissive: '#e0a000', emissiveI: 1.5, k: 1.5, flatY: 0.95, knob: 0.2, glow: 2.4, sparkle: 4, pillar: 6, coins: 6 },
+  ],
+  chance: {
+    piglet: [0.05, 0.012, 0.003, 0.0008],
+    dog: [0.07, 0.02, 0.006, 0.0015],
+    boar: [0.09, 0.028, 0.009, 0.0025],
+    rabid: [0.11, 0.035, 0.012, 0.0035],
+    alien: [0.13, 0.045, 0.016, 0.005],
+    walker: [0.04, 0.008, 0.002, 0.0005], // 무단투기꾼 (귤 5, 알갱이 하나 = 귤 1)
+    truck: [0.05, 0.012, 0.003, 0.0008], // 투기 트럭 (귤 30)
+  },
+  fly: { up: [5, 7], spread: [1.2, 2.6], grav: 16, magnetT: 0.7, fly: 14, autoT: 20, life: 90 }, // 튀어 오름·퍼짐·빨려 듦(줍는 범위 life.hooks.pickR2, magnetT 초 뒤부터)·autoT 초 뒤엔 어디 있든 날아옴·life 초 뒤 사라짐
+};
 export const ENEMY_SPAWN = {
   every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤). 남송이는 연출 감독(#89 PACE.battle)이 부르고, 이 값은 쓰레기 없는 맵에서만
   group: [2, 3], // 한 무리 마릿수
@@ -486,12 +531,12 @@ export const ENEMY_PACK = {
   spawnGap: 0.4, // 처음 놓을 때 몸 원 사이 여유(m)
 };
 // 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
-// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
+// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수 (활 1: 한 발에 귤 하나 #178)
 // cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
 // r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 5, price: GROWTH.price[2] },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
   { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
@@ -695,6 +740,10 @@ export const COMBAT = {
   stuckT: 2, // 적에게 막혀 이 초 넘게 못 빠져나오면 적 사이로 지나갈 수 있음
   autoPick: 3.2, // 싸우는 중에는 이 거리 안 떨어진 귤을 자동으로 주움 (평소는 GYUL_PICK, 둘 중 큰 쪽 #151)
 };
+// 다가가서 쏘기 (#132, game/approach.js): 던지기 버튼을 누르면 감지 거리 안 적을 잡고, 사거리 밖이면 다가가 쏘고, 쫓아내면 다음 적으로 이어 감
+// detect 감지 거리(m), stand 사거리의 이 비율까지 다가감, lowHp 기운이 이 비율 아래면 다가가지 않고 제자리에서만 쏨,
+// reroute 쫓는 동안 길을 다시 찾는 간격(초)·moved 적이 이만큼(m) 움직이면 다시 찾음, stuckT 이 초 동안 가까워지지 않으면 멈춤, handHard 손으로는 사실상 못 잡는 적(손일 때 뒤로 미룸)
+export const APPROACH = { detect: 45, stand: 0.8, lowHp: 0.25, reroute: 0.6, moved: 3, stuckT: 3, gap: 0.12, handHard: ['alien'] };
 
 // 모아 쏘기 (#129): 던지기 버튼(F)을 길게 눌렀다 놓으면 더 센 한 방. 손·활·총·폭탄은 놓을 때 쏨(짧게 누르면 예전 한 발과 같음),
 // 머신건·레이저는 누르는 동안 예전처럼 쏘고 놓는 순간 마무리(집중 연사·굵은 줄기). k = 모은 정도 0~1 (start 초부터 full 초까지)
@@ -752,6 +801,25 @@ export const STONE = {
   walkMax: 3, // 자리까지 걸어가다 이 초가 넘으면 바로 앉힘
 };
 
+// 만족한상회 (#167): 가게 거리 6번 터(골목 끝)의 갈치 식당. 스톤과 같은 '식사 → 버프' (식당 공통 틀, 버프는 한 번에 하나). 메뉴·값·버프 모두 임의
+// buff: guard 받는 피해 줄이는 비율 · gyulR 귤 모이는 범위 더하는 m. also: 같이 붙는 버프 { 종류: v }. 건물은 코드로 만든 임시 모양 src/manjok.js
+export const MANJOK = {
+  name: '만족한상회', tag: '갈치는 뼈가 없고, 당신은 귤이 없다',
+  buffSec: 600,
+  menu: [
+    { id: 'manjok', ko: '만족한상', en: '순살 은갈치 조림', price: 260, buff: 'guard', v: 0.2, food: '#c8452c' },
+    { id: 'tonggalchi', ko: '통갈치한상', en: '통갈치 조림 한상', price: 320, buff: 'dmg', v: 0.3, also: { speed: 0.1 }, food: '#b83a26' },
+    { id: 'galchigui', ko: '갈치구이', en: '은갈치 구이', price: 180, buff: 'pick', v: 0.2, food: '#d9c9a8' },
+    { id: 'godeungeo', ko: '고등어구이', en: '고등어 구이', price: 150, buff: 'regen', v: 2, food: '#8a7a5a' },
+    { id: 'hwanggae', ko: '제주 황게장', en: '간장 게장', price: 220, buff: 'gyulR', v: 1, food: '#e0902c' },
+  ],
+  W: 6.6, D: 4.4, H: 2.5, // 돌집 폭·깊이·처마 높이 (m)
+  fore: 3.4, // 터 앞에서 집 앞벽까지 (평상 자리)
+  r: 6.5, // 평상 가운데에서 이 거리 안이면 상호작용이 '식사'
+  eatT: 4.5, walkMax: 3,
+};
+export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
+
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
 // 골목 좌표: s = 길 가운데에서 골목 안쪽으로 거리, t = 오름 쪽(+) / 시작 쪽(-). 골목 가운데 선은 t = 0
 // 터 side: 1 = 골목 오름 쪽 줄(앞이 시작·개울 쪽), -1 = 시작 쪽 줄(앞이 오름 쪽), 0 = 골목 끝(앞이 길 쪽). w = 골목 따라 폭, d = 깊이
@@ -766,7 +834,7 @@ export const SHOP_ST = {
     { s: 23, side: 1, w: 10, d: 9 }, // 3 빈 터
     { s: 23, side: -1, w: 10, d: 9 }, // 4 장비점 (#128)
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
-    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 빈 터 (골목 끝)
+    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
@@ -776,8 +844,11 @@ export const SHOP_ST = {
   benches: [[33.5, -1], [39.5, -1]],
   planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
-  // 지붕 위 큰 아이콘 간판 (#128): 터 땅에서 높이(m, 가게 id 마다)·크기(m). 살 수 있는 새 물건이 있으면 귤색 점
-  roof: { stone: 8.4, salon: 7.2, leap: 7.6, ride: 5.4, gear: 5.6 }, roofSize: 2.3, roofBack: 0.45, // roofBack: 터 앞에서 깊이의 이 비율만큼 안쪽
+  // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
+  roofSize: 2.3, roofGap: 0.6, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
+  roofMinPx: 28, roofMaxK: 2.6, // 화면에서 최소 이 px 로 보이게 멀수록 키움 (최대 roofSize × roofMaxK)
+  roofSee: [8, 16, 28], roofSeeH: 3.5, roofNear: 30, roofFade: 0.82, roofTopNear: 12, roofTopFar: 70, // 둘레 이 거리(m)·눈높이에서 가려지면 그 간판만 맨 위에 그림(roofTopNear~roofTopFar 사이만: 가게 바로 앞에선 앞 간판을 덮지 않게), roofNear 안에선 roofFade 만큼 투명
+  roofGlow: 0.5, // 밤 간판 뒤 따뜻한 빛 세기
   dirR: 3.4, // 들머리 '가게 안내도' 판 앞 이 거리 안이면 상호작용 '가게 안내'
   cartHintR: 9, // 정상·능선 클린하우스 이 거리 안에서 버리고 나면 '가게 거리 가는 마차' 안내 (세션에 한 번)
 };
@@ -792,6 +863,7 @@ export const SHOPS = [
   { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon', sells: '머리 모양' },
   { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride', sells: '탈것' }, // #69 (임시 모양)
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
+  { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -828,7 +900,7 @@ export const LEAP = {
 };
 
 // 옷 (#52): 입는 것마다 능력치. 겉모습과 능력치가 묶여 있음 (입은 것이 곧 능력). 도구·배낭·신발·무기는 위 표 그대로
-// 칸마다 0(없음)~5단계. 같은 단계 옷은 능력이 같고 모양만 다름. 가진 옷은 언제든 갈아입고, 능력은 지금 입은 것만
+// 칸마다 0(없음)~5단계. 같은 단계 옷은 능력이 같고 모양만 다름. #179 부터 능력은 칸마다 가진 옷 중 가장 좋은 것, 겉모습은 가진 옷 아무거나 (wear)
 // stat: rare 드문 쓰레기 확률 배수 · hp 최대 HP 배수 · pocket 주머니(배낭 용량에 더함) · gyul 클린하우스 귤 더하는 비율 · guard 받는 피해 줄이는 비율 · regen HP 회복 배수
 // v: [없음(0단계), 1~5단계]. none: 처음엔 없음(베스트·잠바·양말). 저장은 save.clothes = { own: {id: 1}, wear: {칸: id} }
 export const WEAR = {
@@ -843,6 +915,7 @@ export const WEAR = {
   price: GROWTH.price.slice(0, 6).map((p, t) => t < 2 ? 0 : Math.round(p * GROWTH.wearK)), // 단계별 값 (#137: 장비와 같은 곡선 × wearK). 모자·티셔츠·바지 1단계는 처음부터 가짐
   priceNone1: Math.round(GROWTH.price[1] * GROWTH.wearK), // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
   tierColor: ['#7b7b80', '#9a9a94', '#5aa55a', '#4a86c8', '#9a6ad0', '#f29a2e'], // 단계 색: 없음·회색·초록·파랑·보라·귤색
+  styleColor: '#e07aa0', // 겉모습 옷(#179, 능력 없음) 테두리 색
 };
 // 옷 목록: 한 줄이 옷 한 벌. 단계마다 옷을 늘리려면 여기에 줄만 더하면 됨 (같은 단계 = 같은 능력, 모양은 look)
 // look 은 src/clothes.js 가 읽는 모양 값: kind 모양 종류, main 바탕색, acc 포인트색, 그 밖은 종류마다 (stripe 줄무늬색 등)
@@ -891,8 +964,69 @@ export const CLOTHES = [
   { id: 'socks:x-boots', slot: 'socks', tier: 3, name: '빨간 장화', season: 'xmas', look: { kind: 'socks', main: '#c8333a', acc: '#f6f2ea', h: 0.2, thick: true } },
   { id: 'vest:x-scarf', slot: 'vest', tier: 2, name: '목도리', season: 'xmas', look: { kind: 'scarf', main: '#c8333a', acc: '#f6f2ea' } },
 ];
+// 겉모습 옷 (#179): 능력 없는 옷(tier 0). 값은 price 로 따로. 능력은 칸마다 가진 옷 중 가장 좋은 것이 정하고(gearscore.js abilityCloth), 겉모습은 가진 옷 아무거나(save.clothes.wear)
+// set: 한 벌 맞춤 묶음(OUTFIT_SETS), tint: 색 바꾸기 가능(LOOK_COLORS.style, 저장 save.clothes.tint = { id: 번호 }), fresh: LEAP '새로 들어온 것' 탭에 나오는 날
+// 얼굴(선글라스)은 모자 칸, 등(귤 바구니)은 베스트 칸에 넣음 (칸을 늘리지 않음). 모양 새 kind 는 src/clothes2.js, 그림은 clothicons.js
+export const STYLE_CLOTHES = [
+  // 모자 11 (선글라스 포함)
+  { id: 'hat:s-goggle', slot: 'hat', price: 300, name: '해녀 물안경', set: 'haenyeo', desc: '이마에 걸면 숨이 길어지는 기분', look: { kind: 'goggle', main: '#2b2f3a', acc: '#8fd0e8' } },
+  { id: 'hat:s-beanie', slot: 'hat', price: 250, name: '감귤 꼭지 비니', set: 'farmer', tint: true, desc: '머리 위에 귤 꼭지 하나', look: { kind: 'beanie', main: '#f29a2e', acc: '#3f9a5a' } },
+  { id: 'hat:s-harubang', slot: 'hat', price: 600, name: '돌하르방 모자', desc: '쓰면 표정이 근엄해짐 (기분 탓)', look: { kind: 'harubang', main: '#6b6a66', acc: '#4f4e4a' } },
+  { id: 'hat:s-halfgyul', slot: 'hat', price: 450, name: '귤 반쪽 헬멧', desc: '속은 비었어요. 먹은 게 아니에요', look: { kind: 'halfgyul', main: '#f29a2e', acc: '#fff4e0' } },
+  { id: 'hat:s-gat', slot: 'hat', price: 900, name: '말총 갓', desc: '제주 말총으로 엮은 선비 갓', look: { kind: 'gat', main: '#1d1d22', acc: '#3a3a40' } },
+  { id: 'hat:s-chef', slot: 'hat', price: 350, name: '요리사 모자', desc: '스톤 주방장 몰래 빌려 옴', look: { kind: 'chef', main: '#f6f4ee', acc: '#e4e0d6' } },
+  { id: 'hat:s-hard', slot: 'hat', price: 300, name: '안전모', set: 'clean', tint: true, desc: '쓰레기 산 앞에서는 안전 제일', look: { kind: 'hardhat', main: '#f2c94c', acc: '#e8ecef' } },
+  { id: 'hat:s-lamp', slot: 'hat', price: 400, name: '캠핑 헤드랜턴', desc: '불은 안 켜져요. 마음이 밝아짐', look: { kind: 'lamp', main: '#2b2f3a', acc: '#fff3a0' } },
+  { id: 'hat:s-antenna', slot: 'hat', price: 500, name: '외계인 더듬이', set: 'alien', desc: '귤 신호를 잡는 중', look: { kind: 'antenna', main: '#7ad65a', acc: '#c8f26a' } },
+  { id: 'hat:s-paperbag', slot: 'hat', price: 150, name: '종이봉투', desc: '오늘은 아무도 날 못 알아봄', look: { kind: 'paperbag', main: '#c9a86a', acc: '#1c1712' } },
+  { id: 'hat:s-shades', slot: 'hat', price: 300, name: '선글라스', set: 'tourist', tint: true, desc: '모자 칸에 쓰는 얼굴 장식', look: { kind: 'shades', main: '#1d1d22', acc: '#f29a2e' } },
+  // 티 8
+  { id: 'top:s-unpaid', slot: 'top', price: 250, name: "'오늘도 무급' 티", tint: true, desc: '오름지기 자원봉사 공식 티', look: { kind: 'tee2', main: '#ece6d8', acc: '#3a3a40', print: '#3a3a40' } },
+  { id: 'top:s-aloha', slot: 'top', price: 450, name: '하와이안 셔츠', set: 'tourist', desc: '제주에서 하와이 느낌', look: { kind: 'tee2', main: '#3fa8b8', acc: '#f6efe0', flowers: '#f6efe0', collar: '#f6efe0' } },
+  { id: 'top:s-hallabong', slot: 'top', price: 350, name: '한라봉 무늬 티', desc: '꼭지까지 그려 넣음', look: { kind: 'tee', main: '#fff4e0', acc: '#f29a2e', gyul: '#f29a2e' } },
+  { id: 'top:s-tank', slot: 'top', price: 200, name: '멜빵 러닝', tint: true, desc: '팔이 시원해요', look: { kind: 'tank', main: '#f6f4ee', acc: '#c4513f' } },
+  { id: 'top:s-haenyeo', slot: 'top', price: 500, name: '줄무늬 해녀복 상의', set: 'haenyeo', desc: '고무옷에 주황 줄', look: { kind: 'tee', long: true, main: '#1d1d22', acc: '#f2722c', stripes: 3, collar: '#f2722c' } },
+  { id: 'top:s-tour', slot: 'top', price: 200, name: '관광버스 단체 티', desc: '3호차 놓치지 마세요', look: { kind: 'tee2', main: '#f2d83a', acc: '#2f62b8', print: '#2f62b8', num: true } },
+  { id: 'top:s-neonrun', slot: 'top', price: 400, name: '형광 러닝복', tint: true, desc: '밤에도 보여요', look: { kind: 'tee', main: '#c8f24a', acc: '#2b2f3a', panel: true } },
+  { id: 'top:s-ilove', slot: 'top', price: 300, name: "'I ♥ 쓰레기 줍기' 티", set: 'clean', desc: '진심입니다', look: { kind: 'tee2', main: '#f6f4ee', acc: '#c8333a', heart: '#c8333a', print: '#3a3a40' } },
+  // 바지 6
+  { id: 'bottom:s-mombbe', slot: 'bottom', price: 350, name: '꽃무늬 몸뻬', set: 'farmer', tint: true, desc: '귤밭 일등 작업복', look: { kind: 'mombbe', main: '#8a4fa0', acc: '#6e3a82', dots: '#f6c0d8' } },
+  { id: 'bottom:s-rubber', slot: 'bottom', price: 400, name: '해녀 고무 바지', set: 'haenyeo', desc: '물에 들어가도 끄떡없음', look: { kind: 'long', main: '#1d1d22', acc: '#f2722c', belt: true } },
+  { id: 'bottom:s-ripped', slot: 'bottom', price: 450, name: '찢어진 청바지', set: 'punk', desc: '돌담에 걸린 게 아니에요', look: { kind: 'long', main: '#4a6fa8', acc: '#3a5a8a', rips: '#dfe6ef' } },
+  { id: 'bottom:s-leggings', slot: 'bottom', price: 300, name: '형광 레깅스', set: 'alien', tint: true, desc: '우주복 아래 입는 것', look: { kind: 'long', main: '#7ad65a', acc: '#5cb840', tight: true } },
+  { id: 'bottom:s-check', slot: 'bottom', price: 300, name: '체크 반바지', set: 'tourist', desc: '공항에서 바로 갈아입음', look: { kind: 'shorts', main: '#c4513f', acc: '#f2efe6', check: true } },
+  { id: 'bottom:s-overall', slot: 'bottom', price: 500, name: '멜빵 작업 바지', desc: '주머니에 집게 하나 꽂고', look: { kind: 'long', main: '#4a5a78', acc: '#e0b23a', bib: true, pockets: true } },
+  // 베스트·잠바 9 (귤 바구니는 등에 메는 것이라 베스트 칸)
+  { id: 'vest:s-safety', slot: 'vest', price: 300, name: '형광 안전 조끼', set: 'clean', desc: '멀리서도 줍깅 중인 게 보임', look: { kind: 'vest', main: '#ff7a1f', acc: '#e8ecef', bands: true } },
+  { id: 'vest:s-photo', slot: 'vest', price: 500, name: '주머니 12개 사진 조끼', desc: '주머니마다 귤 하나씩', look: { kind: 'vest', main: '#b8a878', acc: '#8d7d50', pockets: 12 } },
+  { id: 'vest:s-padding', slot: 'vest', price: 450, name: '패딩 조끼', tint: true, desc: '한라산 바람 막이', look: { kind: 'vest', main: '#2b2f3a', acc: '#4a4e58', puff: true } },
+  { id: 'vest:s-punk', slot: 'vest', price: 600, name: '가죽 펑크 조끼', set: 'punk', desc: '징이 박힌 오름펑크 조끼', look: { kind: 'vest', main: '#1d1d22', acc: '#c9ccd2', studs: true } },
+  { id: 'jacket:s-raincoat', slot: 'jacket', price: 400, name: '노랑 우비', desc: '제주 날씨는 모르는 거니까', look: { kind: 'jacket', main: '#f2d03a', acc: '#d8b020', hood: true, cuffs: true, hem: true } },
+  { id: 'jacket:s-durumagi', slot: 'jacket', price: 900, name: '한복 두루마기', desc: '오름에 마실 나온 선비', look: { kind: 'jacket', main: '#e8e2d0', acc: '#3f5a8a', hem: true, goreum: true } },
+  { id: 'jacket:s-glow', slot: 'jacket', price: 600, name: '야광 러닝 자켓', set: 'alien', desc: '어두우면 더 빛나는 기분', look: { kind: 'jacket', main: '#b8f04a', acc: '#2b2f3a', bands: true, cuffs: true } },
+  { id: 'vest:s-boxarmor', slot: 'vest', price: 350, name: '귤 상자 갑옷', desc: '골판지 두 겹, 방어력은 기분', look: { kind: 'boxarmor', main: '#c89a5e', acc: '#f29a2e', ink: '#6a4a2a' } },
+  { id: 'vest:s-basket', slot: 'vest', price: 450, name: '등에 멘 귤 바구니', set: 'farmer', desc: '등에 메는 장식 (베스트 칸)', look: { kind: 'basket', main: '#b8915a', acc: '#f29a2e' } },
+  // 양말·신발 6 (신발은 신발 칸 그대로, 이건 양말 칸 겉모습)
+  { id: 'socks:s-toe', slot: 'socks', price: 150, name: '발가락 양말', desc: '발가락마다 다른 색', look: { kind: 'socks', main: '#f6f4ee', acc: '#e090a8', h: 0.11, toes: true } },
+  { id: 'socks:s-odd', slot: 'socks', price: 200, name: '짝짝이 양말', set: 'punk', desc: '일부러 그런 거예요', look: { kind: 'oddsocks', main: '#c4513f', acc: '#2f62b8', h: 0.15 } },
+  { id: 'socks:s-rainbow', slot: 'socks', price: 250, name: '무지개 양말', desc: '비 온 뒤 오름처럼', look: { kind: 'socks', main: '#c4513f', acc: '#3a3a40', h: 0.17, rainbow: true } },
+  { id: 'socks:s-gomusin', slot: 'socks', price: 350, name: '고무신', desc: '신발 위에 신는 마음의 고무신', look: { kind: 'socks', main: '#f6f4ee', acc: '#d8d4ca', h: 0.06, rim: true } },
+  { id: 'socks:s-slipsock', slot: 'socks', price: 150, name: '쓰레빠엔 흰 양말', desc: '제주 동네 패션의 완성', look: { kind: 'socks', main: '#f6f4ee', acc: '#3f78c0', h: 0.15, stripes: 2 } },
+  { id: 'socks:s-furboot', slot: 'socks', price: 600, name: '털 장화', desc: '눈 오는 오름 필수', look: { kind: 'socks', main: '#8a6a3c', acc: '#f2ece0', h: 0.17, thick: true, fur: true } },
+].map((c) => ({ tier: 0, style: true, fresh: '2026-11-21', ...c }));
+CLOTHES.push(...STYLE_CLOTHES);
+// 한 벌 맞춤 (#179): 같은 묶음 3벌을 겉모습으로 입으면 캐릭터 둘레 작은 효과(src/game/outfitset.js) + 칭호(#165 에서 씀). 능력은 없음
+export const OUTFIT_SETS = [
+  { id: 'haenyeo', name: '해녀', title: '물질 장인', fx: '#8fd0e8', items: ['hat:s-goggle', 'top:s-haenyeo', 'bottom:s-rubber'] },
+  { id: 'punk', name: '오름펑크', title: '오름펑크', fx: '#d0d3d8', items: ['vest:s-punk', 'bottom:s-ripped', 'socks:s-odd'] },
+  { id: 'clean', name: '환경미화', title: '줍깅 반장', fx: '#ff8a2a', items: ['hat:s-hard', 'top:s-ilove', 'vest:s-safety'] },
+  { id: 'tourist', name: '관광객', title: '혼저옵서예', fx: '#5ad0e0', items: ['hat:s-shades', 'top:s-aloha', 'bottom:s-check'] },
+  { id: 'alien', name: '외계인', title: '지구 견학 중', fx: '#9af06a', items: ['hat:s-antenna', 'bottom:s-leggings', 'jacket:s-glow'] },
+  { id: 'farmer', name: '귤 농부', title: '귤밭 주인', fx: '#ffb347', items: ['hat:s-beanie', 'bottom:s-mombbe', 'vest:s-basket'] },
+];
+export const SET_FX = { n: 8, lowN: 5, r: 0.75, y: 0.8, spin: 0.9, bob: 0.12, size: 0.16, step: 0.6 }; // 둘레 효과: 점 수(저사양), 반지름·높이(m), 도는 빠르기(rad/s), 위아래, 점 크기, 번갈아 높이
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
-export const wearPrice = (c) => c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];
+export const wearPrice = (c) => c.price != null ? c.price : c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];
 
 // 배경 음악 (#64). 코드로 만드는 소리(music.js). gain 은 효과음(1)에 견준 음악 버스 크기
 export const MUSIC = {
@@ -932,10 +1066,27 @@ export const PACE = {
   busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
   riseT: 3, fallT: 5,
   edge: 0.6, camIn: 0.1, sky: 0.12,
-  hitStop: 0.06, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율
-  combo: { gap: 1.6, max: 10 }, // 줍기 콤보: 이 초 안에 이어 주우면 음이 한 칸씩 올라감 (최대 칸)
+  hitStop: 0.05, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율 (#141 0.06 → 0.05). '화면 효과 줄이기'면 없음
   bloomLayer: { heap: 14, zone: 32 }, // 꽃이 피면 음악에 한 겹 더해지는 시간(초)
   delight: { luckyT: 60, luckyMul: 8, deerT: 45, flyT: 40 },
+};
+
+// 손맛 (#141, game/feel.js). notes/growth-loop.md 8절. 귤 보너스는 tools/econ.js 가 '손맛 보너스' 줄로 벌이가 15% 넘게 늘지 않는지 봄
+export const FEEL = {
+  // 줍기 콤보: gap 초 안에 이어 주우면 숫자가 오름(한 번 줍기 = 1). step 마다 귤 bonus 씩 더(최대 max), 단계가 오를 때 색·소리·진동.
+  //   소리 높이는 pitchMax 칸까지 한 음씩. 보너스는 주울 때 bag.xv 에 얹혀 클린하우스에서 받음. 서버 줍기 몫(server/src/heaps.js)은 × (1 + max)
+  combo: { gap: 3, step: 10, bonus: 0.05, max: 0.3, pitchMax: 10, cols: ['#ffffff', '#ffd23a', '#ff9a1f', '#ff6a3a', '#ff4f8b', '#b678ff', '#5ad1ff'] },
+  // 이어 쫓아내기: 앞 적을 쫓아낸 뒤 gap 초 안이면 'n연속!'. 귤 보너스 = 그 적 귤 × min(max, (n - 1) × bonus) (떼 적은 귤이 0 이라 글만)
+  streak: { gap: 4, bonus: 0.1, max: 0.3 },
+  // 피해 숫자: 머리 위로 t 초 동안 rise px 올라가며 사라짐. 급소(비틀거릴 때·가득 모아 쏜 샷)는 크고 노랗게. 한 번에 pool 개까지 (저사양 poolLow)
+  dmg: { t: 0.8, rise: 46, pool: 24, poolLow: 10, fullCh: 0.99 },
+  roll: { t: 0.55, hop: 0.35 }, // 쫓아낸 적: 옆으로 한 바퀴 구르며 달아남 (초·m × 크기). 우두머리는 빼고
+  hurt: { t: 0.45, a: 0.75 }, // 맞으면 화면 가장자리 붉은빛 (초·진하기)
+  low: { hp: 0.25, beat: 0.9, a: 0.45 }, // HP 가 이 비율 아래면 심장 소리(초 간격)·가장자리 맥박(진하기)
+  heapSlow: { t: 0.35, k: 0.35 }, // 더미 마지막 하나: 잠깐 느려짐 (초·시간 배율). '화면 효과 줄이기'면 없음
+  crumble: { n: 12, nLow: 5, t: 0.7 }, // 더미가 한 단계 줄 때 흙먼지 (조각 수·초)
+  // 폰 진동 (되는 기기만, 설정 '진동' 으로 끔). 밀리초 배열
+  vib: { pick: [6], step: [16, 30, 16], heap: [24], repel: [22], streak: [18, 30, 28], hurt: [70] },
 };
 
 // 탐방로 선 모양 (#67). 길이는 실제 m. trailshape.js 가 이 값으로 nsPaths 를 만든다
@@ -1033,7 +1184,7 @@ export const CART = {
   side: 4.6,      // 정류장 팻말·벤치는 길 가운데에서 이만큼 옆
   r: 7,           // 정류장(팻말)에서 이 안이고 마차가 서 있으면 '마차 타기'
   cartR: 6,       // 마차가 이 안에 서 있어도 탈 수 있음
-  seats: 4,       // 자리 수 (모양만. 여러 사람이 같은 자리에 앉아도 됨)
+  seats: 4,       // 자리 수. 다 차면 '자리가 없어요' (#120)
   // 타는 자리 (#174, 지나가는 마차 타기 #120 도 씀): 수레 기준 [옆 x, 엉덩이 y, 앞 z] (배율 적용 전). 양옆 긴 의자 위, 앞을 보고 앉음
   seatPos: [[0.38, 1.22, 0.42], [-0.38, 1.22, 0.42], [0.38, 1.22, -0.5], [-0.38, 1.22, -0.5]],
   driverPos: [0, 1.3, 1.0], // 마부 자리 (앞 콘테나 위 널빤지)
@@ -1042,6 +1193,10 @@ export const CART = {
   markFar: 260, markNear: 18, // 화면 가장자리 마차 표시: 이 거리 사이
   ringR: 60,      // 정류장 남은 시간 고리는 이 안에서만 그림
   jumpOff: 3,     // 뛰어내리면 마차 옆 이만큼에서 점프
+  // 지나가는 마차 타기 (#120): 달리는 수레에서 runR m 안이면 '마차 타기'. 수레 앞뒤 길이 bodyL(반, 배율 뒤)
+  runR: 3, bodyL: 1.1,
+  hopT: 0.4, hopH: 0.9, // 올라타는 폴짝: 초·높이
+  offSide: [2.6, 3.4], offBack: [5, 8, 12], // 달리는 중 내리기: 수레 옆 이 거리(길 위면), 아니면 수레 뒤 길 가운데 이 거리
   scale: 1.4,     // 마차 모양 배율
   // 부딪힘 (#117): 마차 기준 [옆 x, 앞 z, 반지름] (m, 배율 적용 뒤). 수레 셋 · 끌채 · 조랑말 셋. 타고 있는 동안은 꺼짐
   block: [[0, -0.8, 1.25], [0, 0, 1.25], [0, 0.8, 1.25], [0, 1.9, 0.7], [0, 2.6, 0.55], [0, 3.4, 0.55], [0, 4.2, 0.55]],
@@ -1117,7 +1272,7 @@ export const NET = {
   presenceMax: 1500,  // 한 번에 보내는 내 상태 크기 상한 (바이트)
   msgPerSec: 15,      // 한 사람이 1초에 보낼 수 있는 메시지 (넘으면 버림)
   hitPerSec: 3, hitRange: 45, // 귤·활 맞힘 알림: 1초에 몇 번, 맞힌 사람과 거리 상한(m)
-  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭, 방장만): 1분에 넣는 수, 한꺼번에(접속 안 한 동안 쌓인 몫) 넣을 수 있는 수
+  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭): 한 사람이 1분에 넣는 수·한꺼번에. 방 전체는 putPerMin × (방이 센 사람 수)^DUMP.crowdExp (#131, 서버가 셈. 방장 + 움직이는 사람만). 빈 방이었던 몫은 방이 직접 채움
   // 저장 확인: 클라이언트가 보낸 귤·장비를 그대로 믿지 않음
   // 귤이 늘 수 있는 몫 (#144): ① 작은 몫(토큰 통: 적·업적·낚시·보너스) + ② 번 몫(earn_bank: 방이 받아 준 줍기 × 더미 구역 값, server/src/heaps.js ZONE_GYUL)
   //   클린하우스에 버린 귤은 ② 에서 먼저 씀. #137 의 고정 큰 몫(earnBurst 100000, earnPerSec 80)은 한 번에 10만 귤 부풀리기를 받아 줘서 되돌림
@@ -1128,11 +1283,19 @@ export const NET = {
   earnBankMax: 60000, // ② 쌓이는 상한: 정상 구역에서 가장 큰 배낭(부피 540, 보통 쓰레기 330개 안팎 × 줍기 값 123 ≈ 4만)을 채운 몫에 여유
   earnFlushMs: 1000,  // 방이 번 몫을 계정에 넘기는 간격 (버리기 직전에 주운 것도 저장 전에 넘어가게)
   earnWindow: 3600,   // 지난 시간은 이 초까지만 셈 (오래 꺼 뒀다고 귤이 쌓이지 않게)
+  // 서버가 아는 큰 귤 (#188, server/src/earn.js): 저장의 기록(판 장비·퀘스트·우두머리·소굴·보물·볼거리)으로 몫을 인정해 ② 에 더함
+  //   fresh: 지난 저장에 없던(새로 떨어져 바로 판) 장비 수 통 — 초당 freshPerSec 씩 차고 freshBurst 에서 멈춤 (적 1.2%·소굴 12%·보물 35%·우두머리 60% 를 넉넉히)
+  //   legend: 그중 전설 (우두머리·보물 4구역부터만 떨어짐). bossGap·denGap: 같은 우두머리·소굴을 다시 인정하기까지 초 (ZONE_GUARD.holdSec 1800·FIELD.den.reopen 1800 보다 조금 짧게)
+  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64 },
+  clampKeepDays: 30,  // 귤 맞춤 기록(#188 GET /admin/clamps)·운영자 귤 보내기 기록 보관 날짜
+  grantMax: 1000000,  // 어드민이 한 번에 보내는 귤 상한 (#188 POST /admin/grant)
   pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
   migrateCoinsMax: 30000, // 기기 기록을 계정으로 옮길 때 받아 주는 귤 상한
   saveMax: 200000,    // 저장 크기 상한 (바이트)
   saveDebounce: 15000, // 바뀐 뒤 이만큼 모아서 서버에 저장 (ms). 나갈 때(탭 숨김·닫기)는 바로
   keepDays: 7,        // 베타: 마지막 접속 뒤 이 날짜가 지나면 기록 지움 (서버 Cron)
+  // 지금 접속 (#186): 방이 사람 수를 계정 객체에 알림(들어올 때·나갈 때·onlineEveryMs 마다). onlineStaleMs 동안 소식이 없는 방은 빼고 셈. 어드민 창은 onlinePollMs 마다(열려 있을 때만)
+  onlineEveryMs: 60000, onlineStaleMs: 180000, onlinePollMs: 30000, onlinePeakDays: 30,
   // 보안 (#84): 이동·줍기·폭주·요청 수 제한. 모두 서버(roomcore·index)가 봄
   rooms: ['namsongi', 'gate', 'darangswi', 'donnaeko'], // 방 이름은 'oreum-<이 중 하나>-battle' 만 (#98: 서버는 전투 오름 하나. 예전 'oreum-<이름>' 접속은 battle 방으로 보냄). 그 밖은 거절 (방 만들기 폭주 막기)
   maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
@@ -1202,6 +1365,26 @@ export const CRASH = {
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
 };
 
+// 이용 통계 (#121): 클라이언트는 숫자만 세다가 flushS 마다·나갈 때 묶음 하나(sendBeacon)로 POST /m. 서버는 날짜별 합계만 (Accounts DO 표 mt)
+// 키: 'in' 같은 이름 또는 '이름:갈래'(sub 에 있는 이름만, 갈래는 [a-z0-9._-]). maxOf 는 합 대신 가장 큰 값
+export const METRICS = {
+  flushS: 300,        // 이만큼(초)마다 한 번 보냄 (+ pagehide·탭 숨김)
+  sampleS: 2,         // 화면 밖에서 상태를 훑는 간격(초). 프레임 안에서는 숫자 더하기만
+  maxBytes: 2000,     // 한 묶음 크기 상한 (넘는 키는 버림)
+  maxKeys: 80,        // 한 묶음 키 수 상한 (서버도 같은 값으로 자름)
+  maxV: 1e6, maxN: 1e4, // 한 키 값·횟수 상한 (서버)
+  dayKeys: 3000,      // 하루·출처마다 새 키 상한 (갈래가 무한히 늘지 않게)
+  keepDays: 90,       // 이 날짜보다 오래된 합계는 Cron 이 지움
+  viewDays: 14,       // 어드민 '수치' 표에 보이는 날짜 수
+  topR: 14,           // 정상 표지석에서 이만큼(m) 안이면 '정상 도착'
+  fpsCut: [20, 30, 45, 55], // 평균 fps 구간 (fps:0 = 20 밑 … fps:4 = 55 이상)
+  ptCut: [1, 5, 15],  // 한 번 플레이 시간 구간(분): pt1·pt5·pt15 = 그 시간을 넘긴 수
+  keys: ['in', 'new', 'ret', 'glog', 'play', 'pt1', 'pt5', 'pt15', 'fpick', 'pick', 'heap', 'dex', 'top', 'earn', 'spend', 'cart', 'down', 'peer', 'peermx', 'emote', 'chat', 'qdown', 'crash', 'fbopen', 'fbsend'],
+  sub: ['dev', 'ref', 'app', 'tut', 'zone', 'buy', 'ride', 'em', 'er', 'tier', 'fps'],
+  maxOf: ['peermx'],
+  srcs: ['live', 'dev', 'adm'], // 실서버 · 개발 서버(/dev/) · 어드민 계정
+};
+
 // 오류 알림 묶어 보기 (#122): 서버 GET /crashes?days= (로그인 없이). server/src/crashes.js
 export const CRASHES = {
   days: 3,            // 기본으로 보는 날 수
@@ -1249,7 +1432,8 @@ export const JOURNEY = {
     { id: 'color', need: {} }, // #155 기본 옷 색
     { id: 'tutorial', need: {} }, // #151
     { id: 'tips', need: { tut: 1 }, after: null }, // #66 상황 팁 (튜토리얼 뒤)
-    { id: 'mateSunja', need: { jeong: 1 } }, // #172 순자 삼춘 (정낭을 나서면)
+    { id: 'fsTip', need: { tut: 1 }, after: 'tips' }, // #189 폰: 전체 화면으로 하는 법 (튜토리얼 직후 한 번, game/simple.js. PC·이미 전체 화면이면 안 열림)
+    { id: 'mateSunja', need: { jeong: 1 }, after: 'tips' }, // #172 순자 삼춘 (정낭을 나서면). after 를 적어 둠: 바로 앞 fsTip 은 PC 에선 안 열림
     { id: 'quest', need: { jeong: 1 } }, // #158 오름지기 첫 퀘스트
     { id: 'heapNear', need: { jeong: 1 } }, // #160 들머리 더미
     { id: 'shopQuest', need: { dumps: 1 } }, // #158 장비점 주인 퀘스트 (첫 버리기 뒤)
@@ -1316,12 +1500,13 @@ export const STORY = {
 // 포인트색은 고른 색 × dark(0.82). 저장은 save.look.colors = { hat, top, bottom, shoes } 색 번호. 0 이 아니면 장비 id 뒤에 ~번호 (멀티도 이 id 로 봄)
 export const LOOK_COLORS = {
   ids: { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts', shoes: 'shoes:slip' },
-  names: { hat: '모자', top: '티', bottom: '바지', shoes: '신발' },
+  names: { hat: '모자', top: '티', bottom: '바지', shoes: '신발', style: '옷' },
   dark: 0.82,
   hat: [['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
   top: [['#e8dfc8', '흰색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#3a3a40', '먹색']],
   bottom: [['#8a6a3c', '갈색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
   shoes: [['#3c8fd0', '파랑'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
+  style: [['', '원래 색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#3a3a40', '먹색']], // 겉모습 옷 색 (#179, tint: true 인 옷). 0번 = 옷 원래 색
 };
 // 전리품·재료·강화·장비 등급 (#140, notes/growth-loop.md 5절). 셈은 src/loot.js(순수 함수, 서버 validate.js·tools 도 씀), 게임은 src/game/loot.js·forge.js
 // mats[구역-1]: 그 구역 재료(적·소굴·보물) id·이름·색 + 우두머리가 반드시 주는 귀한 재료(rare, 이름은 ZONE_BOSS.list mat). 재료 주머니 save.mats = { id: 수 } (가방과 따로, 무게 없음)
@@ -1455,6 +1640,13 @@ export const QUESTS = {
   ],
 };
 
+// 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
+// hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
+// shopT 귤이 새로 다음 장비 값에 닿으면 이만큼 '장비점으로' (장비점 창을 열거나 문 shopR m 안에 오면 끝, 같은 장비로 다시 권하지 않음)
+// bagRoom 배낭 남은 칸이 이보다 작으면 '클린하우스로'
+// after: 줄기 퀘스트가 끝난 뒤 차례 (강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑). 모두 임의값
+export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'daily', 'heap', 'den', 'cairn'] };
+
 // 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
 // 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐
 // 값은 모두 임의(이슈 #180). 이벤트로 얻는 귤은 기간 평균 하루 벌이의 10% 안 (tools/econ.js 가 셈)
@@ -1484,6 +1676,18 @@ export const SEASON = {
       '올겨울 가장 좋은 선물은 깨끗한 오름입니다',
     ],
   },
+};
+
+// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·칭호. 글은 src/punktext.js, 게임 연결은 game/punkworld.js
+// radio.every 방송 사이 [최소, 최대] 초 · sec 자막 띠가 흐르는 초 · r 스피커 기둥에서 이 m 안에서만 들림 · first 문(JOURNEY 'radio')이 열린 뒤 첫 방송까지 초
+//   situ 상황 방송이 생기면 다음 방송을 이 초 안으로 당김 · situTtl 상황 방송이 기다리는 최대 초 · spots 스피커 자리 [들머리 길 approach 거리(정낭 TUT.gateD 에서), 쪽, 옆 m], 가게 거리 골목 [s, 쪽]
+// note.p 쓰레기 하나 주울 때 쪽지가 나올 확률 (쓰레기 수·귤은 보통 쓰레기와 같음)
+// stare 멧돼지와 눈싸움: 멧돼지(아기 포함)가 r m 안에서 sec 초 동안 안 맞음 · unpaid 하루 쓰레기 수 (칭호 '오늘도 무급')
+export const PUNK = {
+  radio: { every: [480, 900], sec: 6, r: 60, first: 20, situ: 8, situTtl: 600, trail: [18, -1, 4.6], street: [5.4, 1], poleH: 5.2 },
+  note: { p: 0.02 },
+  stare: { r: 8, sec: 10, kinds: ['boar', 'piglet'] },
+  unpaid: 500,
 };
 
 // 레벨과 증강 (#159, src/augments.js·src/game/level.js). 값은 모두 임의 (tools/econ.js 로 맞춤)
@@ -1575,6 +1779,20 @@ export const REC = {
   types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
   tag: '#오름오름',
 };
+
+// 아이콘 글자 라벨 (#184): 처음 보는 사람용. 처음 days 일 동안 보이고, 그 뒤엔 튜토리얼을 마치고 taps 번 넘게 눌렀으면 사라짐
+export const ICON_LABEL = { days: 3, taps: 10 };
 // 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
 // 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
 export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };
+
+// 캐릭터 혼잣말 (#169, src/game/mutter.js · 글은 src/punktext.js MUTTER_TEXT): 내 캐릭터 머리 위에 가끔 실마리 말풍선. 내 화면에만
+// sec 보이는 시간 · gap 혼잣말 사이 최소(초) · wait 그 뒤 더 기다리는 시간(0~wait 고르게, 평균 gap + wait/2 ≈ 3분 15초) · retry 할 말이 없으면 다시 볼 때(초)
+// max 같은 줄 최대 횟수(풀리면 그 전에 안 나옴) · idleAfter 실마리 조건이 이만큼(초) 하나도 없을 때만 한가한 혼잣말 · evTtl 일이 일어난 뒤 이 안에만 그 일 줄(초)
+// near: 조건 거리(m) · bagFull 배낭 비율 · hand 손으로 던진 수 · walk 탈것 없이 걸은 거리(m) · hpLow HP 비율 · boss 이 깨끗함부터 우두머리 실마리(우두머리는 ZONE_BOSS.appear)
+export const MUTTER = {
+  sec: 3.5, gap: 90, wait: 210, retry: 10, max: 3, idleAfter: 300, evTtl: 20, checkSec: 1,
+  near: { heap: 25, den: 30, hareubang: 8, cairn: 10, stream: 8 },
+  bagFull: 0.8, hand: 10, walk: 300, hpLow: 0.5, boss: 0.65, piglets: 4, fieldPicked: 120, nightZone: 3,
+  y: 3.4, // 말풍선 높이 (채팅 말풍선과 같음)
+};

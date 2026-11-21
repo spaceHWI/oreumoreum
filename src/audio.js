@@ -290,6 +290,13 @@ export class Sound {
       [1980, 2970].forEach((fr, k) => { const o = c.createOscillator(); o.frequency.value = fr * (1 + (Math.random() - 0.5) * 0.02); const g = c.createGain(); g.gain.setValueAtTime(0.03 * vol / (k + 1), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.5); }); }
   }
 
+  chime(vol = 1) { // 오름 방송 '딩동댕' (#165): 목소리 없이 합성음 차임 세 번
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t0 = c.currentTime;
+    [[659.25, 0], [523.25, 0.42], [783.99, 0.84]].forEach(([fr, dt]) => { const t = t0 + dt;
+      [1, 2.01].forEach((m, k) => { const o = c.createOscillator(); o.type = k ? 'sine' : 'triangle'; o.frequency.value = fr * m; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07 * vol / (k * 3 + 1), t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 1.15); }); });
+  }
+
   ufo() { // 첫 화면 UFO (#150): 낮은 '웅' 한 번 (떨리며 커졌다 작아짐)
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx, t = c.currentTime, T = 2.4;
@@ -501,6 +508,17 @@ export class Sound {
     [440, 330].forEach((f, i) => { const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = f; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t + i * 0.12); g.gain.linearRampToValueAtTime(0.07, t + i * 0.12 + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.2); o.connect(g); g.connect(this.sfx); o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.22); });
   }
   // 개울에 빠짐: 첨벙 (낮게 퍼지는 잡음 + 물방울) (#31)
+  // 장화 발소리 '철벅' (#167): 달릴 때 발소리 위에 짧고 낮은 물기 소리
+  squelch() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime + 0.01;
+    const s = c.createBufferSource(); s.buffer = this.noise;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(260, t + 0.16);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16 * (0.8 + Math.random() * 0.4), t + 0.012); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t, Math.random() * 1.5); s.stop(t + 0.22);
+    const o = c.createOscillator(); o.type = 'sine'; const f0 = 380 + Math.random() * 160; o.frequency.setValueAtTime(f0, t + 0.03); o.frequency.exponentialRampToValueAtTime(f0 * 1.7, t + 0.08);
+    const og = c.createGain(); og.gain.setValueAtTime(0.0001, t + 0.03); og.gain.linearRampToValueAtTime(0.03, t + 0.035); og.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(og); og.connect(this.sfx); o.start(t + 0.03); o.stop(t + 0.12);
+  }
   splash() {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

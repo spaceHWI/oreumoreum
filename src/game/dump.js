@@ -1,10 +1,7 @@
 // 클린하우스(버리기·화살표·자동 걷기), 상호작용 버튼이 고르는 할 일 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { nsPaths } from '../namsongi.js';
 import { TRASH_TYPES, CLEANHOUSE, TUT } from '../balance.js';
-import { RIDE_ICON } from '../rides.js';
-import { SCISSORS, SHIRT } from '../shops.js';
-import { HAMMER } from '../hardware.js';
-import { FORK_KNIFE } from '../stoneicons.js';
+import { ic } from '../icons.js';
 import { buildTrailGraph, trailRoute } from '../autowalk.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
@@ -18,7 +15,7 @@ import { cam } from './camera.js';
 import { ui, topFit, toast, addCoins, panelOpen, busy, ach } from './hud.js';
 import { marker, setTarget } from './input.js';
 import { updateAmmo } from './throw.js';
-import { rideOffAct, cartOnAct, cartOffAct } from './ride.js';
+import { rideOffAct, cartOnAct, cartOffAct, cartNear } from './ride.js';
 import { mountDeer, rePoseAct } from './moves.js';
 import { social } from './room.js';
 import { mealS, skipAct, cutS, cutSkipAct, interactables, fishAct, dismountAct, standAct, throwAct, pickBtn } from './stores.js';
@@ -50,7 +47,7 @@ export function dumpBag(ch = chNear()) {
   const cap = LOW ? CLEANHOUSE.flyMaxLow : CLEANHOUSE.flyMax, m = Math.min(n, cap);
   const vis = per.map((p) => Math.max(1, Math.round(m * p.c / n)));
   const seq = []; per.forEach((p, j) => { let left = p.g; for (let i = 0; i < vis[j]; i++) { const share = i === vis[j] - 1 ? left : Math.floor(p.g / vis[j]); left -= share; seq.push({ k: p.k, share }); } });
-  for (let i = seq.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [seq[i], seq[j]] = [seq[j], seq[i]]; } // 종류를 섞어서 차례로
+  // 종류별로 좌르륵 (#141): 섞지 않고 종류 하나씩 차례로 (per 는 종류 순서)
   const flyT = 0.5, spread = Math.max(0, CLEANHOUSE.dumpTime - flyT - 0.1), cols = trash.fxMats;
   const back = player.pos.clone(); back.y = player.visY + 1.45;
   dumpS.list = seq.map((q, i) => {
@@ -200,12 +197,12 @@ export function updateContext() {
   if (state.photoState && !state.photoState.shot) best = rePoseAct; // 찍기 전: 다시 누르면 포즈 바꾸기 (#70)
   else if (player.pose === 'sit') best = mealS.on ? skipAct : cutS.on ? cutSkipAct : standAct;
   else if (player.riding && !busy()) best = dismountAct;
-  else if (player.cart) best = cart.state.moving ? null : cartOffAct; // 마차 (#69): 서 있을 때만 내리기, 가는 중엔 점프로 뛰어내림
+  else if (player.cart) best = cartOffAct; // 마차 (#69): 내리기. 달리는 중에도 옆 길 위로 (#120), 점프는 뛰어내리기
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
     const d = life.nearestDeer(player.pos, 2.6);
     if (d) { if (!state.deerAct || state.deerAct.deer !== d) state.deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = state.deerAct; }
-    if (cart && !best && cart.boardable(player.pos) >= 0) best = cartOnAct; // 정류장에 마차가 서 있으면 타기 (#69)
+    if (cart && !best && cartNear()) best = cartOnAct; // 정류장에 마차가 서 있거나 (#69) 달리는 마차 가까이면 (#120) 타기
     if (state.fishing && !player.ride && (state.fishing.active || (!best && state.fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
     if (!best) best = player.ride ? rideOffAct : throwAct; // 할 일이 없으면 귤 던지기 (탈것 위에선 내리기)
   }
@@ -225,35 +222,35 @@ export function updateContext() {
 }
 // 상호작용 버튼 아이콘 (지금 될 동작)
 const CTX_ICON = {
-  do: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
-  bow: '<path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/><circle cx="19" cy="6" r="1.6"/>',
-  gun: '<path d="M3 9h13l2 2v3H9l-1 5H5l1-5H3zM18 11h3M12 14v2"/><circle cx="20" cy="9" r="1.5"/>', // 무기 3~6단계 (#123, 상점 그림과 같음)
-  mg: '<path d="M2 9h15l2 2v3H9l-1 5H5l1-5H2zM19 10h3M19 12h3M19 14h3M8 9V6h5v3"/>',
-  laser: '<path d="M3 10h9v4H3zM12 11h2v2h-2M14 12h8M5 14l-1 5h3l1-5M7 7c1-2 3-2 4 0"/>',
-  bomb: '<circle cx="11" cy="14" r="7"/><path d="M14 7l2-3M16 4l3 1M18 2v2M9 12c0-1 1-2 2-2"/>',
-  throw: '<circle cx="11" cy="14" r="6"/><path d="M11 8c0-2 1-3 3-4M8 5c1 1 2 2 3 3M19 5l2-2M20 9h2"/>',
-  dump: '<path d="M4 10l8-6 8 6M6 9v11h12V9M10 20v-5h4v5"/><path d="M12 4v-2" />',
-  give: '<circle cx="9" cy="14" r="5"/><path d="M9 9c0-2 1-3 3-3.5M14 12h7M18 9l3 3-3 3"/>', // 귤 주기 (#175)
-  chest: '<path d="M4 10h16v9H4zM4 10l2-4h12l2 4M10 13h4v3h-4"/>', // 숨은 보물 (#138)
-  shop: '<path d="M3 9l2-5h14l2 5M3 9h18M3 9c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3M5 12v8h14v-8"/><circle cx="12" cy="16" r="2"/>',
-  cairn: '<ellipse cx="12" cy="19" rx="7" ry="2.5"/><ellipse cx="12" cy="13.5" rx="5" ry="2.2"/><ellipse cx="12" cy="8.5" rx="3.5" ry="2"/><ellipse cx="12" cy="4.5" rx="2" ry="1.4"/>',
-  photo: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
-  sit: '<path d="M4 11h16M5 11V8h14v3M6 11v8M18 11v8M4 15h16"/>',
-  sign: '<rect x="4" y="4" width="16" height="11" rx="1"/><path d="M12 15v6M8 8h8M8 11h5"/>',
-  quest: '<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M12 7.5v4M12 13.6v.2"/>', // 퀘스트 주는 사람에게 말 걸기 (#158)
-  rank: '<path d="M3 20h18M5 20v-6h4v6M10 20V9h4v11M15 20v-8h4v8M12 3l1 2 2 .3-1.5 1.4.4 2.1L12 7.8l-1.9 1 .4-2.1L9 5.3 11 5z"/>', // 랭킹 (#11)
-  deer: '<path d="M8 3l1 3-2 1M16 3l-1 3 2 1M9 7h6l1 4-2 2v7M10 13v7M8 11l1-4"/>',
-  hand: '<circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M7 8v6l-2 7M17 8v6l2 7M7 10h10"/>',
-  stand: '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v7M12 14l-2.5 7M12 14l2.5 7M9 10l3-2 3 2M19 12V5M16.5 7.5L19 5l2.5 2.5"/>',
-  down: '<path d="M12 4v13M6 11l6 6 6-6M5 21h14"/>',
-  ride: RIDE_ICON.scoot, cart: '<path d="M3 9h11v6H3zM2 9h13M14 12l3-1"/><circle cx="7" cy="18" r="2.5"/><ellipse cx="19" cy="10.5" rx="2.6" ry="1.8"/><path d="M18 12.5v5M21 12v5"/>', // 탈것 가게·마차 (#69)
-  fish: '<path d="M3 21L18 3M18 3v11a3 3 0 0 1-6 0"/><circle cx="12" cy="11" r="1.2"/><path d="M4 17c2 1 4 1 6 0"/>',
-  reel: '<circle cx="9" cy="15" r="5.5"/><circle cx="9" cy="15" r="1.3"/><path d="M14.5 15H18v3M18 2v8M15 5l3-3 3 3"/>',
-  eat: FORK_KNIFE, // 식사 (#50)
-  cut: SCISSORS, // 머리 (#58)
-  wear: SHIRT, // 옷 (#59)
-  gear: HAMMER, // 장비점 (#128)
-  dir: '<path d="M4 4h16v12H4zM12 16v5M8 21h8"/><circle cx="8" cy="8" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="16" cy="8" r="1.2"/>', // 가게 안내도 (#128)
-  skip: '<path d="M5 5l7 7-7 7M13 5l7 7-7 7"/>',
-  steps: '<path d="M3 20h6v-4h5v-4h4V8h3"/><path d="M3 20V9"/>', // 지름길 (#139)
+  do: ic('do'),
+  bow: ic('bow'),
+  gun: ic('gun'), // 무기 3~6단계 (#123, 상점 그림과 같음)
+  mg: ic('mg'),
+  laser: ic('laser'),
+  bomb: ic('bomb'),
+  throw: ic('gyul-throw'),
+  dump: ic('cleanhouse'),
+  give: ic('gift'), // 귤 주기 (#175)
+  chest: ic('chest'), // 숨은 보물 (#138)
+  shop: ic('shop'),
+  cairn: ic('cairn'),
+  photo: ic('photo'),
+  sit: ic('sit'),
+  sign: ic('sign'),
+  quest: ic('quest'), // 퀘스트 주는 사람에게 말 걸기 (#158)
+  rank: ic('rank'), // 랭킹 (#11)
+  deer: ic('deer'),
+  hand: ic('together'),
+  stand: ic('stand'),
+  down: ic('down'),
+  ride: ic('ride'), cart: ic('cart'), // 탈것 가게·마차 (#69)
+  fish: ic('fish'),
+  reel: ic('reel'),
+  eat: ic('eat'), // 식사 (#50)
+  cut: ic('cut'), // 머리 (#58)
+  wear: ic('wear'), // 옷 (#59)
+  gear: ic('gear'), // 장비점 (#128)
+  dir: ic('map'), // 가게 안내도 (#128)
+  skip: ic('skip'),
+  steps: ic('steps'), // 지름길 (#139)
 };

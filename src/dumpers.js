@@ -8,6 +8,7 @@ import { gradHard } from './toon.js';
 import { DUMP, ZONES } from './balance.js';
 import { HEAP_TOTAL } from './trash.js';
 import { buildTrailGraph } from './autowalk.js';
+import { crowdGap, offlineAdds } from './refill.js';
 
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -23,16 +24,16 @@ const mesh = (g, c, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(g, tm(c))
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
 // 투기꾼: 어두운 점퍼·모자·흰 마스크, 손에 검은 쓰레기봉투 (키 약 2.2, 캐릭터와 비슷)
-function buildWalker() {
+export function buildWalker({ jacket = '#4c5560', withBag = true } = {}) { // 흡연자(#156)도 씀: 점퍼 색만 바꾸고 봉투 없이
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const legs = [-0.17, 0.17].map((x) => { const p = new THREE.Group(); p.position.set(x, 0.85, 0); p.add(mesh(box(0.24, 0.85, 0.26), '#3b3f48', 0, -0.42, 0), mesh(box(0.26, 0.14, 0.36), '#25262b', 0, -0.82, 0.05)); body.add(p); return p; });
-  body.add(mesh(box(0.66, 0.8, 0.42), '#4c5560', 0, 1.25, 0)); // 점퍼
+  body.add(mesh(box(0.66, 0.8, 0.42), jacket, 0, 1.25, 0)); // 점퍼
   body.add(mesh(new THREE.SphereGeometry(0.3, 8, 6), '#e8c6a4', 0, 1.88, 0)); // 얼굴
   body.add(mesh(box(0.42, 0.16, 0.08), '#f4f4f0', 0, 1.8, 0.27)); // 마스크
   body.add(mesh(new THREE.CylinderGeometry(0.32, 0.34, 0.2, 8), '#2c2f36', 0, 2.08, 0)); // 모자
   body.add(mesh(box(0.5, 0.06, 0.3), '#2c2f36', 0, 2.0, 0.24)); // 챙
-  const arms = [-0.42, 0.42].map((x) => { const p = new THREE.Group(); p.position.set(x, 1.58, 0); p.add(mesh(box(0.18, 0.66, 0.2), '#4c5560', 0, -0.32, 0)); body.add(p); return p; });
-  const bag = new THREE.Group(); bag.position.set(0, -0.72, 0.05); arms[1].add(bag); // 오른손 봉투
+  const arms = [-0.42, 0.42].map((x) => { const p = new THREE.Group(); p.position.set(x, 1.58, 0); p.add(mesh(box(0.18, 0.66, 0.2), jacket, 0, -0.32, 0)); body.add(p); return p; });
+  const bag = new THREE.Group(); bag.position.set(0, -0.72, 0.05); arms[1].add(bag); bag.visible = withBag; // 오른손 봉투
   const bg = new THREE.IcosahedronGeometry(0.38, 0); bg.scale(1, 1.15, 0.9);
   bag.add(mesh(bg, '#26262c', 0, -0.32, 0), mesh(new THREE.ConeGeometry(0.1, 0.2, 5), '#26262c', 0, 0.08, 0));
   return { root, body, legs, arms, bag, h: 2.2 };
@@ -76,7 +77,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   const group = new THREE.Group(); scene.add(group);
   const list = [];
   let players = DUMP.players, timer = Math.min(60, DUMP.every), sound = null, player = null;
-  const period = () => Math.max(DUMP.minEvery, DUMP.every / Math.max(1, players));
+  const period = () => Math.max(20, DUMP.every * crowdGap(players)); // 쓰레기 없는 맵 등 감독 없이 올 때만 (#131: 사람이 많으면 간격을 늘림)
 
   // 트럭 길: 탐방로 그래프 (튜토리얼 쪽 점은 뺌)
   const G = buildTrailGraph(paths, 6);
@@ -287,16 +288,12 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     if (d.st > DUMP.maxTrip) remove(d);
   }
 
-  // 접속하지 않은 동안 (sec 초): 한 명 기준 속도로, offlineMaxH 시간 넘으면 오름 전체 가득. 쌓은 수
+  // 아무도 없던 동안 (sec 초, #131 src/refill.js): 구역마다 빈자리를 30분 절반·90분 가득 곡선으로 채움 (구역 1·2 먼저). 쌓은 수
   function catchUp(sec) {
     if (!(sec > 0)) return 0;
-    const H = DUMP.offlineMaxH * 3600;
-    let want = sec >= H ? HEAP_TOTAL : Math.round(DUMP_PER_HOUR * sec / 3600), got = 0, guard = 0;
-    while (want > 0 && guard++ < 2000) {
-      const kind = rnd() < DUMP.truckP ? 'truck' : 'walker', i = pickHeap(kind); if (i < 0) break;
-      const a = trash.refill(i, Math.min(want, DUMP_AMT[kind]), true); if (!a) break;
-      got += a; want -= a;
-    }
+    const H = trash.heaps, left = H.map((h, i) => trash.store.left(i)), adds = offlineAdds(left, H.map((h) => h.n), H.map((h) => h.zone), sec);
+    let got = 0;
+    for (const [i, n] of adds) got += trash.refill(i, n, true) || 0;
     if (got) { trash.relayout(); trash.store.commit(); }
     return got;
   }
@@ -311,7 +308,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   function update(dt, time) {
     // 마지막 접속 시각 (탭이 오래 숨어 있었으면 그동안 몫을 한꺼번에)
     wallT += dt;
-    if (wallT > 5) { wallT = 0; const now = Date.now(), seen = trash.store.seen(); if (seen > 0 && now - seen > DUMP.offlineMin * 1000) { const n = catchUp((now - seen) / 1000); if (n) hooks.offline?.(n, (now - seen) / 1000); } trash.store.setSeen(now); }
+    if (wallT > 5) { wallT = 0; const now = Date.now(), seen = trash.store.seen(); if (seen > 0 && now - seen > DUMP.offlineMin * 1000 && !trash.store.roomLive?.()) { const n = catchUp((now - seen) / 1000); if (n) hooks.offline?.(n, (now - seen) / 1000); } trash.store.setSeen(now); }
     timer -= dt;
     if (timer <= 0) { timer = period(); if (!hooks.paced && (!hooks.canSpawn || hooks.canSpawn())) visit(); }
     for (let i = list.length - 1; i >= 0; i--) {
@@ -336,6 +333,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   return {
     bind(p, s) { player = p; sound = s; },
     start, update, hitTest, aimTargets, list, catchUp,
+    offlineMsg: (n) => hooks.offline?.(n, 0), // 방이 빈 동안 몫을 채웠을 때 (#131, room.js 의 hi.fill)
     // 감독(#89): kind 하나 부르기 (opts: amt·hold·heap), 살아 있는(오는 중·버리는 중·숨은) 수, 시간이 다 되면 오는 중인 것은 그 자리에서 서둘러 버리고 떠남
     come: (kind, opts = {}) => spawn(kind, opts.heap ?? -1, opts),
     activeN: () => list.filter((d) => d.state === 'come' || d.state === 'dump').length,

@@ -24,7 +24,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await p.waitForFunction(() => document.querySelector('#acct-ask [data-v="0"]'), null, { timeout: 8000 }).then(() => p.evaluate(() => document.querySelector('#acct-ask [data-v="0"]').click())).catch(() => {});
     for (let k = 0; k < 180; k++) { await wait(p, 1000); if (await p.evaluate(() => !window.__old && !!(window.__oreum?.online?.account?.()?.loggedIn && window.__oreum.renderer.info.render.frame > 2)).catch(() => false)) break; }
     // 튜토리얼 끝낸 기록으로 저장하고 다시 엶 (튜토리얼 중엔 혼자라 남이 안 보임)
-    await p.evaluate(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); return o.online.account().push(); });
+    await p.evaluate(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); const k = Object.keys(localStorage).find((x) => x.endsWith('.acct')); if (k) localStorage.setItem(k, JSON.stringify(o.save)); return o.online.account().push(); }); // 이 기기 사본에도 바로 (push 가 바쁘면 건너뜀)
     await p.reload(); await ready(p);
     if (await p.evaluate(() => !document.getElementById('intro').hidden)) await p.click('#enter').catch(() => {});
     const X = { ctx, p };
@@ -33,7 +33,9 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     return X;
   };
   const A = await open('giver'), B = await open('taker');
-  ok(await until(A, () => window.__oreum.net.count >= 1, null, 90000), 'A 가 B 를 봄');
+  const diag = (X) => X.p.evaluate(() => { const o = window.__oreum; return { tut: o.tut?.active, done: o.save.tut?.done, ready: o.net.ready, n: o.net.count, solo: o.net.solo, srv: o.save.server, pos: [Math.round(o.player.pos.x), Math.round(o.player.pos.z)], intro: !document.getElementById('intro').hidden }; });
+  const seenB = await until(A, () => window.__oreum.net.count >= 1, null, 90000);
+  ok(seenB, 'A 가 B 를 봄' + (seenB ? '' : ` (A ${JSON.stringify(await diag(A))} · B ${JSON.stringify(await diag(B))})`));
   // A 는 귤을 넉넉히 (처음 몫 안), B 를 A 옆으로
   await A.p.evaluate(() => { const o = window.__oreum; o.save.coins = 500; return o.online.account().push(); }); await wait(A.p, 800);
   const ap = await A.p.evaluate(() => { const p = window.__oreum.player.pos; return [p.x, p.z]; });

@@ -5,8 +5,8 @@
 //   save.clothes.up = { 옷 id: { g, e } }   옷은 옷마다 (갈아입어도 따라감)
 //   save.loot = [{ s 칸, t 단계, g, e }]   안 쓰는 장비 (얻었지만 안 입은 것)
 //   save.lootAuto = 1|0   칸마다 가장 좋은 것 하나만 남기고 자동으로 귤로 바꾸기 (기본 켬)
-import { LOOT, GROWTH, ZONE_BOSS, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR, WEAR_START } from './balance.js';
-import { GEAR_SLOTS, itemScore, slotTier, slotUp } from './gearscore.js';
+import { LOOT, GROWTH, ZONE_BOSS, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR, WEAR_START } from './balance.js';
+import { GEAR_SLOTS, itemScore, slotTier, slotUp, abilityCloth, bootsOn } from './gearscore.js';
 
 export { GEAR_SLOTS };
 export const GEAR4 = ['tool', 'bag', 'shoes', 'weapon'];
@@ -71,8 +71,8 @@ export const gradeName = (g) => LOOT.gradeName[g] || '';
 export const gradeColor = (g) => LOOT.gradeColor[g] || LOOT.gradeColor[0];
 export const itemName = (it) => `${it.g ? gradeName(it.g) + ' ' : ''}${baseName(it.s, it.t)}${it.e ? ` +${it.e}` : ''}`;
 export const itemPts = (it) => itemScore(it.t, it.g, it.e);
-// 지금 그 칸에 쓰는 장비 (옷은 입은 옷)
-export function curItem(save, k) { const t = slotTier(save, k), u = slotUp(save, k); return { s: k, t, g: u.g, e: u.e, id: WEAR_K.includes(k) ? save?.clothes?.wear?.[k] || null : null }; }
+// 지금 그 칸에 쓰는 장비 (옷은 능력을 주는 옷, #179)
+export function curItem(save, k) { const t = slotTier(save, k), u = slotUp(save, k); return { s: k, t, g: u.g, e: u.e, id: WEAR_K.includes(k) ? abilityCloth(save, k) : null }; } // 옷은 능력을 주는 옷 (#179)
 // 입을 수 있나: 장비는 지금 단계와 같을 때만(낮은 단계로 내려가면 산 단계를 잃음), 옷은 가진 옷일 때만 (값을 내지 않은 것을 얻지 않게)
 export function canEquip(save, it) {
   if (GEAR4.includes(it.s)) return it.t >= 1 && it.t === slotTier(save, it.s);
@@ -119,7 +119,7 @@ export function enhance(save, k) {
 // 칸의 등급·강화를 씀 (옷은 그 옷 id)
 export function setUp(save, k, u, clothIdNow) {
   const v = u && (u.g || u.e) ? { g: u.g | 0, e: u.e | 0 } : null;
-  if (WEAR_K.includes(k)) { const id = clothIdNow ?? save.clothes?.wear?.[k]; if (!id) return; save.clothes.up ||= {}; if (v) save.clothes.up[id] = v; else delete save.clothes.up[id]; return; }
+  if (WEAR_K.includes(k)) { const id = clothIdNow ?? abilityCloth(save, k); if (!id) return; save.clothes.up ||= {}; if (v) save.clothes.up[id] = v; else delete save.clothes.up[id]; return; }
   save.gearUp ||= {}; if (v) save.gearUp[k] = v; else delete save.gearUp[k];
 }
 
@@ -159,7 +159,7 @@ export function tidySpare(save) {
   }
   while (keep.length > LOOT.spareMax) out.push(keep.pop());
   save.loot = keep;
-  const sold = out.map((it) => [it, sellValue(it)]); for (const [, v] of sold) save.coins += v;
+  const sold = out.map((it) => [it, sellValue(it)]); for (const [it, v] of sold) { save.coins += v; noteSold(save, it); }
   return sold;
 }
 // 새 장비를 안 쓰는 장비 칸에 넣음
@@ -170,11 +170,13 @@ export function equipSpare(save, i) {
   const cur = curItem(save, it.s);
   save.loot.splice(i, 1);
   if (cur.t >= 1 && (cur.g || cur.e)) addSpare(save, cur);
-  if (WEAR_K.includes(it.s)) { const id = clothId(it.s, it.t); save.clothes.wear[it.s] = id; setUp(save, it.s, it, id); }
-  else setUp(save, it.s, it);
+  if (WEAR_K.includes(it.s)) { const id = clothId(it.s, it.t); setUp(save, it.s, it, id); } // 겉모습(wear)은 그대로, 능력은 가진 옷 중 가장 좋은 것 (#179)
+  else { setUp(save, it.s, it); if (it.s === 'shoes' && save.equip?.boots === 2) save.equip.boots = 1; } // 장화(#167)를 신고 있었으면 벗음
   return true;
 }
-export function sellSpare(save, i) { const it = save.loot[i]; if (!it) return 0; save.loot.splice(i, 1); const v = sellValue(it); save.coins += v; return v; }
+export function sellSpare(save, i) { const it = save.loot[i]; if (!it) return 0; save.loot.splice(i, 1); const v = sellValue(it); save.coins += v; noteSold(save, it); return v; }
+// 판 것 목록 (#188): 다음 서버 저장에 실어 보내 서버가 그 귤을 인정함 (서버가 받으면 online.js 가 보낸 만큼 지움). 멀티가 아니면 쌓이기만 하니 64개까지
+export function noteSold(save, it) { const L = Array.isArray(save.sold) ? save.sold : (save.sold = []); L.push({ s: it.s, t: it.t, g: it.g | 0, e: it.e | 0 }); if (L.length > 64) L.splice(0, L.length - 64); }
 // 장비 단계를 새로 샀을 때(부르는 쪽이 equip 을 바꾸기 전): 예전 단계 장비의 등급·강화는 안 쓰는 장비로
 export function tierUp(save, k) {
   const cur = curItem(save, k); if (!GEAR4.includes(k)) return;
@@ -183,7 +185,7 @@ export function tierUp(save, k) {
 }
 
 // ---------- 게임이 쓰는 능력 (식사 버프와 따로 곱함) ----------
-export const shoeSpeed = (save) => statUp(save, 'shoes', SHOES[Math.max(1, save?.equip?.shoes || 1) - 1].speed, 1);
+export const shoeSpeed = (save) => bootsOn(save) ? BOOTS.speed : statUp(save, 'shoes', SHOES[Math.max(1, save?.equip?.shoes || 1) - 1].speed, 1);
 export const weaponMul = (save) => upMul(save, 'weapon');
 const WEAR_UNIT = { rare: 1, hp: 1, regen: 1, pocket: 0, gyul: 0, guard: 0 };
 const WEAR_CAP = { guard: 0.6 };

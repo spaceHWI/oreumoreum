@@ -3,6 +3,7 @@
 // - 한 번에 하나씩 차례로, 같은 오류는 기기당 하루 CRASH.perDay 번까지, 한 번 켤 때 CRASH.perRun 개까지
 // - 보낼 곳(post)은 게임 모듈이 다 읽힌 뒤 setCrashSink 로 받음. 그 전 오류는 모아 뒀다 보냄 (main.js 가 맨 먼저 listen)
 import { CRASH } from './balance.js';
+import { mt } from './metrics.js';
 
 const KEY = 'oreumoreum.crash';
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 저장 불가 */ } } };
@@ -47,6 +48,7 @@ export function reportCrash(err, where = '') {
     const { key, text } = crashText(err, where);
     if (seenRun.has(key)) return; seenRun.add(key);
     if (/^\[오류[^\]]*\] (Script error\.?|ResizeObserver loop)/.test(text)) return; // 다른 곳 스크립트(정보 없음)·무해한 경고
+    mt('crash'); // 이용 통계 (#121): 이번에 처음 난 오류 수
     console.error('[오름오름 오류]', where, err);
     if (sent >= CRASH.perRun || !allow(key)) return;
     sent++;

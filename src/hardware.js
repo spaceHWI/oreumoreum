@@ -4,15 +4,12 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
 import { GEAR_SHOP } from './balance.js';
+import { ic } from './icons.js';
 
 // 지붕 간판·가장자리 표시 아이콘 (24×24 선 그림): 망치
-export const HAMMER = '<path d="M4 20l9.5-9.5"/><path d="M12.8 5.6l5.6 5.6-2.2 2.2-5.6-5.6z"/><path d="M12.8 5.6L10.6 3.4"/>';
+export const HAMMER = ic('gear');
 // 앞 간판 그림: 집게·배낭·활
-export const GEAR_SIGN = [
-  '<path d="M10 3l1 18M14 3l-1 18M9 8h6"/>',
-  '<path d="M6 8h12v13H6zM9 8V6a3 3 0 0 1 6 0v2M9 13h6v4H9z"/>',
-  '<path d="M6 3c7 2 11 8 9 18M6 3l9 18M10 12l10-6M20 6l-3-.5M20 6l-.5 3"/><circle cx="19" cy="6" r="1.6"/>',
-];
+export const GEAR_SIGN = ['tongs', 'bag', 'bow'].map(ic); // 간판 그림: 집게·배낭·활 (#184 아이콘 세트)
 
 const M4 = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1));
 function piece(g, color, m) {
@@ -56,7 +53,7 @@ export function createGearShop({ scene, height, site, low = false, col = null })
   x.fillStyle = '#2f3336'; x.fillRect(0, 0, 512, 128); x.strokeStyle = '#ff8a1f'; x.lineWidth = 8; x.strokeRect(4, 4, 504, 120);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   GEAR_SIGN.forEach((path, i) => { const img = new Image(); img.onload = () => { x.drawImage(img, 76 + i * 136, 14, 100, 100); tex.needsUpdate = true; }; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="#f3ecdc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`); });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, H - 0.2, D / 2 + 0.74); sign.rotation.x = -0.1; g.add(sign);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, H - 0.42, D / 2 + 0.95); sign.rotation.x = -0.06; g.add(sign); // 차양 앞에 걺: 지붕 앞끝·차양에 가리지 않게 (#182)
   g.updateMatrixWorld(true);
   const w = (lx, lz, ly = 0) => new THREE.Vector3(lx, ly, lz).applyMatrix4(g.matrixWorld);
   if (col) { const b = w(0, 0); col.addBox(b.x, b.z, site.rot, W / 2 - 0.1, D / 2 - 0.2); }

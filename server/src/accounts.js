@@ -1,6 +1,7 @@
 // 계정 저장 (#7): Durable Object 하나(이름 'all') 안의 SQLite. 칸은 sub·닉네임·게임 저장·치운 양·접속 시각뿐
 import { DurableObject } from 'cloudflare:workers';
-import { NET, FEEDBACK, RANK, HAIR, NICK, GIVE } from '../../src/balance.js';
+import { NET, FEEDBACK, RANK, HAIR, NICK, METRICS, GIVE } from '../../src/balance.js';
+import { isMaxKey } from './metrics.js';
 import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
 import { cleanText, nickOk, nickBad, nickPrice } from '../../src/safetext.js';
 import { checkSave } from './validate.js';
@@ -31,6 +32,12 @@ export class Accounts extends DurableObject {
     if (!cols.includes('bank')) this.sql.exec('ALTER TABLE acc ADD COLUMN bank REAL DEFAULT 0'); // 번 몫 (#144): 방이 받아 준 줍기 × 더미 값. 버린 귤은 이 안에서
     // 귤 주기 (#175): 받은·준 귤 누적(gin·gout, 저장의 save.gift 와 맞춰 봄), 그날(한국 날 g_day) 준·받은 수
     for (const c of ['gin', 'gout', 'g_day', 'g_out', 'g_in']) if (!cols.includes(c)) this.sql.exec(`ALTER TABLE acc ADD COLUMN ${c} INTEGER DEFAULT 0`);
+    if (!cols.includes('cred')) this.sql.exec('ALTER TABLE acc ADD COLUMN cred TEXT'); // 서버가 인정한 기록 (#188 earn.js): 받은 퀘스트·우두머리·소굴·보물·볼거리, 새 전리품 통
+    // 귤 맞춤 기록 (#188): 서버가 귤을 깎은 때마다 한 줄 (clampKeepDays 일 보관). 운영자 귤 보내기 (got: 받는 사람이 받았나)
+    this.sql.exec('CREATE TABLE IF NOT EXISTS clamp (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, sub TEXT, nick TEXT, amt INTEGER, before INTEGER, ask INTEGER, after INTEGER, why TEXT, ver TEXT, info TEXT)');
+    this.sql.exec('CREATE INDEX IF NOT EXISTS clamp_at ON clamp (at)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS gift (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, sub TEXT, n INTEGER, why TEXT, by TEXT, got INTEGER DEFAULT 0, got_at INTEGER)');
+    this.sql.exec('CREATE INDEX IF NOT EXISTS gift_sub ON gift (sub, got)');
 
     if (!hadRank) this.sql.exec("INSERT OR IGNORE INTO rka (sub, srv, n) SELECT sub, 'battle', cleaned FROM acc WHERE cleaned > 0"); // 랭킹 전 치운 양은 전체로
     // #98: 깨끗한 오름 기록을 전투 오름 기록에 더하고 지움 (한 번 옮기면 clean 줄이 없어 다음엔 아무 일 없음)
@@ -41,7 +48,34 @@ export class Accounts extends DurableObject {
     }
     // 철 이벤트 트리 (#180): 기간 동안 모두가 주운 수를 날마다 하나로 더함 (d = 한국 날 번호). 서버가 확인한 줍기만
     this.sql.exec('CREATE TABLE IF NOT EXISTS ssn (d INTEGER PRIMARY KEY, n INTEGER)');
+    // 지금 접속 (#186): 방마다 사람 수만(onl), 오늘 최고 동시 접속은 한국 날마다 값 하나(onlpk). 이름·계정 번호는 적지 않음
+    this.sql.exec('CREATE TABLE IF NOT EXISTS onl (room TEXT PRIMARY KEY, n INTEGER, login INTEGER, at INTEGER)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS onlpk (d INTEGER PRIMARY KEY, n INTEGER, at INTEGER)');
+    // 이용 통계 (#121): 날(한국 날 번호)·출처(live·dev·adm)·키마다 합과 횟수 한 줄. 계정·IP 는 넣지 않음
+    this.sql.exec('CREATE TABLE IF NOT EXISTS mt (d INTEGER, src TEXT, k TEXT, sum REAL, n INTEGER, PRIMARY KEY (d, src, k))');
     this.rkCache = new Map();
+  }
+  // 방이 알려 준 사람 수 (#186, room.js report). 0명이면 지움. 오래 소식이 없는 방(꺼진 방)은 빼고 셈
+  roomCount(room, n, login, t = Date.now()) {
+    if (typeof room !== 'string' || !/^[a-z0-9-]{1,48}#\d{1,2}$/.test(room)) return;
+    n = Math.max(0, Math.min(999, n | 0)); login = Math.max(0, Math.min(n, login | 0));
+    if (n) this.sql.exec('INSERT OR REPLACE INTO onl (room, n, login, at) VALUES (?, ?, ?, ?)', room, n, login, t);
+    else this.sql.exec('DELETE FROM onl WHERE room = ?', room);
+    const tot = this.onlineRows(t).reduce((a, r) => a + r.n, 0), d = kstDay(t);
+    const pk = this.sql.exec('SELECT n FROM onlpk WHERE d = ?', d).toArray()[0];
+    if (!pk) this.sql.exec('DELETE FROM onlpk WHERE d < ?', d - NET.onlinePeakDays);
+    if (!pk || tot > pk.n) this.sql.exec('INSERT OR REPLACE INTO onlpk (d, n, at) VALUES (?, ?, ?)', d, tot, t);
+  }
+  onlineRows(t = Date.now()) {
+    this.sql.exec('DELETE FROM onl WHERE at < ?', t - NET.onlineStaleMs);
+    return this.sql.exec('SELECT room, n, login FROM onl ORDER BY room').toArray();
+  }
+  // 어드민 창 (#186): 숫자만. rooms = [{ map, ch, n, login }]
+  online(t = Date.now()) {
+    const rooms = this.onlineRows(t).map((r) => { const m = /^oreum-([a-z0-9]+)(?:-battle)?#(\d+)$/.exec(r.room); return { map: m ? m[1] : r.room.split('#')[0], ch: m ? Number(m[2]) : 0, n: r.n, login: r.login }; });
+    const n = rooms.reduce((a, r) => a + r.n, 0), login = rooms.reduce((a, r) => a + r.login, 0);
+    const pk = this.sql.exec('SELECT n, at FROM onlpk WHERE d = ?', kstDay(t)).toArray()[0];
+    return { now: t, n, login, guest: n - login, rooms, peak: pk ? { n: Math.max(pk.n, n), at: pk.n >= n ? pk.at : t } : { n, at: t } };
   }
   // 이번 철 트리 합계: 기간 첫날부터 오늘까지
   seasonTotal(t = Date.now()) {
@@ -60,7 +94,7 @@ export class Accounts extends DurableObject {
     return this.view(r, t);
   }
   view(r, t = Date.now()) {
-    return { nick: r.nick || '', rev: r.rev, save: r.save ? JSON.parse(r.save) : null, cleaned: r.cleaned, lastSeen: t, keepUntil: t + NET.keepDays * 864e5, isNew: !!r.isNew, nickRen: this.nickRen(r) };
+    return { nick: r.nick || '', rev: r.rev, save: r.save ? JSON.parse(r.save) : null, cleaned: r.cleaned, lastSeen: t, keepUntil: t + NET.keepDays * 864e5, isNew: !!r.isNew, nickRen: this.nickRen(r), gifts: this.giftsOf(r.sub) };
   }
   nickRen(r) { return { n: r.nick_n || 0, day: r.nick_day || 0, free: r.nick_free ? 1 : 0 }; }
   // 이름 바꾸기 (#162): 서버가 거르기·하루 한 번·값(바꾼 횟수로 셈)을 확인하고 귤을 빼고 바꿈. price = 클라이언트가 본 값 (다르면 거절하고 지금 값을 알려 줌)
@@ -89,28 +123,54 @@ export class Accounts extends DurableObject {
   }
   revoke(jti, exp) { this.sql.exec('INSERT OR REPLACE INTO rv (j, exp) VALUES (?, ?)', jti, exp); return { ok: true }; }
   get(sub) { const r = this.row(sub); return r ? this.view(r, r.last_seen) : null; }
-  put(sub, save, { migrate = false, free = false } = {}) {
+  put(sub, save, { migrate = false, free = false, ver = '' } = {}) {
     const raw = JSON.stringify(save);
     if (raw.length > NET.saveMax) return { error: 'too big' };
     const t = Date.now();
     let r = this.row(sub); if (!r) { this.touch(sub); r = this.row(sub); }
     const prev = r.save ? JSON.parse(r.save) : null;
     const xday = xmasDay(t);
-    const { save: S, fixed, acc, nickBad: nb } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, gin: r.gin || 0, gout: r.gout || 0 }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal() });
+    // 운영자가 보낸 귤 (#188): 받는 사람이 받았다고 한 것(save.giftGot)만 이번 몫에 더하고 받은 것으로
+    const got = new Set(Array.isArray(save.giftGot) ? save.giftGot.slice(-100).map(Number) : []);
+    const take = this.giftsOf(sub).filter((g) => got.has(g.id)), grant = take.reduce((a, g) => a + g.n, 0);
+    let cred = null; try { cred = r.cred ? JSON.parse(r.cred) : null; } catch (e) { cred = null; }
+    const { save: S, fixed, acc, clamp, nickBad: nb } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, cred, gin: r.gin || 0, gout: r.gout || 0 }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal(), grant });
+    for (const g of take) this.sql.exec('UPDATE gift SET got = 1, got_at = ? WHERE id = ? AND sub = ?', t, g.id, sub);
     const rev = (r.rev || 0) + 1;
     // 확인한 칸만 바꿔 넣고 나머지(설정·튜토리얼 등)는 받은 그대로
-    const out = { ...save, ...S };
+    const out = { ...save, ...S }; delete out.sold; // 판 것 목록(#188)은 셈에만
     if (nb) this.sql.exec('UPDATE acc SET nick_free = 1 WHERE sub = ?', sub); // 걸린 이름을 서버가 바꿨으면 다음 한 번 무료 (#162)
     out.nickRen = this.nickRen(this.row(sub)); // 바꾼 횟수 등은 서버 값 (클라이언트가 보낸 것은 버림)
-    this.sql.exec('UPDATE acc SET save = ?, nick = ?, rev = ?, cleaned = ?, credit = ?, pick_credit = ?, bank = ?, saved_at = ?, last_seen = ?, look = ? WHERE sub = ?',
-      JSON.stringify(out), S.nick, rev, S.trash.total, acc.credit, acc.pickCredit, acc.bank, t, t, lookOf(out, hairOk), sub);
+    this.sql.exec('UPDATE acc SET save = ?, nick = ?, rev = ?, cleaned = ?, credit = ?, pick_credit = ?, bank = ?, cred = ?, saved_at = ?, last_seen = ?, look = ? WHERE sub = ?',
+      JSON.stringify(out), S.nick, rev, S.trash.total, acc.credit, acc.pickCredit, acc.bank, JSON.stringify(acc.cred || {}), t, t, lookOf(out, hairOk), sub);
+    if (clamp && clamp.amt > 0) this.clampAdd(sub, S.nick, clamp, ver, t);
     // 랭킹 (#11): 서버가 확인한 치운 양이 늘어난 만큼만 더함 (서버는 전투 오름 하나, #98). 줄어든 것(처음부터 다시 등)은 빼지 않음
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
     const fix = {};
     if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } if (fixed.includes('gift')) { fix.coins = S.coins; fix.gift = S.gift; } }
-    return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5 };
+    if (clamp && clamp.amt > 0) fix.cut = { n: clamp.amt, why: clamp.why }; // 클라이언트가 '귤 ○개를 맞췄어요' 와 의견 보내기에 붙임
+    return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5, gifts: this.giftsOf(sub).filter((g) => !got.has(g.id)) };
   }
+  /* ---------- 귤 맞춤 기록·운영자 귤 보내기 (#188) ---------- */
+  // 깎인 때: 기록 한 줄 + 오류 모으기(fb, kind 'crash')에 한 줄 (2시간 점검이 /crashes 로 알아챔. 닉네임·계정 번호는 넣지 않음)
+  clampAdd(sub, nick, c, ver, t = Date.now()) {
+    const v = String(ver || '').slice(0, 20);
+    this.sql.exec('INSERT INTO clamp (at, sub, nick, amt, before, ask, after, why, ver, info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', t, sub, nick || '', c.amt, c.before, c.ask, c.after, c.why, v, JSON.stringify({ room: c.room, rec: c.rec, bad: c.bad }));
+    this.sql.exec('INSERT INTO fb (at, ip, item, mailed) VALUES (?, ?, ?, 1)', t, 'clamp', JSON.stringify({ at: t, kind: 'crash', ver: v, dev: '', text: `[귤 맞춤 server] coins -${c.amt} (${c.why}) 몫 ${c.room} 인정 ${c.rec} 거절한 판 것 ${c.bad}` }));
+  }
+  clampList(days = 30, k = 300) {
+    return this.sql.exec('SELECT clamp.id AS id, clamp.at AS at, clamp.sub AS sub, clamp.nick AS nick, amt, before, ask, after, why, ver, info FROM clamp WHERE at > ? ORDER BY id DESC LIMIT ?', Date.now() - days * 864e5, k).toArray()
+      .map((r) => ({ ...r, info: (() => { try { return JSON.parse(r.info || '{}'); } catch (e) { return {}; } })() }));
+  }
+  // 아직 받지 않은 귤 선물: [{ id, n, why, at }]
+  giftsOf(sub) { return this.sql.exec('SELECT id, n, why, at FROM gift WHERE sub = ? AND got = 0 ORDER BY id LIMIT 20', sub).toArray(); }
+  grant(sub, n, why, by) {
+    if (!this.row(sub)) return { error: 'no account' };
+    this.sql.exec('INSERT INTO gift (at, sub, n, why, by) VALUES (?, ?, ?, ?, ?)', Date.now(), sub, n, why, by);
+    return { ok: true, id: this.sql.exec('SELECT MAX(id) AS id FROM gift').one().id };
+  }
+  grantList(k = 100) { return this.sql.exec('SELECT gift.id AS id, gift.at AS at, gift.sub AS sub, acc.nick AS nick, n, why, got, got_at FROM gift LEFT JOIN acc ON acc.sub = gift.sub ORDER BY gift.id DESC LIMIT ?', k).toArray(); }
   // 귤 주기 (#175, roomcore 'give'): from 이 to 에게 n 개. 서버 저장의 귤 + 아직 저장에 안 들어간 받은·준 귤로 가진 것을 셈 (클라이언트가 보낸 값은 안 믿음)
   // → { got, why?, out: from 의 준 누적, in: to 의 받은 누적, nick }. why: self|none|new|off|coins|day|full (got 이 n 보다 적을 때)
   gift(from, to, n, t = Date.now(), newSec = GIVE.newSec) {
@@ -191,11 +251,25 @@ export class Accounts extends DurableObject {
     if (!mine) return { rank: 0, n: 0 };
     return { rank: 1 + this.sql.exec(`SELECT COUNT(*) AS n FROM (${q}) WHERE s > ?`, ...a, mine).one().n, n: mine };
   }
+  // 이용 통계 묶음 더하기 (#121, server/src/metrics.js cleanMetrics 를 거친 줄). 하루·출처마다 새 키는 METRICS.dayKeys 까지 (넘으면 있던 키만 더함)
+  metricsAdd(src, rows, t = Date.now()) {
+    const d = kstDay(t), full = this.sql.exec('SELECT COUNT(*) AS n FROM mt WHERE d = ? AND src = ?', d, src).one().n >= METRICS.dayKeys;
+    for (const [k, s, n] of rows) {
+      const mx = isMaxKey(k);
+      if (full) this.sql.exec(`UPDATE mt SET sum = ${mx ? 'MAX(sum, ?)' : 'sum + ?'}, n = n + ? WHERE d = ? AND src = ? AND k = ?`, s, n, d, src, k);
+      else this.sql.exec(`INSERT INTO mt (d, src, k, sum, n) VALUES (?, ?, ?, ?, ?) ON CONFLICT (d, src, k) DO UPDATE SET sum = ${mx ? 'MAX(sum, excluded.sum)' : 'sum + excluded.sum'}, n = n + excluded.n`, d, src, k, s, n);
+    }
+    return { ok: true };
+  }
+  // 최근 days 날 (오늘 포함): [{ d, src, k, sum, n }]
+  metricsList(days, t = Date.now()) { return this.sql.exec('SELECT d, src, k, sum, n FROM mt WHERE d > ? ORDER BY d DESC, src, k', kstDay(t) - days).toArray(); }
   rankMe(sub, srv, t = Date.now()) { return { srv, day: this.rankOf(sub, 'day', srv, t), week: this.rankOf(sub, 'week', srv, t), all: this.rankOf(sub, 'all', srv, t) }; }
   del(sub) { this.sql.exec('DELETE FROM acc WHERE sub = ?', sub); this.sql.exec('DELETE FROM rkd WHERE sub = ?', sub); this.sql.exec('DELETE FROM rka WHERE sub = ?', sub); this.rkCache.clear(); return { ok: true }; }
   purge(cutoff) {
     this.sql.exec('DELETE FROM rv WHERE exp < ?', Date.now());
     const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff);
+    this.sql.exec('DELETE FROM clamp WHERE at < ?', Date.now() - NET.clampKeepDays * 864e5); this.sql.exec('DELETE FROM gift WHERE at < ? AND got = 1', Date.now() - NET.clampKeepDays * 864e5); // #188
+    this.sql.exec('DELETE FROM mt WHERE d < ?', kstDay() - METRICS.keepDays); // 이용 통계 90일 (#121)
     this.sql.exec('DELETE FROM rkd WHERE d < ? OR sub NOT IN (SELECT sub FROM acc)', kstDay() - RANK.dayKeep); this.sql.exec('DELETE FROM rka WHERE sub NOT IN (SELECT sub FROM acc)'); this.rkCache.clear();
     return n;
   }

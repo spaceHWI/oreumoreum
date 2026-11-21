@@ -66,7 +66,18 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     await E(() => window.__oreum.cleanhouse.autoStop());
     // 지붕 간판 수
     ok(await E(() => Object.keys(window.__oreum.street.roof.signs).length) >= 5, '지붕 간판 5개');
-    if (SHOT) { await E(() => { const o = window.__oreum; o.street.go(0, 2); o.player.heading = Math.atan2(o.street.layout.ax, o.street.layout.az); o.snap(); }); await W(2500); await shot('4-street'); }
+    // 지붕 간판 (#182): 들머리·골목 가운데·골목 끝(오름 쪽에서 돌아봄) 세 자리에서 다섯 간판이 화면 안에 있고 가려지지 않음(또는 맨 위에 그림)
+    for (const [n, st, back] of [['4-street', 2, 0], ['5-mid', 24, 0], ['6-end', 47, 1]]) {
+      await E(([st, back]) => { const o = window.__oreum, L = o.street.layout; o.street.go(0, st); o.player.heading = Math.atan2(L.ax, L.az) + (back ? Math.PI : 0); o.cam.yaw = o.player.heading + Math.PI; o.cam.pitch = 0.32; o.snap(); }, [st, back]); await W(1500);
+      const v = await E(() => { const o = window.__oreum, R = o.street.roof, c = o.camObj, out = {}; c.updateMatrixWorld(); const seen = R.seen(c.position.clone());
+        for (const [k, s] of Object.entries(R.signs)) { const q = s.pos.clone().project(c), inView = Math.abs(q.x) < 1 && Math.abs(q.y) < 1 && q.z < 1; out[k] = inView && (seen[k] || s.onTop) ? 'ok' : inView ? '가림' : '화면밖'; } return out; });
+      const bad = Object.entries(v).filter(([k, r]) => r === '가림' || (mode === 'd' && r === '화면밖' && (n === '4-street' || (n === '6-end' && k !== 'stone')))); // 골목 가운데에선 앞 두 집이, 골목 끝에선 스톤이 등 뒤. 폰 세로 화면은 좁아 가림만 봄
+      ok(!bad.length, `${n} 지붕 간판 보임 ${JSON.stringify(v)}`);
+      await shot(n);
+    }
+    const R = await E(() => Object.fromEntries(Object.entries(window.__oreum.street.roof.signs).map(([k, s]) => [k, { y: +(s.pos.y - window.__oreum.height(s.x, s.z)).toFixed(2), top: +(s.top - window.__oreum.height(s.x, s.z)).toFixed(2), onTop: s.onTop }])));
+    console.log('   지붕 간판 높이(땅에서 m)', JSON.stringify(R));
+    ok(Object.values(R).every((r) => r.y - r.top >= 0.6 + 1.1), '지붕 간판이 건물 꼭대기 + 반지름 + 0.6m 위');
     ok(errs === 0, `${mode} 페이지 오류 ${errs}`);
     await ctx.close();
   }

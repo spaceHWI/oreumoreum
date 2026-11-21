@@ -231,7 +231,7 @@ function armsAmmo(el) {
   else if (w.id === 'laser') k = save.ammo.laser || 0;
   else k = 1 - A.bombCd / w.cd;
   const empty = !armedFor(w), key = `${w.id}|${dots ? k : Math.round(k * 40)}|${empty}`;
-  if (key === ammoKey && !A.flash) return; ammoKey = key;
+  if (key === ammoKey && !A.flash && !el.hidden) return; ammoKey = key; // 활로 바꿨다 오면 감춰져 있음 (#178)
   el.hidden = false; el.className = 'ammo' + (dots ? '' : ' bar') + (empty ? ' empty' : '');
   if (dots) { if (el.childElementCount !== dots || el.firstElementChild?.tagName !== 'B' || el.dataset.w !== w.id) el.innerHTML = '<b></b>'.repeat(dots); [...el.children].forEach((b, i) => b.classList.toggle('on', i < k)); }
   else { if (el.dataset.w !== w.id || el.childElementCount !== 1) el.innerHTML = '<b></b>'; el.style.setProperty('--k', String(Math.max(0, Math.min(1, k)))); }
@@ -304,4 +304,5 @@ updateArmBtn();
 export function armsChanged() { stopLaser(); A.held = false; A.cd = 0; A.mgB = null; late.chargeCancel?.(); setHoldBow(false); updateArmBtn(); }
 
 export const armsTime = () => A.gt || 0;
-Object.assign(late, { armsTime, fireArm, releaseBomb, tickArms, armsAmmo, openArmWin, armsChanged, armFx, chargedArm });
+const armReady = () => A.cd <= 0 && !A.mgB && !A.lasing && !(weaponNow().id === 'bomb' && A.bombCd > 0); // 다가가서 쏘기(#132)가 다음 발을 쏴도 되나
+Object.assign(late, { armReady, armsTime, fireArm, releaseBomb, tickArms, armsAmmo, openArmWin, armsChanged, armFx, chargedArm });

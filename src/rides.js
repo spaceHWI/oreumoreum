@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { RIDES, CART } from './balance.js';
 import { nsAlong, nsLen } from './namsongi.js';
+import { ic } from './icons.js';
 
 export const RIDE_BY = Object.fromEntries(RIDES.list.map((r) => [r.id, r]));
 
@@ -347,18 +348,25 @@ export function createCart({ scene, height, low = false, col = null, makeDriver 
     const S = stops[st.stop];
     return Math.hypot(p.x - S.pos.x, p.z - S.pos.z) < CART.r || Math.hypot(p.x - pos.x, p.z - pos.z) < CART.cartR ? st.stop : -1;
   }
+  // 달리는 마차 수레까지 거리 (#120). 서 있으면 Infinity. 수레 앞뒤 [-bodyL, bodyL] 선분까지
+  function runDist(p) {
+    if (!st.moving) return Infinity;
+    const s = Math.sin(st.heading), c = Math.cos(st.heading), dx = p.x - pos.x, dz = p.z - pos.z;
+    const lz = Math.max(-CART.bodyL, Math.min(CART.bodyL, dx * s + dz * c)), ex = dx - s * lz, ez = dz - c * lz;
+    return Math.hypot(ex, ez);
+  }
   // 정류장 쪽 내릴 자리 (팻말 앞 길가)
   const exitAt = (i) => { const q = nsAlong(CART.stops[i].path, CART.stops[i].d, CART.stops[i].path === 'approach' ? 1 : -1, CART.side - 1.6); return _a.set(q.x, height(q.x, q.z), q.z).clone(); };
   update(0, Date.now() / 1000);
-  return { update, seat, boardable, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R, driver };
+  return { update, seat, boardable, runDist, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R, driver };
 }
 
 // ---------- 탈것 가게 (가게 거리 빈 터, 임시 모양) ----------
 // 앞이 트인 나무 헛간: 뒷벽·옆벽 반쯤·귤색 차양 지붕, 안에 스케이트보드(벽에 기댐)·스쿠터·조랑말. 간판에 스쿠터 그림
 export const RIDE_ICON = {
-  skate: '<path d="M3 13h18l-1.5 2.5h-15z"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17" cy="18.5" r="1.6"/>',
-  scoot: '<circle cx="5.5" cy="18" r="2.2"/><circle cx="18.5" cy="18" r="2.2"/><path d="M5.5 18h10l3-13M15.5 5h5"/>',
-  horse: '<path d="M5 20v-6l2-3h7l3-4 3 1-1 3-2 1v8M8 14v6M14 14v6M17 7l1-3"/>',
+  skate: ic('skate'),
+  scoot: ic('ride'),
+  horse: ic('horse'),
 };
 export const RIDE_SHOP = { W: 7.2, D: 5.6, fore: 0.6, r: 6.5 };
 export function createRideShop({ scene, height, site, low = false, col = null }) {
@@ -388,7 +396,7 @@ export function createRideShop({ scene, height, site, low = false, col = null })
   x.fillStyle = '#2f3336'; x.fillRect(0, 0, 512, 128); x.strokeStyle = '#ff8a1f'; x.lineWidth = 8; x.strokeRect(4, 4, 504, 120);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   ['skate', 'scoot', 'horse'].forEach((k, i) => { const img = new Image(); img.onload = () => { x.drawImage(img, 76 + i * 136, 14, 100, 100); tex.needsUpdate = true; }; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="#f3ecdc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${RIDE_ICON[k]}</svg>`); });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, H - 0.15, D / 2 + 0.86); sign.rotation.x = -0.12; g.add(sign);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, H - 0.4, D / 2 + 1.0); sign.rotation.x = -0.06; g.add(sign); // 차양 앞에 걺 (#182)
   g.updateMatrixWorld(true);
   const w = (lx, lz, ly = 0) => new THREE.Vector3(lx, ly, lz).applyMatrix4(g.matrixWorld);
   if (col) { const b = w(0, -0.5); col.addBox(b.x, b.z, site.rot, W / 2 - 0.2, D / 2 - 0.9); }

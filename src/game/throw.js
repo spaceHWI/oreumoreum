@@ -28,10 +28,10 @@ export function setHoldBow(v) {
 const aimFwd = new THREE.Vector3();
 // 타겟 고정 (#148): 감지 거리 안에서 가장 위험한 것 하나를 잡아 두고, 쫓아내거나(목록에서 빠짐) 멀어질 때까지 바꾸지 않음
 // 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 잡아 두지 않고 사거리 안에서만 (예전처럼). 화면에서 누르거나 Tab 으로 바꿈
-// state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요' (다가가기는 #132)
+// state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요'. 누르면 다가가서 쏨 (#132, game/approach.js)
 state.lock = null; state.lockPick = false;
-const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
-const detectR = () => (bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand);
+export const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
+const detectR = () => Math.max(bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand, late.approachR?.() || 0); // 다가가는 중엔 더 멀리까지 잡아 둠 (#132)
 const flat = (t) => Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function aimScore(t, fl) {
   const dx = t.pos.x - player.pos.x, dz = t.pos.z - player.pos.z, d = Math.hypot(dx, dz);
@@ -133,15 +133,15 @@ function aimShot(from, t) {
   }
   return null;
 }
-// 귤 활 쏘기 (#38): 5발에 귤 1개. 남은 화살이 없으면 귤 하나를 써서 채움
+// 귤 활 쏘기 (#38): 한 발에 귤 1개 (#178). 예전에 남은 화살(save.bowAmmo)이 있으면 그것부터 씀
 state.bowPending = false;
 export function fireWeapon() { if (!bowArmed()) throwTangerine(); else if (weaponNow().id === 'bow') shootBow(); else late.fireArm(); }
 function shootBow() {
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   state.emo?.stop();
-  const w = weaponNow();
-  if (save.bowAmmo <= 0) { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = w.perGyul; updateStats(); ammoFlash = 1; }
-  save.bowAmmo -= 1; persist(); updateAmmo();
+  if (save.bowAmmo >= 1) save.bowAmmo -= 1;
+  else { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = 0; updateStats(); }
+  persist(); updateAmmo();
   setHoldBow(true);
   state.throwAim = aimTarget() || state.lock;
   player.target = null; player.onArrive = null; marker.visible = false;
@@ -172,19 +172,12 @@ function arrowShot(from, t, w) {
   }
   return new THREE.Vector3((p.x - from.x) / T, (p.y - from.y) / T + 0.5 * w.grav * T, (p.z - from.z) / T);
 }
-// 남은 화살 표시: 상호작용 버튼 위 작은 점 5개 (활을 쓸 때만). 3~6단계 무기는 game/arms.js armsAmmo (#123)
-let ammoFlash = 0, ammoKey = '';
+// 탄 표시: 활은 한 발에 귤 1개라 눈금 없음 (#178, 버튼에 활 아이콘만). 3~6단계 무기는 game/arms.js armsAmmo (#123)
 export function updateAmmo() {
   const el = $('ammo'); if (!el) return;
   const w = weaponNow(), on = bowReady();
-  if (on && w.id !== 'bow') { ammoKey = ''; late.armsAmmo?.(el); return; }
-  const n = save.bowAmmo, key = `${on}|${n}|${save.coins > 0}`;
-  if (key === ammoKey) return; ammoKey = key;
-  el.hidden = !on; if (!on) return;
-  el.className = 'ammo'; el.style.removeProperty('--k');
-  el.classList.toggle('empty', n <= 0 && save.coins <= 0);
-  el.innerHTML = Array.from({ length: w.perGyul }, (_, i) => `<b class="${i < n ? 'on' : ''}"></b>`).join('');
-  if (ammoFlash) { ammoFlash = 0; el.classList.remove('use'); void el.offsetWidth; el.classList.add('use'); }
+  if (on && w.id !== 'bow') { late.armsAmmo?.(el); return; }
+  el.hidden = true; el.dataset.w = '';
 }
 // 겨눈 대상 발밑 표시
 export const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));

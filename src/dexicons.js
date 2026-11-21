@@ -50,8 +50,20 @@ const SIGHTI = {
 };
 // 수수께끼 칸 (#168): 외계 캔
 const STORYI = [`<rect x="14" y="8" width="20" height="32" rx="5" fill="#9fe8c8" ${s()}/><ellipse cx="24" cy="9" rx="10" ry="3" fill="#6fc7a4" ${s('stroke-width="1.8"')}/><path d="M18 22 q6 -6 12 0 q-6 6 -12 0z" fill="#2c3a35" ${s('stroke-width="1.4"')}/><circle cx="24" cy="22" r="1.6" fill="#c9ffb8"/>`];
+// 담배꽁초 (#156)
+const BUTTI = `<path d="M8 30 L34 21 L37 27 L11 36z" fill="#f4f1e8" ${s()}/><path d="M26 23.7 L34 21 L37 27 L29 29.7z" fill="#e3a25a" ${s('stroke-width="1.8"')}/><path d="M8 30 L11 36" stroke="#ff6a3a" stroke-width="3" stroke-linecap="round"/><path d="M10 24 q-3 -5 1 -9 q3 -4 0 -8" fill="none" stroke="#9aa0aa" stroke-width="2" stroke-linecap="round"/>`;
+// 귀한 귤 칸 (#130): 한라봉(꼭지 혹)·천혜향(납작)·레드향(붉은, 반짝)·황금향(금빛, 빛줄기)
+const LEAF = `<path d="M24 12 q5 -6 11 -4 q-4 6 -11 4z" fill="#5e9a3e" ${s('stroke-width="1.8"')}/>`;
+const GYULI = {
+  hallabong: `<circle cx="24" cy="29" r="13" fill="#ff9a1a" ${s()}/><path d="M18 16.5 q6 -6 12 0 q-1 3 -6 3 q-5 0 -6 -3z" fill="#ff9a1a" ${s()}/>${LEAF}`,
+  cheonhye: `<ellipse cx="24" cy="28" rx="16" ry="11" fill="#ff7400" ${s()}/><path d="M14 26 q10 -5 20 0" fill="none" stroke="#ffd08a" stroke-width="2" stroke-linecap="round"/>${LEAF}`,
+  redhyang: `<circle cx="24" cy="28" r="13" fill="#f2471c" ${s()}/><path d="M38 12 l1.2 2.8 2.8 1.2 -2.8 1.2 -1.2 2.8 -1.2 -2.8 -2.8 -1.2 2.8 -1.2z" fill="#fff6c8" ${s('stroke-width="1.2"')}/>${LEAF}`,
+  hwanggeum: `<path d="M8 12 l4 4 M40 12 l-4 4 M4 26 h4 M44 26 h-4" fill="none" stroke="#ffcf2e" stroke-width="2.6" stroke-linecap="round"/><circle cx="24" cy="29" r="13" fill="#ffcf2e" ${s()}/><path d="M17 25 q3 -4 7 -4" fill="none" stroke="#fffbe0" stroke-width="2.4" stroke-linecap="round"/>${LEAF}`,
+};
 export function dexIcon(d) {
   const [kind, k] = d.id.split(':');
+  if (kind === 'gyul') return GYULI[k] || '';
+  if (kind === 'butt') return BUTTI;
   if (kind === 'story') return STORYI[Number(k)] || '';
   if (kind === 'fish') return FISHI[Number(k)] || '';
   if (kind === 'sight') return SIGHTI[d.sk] || '';

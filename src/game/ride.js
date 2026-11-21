@@ -12,6 +12,7 @@ import { cam } from './camera.js';
 import { toast, updateStats, panelOpen, busy, ach } from './hud.js';
 import { marker } from './input.js';
 import { setHoldBow } from './throw.js';
+import { ic } from '../icons.js';
 
 Object.assign(late, { toggleRide, openRideWin }); // 앞 파일에서 부르는 함수
 
@@ -97,7 +98,7 @@ export function updateRideBtn() {
   rideBtn.title = `${RIDE_BY[id].name} ${player.ride ? '내리기' : '타기'} (Q) · 길게 누르면 바꾸기`;
   late.bagRefresh?.('ride');
 }
-export const WALK_ICON = '<circle cx="13" cy="4.5" r="1.8"/><path d="M12 8l-2 5 3 2 1 5M10 13l-3 2M12 8l4 3 2-1M13 15l-2 5"/>';
+export const WALK_ICON = ic('walk');
 // 예전 탈것 창(#ridewin)은 내 가방(#166, bag.js) 탈것 탭으로 합침
 export function openRideWin() { late.openBag?.('ride'); }
 // 고르기. '' = 걸어 다니기. 타고 있으면 내렸다가 새 탈것으로 탐 (못 타는 곳이면 고르기만)
@@ -147,28 +148,67 @@ export function buyRide(R, cell) {
 }
 
 // ---------- 마차 (#69): 정류장에서 상호작용으로 타고(무료), 정류장에서 내리거나 가는 중에 점프로 뛰어내림 ----------
+// 지나가는 마차 (#120): 달리는 수레 CART.runR 안이면 타기(빈 자리로 폴짝), 달리는 중에도 내리기 버튼으로 수레 옆(또는 뒤) 길 위에 내림
 export const cartOnAct = { label: '마차 타기', ic: 'cart', act: () => boardCart() };
 export const cartOffAct = { label: '내리기', ic: 'down', act: () => leaveCart(false) };
+// 지금 탈 수 있는가: 정류장에 서 있음 / 달리는 수레 가까이
+export const cartNear = () => !!cart && (cart.boardable(player.pos) >= 0 || cart.runDist(player.pos) < CART.runR);
+const peerSeat = (e) => (Number.isInteger(e.data?.cs) && e.data.cs >= 0 && e.data.cs < CART.seats ? e.data.cs : -1); // 다른 사람이 앉은 자리 (presence cs)
+// 빈 자리 번호, 다 찼으면 -1. 자리(cs)를 보낸 사람은 그 자리, 아니면 가장 가까운 자리를 찬 자리로 봄 (마차는 하나)
+const _sp = new THREE.Vector3();
+export function freeSeat() {
+  const taken = new Array(CART.seats).fill(false), peers = late.net?.peersById;
+  const riders = peers && !late.net.solo ? [...peers.values()].filter((e) => e.data?.rd === 'cart') : [];
+  const rest = riders.filter((e) => { const cs = peerSeat(e); if (cs >= 0 && !taken[cs]) { taken[cs] = true; return false; } return true; }); // 자리를 보낸 사람 먼저
+  for (const e of rest) {
+    let bi = -1, bd = 1e9; for (let i = 0; i < CART.seats; i++) { if (taken[i]) continue; cart.seat(i, _sp); const d = Math.hypot(_sp.x - e.tpos.x, _sp.z - e.tpos.z); if (d < bd) { bd = d; bi = i; } }
+    if (bi >= 0) taken[bi] = true;
+  }
+  const free = taken.map((t, i) => (t ? -1 : i)).filter((i) => i >= 0);
+  if (!free.length) return -1;
+  // 가장 가까운 빈 자리 (폴짝 뛰는 거리가 짧게)
+  let bi = free[0], bd = 1e9; for (const i of free) { cart.seat(i, _sp); const d = _sp.distanceTo(player.pos); if (d < bd) { bd = d; bi = i; } }
+  return bi;
+}
 export function boardCart() {
   if (!cart || player.cart || hp.isDown || busy()) return;
-  if (cart.boardable(player.pos) < 0) return;
+  if (!cartNear()) return;
+  const seat = freeSeat(); if (seat < 0) { toast('자리가 없어요'); return; }
   if (player.ride) dismountRide(); if (player.riding) late.dismountDeer(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
   player.rideAuto = null;
-  player.cart = { seat: Math.floor(Math.random() * CART.seats) };
+  player.cart = { seat, hop: 0, from: player.pos.clone() };
   Object.assign(player, { target: null, onArrive: null, speed: 0, air: false, jumpY: 0, jumpV: 0, pose: 'move' }); marker.visible = false; player.kb.set(0, 0, 0);
   syncRideLook(); late.net.send(true); ach.emit('cart');
-  if (!save.cartSeen) { save.cartSeen = 1; persist(); toast('마차는 정해진 길만 다녀요. 점프하면 뛰어내려요'); }
+  late.sound.step?.(surfaceAt(player.pos.x, player.pos.z), true);
+  if (!save.cartSeen) { save.cartSeen = 1; persist(); toast('마차는 정해진 길만 다녀요. 내리기나 점프로 내려요'); }
 }
 export function tickCartRide(dt) {
-  const p = player;
-  cart.seat(p.cart.seat, p.pos); p.pos.y -= RIDES.sitDrop; p.heading = cart.heading; p.speed = 0; p.driving = false;
+  const p = player, c = p.cart;
+  cart.seat(c.seat, p.pos); p.pos.y -= RIDES.sitDrop;
+  if (c.hop != null && c.hop < CART.hopT) { // 올라타는 폴짝 (#120): 선 자리에서 자리까지 포물선
+    c.hop += dt; const u = Math.min(1, c.hop / CART.hopT), e = u * u * (3 - 2 * u);
+    p.pos.x = c.from.x + (p.pos.x - c.from.x) * e; p.pos.z = c.from.z + (p.pos.z - c.from.z) * e;
+    p.pos.y = c.from.y + (p.pos.y - c.from.y) * e + Math.sin(Math.PI * u) * CART.hopH;
+    if (u >= 1) c.hop = null;
+  }
+  p.heading = cart.heading; p.speed = 0; p.driving = false;
   late.placeRunner(dt); late.checkViewpoint();
+}
+// 달리는 중 내릴 자리 (#120): 수레 옆 길 위 → 아니면 수레 뒤 길 가운데. 나무·돌·마차 부딪힘·못 타는 곳(개울 등)은 피함
+const offOk = (x, z) => onRoad(x, z) && !(col && col.blocked(x, z, 0.35)) && !inCart(x, z, 0.4) && noRideZone(x, z) !== 'stream';
+function inCart(x, z, pr) { const B = cart.block; for (let j = 0; j < B.length; j += 3) { const m = B[j + 2] + pr; if ((x - B[j]) ** 2 + (z - B[j + 1]) ** 2 < m * m) return true; } return false; }
+export function runOffSpot() {
+  const st = cart.state, h = cart.heading, rx = Math.cos(h), rz = -Math.sin(h), c = cart.pos;
+  for (const d of CART.offSide) for (const k of [1, -1]) { const x = c.x + rx * d * k, z = c.z + rz * d * k; if (offOk(x, z)) return [x, z]; }
+  for (const d of CART.offBack) { const q = cart.route.at(Math.max(0, Math.min(cart.route.len, st.s - st.dir * d))); if (offOk(q.x, q.z)) return [q.x, q.z]; }
+  const q = cart.route.at(Math.max(0, Math.min(cart.route.len, st.s - st.dir * CART.offBack[CART.offBack.length - 1]))); return [q.x, q.z]; // 길 가운데 (마차는 앞으로 가 버림)
 }
 export function leaveCart(jump) {
   const p = player; if (!p.cart) return;
   const st = cart.state, h = cart.heading, rx = Math.cos(h), rz = -Math.sin(h);
   p.cart = null;
   if (!jump && st.stop >= 0) p.pos.copy(cart.exitAt(st.stop));
+  else if (!jump) { const [x, z] = runOffSpot(); p.pos.set(x, 0, z); }
   else {
     let x = p.pos.x + rx * CART.jumpOff, z = p.pos.z + rz * CART.jumpOff;
     if (col && col.blocked(x, z, 0.3)) { x = p.pos.x - rx * CART.jumpOff; z = p.pos.z - rz * CART.jumpOff; }
@@ -197,7 +237,11 @@ export function peerRide(e, dt) {
   if (!rd && !e.rig) return null;
   if (!e.rig) e.rig = rideRig(e.runner);
   e.rig.set(rd === 'cart' ? '' : rd); e.rig.tick(dt, e.speed);
-  if (rd === 'cart') return { pose: 'sit', lift: CART.seatPos[0][1] * CART.scale - RIDES.sitDrop, still: true };
+  if (rd === 'cart') {
+    const cs = peerSeat(e);
+    if (cart && cs >= 0) { cart.seat(cs, e.pos); e.pos.y -= RIDES.sitDrop; e.tpos.copy(e.pos); e.heading = e.theading = cart.heading; return { pose: 'sit', lift: 0, still: true }; } // 마차는 모두 같은 시각으로 같은 자리: 늦게 오는 자리 대신 내 화면의 마차 자리에 (#120)
+    return { pose: 'sit', lift: CART.seatPos[0][1] * CART.scale - RIDES.sitDrop, still: true };
+  }
   return rd && e.rig.state ? { pose: e.rig.pose(), lift: e.rig.lift(), still: e.rig.still() } : null;
 }
 updateRideBtn();

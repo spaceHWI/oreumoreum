@@ -15,7 +15,8 @@ import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
 import { addClothes, clothAcc, slippers, dark, CLOTH_BUILD, COVER } from './clothes.js';
-import { CLOTHES, LOOK_COLORS } from './balance.js';
+import './clothes2.js'; // 겉모습 옷 모양 (#179): CLOTH_BUILD 에 새 kind 를 더함 (addClothes 전에)
+import { CLOTHES, LOOK_COLORS, BOOTS } from './balance.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
 function dataGeo(D) {
@@ -186,6 +187,8 @@ Object.assign(ACCESSORIES, {
     build: (mat) => { const m = mat('main', '#c08a4a'), p = mat('pocket', '#8a6a3c');
       return G(M(new RoundedBoxGeometry(0.27, 0.27, 0.12, 3, 0.05), m, 0, 0.43, -0.155), M(new RoundedBoxGeometry(0.16, 0.1, 0.045, 2, 0.02), p, 0, 0.37, -0.22)); } },
   'shoes:slip': { slot: 'shoes', label: '쓰레빠', skin: true, build: slippers },
+  // 특별 신발 '고진의 파란장화' (#167): 밝은 파랑 고무장화, 윗단·밑창은 어두운 파랑
+  'shoes:boots': { slot: 'shoes', label: BOOTS.name, skin: true, covers: COVER.boots, build: (mat) => CLOTH_BUILD.boots(mat, { kind: 'boots', main: '#2f6fe0', acc: '#1d468f' }) },
 });
 // 해녀 테왁 배낭 (#164, 배낭 겉모습 BACK_LOOKS): 주황 둥근 테왁 + 아래 그물 망사리. 0·1·2 는 망사리가 찬 정도 (배낭이 찰수록 불룩)
 [0.62, 0.85, 1.1].forEach((k, i) => {
@@ -203,11 +206,13 @@ for (const k of ['hat', 'top', 'bottom']) {
   const c = CLOTHES.find((x) => x.id === LOOK_COLORS.ids[k]);
   if (c) LOOK_COLORS[k].forEach(([col], i) => { if (i) ACCESSORIES[`${c.id}~${i}`] = clothAcc(c, { ...c.look, main: col, acc: dark(col, LOOK_COLORS.dark) }); });
 }
+// 겉모습 옷 색 (#179): tint 인 옷은 'id~번호' 장비 (LOOK_COLORS.style, 0번 = 원래 색)
+CLOTHES.filter((c) => c.tint).forEach((c) => LOOK_COLORS.style.forEach(([col], i) => { if (i) ACCESSORIES[`${c.id}~${i}`] = clothAcc(c, { ...c.look, main: col }); })); // 포인트색(acc)은 그대로
 LOOK_COLORS.shoes.forEach(([col], i) => { if (i) ACCESSORIES[`shoes:slip~${i}`] = { ...ACCESSORIES['shoes:slip'], build: (mat) => slippers(mat, col, dark(col, LOOK_COLORS.dark)) }; });
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];
 export const BAG_GEAR = ['back:bag1', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];
 export const SHOE_GEAR = ['shoes:slip', 'shoes:s2', 'shoes:s3', 'shoes:s4', 'shoes:s5'];
-export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:empty' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] });
+export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:empty' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: eq?.boots === 2 ? 'shoes:boots' : SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] }); // 장화를 신었으면 장화 (#167)
 
 // 칸별 장비 목록 (옷장용)
 export const gearList = (slot) => Object.entries(ACCESSORIES).filter(([, a]) => a.slot === slot && !a.npc).map(([k]) => k);

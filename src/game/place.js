@@ -5,7 +5,7 @@ import { CLEANHOUSE, CAIRN, TUT, SHOPS, LIFE_MODELS, ZONE_LOOK } from '../balanc
 import { weaponMul } from '../loot.js';
 import { rideRig, createCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
-import { createShopStreet, SHOP_BUILD, createRoofSigns } from '../shops.js';
+import { createShopStreet, SHOP_BUILD, buildShop, createRoofSigns } from '../shops.js';
 import { createBuff } from '../buff.js';
 import { createHp } from '../hp.js';
 import { createStream } from '../stream.js';
@@ -186,8 +186,9 @@ if (jeong && jeong.isOpen && !save.jeong) { save.jeong = 1; persist(); }
 export function openJeong(anim = true) { if (!jeong || !jeong.open(anim)) return; save.jeong = 1; persist(); if (anim) late.sound.gate?.(); }
 // ---------- 가게 거리 (#57): 길 왼쪽 골목, 터 6개. 가게는 balance.js SHOPS 한 줄 + shops.js SHOP_BUILD. 충돌을 쓰레기 더미보다 먼저 등록 ----------
 export const street = NS_TUT ? createShopStreet({ scene, height, street: STREET, low: LOW, col }) : null;
-export const shopsBuilt = street ? SHOPS.filter((sh) => STREET.lot(sh.lot) && SHOP_BUILD[sh.id]).map((sh) => ({ ...sh, ...SHOP_BUILD[sh.id]({ scene, height, lot: STREET.lot(sh.lot), low: LOW, col, addWalkable }) })) : [];
+export const shopsBuilt = street ? SHOPS.filter((sh) => STREET.lot(sh.lot) && SHOP_BUILD[sh.id]).map((sh) => ({ ...sh, ...buildShop(sh.id, { scene, height, lot: STREET.lot(sh.lot), low: LOW, col, addWalkable }) })) : [];
 export const STN = shopsBuilt.find((sh) => sh.id === 'stone')?.api || null; // 레스토랑 스톤 (#50)
+export const MANJ = shopsBuilt.find((sh) => sh.id === 'manjok')?.api || null; // 만족한상회 (#167)
 export const SAL = shopsBuilt.find((sh) => sh.id === 'salon')?.api || null; // 루이네 미장원 (#58)
 export const LEAPB = shopsBuilt.find((sh) => sh.id === 'leap')?.api || null; // LEAP (#59): 있으면 옷·신발은 여기서만 삼
 export const GEARB = shopsBuilt.find((sh) => sh.id === 'gear') || null; // 장비점 (#128): 도구·배낭·무기는 여기서만 삼
