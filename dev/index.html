@@ -1556,7 +1556,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-9d2d4bce2f.js">(function () {
+<script data-main="main-b549d50ce3.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1702,15 +1702,15 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-fshow" hidden>전체 화면으로 하는 법</button>
     <button type="button" id="menu-simple" aria-pressed="false">화면 단순하게: 끔</button>
-    <button type="button" id="menu-gfx">그래픽: 레트로</button>
-    <button type="button" id="menu-perf">성능: 자동</button>
-    <button type="button" id="menu-rainfx">비 효과: 보통</button>
+    <div class="opt seg" id="menu-gfx" data-label="그래픽"></div>
+    <div class="opt seg" id="menu-perf" data-label="성능"></div>
+    <div class="opt seg" id="menu-rainfx" data-label="비 효과"></div>
     <button type="button" id="menu-calmfx" aria-pressed="false" title="화면 흔들림·맞힌 순간 멈춤·느린 화면 (멀미)">화면 효과: 보통</button>
     <button type="button" id="menu-vib" aria-pressed="true" hidden>진동: 켬</button>
     <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-rec" aria-pressed="false" title="촬영 모드: UI 없이 게임 장면만 녹화 (V)">촬영: 끔</button>
-    <button type="button" id="rec-shape" class="rec-opt" hidden>영상: 세로 9:16</button>
+    <div class="opt seg rec-opt" id="rec-shape" data-label="영상 모양" hidden></div>
     <button type="button" id="rec-snd" class="rec-opt" aria-pressed="true" hidden>영상 소리: 켬</button>
     <button type="button" id="rec-wm" class="rec-opt" aria-pressed="false" hidden>로고: 끔</button>
     <button type="button" id="rec-buf" class="rec-opt" aria-pressed="false" hidden>방금 30초: 끔</button>
