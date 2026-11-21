@@ -1956,7 +1956,7 @@ export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win:
 // cam: 카메라 거리·최대·숙임 · lamp: 헤드랜턴(반경 r m) · fog: 안개 [시작, 끝] m (그 밖은 검게, 멀리 그리지 않음)
 // fade·hold: 들어가고 나올 때 어두워지는 시간(초) · near: 입구·줄·구멍 상호작용 거리 · moss·crystal: 발광 이끼·수정 수(층마다)
 export const CAVE = {
-  open: true, minLv: 12, needZone: 3, /* 4번 조각(#195)에서 레벨·구역 조건으로 엶 ('admin' = 개발자 메뉴만) */
+  open: 'admin', minLv: 12, needZone: 3, /* 모두에게 여는 것(true)은 사용자 결정 뒤. 'admin' = 개발자 메뉴만 */
   x0: 3200, z0: 3200, floorGap: 300,
   floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
   roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,
