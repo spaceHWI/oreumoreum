@@ -127,7 +127,7 @@ function updatePlayer(dt) {
   const slow = joy.active && p.joyMag < 0.6;
   let want, acc = 8;
   if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
-  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) * (late.swarmSpeed?.() ?? 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
+  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.punkSpeed?.() ?? 1) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) * (late.swarmSpeed?.() ?? 1) : 0; /* 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138) */
   p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -289,6 +289,8 @@ function step(now) {
     late.tickField?.(dt);
     late.tickGuard?.(dt);
     if (late.tickBoss) { late.tickBoss(dt); tk.boss++; }
+    late.tickRaid?.(dt); /* raid.js (#181) */
+    late.tickPeerFight?.(); /* peerfight.js */
     tickBuddies(dt);
     late.tickLoot?.(dt);
     late.tickRare?.(dt);
@@ -315,6 +317,7 @@ function step(now) {
   if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); }
   lamps.update(player.pos, lampNight); tk.lamps++;
   if (late.season) { late.season.tick(dt, now / 1000); tk.season++; }
+  late.tickMeet?.(dt, now / 1000); /* punkmeet.js */
   late.tickPunk?.(dt);
   late.outfitSet?.tick(dt);
   state.farCull?.update(dt);
@@ -406,7 +409,7 @@ function step(now) {
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
-  tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); if (late.tickQuest) { late.tickQuest(dt); state.ticks.quest++; } late.tickPunk?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
+  tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); if (late.tickQuest) { late.tickQuest(dt); state.ticks.quest++; } late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();

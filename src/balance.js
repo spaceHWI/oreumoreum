@@ -213,7 +213,7 @@ export const ZONE_BOSS = {
   beam: { warn: 1.15, r: 2.6, n: 3, spread: 5, dmgK: 0.8, every: 7 },
   walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
   slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
-  netMs: 200,
+  netMs: 200, netHold: 10, // netHold: 받는 쪽은 방장 알림이 끊겨도 이 초까지 제자리에 둠 (#181: 끊긴 방장이 빠지고 다음 방장이 이어받는 동안. 예전 3초에 사라졌다 가득 찬 채 다시 나왔음)
   // 싸움이 풀린 뒤 (#183, enemies.js restRegen): 기운은 남고 delay 초 동안 그대로, 그 뒤 초당 최대 기운의 rate 씩 참 (다시 맞거나 싸움이 붙으면 멈춤)
   //   delay 는 가장 먼 구역(굼부리) 클린하우스에서 처음 쓰러졌다 돌아오는 약 46초(직선·달리기, tools/boss.js 표)를 보고 20 → 30
   // parting: 풀린 뒤 이 초 안에 마지막으로 때린 사람 쪽으로 돌진 한 번 (partR 안에 있을 때, 띠 끝은 빈터에서 leash + partOver 까지)
@@ -221,6 +221,22 @@ export const ZONE_BOSS = {
   rest: { delay: 30, rate: 0.02, parting: 3, partR: 50, partOver: 12, awayToast: 30 },
   fast: { r: 6, fade: 0.9, hold: 1.1, park: 5 }, // park: 세워 둔 빠른 마차가 팻말 뒤(길 방향) 이만큼 (#174)
   shortcut: { r: 4, off: 4.5, fade: 0.8, hold: 0.8 },
+};
+// 오름 레이드 '쓰레기 대왕' (#181, src/raidcore.js·src/game/raid.js). 시각·시작·끝·기운·기여·보상은 방(서버, 없으면 내 화면의 같은 코드)이 셈, 몸 움직임은 방장이 굴림
+// times: 나타나는 시각(한국 시간 [시, 분]) · lead: 이만큼 앞서 알림(초) · limit: 제한 시간(초) · r: 굼부리 한가운데(zones.js CRATER)에서 참가로 보는 거리
+// hp1: 한 사람 몫 기운, 참가자 n 명이면 hp1 × max(1, n × perK) (도중에 늘면 남은 비율 지킴) · dps·dpsBurst: 한 사람이 1초에 줄 수 있는 피해 상한(서버가 자름)
+// 패턴: ① bag 쓰레기 봉투 던지기(바닥 원 → 떨어짐) ② ph1(기운 60% 아래) 무리 부르기 + 몸통 돌진 ③ 기운 0 → 부서져 더미 heaps 개(각 n 개)를 뿌림. breakSec 안에 다 주우면 끝, 못 주우면 남은 기운 reform 으로 다시 뭉침
+// 보상(참가자 = 피해나 줍기에 한 번이라도 보탠 사람): gyul(구역 4 우두머리의 3배)·경험치 xp, 그날(한국 날짜) 첫 성공엔 상자 box 귤 더. vest 번 성공하면 한정 옷 '대왕 잡은 조끼'
+export const RAID = {
+  name: '쓰레기 대왕', times: [[12, 30], [20, 0], [22, 0]], lead: 600, limit: 480, r: 55,
+  hp1: 5000, perK: 0.8, dps: 400, dpsBurst: 800, dmg: 42, k: 3.2, kind: 'boar',
+  bag: { warn: 1.3, r: 2.6, n: 3, spread: 7, gap: [2.0, 3.0] },
+  charge: { warn: 1.0, len: 20, w: 3.2, speed: 11, rest: 1.2, every: 9 },
+  call: { every: 15, n: [2, 3], max: 4, kind: 'rabid' },
+  phase: 0.6, walk: 2.2,
+  heaps: 8, heapN: 5, spread: 16, pickR: 2.4, pickEvery: 0.35, pickPerSec: 5, breakSec: 75, reform: 0.35,
+  gyul: ZONE_BOSS.list[4].gyul * 3, box: 2000, xp: 300, vest: 10, top: 3,
+  netMs: 200, stateMs: 250, // 방장이 몸 자리를 알리는 간격 · 방이 기운·단계를 알리는 가장 짧은 간격
 };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
 // 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름
@@ -551,7 +567,11 @@ export const WEAPONS = [
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
+    /* 과열 (#200, src/laserheat.js): full 계속 쏘면 열이 가득 차는 초, wait 쏘기를 멈추고 식기 시작할 때까지 초, cool 그 뒤 초당 식는 몫,
+       lock 과열되면 못 쏘는 초(그동안 1 에서 0 으로 식음), hot 이 열부터 피해 × hotMul, shake 이 열부터 고리가 떨림, grade 장비 등급 하나마다 full × (1 + grade).
+       full 4→5·lock 2.5→1.5 는 계속 쏠 때 시간당 피해가 과열 전의 80% 쯤 되게 tools/heat.js 로 맞춘 값 */
+    heat: { full: 5, wait: 0.5, cool: 0.35, lock: 1.5, hot: 0.7, hotMul: 1.15, shake: 0.7, grade: 0.1 } },
   { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
 // 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
@@ -1370,6 +1390,8 @@ export const NET = {
   bossPerSec: 8,      // 우두머리 메시지는 따로 1초에 이만큼 (방장 알림 5번 + 여유)
   bossMax: 700,       // 우두머리 메시지 크기 상한 (바이트)
   bossHitMax: 300,    // 한 번에 알리는 피해 상한 (귤 폭탄 90 × 무리 + 모아 쏘기 여유)
+  raidPerSec: 16,     // 레이드 메시지(#181: 피해 rh·줍기 rp·참가 rj·방장 몸 rs)는 따로 1초에 이만큼
+  raidMax: 400,       // 레이드 메시지 크기 상한 (바이트)
   // 오래 멈춤 (#157, 임의 값): 조작(이동·줍기·던지기·화면 돌리기·버튼·글쓰기) 없이 idleWarnSec 면 '계속 하시겠어요?' 창, idleRestSec 면 방에서 나가 쉬는 화면
   idleWarnSec: 300,   // 5분: 창과 줄어드는 숫자
   idleRestSec: 360,   // 6분: 저장하고 방에서 나감 (누르면 다시 들어옴)
@@ -1402,6 +1424,25 @@ export const RANK = {
   dayKeep: 9,         // 서버: 날마다 쌓는 기록은 이 날만큼 둠 (이번 주 + 하루)
   medals: 3,          // 1~3위는 귤색 메달
   checkGapMs: 4000,   // 버린 뒤 내 순위 다시 보기 간격 (연달아 버려도 이만큼은 쉼)
+};
+
+// 돌탑 소원 글·함께 기도 (#127): 서버 server/src/wishes.js (계정 DO 안 SQLite). 쓰기는 로그인한 사람만, 읽기·기도·신고는 손님도
+export const WISH = {
+  max: 30,            // 소원 글자 수
+  keepDays: 30,       // 쓴 뒤 이 날이 지나면 지움 (서버 Cron)
+  perCairn: 100,      // 돌탑마다 최근 이만큼
+  editPerDay: 3,      // 한 사람이 돌탑마다 하루 이만큼 쓰기·고치기 (첫 쓰기 포함)
+  writePerMin: 10,    // 한 계정이 1분에 보내는 쓰기 요청 (RL_API 와 따로)
+  reportHide: 3,      // 서로 다른 이만큼이 신고하면 숨김 (어드민이 되살릴 수 있음)
+  prayGyul: 20,       // 함께 기도한 사람이 받는 귤 (한 번에). 하루 최대(prayGyul × prayPerDay + gotGyul × gotPerDay)는 1일 벌이의 10% 아래 (tools/econ.js)
+  prayPerDay: 5,      //   하루 이만큼까지 귤을 받음 (기도는 더 해도 됨, 같은 소원에는 하루 한 번)
+  gotGyul: 10,        // 소원 쓴 사람이 기도 한 번마다 받는 귤 (다음에 들어올 때 '○명이 함께 빌어 줬어요')
+  gotPerDay: 15,      //   하루 이만큼 기도까지 귤을 셈 (넘는 기도는 수만 오름)
+  near: 12,           // 돌탑에 이만큼 다가가면 최근 소원이 하나씩 떠오름 (m)
+  floatEvery: 4,      //   떠오르는 간격 (초)
+  floatN: 6,          //   돌아가며 보여 주는 최근 소원 수
+  cacheMs: 60000,     // 같은 돌탑 목록을 이만큼 다시 씀 (게임)
+  list: 40,           // 창에 보이는 소원 수
 };
 
 // 의견 보내기 (#77): 게임 안 글 → 서버 /feedback → 개발자 메일 (받는 주소는 서버 시크릿 FEEDBACK_TO)
@@ -1857,6 +1898,38 @@ export const MUTTER = {
   y: 3.4, // 말풍선 높이 (채팅 말풍선과 같음)
 };
 
+// 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진 부탁·까마귀 도둑. 게임 연결은 src/game/punkmeet.js, 모양 src/punkmodels.js
+// 값은 모두 임의. 셋의 귤 벌이는 하루 1시간 벌이의 5% 안 (tools/econ.js 가 셈)
+export const MEET = {
+  hb: {
+    r: 2.5, // 하르방 앞 이 거리 안에서 '인사하기'
+    hitAt: 0.55, // 하이파이브 동작에서 손이 코에 닿는 때(초)
+    buffSec: 600, pickR: 0.5, speed: 0.03, // 하루 한 번(KST 자정) 버프: 10분 동안 귤 모으는 범위 +0.5m, 이동 +3%
+    lines: ['코는 만지지 말랬지', '오늘도 무급이구나', '나도 귤 좋아해', '돌이라 표정 관리가 안 돼', '손바닥 따뜻하네', '오백 년째 서 있는 중', '바람 많이 부는 날엔 나도 춥다', '사진은 왼쪽 얼굴로 부탁해', '쓰레기 버리는 사람 봤으면 말해 줘', '탁! 좋은 하루'],
+  },
+  tourist: {
+    every: [480, 720], // 나오는 사이(초): 8~12분, 한 번에 한 명
+    near: 160, // 나올 자리는 플레이어에서 이 거리 안의 가장 가까운 곳 (없으면 retry 초 뒤 다시)
+    retry: 60, walkIn: 14, speed: 1.6, // 자리에서 이만큼 떨어진 곳부터 걸어 들어옴
+    r: 3, wait: 60, // 상호작용 거리, 안 찍어 주면 이 초 뒤 그냥 감
+    pose: 3, // 자세를 잡고 이 초 뒤 찰칵
+    gyul: 10, litterP: 1 / 3, litterN: 2, sorryGyul: 15, // 사진 보상, 쓰레기를 버리고 갈 확률·개수, 귤로 맞히면 더 주는 귤
+    litterT: 9, hitR: 0.8, // 버리고 돌아선 뒤 맞힐 수 있는 시간(초), 맞는 반경
+    lines: ['사진 좀 찍어 주실래요?', '여기 배경 좋죠?', '저 좀 찍어 주세요!'],
+    thanks: ['인생샷이에요!', '와, 프사 바꿔야겠다', '감사합니다! 귤 드릴게요'],
+    sorry: ['앗, 죄송해요! 제가 치울게요', '헉, 들켰다… 미안해요'],
+    colors: { top: '#ffd34d', hat: '#f2f2ee', leg: '#5b7fa8', shoe: '#e9e4da' }, // 밝은 셔츠·흰 모자·청바지
+  },
+  crow: {
+    fullT: 30, cd: 300, dayMax: 5, // 배낭이 가득 찬 채 이 초 넘게 다니면, 이 초에 한 번까지, 하루 이만큼까지
+    roll: [3, 20], // 조건이 맞은 뒤 오기까지(초, 무작위)
+    warn: 2, // 오기 전 '까악'·그림자 (초)
+    swoop: 0.9, circle: 8, leave: 4, // 내려오기·머리 위 맴돌기·멀어지기 (초)
+    rMin: 5, rMax: 8, yMin: 6, yMax: 9, // 맴도는 반경·높이 (머리 위 6~10m)
+    hitR: 1.4, // 맞는 반경 (날아다녀서 넉넉히)
+    drop: [['gyul', 0.7, 20], ['rare', 0.2, 20], ['receipt', 0.1, 20]], // 반짝이는 것: 종류·확률·귤(없는 기능이면 귤로)
+  },
+};
 // 대화·말풍선 한 틀 (#190). bubble: 머리 위 말풍선 한 줄 ch 자 · lines 줄, 넘치면 pages 장까지 넘기고 그래도 넘치면 말줄임. chatLines 채팅(사람이 쓴 글)은 한 장에 조금 더
 // win: 대화 창(.talk) 대사 한 장 최대 lines 줄(넘으면 ▶ 다음 장), line 대사 한 줄 권장 글자 수(넘으면 문장에서 나눠 보여 줌, tools/talkshot.js 가 셈)
 export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 } };

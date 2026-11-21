@@ -30,12 +30,16 @@
 // 오래 멈춤 (#157): presence 의 a:1 = '지난 NET.idleBeatMs 안에 조작 있음' (받으면 지우고 그 시각만 기억, 남에게 안 보냄).
 //   마지막 a:1 뒤 NET.idleKickSec 가 지나면 {t:'idle'} 후 연결을 닫음(4004, 클라이언트는 자동 재접속 안 함). 어드민(x-adm)은 빼고,
 //   a 를 한 번도 안 보낸 연결(옛 클라이언트)도 닫지 않음. {t:'idle', s} 는 STATS_OPEN(로컬 확인)일 때만: 그 사람의 기준 초를 s 로 (tools/online.js)
+// 오름 레이드 (#181, src/raidcore.js): 방이 시각·시작·끝·기운·더미·기여·보상을 셈. 따로 셈(NET.raidPerSec·raidMax)
+//   {t:'rj'} 레이드 자리에 옴(참가 수) · {t:'rh', d} 피해(사람마다 초당 RAID.dps 까지만) · {t:'rp', i} 부서진 더미 i 에서 하나 · {t:'rs', s, a?} 방장만: 몸 자리·패턴 → 다른 사람 모두에게
+//   {t:'rgo'} 바로 열기 (STATS_OPEN 방·어드민만) → 방 전체에 {t:'rv', s, h?} (hi 의 raid 에도), 성공하면 보탠 사람마다 {t:'rw', g, box, xp, top} 이고 로그인한 사람은 g 를 번 몫(#144)에 넣음
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg, np, fill} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP, GIVE } from '../../src/balance.js';
 import { offlineAdds, crowdMul } from '../../src/refill.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 import { TITLES } from '../../src/punktext.js';
+import { createRaid } from '../../src/raidcore.js';
 
 const MIN_VER = '0.24.0'; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134, #145)
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -86,6 +90,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   const endLive = (t) => (endMsg && t < endMsg.at + STORY.end.len * 1000 ? [endMsg.at, endMsg.by, endMsg.names] : undefined);
   const isZone = (z) => Number.isInteger(z) && !!ZH[z];
   const numArr = (a, n) => Array.isArray(a) && a.length <= n && a.every(isNum);
+  const raid = createRaid({ now, send: (id, o) => { const s = JSON.stringify(o); if (!id) { all(s); return; } const q = peers.get(id); if (q) out(q, s); }, who: (id) => { const q = peers.get(id); return q ? { acct: q.acct, nick: cleanText(q.d?.nick || '', NET.nickMax), here: true } : { here: false }; } });
   const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0, moveBack: 0, kicks: 0, takeNo: 0 };
   const bans = new Map(); // 계정·주소 키 → 풀리는 시각 (ms)
   const rides = new Map(); // 노루 이름 → 탄 사람 id (#92). 한 마리에 한 사람
@@ -94,7 +99,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
 
   const out = (p, s) => { st.bytesOut += s.length; st.msgsOut++; try { p.send(s); } catch (e) { /* 끊긴 소켓 */ } };
   const all = (s, except) => { for (const p of peers.values()) if (p !== except) out(p, s); };
-  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); p.giveTok = Math.min(GIVE.perSec, p.giveTok + dt * GIVE.perSec); };
+  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); p.giveTok = Math.min(GIVE.perSec, p.giveTok + dt * GIVE.perSec); p.raidTok = Math.min(NET.raidPerSec, p.raidTok + dt * NET.raidPerSec); };
   // 최근 strikeWin 초 안의 횟수 세기
   const count = (arr, t) => { while (arr.length && t - arr[0] > NET.strikeWin * 1000) arr.shift(); return arr.length; };
   function kick(p, why) {
@@ -116,18 +121,19 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, adm: !!info.adm, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
+      key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
     const fill = peers.size ? 0 : fillEmpty(t); // 첫 사람이면 빈 동안 몫부터 (#131)
     if (!peers.size) { crowd = 1; crowdT = t; npSent = 1; }
     peers.set(p.id, p); roomSeen = t;
     if (!host) host = p.id;
-    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t), np: r1(crowd), fill: fill || undefined }));
+    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t), np: r1(crowd), fill: fill || undefined, raid: raid.state() }));
     return p;
   }
   function leave(p) {
     if (!peers.delete(p.id)) return;
     for (const q of peers.values()) { q.sent.delete(p.id); q.sentSlow.delete(p.id); }
     all(JSON.stringify({ t: 'l', id: p.id }));
+    raid.leave(p.id);
     if (unride(p)) all(ridesMsg()); // 타는 중 끊기면 노루가 풀림 (#92)
     if (host === p.id) pickHost();
     if (!peers.size) roomSeen = now();
@@ -188,6 +194,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 노루 메시지는 따로 셈 (#92): 방장이 자리·노루를 함께 보내도 초당 msgPerSec 안
     if (/^\{"t":"(deer|dv|mount|unmount)"/.test(raw)) { if (p.deerTok < 1) { drop(p); return; } p.deerTok--; }
     else if (/^\{"t":"b[shd]"/.test(raw)) { if (raw.length > NET.bossMax || p.bossTok < 1) { drop(p); return; } p.bossTok--; } // 구역 우두머리 (#139): 따로 셈
+    else if (/^\{"t":"r(h|p|j|s|go)"/.test(raw)) { if (raw.length > NET.raidMax || p.raidTok < 1) { drop(p); return; } p.raidTok--; } // 레이드 (#181): 따로 셈
     else { if (p.tok < 1) { drop(p); return; } p.tok--; }
     let m; try { m = JSON.parse(raw); } catch (e) { drop(p); return; }
     if (!m || typeof m !== 'object') return;
@@ -238,6 +245,15 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         endMsg = { at, by, names }; all(JSON.stringify({ t: 'end', at, by, names }));
         break;
       }
+      case 'rj': raid.join(p.id); break; // 레이드 (#181)
+      case 'rh': if (isNum(m.d) && m.d > 0) raid.hit(p.id, Math.min(NET.bossHitMax, m.d)); break;
+      case 'rp': if (Number.isInteger(m.i)) raid.pick(p.id, m.i); break;
+      case 'rs': { // 방장만: 레이드 몸 자리·패턴
+        if (p.id !== host || !numArr(m.s, 8)) return;
+        const o = { t: 'rs', s: m.s }; if (numArr(m.a, 16)) o.a = m.a;
+        all(JSON.stringify(o), p); break;
+      }
+      case 'rgo': if (stats || p.adm) raid.start(); break;
       case 'p': presence(p, m.d); break;
       case 'give': { // 귤 주기 (#175)
         const q = typeof m.to === 'string' ? peers.get(m.to) : null, n = Number.isInteger(m.n) ? m.n : 0;
@@ -305,6 +321,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     if (peers.size && tick % 10 === 0) { const t = now(); followCrowd(t); const v = r1(crowd); if (v !== npSent && t - npT >= 2000) { npSent = v; npT = t; all(JSON.stringify({ t: 'np', n: v })); } } // 사람 수 (#131): 1초마다 따라가고 바뀌면 알림
     if (heapOut.size) { all(JSON.stringify({ t: 'hs', hs: [...heapOut] })); heapOut.clear(); }
     for (const [z, at] of guardOut) all(JSON.stringify({ t: 'zg', z, at })); guardOut.length = 0;
+    raid.tick(); for (const r of raid.takePaid()) if (r.acct) earned.set(r.acct, (earned.get(r.acct) || 0) + r.g); // 레이드 보상은 방이 줌 (#181·#144)
     const farTick = tick % NET.farEvery === 0, R2 = NET.farR * NET.farR;
     for (const r of peers.values()) {
       let parts = null;
@@ -325,7 +342,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     takeEarned() { if (!earned.size) return null; const a = [...earned]; earned.clear(); return a; },
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },
     guards: () => guardList(now()), guardsDirty() { const d = guardsDirty; guardsDirty = false; return d; },
-    get seen() { return roomSeen; }, stats: () => ({ n: peers.size, ...st }),
+    get seen() { return roomSeen; }, raid, stats: () => ({ n: peers.size, ...st }),
     counts() { let login = 0; for (const p of peers.values()) if (p.acct) login++; return { n: peers.size, login }; }, // 지금 접속 (#186): 사람 수·로그인 수만
     get crowd() { return crowd; }, active: () => activeN(now()),
   };

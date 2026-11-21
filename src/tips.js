@@ -39,6 +39,7 @@ export const TABLE = [
   { id: 'nearStream', when: (S) => S.nearStream, ic: 'fish', text: '개울가에서는 낚시를 할 수 있어요', go: 'stream' },
   { id: 'buffEnd', when: (S) => S.ev.buffEnd, ic: 'fork', text: '버프가 끝났어요. 스톤에서 다시 식사해요', go: 'stone' },
   { id: 'charge', when: (S) => S.ev.charge, ic: 'hand', text: '버튼을 길게 눌렀다 놓으면 모아 쏘기' }, // #129 첫 적을 쫓아낸 뒤
+  { id: 'crow', when: (S) => S.ev.crow, ic: 'bag', text: '배낭이 가득 차면 까마귀가 노려요. 클린하우스에 버리세요', go: 'cleanhouse' }, // #163 처음 까마귀가 올 때
   { id: 'zoneUp', when: (S) => S.ev.zoneUp, ic: 'peak', text: '위로 갈수록 어려워져요', go: 'map' }, // #136 튜토리얼 뒤 처음 정낭(초보→중수)을 지날 때
 ];
 
@@ -75,6 +76,6 @@ export function createTips({ save, persist, show, state, today = () => new Date(
     }
     return null;
   }
-  const tipEvName = (id) => ({ carried: 'carried', firstHeap: 'heapClear', dumper: 'dumper', rareFirst: 'rare', buffEnd: 'buffEnd', zoneUp: 'zoneUp', charge: 'charge' })[id];
+  const tipEvName = (id) => ({ carried: 'carried', firstHeap: 'heapClear', dumper: 'dumper', rareFirst: 'rare', buffEnd: 'buffEnd', zoneUp: 'zoneUp', charge: 'charge', crow: 'crow' })[id];
   return { event, update, off: (v) => { T().off = v ? 1 : 0; persist(); }, isOff: () => !!T().off, seen: () => structuredClone(T().seen), reset: () => { T().seen = {}; last = -1e9; persist(); }, TABLE };
 }

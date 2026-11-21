@@ -365,6 +365,24 @@ async function startServers() {
       const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
       ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
     }
+    { // #181 오름 레이드: 방이 기운·기여·보상을 셈. 피해 부풀리기·없는 더미 줍기·보상 두 번·남의 레이드 몸·바로 열기 거절
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { RAID, NET: N2 } = await import('../src/balance.js');
+      let T0 = Date.UTC(2026, 10, 21, 3, 0); const core = createRoomCore({ now: () => T0 }); const ms = { a: [], b: [] };
+      const a = core.join((x) => ms.a.push(JSON.parse(x)), { acct: 'raid-a' }), bq = core.join((x) => ms.b.push(JSON.parse(x)), { acct: 'raid-b' });
+      core.message(a, JSON.stringify({ t: 'rgo' })); core.step(); ok(core.raid.ph === 0, '레이드 바로 열기는 STATS_OPEN 방·어드민만');
+      core.message(bq, JSON.stringify({ t: 'rs', s: [1, 2, 3] })); ok(!ms.a.some((m) => m.t === 'rs'), '방장 아닌 사람의 레이드 몸 알림은 버림');
+      T0 += 30 * 60e3; core.step(); ok(core.raid.ph === 2, `정해진 시각(12:30 KST)에 레이드 시작 (단계 ${core.raid.ph})`);
+      const h0 = core.raid.hp; core.message(a, JSON.stringify({ t: 'rh', d: 1e9 })); ok(h0 - core.raid.hp <= N2.bossHitMax + 1e-6, `피해 부풀리기는 잘림 (${h0 - core.raid.hp})`);
+      const h1 = core.raid.hp; for (let i = 0; i < 10; i++) { T0 += 100; core.message(a, JSON.stringify({ t: 'rh', d: 300 })); } ok(h1 - core.raid.hp <= RAID.dpsBurst + RAID.dps + 1, `한 사람이 1초에 줄 수 있는 피해 상한 (${Math.round(h1 - core.raid.hp)} ≤ ${RAID.dpsBurst + RAID.dps})`);
+      core.message(a, JSON.stringify({ t: 'rp', i: 0 })); ok(core.raid.contrib(a.id).p === 0, '싸우는 동안(부서지기 전) 더미 줍기는 안 셈');
+      for (let i = 0; i < 400 && core.raid.ph === 2; i++) { T0 += 1000; core.message(a, JSON.stringify({ t: 'rh', d: 300 })); core.message(bq, JSON.stringify({ t: 'rh', d: 300 })); core.step(); }
+      core.message(a, JSON.stringify({ t: 'rp', i: 99 })); core.message(a, JSON.stringify({ t: 'rp', i: -1 })); ok(core.raid.contrib(a.id).p === 0, '없는 더미 줍기는 거절');
+      for (let i = 0; i < RAID.heaps; i++) for (let k = 0; k < RAID.heapN + 2; k++) { T0 += 260; core.message(k % 2 ? a : bq, JSON.stringify({ t: 'rp', i })); }
+      core.step(); const e1 = core.takeEarned() || [];
+      ok(core.raid.ph === 4 && e1.length === 2 && e1.every(([, g]) => g === RAID.gyul + RAID.box), `성공 보상은 방이 번 몫에 (${JSON.stringify(e1)})`);
+      ok(ms.a.filter((m) => m.t === 'rw').length === 1 && ms.b.filter((m) => m.t === 'rw').length === 1, '보상 알림은 한 번씩');
+      for (let i = 0; i < 6; i++) core.message(a, JSON.stringify({ t: 'rp', i: 0 })); core.step(); ok(!core.takeEarned(), '끝난 뒤 줍기로 보상 두 번 받기 거절');
+    }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });
@@ -421,6 +439,71 @@ async function startServers() {
       ok(!row('pick') && !row('hack') && !row('em:boar') && !row('ref:evil site/<b>') && !(mr.j?.rows || []).some((x) => 'sub' in x || 'ip' in x), '음수·큰 값·모르는 키는 버리고, 계정·IP 칸은 없음');
     }
 
+    /* ---------- 돌탑 소원 글·함께 기도 (#127) ---------- */
+    {
+      const { WISH } = await import('../src/balance.js');
+      const D = 864e5, at = (d) => '&at=' + (Date.now() + d * D); // 로컬(FAKE_AUTH)만 날을 바꿔 봄
+      const Ws = []; for (const n of ['wish1', 'wish2', 'wish3', 'wish4']) { const w = await login('plain', n); await req('plain', '/save', { method: 'PUT', token: w.token, body: { save: { ...S0, coins: 0, nick: '소원 ' + n.slice(-1) } } }); Ws.push(w); }
+      const [W1, W2, W3, W4] = Ws;
+      const put = (W, c, text, d = 0) => req('plain', '/wish?x=1' + (d ? at(d) : ''), { method: 'POST', token: W?.token, body: { c, text } });
+      const list = (c, W) => req('plain', '/wish?c=' + c, { token: W?.token });
+      const pray = (W, id, d = 0) => req('plain', '/wish/pray?x=1' + (d ? at(d) : ''), { method: 'POST', token: W?.token, body: { id } });
+      const rep = (W, id) => req('plain', '/wish/report', { method: 'POST', token: W?.token, body: { id } });
+      ok((await put(null, 'ns-head', '손님 소원')).status === 401, '손님은 소원 글을 못 씀 (401)');
+      const bads = ['시1발 합격', 'ㅅ ㅂ 진짜', 'f.u.c.k you', '섹 스', 'www.ad.com 오세요', 'abc 닷컴', '연락 010-1234-5678', '메일 me@x.kr', '번호 1234 5678 90', 'http://x.y'];
+      let blocked = 0; for (const b of bads) { const r = await put(W4, 'ns-head', b); if (r.status === 409 && ['bad', 'link'].includes(r.j?.error)) blocked++; }
+      ok(blocked === bads.length, `금칙어·주소·전화·이메일·긴 숫자 거름 (${blocked}/${bads.length}, 걸린 것은 하루 고치기 수에 안 셈)`);
+      const h = await put(W1, 'ns-head', '<img src=x onerror=alert(1)>합격');
+      const l0 = (await list('ns-head')).j?.list || [], hw = l0.find((w) => w.text.includes('합격'));
+      ok(h.status === 200 && hw && !/[<>]/.test(hw.text) && hw.nick === '소원 1', `HTML 넣기는 꺾쇠를 빼고 글자로만 (${hw?.text})`);
+      ok(!/"sub"|fake-|"ip"|"who"/.test(JSON.stringify(l0)), '소원 목록에 계정 번호·주소가 없음');
+      await put(W1, 'ns-head', '우리 가족 건강하게'); // 2번째
+      const e3 = await put(W1, 'ns-head', '올해는 꼭 합격'), e4 = await put(W1, 'ns-head', '하나 더 고치기'), e5 = await put(W1, 'ns-head', '내일 고치기', 1);
+      ok(e3.status === 200 && e4.status === 409 && e4.j?.error === 'day' && e5.status === 200, `돌탑마다 하루 ${WISH.editPerDay}번까지 고치기, 다음 날 다시 (${e3.status}/${e4.status}/${e5.status})`);
+      const mine = (await list('ns-head', W1)).j.list.filter((w) => w.mine);
+      ok(mine.length === 1 && mine[0].text === '내일 고치기', '한 사람이 돌탑마다 소원 하나 (다시 쓰면 바뀜)');
+      // 기도: W3 이 돌탑 6곳에 소원 → W2 가 모두 기도: 귤은 하루 prayPerDay 번까지
+      const CIDS = ['trailhead', 'rim', 'east', 'ns-ridge', 'ns-rim', 'gate-cairn'];
+      for (const c of CIDS) await put(W3, c, '소원 ' + c);
+      const ids = []; for (const c of CIDS) ids.push((await list(c)).j.list.find((w) => w.nick === '소원 3').id);
+      const g = []; for (const id of ids) g.push((await pray(W2, id)).j?.gyul || 0);
+      ok(g.slice(0, WISH.prayPerDay).every((x) => x === WISH.prayGyul) && g.slice(WISH.prayPerDay).every((x) => x === 0), `기도한 사람 귤은 하루 ${WISH.prayPerDay}번 (${g.join(',')})`);
+      const p2 = await pray(W2, ids[0]), pm = await pray(W3, ids[0]), pn = await pray(W2, ids[0], 1);
+      ok(p2.status === 409 && p2.j?.error === 'today' && pm.j?.error === 'mine' && pn.status === 200 && pn.j.n === 2, '같은 소원은 하루 한 번, 내 소원은 기도 안 됨, 다음 날 다시');
+      const pg = await pray(null, ids[1]);
+      ok(pg.status === 200 && pg.j.n === 2 && pg.j.gyul === WISH.prayGyul, '손님도 함께 기도 (기도 수 오름)');
+      const lp = (await list('ns-ridge', W2)).j.list.find((w) => w.id === ids[3]);
+      ok(lp?.prayed === true && lp.n === 1, '목록에 내가 오늘 기도했는지·기도 수');
+      // 내 돌탑 소식: 받은 기도 수와 귤 (한 번만)
+      const n1 = (await req('plain', '/wish/news', { token: W3.token })).j, n2 = (await req('plain', '/wish/news', { token: W3.token })).j;
+      ok(n1.n === CIDS.length + 2 && n1.gyul === Math.min(n1.n, WISH.gotPerDay) * WISH.gotGyul && n2.n === 0 && n2.gyul === 0, `'○명이 함께 빌어 줬어요' 한 번만 (${n1.n}명 · 귤 ${n1.gyul}, 다시 ${n2.n})`);
+      ok((await req('plain', '/wish/news')).status === 401, '손님은 내 소식 없음 (401)');
+      // 받은 귤은 서버가 안다 (#188): 계정 번 몫(bank)에 들어가 저장에서 받아 줌. 하루 최대도 earnBurst 한참 아래
+      const m1 = (await req('plain', '/me', { token: W3.token })).j.save, sv = await req('plain', '/save', { method: 'PUT', token: W3.token, body: { save: { ...m1, coins: (m1.coins || 0) + n1.gyul } } });
+      ok(!sv.j.fixed.includes('coins'), `소원 소식 귤(+${n1.gyul})을 저장이 받아 줌`);
+      ok(WISH.prayGyul * WISH.prayPerDay + WISH.gotGyul * WISH.gotPerDay < NET.earnBurst / 10, `하루 소원 귤 최대 ${WISH.prayGyul * WISH.prayPerDay + WISH.gotGyul * WISH.gotPerDay} (earnBurst ${NET.earnBurst} 의 1/10 아래)`);
+      // 신고: 서로 다른 reportHide 명이면 숨김 (같은 사람 두 번은 한 번)
+      const rid = ids[2];
+      await rep(W2, rid); await rep(W2, rid); const r2 = await rep(W1, rid);
+      const seen2 = (await list('east')).j.list.some((w) => w.id === rid);
+      const rm = await rep(W3, rid), r3 = await rep(W4, rid);
+      const seen3 = (await list('east')).j.list.some((w) => w.id === rid), own = (await list('east', W3)).j.list.find((w) => w.id === rid);
+      ok(r2.j?.hid === false && seen2 && rm.j?.error === 'mine' && r3.j?.hid === true && !seen3 && own?.hid === true, `서로 다른 ${WISH.reportHide}명이 신고하면 숨김 (2명: 보임, 3명: 숨김, 쓴 사람에겐 '숨겨짐')`);
+      ok((await pray(W1, rid)).j?.error === 'gone', '숨긴 소원에는 기도 안 됨');
+      // 어드민: 신고된 소원 목록·되살리기·지우기
+      ok((await req('plain', '/admin/wishes', { token: U.token })).status === 403 && (await req('plain', '/admin/wishes')).status === 403 && (await req('plain', '/admin/wish', { method: 'POST', token: W3.token, body: { id: rid, act: 'del' } })).status === 403, '신고된 소원은 어드민만 (403)');
+      const al = (await req('plain', '/admin/wishes', { token: Bs.token })).j || [], ar = al.find((w) => w.id === rid);
+      ok(ar && ar.hid === 1 && ar.rep === 3, `어드민 목록에 숨긴 소원 (신고 ${ar?.rep})`);
+      await req('plain', '/admin/wish', { method: 'POST', token: Bs.token, body: { id: rid, act: 'show' } });
+      const back = (await list('east')).j.list.some((w) => w.id === rid);
+      await req('plain', '/admin/wish', { method: 'POST', token: Bs.token, body: { id: rid, act: 'del' } });
+      const gone = !(await list('east', W3)).j.list.some((w) => w.id === rid);
+      ok(back && gone, '어드민 되살리기 → 다시 보임, 지우기 → 사라짐');
+      ok((await list('../x')).status === 400 && (await put(W2, 'a'.repeat(60), '소원')).status === 409, '이상한 돌탑 이름 거절');
+      ok((await put(W3, 'ns-ridge', 'ㄱ'.repeat(3) + '가'.repeat(40))).status === 200 && [...(await list('ns-ridge')).j.list.find((w) => w.nick === '소원 3').text].length <= WISH.max, `소원은 ${WISH.max}자까지만`);
+    }
+
+    await sleep(61000); // 위 소원 검사가 쓴 주소별 요청 수(1분 NET.reqPerMin)를 비움
     /* ---------- 이름 (#162): 거르기·처음 짓기·바꾸기 ---------- */
     {
       const { nickOk } = await import('../src/safetext.js');

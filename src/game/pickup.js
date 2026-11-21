@@ -186,9 +186,9 @@ export function tickFly(dt) {
   }
 }
 const nearTop = () => spots.isViewpoint(player.pos) || player.pos.distanceTo(spots.sunWatch.pos) <= spots.sunWatch.r;
-let lastTrashUI = ''; state.lastZoneUI = ''; let zoneNow = 0; let zoneT = 0; export { zoneNow };
+let lastTrashUI = '', whereCK = '-'; state.lastZoneUI = ''; let zoneNow = 0; let zoneT = 0, cleanT = 0; export { zoneNow };
 // 구역 확인 (0.3초마다): 바뀌면 HUD 갱신
-export function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { const prev = zoneNow; zoneNow = z; updateTrashUI(false); late.zoneEnter?.(z, prev); } } // #136 구역 이름 배너·소리 (area.js)
+export function tickZone(dt) { if (!trash || (zoneT -= dt) > 0) return; zoneT = 0.3; const z = trash.zoneAt(player.pos.x, player.pos.z); if (z !== zoneNow) { const prev = zoneNow; zoneNow = z; cleanT = 1; updateTrashUI(false); late.zoneEnter?.(z, prev); } else if ((cleanT -= 0.3) <= 0) { cleanT = 1; updateTrashUI(false); } } /* #136 구역 이름 배너·소리 (area.js). 1초에 한 번은 다시 셈: 다른 사람이 치운 것도 구역 값에 (#196) */
 export function updateTrashUI(bump) {
   if (!trash) return;
   const vol = trash.bagVol(), cap = bagCap(), c = trash.clean() * 100;
@@ -198,6 +198,9 @@ export function updateTrashUI(bump) {
   if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('clean-ring').setAttribute('stroke-dasharray', `${(Math.min(100, c) / 100 * 37.7).toFixed(1)} 37.7`); $('bag-pill').classList.toggle('full', vol >= cap); topFit.dirty(); }
   // 지금 구역 번호·깨끗한 정도 (#45). 들머리(0)에서는 숨김
   const zc = zoneNow ? Math.floor(trash.zoneClean(zoneNow) * 100) : 0;
+  // 화면의 깨끗함은 지금 구역 값으로, 있는 곳 이름 옆에 (#196). 구역 밖(마을·가게 거리·길)은 감춤. 오름 전체 값은 오름 지도
+  const wk = zoneNow ? String(zc) : '';
+  if (wk !== whereCK) { whereCK = wk; const w = $('where-c'); w.hidden = !zoneNow; $('where-cn').textContent = wk; $('where-ring').setAttribute('stroke-dasharray', `${(zc / 100 * 37.7).toFixed(1)} 37.7`); w.classList.toggle('done', zc >= 100); topFit.dirty(); }
   const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneTone(gearScore(save).total, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
   if (zk !== state.lastZoneUI) { state.lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc;
     // 권장 장비 점수와 견준 색 (#137): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
@@ -209,7 +212,7 @@ export function updateTrashUI(bump) {
   if (bump) { const b = $('bag-pill'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
 }
 if (trash) {
-  $('bag-pill').hidden = $('clean-pill').hidden = false; topFit.dirty();
+  $('bag-pill').hidden = false; topFit.dirty(); // 깨끗함 칸(clean-pill)은 늘 숨김 (#196)
   trash.on((ev, d) => {
     if (ev === 'trash') { ab.picked(); ach.emit('trash'); ach.emit('trash-' + d.kind); if (nearTop()) ach.emit('trash-top'); if (sunEvent()) ach.emit('trash-sun'); if (wx.kind === 'rain') ach.emit('trash-rain'); onDexGet(d.dex, d.dexNew); }
     else if (ev === 'dex-test') onDexGet(d.dex, d.dexNew);
