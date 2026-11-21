@@ -8,29 +8,35 @@
 //        firstDone() 첫 공격이 끝남(저장)
 // first: { done 첫 공격을 이미 겪음, bloomed 꽃을 한 번 피움 } (튜토리얼 뒤 첫 공격은 꽃 한 번 뒤 약한 투기꾼 하나)
 // perHour: 투기꾼이 한 시간에 쌓을 양(DUMP_PER_HOUR). 한 번 올 때 양은 이 평균이 맞게 나눔
+// crowd(): 같이 있는 사람 수 (#131, 방이 셈. 없으면 1). 한 사람 몫 = perHour × crowdShare(n), 간격은 crowdGap(n) 배 먼저 늘리고 나머지는 양을 줄임
 import { PACE, DUMP } from './balance.js';
+import { crowdShare, crowdGap } from './refill.js';
 
 const rr = (rnd, [a, b]) => a + rnd() * (b - a);
 const ri = (rnd, [a, b]) => a + Math.floor(rnd() * (b - a + 1));
 const mid = ([a, b]) => (a + b) / 2;
 export const DELIGHTS = ['lucky', 'deer', 'fireflies', 'jackpot'];
 
-export function createPacing({ rnd = Math.random, hooks = {}, first = { done: true, bloomed: true }, perHour = 0 }) {
+export function createPacing({ rnd = Math.random, hooks = {}, first = { done: true, bloomed: true }, perHour = 0, crowd = () => 1 }) {
   let t = 0, phase = 'calm', phaseT = 0, nextAt = 0, restUntil = 0, quietUntil = 0, lastEvent = 0, tension = 0, wave = 0, busyN = 0;
   let plan = null, atk = null, delightI = Math.floor(rnd() * DELIGHTS.length);
   const log = [{ t: 0, phase: 'calm' }], events = [];
   const cfg = () => PACE.battle; // 서버는 전투 오름 하나 (#98)
+  const gapMul = () => crowdGap(crowd()); // 사람이 많으면 공격·투기꾼 간격을 늘림 (#131)
+  const gap = () => { const g = cfg().gap, k = gapMul(); return [g[0] * k, g[1] * k]; };
   // 첫 공격 시각: 지금부터 gap 의 0.4~0.7 (첫 공격을 아직 안 겪었으면 꽃을 피울 때 정함)
-  const schedFirst = () => { nextAt = first.done ? t + rr(rnd, cfg().gap) * (0.4 + rnd() * 0.3) : first.bloomed ? t + PACE.firstDelay + 30 : Infinity; };
+  const schedFirst = () => { nextAt = first.done ? t + rr(rnd, gap()) * (0.4 + rnd() * 0.3) : first.bloomed ? t + PACE.firstDelay + 30 : Infinity; };
   schedFirst();
   function go(p) { if (p === phase) return; phase = p; phaseT = 0; log.push({ t: +t.toFixed(2), phase: p }); }
   function ev(kind, data = {}) { events.push({ t: +t.toFixed(2), kind, ...data }); }
 
-  // 한 번 올 때 투기꾼 양: 한 시간 양 × 평균 간격 ÷ (투기꾼이 오는 차례 비율). 투기꾼은 DUMP.walker.amt 그대로, 트럭이 나머지
+  // 한 번 올 때 투기꾼 양: 한 시간 양 × 평균 간격 ÷ (투기꾼이 오는 차례 비율). 투기꾼은 DUMP.walker.amt 그대로, 트럭이 나머지 (truckMax 까지)
+  // 같이 있으면 (#131): 간격이 gapMul 배로 늘었으니, 한 번 양은 혼자일 때 양 × 한 사람 몫 × gapMul (≤ 1)
   function dumpAmts() {
     const C = cfg(), share = 1 / C.dumpEvery, per = perHour * mid(C.gap) / 3600 / share;
-    const W = DUMP.walker.amt, p = DUMP.truckP;
-    return { walker: W, truck: Math.min(PACE.truckMax, Math.max(W, Math.round((per - (1 - p) * W) / p))) };
+    const W = DUMP.walker.amt, p = DUMP.truckP, solo = Math.min(PACE.truckMax, Math.max(W, Math.round((per - (1 - p) * W) / p)));
+    const n = crowd(), f = Math.min(1, crowdShare(n) * gapMul());
+    return { walker: W, truck: Math.max(W, Math.round(solo * f)) };
   }
   function makePlan() {
     const amt = dumpAmts();
@@ -48,7 +54,7 @@ export function createPacing({ rnd = Math.random, hooks = {}, first = { done: tr
     if (plan?.first) { first.done = true; hooks.firstDone?.(); }
     hooks.end?.(info);
     restUntil = t + PACE.rest; lastEvent = t;
-    nextAt = Math.max((atk?.start ?? t) + rr(rnd, cfg().gap), restUntil);
+    nextAt = Math.max((atk?.start ?? t) + rr(rnd, gap()), restUntil);
     plan = null; atk = null; go('rest');
   }
 
@@ -106,6 +112,6 @@ export function createPacing({ rnd = Math.random, hooks = {}, first = { done: tr
     canMark: () => !quiet(),
     log, events, busyN: () => busyN,
     // 확인용: 다음 공격을 s 초 뒤로
-    test: { soon(s = 0) { if (!first.done) { first.bloomed = true; } nextAt = t + s; quietUntil = Math.min(quietUntil, t); if (phase === 'rest') { restUntil = t; } }, first, dumpAmts: () => dumpAmts() },
+    test: { soon(s = 0) { if (!first.done) { first.bloomed = true; } nextAt = t + s; quietUntil = Math.min(quietUntil, t); if (phase === 'rest') { restUntil = t; } }, first, dumpAmts: () => dumpAmts(), gap: () => gap() },
   };
 }

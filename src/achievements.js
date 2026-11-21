@@ -89,6 +89,15 @@ BADGES.push(
   { id: 'b-dumper', ev: 'dumper-repel', goal: 30, name: '투기꾼의 악몽', desc: '무단 투기꾼을 서른 번 쫓아냈어요', color: '#8a4a3a', reward: 60 },
   { id: 'b-guard-1', ev: 'quest-boss1', goal: 1, name: '숲길 지킴이', desc: '오름지기 퀘스트 \'구역의 주인\' 을 끝냈어요', color: '#4f7a36', reward: 20 },
   { id: 'b-notes', ev: 'note-all', goal: 1, name: '쪽지 수집가', desc: '주운 쪽지 30장을 다 모았어요', color: '#c9a86a', reward: 80 },
+  { id: 'b-rare-gyul', ev: 'gyul-kind', goal: 4, name: '귀한 귤 감별사', desc: '한라봉·천혜향·레드향·황금향을 다 모았어요', color: '#ff9a1a', reward: 60 }, // #130 game/raregyul.js 가 처음 주운 종류마다 사건을 냄
+  // 낚시 전용 (#124). 사건은 game/debug.js 낚시 reward 가 냄: fish(낚아 올린 것 하나)·fish-jackpot·fish-all·fish-rain·fish-night. 예전 저장의 life.fish 에서 이어 센다
+  { id: 'b-fish-1', ev: 'fish', goal: 1, name: '첫 낚시', desc: '개울에서 처음 낚아 올렸어요', color: '#3c7fc9', reward: 5 },
+  { id: 'b-fish-10', ev: 'fish', goal: 10, name: '낚시 입문', desc: '개울에서 열 번 낚아 올렸어요', color: '#3c7fc9', reward: 10 },
+  { id: 'b-fish-50', ev: 'fish', goal: 50, name: '개울 낚시꾼', desc: '개울에서 쉰 번 낚아 올렸어요', color: '#2f6db5', reward: 30 },
+  { id: 'b-fish-jack', ev: 'fish-jackpot', goal: 1, name: '대어를 낚다', desc: '큰 물고기를 낚아 귤이 와르르 터졌어요', color: '#e8b94a', reward: 30 },
+  { id: 'b-fish-all', ev: 'fish-all', goal: 1, name: '개울 물고기 박사', desc: '개울에 사는 물고기를 모두 낚았어요', color: '#8f7bd6', reward: 40 },
+  { id: 'b-fish-rain', ev: 'fish-rain', goal: 1, name: '비 오는 날의 낚시', desc: '비 오는 날 낚시를 했어요', color: '#5bb0d6', reward: 10 },
+  { id: 'b-fish-night', ev: 'fish-night', goal: 1, name: '밤낚시', desc: '밤에 낚시를 했어요', color: '#3d4a7a', reward: 10 },
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
 );
 

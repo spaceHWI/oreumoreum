@@ -63,7 +63,11 @@ export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
 // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민만
-export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }) } : null;
+export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }), metrics: (days = 14) => api('/admin/metrics?days=' + (days | 0)) } : null;
+// 지금 접속 (#186): 어드민만. 숫자만 돌아옴 (총인원·방별·로그인/손님·오늘 최고)
+export const getOnline = ONLINE ? () => api('/admin/online') : null;
+// 이용 통계 보낼 곳 (#121, metrics.js mtFlush): 서버가 없으면 ''
+export const metricsUrl = ONLINE ? SRV + '/m' : '';
 // 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
 export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
@@ -292,12 +296,13 @@ export function linkTrash(trash, room) {
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) { pend.set(h, (pend.get(h) || 0) + 1); if (!flushQ) { flushQ = true; queueMicrotask(flush); } } return ok; };
   // 동료 줍기 (#172): 방에는 {t:'btake', h} 로 (번 몫에 안 셈, 서버도 마지막 BUDDIES.keep 은 남김). 옛 서버는 모르는 메시지라 넘김 → 다음 hs 로 되돌아옴
   if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live) room.send({ t: 'btake', h }); return ok; }; }
+  // 다시 쌓기 (#131): 방장만이 아니라 각자 둘레 투기꾼·몹이 쌓은 것을 보냄. 받아 줄지는 방이 정함(움직이는 사람·방 전체 한도), 못 받으면 {t:'h'} 로 되돌아옴
   st.putBack = (h, n) => {
     if (!live) return o.putBack(h, n);
-    if (!room.isHost) return 0;
     const add = o.putBack(h, n); if (add) room.send({ t: 'put', h, n: add }); return add;
   };
   st.seen = () => (live ? seen : o.seen());
   st.setSeen = (t) => { if (live) seen = t; o.setSeen(t); };
+  st.roomLive = () => live; // 방에 붙어 있으면 빈 동안 몫은 방이 채움 (탭을 오래 숨겼다 와도 내 화면에서 채우지 않음)
   return { get live() { return live; } };
 }

@@ -212,6 +212,8 @@ function giveNote(id, { quiet = false } = {}) { // 쪽지 한 장을 얻음. 싸
   if (quiet || fightNow() || panelOpen() || state.photoState || !state.sessionOn) { syncChip(); late.sound?.snip?.(); return true; }
   openNote(id); return true;
 }
+// 까마귀가 떨어뜨리는 영수증 쪽지 (#163): 그 자리 구역의 안 주운 쪽지 하나. 떨궜으면 true
+late.receiptDrop = (pos) => { const z = trash?.zoneAt(pos.x, pos.z) || 0; return z >= 1 && !!dropNote(z); };
 function dropNote(z) { // 그 구역에서 아직 안 주운 쪽지 하나 (구역 밖·다 모은 구역은 없음)
   const left = NOTES.filter((n) => n.z === z && !P.notes[n.id]); if (!left.length) return null;
   const n = left[Math.floor(Math.random() * left.length)]; giveNote(n.id); return n.id;

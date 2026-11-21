@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES, RARE_GYUL, FEEL } from './balance.js';
 import { zoneAt } from './zones.js';
 import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
@@ -24,6 +24,8 @@ FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', na
 FIELD.sight.list.forEach((s, i) => DEX_LIST.push({ id: `sight:${i}`, kind: 'sight', sk: s[1], name: s[2], rare: false, sec: 'sight' }));
 // 수수께끼 칸 (#168): 이야기 이벤트에서만 얻는 것 'story:번호' ('수상한 불빛' 의 외계 캔)
 DEX_LIST.push({ id: STORY_DEX.id, kind: 'story', name: STORY_DEX.name, rare: false, sec: 'story' });
+// 귀한 귤 칸 (#130): 적·투기꾼이 떨군 한라봉·천혜향·레드향·황금향 'gyul:id'. 처음 주우면 등록 (game/raregyul.js)
+RARE_GYUL.kinds.forEach((g) => DEX_LIST.push({ id: `gyul:${g.id}`, kind: 'gyul', name: g.name, rare: false, sec: 'gyul' }));
 
 // 더미 목록 (자리와 상관없이 정해지는 순서)은 src/heapdefs.js (서버와 같이 씀). 저장의 heaps[i] 가 이 순서
 
@@ -322,7 +324,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     return Math.random() < DEX.rareChance * (rareMul ? rareMul() : 1) && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
   }
   // 하나 줍기. c: candidates 의 항목, room: 배낭 남은 부피. 못 주우면 null
-  function take(c, room = 99) {
+  function take(c, room = 99, bonus = 0) { // bonus: 줍기 콤보 귤 비율 (#141, 더미만): 이 쓰레기 귤 × 구역 배수 × bonus 를 xv 에 더함
     let t, pos, color;
     if (c.h != null) {
       const h = heaps[c.h]; if (room < 1 || !store.takeOne(c.h)) return null;
@@ -334,7 +336,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     }
     const type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
-    const xv = c.h != null ? type.gyul * ((heaps[c.h].gv || ZONES[heaps[c.h].zone - 1]?.gv || 1) - 1) : 0; // #137 구역마다 쓰레기 귤 배수 (#138 쓰레기 산은 × HEAP.sizes.mt.gv)
+    const gvH = c.h != null ? (heaps[c.h].gv || ZONES[heaps[c.h].zone - 1]?.gv || 1) : 1, xv = c.h != null ? type.gyul * (gvH - 1 + gvH * Math.max(0, Math.min(FEEL.combo.max, bonus))) : 0; // #137 구역마다 쓰레기 귤 배수 (#138 쓰레기 산은 × HEAP.sizes.mt.gv)
     if (xv > 0) store.bag.xv = (store.bag.xv || 0) + xv;
     if (c.h != null) { recent.push({ h: c.h, kind: type.id, xv }); if (recent.length > 80) recent.shift(); } // 방이 한 번에 되돌리라는 수(NET.takeAsk 64)보다 넉넉히 // 방이 거절하면 되돌릴 수 있게 (#84)
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
@@ -344,7 +346,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     if (c.h != null) {
       const before = heaps[c.h].st; syncCols();
       if (heaps[c.h].st < 0) { emit('heap-clear', { h: c.h, zone: heaps[c.h].zone }); if (!zoneLeft(heaps[c.h].zone)) emit('zone-clear', { zone: heaps[c.h].zone }); }
-      else if (heaps[c.h].st !== before) emit('heap-stage', { h: c.h, st: heaps[c.h].st });
+      else if (heaps[c.h].st !== before) emit('heap-stage', { h: c.h, st: heaps[c.h].st, took: true }); // took: 내가 주워서 줄어듦 (#141 무너지는 효과)
     }
     return { t, type, dex: dx, dexNew, pos, color };
   }

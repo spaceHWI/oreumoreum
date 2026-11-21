@@ -4,6 +4,7 @@ import { bootsOn } from '../gearscore.js';
 import { PERF, PLACE, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
 import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
+import { mt, mtFrame } from '../metrics.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
 import { reportCrash } from '../crash.js';
@@ -224,7 +225,7 @@ let slowT = 0, fastT = 0;
 function adaptQuality(dt) { // 자동일 때만: 느리면 한 단계씩 내리고(픽셀 배율 → 그림자 끔), 오래 빠르면 시작 단계까지 되돌림
   if (!quality.auto || PERF_LOCK || document.hidden) { slowT = fastT = 0; return; }
   if (dt >= PERF.slowDt) { slowT += dt; fastT = 0; } else if (dt < PERF.fastDt) { fastT += dt; slowT = 0; }
-  if (slowT > PERF.slowT && quality.level > 0) { quality.level--; slowT = 0; applyQuality(); }
+  if (slowT > PERF.slowT && quality.level > 0) { quality.level--; slowT = 0; applyQuality(); mt('qdown'); } // 자동으로 단계 내림 수 (#121)
   if (fastT > PERF.fastT && quality.level < quality.tier) { quality.level++; fastT = 0; applyQuality(); }
 }
 applyQuality();
@@ -240,15 +241,17 @@ function frame(now) {
   }
 }
 function step(now) {
+  mtFrame(); // 이용 통계 평균 fps (#121): 숫자 하나 더하기
   if (state.osPaused) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
   if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);
   late.tickLevel?.(Math.min(0.05, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
   if (!state.augPause) tickPace(Math.min(0.05, rawDt), now / 1000);
+  late.tickFeel?.(Math.min(0.05, rawDt)); // 손맛 (#141): 숫자·흙먼지·가장자리
   state.camHold = Math.max(0, state.camHold - dt);
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저
-  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); tickBuddies(dt); late.tickLoot?.(dt); late.tickSwarm?.(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); roofSigns?.update(dt, lampNight, camera, renderer.domElement.clientHeight || innerHeight); /* 지붕 간판 크기·밤빛 (#182). 한 줄 안이라 // 를 쓰면 뒤가 모두 주석이 됨 (#163 에서 고침) */ tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); late.season?.tick(dt, now / 1000); late.tickMeet?.(dt, now / 1000); late.tickPunk?.(dt); late.outfitSet?.tick(dt); state.farCull?.update(dt);
+  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); late.tickApproach?.(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); tickBuddies(dt); late.tickLoot?.(dt); late.tickRare?.(dt); late.tickSwarm?.(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); roofSigns?.update(dt, lampNight, camera, renderer.domElement.clientHeight || innerHeight); /* 지붕 간판 크기·밤빛 (#182) */ tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); late.season?.tick(dt, now / 1000); late.tickMeet?.(dt, now / 1000); late.tickPunk?.(dt); late.outfitSet?.tick(dt); state.farCull?.update(dt);
   net.update(dt); net.send(false);
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   deerNet.tick(dt); // 멀티 노루 (#92)
@@ -337,7 +340,7 @@ function step(now) {
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
-  tickDirector(dt); late.tickMutter?.(dt); late.tickQuest?.(dt); late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
+  tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); late.tickQuest?.(dt); late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
   updateStats();

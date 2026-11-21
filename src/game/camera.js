@@ -2,7 +2,7 @@
 import { BLOOM_FX, PACE, TITLE, CHARGE, CAM } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
-import { state } from './state.js';
+import { state, late } from './state.js';
 import { camera } from './scene.js';
 import { P, player } from './place.js';
 
@@ -50,5 +50,5 @@ export function ease(dt, snap, k) {
   const a = snap ? 1 : 1 - Math.exp(-dt * k);
   cam.pos.lerp(camTarget.pos, a); cam.look.lerp(camTarget.look, a);
   camera.position.copy(cam.pos); camera.lookAt(cam.look);
-  if (state.shake > 0 && cam.mode === 'follow') { const a = CHARGE.shake * state.shake / CHARGE.shakeT; camera.position.x += (Math.random() - 0.5) * 2 * a; camera.position.y += (Math.random() - 0.5) * 2 * a; } // 가득 모은 샷이 맞음 (#129, game/charge.js 가 줄임)
+  if (state.shake > 0 && cam.mode === 'follow' && !late.feel?.calm) { const a = CHARGE.shake * state.shake / CHARGE.shakeT; camera.position.x += (Math.random() - 0.5) * 2 * a; camera.position.y += (Math.random() - 0.5) * 2 * a; } // 가득 모은 샷이 맞음 (#129, game/charge.js 가 줄임)
 }

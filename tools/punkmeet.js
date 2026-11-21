@@ -95,7 +95,7 @@ const ok = (c, m) => { console.log((c ? '통과 ' : '실패 ') + m); if (!c) pro
   console.log(c);
   ok(c.warn === 'warn', '까마귀: 먼저 경고 (까악·그림자)');
   ok(c.circle?.state === 'circle' && !!c.circle.kind && c.v1 < c.v0, `쓰레기 하나를 물고 머리 위 ${c.circle?.y}m 를 맴돎 (배낭 ${c.v0} → ${c.v1})`);
-  ok(['fall', 'leave'].includes(c.hit) && c.v2 === c.v0 && c.drops > 0 && c.toasts.some((x) => x.includes('떨어뜨렸어요')), `귤로 맞히니 떨어뜨림: 배낭 ${c.v2}, 바닥 귤 ${c.drops}알 (${c.toasts.join(' / ')})`);
+  ok(['fall', 'leave'].includes(c.hit) && c.v2 === c.v0 && (c.drops > 0 || c.toasts.some((x) => x.includes('반짝이는 것'))) && c.toasts.some((x) => x.includes('떨어뜨렸어요')), `귤로 맞히니 떨어뜨림: 배낭 ${c.v2}, 바닥 귤 ${c.drops}알(귀한 귤·쪽지면 0) (${c.toasts.join(' / ')})`);
   ok(c.lost && c.v4 === c.v3, `안 맞히면 쓰레기 하나만 잃음 (${c.v3} → ${c.v4}), 오늘 ${c.n}번`);
   ok(!errs.length, '페이지 오류 없음 ' + errs.join(' | '));
   await b.close();

@@ -251,7 +251,7 @@ function landDrop() {
   // 반짝이는 것: 표에서 하나 (귀한 귤 #130·영수증 #165 이 아직 없으면 귤)
   let r = Math.random(), it = C.drop[0];
   for (const d of C.drop) { if (r < d[1]) { it = d; break; } r -= d[1]; }
-  const done = it[0] === 'rare' ? late.rareGyul?.(g) : it[0] === 'receipt' ? late.receiptDrop?.(g) : false;
+  const done = it[0] === 'rare' ? late.rareGive?.(g, it[2]) : it[0] === 'receipt' ? late.receiptDrop?.(g) : false; // 귀한 귤 #130 · 영수증 쪽지 #165
   if (!done) life.scatterTangerines(g, it[2], LOW ? 6 : 10);
   toast(done ? '까마귀가 반짝이는 것을 떨어뜨렸어요!' : `까마귀가 쓰레기와 귤 ${it[2]}개를 떨어뜨렸어요!`, 2.6);
   late.ach?.emit?.('punk-crow');
