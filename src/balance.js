@@ -1177,7 +1177,7 @@ export const JOURNEY = {
     { id: 'crow', need: { zone: 3 } }, // #163 까마귀 도둑
     { id: 'title', need: { zone: 3 } }, // #165 칭호
     { id: 'gift', need: { zone: 3 } }, // #175 귤 주기 (멀티)
-    { id: 'aliens', need: { zone: 4 } }, // #168 외계인·'분리수거 조약' (구역 4·5)
+    { id: 'aliens', need: { zone: 4 } }, // #168 '미친 개 주의'·'불법 주차 단속'·엔딩 (구역 4·5)
   ],
 };
 
