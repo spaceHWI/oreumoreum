@@ -1392,3 +1392,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 튜토리얼 중엔 할 일을 세지 않음(평생 기록은 셈). 저장 `save.ach.daily = { date, items, all, seen }`, `save.ach.run = { n, last, got }`. 예전 업적 저장은 그날 새 목록으로
 - 서버(#188 방식, `server/src/earn.js` 7): 받은 할 일·셋 다는 서버 날짜 오늘·어제 목록에 있는 것만 할 일마다 하루 한 번(cred.dl·dlp), 이어 오기는 서버가 저장을 받은 날로 따로 센 연속(cred.run) 안에서 한 번. 구역은 지난 저장 maxZ(+1 까지)
 - 확인 `node tools/daily.js [--shot]`, `tools/sec.js` 7줄, `tools/oldsave.js dailyOld,dailyBad`
+
+- #197 (오류 알림): WebGL 을 잃은 바로 그 프레임에 three 가 처음 쓰는 셰이더의 링크 글을 읽다 `.trim` 에서 멈추던 것. 브라우저가 `webglcontextlost` 를 알리기 전에는 three 가 잃은 줄 모르고 그리는데, 그때 `getProgramInfoLog`·`getShaderInfoLog` 는 글 대신 null 을 준다(three 0.170 은 null 을 보지 않음). `src/game/scene.js` 에서 렌더러를 만든 바로 뒤 이 두 함수가 null 이면 빈 글을 돌려주게 감쌈. 그 프레임만 넘기면 곧 `webglcontextlost` 가 와서 #108 안내·되살리기로 이어진다. 확인 `node tools/gllost.js $PWD lose`(진짜로 잃게 함)·`null`(iOS 처럼 셰이더 글만 null)
