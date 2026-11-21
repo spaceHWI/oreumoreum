@@ -54,6 +54,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |
 | zonedone.js | 구역 완료(#139): 구역 완료 요약 한 장(`#zdone`), 깨어나는 곳(마지막으로 지난 구역 클린하우스, hp.js `startAt` → `late.wakeAt`), 다시 들어올 때 고르기(`#wake-pick`, start.js → `late.afterEnter`), 구역을 끝낸 사람의 빠른 마차(구역 클린하우스 옆 → 가게 거리)·지름길(구역 들어오는 곳 → 위쪽 끝), 구역 기록(줍기·쫓아내기). 저장 `save.boss`. 파일 순서는 pace 뒤(적 후크를 감쌈) |
 | boss.js | 구역 우두머리(#139): 구역 80% 에 빈터(field.bosses)에 나옴, 그 구역 적을 키운 모양(enemies.js `spawnBoss`)·왕관·발밑 고리, 패턴(돌진·무리 부르기·광선, 바닥 경고)·단계(50%·20%)·화면 위 기운 줄(`#boss-bar`), 쫓아내면 느린 화면(`state.slowMo`)·귤·귀한 재료·돌하르방(`late.guard.raise`)·요약. 멀티는 방장이 굴림(`bs`·`bh`·`bd`). `__oreum.boss`, 확인 `node tools/boss.js` |
+| ending.js | 엔딩 시네마틱(#168): 구역 5 우두머리 뒤 외계인의 사과 '불편을 줘서 죄송합니다.'. 위아래 검은 띠·조작 잠금(`state.cine`, update.js)·무적·적·투기꾼 멈춤, 카메라(`cam.mode` 'cine', `late.cineCam`) 굼부리 → UFO 떼 → 큰 글씨 → 떠나는 UFO → 오름 전경·이름. 멀티는 방(`{t:'end'}` → `{t:'end', at, by, names}`, 하루 한 번, 두 번째부터 `endr` 방송)이 시작 시각을 정함. UFO 모양 `makeUfo`. `__oreum.story.ending` |
+| story.js | 이야기 이벤트(#168): 조건(그 일이 일어날 때) → 예고(감독 'story' + 카메라 glance) → 벌어지는 일 → 끝(보상·`late.quest?.storyDone`). 한 번에 하나, 하루 STORY.perDay, 감독 문(storyMom·nightLight·aliens). 이벤트 mom·pair·night·howl·truck·meet·tour·sign·ufo·end, 수치 balance.js STORY, 글 src/punktext.js. 적은 enemies.js `spawnStory`(키움·calm), 트럭 첫 등장은 dumpers.come 을 감쌈. 저장 `save.story`. `__oreum.story.play(id)` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |

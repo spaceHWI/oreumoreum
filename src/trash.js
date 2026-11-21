@@ -11,6 +11,7 @@ import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
 export { HEAP_DEFS, HEAP_SIG, HEAP_TOTAL };
 import { kstDay, weekStart, SRVS } from './rankday.js';
+import { STORY_DEX } from './punktext.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
@@ -19,6 +20,8 @@ TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push
 FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
 // 볼거리 칸 (#138): 오름 들판의 전망 바위·샘·산담·방사탑 'sight:번호' (FIELD.sight.list 순서). 처음 찾으면 등록
 FIELD.sight.list.forEach((s, i) => DEX_LIST.push({ id: `sight:${i}`, kind: 'sight', sk: s[1], name: s[2], rare: false, sec: 'sight' }));
+// 수수께끼 칸 (#168): 이야기 이벤트에서만 얻는 것 'story:번호' ('수상한 불빛' 의 외계 캔)
+DEX_LIST.push({ id: STORY_DEX.id, kind: 'story', name: STORY_DEX.name, rare: false, sec: 'story' });
 
 // 더미 목록 (자리와 상관없이 정해지는 순서)은 src/heapdefs.js (서버와 같이 씀). 저장의 heaps[i] 가 이 순서
 

@@ -1159,6 +1159,44 @@ export const JOURNEY = {
   ],
 };
 
+// 이야기 이벤트 (#168, src/game/story.js · 글은 src/punktext.js): 한 일의 결과로 다음 일이 벌어짐. 사람마다 한 번씩, 한 번에 하나, 하루에 새로 시작하는 것은 perDay 개까지
+// 이벤트 하나 = 조건 → 예고(omen 초 안, 카메라가 잠깐 그쪽, 건너뛸 수 있음) → 벌어지는 일 → 끝(보상·다음 이벤트). 싸우는 중·튜토리얼·창이 열려 있으면 예고를 미룸
+// 조건은 그 일이 '일어날 때' 봄 (옛 저장: 이미 한참 넘긴 사람도 다음 번 그 일이 한 번 더 일어날 때 시작). 셈은 업적 평생 기록(save.ach.life)
+// list 순서가 유저 저니 순서. door: 감독(#176) 문(그 문이 열려야 시작, 등록 안 된 문은 없는 것으로). gyul 끝 보상
+// 모두 임의값. 보상 합은 5일 전체 벌이의 5% 아래 (tools/econ.js 가 봄), 엄마 멧돼지는 권장 장비로 서서 던질 때 잃는 기운 40% 아래 (tools/fight.js)
+export const STORY = {
+  perDay: 4, omen: 2.6, look: 2.2, safeSec: 3, retry: 60, checkSec: 1,
+  list: [
+    { id: 'mom', zone: 1, door: 'storyMom', need: { ev: 'enemy-repel-piglet', n: 5 }, gyul: 60 },
+    { id: 'pair', zone: 1, need: { ev: 'dumper-repel', n: 3 }, gyul: 40 },
+    { id: 'night', zone: 1, door: 'nightLight', need: { boss: 1, night: 1 }, gyul: 0 },
+    { id: 'howl', zone: 2, need: { pack: 'dog' }, gyul: 0 },
+    { id: 'truck', zone: 2, need: { clean: 0.5 }, gyul: 0 },
+    { id: 'meet', zone: 3, need: { ev: 'enemy-repel-boar', n: 10 }, gyul: 80 },
+    { id: 'tour', zone: 3, need: { boss: 3 }, gyul: 0 }, // 관광객(#163) 이 없으면 조용히 건너뜀
+    { id: 'sign', zone: 4, door: 'aliens', need: { enter: 4 }, gyul: 0 },
+    { id: 'ufo', zone: 5, door: 'aliens', need: { ev: 'enemy-repel-alien', n: 3 }, gyul: 0 },
+    { id: 'end', zone: 5, door: 'aliens', need: { boss: 5 }, gyul: 300 },
+  ],
+  // 엄마가 왔다: 엄마(멧돼지 모양 k 배, 아기 멧돼지보다 기운 3배)와 새끼 kids 마리. 숲 가장자리 r m 쯤에서 나옴. 보상 귤은 끝에 한 번(엄마는 흩뿌리지 않음)
+  mom: { kind: 'boar', k: 1.3, hp: 9, dmg: 10, kids: 2, r: [20, 28], life: 240 },
+  // 투기꾼의 복수: 다음 투기꾼은 둘(한 명이 망봄). 망보는 사람 whistle m 안에 오면 휘파람 → 다른 한 명이 서둘러 버림
+  pair: { whistle: 25 },
+  // 수상한 불빛: UFO 가 능선 위를 지나며(지름 k 배, 높이 y, 지나는 시간 t 초) 외계 캔 cans 개와 쓰레기 trash 개를 떨어뜨림. 캔은 다가가면(pickR) 주움
+  night: { k: 3.2, y: 34, t: 9, cans: 3, trash: 8, pickR: 1.8, d: [30, 45] },
+  // 들개 대장의 소집: 무리 하나를 다 쫓은 뒤 긴 울음, wait 초 뒤 n 마리가 반원(r m)으로 다가옴
+  howl: { n: 5, wait: [18, 30], r: 26 },
+  // 멧돼지 가족회의: 능선 빈터(구역 3 우두머리 빈터에서 off m)에 n 마리. calmR 안에 오면 흩어지고 귤 상자
+  meet: { n: 4, off: 14, calmR: 7 },
+  // 미친 개 주의: 구역 4 에 처음 들어선 곳 앞 ahead m 에 쓰러진 표지판. 세우면 뒤 back m 에서 광견병 들개
+  sign: { ahead: 9, r: 2.6, back: 14 },
+  // 불법 주차 단속: UFO 가 플레이어 앞 d m 에 내려와(높이 y) 쓰레기 trash 개를 쏟음
+  ufo: { k: 3.6, y: 14, d: 22, t: 7, trash: 14 },
+  // 엔딩 (사용자 결정 2026-11-21): 같은 방 모두가 함께 강제로 보는 시네마틱 len 초. 시작 lead 초 전 알림, 이미 본 사람은 skipAfter 초 뒤 건너뛰기
+  // 방(서버)은 하루 한 번까지만 모두에게 틀고, 그날 두 번째부터는 끝낸 사람만 (나머지는 방송 한 줄)
+  end: { len: 48, lead: 3, skipAfter: 10, ufos: 7 },
+};
+
 // 처음 고르는 기본 옷 색 (#155, src/lookcolors.js): 기본 모자·반팔·반바지·쓰레빠에만. 줄마다 [색, 이름] 8개, 0번이 지금 기본색
 // 포인트색은 고른 색 × dark(0.82). 저장은 save.look.colors = { hat, top, bottom, shoes } 색 번호. 0 이 아니면 장비 id 뒤에 ~번호 (멀티도 이 id 로 봄)
 export const LOOK_COLORS = {

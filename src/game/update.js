@@ -41,6 +41,7 @@ function updatePlayer(dt) {
   const p = player;
   p.poseT += dt;
   if (p.iframe > 0) { p.iframe -= dt; runner.root.visible = p.iframe <= 0 || COMBAT.iframe - p.iframe >= COMBAT.blinkT || Math.floor(p.iframe * 12) % 2 === 0; } // 받힌 뒤 깜빡임 (#148, 앞 blinkT 초만 #149)
+  if (state.cine) { marker.visible = false; p.target = null; p.speed = 0; placeRunner(dt); return; } // 엔딩 시네마틱 동안 조작 잠금 (#168)
   if (hp.isDown) { marker.visible = false; placeRunner(dt); return; } // 쓰러져 들것에 실려 가는 중 (#36)
   if (stream && stream.update(dt, p)) { marker.visible = false; placeRunner(dt); return; } // 개울에 빠져 건져 올려지는 중 (#31)
   if (p.cart) { tickCartRide(dt); return; } // 마차에 앉아 실려 가는 중 (#69)
@@ -289,6 +290,7 @@ function step(now) {
 
   if (cam.mode === 'free') { /* 디버그 */ }
   else if (cam.mode === 'follow') followCam(dt, false);
+  else if (cam.mode === 'cine') late.cineCam?.(dt); // 엔딩 (#168, game/ending.js)
   else if (cam.mode === 'title') titleCam(dt);
   else if (cam.mode === 'leap') { // LEAP 입어 보기 (#59): 골목 쪽 가까이에서(맞은편 가게에 안 묻히게). 폰은 아래 시트 위로 캐릭터가 오게 내려다봄
     const narrow = innerWidth <= 600, yaw = player.heading, look = player.pos.clone();
@@ -324,6 +326,7 @@ function step(now) {
 
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
+  late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
   tickDirector(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;

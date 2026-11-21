@@ -30,6 +30,7 @@ const FACTS = {
   zonesDone: () => Object.values(save.boss?.done || {}).filter((n) => n > 0).length,
   zone: () => J().maxZ || 0,
   night: () => ((sunState?.el ?? 30) < -4 ? 1 : 0),
+  babies: () => save.ach?.life?.['enemy-repel-piglet'] || 0, // #168 '엄마가 왔다' 문
 };
 
 export const director = createDirector({

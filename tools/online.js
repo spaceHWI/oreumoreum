@@ -147,6 +147,23 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(on && await A.p.evaluate((id) => { const o = window.__oreum; return !o.deerNet().rides.has(id) && o.life.deerById(id).state !== 'ridden'; }, id), '타는 중 끊기면 노루가 풀림');
     await A.ctx.close(); await b.close(); web.close(); return;
   }
+  // 엔딩 (#168): A 가 끝내면 방이 시작 시각을 정해 B 도 같은 시각에 같은 시네마틱. 같은 날 두 번째는 끝낸 사람(A)만
+  {
+    await A.p.evaluate(() => window.__oreum.story.play('end'));
+    const got = await until(B, () => !!window.__oreum.story.ending.state(), null, 15000);
+    const sa = await A.p.evaluate(() => window.__oreum.story.ending.state()), sb = await B.p.evaluate(() => window.__oreum.story.ending.state());
+    ok(got && sa && sb && sa.mine === true && !sb.mine, `엔딩: A 가 끝내면 B 화면에도 같이 (A ${JSON.stringify(sa)} · B ${JSON.stringify(sb)})`);
+    await until(A, () => window.__oreum.story.ending.state()?.cine === true, null, 15000);
+    const ua = await A.p.evaluate(() => window.__oreum.story.ending.state()?.u), ub = await B.p.evaluate(() => window.__oreum.story.ending.state()?.u);
+    ok(Number.isFinite(ua) && Number.isFinite(ub) && Math.abs(ua - ub) < 1.5, `엔딩: 같은 시각에 시작 (A ${ua}초 · B ${ub}초)`);
+    const c0 = await A.p.evaluate(() => window.__oreum.save.coins);
+    await A.p.evaluate(() => window.__oreum.story.ending.stop()); await B.p.evaluate(() => window.__oreum.story.ending.stop());
+    ok(await until(A, (c0) => window.__oreum.save.coins > c0 && window.__oreum.story.state().done.includes('end'), c0, 10000), '엔딩: 끝낸 A 만 보상·이야기 끝');
+    await A.p.evaluate(() => window.__oreum.story.play('end')); await wait(A.p, 3000);
+    const a2 = await A.p.evaluate(() => window.__oreum.story.ending.state()), b2 = await B.p.evaluate(() => window.__oreum.story.ending.state());
+    ok(!!a2 && !b2, `엔딩: 같은 날 두 번째는 끝낸 사람만 (A ${!!a2} · B ${!!b2})`);
+    await A.p.evaluate(() => window.__oreum.story.ending.stop());
+  }
   // 가짜 로그인 → 계정 사본으로 새로고침
   await A.p.evaluate(() => { window.__oreum.save.coins = 40; });
   await A.p.evaluate(() => { window.__old = 1; window.__oreum.online.fake('tester-' + Date.now()); }); // __old: 새로 고친 뒤의 페이지인지 가리려고
