@@ -34,6 +34,11 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
+  { // 지금 접속 (#186): 두 명이 들어오면 2 (로컬 서버는 STATS_OPEN 이라 로그인 없이 볼 수 있음)
+    let o = null; for (let i = 0; i < 20 && !(o && o.n >= 2); i++) { o = await fetch(SRV + '/admin/online', { headers: { Origin: 'http://127.0.0.1:5173' } }).then((r) => r.json()).catch(() => null); if (!(o && o.n >= 2)) await wait(A.p, 250); }
+    const ns = (o?.rooms || []).find((r) => r.map === 'namsongi');
+    ok(o && o.n === 2 && ns && ns.n === 2 && o.peak.n >= 2, `지금 접속 2명 (${JSON.stringify(o && { n: o.n, rooms: o.rooms, peak: o.peak.n })})`);
+  }
   { // 옷·닉네임은 바뀔 때만 보냄 (#115): A 가 보내는 것을 세고, 옷을 바꾸면 B 화면에 바로
     await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; window.__sent0 = performance.now(); });
     for (let k = 0; k < 6; k++) { await A.p.evaluate(() => { window.__oreum.player.pos.x += 0.5; }); await wait(A.p, 200); }

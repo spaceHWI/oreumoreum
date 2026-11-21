@@ -62,6 +62,8 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
+// 지금 접속 (#186): 어드민만. 숫자만 돌아옴 (총인원·방별·로그인/손님·오늘 최고)
+export const getOnline = ONLINE ? () => api('/admin/online') : null;
 // 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
 export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };

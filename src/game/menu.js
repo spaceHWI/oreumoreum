@@ -8,6 +8,7 @@ import { player } from './place.js';
 import { toast, topFit, updateStats, busy, closePanels, ach, openAch } from './hud.js';
 import { marker } from './input.js';
 import { initInbox, inboxCheck } from './inbox.js';
+import { initOnline } from './admonline.js';
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });
@@ -41,6 +42,7 @@ export function enableDev() {
   $('m-dev').hidden = false;
   if (state.debugReady) late.exposeDebug();
   if (ONLINE) initInbox(); // 받은 의견 (#96): 서버 어드민에게만
+  if (ONLINE) initOnline(); // 지금 접속 (#186): 서버 어드민에게만
   {
     const TK = 'oreumoreum.hwi.tod'; // 시간대 (이 화면에만, 새로 고쳐도 유지)
     const tv = $('adm-tv'), sl = $('adm-tod');

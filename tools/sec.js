@@ -295,6 +295,17 @@ async function startServers() {
     const U = await login('plain', 'user1'); const Bs = await login('plain', 'boss');
     ok(!U.admin && (await req('plain', '/me', { token: U.token })).j.admin === false && (await req('plain', '/feedback', { token: U.token })).status === 403, '다른 계정은 어드민 아님');
     ok(Bs.admin && (await req('plain', '/me', { token: Bs.token })).j.admin === true && (await req('plain', '/feedback', { token: Bs.token })).status === 200, 'ADMIN_SUBS 계정만 어드민');
+    // 지금 접속 (#186): 어드민만, 숫자만
+    ok((await req('plain', '/admin/online')).status === 403 && (await req('plain', '/admin/online', { token: U.token })).status === 403, '손님·보통 계정은 지금 접속 못 봄 (403)');
+    const onA = await sock('plain', 'oreum-namsongi-battle', { token: U.token, ch: 3 }), onB = await sock('plain', 'oreum-namsongi-battle', { ch: 3 });
+    await sleep(400);
+    const onl = await req('plain', '/admin/online', { token: Bs.token }), onTxt = JSON.stringify(onl.j || {});
+    const r3 = (onl.j?.rooms || []).find((r) => r.map === 'namsongi' && r.ch === 3);
+    ok(onl.status === 200 && r3 && r3.n === 2 && r3.login === 1 && onl.j.n >= 2 && onl.j.guest >= 1 && onl.j.peak?.n >= 2, `어드민은 지금 접속을 봄 (3번 방 ${r3?.n}명, 로그인 ${r3?.login})`);
+    ok(!/fake-|user1|boss|검사|"x"|"z"|ip|sub|nick|acct/i.test(onTxt), '지금 접속 응답에 이름·계정 번호·IP·좌표가 없음');
+    onA.close(); onB.close(); await sleep(400);
+    const onl2 = (await req('plain', '/admin/online', { token: Bs.token })).j;
+    ok(!(onl2?.rooms || []).some((r) => r.map === 'namsongi' && r.ch === 3) && onl2.peak.n >= 2, '나가면 방에서 빠지고 오늘 최고는 남음');
     const ug = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     const bg = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     ok(ug.j.fixed.includes('coins') && !bg.j.fixed.length, '귤 채우기는 어드민 계정만 서버가 받아 줌');

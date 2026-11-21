@@ -120,6 +120,12 @@ body.looking #pickmsg, body.hp-down #pickmsg { display: none !important; }
 .pop-menu .m-dev .adm-btns .btn.adm-danger:hover { background: rgba(214, 58, 46, .45); }
 .adm-note { margin: 0; font-size: 11px; line-height: 1.45; color: var(--ink-soft); opacity: .8; }
 #adm-tod { width: 100%; }
+/* 지금 접속 (#186): 한 줄, 누르면 방별·로그인/손님·구역별(내 방)·오늘 최고 */
+.pop-menu .m-dev .adm-onl { width: 100%; min-height: 30px; padding: 2px 0; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; }
+.adm-onl b { display: inline-flex; align-items: center; gap: 4px; } .adm-onl-car { font-style: normal; transition: transform .15s; } .adm-onl[aria-expanded="true"] .adm-onl-car { transform: rotate(180deg); }
+.adm-onl-d { display: grid; gap: 3px; font-size: 12px; } .adm-onl-d[hidden] { display: none; }
+.adm-onl-d .r { display: flex; justify-content: space-between; gap: 8px; } .adm-onl-d .r span { color: var(--ink-soft); } .adm-onl-d .r.me b { color: var(--acc); }
+.adm-onl-d .h { margin-top: 4px; font-size: 11px; font-weight: 800; color: var(--ink-soft); }
 .m-reset { display: flex; justify-content: center; width: 100%; }
 /* 멀티 서버 계정 (#7): 첫 화면 베타 안내·구글 로그인, 메뉴의 남은 날짜 */
 .acct-box { display: grid; justify-items: center; gap: 8px; margin-bottom: 10px; }
@@ -1527,6 +1533,8 @@ button.bag-card { cursor: pointer; }
   <div class="m-dev" id="m-dev" hidden>
     <button type="button" id="adm-toggle" class="adm-head" aria-expanded="false" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
     <div class="adm-body" id="adm-body" hidden>
+      <div class="adm-sec" id="adm-onl-sec" hidden><button type="button" class="adm-row adm-t adm-onl" id="adm-onl" aria-expanded="false" aria-controls="adm-onl-d"><span>지금 접속</span><b><span id="adm-onl-n">–</span>명 <i class="adm-onl-car" aria-hidden="true">▾</i></b></button>
+      <div class="adm-onl-d" id="adm-onl-d" hidden></div></div>
       <div class="adm-sec"><div class="adm-row adm-t"><span>오름 시간</span><b id="adm-tv">실제</b></div>
       <input type="range" id="adm-tod" min="0" max="24" step="0.25" value="12" aria-label="오름 시간대 (0~24시)">
       <div class="adm-row adm-btns"><button type="button" class="btn small" data-h="6.1" aria-pressed="false">해 뜰 때</button><button type="button" class="btn small" data-h="12" aria-pressed="false">낮</button><button type="button" class="btn small" data-h="18.3" aria-pressed="false">해 질 때</button><button type="button" class="btn small" data-h="23" aria-pressed="false">밤</button><button type="button" class="btn small" id="adm-real" aria-pressed="true">실제 시간으로</button></div></div>

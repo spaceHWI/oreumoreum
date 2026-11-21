@@ -258,5 +258,6 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },
     guards: () => guardList(now()), guardsDirty() { const d = guardsDirty; guardsDirty = false; return d; },
     get seen() { return roomSeen; }, stats: () => ({ n: peers.size, ...st }),
+    counts() { let login = 0; for (const p of peers.values()) if (p.acct) login++; return { n: peers.size, login }; }, // 지금 접속 (#186): 사람 수·로그인 수만
   };
 }

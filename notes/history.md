@@ -1238,3 +1238,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 꽁초: 더미가 아닌 낱개(흡연자 파일이 그림·주움). 주우면 `trash.addToBag('vinyl')` + 도감 'butt:0'(쓰레기 칸 끝, 아이콘 dexicons.js). 더미 수·구역 완료·치운 양(랭킹)에는 안 셈, 저장하지 않음(새로 고치면 사라짐)
 - 멀티: 투기꾼이 방으로 맞춰지지 않고 사람마다 따로 나오므로 흡연자도 그 길 그대로(보내는 것 없음). 귤 8은 서버 ① 작은 몫 안
 - 업적 뱃지 '금연 구역 지킴이'(b-nosmoke, smoker-repel 10번, 30귤). `tools/econ.js`: 흡연자 하루 귤(들머리 둘레에 있는 시간 25% 어림) 22 = 1일 벌이의 0.5%, --nosmoker 비교
+
+## #186 어드민: 지금 접속 보기
+- 서버: 방(room.js)이 들어올 때·나갈 때·1분마다(`NET.onlineEveryMs`) 사람 수·로그인 수만 계정 객체에 알림(`Accounts.roomCount`, 표 `onl`). 3분(`onlineStaleMs`) 소식 없는 방은 뺌. 방 이름은 index.js 가 `x-room` 헤더('oreum-<맵>-battle#<채널>')로 붙임(꾸민 값은 지움), 부하 재기 방은 세지 않음
+- 오늘 최고 동시 접속: 한국 날마다 값 하나(표 `onlpk`, 30일 보관). #121 이 들어오면 그쪽 표에 합침
+- `GET /admin/online`: `/feedback` 과 같은 어드민 확인(ADMIN_SUBS, 로컬은 STATS_OPEN). 돌려주는 것은 숫자만 `{ n, login, guest, rooms: [{ map, ch, n, login }], peak: { n, at } }`
+- 구역별 인원은 서버가 지형(zoneAt 은 three 를 씀)을 모르므로 어드민 화면이 같은 방 사람 자리(`net.peersById`)로 셈 → '내 방' 만. 좌표는 서버가 내보내지 않음
+- 클라이언트 `src/game/admonline.js`. 서버 없음(혼자 하기)이면 줄을 숨김. #157(쉬는 사람)은 아직 없어 모두 셈: 들어오면 `roomcore counts()` 에서 빼면 됨

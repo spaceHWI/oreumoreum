@@ -107,7 +107,7 @@ export default {
         if (!loadtest && (await limited(env, 'RL_WS', ipk, NET.wsPerMin))) return json({ error: 'too many' }, 429);
         const s = await who();
         const stub = env.ROOM.get(env.ROOM.idFromName(room + '#' + ch));
-        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-cap', 'x-ipk', 'x-proto', 'authorization']) h.delete(k); h.set('x-ipk', ipk); // 꾸민 x-* 헤더는 지움
+        const h = new Headers(req.headers); for (const k of ['x-acct', 'x-cap', 'x-ipk', 'x-proto', 'x-room', 'authorization']) h.delete(k); h.set('x-ipk', ipk); h.set('x-room', room + '#' + ch); // 꾸민 x-* 헤더는 지움
         if (s) h.set('x-acct', s.sub);
         if (req.headers.get('Sec-WebSocket-Protocol')) h.set('x-proto', '1');
         if (loadtest) h.set('x-cap', '500'); // 부하 재기: 정원 없이
@@ -183,6 +183,11 @@ export default {
         if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
         const before = Math.max(0, Math.floor(Number(url.searchParams.get('before'))) || 0); // 이어 받기: 이 id 보다 오래된 50개 (#96)
         return json(await accounts(env).feedbackList(50, before));
+      }
+      if (url.pathname === '/admin/online' && req.method === 'GET') { // 지금 접속 (#186): 어드민(또는 로컬 확인)만. 숫자만 (이름·계정 번호·IP·좌표 없음)
+        const s = await who();
+        if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
+        return json(await accounts(env).online());
       }
       return json({ error: 'not found' }, 404);
     } catch (e) {
