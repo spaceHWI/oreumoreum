@@ -295,8 +295,8 @@ async function main() {
   }
   // 들판 떼 (#173): 구역 권장 장비(도구·배낭·신발·무기 = 구역 번호 단계)로 들판 10분 귤 vs 길가 10분 귤
   if (has('--swarm') || !FLOW_ONLY) {
-    const rows = ZONES.map((Z, i) => { const t = Z.id, e = { ...e0, tool: Math.min(t, TOOLS.length), bag: Math.min(t, BAGS.length), shoes: Math.min(t, SHOES.length) }, road = zones[i].n * gOf(zones[i], e) / clearT(zones[i], e) * 600, fld = swarmRate(t, Math.min(t, WEAPONS.length)) * 600; return { 구역: t, '길가 10분': Math.round(road), '들판 10분': Math.round(fld), 배: +(fld / road).toFixed(2), ok: fld <= road * SWARM.econ.max }; });
-    console.log('\n들판 떼 (#173): 권장 장비로 10분 귤 (들판 ≤ 길가 × ' + SWARM.econ.max + ')'); console.table(rows);
+    const rows = ZONES.map((Z, i) => { const t = Z.id, e = { ...e0, tool: Math.min(t, TOOLS.length), bag: Math.min(t, BAGS.length), shoes: Math.min(t, SHOES.length) }, road = zones[i].n * gOf(zones[i], e) / clearT(zones[i], e) * 600, fld = swarmRate(t, Math.min(t, WEAPONS.length)) * 600; return { 구역: t, '길가 10분': Math.round(road), '들판 10분': Math.round(fld), 배: +(fld / road).toFixed(2), '들판 초당': +(fld / 600).toFixed(1), ok: fld <= road * SWARM.econ.max && fld / 600 <= B.NET.swarmPerSec }; });
+    console.log('\n들판 떼 (#173): 권장 장비로 10분 귤 (들판 ≤ 길가 × ' + SWARM.econ.max + ', 초당 ≤ 서버 ③ NET.swarmPerSec ' + B.NET.swarmPerSec + ')'); console.table(rows);
     verdict.push(`들판 떼 10분 귤: ${rows.every((r) => r.ok) ? '통과' : '넘음'} (${rows.map((r) => r.구역 + ':' + r.배).join(' ')})`);
     const lastOf = (on) => { SW_ON = on; const rs = [1, 7, 42, 99, 123].map((s) => seedRun('battle', 0.25, s)).map((x) => x.last).sort((a, b) => a - b); SW_ON = !has('--noswarm'); return rs[2]; };
     const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;

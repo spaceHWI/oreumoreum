@@ -16,7 +16,7 @@ const KIND = { 1: 'piglet', 2: 'dog', 3: 'boar', 4: 'rabid', 5: 'alien' }, N = 3
   await p.reload(); await p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 120000 });
   await p.click('#enter', { timeout: 20000 }).catch(() => {}); await p.waitForTimeout(1500);
   await p.evaluate(() => {
-    const o = window.__oreum; o.pace.pacing.test.first.done = true; o.pace.pacing.test.first.bloomed = true; o.setTod(13); o.setWeather('clear');
+    const o = window.__oreum; o.swarm?.disable(true); o.pace.pacing.test.first.done = true; o.pace.pacing.test.first.bloomed = true; o.setTod(13); o.setWeather('clear');
     // 셈: 쏜 탄(귤·화살·총알), 적 기운이 준 횟수, 플레이어가 잃은 기운
     const L = o.life, F = o.weapon.fx, C = (window.__c = { shots: 0, hits: 0, lost: 0, down: 0 });
     for (const [obj, k] of [[L, 'throwTangerine'], [L, 'shootArrow'], [F, 'shoot'], [F, 'lob']]) { const f = obj[k]; if (f) obj[k] = function (...a) { if (k !== 'throwTangerine' || !a[3]?.drop) C.shots++; return f.apply(this, a); }; }

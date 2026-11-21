@@ -9,7 +9,7 @@
 // - 초보 보호: 장비 점수 < 구역 권장이면 물결 시간이 slowNew 배로. 기운 lowHp 아래면 enemies.hesitate (#148). 우두머리(#139)·이야기 이벤트(#168, late.storyOn)면 멈춤
 // - 문(#176): JOURNEY 'field' (퀘스트 '들판 탐사' 뒤 = FACTS.fieldQuest). 열리기 전엔 물결 1단계까지
 // - 멀티: 떼는 사람마다 따로(지금 보통 적과 같은 길: 적은 방으로 보내지 않음). 남의 떼는 보이지 않고, 그 사람이 던지는 귤만 보임 — 적 수가 많아 보내는 양이 늘지 않게
-// 저장 save.swarm = { auto: 1|0, best: { 구역: { k 쫓아낸 수, t 버틴 초, w 최고 물결 } } }
+// 저장 save.swarm = { auto: 1|0, best: { 구역: { k 쫓아낸 수, t 버틴 초, w 최고 물결 } }, earn: 떼로 번 귤 누적(서버 validate.js ③ 이 늘어난 몫을 시간당 상한까지 받아 줌), seen }
 // (파일 순서는 src/modules.js: boss 뒤. update.js 가 late.tickSwarm 을 부름)
 import * as THREE from 'three';
 import { SWARM, ENEMIES, BOAR, WEAPONS, ZONES } from '../balance.js';
@@ -48,9 +48,9 @@ const doorOpen = () => director.isOpen('field');
 const zoneOf = (x, z) => (trash ? trash.zoneAt(x, z) || 0 : 0);
 const distTrail = (x, z) => trash.trail.dist(x, z, S.offD + 4);
 
-let whyNot = '';
+let whyNot = '', testOff = false; // testOff: 확인 도구(tools/fight.js 등)가 떼 없이 잴 때
 function canField() {
-  whyNot = !trash || !state.sessionOn ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() ? 'boss' : late.storyOn?.() ? 'story' : '';
+  whyNot = !trash || !state.sessionOn || testOff ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() ? 'boss' : late.storyOn?.() ? 'story' : '';
   if (whyNot) return false;
   const z = zoneOf(player.pos.x, player.pos.z);
   whyNot = !z ? 'zone0' : bloom?.isBloomed(z) ? 'bloomed' : '';
@@ -143,7 +143,7 @@ function tickWaves(dt) {
 }
 function chest(p) {
   const g = S.leader.chest[run.zone] || 0;
-  if (g) life.scatterTangerines(p.setY(p.y + 0.8), g, 12);
+  if (g) { life.scatterTangerines(p.setY(p.y + 0.8), g, 12); earn(g); }
   run.gyul += g; toast(SWARM_TEXT.chest, 3); late.sound?.coin?.();
   late.swarmLoot?.(run.zone, p); // 전리품·재료 (#140)
 }
@@ -154,7 +154,7 @@ function chest(p) {
   life.hooks.enemyRepel = (kind, pos, def) => {
     prev?.(kind, pos, def); // 업적·연출 감독 (떼 적의 reward.gyul 은 0: 귤은 아래에서 알갱이 2개까지로 — 떼는 잦아 그리기 수를 늘리지 않게)
     if (!def.swarm) return;
-    if (def.sg) life.scatterTangerines(pos, def.sg, 2);
+    if (def.sg) { life.scatterTangerines(pos, def.sg, 2); earn(def.sg); }
     if (!run) return;
     run.kills++; run.gyul += def.sg || 0;
     const n = (S.shard[def.zone] || 1) * (def.swarm === 'mob' ? 1 : 3);
@@ -189,9 +189,10 @@ function tickShards(dt) {
 }
 const _t = new THREE.Vector3();
 let shardAcc = 0;
+const earn = (n) => { SV.earn = (Number(SV.earn) || 0) + n; }; // 서버 ③ 몫 (validate.js): 떼로 번 귤 누적
 function gotShard() {
   late.xpGain?.(1); // 경험치 (#159)
-  if (++shardAcc >= S.shardN) { shardAcc -= S.shardN; save.coins += 1; if (run) run.gyul += 1; updateStats(); saveT = saveT > 0 ? saveT : 2; } // 판이 끝난 뒤 주운 조각도 귤로
+  if (++shardAcc >= S.shardN) { shardAcc -= S.shardN; save.coins += 1; earn(1); if (run) run.gyul += 1; updateStats(); saveT = saveT > 0 ? saveT : 2; } // 판이 끝난 뒤 주운 조각도 귤로
   if (!run) return;
   run.shards++;
   if (run.shards % 3 === 0) late.sound?.coin?.();
@@ -244,7 +245,7 @@ function nearest(R) {
   return b;
 }
 const aimOf = new Map(); // 적 → 유도 대상 (homing.js steer 가 읽는 꼴)
-const aimT = (e) => { let a = aimOf.get(e); if (!a) { a = { pos: e.pos, h: Math.min(e.h * 0.5, 1.2), ok: () => live(e) && E.list.includes(e) }; aimOf.set(e, a); } return a; };
+const aimT = (e) => { let a = aimOf.get(e); if (!a) { if (aimOf.size > 80) for (const k of aimOf.keys()) if (!E.list.includes(k)) aimOf.delete(k); a = { pos: e.pos, h: Math.min(e.h * 0.5, 1.2), ok: () => live(e) && E.list.includes(e) }; aimOf.set(e, a); } return a; };
 function fire(dt) {
   if ((run.shotT -= dt) > 0) return;
   if (!SV.auto || holding() || (busy() && player.pose !== 'crouch') || player.knock || player.riding) return; // 줍는 동안(crouch)에도 지켜 줌
@@ -281,6 +282,7 @@ function tickShots(dt) {
     if (s.home && s.t < 1.2) steer(s.v, s.p, s.home, dt, Math.PI * 1.5);
     s.p.addScaledVector(s.v, dt);
     let done = s.life <= 0 || s.p.y < height(s.p.x, s.p.z) - 0.1;
+    if (done && s.big && s.life > 0) life.hitArea(s.p, s.r, s.dmg); // 폭탄은 땅에 닿아도 터짐
     if (!done) for (const e of E.list) {
       if (!live(e) || s.hit.has(e)) continue;
       const R = BOAR.hitR * e.def.size * 0.9 + 0.15;
@@ -369,7 +371,7 @@ st.textContent = `
 #swarm-pick .sp-card b { font-size: 16px; } #swarm-pick .sp-card small { font-size: 12px; color: var(--ink-soft, #cfc7bb); font-weight: 600; line-height: 1.3; } #swarm-pick .sp-card i { font-style: normal; color: var(--gyul, #ff9a1f); letter-spacing: 2px; }
 #swarm-pick kbd { position: absolute; top: 6px; right: 8px; font-size: 11px; opacity: .55; font-family: inherit; }
 @media (pointer: coarse) { #swarm-pick kbd { display: none; } }
-@media (max-width: 600px) { #swarm-bar { left: calc(var(--safe-l, 0px) + 12px); transform: none; font-size: 13px; gap: 7px; } #swarm-pick .sp-row { flex-direction: column; } #swarm-pick .sp-card { flex-direction: row; justify-content: space-between; padding: 12px; text-align: left; } }
+@media (max-width: 600px) { #swarm-bar { left: calc(var(--safe-l, 0px) + 12px); top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 54px); transform: none; font-size: 13px; gap: 7px; } #swarm-pick .sp-row { flex-direction: column; } #swarm-pick .sp-card { flex-direction: row; justify-content: space-between; padding: 12px; text-align: left; } }
 `;
 document.head.appendChild(st);
 const bar = document.createElement('div'); bar.id = 'swarm-bar'; bar.className = 'panel'; bar.hidden = true; bar.setAttribute('role', 'status');
@@ -460,9 +462,10 @@ late.swarm = {
     if (run) endRun('stop'); onField = true; chkT = 0.2; startRun(zone); return { x: +spot[0].toFixed(1), z: +spot[1].toFixed(1) };
   },
   stop() { if (run) endRun('back'); },
+  disable(v = true) { testOff = !!v; if (v && run) endRun('stop:test'); },
   t(v) { if (run) run.t = v; },
   aug(id) { if (run && AUG[id]) { run.aug[id] = Math.min(AUG[id].v.length, (run.aug[id] || 0) + 1); return run.aug[id]; } return 0; },
-  pick: (i) => choose(i), picking: () => picking && picking.map((a) => a.id), shards: () => shards.length, shardsAt: () => shards.map((q) => [q.p.x, q.p.z]),
+  pick: (i) => choose(i), offer: () => queuePick(), picking: () => picking && picking.map((a) => a.id), shards: () => shards.length, shardsAt: () => shards.map((q) => [q.p.x, q.p.z]),
   auto: (v) => { if (v != null) { SV.auto = v ? 1 : 0; persist(); } return SV.auto; },
   state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, nextAug: run.nextAug, aug: { ...run.aug }, leader: !!run.leader, onField },
   best: () => ({ ...SV.best }), get cap() { return CAP; }, setCap(n) { CAP = n; }, // tools/swarm.js: 헤드리스는 저사양이라 PC 상한으로 바꿔 잼

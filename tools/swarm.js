@@ -26,10 +26,10 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
       Object.assign(o.save.equip, { tool: zn, bag: zn, shoes: zn }); o.save.equip.weapon = Math.max(1, zn); o.weapon.use(zn); o.save.coins = 3000; o.save.bowAmmo = 0; o.save.ammo = { gun: 0, mg: 0, laser: 0 };
       for (const w of wear) { o.clothes.give(w.id); o.clothes.wear(w.slot, w.id); }
       o.player.knock = null; o.hp.set(o.hp.max);
-      const at = o.swarm.start(zn); if (!at) return false;
+      const at = o.swarm.start(zn); if (!at) return false; window.__zn = zn;
       o.swarm.speed(SPEED); o.swarm.setCap(CAP);
       const C = (window.__c = { lost: 0, down: 0, last: o.hp.hp, t0: o.weapon.t(), coins0: o.save.coins, max: o.hp.max, peak: 0, augs: 0, leader: 0 });
-      const loop = () => { const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s) { C.s = s; C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; } requestAnimationFrame(loop); };
+      const loop = () => { const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s && s.zone === window.__zn) { C.s = s; C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; } requestAnimationFrame(loop); };
       requestAnimationFrame(loop); return true;
     }, { zn, wear, SPEED, CAP });
     if (!ok) { console.log('구역', zn, '들판 자리를 못 찾음'); continue; }
@@ -46,7 +46,7 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
             sc -= Math.abs(Math.atan2(Math.sin(a - P.heading), Math.cos(a - P.heading))) * 0.4; sc += Math.min(30, tr.dist(x, z, 30)) * 0.15; for (const [qx, qz] of o.swarm.shardsAt()) sc += 4 / Math.max(2, Math.hypot(qx - x, qz - z)); if (sc > bs) { bs = sc; best = a; } }
           P.heading = best;
         }
-        return { t: o.weapon.t() - window.__c.t0, on: !!o.swarm.state(), down: window.__c.down };
+        const st = o.swarm.state(); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down };
       }, { STILL });
       t = r.t; if (t >= SEC || !r.on || r.down) break;
       await p.waitForTimeout(120);
