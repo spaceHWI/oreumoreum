@@ -16,7 +16,12 @@ export const HIPS = [[0.265, 0.152, 0.122, -0.045], [0.29, 0.16, 0.135, -0.056],
 export const ARM = { y: 0.507, z: 0.04 }; // 팔 중심선
 export const LEG = { x: 0.098, z: 0.035 }; // 다리 중심
 // 몸 높이 (#177): 가랑이(몸통 아래 끝)·골반 관절(다리 뼈 머리, runner 의 hipY)·허벅지/정강이 나눔(바지 덮기 경계, 반바지 끝단보다 위)
-export const BODY = { crotch: 0.265, hipY: 0.34, knee: 0.22 };
+// leg (#191): 다리(가랑이 아래) 길이 = 키의 몇 할. 이 한 값만 바꾸면 됨 (#177 은 0.27, 그 전은 0.12)
+// 이 파일·clothes2·basebody 의 높이 값은 모두 #177 설계(다리 27%) 좌표 그대로 두고, 몸과 휘는 옷을 만든 뒤 bodyY 로 세로만 옮김
+export const BODY = { leg: 0.2, crotch: 0.265, hipY: 0.34, knee: 0.22 };
+// 설계 높이 → 실제 높이: 발(FOOT 아래)·가슴 위(WAIST 위, 팔이 붙는 곳)는 그대로, 다리는 줄이고 몸통(가랑이~WAIST)은 고르게 늘려 메움
+const FOOT = 0.085, WAIST = 0.44, CROTCH = 0.98 * BODY.leg;
+export const bodyY = (y) => y <= FOOT ? y : y <= BODY.crotch ? FOOT + (y - FOOT) * (CROTCH - FOOT) / (BODY.crotch - FOOT) : y < WAIST ? CROTCH + (y - BODY.crotch) * (WAIST - CROTCH) / (WAIST - BODY.crotch) : y;
 // 다리 단면 [y, 반지름] (위 → 아래). 양말·긴바지가 이 표를 따라 감쌈
 export const LEG_R = [[0.36, 0.074], [0.32, 0.073], [0.28, 0.071], [0.24, 0.067], [0.2, 0.063], [0.165, 0.058], [0.13, 0.054], [0.095, 0.051], [0.065, 0.049], [0.045, 0.047]];
 export const legR = (y) => { const T = LEG_R; if (y >= T[0][0]) return T[0][1]; for (let i = 1; i < T.length; i++) if (y >= T[i][0]) { const a = T[i - 1], b = T[i], k = (a[0] - y) / (a[0] - b[0]); return a[1] + (b[1] - a[1]) * k; } return T[T.length - 1][1]; };
@@ -224,7 +229,8 @@ export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, sock
 // 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
 export const slippers = (mat, sole = '#3c8fd0', strap = '#2f6db5') => { // 색은 처음 고르기(#155)에서 바꿀 수 있음
   const S = mat('sole', sole), B = mat('strap', strap);
-  return G(both((s) => [at(new RoundedBoxGeometry(0.13, 0.016, 0.235, 2, 0.007), S, s * 0.104, 0.008, 0.08), at(new RoundedBoxGeometry(0.128, 0.026, 0.05, 2, 0.011), B, s * 0.104, 0.062, 0.115)]));
+  // 발(basebody foot: 가운데 y 0.042, 반지름 0.058·0.042·0.1)보다 크게: 밑창은 발바닥 둘레로 비어져 나오고, 끈은 발등(끈 자리 위 0.082)을 넘어 덮음 (#191)
+  return G(both((s) => [at(new RoundedBoxGeometry(0.14, 0.02, 0.245, 2, 0.008), S, s * 0.103, 0.01, 0.08), at(new RoundedBoxGeometry(0.136, 0.036, 0.056, 2, 0.014), B, s * 0.103, 0.071, 0.118)]));
 };
 // 옷 하나 → ACCESSORIES 항목. look 을 주면 그 모양 값으로 (처음 고르는 기본 옷 색 #155)
 export function clothAcc(c, look = c.look) {
