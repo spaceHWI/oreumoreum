@@ -6,25 +6,25 @@
 // - 피부색은 재질 색 하나(runner), 발은 양말 색을 따로 받음(cFoot)
 // - 체형(남·여)은 bodyWarp 로 허리·골반 폭만 조금 다르게. 옷(휘는 것)도 같은 함수를 거쳐 몸에 맞음
 import * as THREE from 'three';
-import { TORSO, HIPS, ARM, LEG, prof, pw } from './clothes.js';
+import { TORSO, HIPS, ARM, LEG, LEG_R, BODY, prof, pw } from './clothes.js';
 
 export const REGION = { neck: 0, chest: 1, waist: 2, pelvis: 3, upperarm: 4, forearm: 5, hand: 6, thigh: 7, shin: 8, foot: 9 };
 export const REGION_N = 10;
 const BODY_IN = 0.014; // 옷 안쪽으로 들어간 정도
 const SE = 2.6;
-// 몸통 단면 [y, 반폭, 앞 z, 뒤 z]: 아래는 골반(HIPS), 위는 가슴(TORSO), 0.2~0.3 에서 섞고 목은 가늘게 이어 머리 안까지
+// 몸통 단면 [y, 반폭, 앞 z, 뒤 z]: 아래는 골반(HIPS), 위는 가슴(TORSO), 0.35~0.4 에서 섞고 목은 가늘게 이어 머리 안까지
 function trunkProf(y) {
   if (y > 0.615) { const k = Math.min(1, (y - 0.615) / 0.03); const a = prof(TORSO, 0.615); return [y, a[1] + (0.07 - a[1]) * k, a[2] + (0.09 - a[2]) * k, a[3] + (-0.04 - a[3]) * k]; }
-  const h = prof(HIPS, y), t = prof(TORSO, y), k = Math.min(1, Math.max(0, (y - 0.2) / 0.1)), s = k * k * (3 - 2 * k);
+  const h = prof(HIPS, y), t = prof(TORSO, y), k = Math.min(1, Math.max(0, (y - 0.35) / 0.05)), s = k * k * (3 - 2 * k);
   return h.map((v, i) => v + (t[i] - v) * s);
 }
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-// 체형: 여(f)는 허리를 조금 좁히고 골반을 조금 넓힘. 팔(T포즈 y 0.45 위)·발(0.1 아래)은 그대로
+// 체형: 여(f)는 허리를 조금 좁히고 골반을 조금 넓힘. 팔(T포즈 y 0.445 위)·정강이 아래(0.24 아래)는 그대로
 export function bodyWarp(pos, sex) {
   if (sex !== 'f') return pos;
   for (let i = 0; i < pos.length; i += 3) {
-    const y = pos[i + 1]; if (y < 0.1 || y > 0.46) continue;
-    const hip = smooth(0.1, 0.17, y) * (1 - smooth(0.22, 0.3, y)), waist = smooth(0.27, 0.34, y) * (1 - smooth(0.4, 0.46, y));
+    const y = pos[i + 1]; if (y < 0.24 || y > 0.445) continue;
+    const hip = smooth(0.24, 0.3, y) * (1 - smooth(0.34, 0.39, y)), waist = smooth(0.37, 0.405, y) * (1 - smooth(0.425, 0.445, y));
     pos[i] *= 1 + 0.045 * hip - 0.05 * waist;
   }
   return pos;
@@ -56,12 +56,12 @@ function finish(pos, idx, regionOf) {
 }
 // 몸통: 아래(가랑이)는 막고 위(목)는 머리 안에서 막음
 function trunk() {
-  const n = 22, ys = [0.115, 0.13, 0.15, 0.175, 0.2, 0.23, 0.26, 0.3, 0.34, 0.38, 0.42, 0.46, 0.5, 0.53, 0.555, 0.575, 0.595, 0.615, 0.635, 0.66];
+  const n = 22, c0 = BODY.crotch, ys = [c0 + 0.007, c0 + 0.017, c0 + 0.032, 0.315, 0.34, 0.365, 0.39, 0.415, 0.44, 0.47, 0.5, 0.53, 0.555, 0.575, 0.595, 0.615, 0.635, 0.66];
   const rings = ys.map((y) => { const [, hw0, zf0, zb0] = trunkProf(y), hw = hw0 - BODY_IN, zf = zf0 - BODY_IN, zb = zb0 + BODY_IN, ring = [];
     for (let c = 0; c < n; c++) { const th = (c / n) * Math.PI * 2, cx = Math.cos(th), sz = Math.sin(th); ring.push([hw * pw(cx, SE), y, sz >= 0 ? zf * pw(sz, SE) : zb * pw(-sz, SE)]); }
     return ring; });
   const zc = (y) => { const p = trunkProf(y); return (p[2] + p[3]) / 2; };
-  return piece(rings, [[0, 0.105, zc(0.115)], [0, -1, 0]], [[0, 0.665, zc(0.66)], [0, 1, 0]], (x, y) => (y > 0.57 ? REGION.neck : y > 0.3 ? REGION.chest : y > 0.2 ? REGION.waist : REGION.pelvis),
+  return piece(rings, [[0, c0 - 0.004, zc(c0 + 0.007)], [0, -1, 0]], [[0, 0.665, zc(0.66)], [0, 1, 0]], (x, y) => (y > 0.57 ? REGION.neck : y > 0.4 ? REGION.chest : y > 0.33 ? REGION.waist : REGION.pelvis),
     (m) => new THREE.Vector3(m.x, 0, m.z - zc(m.y)));
 }
 // 팔: x 축 관. s = +1 왼쪽(+x), -1 오른쪽. [x, 반지름]
@@ -71,12 +71,11 @@ function arm(s) {
   const rings = ARM_R.map(([x, r]) => { const ring = []; for (let c = 0; c < n; c++) { const th = (c / n) * Math.PI * 2; ring.push([s * x, ARM.y + r * Math.cos(th), ARM.z + r * ez * Math.sin(th)]); } return ring; });
   return piece(rings, null, [[s * 0.4, ARM.y, ARM.z], [s, 0, 0]], (x) => (Math.abs(x) > 0.272 ? REGION.forearm : REGION.upperarm), (m) => new THREE.Vector3(0, m.y - ARM.y, m.z - ARM.z));
 }
-// 다리: y 축 관 (위 → 아래). [y, 반지름]
-const LEG_R = [[0.25, 0.074], [0.215, 0.073], [0.18, 0.07], [0.15, 0.066], [0.118, 0.059], [0.09, 0.053], [0.065, 0.049], [0.045, 0.047]];
+// 다리: y 축 관 (위 → 아래). 단면은 clothes.js LEG_R
 function leg(s) {
   const n = 14, ez = 1.06, cx = s * LEG.x;
   const rings = LEG_R.map(([y, r]) => { const ring = []; for (let c = 0; c < n; c++) { const th = (c / n) * Math.PI * 2; ring.push([cx + r * Math.cos(th), y, LEG.z + r * ez * Math.sin(th)]); } return ring; });
-  return piece(rings, null, [[cx, 0.035, LEG.z], [0, -1, 0]], (x, y) => (y > 0.117 ? REGION.thigh : REGION.shin), (m) => new THREE.Vector3(m.x - cx, 0, m.z - LEG.z));
+  return piece(rings, null, [[cx, 0.035, LEG.z], [0, -1, 0]], (x, y) => (y > BODY.knee ? REGION.thigh : REGION.shin), (m) => new THREE.Vector3(m.x - cx, 0, m.z - LEG.z));
 }
 // 둥근 덩어리(손·발): 늘린 구
 function blob(c, r, region, ws = 14, hs = 10) {

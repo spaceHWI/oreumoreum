@@ -9,10 +9,17 @@ import { CLOTHES } from './balance.js';
 
 const SE = 2.6; // 몸통 단면 모양 (2 = 타원, 클수록 네모에 가까움)
 // 몸통 단면: [y, 반폭, 앞 z, 뒤 z]
-export const TORSO = [[0.17, 0.188, 0.172, -0.085], [0.23, 0.2, 0.19, -0.11], [0.3, 0.205, 0.2, -0.125], [0.38, 0.203, 0.195, -0.128], [0.46, 0.197, 0.185, -0.128], [0.52, 0.188, 0.17, -0.12], [0.56, 0.165, 0.15, -0.1], [0.59, 0.12, 0.125, -0.075], [0.615, 0.085, 0.1, -0.05]];
-export const HIPS = [[0.12, 0.168, 0.138, -0.052], [0.16, 0.176, 0.152, -0.062], [0.22, 0.18, 0.16, -0.072], [0.3, 0.178, 0.165, -0.085]];
+// #177 체형: 다리(가랑이 아래)를 키의 약 27%로 늘리고 그만큼 배·골반을 줄임. 어깨 위(팔·목·머리)와 발은 그대로
+// 몸통은 어깨(0.52) 반폭 0.185 > 허리(0.42) 0.171 < 골반 0.166 + 다리. 티셔츠(TORSO)가 바지(HIPS) 바깥에 오게 겹치는 곳(0.33~0.4)은 TORSO 가 조금 넓음
+export const TORSO = [[0.33, 0.174, 0.158, -0.08], [0.38, 0.174, 0.162, -0.092], [0.42, 0.171, 0.162, -0.098], [0.47, 0.18, 0.165, -0.105], [0.52, 0.185, 0.16, -0.108], [0.56, 0.163, 0.142, -0.093], [0.59, 0.12, 0.12, -0.072], [0.615, 0.085, 0.1, -0.05]];
+export const HIPS = [[0.265, 0.152, 0.122, -0.045], [0.29, 0.16, 0.135, -0.056], [0.33, 0.165, 0.143, -0.066], [0.4, 0.166, 0.152, -0.085]];
 export const ARM = { y: 0.507, z: 0.04 }; // 팔 중심선
 export const LEG = { x: 0.098, z: 0.035 }; // 다리 중심
+// 몸 높이 (#177): 가랑이(몸통 아래 끝)·골반 관절(다리 뼈 머리, runner 의 hipY)·허벅지/정강이 나눔(바지 덮기 경계, 반바지 끝단보다 위)
+export const BODY = { crotch: 0.265, hipY: 0.34, knee: 0.22 };
+// 다리 단면 [y, 반지름] (위 → 아래). 양말·긴바지가 이 표를 따라 감쌈
+export const LEG_R = [[0.36, 0.074], [0.32, 0.073], [0.28, 0.071], [0.24, 0.067], [0.2, 0.063], [0.165, 0.058], [0.13, 0.054], [0.095, 0.051], [0.065, 0.049], [0.045, 0.047]];
+export const legR = (y) => { const T = LEG_R; if (y >= T[0][0]) return T[0][1]; for (let i = 1; i < T.length; i++) if (y >= T[i][0]) { const a = T[i - 1], b = T[i], k = (a[0] - y) / (a[0] - b[0]); return a[1] + (b[1] - a[1]) * k; } return T[T.length - 1][1]; };
 export const pw = (v) => Math.sign(v) * Math.pow(Math.abs(v), 2 / SE);
 export const prof = (T, y) => { if (y <= T[0][0]) return T[0]; for (let i = 1; i < T.length; i++) if (y <= T[i][0]) { const a = T[i - 1], b = T[i], k = (y - a[0]) / (b[0] - a[0]); return a.map((v, j) => v + (b[j] - v) * k); } return T[T.length - 1]; };
 export const frontZ = (y, pad = 0) => prof(TORSO, y)[2] + pad;
@@ -71,33 +78,33 @@ const band = (m, y0, y1, pad, open = 0) => mesh(shell(TORSO, y0, y1, pad, { rows
 
 // ---- 티셔츠 ----
 function tee(mat, L) {
-  const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(TORSO, 0.205, 0.615, 0), M)];
+  const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(TORSO, 0.345, 0.615, 0), M)];
   if (L.long) out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.37, 0.072, 0.058, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.36, s * 0.39, 0.061, 0.059, [ARM.y, ARM.z], { rows: 1, capHi: true }), A)));
   else out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.29, 0.072, 0.066, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.275, s * 0.295, 0.069, 0.069, [ARM.y, ARM.z], { rows: 1 }), A)));
-  for (let i = 0; i < (L.stripes || 0); i++) { const y = 0.27 + i * 0.075; out.push(band(A, y, y + 0.032, 0.003)); }
+  for (let i = 0; i < (L.stripes || 0); i++) { const y = 0.375 + i * 0.055; out.push(band(A, y, y + 0.026, 0.003)); }
   if (L.panel) out.push(band(A, 0.5, 0.6, 0.004), ...both((s) => mesh(tube('x', s * 0.15, s * 0.23, 0.075, 0.073, [ARM.y, ARM.z], { rows: 1 }), A)));
   const col = new THREE.Mesh(new THREE.TorusGeometry(0.093, 0.016, 6, 18), L.collar ? mat('collar', L.collar) : A); col.rotation.x = Math.PI / 2; col.position.set(0, 0.6, 0.025); col.scale.set(1, 1.1, 1); out.push(col);
   return G(out);
 }
 // ---- 바지 ----
 function pants(mat, L) {
-  const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(HIPS, 0.125, 0.3, 0, { rows: 4, capLo: true }), M)];
+  const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(HIPS, 0.262, 0.4, 0, { rows: 4, capLo: true }), M)];
   if (L.kind === 'shorts') {
-    out.push(...both((s) => mesh(tube('y', 0.105, 0.2, 0.084, 0.082, [s * LEG.x, LEG.z]), M)), ...both((s) => mesh(tube('y', 0.1, 0.12, 0.086, 0.085, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
+    out.push(...both((s) => mesh(tube('y', 0.2, 0.34, 0.082, 0.085, [s * LEG.x, LEG.z]), M)), ...both((s) => mesh(tube('y', 0.195, 0.215, 0.086, 0.086, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
   } else {
-    out.push(...both((s) => mesh(tube('y', 0.035, 0.2, 0.066, 0.084, [s * LEG.x, LEG.z], { rows: 4 }), M)), ...both((s) => mesh(tube('y', 0.03, 0.058, 0.069, 0.07, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
-    if (L.knee) out.push(...both((s) => at(new RoundedBoxGeometry(0.08, 0.05, 0.03, 2, 0.012), A, s * LEG.x, 0.115, LEG.z + 0.074)));
+    out.push(...both((s) => mesh(tube('y', 0.035, 0.34, 0.068, 0.09, [s * LEG.x, LEG.z], { rows: 6 }), M)), ...both((s) => mesh(tube('y', 0.03, 0.058, 0.071, 0.072, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
+    if (L.knee) out.push(...both((s) => at(new RoundedBoxGeometry(0.08, 0.05, 0.03, 2, 0.012), A, s * LEG.x, 0.17, LEG.z + 0.08)));
   }
-  if (L.pockets) out.push(...both((s) => at(new RoundedBoxGeometry(0.03, 0.06, 0.07, 2, 0.01), A, s * 0.186, L.kind === 'shorts' ? 0.16 : 0.14, LEG.z)));
-  if (L.belt) { out.push(mesh(shell(HIPS, 0.265, 0.3, 0.006, { rows: 1 }), A)); out.push(at(new RoundedBoxGeometry(0.05, 0.04, 0.02, 2, 0.008), mat('buckle', '#3f9a5a'), 0, 0.282, prof(HIPS, 0.28)[2] + 0.014)); }
+  if (L.pockets) out.push(...both((s) => at(new RoundedBoxGeometry(0.03, 0.06, 0.07, 2, 0.01), A, s * 0.172, L.kind === 'shorts' ? 0.29 : 0.285, LEG.z)));
+  if (L.belt) { out.push(mesh(shell(HIPS, 0.325, 0.352, 0.006, { rows: 1 }), A)); out.push(at(new RoundedBoxGeometry(0.05, 0.03, 0.02, 2, 0.008), mat('buckle', '#3f9a5a'), 0, 0.329, prof(HIPS, 0.329)[2] + 0.014)); }
   return G(out);
 }
 // ---- 베스트 (앞이 트인 조끼, 가장 바깥) ----
 function vest(mat, L) {
-  const M = mat('main', L.main), A = mat('acc', L.acc), pad = L.puff ? 0.05 : 0.04, open = 0.42, out = [mesh(shell(TORSO, 0.25, 0.585, pad, { rows: 7, open }), side2(M))];
-  if (L.puff) { const S = mat('seam', dark(L.main, 0.78)); [0.33, 0.42, 0.51].forEach((y) => out.push(band(S, y, y + 0.012, pad + 0.004, open))); }
-  if (L.bands) [0.34, 0.45].forEach((y) => out.push(band(L.leaf ? mat('band', '#fff4e0') : A, y, y + 0.032, pad + 0.004, open)));
-  const pk = L.pockets || 0, spots = [[1, 0.32], [-1, 0.32], [1, 0.44], [-1, 0.44]].slice(0, pk === 1 ? 2 : pk === 2 ? 2 : 4);
+  const M = mat('main', L.main), A = mat('acc', L.acc), pad = L.puff ? 0.05 : 0.04, open = 0.42, out = [mesh(shell(TORSO, 0.37, 0.585, pad, { rows: 7, open }), side2(M))];
+  if (L.puff) { const S = mat('seam', dark(L.main, 0.78)); [0.42, 0.48, 0.54].forEach((y) => out.push(band(S, y, y + 0.012, pad + 0.004, open))); }
+  if (L.bands) [0.42, 0.5].forEach((y) => out.push(band(L.leaf ? mat('band', '#fff4e0') : A, y, y + 0.032, pad + 0.004, open)));
+  const pk = L.pockets || 0, spots = [[1, 0.41], [-1, 0.41], [1, 0.49], [-1, 0.49]].slice(0, pk === 1 ? 2 : pk === 2 ? 2 : 4);
   if (pk) spots.forEach(([s, y]) => out.push(at(new RoundedBoxGeometry(0.075, 0.062, 0.026, 2, 0.01), A, s * 0.115, y, frontZ(y, pad) - 0.016)));
   if (pk >= 3) out.push(at(new RoundedBoxGeometry(0.05, 0.045, 0.024, 2, 0.008), A, 0.12, 0.52, frontZ(0.52, pad) - 0.018));
   if (L.leaf) { out.push(at(new THREE.SphereGeometry(0.03, 10, 8), mat('gyul', '#ffb347'), -0.12, 0.53, frontZ(0.53, pad) - 0.004)); const lf = at(new THREE.SphereGeometry(0.022, 8, 6), mat('leaf', '#3f9a5a'), -0.095, 0.56, frontZ(0.56, pad) - 0.01); lf.scale.set(1.3, 0.55, 0.5); out.push(lf); }
@@ -106,22 +113,23 @@ function vest(mat, L) {
 // ---- 잠바 (긴소매, 티셔츠 위) ----
 function jacket(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), pad = L.puff ? 0.026 : 0.018;
-  const out = [mesh(shell(TORSO, 0.16, 0.6, pad, { rows: 9 }), M), ...both((s) => mesh(tube('x', s * 0.13, s * 0.375, 0.086, 0.07, [ARM.y, ARM.z]), M))];
-  out.push(at(new THREE.BoxGeometry(0.016, 0.43, 0.012), A, 0, 0.385, frontZ(0.385, pad) - 0.002)); // 지퍼
+  const out = [mesh(shell(TORSO, 0.31, 0.6, pad, { rows: 9 }), M), ...both((s) => mesh(tube('x', s * 0.13, s * 0.375, 0.086, 0.07, [ARM.y, ARM.z]), M))];
+  out.push(at(new THREE.BoxGeometry(0.016, 0.28, 0.012), A, 0, 0.455, frontZ(0.455, pad) - 0.002)); // 지퍼
   const col = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.13, 0.06, 18, 1, true), side2(M)); col.position.set(0, 0.615, 0.025); col.scale.z = 1.12; out.push(col);
   if (L.cuffs) out.push(...both((s) => mesh(tube('x', s * 0.355, s * 0.385, 0.074, 0.072, [ARM.y, ARM.z], { rows: 1, capHi: true }), A)));
   if (L.hood) { const h = at(new THREE.SphereGeometry(0.15, 14, 10), M, 0, 0.6, -0.1); h.scale.set(1.25, 0.62, 0.95); out.push(h); }
-  if (L.puff) { const S = mat('seam', dark(L.main, 0.78)); [0.28, 0.38, 0.48].forEach((y) => out.push(band(S, y, y + 0.012, pad + 0.003))); }
-  if (L.bands) { const B = mat('band', '#e8ecef'); out.push(band(B, 0.22, 0.25, pad + 0.004), ...both((s) => mesh(tube('x', s * 0.3, s * 0.325, 0.081, 0.081, [ARM.y, ARM.z], { rows: 1 }), B))); }
+  if (L.puff) { const S = mat('seam', dark(L.main, 0.78)); [0.38, 0.45, 0.52].forEach((y) => out.push(band(S, y, y + 0.012, pad + 0.003))); }
+  if (L.bands) { const B = mat('band', '#e8ecef'); out.push(band(B, 0.335, 0.36, pad + 0.004), ...both((s) => mesh(tube('x', s * 0.3, s * 0.325, 0.081, 0.081, [ARM.y, ARM.z], { rows: 1 }), B))); }
   return G(out);
 }
 // ---- 양말 ----
 function socks(mat, L) {
-  const M = mat('main', L.main), A = mat('acc', L.acc), h = L.h || 0.11, r = L.thick ? 0.064 : 0.058, out = [];
-  out.push(...both((s) => mesh(tube('y', 0.02, h, r - 0.003, r, [s * LEG.x, LEG.z], { rows: 2, capLo: true }), M)));
-  out.push(...both((s) => mesh(tube('y', h - 0.022, h, r + 0.004, r + 0.004, [s * LEG.x, LEG.z], { rows: 1 }), A)));
-  for (let i = 0; i < (L.stripes || 0); i++) { const y = h - 0.05 - i * 0.03; out.push(...both((s) => mesh(tube('y', y, y + 0.014, r + 0.002, r + 0.002, [s * LEG.x, LEG.z], { rows: 1 }), A))); }
-  if (L.dots) { const D = mat('dots', L.dots); for (const s of [1, -1]) for (let i = 0; i < 4; i++) { const th = (i / 4) * Math.PI * 2 + 0.4, y = 0.07 + (i % 2) * 0.04; out.push(at(new THREE.SphereGeometry(0.012, 6, 4), D, s * LEG.x + Math.cos(th) * r, y, LEG.z + Math.sin(th) * r * 1.06)); } }
+  // 목 높이 h 는 예전(짧은 다리) 기준 값 → 길어진 정강이에 맞춰 늘림 (#177). 굵기는 다리 단면(legR)을 따라 감쌈
+  const M = mat('main', L.main), A = mat('acc', L.acc), h = 0.045 + ((L.h || 0.11) - 0.045) * 1.25, pad = L.thick ? 0.014 : 0.008, r = (y) => legR(y) + pad, out = [];
+  out.push(...both((s) => mesh(tube('y', 0.02, h, r(0.04) - 0.003, r(h), [s * LEG.x, LEG.z], { rows: 3, capLo: true }), M)));
+  out.push(...both((s) => mesh(tube('y', h - 0.022, h, r(h - 0.022) + 0.004, r(h) + 0.004, [s * LEG.x, LEG.z], { rows: 1 }), A)));
+  for (let i = 0; i < (L.stripes || 0); i++) { const y = h - 0.055 - i * 0.032; out.push(...both((s) => mesh(tube('y', y, y + 0.014, r(y) + 0.002, r(y + 0.014) + 0.002, [s * LEG.x, LEG.z], { rows: 1 }), A))); }
+  if (L.dots) { const D = mat('dots', L.dots); for (const s of [1, -1]) for (let i = 0; i < 4; i++) { const th = (i / 4) * Math.PI * 2 + 0.4, y = 0.075 + (i % 2) * 0.05; out.push(at(new THREE.SphereGeometry(0.012, 6, 4), D, s * LEG.x + Math.cos(th) * r(y), y, LEG.z + Math.sin(th) * r(y) * 1.06)); } }
   return G(out);
 }
 // ---- 모자 (머리 뼈에 붙는 단단한 것). 머리 위 가운데 (0, 0.83, 0.045) ----

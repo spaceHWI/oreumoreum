@@ -8,6 +8,7 @@ const RM = getAsset('runner');
 import { patchDQS } from './dqskin.js';
 import { ACCESSORIES, DEFAULT_GEAR } from './gear.js';
 import { baseBodyGeo, patchBody, hideMask, REGION_N, bodyWarp } from './basebody.js';
+import { BODY } from './clothes.js';
 import { BOW, BLINK } from './balance.js';
 
 // 가격 0 = 기본 제공. 상점에서 귤로 구매
@@ -50,7 +51,11 @@ const box = (w, h, d, mat) => { const k = `${w},${h},${d}`; let g = geoCache.get
 const EMO_POSES = new Set(['insa', 'five', 'come', 'point', 'trash', 'follow', 'wait', 'help', 'thumb', 'no', 'thanks', 'sorry', 'clap', 'hop', 'laugh', 'wow', 'sad', 'heart', 'sitg', 'lie']); // 동작 (#76), wave·dance 는 아래 따로
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const MODEL_S = 2.5; // 모델 키 0.98 → 게임 키 약 2.45
-const P = RM.P; // 모델별 치수 (model/params.json)
+// 모델별 치수 (model/params.json). Tripo 모델은 머리만 쓰고 몸은 basebody.js 라 골반 관절 높이는 몸 표(#177 다리 길어짐)를 따름
+const P = { ...RM.P, hipY: BODY.hipY };
+// 앉기·눕기처럼 골반 높이를 정해 두는 자세는 예전 관절 높이 기준 값 → 관절이 올라간 만큼 내려 엉덩이 자리를 그대로 둠
+const LIFT = (P.hipY - RM.P.hipY) * MODEL_S;
+const STRIDE = { amp: 0.82, rate: 0.85 }; // 0.82 x 0.85 x (다리 0.33/0.23) ≈ 1
 // 팔 관절은 소매 중심선(armY·armZ) 위, 몸통 옆면보다 조금 안쪽(pivotX)에 둬서 팔을 내려도 어깨 위가 덜 늘어나게
 const AZ = P.armZ ?? 0, LZ = P.legZ ?? 0, PX = P.pivotX ?? P.shoulderX;
 const JOINT = { hips: [0, P.hipY, 0], chest: [0, P.hipY + 0.01, 0], head: [0, P.neckY, 0], armL: [PX, P.armY, AZ], armR: [-PX, P.armY, AZ], legL: [P.legX, P.hipY - 0.01, LZ], legR: [-P.legX, P.hipY - 0.01, LZ] };
@@ -540,12 +545,12 @@ export function buildRunner(opts = {}) {
         A(armL, -2.45, -0.25 + p); A(armR, -2.45, 0.25 - p); head.rotation.z = Math.sin(t * 2.5) * 0.12 * bell; lo(() => { torso.rotation.z = Math.sin(t * 2.5) * 0.04 * bell; }); break; }
       case 'sitg': { // 땅에 앉기: 다리를 앞으로 뻗고 두 손은 뒤를 짚음
         if (upper) break; const s = sstep(0, 0.4, t);
-        hips.position.y = HIP + (0.2 - HIP) * s; legL.rotation.set(-1.5 * s, 0, 0.1); legR.rotation.set(-1.45 * s, 0, -0.1);
+        hips.position.y = HIP + (0.2 - LIFT - HIP) * s; legL.rotation.set(-1.5 * s, 0, 0.1); legR.rotation.set(-1.45 * s, 0, -0.1);
         torso.rotation.x = -0.22 * s; armL.rotation.set(0.55 * s, 0, 0.32); armR.rotation.set(0.55 * s, 0, -0.32);
         chest.scale.setScalar(1 + Math.sin(t * 1.2) * 0.02); head.rotation.x = 0.1 * s; break; }
       case 'lie': { // 등을 대고 눕기: 골반째 뒤로 눕히고 팔은 머리 뒤로
         if (upper) break; const s = sstep(0, 0.5, t);
-        hips.rotation.x = -Math.PI / 2 * s; hips.position.y = HIP + (0.24 - HIP) * s;
+        hips.rotation.x = -Math.PI / 2 * s; hips.position.y = HIP + (0.24 - LIFT - HIP) * s;
         legL.rotation.set(0, 0, 0.05); legR.rotation.set(-0.35 * s, 0, -0.05);
         armL.rotation.set(-2.9 * s, 0, 0.35 * s); armR.rotation.set(-2.9 * s, 0, -0.35 * s); head.rotation.x = 0.15 * s;
         chest.scale.setScalar(1 + Math.sin(t * 1.1) * 0.025); break; }
@@ -556,8 +561,9 @@ export function buildRunner(opts = {}) {
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'aim' || pose === 'carry');
     st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
-    st.phase += dt * speed * (running ? 1.05 : 1.6);
-    const amp = (running ? 0.95 : 0.55) * st.blend;
+    // 다리가 길어진 만큼(#177) 걸음은 조금 느리고 덜 벌림: 다리 길이 x 벌림 x 박자가 예전과 같아 발이 미끄러져 보이지 않음
+    st.phase += dt * speed * (running ? 1.05 : 1.6) * (model ? STRIDE.rate : 1);
+    const amp = (running ? 0.95 : 0.55) * st.blend * (model ? STRIDE.amp : 1);
     const s = Math.sin(st.phase);
     legL.rotation.set(s * amp, 0, 0);
     legR.rotation.set(-s * amp, 0, 0);
@@ -613,7 +619,7 @@ export function buildRunner(opts = {}) {
       legL.rotation.set(-hop * 0.4, 0, 0.06); legR.rotation.set(-hop * 0.4, 0, -0.06);
       head.rotation.x = -0.18 * k; torso.rotation.x = -0.06 * k;
     } else if (pose === 'sit') {
-      hips.position.y = 0.5;
+      hips.position.y = 0.5 - LIFT;
       legL.rotation.set(-1.45, 0, 0.08); legR.rotation.set(-1.45, 0, -0.08);
       armL.rotation.set(-0.3, 0, 0.25); armR.rotation.set(-0.3, 0, -0.25);
       torso.rotation.x = -0.08;
@@ -628,7 +634,7 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(-1.05, 0, 0.32); armR.rotation.set(-1.05, 0, -0.32);
       torso.rotation.x = 0.16;
     } else if (pose === 'ride') { // 조랑말 (#69): 다리를 벌려 걸터앉고 두 손은 고삐
-      hips.position.y = 0.5;
+      hips.position.y = 0.5 - LIFT;
       legL.rotation.set(-0.55, 0, 0.42); legR.rotation.set(-0.55, 0, -0.42);
       armL.rotation.set(-0.85, 0, 0.18); armR.rotation.set(-0.85, 0, -0.18);
       torso.rotation.x = 0.06 + Math.abs(Math.sin(st.clock * 6)) * 0.02 * Math.min(1, speed / 6);
