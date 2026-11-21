@@ -252,12 +252,13 @@ function fire(dt) {
   if ((run.shotT -= dt) > 0) return;
   if (!SV.auto || holding() || (busy() && player.pose !== 'crouch') || player.knock || player.riding) return; // 줍는 동안(crouch)에도 지켜 줌
   let w = curW(); const t = nearest(w.range); if (!t) return;
+  const hm = w.id === 'laser' ? late.laserAuto?.(S.auto.laser) ?? 1 : 1; if (!hm) return; /* 레이저 과열 (#200): 식는 동안 못 쏨 */
   if (!pay(w)) { w = WEAPONS[0]; }
   run.shotT = (S.auto[w.id] || 0.8) / av('rate', 1);
   const from = new THREE.Vector3(player.pos.x, player.pos.y + 1.25 + player.jumpY, player.pos.z);
   const tp = new THREE.Vector3(t.pos.x, t.pos.y + Math.min(t.h * 0.5, 1.2), t.pos.z), D = from.distanceTo(tp), v = w.id === 'hand' ? S.shotV * 0.85 : S.shotV;
   tp.x += Math.sin(t.heading) * t.speed * D / v * 0.8; tp.z += Math.cos(t.heading) * t.speed * D / v * 0.8;
-  const dir = tp.sub(from).normalize(), base = Math.atan2(dir.x, dir.z), dmg = shotDmg(w);
+  const dir = tp.sub(from).normalize(), base = Math.atan2(dir.x, dir.z), dmg = shotDmg(w) * (w.id === 'laser' ? hm : 1);
   const big = w.id === 'bomb', o = { dmg, r: big ? w.r : av('burst'), big, pierce: av('pierce'), life: w.range / v + 0.2 };
   const forks = av('fork'), backs = av('back'), sp = 0.2;
   shoot(from, dir, v, o, aimT(t));
