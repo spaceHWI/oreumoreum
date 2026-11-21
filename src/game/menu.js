@@ -19,7 +19,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
   const doReset = () => {
     state.resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
-    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, introSound: save.introSound, music: save.music, reset: 1, _rev: save._rev, _acct: save._acct }; // reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7)
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, introSound: save.introSound, music: save.music, nickSet: save.nickSet, nickRen: save.nickRen, reset: 1, _rev: save._rev, _acct: save._acct }; // reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7)
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
     location.reload();
@@ -67,7 +67,7 @@ export function enableDev() {
     // 들어오기 다시 (#99): 들어오기를 본 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
     $('dev-intro').addEventListener('click', () => {
       state.resetting = true;
-      const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server;
+      const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server; delete keep.nickSet; // #162 이름도 다시 지음 (무료, 테스트용)
       if (keep.pace) keep.pace = { ...keep.pace, hint: 0 }; // #135 투기꾼 안내도 다시
       delete keep.journey; // #176 감독의 문·소개도 처음부터
       try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }

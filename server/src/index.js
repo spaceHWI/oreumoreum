@@ -148,6 +148,15 @@ export default {
         if (!body || typeof body.save !== 'object') return json({ error: 'bad save' }, 400);
         return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub) }));
       }
+      // 이름 바꾸기 (#162): POST /nick {nick, price} → { ok, nick, paid, coins, rev, nickRen } 또는 { error: bad|same|day|price|coins (, price) }
+      if (url.pathname === '/nick' && req.method === 'POST') {
+        const s = await who(); if (!s) return json({ error: 'login' }, 401);
+        const b = await readJson(req, 1024);
+        if (!b || typeof b.nick !== 'string' || typeof b.price !== 'number') return json({ error: 'bad' }, 400);
+        const at = env.FAKE_AUTH === '1' && Number.isFinite(b.at) ? b.at : Date.now(); // 로컬 검사(tools/sec.js)만 날을 바꿔 볼 수 있음
+        const r = await accounts(env).rename(s.sub, b.nick, b.price, at);
+        return json(r, r.error ? 409 : 200);
+      }
       // 랭킹 (#11): 로그인한 사람만. GET /rank?range=day|week|all → 위 RANK.top 명 + 내 순위, GET /rank/me?srv= → 내 순위 셋
       if ((url.pathname === '/rank' || url.pathname === '/rank/me') && req.method === 'GET') {
         const s = await who(); if (!s) return json({ error: 'login' }, 401);
