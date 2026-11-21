@@ -30,6 +30,9 @@
 // - 들판 (#138): 들판 더미·쓰레기 산은 구역 쓰레기에 더함(쓰레기 산 귤 × HEAP.sizes.mt.gv, 길 밖이라 걷는 거리를 FIELD.off 로 늘림). 소굴은 일하는 구역에서
 //   열린 것 하나를 나가기마다 닫음(다가가기 20초 + 무리 쫓아내기, FIELD.den.reopen 마다 다시), 숨은 보물은 일하는 구역 것을 하루 한 번(25초씩), 볼거리는 처음 한 번(20초)
 //   (--nofield: 들판 없이, --nospots: 들판 더미만 두고 소굴·보물·볼거리 없이, 비교용)
+// - 들판 떼 (#173): 놀이 시간의 SWARM.econ.share 만큼은 들판에서 떼를 쫓는다고 봄 (나가기마다 그 몫의 시간·귤을 더함, 일하는 구역·지금 무기).
+//   떼 한 마리 = 보통 기운 × SWARM.mob.hp, 귤 = 보통 귤 × mob.gyul + 조각(shard ÷ shardN), 자동 던지기 간격 SWARM.auto, 맞힘 SW_HIT. 5분마다 대장 상자 반 개
+//   목표: 들판 10분 귤 ≤ 길가 10분(그 구역 권장 장비로 치우기) × SWARM.econ.max, 마지막 칸이 --noswarm 보다 하루 넘게 당겨지지 않음
 // - 우두머리 (#139): 일하는 구역이 ZONE_BOSS.appear 만큼 깨끗하고 장비 점수가 빨강이 아니면 쫓아냄 (돌하르방이 서 있는 holdSec 동안은 다시 안 나옴). --noboss 는 비교용
 // - 레벨·증강 (#159): 경험치는 LEVEL.xp 그대로 (쓰레기·더미·적·투기꾼·우두머리) + 퀘스트(#158)는 하루 QUEST_N 개 × quest 평균으로 어림.
 //   레벨업마다 src/augments.js rollDraw 3개 중 벌이에 드는 것을 먼저 고름(가장 빨라지는 쪽, 증강이 5일 목표를 얼마나 당기는지 보려고)
@@ -63,7 +66,8 @@ async function main() {
   const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
   const AUG_PRI = ['bighand', 'recycle', 'light', 'deer', 'magnet', 'flower', 'bite', 'jacket', 'twin', 'burst', 'sour', 'quick']; // 벌이에 드는 것부터
   const { RIDES } = B;
-  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY } = B;
+  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY, SWARM } = B;
+  let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
@@ -146,6 +150,16 @@ async function main() {
     return { t: 3 + k.t, gy: E.reward.gyul + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
   }
 
+  // 들판 떼 (#173): 구역 z(번호)·무기 단계 wt 로 들판에 있는 1초의 귤 (조각 포함, 탄 값 뺌)
+  function swarmRate(z, wt) {
+    const w = WEAPONS[wt - 1], kinds = SWARM.kinds[z] || [['boar', 1]], ws = kinds.reduce((s, k) => s + k[1], 0), iv = SWARM.auto[w.id] || HAND_T;
+    const per = w.id === 'mg' ? w.dmg / w.rate : w.id === 'laser' ? w.dmg * SWARM.auto.laser : w.dmg, area = w.id === 'bomb' ? 2 : 1;
+    const cost = w.id === 'hand' ? 0 : w.id === 'bomb' ? w.cost : w.id === 'laser' ? w.gyulPerSec * iv : 1 / w.perGyul; // 한 발 귤
+    let hp = 0, gy = 0; for (const [k, f] of kinds) { const E = ENEMIES[k]; hp += f / ws * E.hp * SWARM.mob.hp; gy += f / ws * E.reward.gyul * (SWARM.mob.gyul[z] ?? 0.25); }
+    gy += (SWARM.shard[z] || 1) / SWARM.shardN;
+    const kps = Math.min(SW_MAXK, per * area * SW_HIT / iv / hp), shotsPer = Math.max(1, Math.ceil(hp / per) / SW_HIT / area);
+    return kps * (gy - shotsPer * cost) + (SWARM.leader.chest[z] || 0) * 0.5 / SWARM.leaderT;
+  }
   const fmt = (sec) => `${Math.floor(sec / 3600) + 1}일 ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}분`;
   const hm = (sec) => `${Math.floor(sec / 3600)}시간 ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}분`;
   const GEAR = ['tool', 'bag', 'shoes'], WK = WEAR.slots.map((w) => w.k);
@@ -225,6 +239,8 @@ async function main() {
           mobT += r.t * S * MOB_IN; const kind = ENEMY_SPAWN.byZone[zones[b.i].id];
           while (mobT >= ENEMY_SPAWN.every) { mobT -= ENEMY_SPAWN.every; const cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, f = mobFight(kind, st); add(f.t * cnt); gainXp(cnt * AG.enemyXp(ENEMIES[kind])); st.coins += f.gy * cnt; earned += f.gy * cnt; gotMat(zones[b.i].id, cnt * LOOT.enemy.mat); }
         }
+        // 들판 떼 (#173): 이 나가기 시간에 견준 share 몫만큼 들판에서
+        if (battle && SW_ON && !b.idle) { const sh = SWARM.econ.share, ft = r.t * sh / (1 - sh), g = ft * swarmRate(zones[b.i].id, st.weapon); add(ft); st.coins += g; earned += g; }
         // 들판 (#138): 일하는 구역의 열린 소굴 하나 · 오늘 안 연 보물 · 처음 보는 볼거리
         if (!NOFIELD && !has('--nospots') && battle) {
           const z = zones[b.i].id, DN = FIELD.den.n[z] || 0;
@@ -269,8 +285,9 @@ async function main() {
   // 하루 끝 목표 (#137): tier = 도구·배낭·신발 가장 낮은 단계, zone = 그날까지 다 치운 적 있는 가장 높은 구역 (이 구역까지는 다 치움)
   // tier = 도구·배낭·신발 가장 낮은 단계 [최소, 최대], zone = 그날까지 다 치운 가장 높은 구역(1부터 이어서) 최소, open = 하루 끝 장비 점수로 열린(빨강이 아닌) 구역 최소
   // 다 치운 구역은 목표 + 1 까지만 (너무 빠르지 않게, 5일은 상한 없음)
+  // #173 들판 떼로 2일 끝 벌이가 몇 % 늘어 효율 플레이가 2일에 4단계에 닿을 때가 있음 → 2일 상한만 4 (기준은 '5일 목표가 하루 넘게 당겨지지 않음', 아래 들판 떼 줄)
   // #160 들머리 더미로 첫날 벌이가 조금 빨라져 효율 플레이는 1일에 신발 3단계까지 닿을 때가 있음 → 1일 상한만 3 (5일 목표가 하루 넘게 당겨지지 않는지는 아래 '마지막 칸' 이 봄)
-  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 3], zone: 2, open: 3 }, { tier: [4, 4], zone: 3 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
+  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 4], zone: 2, open: 3 }, { tier: [4, 4], zone: 3 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
   function flowCheck(runs) {
     const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
     const lines = ['흐름 (5번 중 가운데): 일 · 장비 단계(목표) · 다 치운 구역(목표) · 열린 구역 · 장비 점수 · 번 귤 · 할 일 없던 분'];
@@ -321,6 +338,15 @@ async function main() {
   }
   // 이야기 이벤트 보상 (#168): 끝 보상 합이 5일(효율) 전체 벌이의 5% 아래
   if (storyEarn > 0) { const sum = STORY.list.reduce((a, d) => a + (d.gyul || 0), 0), pct = sum / storyEarn * 100; verdict.push(`이야기 이벤트 보상 합 ${sum} = 5일 벌이 ${storyEarn.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
+  // 들판 떼 (#173): 구역 권장 장비(도구·배낭·신발·무기 = 구역 번호 단계)로 들판 10분 귤 vs 길가 10분 귤
+  if (has('--swarm') || !FLOW_ONLY) {
+    const rows = ZONES.map((Z, i) => { const t = Z.id, e = { ...e0, tool: Math.min(t, TOOLS.length), bag: Math.min(t, BAGS.length), shoes: Math.min(t, SHOES.length) }, road = zones[i].n * gOf(zones[i], e) / clearT(zones[i], e) * 600, fld = swarmRate(t, Math.min(t, WEAPONS.length)) * 600; return { 구역: t, '길가 10분': Math.round(road), '들판 10분': Math.round(fld), 배: +(fld / road).toFixed(2), '들판 초당': +(fld / 600).toFixed(1), ok: fld <= road * SWARM.econ.max && fld / 600 <= B.NET.swarmPerSec }; });
+    console.log('\n들판 떼 (#173): 권장 장비로 10분 귤 (들판 ≤ 길가 × ' + SWARM.econ.max + ', 초당 ≤ 서버 ③ NET.swarmPerSec ' + B.NET.swarmPerSec + ')'); console.table(rows);
+    verdict.push(`들판 떼 10분 귤: ${rows.every((r) => r.ok) ? '통과' : '넘음'} (${rows.map((r) => r.구역 + ':' + r.배).join(' ')})`);
+    const lastOf = (on) => { SW_ON = on; const rs = [1, 7, 42, 99, 123].map((s) => seedRun('battle', 0.25, s)).map((x) => x.last).sort((a, b) => a - b); SW_ON = !has('--noswarm'); return rs[2]; };
+    const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;
+    verdict.push(`들판 떼로 마지막 칸(여유 25%) ${a0 === Infinity ? '-' : hm(a0)} → ${a1 === Infinity ? '-' : hm(a1)}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
+  }
   console.log('\n' + verdict.join('\n'));
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;
