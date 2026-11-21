@@ -6,7 +6,7 @@ import { height, groundAt } from './world.js';
 import { EMOTE_BY } from './emotes.js';
 import { NET, BOAR } from './balance.js';
 import { orientBody, flinchK } from './bodytilt.js';
-import { cleanText } from './safetext.js';
+import { cleanText, nickBad } from './safetext.js';
 import { gearScore } from './gearscore.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
@@ -38,7 +38,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       gear: cleanGear(c.gr),
     };
   }
-  const safeNick = (n) => cleanText(n, NET.nickMax) || '러너'; // 남이 보낸 이름은 다듬어서 캔버스 글자로만 (#84)
+  const safeNick = (n) => { const s = cleanText(n, NET.nickMax); return s && !nickBad(s) ? s : '러너'; }; // 남이 보낸 이름은 다듬어서 캔버스 글자로만 (#84). 걸리는 이름은 '러너' (#162, 옛 서버·P2P 대비)
 
   // 이름표: 닉네임 + 옆에 작은 장비 점수 (#137, gs 가 있을 때만)
   function makeLabel(text, gs) {

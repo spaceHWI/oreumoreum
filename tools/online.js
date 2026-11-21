@@ -198,7 +198,12 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   }
   // 랭킹 (#11): 버리면 저장을 바로 보내고 오늘 순위가 오르면 토스트, 순위표에 내 줄, 손님은 이 기기 기록만
   await wait(A.p, 4000); // 앞의 줍기 몫(초당 takePerSec)이 지나가게
-  const nick = await A.p.evaluate(() => { const o = window.__oreum; o.save.nick = '랭킹확인' + (Date.now() % 1000); const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); return o.save.nick; });
+  // 이름은 저장으로 못 바꿈 (#162): 이름 바꾸기 창으로 (첫 바꾸기 무료, 서버 POST /nick)
+  const nick = '랭킹확인' + (Date.now() % 1000);
+  await A.p.evaluate((n) => { document.getElementById('menu-nick').click(); const i = document.getElementById('nick-new'); i.value = n; i.dispatchEvent(new Event('input')); document.getElementById('nick-new-go').click(); }, nick);
+  for (let k = 0; k < 60 && (await A.p.evaluate(() => window.__oreum.save.nick)) !== nick; k++) await wait(A.p, 250);
+  ok((await A.p.evaluate(() => window.__oreum.save.nick)) === nick, `이름 바꾸기 창 → 서버가 바꿈 (${nick})`);
+  await A.p.evaluate(() => { const o = window.__oreum; const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); });
   await wait(A.p, 1200);
   const rk0 = await A.p.evaluate(() => window.__oreum.rank.state().last[window.__oreum.server.id()]?.rank ?? -1); // 들어올 때 잡은 기준 순위
   await A.p.evaluate(() => { const o = window.__oreum; o.trash.api.store.bag.can = (o.trash.api.store.bag.can || 0) + 3; window.__toasts = []; const t = document.getElementById('toast'); new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); o.cleanhouse.dump(); });

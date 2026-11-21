@@ -1021,6 +1021,8 @@ export const DEER = {
   feedRetry: 8,      // 부탁한 노루가 이 초 안에 안 오면 다시 부탁할 수 있음
 };
 
+// 이름 (#162): 처음 지을 때·바꿀 때 글자 수. 바꾸기 값은 처음 한 번 무료, 그다음 price 부터 grow 배씩 (cap 에서 멈춤). 하루 perDay 번 (한국 날)
+export const NICK = { min: 2, max: 12, price: 2000, grow: 1.5, cap: 20000, perDay: 1 };
 export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)

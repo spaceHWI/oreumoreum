@@ -55,7 +55,7 @@ const subOf = (token) => { try { const p = token.split('.')[1].replace(/-/g, '+'
 async function api(path, { method = 'GET', body, keepalive = false, token = sess?.t } = {}) {
   const r = await fetch(SRV + path, { method, keepalive, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(j.error || 'http ' + r.status); e.status = r.status; throw e; }
+  if (!r.ok) { const e = new Error(j.error || 'http ' + r.status); e.status = r.status; e.data = j; throw e; }
   return j;
 }
 // 의견 보내기 (#77): 서버가 있으면 글 묶음을 POST /feedback (로그인 안 해도 됨)
@@ -79,6 +79,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const me = await api('/me');
       keepUntil = me.keepUntil; admin = !!me.admin; renew(me); changed();
       const s = getSave();
+      if (me.nickRen) s.nickRen = me.nickRen; // 이름 바꾼 횟수·날은 서버 값 (#162)
       if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { writeCache(me.save, me.rev, sess.sub); location.reload(); return; } // 다른 기기에서 더 해 둔 기록
       if (!me.save) push();
     } catch (e) {
@@ -95,7 +96,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const r = await api('/save', { method: 'PUT', body: { save: strip(s) }, keepalive });
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || r.fix.nick)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {
@@ -133,11 +134,20 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
     location.reload();
     return true;
   }
+  // 이름 바꾸기 (#162): 귤을 서버에 먼저 맞춘 뒤 POST /nick. 실패는 e.message(bad|same|day|price|coins), e.data.price
+  async function rename(nick, price) {
+    if (!sess) throw new Error('login');
+    for (let i = 0; i < 30 && busy; i++) await new Promise((ok) => setTimeout(ok, 100));
+    await push();
+    const r = await api('/nick', { method: 'POST', body: { nick, price } });
+    const s = getSave(); s._rev = r.rev; lastBody = '';
+    return r;
+  }
   // 랭킹 (#11): 로그인했을 때만. 서버가 확인한 치운 양으로 셈
   const rank = (range, srv) => api(`/rank?range=${encodeURIComponent(range)}&srv=${encodeURIComponent(srv)}`);
   const rankMe = (srv) => api(`/rank/me?srv=${encodeURIComponent(srv)}`);
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get admin() { return !!sess && admin; } };
+  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get admin() { return !!sess && admin; } };
 }
 
 /* ---------- 로그인 화면 ---------- */

@@ -119,7 +119,7 @@ async function startServers() {
 
     /* ---------- 저장 (서버가 판정) ---------- */
     const { NET } = await import('../src/balance.js'); // 몫·줍기 한도는 balance.js 값으로 (#137 에서 커짐)
-    const S0 = { coins: 5, equip: { tool: 1, bag: 0, shoes: 1, weapon: 1 }, clothes: { own: {}, wear: {} }, rides: { own: [], cur: null }, hairs: {}, trash: { total: 0 }, nick: 'a' };
+    const S0 = { coins: 5, equip: { tool: 1, bag: 0, shoes: 1, weapon: 1 }, clothes: { own: {}, wear: {} }, rides: { own: [], cur: null }, hairs: {}, trash: { total: 0 }, nick: '검사 러너' };
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: S0 } });
     const inflate = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 999999 } } });
     const me1 = (await req('dev', '/me', { token: A.token })).j;
@@ -162,6 +162,9 @@ async function startServers() {
     await sleep(400);
     const seen = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).find(([id]) => id === P.msgs[0].id)?.[1];
     ok(seen && !/[<>‮]/.test(seen.nick) && [...seen.nick].length <= 16 && !/[<>]/.test(seen.say.t) && [...seen.say.t].length <= 60, '다른 사람에게 가는 닉네임·말풍선 다듬음');
+    P.send(presence(-860, 0, { nick: '시1발 운영자' })); Q.send(presence(-860, 5)); await sleep(400);
+    const seenBad = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id, d]) => id === P.msgs[0].id && 'nick' in d).pop()?.[1];
+    ok(seenBad && seenBad.nick === '', `걸리는 이름은 방에서 빈 이름으로 (#162, ${JSON.stringify(seenBad?.nick)})`);
     // 맞힘: 사거리 밖은 지움
     P.send(presence(-860.5, 0, { ht: { p: Q.msgs[0].id, at: 1 } }));
     Q.send(presence(-700, 5)); await sleep(200);
@@ -216,6 +219,51 @@ async function startServers() {
     const ug = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     const bg = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     ok(ug.j.fixed.includes('coins') && !bg.j.fixed.length, '귤 채우기는 어드민 계정만 서버가 받아 줌');
+
+    /* ---------- 이름 (#162): 거르기·처음 짓기·바꾸기 ---------- */
+    {
+      const { nickOk } = await import('../src/safetext.js');
+      const BADN = ['시1발', '씨 발 러너', 'ㅅㅂ', 'ㅂ ㅅ', 'f.u.c.k', 'Sh1t', '@sshole', '섹 스', '운영자', 'GM 하르방', '관리 자', 'p0rn', 'ㅋ'.repeat(12)];
+      const GOODN = ['작은 억새', '귤 줍는 하니', '시발점', '시바견', '새끼손가락', 'jeju_runner', 'Mina.K', 'hello-world', '오름🍊', '고양이', '바다', 'dogma', 'bigman', '젖소목장', 'essex', '고진', '달려라하니', '제주123', 'tangerine', '노루 친구'];
+      // 어드민(저장으로 이름 바꾸기가 열려 있음)으로 하나씩 보내 봄: 걸리는 것은 받지 않고, 평범한 것은 그대로
+      let last = (await req('plain', '/me', { token: Bs.token })).j.save.nick, okBad = 0, okGood = 0;
+      for (const n of BADN) { const r = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: NET.earnBurst * 3, nick: n } } }); if (r.j.fix?.nick && r.j.fix.nick !== n && nickOk(r.j.fix.nick)) { okBad++; last = r.j.fix.nick; } }
+      ok(okBad === BADN.length, `욕설·사칭·변형 이름 ${okBad}/${BADN.length} 서버가 받지 않음 (${last})`);
+      for (const n of GOODN) { const r = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: NET.earnBurst * 3, nick: n } } }); if (!r.j.fix?.nick) okGood++; else console.log('     걸린 이름', n); }
+      ok(okGood === GOODN.length, `평범한 이름 ${okGood}/${GOODN.length} 통과`);
+      // 새 계정이 처음부터 걸리는 이름 → 무작위 이름 + 다음 한 번 무료
+      const N1 = await login('plain', 'nick-new');
+      const n1 = await req('plain', '/save', { method: 'PUT', token: N1.token, body: { save: { ...S0, nick: '씨8발' } } });
+      const m1 = (await req('plain', '/me', { token: N1.token })).j;
+      ok(n1.j.fix?.nick && m1.save.nick === n1.j.fix.nick && nickOk(m1.save.nick) && m1.nickRen?.free === 1, `처음 지은 이름이 걸리면 무작위 이름으로 (${m1.save.nick}, 다음 무료 ${m1.nickRen?.free})`);
+      // 정한 뒤에는 저장으로 못 바꿈 (POST /nick 만)
+      const N2 = await login('plain', 'nick-pay');
+      const look = { sex: 'f', skin: 1 };
+      await req('plain', '/save', { method: 'PUT', token: N2.token, body: { save: { ...S0, coins: 0, nick: '처음 이름', nickSet: 1, look } } });
+      const sneak = await req('plain', '/save', { method: 'PUT', token: N2.token, body: { save: { ...S0, coins: 0, nick: '몰래 바꿈', look } } });
+      ok(sneak.j.fix?.nick === '처음 이름', `정한 이름은 저장으로 바꿀 수 없음 (${sneak.j.fix?.nick})`);
+      const nk = (body) => req('plain', '/nick', { method: 'POST', token: N2.token, body });
+      const D1 = Date.now() + 864e5, D2 = D1 + 864e5;
+      ok((await nk({ nick: '두번째 이름', price: 0, at: D1 })).j.ok, '첫 바꾸기는 귤 없이 됨');
+      const twice = await nk({ nick: '세번째 이름', price: 0, at: D1 });
+      ok(twice.status === 409 && twice.j.error === 'day', `하루 두 번 거절 (${twice.j.error})`);
+      const cheat = await nk({ nick: '세번째 이름', price: 0, at: D2 });
+      ok(cheat.j.error === 'price' && cheat.j.price === 2000, `값 속이기 거절 (서버 값 ${cheat.j.price})`);
+      const broke = await nk({ nick: '세번째 이름', price: 2000, at: D2 });
+      ok(broke.j.error === 'coins', `귤 없이 바꾸기 거절 (${broke.j.error})`);
+      const badRn = await nk({ nick: '개새끼', price: 2000, at: D2 });
+      ok(badRn.j.error === 'bad', '바꾸기도 걸리는 이름 거절');
+      ok(!(await req('plain', '/nick', { method: 'POST', body: { nick: '손님 이름', price: 0 } })).j?.ok, '손님(로그인 없음)은 /nick 못 씀');
+      const m2 = (await req('plain', '/me', { token: N2.token })).j;
+      ok(m2.save.nick === '두번째 이름' && m2.nick === '두번째 이름' && m2.save.coins === 0 && m2.nickRen.n === 1, `바꾼 이름·귤·횟수는 서버 값 (${m2.save.nick}, 귤 ${m2.save.coins}, ${JSON.stringify(m2.nickRen)})`);
+      // 귤이 있으면 빠지고 바뀜 (값 2,000)
+      await req('plain', '/save', { method: 'PUT', token: N2.token, body: { save: { ...m2.save, coins: 2500 } } });
+      const paid = await nk({ nick: '세번째 이름', price: 2000, at: D2 });
+      const m3 = (await req('plain', '/me', { token: N2.token })).j;
+      ok(paid.j.ok && paid.j.paid === 2000 && m3.save.coins === 500 && m3.save.nick === '세번째 이름', `귤 2,000 빠지고 바뀜 (남은 귤 ${m3.save.coins})`);
+      const keepNew = await req('plain', '/save', { method: 'PUT', token: N2.token, body: { save: { ...m2.save, coins: 500 } } }); // 옛 이름이 든 저장이 늦게 와도
+      ok(keepNew.j.fix?.nick === '세번째 이름', '늦게 온 옛 저장이 바꾼 이름을 되돌리지 못함');
+    }
 
     /* ---------- 의견 도배·요청 수 ---------- */
     { // 오류 알림 묶어 보기 (#122): 로그인·Origin 없이 읽지만 의견 글·닉네임·좌표·IP 는 새지 않음

@@ -4,7 +4,7 @@
 //   ① credit: 시간이 지나면 earnPerSec 씩 차고 earnBurst 에서 멈춤 (토큰 통. 적·업적·낚시·보너스)
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
-import { cleanText } from '../../src/safetext.js';
+import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
 import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS } from '../../src/balance.js';
 
 // 예전 값 (#144): 실서버 클라이언트가 아직 #137 앞 값 표(v0.23.7)일 수 있음. 그때 값으로 산 장비가 되돌려지지 않게, 쓴 귤은 지금 값과 이 값 중 작은 쪽으로 셈
@@ -67,24 +67,40 @@ function revertItems(P, S) {
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
 }
 
+// 이름 (#162): 저장으로는 처음 지을 때(서버 기록 없음, 또는 아직 캐릭터를 안 고르고 이름도 안 정함)만 바뀜. 그 뒤 바꾸기는 POST /nick (Accounts.rename)
+// 걸리는 이름(욕설·사칭)은 앞 이름으로, 앞 이름도 걸리면 무작위 이름으로 바꾸고 bad 를 알림 (그 뒤 첫 바꾸기 무료)
+function fixNick(prev, P, S, free, fixed) {
+  const pn = P.nick, sn = S.nick, open = !prev || !pn || free || (!P.nickSet && !isObj(P.look));
+  let out = open ? sn : pn, bad = false;
+  if (out !== pn || !prev) { if (!nickOk(out)) out = prev && pn && !nickBad(pn) ? pn : ''; }
+  if (out && nickBad(out)) out = '';
+  if (!out) { out = randomNick(); bad = true; }
+  if (out !== pn && prev) S.nickSet = 1;
+  if (P.nickSet && !free) S.nickSet = 1; // 한 번 정한 표시는 되돌릴 수 없음
+  if (out !== sn) fixed.push('nick');
+  S.nick = out;
+  return bad;
+}
+
 // prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, bank, savedAt }, t: 지금(ms)
-// → { save, fixed: [바로잡은 칸], acc: 새 credit·pickCredit·bank }
+// → { save, fixed: [바로잡은 칸], acc: 새 credit·pickCredit·bank, nickBad: 걸린 이름을 무작위로 바꿨음 }
 // free: 어드민 계정 (#84, 시크릿 ADMIN_SUBS). 귤·치운 양 몫을 보지 않음 (개발자 버튼 '귤 채우기')
 export function checkSave(prev, next, acc, t, { migrate = false, free = false } = {}) {
   if (!isObj(next)) throw new Error('bad save');
   const S = norm(JSON.parse(JSON.stringify(next)));
   const P = norm(JSON.parse(JSON.stringify(prev || FRESH)));
   const fixed = [];
+  const nickBadNow = fixNick(prev, P, S, free, fixed);
   const dt = Math.max(0, Math.min(NET.earnWindow, (t - (acc.savedAt || t)) / 1000));
   let credit = Math.min(NET.earnBurst, (acc.credit ?? NET.earnBurst) + dt * NET.earnPerSec);
   let pickCredit = Math.min(NET.pickBurst, (acc.pickCredit ?? NET.pickBurst) + dt * NET.pickPerSec);
   let bank = Math.max(0, Math.min(NET.earnBankMax, Number(acc.bank) || 0));
-  if (free) return { save: S, fixed, acc: { credit, pickCredit, bank } };
+  if (free) return { save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow };
   if (P.mealFree && !S.mealFree) { S.mealFree = 1; fixed.push('mealFree'); } // 한 번 쓴 첫 식사는 되돌릴 수 없음 (어드민은 위에서 free 로 빠짐)
   if (migrate && !prev) {
     // 기기 기록 옮기기: 지난 기록을 확인할 길이 없어 목록 확인과 귤 상한만
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
-    return { save: S, fixed, acc: { credit, pickCredit, bank } };
+    return { save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow };
   }
   const room = credit + bank; // 이번에 늘 수 있는 귤
   let spent = spentOf(P, S);
@@ -96,5 +112,5 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false } 
   const pg = S.trash.total - P.trash.total;
   if (pg > pickCredit) { S.trash.total = Math.floor(P.trash.total + pickCredit); fixed.push('picked'); }
   pickCredit -= Math.max(0, S.trash.total - P.trash.total);
-  return { save: S, fixed, acc: { credit, pickCredit, bank } };
+  return { save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow };
 }
