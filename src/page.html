@@ -313,6 +313,10 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .wish { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #e8dfc3; font-size: 14px; }
 .wish b { font-weight: 600; color: var(--leaf); white-space: nowrap; }
 .wish.mine b { color: var(--songi); }
+.wish { grid-template-columns: auto 1fr auto auto; } .wish span { overflow-wrap: anywhere; } .wish.hid span { opacity: .5; text-decoration: line-through; }
+.wish-pray, .wish-rep { border: 0; background: none; font: inherit; font-size: 12px; padding: 4px 6px; border-radius: 8px; cursor: pointer; color: inherit; white-space: nowrap; min-height: 30px; }
+.wish-pray { border: 1px solid currentColor; } .wish-pray[aria-pressed="true"] { opacity: .55; } .wish-rep { opacity: .55; } .wish-rep[data-sure] { opacity: 1; color: #d65a3c; }
+#wishadm .pop-body { max-height: 70vh; overflow: auto; } #wishadm li { cursor: default; } #wishadm .wa-btns { display: flex; gap: 6px; margin-top: 4px; }
 #wish-form, #chat-form { display: flex; gap: 6px; }
 #inbox .pop-body { max-height: 70vh; overflow: auto; }
 .inbox-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
@@ -1580,7 +1584,7 @@ body.newbie .dock button span { display: block; }
       <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button><button type="button" class="btn small adm-danger" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <p class="adm-note">들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</p></div>
       <div class="adm-sec" id="adm-inbox-row" hidden><div class="adm-row adm-t"><span>의견</span></div>
-      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button></div></div>
+      <div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button><button type="button" class="btn small" id="dev-gyuladm">귤 맞춤·보내기</button><button type="button" class="btn small" id="dev-wishadm">신고된 소원</button></div></div>
     </div>
   </div>
 </nav>
@@ -1737,8 +1741,9 @@ body.newbie .dock button span { display: block; }
     <div class="pop-head"><h2 id="wish-title">돌탑</h2><button type="button" class="btn small" id="wish-close">닫기</button></div>
     <div class="pop-body">
       <p class="muted" id="wish-count" style="margin:0 0 6px;font-size:13px"></p>
-      <form id="wish-form"><input id="wish-input" maxlength="60" placeholder="소원 한 줄 (비워도 돼요)" autocomplete="off" enterkeyhint="done"><button type="submit" class="btn small primary" id="wish-submit">돌 올리기</button></form>
+      <form id="wish-form"><input id="wish-input" maxlength="30" placeholder="소원 한 줄 (비워도 돼요)" autocomplete="off" enterkeyhint="done"><button type="submit" class="btn small primary" id="wish-submit">돌 올리기</button></form>
       <p class="muted" id="wish-solo" style="font-size:12px;margin:6px 0 0" hidden>지금은 혼자 모드라 내 화면에만 쌓여요.</p>
+      <p class="muted" id="wish-note" style="font-size:12px;margin:6px 0 0" hidden></p>
       <div id="wish-list" style="margin-top:10px"></div>
     </div>
   </div>
@@ -1759,6 +1764,13 @@ body.newbie .dock button span { display: block; }
   <div class="panel pop">
     <div class="pop-head"><h2>받은 의견</h2><span><button type="button" class="btn small" id="inbox-refresh">새로 고침</button> <button type="button" class="btn small" id="inbox-close">닫기</button></span></div>
     <div class="pop-body"><ul id="inbox-list" class="inbox-list"></ul><button type="button" class="btn small" id="inbox-more" hidden>더 보기</button></div>
+  </div>
+</div>
+
+<div class="overlay dim" id="wishadm" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>신고된 소원</h2><span><button type="button" class="btn small" id="wishadm-refresh">새로 고침</button> <button type="button" class="btn small" id="wishadm-close">닫기</button></span></div>
+    <div class="pop-body"><ul id="wishadm-list" class="inbox-list"></ul></div>
   </div>
 </div>
 

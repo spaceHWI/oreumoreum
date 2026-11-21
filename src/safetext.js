@@ -25,11 +25,23 @@ function forms(name) {
   return { list: [hl, h, l], cho, raw: s };
 }
 const cut = (s) => ALLOWN.reduce((a, w) => a.split(w).join('·'), s);
+// 욕설·성적인 말·혐오 (사칭 빼고). 이름과 소원 글(#127)이 같이 씀
+function banHit({ list, cho, raw }) {
+  if (list.some((f) => { const c = cut(f); return BANN.some((w) => c.includes(w)); })) return true;
+  const ch = cut(cho); return JAMO_BAN.some((w) => ch.includes(w)) && /[\u1100-\u11ff\u3131-\u318e]/.test(raw); // 첫소리 욕은 낱자(ㄱ~ㅎ)가 섞였을 때만 (평범한 낱말의 첫소리가 우연히 같은 것은 통과)
+}
 export function nickBad(name) {
-  const { list, cho, raw } = forms(name);
-  if (list.some((f) => { const c = cut(f); return BANN.some((w) => c.includes(w)) || STAFF.some((w) => f.includes(w)); })) return true;
-  const ch = cut(cho); if (JAMO_BAN.some((w) => ch.includes(w)) && /[\u1100-\u11ff\u3131-\u318e]/.test(raw)) return true; // 첫소리 욕은 이름에 낱자(ㄱ~ㅎ)가 섞였을 때만 (평범한 낱말의 첫소리가 우연히 같은 것은 통과)
-  return STAFF_WORD.some((w) => new RegExp(`(^|[^a-z])${w}([^a-z]|$)`).test(raw));
+  const F = forms(name);
+  if (banHit(F) || F.list.some((f) => STAFF.some((w) => f.includes(w)))) return true;
+  return STAFF_WORD.some((w) => new RegExp(`(^|[^a-z])${w}([^a-z]|$)`).test(F.raw));
+}
+// 소원 글 거르기 (#127): 욕설 등(banHit) + 주소·도메인 꼴·이메일·전화번호·8자리 넘는 숫자(사이 띄어쓰기·점·줄표 무시) → 걸리면 'bad'·'link'
+const LINK = /(https?:|www\.|:\/\/|[a-z0-9-]\s*(\.|닷|점)\s*(com|net|org|kr|co|io|me|ly|gg|xyz|app|dev|site|shop|link|kakao|info|biz)\b|닷컴|점컴|open\.?kakao|오픈채팅|오픈톡|카톡\s*아이디|텔레그램|@\S)/i;
+const PHONE = /(0\s*1\s*[016789]|0\s*[2-6]\s*\d?)[\s.\-)]*\d{3,4}[\s.\-]*\d{4}/;
+export function wishBad(text) {
+  const s = String(text || '').normalize('NFKC');
+  if (LINK.test(s) || PHONE.test(s) || /\d{8,}/.test(s.replace(/[\s.\-_,/]+/g, ''))) return 'link';
+  return banHit(forms(s)) ? 'bad' : '';
 }
 const NICK_CH = /^[\p{Script=Hangul}A-Za-z0-9 _.\-\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}️]+$/u;
 export function nickOk(name) {

@@ -1298,6 +1298,25 @@ export const RANK = {
   checkGapMs: 4000,   // 버린 뒤 내 순위 다시 보기 간격 (연달아 버려도 이만큼은 쉼)
 };
 
+// 돌탑 소원 글·함께 기도 (#127): 서버 server/src/wishes.js (계정 DO 안 SQLite). 쓰기는 로그인한 사람만, 읽기·기도·신고는 손님도
+export const WISH = {
+  max: 30,            // 소원 글자 수
+  keepDays: 30,       // 쓴 뒤 이 날이 지나면 지움 (서버 Cron)
+  perCairn: 100,      // 돌탑마다 최근 이만큼
+  editPerDay: 3,      // 한 사람이 돌탑마다 하루 이만큼 쓰기·고치기 (첫 쓰기 포함)
+  writePerMin: 10,    // 한 계정이 1분에 보내는 쓰기 요청 (RL_API 와 따로)
+  reportHide: 3,      // 서로 다른 이만큼이 신고하면 숨김 (어드민이 되살릴 수 있음)
+  prayGyul: 20,       // 함께 기도한 사람이 받는 귤 (한 번에). 하루 최대(prayGyul × prayPerDay + gotGyul × gotPerDay)는 1일 벌이의 10% 아래 (tools/econ.js)
+  prayPerDay: 5,      //   하루 이만큼까지 귤을 받음 (기도는 더 해도 됨, 같은 소원에는 하루 한 번)
+  gotGyul: 10,        // 소원 쓴 사람이 기도 한 번마다 받는 귤 (다음에 들어올 때 '○명이 함께 빌어 줬어요')
+  gotPerDay: 15,      //   하루 이만큼 기도까지 귤을 셈 (넘는 기도는 수만 오름)
+  near: 12,           // 돌탑에 이만큼 다가가면 최근 소원이 하나씩 떠오름 (m)
+  floatEvery: 4,      //   떠오르는 간격 (초)
+  floatN: 6,          //   돌아가며 보여 주는 최근 소원 수
+  cacheMs: 60000,     // 같은 돌탑 목록을 이만큼 다시 씀 (게임)
+  list: 40,           // 창에 보이는 소원 수
+};
+
 // 의견 보내기 (#77): 게임 안 글 → 서버 /feedback → 개발자 메일 (받는 주소는 서버 시크릿 FEEDBACK_TO)
 export const FEEDBACK = {
   max: 500,           // 글자 수 상한
