@@ -86,6 +86,7 @@ import './game/guard.js'; // 구역 지킴이 돌하르방 (#119)
 import './game/shop.js';
 import './game/look.js';
 import './game/bag.js'; // 내 가방 (#166)
+import './game/nickname.js'; // 이름 바꾸기 (#162)
 import './game/hooks.js';
 import './game/guide.js';
 import './game/pace.js';
@@ -104,5 +105,6 @@ import './game/swarm.js'; // 들판 떼 (#173)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
 import './game/start.js';
+import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
 import './game/debug.js';

@@ -25,7 +25,7 @@
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
-import { cleanText } from '../../src/safetext.js';
+import { cleanText, nickBad } from '../../src/safetext.js';
 
 const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134). 지금은 비워 둠 → 예: '0.24.0'
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -117,7 +117,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     }
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
-    if ('nick' in d) d.nick = cleanText(d.nick, NET.nickMax);
+    if ('nick' in d) { d.nick = cleanText(d.nick, NET.nickMax); if (nickBad(d.nick)) d.nick = ''; } // 걸리는 이름은 빈 이름으로 (받는 쪽이 '러너' 로 그림, #162)
     // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
     if ('gs' in d) d.gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0; // 장비 점수 (#137, 이름표 옆 숫자. 보여 주기만)
     if ('gg' in d) d.gg = Number.isFinite(d.gg) ? Math.max(0, Math.min(3, Math.floor(d.gg))) : 0; // 입은 것 중 가장 높은 등급 (#140, 이름표 색)
