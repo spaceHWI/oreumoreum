@@ -805,14 +805,10 @@ body.hp-down #shop-mark { display: none !important; }
 .pad #btn-ride.on { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
 #ride-more { right: 38px; bottom: 214px; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; cursor: pointer; color: #fff; border: 1px solid var(--hair); }
 #ride-more svg { width: 16px; height: 16px; }
-#ridewin .pop { width: min(560px, 100%); box-sizing: border-box; }
-/* 무기 고르는 창 (#123): 던지기·줍기 버튼 사이 아래 ▾, 창은 탈것 창과 같은 모양 */
+/* 무기 고르기 (#123): 던지기·줍기 버튼 사이 아래 ▾ → 내 가방 무기 탭 (#166) */
 #arm-more { right: 79px; bottom: -6px; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; cursor: pointer; color: #fff; border: 1px solid var(--hair); z-index: 1; }
 #arm-more[hidden] { display: none; }
 #arm-more svg { width: 16px; height: 16px; }
-#armwin .pop { width: min(560px, 100%); box-sizing: border-box; }
-#armwin .menu-card.off { opacity: .55; }
-#armwin .menu-card.on { outline: 2px solid var(--acc); }
 @media (max-width: 600px) { #arm-more { right: 68px; bottom: -6px; width: 24px; height: 24px; } }
 /* 탄 막대 (#123 머신건·레이저 남은 몫, 폭탄 다시 쥐기) */
 #btn-ctx .ammo.bar b { width: 44px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ff9a2e calc(var(--k, 0) * 100%), rgba(255,255,255,.25) 0); }
@@ -822,9 +818,6 @@ body.hp-down #shop-mark { display: none !important; }
 #btn-ctx .chg.full { background: #fff2b0; box-shadow: 0 0 14px #ffd25a; animation: chgFull .5s ease-in-out infinite alternate; }
 @keyframes chgFull { to { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { #btn-ctx .chg.full { animation: none; } }
-#ridewin .menu-card.walk svg.food { padding: 12px; box-sizing: border-box; }
-#ridewin .menu-card.off { opacity: .55; }
-#ridewin .menu-card.on { outline: 2px solid var(--acc); }
 #cart-mark { position: fixed; left: 0; top: 0; z-index: 14; width: 34px; height: 34px; margin: -17px 0 0 -17px; display: grid; place-items: center; pointer-events: none; padding: 0; opacity: .85; }
 #cart-mark svg { width: 19px; height: 19px; }
 #cart-mark .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid rgba(255,255,255,.7); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(23px); }
@@ -1082,6 +1075,45 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   .photo-card img { width: auto; max-width: calc(100vw - var(--gut-l) - var(--gut-r) - 150px); max-height: calc(var(--ll-h) - 28px); }
   .photo-acts { flex-direction: column; align-items: stretch; } .photo-acts #photo-save { margin: 0 0 auto; }
 }
+/* 내 가방 (#166): 예전 옷장 자리. 위 탭 5개(44px 넘게), 가운데 카드, 아래 장비 점수·능력 4줄. 데스크톱은 오른쪽(캐릭터는 왼쪽에 보임), 폰은 아래 60% */
+#wardrobe { width: min(400px, calc(100vw - 32px)); }
+#wardrobe .pop-body { flex: 1; min-height: 0; overflow-y: auto; }
+.bag-tabs { padding: 8px 12px 6px; gap: 4px; }
+.bag-tabs button { flex-direction: column; gap: 2px; min-height: 48px; padding: 6px 2px; border-radius: 14px; }
+.bag-tabs button span { font-size: 12px; }
+.bag-grid { grid-template-columns: 1fr; gap: 6px; padding: 2px 0 6px; }
+.bag-card { width: 100%; box-sizing: border-box; grid-template-columns: 52px 1fr auto; grid-template-rows: auto; cursor: default; }
+button.bag-card { cursor: pointer; }
+.bag-card svg.food { width: 52px; height: 52px; grid-row: auto; }
+.bag-card .mn small { font-size: 11px; opacity: .7; line-height: 1.35; }
+.bag-card .mn small s { opacity: .6; } .bag-card .mn small em { font-style: normal; color: #ffb672; font-weight: 700; }
+.bag-card .mv { flex-direction: column; align-items: flex-end; gap: 4px; flex-wrap: nowrap; }
+.bag-card .bf.dim { background: rgba(255,255,255,.1); font-weight: 600; opacity: .7; }
+.bag-card.lock .food, .bag-card.lock .mn { opacity: .45; filter: grayscale(1); }
+.bag-card .where { font-size: 10.5px; opacity: .75; text-align: right; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 150px; }
+.bag-card .where .price { font-size: 12px; }
+.bag-card .chip.go, .bag-hint .chip.go { min-height: 32px; padding: 4px 12px; white-space: nowrap; }
+.bag-card .chip.call { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
+.bag-card .sc .gs { font-size: 11px; }
+.wear-item.lock svg.art { opacity: .35; filter: grayscale(1); }
+.wear-item.lock .pr { opacity: .75; }
+.bag-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.08); font-size: 12px; }
+.bag-hint .price { display: inline-flex; align-items: center; gap: 3px; font-weight: 800; color: #ffb672; }
+.bag-hint .price i, .bag-card .where .price i { width: 11px; height: 11px; border-radius: 50%; background: var(--gyul); display: inline-block; }
+.bag-foot { border-top: 1px solid var(--hair); padding: 8px 12px 10px; display: grid; gap: 6px; }
+.bag-foot:empty { display: none; }
+.bag-score { display: flex; align-items: center; gap: 8px; font-size: 12px; } .bag-score small { opacity: .7; }
+.bag-score .gs { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-weight: 800; font-size: 15px; } .bag-score .gs svg { width: 16px; height: 16px; }
+.bag-card .sc .gs { display: inline-flex; align-items: center; gap: 2px; } .bag-card .sc .gs svg { width: 12px; height: 12px; }
+.bag-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.bag-stats .bs { display: grid; justify-items: center; gap: 1px; padding: 4px 2px; border-radius: 10px; background: rgba(255,255,255,.06); font-size: 11px; }
+.bag-stats .bs svg { width: 16px; height: 16px; opacity: .8; } .bag-stats .bs em { font-style: normal; opacity: .65; font-size: 10px; } .bag-stats .bs b { font-family: var(--display); font-size: 13px; }
+#bag-nick[hidden] { display: none; }
+#bag-pill { cursor: pointer; }
+@media (max-width: 600px) {
+  #wardrobe { height: 60%; width: auto; }
+  .bag-tabs { padding: 6px 8px 4px; }
+}
 </style>
 
 <!-- 인앱 브라우저 안내 (#118): 카카오톡·인스타그램 등 안 브라우저면 바깥 브라우저로 열도록 이끈다. 큰 파일을 받기 전에 먼저 본다 -->
@@ -1095,7 +1127,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-82eb024a0b.js">(function () {
+<script data-main="main-a92c042497.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1133,7 +1165,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <div class="tb-g tb-l">
     <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="score-pill" title="장비 점수 · 줍는 힘 · 싸우는 힘" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/><path d="M12 8l1.3 2.7 2.9.4-2.1 2 .5 2.9-2.6-1.4-2.6 1.4.5-2.9-2.1-2 2.9-.4z" fill="currentColor" stroke-width="1"/></svg><b id="gscore">0</b></div>
-    <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피)" hidden><svg class="pk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/><path d="M9 13l3 3 3-3"/></svg><svg class="bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
+    <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg class="pk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/><path d="M9 13l3 3 3-3"/></svg><svg class="bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" data-tut="clean" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
   </div>
   <div class="tb-g tb-c">
@@ -1207,7 +1239,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
     <button type="button" id="menu-dex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7zM6.5 9h2M15.5 9h2"/></svg>도감</button>
-    <button type="button" id="menu-wardrobe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7a2 2 0 1 0-2-2M12 7v2l8 6H4l8-6"/></svg>옷장</button>
+    <button type="button" id="menu-wardrobe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9a5 5 0 0 1 10 0v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9z"/><path d="M10 4.5V3h4v1.5M9 14h6v4H9z"/></svg>내 가방</button>
     <button type="button" id="menu-ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h5l3 8M10 9L8 6H6"/></svg>탈것</button>
     <button type="button" id="menu-shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>상점</button>
     <button type="button" id="menu-sign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V4M12 5h7l2 2.5-2 2.5h-7M12 12H6l-2 2.5L6 17h6"/></svg>탐방 안내</button>
@@ -1284,10 +1316,12 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   </div>
 </div>
 
-<aside class="panel" id="wardrobe" hidden aria-label="옷장">
-  <div class="pop-head"><h2>옷장</h2><div><button type="button" class="chip" id="wardrobe-shop">사러 가기</button> <button type="button" class="btn small" id="wardrobe-done">완료</button></div></div>
-  <div class="w-nick"><span>오늘 이름은 <b id="nick-mirror"></b></span><button type="button" class="chip" id="nick-reroll">다른 이름</button></div>
+<aside class="panel" id="wardrobe" hidden aria-label="내 가방">
+  <div class="pop-head"><h2>내 가방</h2><div><button type="button" class="chip" id="wardrobe-shop">사러 가기</button> <button type="button" class="btn small" id="wardrobe-done">닫기</button></div></div>
+  <div id="bag-tabs" class="shop-tabs bag-tabs" role="tablist" aria-label="내 가방 묶음"></div>
+  <div class="w-nick" id="bag-nick"><span>오늘 이름은 <b id="nick-mirror"></b></span><button type="button" class="chip" id="nick-reroll">다른 이름</button></div>
   <div id="wardrobe-body" class="pop-body"></div>
+  <div id="bag-foot" class="bag-foot"></div>
 </aside>
 
 <div class="overlay dim" id="shoppop" hidden>
@@ -1295,19 +1329,6 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <div class="shop-head"><span class="shop-logo"><img id="shoppop-logo" alt=""></span><span class="shop-title"><b id="shoppop-name"></b><small id="shoppop-tag"></small></span><span class="coins-pill"><i></i><span id="shoppop-coins">0</span></span><button type="button" class="btn small" id="shoppop-close" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div id="shoppop-tabs" hidden></div>
     <div class="pop-body"><div class="menu-grid" id="shoppop-cards"></div></div>
-  </div>
-</div>
-
-<div class="overlay dim" id="ridewin" hidden>
-  <div class="panel pop" role="dialog" aria-label="탈것">
-    <div class="pop-head"><h2>탈것</h2><button type="button" class="btn small" id="ridewin-close" aria-label="닫기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="pop-body"><div class="menu-grid" id="ridewin-cards"></div></div>
-  </div>
-</div>
-<div class="overlay dim" id="armwin" hidden>
-  <div class="panel pop" role="dialog" aria-label="무기">
-    <div class="pop-head"><h2>무기</h2><button type="button" class="btn small" id="armwin-close" aria-label="닫기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="pop-body"><div class="menu-grid" id="armwin-cards"></div></div>
   </div>
 </div>
 
