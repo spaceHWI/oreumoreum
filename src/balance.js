@@ -1188,8 +1188,46 @@ export const JOURNEY = {
     { id: 'crow', need: { zone: 3 } }, // #163 까마귀 도둑
     { id: 'title', need: { zone: 3 } }, // #165 칭호
     { id: 'gift', need: { zone: 3 } }, // #175 귤 주기 (멀티)
-    { id: 'aliens', need: { zone: 4 } }, // #168 외계인·'분리수거 조약' (구역 4·5)
+    { id: 'aliens', need: { zone: 4 } }, // #168 '미친 개 주의'·'불법 주차 단속'·엔딩 (구역 4·5)
   ],
+};
+
+// 이야기 이벤트 (#168, src/game/story.js · 글은 src/punktext.js): 한 일의 결과로 다음 일이 벌어짐. 사람마다 한 번씩, 한 번에 하나, 하루에 새로 시작하는 것은 perDay 개까지
+// 이벤트 하나 = 조건 → 예고(omen 초 안, 카메라가 잠깐 그쪽, 건너뛸 수 있음) → 벌어지는 일 → 끝(보상·다음 이벤트). 싸우는 중·튜토리얼·창이 열려 있으면 예고를 미룸
+// 조건은 그 일이 '일어날 때' 봄 (옛 저장: 이미 한참 넘긴 사람도 다음 번 그 일이 한 번 더 일어날 때 시작). 셈은 업적 평생 기록(save.ach.life)
+// list 순서가 유저 저니 순서. door: 감독(#176) 문(그 문이 열려야 시작, 등록 안 된 문은 없는 것으로). gyul 끝 보상
+// 모두 임의값. 보상 합은 5일 전체 벌이의 5% 아래 (tools/econ.js 가 봄), 엄마 멧돼지는 권장 장비로 서서 던질 때 잃는 기운 40% 아래 (tools/fight.js)
+export const STORY = {
+  perDay: 4, omen: 2.6, look: 2.2, safeSec: 3, retry: 60, checkSec: 1,
+  list: [
+    { id: 'mom', zone: 1, door: 'storyMom', need: { ev: 'enemy-repel-piglet', n: 5 }, gyul: 60 },
+    { id: 'pair', zone: 1, need: { ev: 'dumper-repel', n: 3 }, gyul: 40 },
+    { id: 'night', zone: 1, door: 'nightLight', need: { boss: 1, night: 1 }, gyul: 0 },
+    { id: 'howl', zone: 2, need: { pack: 'dog' }, gyul: 0 },
+    { id: 'truck', zone: 2, need: { clean: 0.5 }, gyul: 0 },
+    { id: 'meet', zone: 3, need: { ev: 'enemy-repel-boar', n: 10 }, gyul: 80 },
+    { id: 'tour', zone: 3, need: { boss: 3 }, gyul: 0 }, // 관광객(#163) 이 없으면 조용히 건너뜀
+    { id: 'sign', zone: 4, door: 'aliens', need: { enter: 4 }, gyul: 0 },
+    { id: 'ufo', zone: 5, door: 'aliens', need: { ev: 'enemy-repel-alien', n: 3 }, gyul: 0 },
+    { id: 'end', zone: 5, door: 'aliens', need: { boss: 5 }, gyul: 300 },
+  ],
+  // 엄마가 왔다: 엄마(멧돼지 모양 k 배, 아기 멧돼지보다 기운 3배)와 새끼 kids 마리. 숲 가장자리 r m 쯤에서 나옴. 보상 귤은 끝에 한 번(엄마는 흩뿌리지 않음)
+  mom: { kind: 'boar', k: 1.3, hp: 9, dmg: 10, kids: 2, r: [20, 28], life: 240 },
+  // 투기꾼의 복수: 다음 투기꾼은 둘(한 명이 망봄). 망보는 사람 whistle m 안에 오면 휘파람 → 다른 한 명이 서둘러 버림
+  pair: { whistle: 25 },
+  // 수상한 불빛: UFO 가 능선 위를 지나며(지름 k 배, 높이 y, 지나는 시간 t 초) 외계 캔 cans 개와 쓰레기 trash 개를 떨어뜨림. 캔은 다가가면(pickR) 주움
+  night: { k: 3.2, y: 34, t: 9, cans: 3, trash: 8, pickR: 1.8, d: [30, 45] },
+  // 들개 대장의 소집: 무리 하나를 다 쫓은 뒤 긴 울음, wait 초 뒤 n 마리가 반원(r m)으로 다가옴
+  howl: { n: 5, wait: [18, 30], r: 26 },
+  // 멧돼지 가족회의: 능선 빈터(구역 3 우두머리 빈터에서 off m)에 n 마리. calmR 안에 오면 흩어지고 귤 상자
+  meet: { n: 4, off: 14, calmR: 7 },
+  // 미친 개 주의: 구역 4 에 처음 들어선 곳 앞 ahead m 에 쓰러진 표지판. 세우면 뒤 back m 에서 광견병 들개
+  sign: { ahead: 9, r: 2.6, back: 14 },
+  // 불법 주차 단속: UFO 가 플레이어 앞 d m 에 내려와(높이 y) 쓰레기 trash 개를 쏟음
+  ufo: { k: 3.6, y: 14, d: 22, t: 7, trash: 14 },
+  // 엔딩 (사용자 결정 2026-11-21): 같은 방 모두가 함께 강제로 보는 시네마틱 len 초. 시작 lead 초 전 알림, 이미 본 사람은 skipAfter 초 뒤 건너뛰기
+  // 방(서버)은 하루 한 번까지만 모두에게 틀고, 그날 두 번째부터는 끝낸 사람만 (나머지는 방송 한 줄)
+  end: { len: 48, lead: 3, skipAfter: 10, ufos: 7 },
 };
 
 // 처음 고르는 기본 옷 색 (#155, src/lookcolors.js): 기본 모자·반팔·반바지·쓰레빠에만. 줄마다 [색, 이름] 8개, 0번이 지금 기본색
@@ -1324,6 +1362,14 @@ export const QUESTS = {
     { id: 'c-full', giver: 'shop:stone', door: 'shopQuests', after: 'c-fish', name: '든든하게 한 판', say: ['밥 먹었으면 힘 써야죠.', '식사 버프가 있을 때 적 10마리.'], task: '식사 버프 중 적 10마리 쫓기', ask: { k: 'repelBuff', n: 10 }, fin: ['역시 밥심! 에이드는 내가 쏠게요.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
     // 만족한상회 사장 (#167 가게가 들어오면)
     { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?'], task: '만족한상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
+    // ----- 이야기 이벤트 뒤 (#168): '오름지기에게 이야기하기'. 이벤트를 끝냈으면(need·ask 'story:id') 오름지기가 실마리를 한 줄 -----
+    { id: 'st-mom', giver: 'jigi', name: '엄마 멧돼지', say: ['엄마 멧돼지를 만났다면서요?', '멧돼지들이 요즘 왜 이렇게 사나운지 저도 궁금해요.'], task: '오름지기에게 이야기하기', ask: { k: 'story:mom', n: 1, ever: true }, fin: ['…밤에 능선 쪽을 한번 봐요. 말은 거기까지.'], reward: { gyul: 5 }, need: 'story:mom' },
+    { id: 'st-pair', giver: 'jigi', name: '둘이 다니는 투기꾼', say: ['투기꾼들이 둘씩 다닌다고요?', '누가 그 사람들한테 귤을 주는 걸까요.'], task: '오름지기에게 이야기하기', ask: { k: 'story:pair', n: 1, ever: true }, fin: ['쪽지 같은 걸 흘리면 꼭 주워 와요.'], reward: { gyul: 5 }, need: 'story:pair' },
+    { id: 'st-night', giver: 'jigi', name: '어디서 온 걸까?', say: ['그 캔, 어디서 났어요?', '…하늘에서요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:night', n: 1, ever: true }, fin: ['오름 쓰레기는 다 사람이 버린 줄 알았는데.'], reward: { gyul: 5 }, need: 'story:night' },
+    { id: 'st-howl', giver: 'jigi', name: '긴 울음', say: ['들개 대장 울음 들었어요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:howl', n: 1, ever: true }, fin: ['무리를 부르는 건 지킬 게 있다는 뜻이에요.'], reward: { gyul: 5 }, need: 'story:howl' },
+    { id: 'st-meet', giver: 'jigi', name: '멧돼지 가족회의', say: ['멧돼지들이 모여서 회의를 했다고요?', '다들 하늘을 보고 있었다니.'], task: '오름지기에게 이야기하기', ask: { k: 'story:meet', n: 1, ever: true }, fin: ['밤에 능선 위로 뭔가 내려온 뒤부터예요. 걔들이 사나워진 게.'], reward: { gyul: 5 }, need: 'story:meet' },
+    { id: 'st-sign', giver: 'jigi', name: '쓰러진 표지판', say: ['광견병 주의 표지판, 누가 쓰러뜨렸을까요.'], task: '오름지기에게 이야기하기', ask: { k: 'story:sign', n: 1, ever: true }, fin: ['굼부리 바닥엔 오래된 표지판이 하나 더 있대요. 처음 보는 글씨로.'], reward: { gyul: 5 }, need: 'story:sign' },
+    { id: 'st-ufo', giver: 'jigi', name: '불법 주차', say: ['UFO 가 쓰레기를 쏟고 굼부리로 갔다고요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:ufo', n: 1, ever: true }, fin: ['이제 다 같이 맞설 때예요. 귤 챙겨요.'], reward: { gyul: 5 }, need: 'story:ufo' },
   ],
 };
 

@@ -34,6 +34,7 @@ const FACTS = {
   fieldQuest: () => (save.quest?.done?.includes('field1') ? 1 : 0), // #158 퀘스트 '들판 탐사' 를 끝냄
   lv: () => levelOf(save.lv?.xp || 0).lv, // #159 레벨
   augs: () => augCount(save), // #159 고른 증강 수
+  babies: () => save.ach?.life?.['enemy-repel-piglet'] || 0, // #168 '엄마가 왔다' 문
 };
 
 export const director = createDirector({

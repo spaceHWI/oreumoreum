@@ -179,7 +179,7 @@ let logDirty = false;
 if (ON) {
   trash.on((ev) => { if (ev !== 'trash' || !state.sessionOn || late.tut?.active) return; const z = trash.zoneAt(player.pos.x, player.pos.z); if (B.list[z]) { logOf(z).pick++; logDirty = true; } });
   const prev = life.hooks.enemyRepel;
-  life.hooks.enemyRepel = (kind, pos, def) => { prev?.(kind, pos, def); const z = trash.zoneAt(pos.x, pos.z); if (B.list[z]) { logOf(z).repel++; logDirty = true; } };
+  life.hooks.enemyRepel = (kind, pos, def, e) => { prev?.(kind, pos, def, e); const z = trash.zoneAt(pos.x, pos.z); if (B.list[z]) { logOf(z).repel++; logDirty = true; } };
 }
 
 /* ---------- 매 프레임 (boss.js 가 부름) ---------- */

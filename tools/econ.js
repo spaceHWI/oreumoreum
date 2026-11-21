@@ -63,7 +63,7 @@ async function main() {
   const QUEST_N = [8, 4, 4, 4, 4, 3, 3], QUEST_XP = (LEVEL.xp.quest[0] + LEVEL.xp.quest[1]) / 2; // 하루 퀘스트 수(어림, #158)
   const AUG_PRI = ['bighand', 'recycle', 'light', 'deer', 'magnet', 'flower', 'bite', 'jacket', 'twin', 'burst', 'sour', 'quick']; // 벌이에 드는 것부터
   const { RIDES } = B;
-  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT } = B;
+  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY } = B;
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
@@ -264,7 +264,7 @@ async function main() {
   console.log(`권장 점수 ${ZONES.map((Z) => `${Z.id}:${Z.rec}`).join(' ')} · 단계 점수 ${GROWTH.score.join('/')} · 귤 배수 ${ZONES.map((Z) => Z.gv).join('/')}`);
   console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 무기 ${sum(WEAPONS)} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + sum(WEAPONS) + WSUM}`);
   const short = { tool: '도구', bag: '배낭', shoes: '신발', weapon: '무기', ride: '탈것', ...Object.fromEntries(WEAR.slots.map((w) => [w.k, w.name])) };
-  const verdict = []; let day1Rate = 0;
+  const verdict = []; let day1Rate = 0, storyEarn = 0;
   const FLOW_ONLY = has('--flow');
   // 하루 끝 목표 (#137): tier = 도구·배낭·신발 가장 낮은 단계, zone = 그날까지 다 치운 적 있는 가장 높은 구역 (이 구역까지는 다 치움)
   // tier = 도구·배낭·신발 가장 낮은 단계 [최소, 최대], zone = 그날까지 다 치운 가장 높은 구역(1부터 이어서) 최소, open = 하루 끝 장비 점수로 열린(빨강이 아닌) 구역 최소
@@ -295,6 +295,7 @@ async function main() {
   for (const mode of ['battle']) for (const slack of SLACKS) {
     const runs = [1, 7, 42, 99, 123].map((s) => seedRun(mode, slack, s));
     const r = runs[2]; if (!day1Rate && slack === 0) day1Rate = r.days[0].earned; // 1일차에 실제로 번 귤 (1시간)
+    if (slack === 0) storyEarn = r.days.slice(0, 5).reduce((a, d) => a + d.earned, 0); // #168
     const lasts = runs.map((x) => x.last).sort((a, b) => a - b), last = lasts[2];
     const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
     console.log(`\n== ${title} (투기꾼 쫓아내기 ${CHASE * 100}%) ==`);
@@ -318,6 +319,8 @@ async function main() {
       const el = `${title}: 강화 칸 10개 +5 ${day ? `${day}일 (놀이 ${hm(ed)})` : `${DAYS}일 안에 못 채움`} → 목표 6~14일 ${day && day >= 6 && day <= 14 ? '통과' : '✗'}`; console.log(el); verdict.push(el); }
     if (LOG) r.buys.forEach((b) => console.log(b.when, short[b.k], b.tier, b.name, b.price));
   }
+  // 이야기 이벤트 보상 (#168): 끝 보상 합이 5일(효율) 전체 벌이의 5% 아래
+  if (storyEarn > 0) { const sum = STORY.list.reduce((a, d) => a + (d.gyul || 0), 0), pct = sum / storyEarn * 100; verdict.push(`이야기 이벤트 보상 합 ${sum} = 5일 벌이 ${storyEarn.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;

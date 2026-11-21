@@ -1155,3 +1155,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 줄기 방향은 세상 기준이라 카메라를 돌려도 갑자기 바뀌지 않음. 젖은 땅 반짝임·물 튐은 없음(젖은 땅은 색만 어둡게)
 - 설정(메뉴 > 설정) '비 효과: 보통·약하게·끔' (`save.rainFx`, 처음부터 다시 해도 남김). 약하게 = 수 0.45·진하기 0.6, 끔 = 빗줄기·눈송이 없음(회색 하늘·젖은 땅·빗소리는 그대로). 고른 적 없고 `prefers-reduced-motion` 이면 '약하게'. `wx.setFx(k)`·`wx.fx`
 - 확인: 빌드·err.js, 비 화면 앞→뒤(hi·low), perf.js desk 비 = 낮과 같은 수준(draw call 188, 낮 225)
+## #168 이야기 이벤트 (2026-11-21)
+- 새 파일 `src/game/story.js`(이벤트 틀·10개 이벤트), `src/game/ending.js`(엔딩 시네마틱·UFO 모양), `src/punktext.js`(이야기 글. #165 도 여기에). 수치 `balance.js STORY`. 표는 notes/growth-loop.md 9-1
+- 틀: 조건은 그 일이 일어날 때 봄(적·투기꾼을 쫓음, 구역 우두머리, 구역 2 줍기, 구역 4 들어섬, 밤) → 줄(`save.story.wait`) → 안전할 때 3초 + 감독 'story' 차례 → 예고 한 줄 + 카메라 glance → 벌어지는 일 → 끝. 놓치면(엄마가 그냥 떠남 등) 60초 뒤 다시
+- 셈은 업적 평생 기록(`save.ach.life['enemy-repel-piglet']` 등)이라 옛 저장도 다음 번에 시작. 감독 문 storyMom(사실 `babies` 더함)·nightLight·aliens 을 등록
+- enemies.js: `spawnStory(kind, x, z, { k, over, calm })` (모양 키움·싸우지 않고 모여 있는 'calm' 상태), enemyRepel 후크에 적(e)을 넘김(zonedone.js 감싼 것도)
+- 트럭의 첫 등장은 '트럭이 온다' 가 엶 (`dumpers.come` 을 감싸 그 전엔 투기꾼). 옛 저장에서 트럭 팁을 본 사람(save.pace.hint.t)은 그대로
+- 엔딩(사용자 결정): 방이 시작 시각을 정해 모두 같은 장면(`server/src/roomcore.js` `end`·`endr`, hi.end 로 도중에 들어온 사람도). 하루 한 번만 모두에게. 그동안 무적(hooks.js)·조작 잠금(update.js)·적·투기꾼 멈춤·창 닫고 끝나면 되돌림. HUD 는 body.cine 로 숨김
+- 도감에 '수수께끼' 칸(외계 캔 `story:0`) 하나 더함
+- 아직 없는 것: 관광객(#163) → 'tour' 는 건너뜀, 칭호(#165)·오름지기 곁가지(#158) 는 `late.titles?.give`·`late.quest?.storyDone` 이 있으면 부름. 이야기 적·투기꾼은 각자 화면(#181 전까지 같이 쫓기는 안 됨)
+- 가이드 퀘스트(#158)와 잇기: balance.js `QUESTS.side` 에 'st-mom'·'st-pair'·'st-night'·'st-howl'·'st-meet'·'st-sign'·'st-ufo' (오름지기에게 이야기하기, 귤 5). game/quest.js 의 셈·need 에 'story:id' (그 이벤트를 끝냈나) 를 더함
+- 확인: `__oreum.story.play('mom')` 등, `tools/fight.js mom`, `tools/econ.js`(보상 합 5% 아래), `tools/online.js`(엔딩 같이 보기)
+
