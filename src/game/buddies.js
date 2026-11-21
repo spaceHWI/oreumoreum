@@ -225,6 +225,8 @@ function syncTalk() {
   f.textContent = on ? '그만 같이 가기' : '같이 가요'; f.setAttribute('aria-pressed', String(on));
 }
 function closeTalk() { if (TW) TW.hidden = true; talkS.m = null; }
+late.mateTalkNow = () => talkS.m; // 말 걸기 창의 동료 (#175 귤 주기)
+late.mateSay = (m, text) => social.showBubble('mate:' + m.def.id, m.r.root, text, 3.4);
 // ---------- 함께 가기 (한 번에 한 명) ----------
 const followS = { m: null, until: 0 };
 function follow(m, on = true) {

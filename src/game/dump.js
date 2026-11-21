@@ -233,6 +233,7 @@ const CTX_ICON = {
   bomb: '<circle cx="11" cy="14" r="7"/><path d="M14 7l2-3M16 4l3 1M18 2v2M9 12c0-1 1-2 2-2"/>',
   throw: '<circle cx="11" cy="14" r="6"/><path d="M11 8c0-2 1-3 3-4M8 5c1 1 2 2 3 3M19 5l2-2M20 9h2"/>',
   dump: '<path d="M4 10l8-6 8 6M6 9v11h12V9M10 20v-5h4v5"/><path d="M12 4v-2" />',
+  give: '<circle cx="9" cy="14" r="5"/><path d="M9 9c0-2 1-3 3-3.5M14 12h7M18 9l3 3-3 3"/>', // 귤 주기 (#175)
   chest: '<path d="M4 10h16v9H4zM4 10l2-4h12l2 4M10 13h4v3h-4"/>', // 숨은 보물 (#138)
   shop: '<path d="M3 9l2-5h14l2 5M3 9h18M3 9c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3c0 2 2 3 3 3s3-1 3-3M5 12v8h14v-8"/><circle cx="12" cy="16" r="2"/>',
   cairn: '<ellipse cx="12" cy="19" rx="7" ry="2.5"/><ellipse cx="12" cy="13.5" rx="5" ry="2.2"/><ellipse cx="12" cy="8.5" rx="3.5" ry="2"/><ellipse cx="12" cy="4.5" rx="2" ry="1.4"/>',

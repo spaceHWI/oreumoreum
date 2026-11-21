@@ -22,8 +22,11 @@
 //   {t:'bd', z}     방장만: 쫓아냄 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, zg 로 알림)
 // 엔딩 (#168): {t:'end'} 내가 오름의 비밀을 밝힘(구역 5 우두머리 뒤) → 그날(한국 날짜) 이 방 첫 번째면 방 전체에 {t:'end', at, by, names}, 아니면 보낸 사람에게만 {…, solo:1}
 //   그날 두 번째부터는 나머지 사람에게 {t:'endr', by} (오름 방송 한 줄). at = 지금 + STORY.end.lead 초 (모두 같은 시각에 시네마틱을 시작). 도중에 들어온 사람은 hi 의 end = [at, by, names] 로 남은 부분부터
+// 귤 주기 (#175): {t:'give', to, n}  로그인한 두 사람이 GIVE.serverR 안일 때 n(≤ GIVE.burst)개. 초당 GIVE.perSec (토큰 통). 계정(Accounts.gift)이 가진 귤·하루 상한을 보고 옮김
+//   → 준 사람에게 {t:'gave', to, n: 옮긴 수, out: 준 누적, no?: 못 옮긴 까닭}, 받는 사람에게 {t:'got', from, nick, n, in: 받은 누적}. 클라이언트는 누적으로만 귤을 맞춤(두 번 세지 않게)
+//   presence 의 ac = 1 은 서버가 붙이는 '로그인한 사람' 표시 (손님에게는 귤 주기 버튼이 안 나옴). 옛 클라이언트는 모르는 메시지·칸이라 그냥 넘김
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
-import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY } from '../../src/balance.js';
+import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, GIVE } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 
@@ -31,7 +34,7 @@ const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 �
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isDeerId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,12}$/.test(v); // 노루 이름 (#92)
 
-export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heaps = null, seen = 0, stats = false, guards = null } = {}) {
+export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heaps = null, seen = 0, stats = false, guards = null, gift = null } = {}) { // gift(주는 계정, 받는 계정, n) → Promise<{got, why, out, in}> (#175, room.js 가 Accounts.gift 로)
   const peers = new Map(); // id → peer
   let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], v | 0))) : HEAP_FULL.slice();
   const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
@@ -66,7 +69,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
 
   const out = (p, s) => { st.bytesOut += s.length; st.msgsOut++; try { p.send(s); } catch (e) { /* 끊긴 소켓 */ } };
   const all = (s, except) => { for (const p of peers.values()) if (p !== except) out(p, s); };
-  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); };
+  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); p.giveTok = Math.min(GIVE.perSec, p.giveTok + dt * GIVE.perSec); };
   // 최근 strikeWin 초 안의 횟수 세기
   const count = (arr, t) => { while (arr.length && t - arr[0] > NET.strikeWin * 1000) arr.shift(); return arr.length; };
   function kick(p, why) {
@@ -88,7 +91,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
+      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
     peers.set(p.id, p);
     if (!host) host = p.id;
     out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t) }));
@@ -116,6 +119,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       }
     }
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
+    if (p.acct) d.ac = 1; else delete d.ac; // 로그인한 사람 (#175 귤 주기). 클라이언트가 보낸 값은 버림
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
     if ('nick' in d) { d.nick = cleanText(d.nick, NET.nickMax); if (nickBad(d.nick)) d.nick = ''; } // 걸리는 이름은 빈 이름으로 (받는 쪽이 '러너' 로 그림, #162)
     // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
@@ -203,6 +207,23 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         break;
       }
       case 'p': presence(p, m.d); break;
+      case 'give': { // 귤 주기 (#175)
+        const q = typeof m.to === 'string' ? peers.get(m.to) : null, n = Number.isInteger(m.n) ? m.n : 0;
+        const no = (why) => out(p, JSON.stringify({ t: 'gave', to: typeof m.to === 'string' ? m.to.slice(0, 12) : '', n: 0, no: why }));
+        if (!(n >= 1 && n <= GIVE.burst)) { strike(p, 'give'); return; }
+        if (!gift || !p.acct) { no('login'); return; }
+        if (!q || q === p || !q.acct || !q.d) { no('none'); return; }
+        if (Math.hypot(p.x - q.x, p.z - q.z) > GIVE.serverR) { no('far'); return; }
+        const k = Math.min(n, Math.floor(p.giveTok)); if (k < 1) { no('fast'); return; }
+        p.giveTok -= k;
+        const by = cleanText(p.d?.nick || '', NET.nickMax);
+        Promise.resolve().then(() => gift(p.acct, q.acct, k)).then((r) => {
+          const got = Math.max(0, Math.min(k, r?.got | 0)); if (got < k) p.giveTok = Math.min(GIVE.perSec, p.giveTok + k - got);
+          out(p, JSON.stringify({ t: 'gave', to: q.id, n: got, out: r?.out, ...(r?.why ? { no: r.why } : {}) }));
+          if (got && peers.get(q.id) === q) out(q, JSON.stringify({ t: 'got', from: p.id, nick: by, n: got, in: r.in }));
+        }).catch(() => { p.giveTok = Math.min(GIVE.perSec, p.giveTok + k); no('err'); });
+        break;
+      }
       case 'take': { // n: 한 번에 주운 수 (#137 묶어 보냄, 없으면 1)
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
         // 보낸 수(ask)는 그대로 세고 받는 수만 takeMax·남은 수·초당 몫으로 자름 (#144: 예전엔 takeMax 로 먼저 잘라 넘친 몫을 되돌리라고 알리지 않았음)

@@ -31,6 +31,7 @@ export const BADGE_ICONS = {
   // 멧돼지: 멧돼지 얼굴 + 귤
   'b-boar': `<path d="M12 14 l3 7 M36 14 l-3 7" ${s()}/><path d="M11 13 l6 4 -4 4z M37 13 l-6 4 4 4z" fill="#6a5040" ${s()}/><ellipse cx="24" cy="26" rx="13" ry="11" fill="#6a5040" ${s()}/><ellipse cx="24" cy="31" rx="6" ry="4" fill="#d9a48a" ${s()}/><circle cx="22" cy="31" r="1" fill="${K}"/><circle cx="26" cy="31" r="1" fill="${K}"/><path d="M17 33 l-2 3 M31 33 l2 3" stroke="${W}" stroke-width="2.4" stroke-linecap="round"/><circle cx="19" cy="23" r="1.7" fill="${W}"/><circle cx="29" cy="23" r="1.7" fill="${W}"/><circle cx="39" cy="38" r="5" fill="${O}" ${s()}/><path d="M39 33 l2 -2" stroke="${G}" stroke-width="2.4" stroke-linecap="round"/>`,
   // 인증샷: 카메라
+  'b-give': `<path d="M5 34 q8 -6 15 -2 l6 3" fill="none" ${s()}/><path d="M43 34 q-8 -6 -15 -2 l-6 3" fill="none" ${s()}/><circle cx="24" cy="20" r="8.5" fill="${O}" ${s()}/><path d="M24 11.5 q2 -4 6 -4" fill="none" ${s()}/><path d="M14 12 l-3 -3 M34 12 l3 -3" ${s()}/>`, // 귤 인심 (#175)
   'b-photo': `<rect x="7" y="15" width="34" height="23" rx="5" fill="${W}" ${s()}/><path d="M17 15 l3 -5 h8 l3 5" fill="${W}" ${s()}/><circle cx="24" cy="26.5" r="7.5" fill="#5b8fc9" ${s()}/><circle cx="21.5" cy="24" r="2" fill="${W}"/><circle cx="35" cy="20" r="1.6" fill="${O}"/>`,
   // 함께 걷는 길: 맞잡은 두 손 + 하트
   // 사흘 개근: 달력 3

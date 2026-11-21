@@ -58,6 +58,7 @@ function norm(s) {
     if (isObj(B.own)) for (const id of Object.keys(B.own)) if (BACK[id] && B.own[id]) own[id] = 1;
     s.backs = { own, cur: own[B.cur] ? B.cur : null };
   }
+  { const g = isObj(s.gift) ? s.gift : {}; s.gift = { in: int(g.in, 0, 1e12, 0), out: int(g.out, 0, 1e12, 0) }; } // 귤 주기 (#175): 이 저장에 들어간 받은·준 귤 누적 (서버 값 acc.gin·gout 까지)
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
@@ -130,7 +131,21 @@ function fixNick(prev, P, S, free, fixed) {
   return bad;
 }
 
-// prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, bank, savedAt }, t: 지금(ms)
+// 귤 주기 (#175): 서버가 옮긴 귤(acc.gin 받은 누적·acc.gout 준 누적)은 번 귤이 아님. 클라이언트가 이미 넣은 몫(save.gift)은 지난 귤에 더하고 빼서 보고,
+//   아직 못 넣은 몫(끊겨서 못 받은 알림·보내는 중이던 저장)은 서버가 넣어 'gift' 로 알림 (클라이언트는 fix.gift·fix.coins 로 맞춤)
+function giftBase(P, S, acc) {
+  const GI = Math.max(0, Math.floor(Number(acc.gin) || 0)), GO = Math.max(0, Math.floor(Number(acc.gout) || 0));
+  const cin = Math.max(Math.min(P.gift.in, GI), Math.min(S.gift.in, GI)), cout = Math.max(Math.min(P.gift.out, GO), Math.min(S.gift.out, GO));
+  P.coins = Math.max(0, P.coins + (cin - Math.min(P.gift.in, GI)) - (cout - Math.min(P.gift.out, GO)));
+  return { GI, GO, miss: (GI - cin) - (GO - cout), bad: S.gift.in !== cin || S.gift.out !== cout };
+}
+function giftDone(S, g, fixed) {
+  if (g.miss) S.coins = Math.max(0, S.coins + g.miss);
+  if (g.miss || g.bad || S.gift.in !== g.GI || S.gift.out !== g.GO) fixed.push('gift');
+  S.gift = { in: g.GI, out: g.GO };
+}
+
+// prev: 지난 저장(없으면 null), next: 받은 저장, acc: { credit, pickCredit, bank, savedAt, gin, gout }, t: 지금(ms)
 // → { save, fixed: [바로잡은 칸], acc: 새 credit·pickCredit·bank, nickBad: 걸린 이름을 무작위로 바꿨음 }
 // free: 어드민 계정 (#84, 시크릿 ADMIN_SUBS). 귤·치운 양 몫을 보지 않음 (개발자 버튼 '귤 채우기')
 export function checkSave(prev, next, acc, t, { migrate = false, free = false, xday = 0, treeDone = false } = {}) {
@@ -144,12 +159,14 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   let credit = Math.min(NET.earnBurst, (acc.credit ?? NET.earnBurst) + dt * NET.earnPerSec);
   let pickCredit = Math.min(NET.pickBurst, (acc.pickCredit ?? NET.pickBurst) + dt * NET.pickPerSec);
   let bank = Math.max(0, Math.min(NET.earnBankMax, Number(acc.bank) || 0));
-  if (free) return { save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow };
+  const gift = giftBase(P, S, acc);
+  const done = (o) => { giftDone(S, gift, fixed); return o; };
+  if (free) return done({ save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow });
   if (P.mealFree && !S.mealFree) { S.mealFree = 1; fixed.push('mealFree'); } // 한 번 쓴 첫 식사는 되돌릴 수 없음 (어드민은 위에서 free 로 빠짐)
   if (migrate && !prev) {
     // 기기 기록 옮기기: 지난 기록을 확인할 길이 없어 목록 확인과 귤 상한만
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
-    return { save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow };
+    return done({ save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow });
   }
   const sx = seasonCheck(P, S, { xday, treeDone }, fixed, P.coins + credit + bank); // 철 이벤트 (#180)
   const swarm = Math.min(Math.max(0, S.swarm.earn - P.swarm.earn), dt * NET.swarmPerSec); // ③ 들판 떼 몫 (#173): 적힌 만큼, 시간당 상한까지
@@ -163,5 +180,5 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   const pg = S.trash.total - P.trash.total;
   if (pg > pickCredit) { S.trash.total = Math.floor(P.trash.total + pickCredit); fixed.push('picked'); }
   pickCredit -= Math.max(0, S.trash.total - P.trash.total);
-  return { save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow };
+  return done({ save: S, fixed, acc: { credit, pickCredit, bank }, nickBad: nickBadNow });
 }
