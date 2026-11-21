@@ -275,6 +275,21 @@ export class Sound {
     });
   }
 
+  hoof(vol = 1) { // 마차 말발굽 (#174): 낮은 쿵 + 짧은 딸깍
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime, v = 0.07 * vol;
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(80, t + 0.07);
+    const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.1);
+    const n = c.createBufferSource(); n.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800 + Math.random() * 500; f.Q.value = 3;
+    const gn = c.createGain(); gn.gain.setValueAtTime(v * 0.8, t + 0.005); gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); n.connect(f); f.connect(gn); gn.connect(this.sfx); n.start(t, Math.random() * 0.5, 0.06);
+  }
+  cartBell(vol = 1) { // 마차 방울 (#174): 두세 번 짤랑
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t0 = c.currentTime;
+    for (let i = 0; i < 2 + (Math.random() < 0.5 ? 1 : 0); i++) { const t = t0 + i * 0.16;
+      [1980, 2970].forEach((fr, k) => { const o = c.createOscillator(); o.frequency.value = fr * (1 + (Math.random() - 0.5) * 0.02); const g = c.createGain(); g.gain.setValueAtTime(0.03 * vol / (k + 1), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.5); }); }
+  }
+
   beep(hi) {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

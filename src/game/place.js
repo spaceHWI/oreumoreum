@@ -21,6 +21,7 @@ import { createBloom } from '../bloom.js';
 import { createBloomFx } from '../bloomfx.js';
 import { buildSign } from '../props.js';
 import * as NSB from '../nsbound.js';
+import { nsPaths, nsAlong } from '../namsongi.js';
 import { createStoneWall, createCrossWall } from '../stonewall.js';
 import { state, late } from './state.js';
 import { $, save, wearV, persist, rnd } from './save.js';
@@ -192,7 +193,7 @@ export const GEARB = shopsBuilt.find((sh) => sh.id === 'gear') || null; // 장�
 export const roofSigns = street ? createRoofSigns({ scene, height, street: STREET, shops: shopsBuilt }) : null; // 지붕 위 아이콘 간판 (#128)
 export const buff = createBuff({ save, persist, onEnd: (m) => { if (m) { late.toast('식사 버프가 끝났어요'); late.tips.event('buffEnd'); } } });
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
-export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], col, origin: spots.cleanhouse, chs: [spots.cleanhouse, ...(spots.cleanMinis || [])].filter(Boolean), rareMul: () => wearV('hat') * (state.paceRare || 1) }) : null; // 구역마다 쓰레기 더미 (#45)
+export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], tutHeap: spots.tut?.heap || null, col, origin: spots.cleanhouse, chs: [spots.cleanhouse, ...(spots.cleanMinis || [])].filter(Boolean), entry: NS_TUT && spots.cleanhouse ? { pts: nsPaths.approach, from: TUT.gateD, ch: spots.cleanhouse, eye: nsAlong('approach', TUT.gateD + 2), walk: (x, z) => NSB.inBound(x, z, 6) } : null, rareMul: () => wearV('hat') * (state.paceRare || 1) }) : null; // 구역마다 쓰레기 더미 (#45)
 export const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 if (CH && col) col.addBox(CH.boardAt.x, CH.boardAt.z, spots.cleanhouse.rot, 0.9, 0.2); // 랭킹 게시판 (#11)
 // 오름 안 작은 클린하우스 (#78). 충돌은 더미 자리를 정한 뒤에 등록(더미 자리·저장이 바뀌지 않게)
@@ -206,7 +207,9 @@ export const shopAct = CH && { ic: 'shop', label: '장비점', pos: CH.shopFront
 export const bloom = trash ? createBloom({ scene, ns: NSW, trash, height, onPath: (x, z) => surfaceAt(x, z) !== 0, col, low: LOW, ambFly: (z) => ZONE_LOOK.butterflies[z] || 0 }) : null;
 export const bfx = bloom ? createBloomFx({ scene, height, tier: () => (LOW ? 0 : quality.level) }) : null; // 치웠을 때·꽃밭 효과 (#65)
 // ---------- 마차 (#69): 들머리 ↔ 능선 ↔ 정상 아래. 위치는 시각에서 계산 ----------
-export const cart = NS_TUT ? createCart({ scene, height, low: LOW, col }) : null;
+// 마부 (#174): 밀짚모자·흰 티의 기본 캐릭터. 소리는 가까울 때만 (말발굽·방울)
+const cartDriver = () => { const r = buildRunner(); r.apply({ ...DEFAULT_OUTFIT, shirt: { type: 'tee', color: '#f3ecdc' }, pants: { type: 'shorts', color: '#4a5a78' }, gear: { hat: 'hat:straw', hair: 'hair:base', back: 'back:none', top: 'top:base', bottom: 'bottom:shorts', shoes: 'shoes:slip' } }); return r; }; // 가볍게: 머리카락 장비 없이 모델 머리, 쓰레빠
+export const cart = NS_TUT ? createCart({ scene, height, low: LOW, col, makeDriver: cartDriver, sfx: (k, v) => (k === 'hoof' ? late.sound?.hoof?.(v) : late.sound?.cartBell?.(v)) }) : null;
 state.cartShift = 0; // 확인용: 마차 시각을 앞당김 (__oreum.rides.cart.shift)
 
 // ---------- 러너 ----------

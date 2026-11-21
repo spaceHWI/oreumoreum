@@ -223,6 +223,8 @@ async function main() {
   const e0 = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W };
   console.log(`오름 전체 쓰레기 ${TOTAL}개, 귤로 ${Math.round(value(e0))} (베스트·모자 없이)`);
   console.log('구역', zones.map((z) => `${z.id}:${z.n}개·${Math.round(z.avgD)}m·귤${z.g.toFixed(2)}`).join('  '));
+  { const e1 = { ...e0, tool: 2, bag: 1 }, z1 = zones[0], hs = map.heaps.filter((h) => h[0] === 1 && !h[4]), near = hs.map(([, , x, z]) => Math.hypot(x - map.front.x, z - map.front.z)).sort((a, b) => a - b); // #160 첫 구역: 집게·배낭 1단계로 다 치우는 시간, 들머리 클린하우스에서 길가 더미까지
+    console.log(`구역 1 다 치움(집게·배낭1·신발1): ${(clearT(z1, e1) / 60).toFixed(1)}분 · 들머리 클린하우스에서 길가 더미 ${near.map(Math.round).join('/')}m`); }
   const sum = (L) => L.reduce((s, x) => s + (x.price || 0), 0);
   const wearSum = (k) => CLOTHES.filter((c) => c.slot === k && c.tier > START_W[k]).reduce((s, c) => s + wearPrice(c), 0);
   const WSUM = WK.reduce((s, k) => s + wearSum(k), 0);
@@ -234,7 +236,8 @@ async function main() {
   // 하루 끝 목표 (#137): tier = 도구·배낭·신발 가장 낮은 단계, zone = 그날까지 다 치운 적 있는 가장 높은 구역 (이 구역까지는 다 치움)
   // tier = 도구·배낭·신발 가장 낮은 단계 [최소, 최대], zone = 그날까지 다 치운 가장 높은 구역(1부터 이어서) 최소, open = 하루 끝 장비 점수로 열린(빨강이 아닌) 구역 최소
   // 다 치운 구역은 목표 + 1 까지만 (너무 빠르지 않게, 5일은 상한 없음)
-  const FLOW = [{ tier: [2, 2], zone: 1 }, { tier: [3, 3], zone: 2, open: 3 }, { tier: [4, 4], zone: 3 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
+  // #160 들머리 더미로 첫날 벌이가 조금 빨라져 효율 플레이는 1일에 신발 3단계까지 닿을 때가 있음 → 1일 상한만 3 (5일 목표가 하루 넘게 당겨지지 않는지는 아래 '마지막 칸' 이 봄)
+  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 3], zone: 2, open: 3 }, { tier: [4, 4], zone: 3 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
   function flowCheck(runs) {
     const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
     const lines = ['흐름 (5번 중 가운데): 일 · 장비 단계(목표) · 다 치운 구역(목표) · 열린 구역 · 장비 점수 · 번 귤 · 할 일 없던 분'];
