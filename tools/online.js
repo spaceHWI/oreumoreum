@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -34,6 +34,20 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
+  if (ONLY === 'cart') { // 지나가는 마차 (#120): A 가 달리는 마차에 타면 B 화면에도 앉은 모습, B 는 A 가 앉은 자리를 피해 앉음
+    const run = (X) => X.p.evaluate(() => { const o = window.__oreum, c = o.rides.cart.api; for (let t = 0; t < 240; t += 0.5) { o.rides.cart.shift(t); c.update(0, Date.now() / 1000 + t); if (c.state.moving && c.state.speed > 2 && c.state.left > 20) return t; } return null; });
+    const t = await run(A); await B.p.evaluate((t) => window.__oreum.rides.cart.shift(t), t);
+    const side = () => { const o = window.__oreum, c = o.rides.cart.api, h = c.heading; o.keys.clear(); o.tp(c.pos.x + Math.cos(h) * 2.4, c.pos.z - Math.sin(h) * 2.4, h); o.rides.cart.board(); return o.player.cart && o.player.cart.seat; };
+    const sa = await A.p.evaluate(side); await wait(A.p, 1500);
+    ok(sa != null && await until(B, () => [...window.__oreum.net.peersById.values()].some((e) => e.data.rd === 'cart')), `A 가 달리는 마차에 타면 B 에게 '마차' 로 보임 (자리 ${sa})`);
+    const near = await B.p.evaluate(() => { const o = window.__oreum, c = o.rides.cart.api, e = [...o.net.peersById.values()][0]; return +Math.hypot(e.tpos.x - c.pos.x, e.tpos.z - c.pos.z).toFixed(1); });
+    ok(near < 3, `B 화면에서 A 는 마차 위 (${near}m)`);
+    const sb = await B.p.evaluate(side);
+    ok(sb != null && sb !== sa, `B 는 A 의 자리를 피해 앉음 (A ${sa} · B ${sb})`);
+    const off = await A.p.evaluate(() => { const o = window.__oreum, m = o.rides.cart.api.state.moving; o.rides.cart.leave(false); return m && !o.player.cart && o.rides.state().road; });
+    ok(off && await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => e.data.rd !== 'cart')), 'A 가 달리는 중 내리면 B 화면에서도 내림');
+    await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return;
+  }
   { // 옷·닉네임은 바뀔 때만 보냄 (#115): A 가 보내는 것을 세고, 옷을 바꾸면 B 화면에 바로
     await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; window.__sent0 = performance.now(); });
     for (let k = 0; k < 6; k++) { await A.p.evaluate(() => { window.__oreum.player.pos.x += 0.5; }); await wait(A.p, 200); }
