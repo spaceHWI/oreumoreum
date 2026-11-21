@@ -30,6 +30,11 @@ export const weaponSounds = {
       z.os.forEach((o) => o.stop(t + 0.14));
     }
   },
+  /* 레이저 과열 (#200): 치익(높은 잡음이 사그라듦), 다 식으면 딸깍 */
+  hiss() { if (!this.on || !this.sfxOn) return; const c = this.ctx, t = c.currentTime;
+    const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3200;
+    const g = c.createGain(); env(c, g, t, 0.01, 0.12, 0.7); s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t, Math.random()); s.stop(t + 0.75); },
+  heatReady() { if (!this.on || !this.sfxOn) return; pop(this, 2400, 1500, 0.08, 0.03); },
   lob() { if (!this.on || !this.sfxOn) return; const c = this.ctx, t = c.currentTime;
     const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 3;
     f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(1800, t + 0.25);

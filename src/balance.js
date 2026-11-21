@@ -567,7 +567,11 @@ export const WEAPONS = [
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
+    /* 과열 (#200, src/laserheat.js): full 계속 쏘면 열이 가득 차는 초, wait 쏘기를 멈추고 식기 시작할 때까지 초, cool 그 뒤 초당 식는 몫,
+       lock 과열되면 못 쏘는 초(그동안 1 에서 0 으로 식음), hot 이 열부터 피해 × hotMul, shake 이 열부터 고리가 떨림, grade 장비 등급 하나마다 full × (1 + grade).
+       full 4→5·lock 2.5→1.5 는 계속 쏠 때 시간당 피해가 과열 전의 80% 쯤 되게 tools/heat.js 로 맞춘 값 */
+    heat: { full: 5, wait: 0.5, cool: 0.35, lock: 1.5, hot: 0.7, hotMul: 1.15, shake: 0.7, grade: 0.1 } },
   { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
 // 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
