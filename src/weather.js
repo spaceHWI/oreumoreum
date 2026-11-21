@@ -48,6 +48,7 @@ export function createWeather({ scene, low, renderer = null }) {
   const listeners = [];
 
   // 비 (#147): 바람 쪽으로 기운 짧은 선(카메라를 보는 얇은 띠). 움직임은 셰이더에서, 가까운 몇 줄은 굵게
+  // #187: 카메라 near m 안의 줄기는 안 그리고(nearFade m 동안 서서히), 멀수록 옅게(far 에서 farA 배)
   const N = low ? WEATHER.particlesLow : WEATHER.particles, BOX = WEATHER.box, R = WEATHER.streak;
   const rg = new THREE.InstancedBufferGeometry();
   rg.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, -0.5, 1, 0, 0.5, 1, 0], 3)); rg.setIndex([0, 1, 2, 1, 3, 2]);
@@ -67,7 +68,7 @@ void main(){ float B=${BOX.toFixed(1)};
   vec2 sa=ca.xy/ca.w*uRes, sb=cb.xy/cb.w*uRes; vec2 sd=normalize(vec2(-(sb.y-sa.y),sb.x-sa.x)+vec2(1e-5));
   float px=max(w*projectionMatrix[1][1]*0.5*uRes.y/max(vz,0.1), ${R.minPx.toFixed(2)}); // 굵기(픽셀): 가까울수록 굵게, 멀어도 최소 minPx (얇으면 안 그려지는 것 막기)
   cp.xy+=sd*position.x*px*2.0/uRes*cp.w;
-  vA=(0.55+0.45*aSeed.z)*smoothstep(1.5,5.0,vz); vY=position.y; gl_Position=cp; }`,
+  vA=(0.55+0.45*aSeed.z)*smoothstep(${R.near.toFixed(1)},${(R.near + R.nearFade).toFixed(1)},vz)*mix(1.0,${R.farA.toFixed(2)},smoothstep(${R.far[0].toFixed(1)},${R.far[1].toFixed(1)},vz)); vY=position.y; gl_Position=cp; }`,
     fragmentShader: `uniform float uA; uniform vec3 uCol; varying float vA; varying float vY;
 void main(){ gl_FragColor=vec4(uCol,uA*vA*smoothstep(0.0,0.35,vY)*smoothstep(1.0,0.75,vY)); }` });
   const streaks = new THREE.Mesh(rg, rmat); streaks.frustumCulled = false; streaks.visible = false; streaks.renderOrder = 5; scene.add(streaks);
@@ -79,7 +80,8 @@ void main(){ gl_FragColor=vec4(uCol,uA*vA*smoothstep(0.0,0.35,vY)*smoothstep(1.0
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const mat = new THREE.PointsMaterial({ color: '#ffffff', size: low ? WEATHER.snowSize[0] : WEATHER.snowSize[1], sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false });
   const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.visible = false; pts.renderOrder = 5; scene.add(pts);
-  let pt = 0, lastNow = 0;
+  let pt = 0, lastNow = 0, fx = WEATHER.fx.full; // #187 비 효과 세기
+  function setFx(k) { fx = WEATHER.fx[k] || WEATHER.fx.full; }
 
   function update(dt, p, wind) {
     // 목표를 향해 섞기: 프레임과 상관없이 실제 시간으로 약 blendSec 초 (#147: dt 상한 때문에 느린 기기에서 늦게 섞이던 것)
@@ -88,18 +90,18 @@ void main(){ gl_FragColor=vec4(uCol,uA*vA*smoothstep(0.0,0.35,vY)*smoothstep(1.0
     NUM.forEach((n) => { cur[n] += (T[n] - cur[n]) * k; }); COL.forEach((n) => { cur[n].lerp(TC[n], k); });
     pt += dt;
     // 비
-    streaks.visible = cur.rain > 0.02;
+    streaks.visible = cur.rain > 0.02 && fx.n > 0;
     if (streaks.visible) {
       if (renderer) renderer.getDrawingBufferSize(RU.uRes.value);
-      RU.uT.value = pt; RU.uC.value.copy(p); RU.uDrift.value = WEATHER.rainDrift * (wind || 1); RU.uA.value = Math.min(1, cur.rain) * WEATHER.rainAlpha;
-      rg.instanceCount = Math.floor(N * Math.min(1, cur.rain));
+      RU.uT.value = pt; RU.uC.value.copy(p); RU.uDrift.value = WEATHER.rainDrift * Math.max(1, (wind || 1) - WEATHER.rainWindK); RU.uA.value = Math.min(1, cur.rain) * WEATHER.rainAlpha * fx.a;
+      rg.instanceCount = Math.floor(N * Math.min(1, cur.rain) * fx.n);
     }
     // 눈
-    pts.visible = cur.snow > 0.02;
+    pts.visible = cur.snow > 0.02 && fx.n > 0;
     if (!pts.visible) return;
     const fall = WEATHER.snowFall, drift = 2.2 * (wind || 1);
-    mat.opacity = Math.min(1, cur.snow) * 0.95;
-    const n = Math.floor(SN * Math.min(1, cur.snow));
+    mat.opacity = Math.min(1, cur.snow) * WEATHER.snowAlpha * fx.a;
+    const n = Math.floor(SN * Math.min(1, cur.snow) * fx.n);
     geo.setDrawRange(0, n);
     for (let i = 0; i < n; i++) {
       const sx = seed[i * 3], sy = seed[i * 3 + 1], sz = seed[i * 3 + 2];
@@ -131,5 +133,5 @@ void main(){ gl_FragColor=vec4(uCol,uA*vA*smoothstep(0.0,0.35,vY)*smoothstep(1.0
   fetchNow(); setInterval(fetchNow, WEATHER.pollMin * 60000);
 
   const settled = () => NUM.every((n) => Math.abs(cur[n] - WX[target][n]) < 0.003);
-  return { cur, update, snap, get settled() { return settled(); }, set, setReal, calm, onChange: (f) => listeners.push(f), get kind() { return target; }, get real() { return real; }, get forced() { return forced; }, get drawn() { return { rain: streaks.visible ? rg.instanceCount : 0, snow: pts.visible ? geo.drawRange.count : 0 }; } };
+  return { cur, update, snap, setFx, get fx() { return fx; }, get settled() { return settled(); }, set, setReal, calm, onChange: (f) => listeners.push(f), get kind() { return target; }, get real() { return real; }, get forced() { return forced; }, get drawn() { return { rain: streaks.visible ? rg.instanceCount : 0, snow: pts.visible ? geo.drawRange.count : 0 }; } };
 }
