@@ -382,14 +382,15 @@ export const BOAR = {
 // hp 기운, walk·chase·flee 속도, dmg 받힐 때 플레이어 HP 피해(#36), reward 쫓아냈을 때 귤 개수·드문 쓰레기 확률
 // sight 이 거리 안에 플레이어가 보이면 돌진, lose 이보다 멀어지면 그만둠, life 안 쫓아내면 스스로 떠나는 시간(초)
 // rootEvery 땅 헤집는 간격(초), rootT 헤집는 시간, rootTrash 흘리는 쓰레기 수(가까운 더미에 더함), size 판정·충돌 크기 배율
+// rush 조짐 뒤 돌진·우두머리 돌진의 바탕 빠르기(#149: chase 를 낮추며 예전 값을 지킴), rest 한 번 공격(받기·비껴감)한 뒤 다음 조짐까지 쉬는 초(그동안 COMBAT.ringR 둘레를 돎)
 // ranged: 멀리서 쏘는 적. keep 이 거리를 지키며 every 초마다 광선, range 쏘는 거리, speed 광선 속도, r 맞는 반경
 // #137: 기운(hp)·귤이 구역마다 약 2.4~2.5배 (notes/growth-loop.md 3절). 귤은 dropMax 개까지 알갱이로 흩뿌리고 나눠 담음 (ENEMY_DROP)
 export const ENEMIES = {
-  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.8, chase: 4.6, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
-  dog: { name: '들개', hp: 8, walk: 3.0, chase: 9.5, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
-  boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 7.2, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
-  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 12, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
-  alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 2.6, speed: 15, r: 1.0 } },
+  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.8, chase: 4.6, rush: 4.6, rest: 2.5, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
+  dog: { name: '들개', hp: 8, walk: 3.0, chase: 6.5, rush: 9.5, rest: 2.0, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
+  boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 6, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 7.5, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
+  alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 export const ENEMY_SPAWN = {
@@ -593,10 +594,10 @@ export const COMBAT = {
   homeRate: Math.PI, homeT: 1.6, // 유도: 탄이 초당 도는 각(rad, 180°), 날아가는 동안 유도하는 시간 상한(초)
   homeRateBow: Math.PI * 1.5, // 활·총·머신건은 빨라서 조금 더 세게 돌림
   knockDist: 1.2, // 받혀 밀려나는 거리 (BOAR.knockSpeed ÷ knockDrag 로 맞춤)
-  iframe: 1, // 받힌 뒤 다시 안 맞는 시간(초), 그동안 캐릭터가 깜빡임
+  iframe: 2, blinkT: 1, // 받힌 뒤 다시 안 맞는 시간(초): 적이 몇 마리든 이 초에 한 번까지만 맞음 (#149). 깜빡임은 앞 blinkT 초만
   backT: 0.6, // 받은 적이 한 걸음 물러나는 시간(초, walk × 1.6 빠르기)
-  windT: 0.5, windD: 5.5, // 돌진 조짐: 이 거리 안에서 멈춰 몸을 낮추는 시간(초)
-  dashK: 1.5, dashT: 0.7, dashMin: 8, // 돌진: chase × dashK (최소 dashMin m/s), 최대 시간(초)
+  windT: 0.7, windD: 5.5, // 돌진 조짐: 이 거리 안에서 멈춰 몸을 낮추는 시간(초)
+  dashK: 1.5, dashT: 0.7, dashMin: 8, // 돌진: rush(없으면 chase) × dashK (최소 dashMin m/s), 최대 시간(초)
   staggerT: 1, crit: 2, // 비껴가면 비틀거림(초), 그때 맞히면 피해 × crit (급소)
   attackers: 2, ringR: 7, // 한 번에 덤비는 적 수. 나머지는 이 둘레에서 기다리며 돎 (#146 이 같은 값을 씀)
   flinchT: 0.35, flinchDist: 1.5, // 맞은 적이 멈칫하는 시간(초)·뒤로 밀리는 거리(m, ÷ 크기)
