@@ -1,4 +1,4 @@
-// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·이름 장난 칭호. 글은 src/punktext.js, 수치는 balance.js PUNK. 파일 순서는 season 뒤 (src/modules.js). #164 아이템은 game/punk.js
+// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·이름 장난 칭호. 글은 src/punktext.js, 수치는 balance.js PUNK. 파일 순서는 story 뒤 (src/modules.js). #164 아이템은 game/punk.js
 // 1. 오름 방송: 들머리·가게 거리 스피커 기둥(코드 모델). 감독 문 'radio' 가 열리면 PUNK.radio.every 초마다 '딩동댕' 뒤 이장님 방송이 위쪽 자막 띠로
 //    스피커 PUNK.radio.r m 안에서만. 감독(kind 'radio', 우선순위 맨 뒤·싸움 중엔 안 나옴)을 거침. 상황(구역 완료·우두머리·비·자정)은 다음 방송에 먼저, 멀티는 이름(safeNick 거친 것)
 //    메뉴 설정 '오름 방송' 켜기·끄기 (save.punk.radio)
@@ -269,6 +269,8 @@ const titleBtn = document.createElement('button'); titleBtn.type = 'button'; tit
 { const head = $('ach')?.querySelector('.pop-head'); head?.insertBefore(titleBtn, $('ach-dex')); }
 titleBtn.addEventListener('click', openTitles);
 const syncTitleBtn = () => { titleBtn.hidden = !titleShown(); };
+// 다른 기능이 칭호를 줌 (#168 엔딩 story.js: late.titles.give('은하 환경미화원')): 그 칭호의 업적 사건을 한 번 냄
+late.titles = { give(text) { const t = TITLES.find((x) => x.t === text), b = t && BADGE[t.badge]; if (!b || ach.state.badges[b.id]) return false; for (let k = 0; k < b.goal; k++) ach.emit(b.ev); return true; } };
 director.register({ id: 'title', sec: 4.5, intro: () => toast('업적을 따면 칭호가 열려요. 업적 창 [칭호] 에서 골라 이름표 위에 달아요', 4.5) });
 syncTitleBtn();
 

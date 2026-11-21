@@ -187,6 +187,19 @@ async function startServers() {
       r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
       ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
     }
+    /* ---------- 배낭 겉모습 (#164): 값 내고 사기·없는 것 지움 ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js');
+      const P = { ...S0, coins: 0 }, acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: Date.now() }, t = Date.now();
+      let r = checkSave(P, { ...P, backs: { own: { tewak: 1 }, cur: 'tewak' } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.backs.own.tewak && r.save.backs.cur === null, '귤 없이 테왁 배낭 사기 되돌림');
+      r = checkSave({ ...P, coins: 800 }, { ...P, coins: 0, backs: { own: { tewak: 1, rocket: 1 }, cur: 'rocket' } }, acc, t);
+      ok(!r.fixed.length && r.save.backs.own.tewak && !r.save.backs.own.rocket && r.save.backs.cur === null, '귤 800 으로 테왁 사기·목록에 없는 겉모습 지움');
+      const { WEAR } = await import('../src/balance.js'), bp = WEAR.price[3];
+      r = checkSave({ ...P, coins: 0 }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t); // (옛 값 OLD_PRICE 가 지워지기 전에는 더 싼 쪽으로 셈 #145)
+      const r2 = checkSave({ ...P, coins: bp }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.clothes.own['hat:p-box'] && !r2.fixed.length && r2.save.clothes.own['hat:p-box'], `감귤 박스 헬멧은 모자 3단계 값(${bp})으로 삼·귤 없으면 되돌림`);
+    }
     // 닉네임·말 넣기
     const bad = '<img src=x onerror=alert(1)>‮관리자\u0000'.repeat(3);
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, nick: bad } } });
@@ -196,6 +209,18 @@ async function startServers() {
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, look: { sex: 'm', skin: 0, colors: { hat: 99, top: -1, bottom: '3', shoes: 7, x: 5 } } } } });
     const lc = (await req('dev', '/me', { token: A.token })).j.save.look?.colors;
     ok(JSON.stringify(lc) === JSON.stringify({ shoes: 7 }), `범위 밖 옷 색 번호 버림 (${JSON.stringify(lc)})`);
+    // 레벨·증강 (#159): 경험치는 최고 레벨까지, 증강은 아는 것만·종류마다 3 이하·합이 (레벨 - 1) 이하
+    { const { xpAt, levelOf } = await import('../src/augments.js');
+      const lvPut = async (lv) => { const r = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, lv } } }); return { r, lv: (await req('dev', '/me', { token: A.token })).j.save.lv }; };
+      const a = await lvPut({ xp: 1e12, aug: {} });
+      ok(a.r.j.fixed.includes('lv') && levelOf(a.lv.xp).lv === 30, `범위 밖 경험치는 최고 레벨 30 까지 (${a.lv.xp})`);
+      const b2 = await lvPut({ xp: xpAt(3), aug: { recycle: 3, bighand: 3, fly: 9 } }); // 레벨 3 → 증강 2개까지
+      const n2 = Object.values(b2.lv.aug).reduce((s, n) => s + n, 0);
+      ok(b2.r.j.fixed.includes('lv') && n2 <= 2 && !('fly' in b2.lv.aug), `레벨보다 많은 증강·없는 증강 거절 (레벨 3 → ${JSON.stringify(b2.lv.aug)})`);
+      const c2 = await lvPut({ xp: xpAt(20), aug: { recycle: 7, twin: -1 } });
+      ok(c2.r.j.fixed.includes('lv') && !(c2.lv.aug.recycle > 3) && !('twin' in c2.lv.aug), `증강은 종류마다 3 이하 (${JSON.stringify(c2.lv.aug)})`);
+      const d2 = await lvPut({ xp: xpAt(5), aug: { recycle: 2, twin: 2 } });
+      ok(!d2.r.j.fixed.includes('lv') && d2.lv.aug.recycle === 2 && d2.lv.aug.twin === 2, '맞는 레벨·증강은 그대로'); }
 
     /* ---------- 방 (이동·줍기·폭주·맞힘) ---------- */
     const P = await sock('dev', 'oreum-namsongi-battle', { ch: 3, token: A.token });
@@ -206,6 +231,10 @@ async function startServers() {
     await sleep(400);
     const seen = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).find(([id]) => id === P.msgs[0].id)?.[1];
     ok(seen && !/[<>‮]/.test(seen.nick) && [...seen.nick].length <= 16 && !/[<>]/.test(seen.say.t) && [...seen.say.t].length <= 60, '다른 사람에게 가는 닉네임·말풍선 다듬음');
+    // 이름표 레벨 (#159): 0~30 밖은 0
+    P.send(presence(-860.1, 0, { lv: 99 })); await sleep(400);
+    const lvSeen = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1];
+    ok(lvSeen && !lvSeen.lv, `범위 밖 레벨(99)은 이름표에 안 감 (${lvSeen?.lv})`);
     { // 칭호 (#165): 번호만 오가고 범위 밖·글은 -1 로
       const { TITLES } = await import('../src/punktext.js'), ttOf = async (tt, dx) => { P.send(presence(-860 + dx, 0, { tt })); await sleep(400); return Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1]?.tt; };
       const a = await ttOf(TITLES.length - 1, 0.1), b = await ttOf(TITLES.length + 5, 0.2), c = await ttOf('<b>왕</b>', 0.3);
@@ -250,6 +279,12 @@ async function startServers() {
     ok(noN >= want - NET.takePerSec - 1, `빠른 줍기(초당 ${NET.takePerSec}개 넘게) 되돌림 (${want}개 중 ${noN}개)`);
     fast.send({ t: 'take', h: h2, n: 9999 }); await sleep(300);
     ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 2, '한 번에 아주 많이 줍기도 한도 안에서만');
+    { // #172 동료 줍기(btake): 더미는 줄지만 번 몫엔 안 셈 → 동료가 주운 몫이 내 귤로 잡히지 않음. 방에서도 마지막 BUDDIES.keep 은 남김
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL } = await import('../server/src/heaps.js'); const { BUDDIES } = await import('../src/balance.js');
+      let T0 = 1e12; const core = createRoomCore({ now: () => T0 }); const bp = core.join(() => {}, { acct: 'buddy-test' });
+      const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
+      ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
+    }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });

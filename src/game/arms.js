@@ -17,7 +17,8 @@ import { scene } from './scene.js';
 import { life, buff, runner, player } from './place.js';
 import { updateStats, busy, toast, ui } from './hud.js';
 import { keys, marker } from './input.js';
-import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow, fireWeapon } from './throw.js';
+import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow, fireWeapon, twinRoll, TWIN_YAW, TWIN_MS } from './throw.js';
+import { augV } from '../augments.js';
 
 Object.assign(Sound.prototype, weaponSounds); // gun·mg·laser·lob·boom
 const sfx = () => late.sound;
@@ -65,6 +66,7 @@ function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } 
   if (spread) { v.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (Math.random() - 0.5) * 2 * spread); v.y += (Math.random() - 0.5) * spread * w.speed; }
   const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1);
   const s = armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }); // 유도 (#148)
+  if (twinRoll()) { const v2 = v.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW * 0.5), f2 = from.clone(); setTimeout(() => armFx.shoot(f2, v2, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS * 0.5); } // 쌍귤 (#159): 탄은 더 쓰지 않음
   if (!ch) save.ammo[w.id] -= 1; A.kick = 1; persist();
   if (w.id === 'gun') sfx()?.gun?.(); else sfx()?.mg?.();
   const tp = t ? aimPoint(t, from, 0) : from.clone().addScaledVector(v.clone().normalize(), w.range);
@@ -100,6 +102,7 @@ function releaseBomb(t) {
   else { to = player.pos.clone().addScaledVector(fwd(), 14); to.y = height(to.x, to.z); }
   const vel = lobVel(from, to, B), ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129)
   armFx.lob(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), r: w.r * (ch ? 1 + (CHARGE.bombR - 1) * ch.k : 1), ch: ch?.k, size: ch?.size });
+  if (twinRoll()) { const v2 = vel.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW * 2), f2 = from.clone(); setTimeout(() => armFx.lob(f2, v2, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), r: w.r, size: ch?.size }), TWIN_MS * 2); } // 쌍귤 (#159)
   if (ch) { const b = armFx.bombs[armFx.bombs.length - 1]; late.chargeLaunch?.(ch, 'bomb', b.g.position, () => armFx.bombs.includes(b), t); }
   sfx()?.lob?.(); sendShot('bomb', to, ch ? ch.k : 0);
 }
@@ -125,8 +128,8 @@ function tickLaser(dt, w) {
     // 줄기를 따라 0.5m 마다 맞는지 봄 (가장 가까운 것 하나)
     const dir = to.clone().sub(from), L = dir.length(); dir.divideScalar(L || 1);
     const T = A.thick; // 모아 쏜 굵은 줄기 (#129): 피해 × mul, 맞으면 더 밀림
-    for (let s = 0.5; s <= L + 0.6 && !hit; s += 0.5) hit = life.hitAt(tmpV.copy(from).addScaledVector(dir, s), w.dmg * w.tick * buff.mul('dmg') * weaponMul(save) * (T ? T.mul : 1), null, { quiet: true, hb: false, ch: T ? T.k * 0.5 : 0 });
-    if (hit && hit !== true) armFx.wet(hit);
+    for (let s = 0.5; s <= L + 0.6 && !hit; s += 0.5) hit = life.hitAt(tmpV.copy(from).addScaledVector(dir, s), w.dmg * w.tick * buff.mul('dmg') * weaponMul(save) * (T ? T.mul : 1) * (1 + augV(save, 'twin')), null, { quiet: true, hb: false, ch: T ? T.k * 0.5 : 0 });
+    if (hit && hit !== true) armFx.wet(hit); // (레이저는 줄기라 쌍귤 #159 를 피해로 더함)
     A.lastHit = hit ? 0.25 : Math.max(0, (A.lastHit || 0) - w.tick);
   }
   armFx.setBeam(A.beam, from, to, dt, (A.lastHit || 0) > 0, A.thick ? 1 + (CHARGE.laser.w - 1) * A.thick.k : 1);

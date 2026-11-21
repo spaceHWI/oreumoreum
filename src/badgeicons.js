@@ -73,6 +73,7 @@ Object.assign(BADGE_ICONS, {
   'b-hare-five': `<path d="M15 40 V20 q0 -10 9 -10 q9 0 9 10 v20z" fill="#8a847a" ${s()}/>${eyes(20, 28, 21)}<path d="M22 27 h4" fill="none" ${s()}/><path d="M36 22 l6 -8 M38 25 l7 -4" fill="none" ${s()}/>`,
   'b-dumper': `<path d="M12 20 h24 l-3 18 H15z" fill="#9a958a" ${s()}/><path d="M18 20 q6 -8 12 0" fill="none" ${s()}/><path d="M10 10 l28 28 M38 10 L10 38" fill="none" ${s('stroke="#d8423a" stroke-width="4"')}/>`,
   'b-guard-1': `<path d="M16 40 V18 q0 -9 8 -9 q8 0 8 9 v22z" fill="#6f6a62" ${s()}/>${eyes(20, 28, 20)}<path d="M20 27 h8" fill="none" ${s()}/><path d="M10 40 h28" fill="none" ${s('stroke="#4f7a36" stroke-width="4"')}/>`,
+  'b-ending': `<circle cx="24" cy="24" r="13" fill="#9ab0e8" ${s()}/><ellipse cx="24" cy="24" rx="20" ry="6" fill="none" ${s()}/><path d="M18 22 q6 5 12 0" fill="none" ${s()}/>`,
   'b-notes': `<path d="M12 8 h18 l6 6 v26 H12z" fill="${W}" ${s()}/><path d="M30 8 v6 h6" fill="none" ${s()}/><path d="M17 20 h14 M17 26 h14 M17 32 h9" fill="none" ${s()}/>`,
 });
 
