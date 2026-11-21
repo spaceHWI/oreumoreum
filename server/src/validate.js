@@ -7,6 +7,7 @@
 import { cleanText } from '../../src/safetext.js';
 import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
+import { normLoot } from '../../src/loot.js';
 
 // 예전 값 (#144): 실서버 클라이언트가 아직 #137 앞 값 표(v0.23.7)일 수 있음. 그때 값으로 산 장비가 되돌려지지 않게, 쓴 귤은 지금 값과 이 값 중 작은 쪽으로 셈
 //   release 가 #137 뒤 값 표로 나가고 옛 클라이언트가 다 바뀌면(roomcore MIN_VER) 지움
@@ -55,6 +56,7 @@ function norm(s) {
     s.backs = { own, cur: own[B.cur] ? B.cur : null };
   }
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
+  s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
 }
 
@@ -115,7 +117,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   if (!isObj(next)) throw new Error('bad save');
   const S = norm(JSON.parse(JSON.stringify(next)));
   const P = norm(JSON.parse(JSON.stringify(prev || FRESH)));
-  const fixed = [];
+  const fixed = [...S._lootFix]; delete S._lootFix; delete P._lootFix;
   const dt = Math.max(0, Math.min(NET.earnWindow, (t - (acc.savedAt || t)) / 1000));
   let credit = Math.min(NET.earnBurst, (acc.credit ?? NET.earnBurst) + dt * NET.earnPerSec);
   let pickCredit = Math.min(NET.pickBurst, (acc.pickCredit ?? NET.pickBurst) + dt * NET.pickPerSec);

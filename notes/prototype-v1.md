@@ -54,6 +54,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |
 | zonedone.js | 구역 완료(#139): 구역 완료 요약 한 장(`#zdone`), 깨어나는 곳(마지막으로 지난 구역 클린하우스, hp.js `startAt` → `late.wakeAt`), 다시 들어올 때 고르기(`#wake-pick`, start.js → `late.afterEnter`), 구역을 끝낸 사람의 빠른 마차(구역 클린하우스 옆 → 가게 거리)·지름길(구역 들어오는 곳 → 위쪽 끝), 구역 기록(줍기·쫓아내기). 저장 `save.boss`. 파일 순서는 pace 뒤(적 후크를 감쌈) |
 | boss.js | 구역 우두머리(#139): 구역 80% 에 빈터(field.bosses)에 나옴, 그 구역 적을 키운 모양(enemies.js `spawnBoss`)·왕관·발밑 고리, 패턴(돌진·무리 부르기·광선, 바닥 경고)·단계(50%·20%)·화면 위 기운 줄(`#boss-bar`), 쫓아내면 느린 화면(`state.slowMo`)·귤·귀한 재료·돌하르방(`late.guard.raise`)·요약. 멀티는 방장이 굴림(`bs`·`bh`·`bd`). `__oreum.boss`, 확인 `node tools/boss.js` |
+| loot.js | 전리품(#140): 적(`life.hooks.enemyRepel` 감쌈)·소굴(`late.denLoot`)·보물(`late.treasureLoot`)·우두머리(`late.bossLoot`)가 재료·장비를 떨굼 → 분수·등급 색 빛기둥·빨려 듦(`tickLoot`), 장비 견주는 창 `#loot-pop`(바로 입기·귤로 바꾸기), 단계를 사면 예전 것 정리(`late.tierUpLoot`·`lootTidy`), 전설 효과 갈라짐(`hooks.afterHurt`), 도감 재료·전설 칸(`late.dexExtra`). 셈은 `src/loot.js`, `__oreum.loot`, 확인 `node tools/lootlive.js` |
+| forge.js | 강화(#140): 장비점 창 [사기 | 강화] (shop.js `gearTabs`·`fillGearShop` 를 감쌈), 칸 10개·지금 → 다음·필요한 것·[강화]·[가는 길], 재료 주머니·안 쓰는 장비·자동 정리 설정. `__oreum.forge` |
 | quest.js | 퀘스트(#158): `src/quest.js`(차례·진행, DOM 없음)를 게임에 붙임. 주는 사람(오름지기·구역 표지판·가게 주인)과 머리 위 !·?, 상호작용 → 받기·끝내기 창(`#quest`), 추적 줄(`#quest-track`, 누르면 dump.js `startAutoGo`), 퀘스트 창(`#qlog`, L·메뉴), 지도 표시 `late.questIcons`, 셈(ach.emit 감쌈·trash.on·`late.questEv`), 할인권 `late.questOff`·`questUse`, 감독 문 quest·shopQuest·shopQuests. 표는 balance.js QUESTS. `__oreum.quest`, 확인 `node tools/questrun.js` |
 | season.js | 철 이벤트(#180 크리스마스): 켜짐(서버 날짜·어드민 미리 보기), 꾸밈 만들기·숨기기, 쌓인 눈(`NSW.zoneSnow`), 트리(`GET /season` 합계)·접속 달력(`#xmas`)·산타 투기꾼 선물 상자·눈덩이·루돌프·성탄 인사·뱅쇼 빛. `late.season`(isOn·dress·repel·snowThrow·tick·fixed), `__oreum.season`, 확인 `node tools/xmas.js` |
 | punk.js | 오름펑크 아이템(#164): 감귤 박스 헬멧 박스 시야(`#box-view`)·'퉁' 소리(`late.boxThud`), 해녀 테왁 배낭(배낭 겉모습 save.backs, 장비점 카드 `late.backCards`·내 가방 줄 `late.backLookRow`, 망사리 불룩 state.backFill, 개울에 뜸 `stream.hooks.float`·`late.tickSwim`·state.swim). `__oreum.punk`, 확인 `node tools/punk.js` |
@@ -79,6 +81,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
+- 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
 - 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만

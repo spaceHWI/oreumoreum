@@ -1,5 +1,6 @@
 // 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { THROW_AIM, WEAPONS, COMBAT } from '../balance.js';
+import { weaponMul } from '../loot.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
@@ -147,7 +148,7 @@ export function releaseArrow() {
   const peers = () => [...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos }));
   const ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129)
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
-  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
+  const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
   if (ch) late.chargeLaunch?.(ch, 'bow', a.mesh.position, () => life.arrows.includes(a), t);
   late.sound.bow?.();
 }

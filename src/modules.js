@@ -91,6 +91,8 @@ import './game/guide.js';
 import './game/pace.js';
 import './game/zonedone.js'; // 구역 완료 요약·깨어나는 곳·빠른 마차·지름길 (#139, hooks 뒤: 적 후크를 감쌈)
 import './game/boss.js'; // 구역 우두머리 (#139)
+import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
+import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
 import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭

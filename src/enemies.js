@@ -127,6 +127,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1) * (1 + (CHARGE.push - 1) * ch); e.flX = ux / L; e.flZ = uz / L;
       if (e.state === 'wind' || e.state === 'dash') { e.state = 'charge'; e.st = 0; }
     }
+    hooks.afterHurt?.(e, dmg, quiet); // #140 전설 무기: 가까운 다른 적에게 갈라짐
     if (e.hp <= 0) repel(e);
     else { if (!quiet) sound?.beep?.(false); if (!AGGRO.has(e.state) && !e.boss) { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 쫓음 (우두머리는 제 패턴대로)
   }
