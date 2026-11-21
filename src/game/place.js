@@ -206,7 +206,9 @@ export const shopAct = CH && { ic: 'shop', label: '장비점', pos: CH.shopFront
 export const bloom = trash ? createBloom({ scene, ns: NSW, trash, height, onPath: (x, z) => surfaceAt(x, z) !== 0, col, low: LOW, ambFly: (z) => ZONE_LOOK.butterflies[z] || 0 }) : null;
 export const bfx = bloom ? createBloomFx({ scene, height, tier: () => (LOW ? 0 : quality.level) }) : null; // 치웠을 때·꽃밭 효과 (#65)
 // ---------- 마차 (#69): 들머리 ↔ 능선 ↔ 정상 아래. 위치는 시각에서 계산 ----------
-export const cart = NS_TUT ? createCart({ scene, height, low: LOW, col }) : null;
+// 마부 (#174): 밀짚모자·흰 티의 기본 캐릭터. 소리는 가까울 때만 (말발굽·방울)
+const cartDriver = () => { const r = buildRunner(); r.apply({ ...DEFAULT_OUTFIT, shirt: { type: 'tee', color: '#f3ecdc' }, pants: { type: 'shorts', color: '#4a5a78' }, gear: { hat: 'hat:straw', hair: 'hair:base', back: 'back:none', top: 'top:base', bottom: 'bottom:shorts', shoes: 'shoes:slip' } }); return r; }; // 가볍게: 머리카락 장비 없이 모델 머리, 쓰레빠
+export const cart = NS_TUT ? createCart({ scene, height, low: LOW, col, makeDriver: cartDriver, sfx: (k, v) => (k === 'hoof' ? late.sound?.hoof?.(v) : late.sound?.cartBell?.(v)) }) : null;
 state.cartShift = 0; // 확인용: 마차 시각을 앞당김 (__oreum.rides.cart.shift)
 
 // ---------- 러너 ----------

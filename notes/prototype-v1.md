@@ -65,7 +65,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 지난 변경 기록(이슈별 메모)은 `notes/history.md`
 
 그 밖의 모듈 (src/)
-- 맵·그림: boot.js(맵 결정, 맨 먼저) · inapp.js(인앱 브라우저 안내, 페이지 맨 앞 인라인, #118) · namsongi.js/namsongidata.js(남송이 지형) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js(가로등, model-lamp.js) · retro.js · quality.js
+- 맵·그림: boot.js(맵 결정, 맨 먼저) · inapp.js(인앱 브라우저 안내, 페이지 맨 앞 인라인, #118) · namsongi.js/namsongidata.js(남송이 지형) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js(가로등, model-lamp.js) · lampaim.js(가로등 팔이 길 쪽을 보게 돌림각·자리 다시 잡기, #174, scene.js 가 부름) · retro.js · quality.js
 - 캐릭터·장비: runner.js · basebody.js · runnermodel.js/dqskin.js · gear.js · clothes.js/clothicons.js · emotes.js · footprints.js
 - 캐릭터 구조 (#106): 뼈대 7개(hips·chest·head·armL·armR·legL·legR, 듀얼 쿼터니언 dqskin.js) 하나에 세 겹을 얹는다
   - 기본 몸 `basebody.js`: 옷 없는 매끈한 몸 한 메시(몸통+목·팔·벙어리장갑 손·다리·발). 몸통 단면은 옷과 같은 표(clothes.js TORSO·HIPS)에서 조금 안쪽. 정점마다 부위 번호(REGION: neck chest waist pelvis upperarm forearm hand thigh shin foot). 남·여는 `bodyWarp`(허리·골반 폭)만 다르고 머리 모양으로 정함(runner.js `bodySex`: 단발·똥머리 = 여, `outfit.body` 가 있으면 그것). 피부색은 재질 색, 발은 양말 색(cFoot)
@@ -86,6 +86,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 맵 전체 쓰기 (#138): heapdefs.js(더미 목록·HEAP_SIG, 서버 server/src/heaps.js 와 같이 씀. 길가 더미 뒤에 들판 더미 `field: true`) · fieldplan.js(8자 고리: 구역 길을 오르막 쪽으로 돌려 클린하우스 높이로 아래·위 반, `placeSide` 왼쪽/오른쪽 들판에 놓기, 굼부리처럼 길이 안 들어가는 구역은 옆 길의 25~65m 옆) · field.js(소굴·보물·볼거리·우두머리 빈터 자리와 모양, 들판 더미 위 까마귀·연기, 종류마다 InstancedMesh). 수치 balance.js FIELD·FIELD_HEAPS·HEAP.sizes.mt·ZONES chMax. 확인 `node tools/field.js [--shot]`
 - 구역 우두머리·구역 완료 (#139): 우두머리는 적 하나(enemies.js `spawnBoss`: 모양 k 배·`e.boss`·`e.ctl` 이 패턴, `e.puppet` 이면 자리를 받은 대로, `e.remoteHurt` 면 피해를 방장에게). 수치 balance.js ZONE_BOSS. 방 메시지 roomcore `bs`(방장 → 모두)·`bh`(→ 방장)·`bd`(방장 → 돌하르방 zg), 따로 셈 NET.bossPerSec. 깨어나는 곳은 hp.js `startAt`. 느린 화면은 update.js `state.slowMo`·`slowK`
 - 탈것: rides.js · autowalk.js
+  - 마차 모양 (#174): rides.js buildCartMesh(조랑말·콘테나 짐칸·줄무늬 천막·팻말·초롱, `fast` 면 말 둘 + 깃발 = `parkedFastCart`, zonedone.js 가 빠른 마차 팻말 뒤에 세움). 마부는 place.js `cartDriver`(buildRunner, 'ride' 자세, CART.driverR 안에서만 그림). 타는 자리 CART.seatPos·마부 자리 driverPos. 소리 audio.js `hoof`·`cartBell`. 확인 `node tools/cartshot.js [이름]` (HI=1 이면 높은 단계)
 - 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - 오류 안전장치 (#108): crash.js — `main.js` 가 맨 먼저 `listenCrashes()`(error·unhandledrejection), `panels.js` 가 보낼 곳(POST /feedback, kind 'crash')을 붙임. `update.js frame()` 은 다음 프레임을 먼저 부르고 `step()` 을 try 로 돌림(오류 하나에 게임이 멈추지 않게). 적 한 마리 오류는 그 적만 지움(enemies.js), 적 모양 오류는 대신할 모양(enemymodels.js buildFallback). WebGL 화면 잃음은 scene.js(#gl-lost 안내 → 되살아남, 안 되면 다시 불러오기). 확인 `node tools/enemyrun.js [iphone|android|all] [--dead|--live]`
