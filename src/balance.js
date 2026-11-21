@@ -161,6 +161,11 @@ export const ZONE_BOSS = {
   walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
   slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
   netMs: 200,
+  // 싸움이 풀린 뒤 (#183, enemies.js restRegen): 기운은 남고 delay 초 동안 그대로, 그 뒤 초당 최대 기운의 rate 씩 참 (다시 맞거나 싸움이 붙으면 멈춤)
+  //   delay 는 가장 먼 구역(굼부리) 클린하우스에서 처음 쓰러졌다 돌아오는 약 46초(직선·달리기, tools/boss.js 표)를 보고 20 → 30
+  // parting: 풀린 뒤 이 초 안에 마지막으로 때린 사람 쪽으로 돌진 한 번 (partR 안에 있을 때, 띠 끝은 빈터에서 leash + partOver 까지)
+  // awayToast: 이 초 넘게 아무도 싸움 거리에 없으면 '빈터로 돌아갔어요'. 사라졌다 다시 나와도 남은 기운은 이어짐 (그동안 찬 만큼 더해)
+  rest: { delay: 30, rate: 0.02, parting: 3, partR: 50, partOver: 12, awayToast: 30 },
   fast: { r: 6, fade: 0.9, hold: 1.1 },
   shortcut: { r: 4, off: 4.5, fade: 0.8, hold: 0.8 },
 };

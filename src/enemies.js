@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { height } from './world.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
-import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE } from './balance.js';
+import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS } from './balance.js';
 import { createPack, slotGoal, bodyR } from './enemypack.js';
 import { reportCrash, crashNote } from './crash.js';
 
@@ -18,6 +18,16 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 const range = (rnd, [a, b]) => a + rnd() * (b - a);
 const irange = (rnd, [a, b]) => a + Math.floor(rnd() * (b - a + 1));
 
+
+// 정예 적이 쉬며 기운을 채움 (#183, 수치 ZONE_BOSS.rest): 싸움이 풀린 뒤 delay 초 동안은 그대로, 그 뒤 초당 최대 기운의 rate 씩
+// 싸우는 동안은 부르지 않는다(부르는 쪽이 싸움이 붙을 때 e.calmT = 0). 맞으면 hurt 가 e.calmT = 0 으로 되돌림. dt 가 커도(건너뛰기) 쉬는 시간만큼은 빼고 셈
+// 우두머리(game/boss.js)가 씀. 소굴·들판 떼 정예·대장·이야기 적·레이드 보스도 같은 함수로. 차오르는 중이면 true
+export function restRegen(e, dt, max = e.def?.hp, o = ZONE_BOSS.rest) {
+  e.calmT = (e.calmT || 0) + dt;
+  const run = Math.min(dt, e.calmT - o.delay);
+  if (!(max > 0) || run <= 0 || e.hp >= max) return false;
+  e.hp = Math.min(max, e.hp + max * o.rate * run); return e.hp < max;
+}
 
 // 머리 위 기운 막대 (스프라이트 둘, 왼쪽 기준으로 줄어듦)
 const barBgMat = new THREE.SpriteMaterial({ color: '#1d1a17', transparent: true, opacity: 0.75, depthTest: false });
@@ -108,6 +118,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hurt(e, dmg, quiet, ch = 0) {
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
     if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
+    e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
     if (e.state === 'stagger') dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩

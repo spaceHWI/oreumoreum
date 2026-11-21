@@ -163,12 +163,63 @@ const ZS = argv('--zones', '1,2,3,4,5').split(',').map(Number), MODES = argv('--
   await until(() => window.__oreum.boss.state()?.act === null, null, 8000);
   const hp3 = await ev(() => window.__oreum.hp.hp);
   ok(hp3 < mx, `원 안에 서 있으면 광선에 맞음 (HP ${hp3})`);
-  // 쓰러지면 구역 클린하우스에서 깨어나고 우두머리는 빈터로 돌아가 기운을 채움
+  // #183 물러났다 돌아오기: 기운은 그대로 → 20초 쉰 뒤 초당 2% → 다시 붙어도 비율 그대로
+  const RS = ZONE_BOSS.rest;
+  await ev(() => { const o = window.__oreum; o.enemies.list.filter((e) => !e.boss).forEach((e) => o.enemies.remove(e)); o.boss.freeze(false); o.boss.cur.e.hp = o.boss.state().max * 0.6; o.hp.set(o.hp.max); o.player.knock = null; });
+  await p.waitForTimeout(300);
+  await ev(() => { const o = window.__oreum; o.enemies.hurt(o.boss.cur.e, 0.01, true); }); // 마지막으로 때린 사람 = 나
+  await ev(([z, d]) => window.__oreum.boss.go(z, d), [Z, ZONE_BOSS.leash + 3]);
+  ok(await until(() => !window.__oreum.boss.state()?.fight, null, 5000), '물러나면 싸움이 풀림');
+  st = await ev(() => window.__oreum.boss.state());
+  const f0 = st.hp / st.max;
+  ok(f0 > 0.55 && f0 < 0.61 && st.ph === 0, `풀려도 기운은 그대로 (${(f0 * 100).toFixed(1)}%), 단계는 비율대로 (${st.ph})`);
+  ok(st.x !== (await ev(() => window.__oreum.boss.arena())).x, '순간 이동하지 않음 (걸어서 돌아감)');
+  ok(await until(() => window.__oreum.boss.state()?.act === 'charge', null, RS.parting * 1000 + 2500), `풀린 뒤 ${RS.parting}초 안에 때린 사람 쪽으로 돌진 한 번`);
+  ok(await until(() => window.__oreum.boss.state()?.act === null, null, 25000), '돌진 끝');
+  await ev(() => { const o = window.__oreum; o.hp.set(o.hp.max); o.player.knock = null; });
+  ok(await until(() => !document.getElementById('boss-bar').hidden, null, 3000), '쉬는 동안 가까우면 기운 줄이 보임');
+  const r1 = await ev((t) => { const o = window.__oreum, s = o.boss.state(); return { before: s.hp, r: o.boss.rest(t - s.calm - 0.5) }; }, RS.delay);
+  ok(Math.abs(r1.r.hp - r1.before) < 0.06 && !r1.r.regen, `${RS.delay}초까지는 그대로 (${r1.before} → ${r1.r.hp}, 쉰 ${r1.r.calm}초)`);
+  const r2 = await ev(() => { const o = window.__oreum, s0 = o.boss.state(); const r = o.boss.rest(10.5); return { h0: s0.hp, h1: r.hp, max: s0.max, regen: r.regen }; });
+  const gain = (r2.h1 - r2.h0) / r2.max;
+  ok(Math.abs(gain - RS.rate * 10) < 0.005 && r2.regen, `그 뒤 초당 ${RS.rate * 100}% 씩 (10초에 ${(gain * 100).toFixed(2)}%)`);
+  ok(await until(() => window.__oreum.boss.state()?.regen && document.getElementById('boss-bar').classList.contains('regen') && !document.getElementById('boss-rg').hidden, null, 3000), '기운 줄에 회복 중 표시');
+  const h3 = await ev(() => window.__oreum.boss.state().hp); await p.waitForTimeout(2500);
+  ok(await ev((h) => window.__oreum.boss.state().hp > h, h3), '매 프레임에도 참');
+  const hb = await ev(() => { const o = window.__oreum; o.enemies.hurt(o.boss.cur.e, 0.01, true); return o.boss.state(); });
+  ok(hb.calm < 1, `맞으면 차는 것이 멈춤 (쉰 시간 ${hb.calm})`);
+  await p.waitForTimeout(800);
+  const hb2 = await ev(() => window.__oreum.boss.state());
+  ok(hb2.hp <= hb.hp + 0.01, `맞은 뒤엔 다시 ${RS.delay}초 쉬어야 참 (${hb.hp} → ${hb2.hp})`);
+  // 사람 수가 바뀌면 비율 유지
+  const sc = await ev(() => { const o = window.__oreum, s = o.boss.state(), f = s.hp / s.max, a = o.boss.rescale(2), b = o.boss.rescale(1); return { f, f2: a.hp / a.max, max2: a.max, f1: b.hp / b.max }; });
+  ok(Math.abs(sc.f - sc.f2) < 1e-3 && Math.abs(sc.f - sc.f1) < 1e-3 && Math.abs(sc.max2 - ZONE_BOSS.list[Z].hp * (1 + ZONE_BOSS.perPlayer)) < 0.5, `사람 수가 바뀌어도 비율 유지 (${(sc.f * 100).toFixed(1)}% → 2명 ${(sc.f2 * 100).toFixed(1)}% / ${sc.max2})`);
+  // 다시 들어가면 가득 채우지 않음
+  const fb = await ev(() => { const s = window.__oreum.boss.state(); return s.hp / s.max; });
+  await ev((z) => window.__oreum.boss.go(z, 10), Z);
+  ok(await until(() => window.__oreum.boss.state()?.fight, null, 8000), '다시 들어가면 싸움');
+  st = await ev(() => window.__oreum.boss.state());
+  ok(Math.abs(st.hp / st.max - fb) < 0.02 && !st.regen, `다시 붙어도 가득 채우지 않음 (${(fb * 100).toFixed(1)}% → ${(st.hp / st.max * 100).toFixed(1)}%)`);
+  // 멀리 가 사라졌다 다시 나와도 남은 기운이 이어짐 (그동안 찬 만큼 더해)
+  await ev(() => window.__oreum.boss.freeze(true));
+  await ev(([z, d]) => window.__oreum.boss.go(z, d), [Z, ZONE_BOSS.despawn + 20]);
+  ok(await until(() => !window.__oreum.boss.state(), null, 10000), '아주 멀리 가면 사라짐');
+  const kp = await ev((z) => window.__oreum.boss.kept(z), Z);
+  ok(kp && Math.abs(kp.f - st.hp / st.max) < 0.03, `사라져도 남은 기운을 기억 (${kp && (kp.f * 100).toFixed(1)}%)`);
+  await ev((z) => window.__oreum.boss.go(z, 50), Z);
+  ok(await until(() => !!window.__oreum.boss.state(), null, 8000), '다시 나옴');
+  st = await ev(() => window.__oreum.boss.state());
+  ok(Math.abs(st.hp / st.max - kp.f) < 0.03, `다시 나와도 남은 기운 그대로 (${(st.hp / st.max * 100).toFixed(1)}%)`);
+  await ev((z) => window.__oreum.boss.go(z, 10), Z);
+  ok(await until(() => window.__oreum.boss.state()?.fight, null, 8000), '다시 싸움');
+  await ev(() => window.__oreum.boss.freeze(true));
+  // 쓰러지면 구역 클린하우스에서 깨어나고, 우두머리는 기운이 남은 채로 빈터로 돌아감
   const wake = await ev((z) => window.__oreum.boss.wake(z), Z);
+  const hd = await ev(() => { const s = window.__oreum.boss.state(); return s.hp / s.max; });
   await ev(() => { const o = window.__oreum; o.player.knock = null; o.player.air = false; o.hp.kill(); });
   ok(await until(() => window.__oreum.hp.isDown, null, 5000), '쓰러짐');
-  ok(await until(() => window.__oreum.boss.state() && !window.__oreum.boss.state().fight && window.__oreum.boss.state().hp === window.__oreum.boss.state().max, null, 20000), '쓰러지면 우두머리가 빈터로 돌아가 기운을 채움');
-  ok(await until(() => !window.__oreum.hp.isDown, null, 60000), '다시 일어남');
+  ok(await until((f) => { const s = window.__oreum.boss.state(), k = window.__oreum.boss.kept(3); return s ? !s.fight && s.hp < s.max && Math.abs(s.hp / s.max - f) < 0.05 : k && Math.abs(k.f - f) < 0.05; }, hd, 20000), '쓰러져도 우두머리 기운은 남음');
+  ok(await until(() => !window.__oreum.hp.isDown, null, 150000), '다시 일어남');
   const at = await ev(() => ({ x: window.__oreum.player.pos.x, z: window.__oreum.player.pos.z }));
   ok(wake && Math.hypot(at.x - wake.x, at.z - wake.z) < 3, `구역 클린하우스에서 깨어남 (${at.x.toFixed(1)}, ${at.z.toFixed(1)} / ${wake?.x.toFixed(1)}, ${wake?.z.toFixed(1)})`);
   // 다시 도전 → 쫓아냄 (사람 둘이면 기운이 늘어남은 방장 계산: 여기선 혼자 n = 1)
@@ -176,6 +227,10 @@ const ZS = argv('--zones', '1,2,3,4,5').split(',').map(Number), MODES = argv('--
   ok(await until(() => window.__oreum.boss.state()?.fight), '다시 도전');
   st = await ev(() => window.__oreum.boss.state());
   ok(st.n === 1 && st.max === ZONE_BOSS.list[Z].hp, `혼자면 기운 ${ZONE_BOSS.list[Z].hp} (${st.max})`);
+  // 돌아오는 길 (#183 6): 쓰러진 뒤 깨어나는 곳 → 빈터 (달리기 10m/s 직선) + 쓰러짐 연출·대기
+  { const { HP } = await import('../src/balance.js'); const down = HP.fallT + HP.comeMax + HP.loadT + HP.carryT + HP.blackT + HP.fadeInT + HP.riseT;
+    const back = spots.map((s) => ({ 구역: s.zone, 거리: s.wake ? Math.round(Math.hypot(s.wake.x - s.x, s.wake.z - s.z)) : null })).map((r) => ({ ...r, '처음(초)': r.거리 == null ? null : +(down + HP.waits[0] + r.거리 / 10).toFixed(1), '연달아 4번째(초)': r.거리 == null ? null : +(down + HP.waits[3] + r.거리 / 10).toFixed(1) }));
+    console.table(back); const worst = Math.max(...back.map((r) => r['처음(초)'] || 0)); console.log(`가장 먼 구역 돌아오는 데 ${worst}초 · 가득 차기까지 ${ZONE_BOSS.rest.delay + 1 / ZONE_BOSS.rest.rate}초`); }
   const c0 = await ev(() => window.__oreum.save.coins), tans0 = await ev(() => window.__oreum.life.tangerines.length);
   await ev(() => window.__oreum.boss.hp(0));
   const slow = await ev(() => window.__oreum.boss.state() === null);
