@@ -35,6 +35,7 @@ life.hooks.enemyHit = (dir, def) => {
   if (player.cart) return; // 마차 위는 안전 (#69)
   if (player.iframe > 0) return; // 받힌 뒤 잠깐은 다시 안 맞음 (#148, 그동안 깜빡임은 update.js placeRunner)
   player.iframe = COMBAT.iframe;
+  late.closeBag?.(); // 받히면 내 가방 창이 닫힘 (#166)
   if (player.riding) dismountDeer();
   if (player.ride) { dismountRide(); player.rideAuto = null; toast(`${RIDE_BY[save.rides.cur]?.name || '탈것'}에서 떨어졌어요`); } // 받히면 떨어짐 (#69)
   player.kb.copy(dir).multiplyScalar(BOAR.knockSpeed); player.air = true; player.jumpV = BOAR.knockV; player.jumpY = 0.01;

@@ -3,7 +3,7 @@
 export const TIP_SEC = 1.8;
 export function initUiTips({ $, toast, get }) {
   const TABLE = [
-    ['#bag-pill', () => `${get.bagName()} ${$('bag-n').textContent}/${$('bag-cap').textContent}`],
+    ['#bag-pill', () => ''], // #166 누르면 내 가방이 열림: 토스트 없음
     ['#clean-pill', () => `오름 깨끗한 정도 ${$('clean-n').textContent}%`],
     ['#score-pill', () => { const g = get.score(); return `장비 점수 ${g.total} · 줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}`; }], // #137
     ['#zone-pill', () => ''], // #136 누르면 오름 지도(area.js)가 열림: 토스트 없음

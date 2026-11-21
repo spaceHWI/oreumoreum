@@ -41,8 +41,8 @@ if (SHOT) require('fs').mkdirSync(OUT, { recursive: true });
     res.push({ 적: kind, 무기: info.w, '쫓아냄(초)': done ? +done.t.toFixed(1) : '못 함', '쓴 귤': done ? done.gy : '-', 누름: hold ? '계속' : fired, '남은 기운': done ? 0 : info.hp });
   }
   console.table(res);
-  // 무기 창·▾ 버튼
-  const ui = await p.evaluate(() => { const o = window.__oreum; o.weapon.open(); const n = document.querySelectorAll('#armwin-cards .menu-card').length, on = document.querySelector('#armwin-cards .menu-card.on b')?.textContent; document.getElementById('armwin').hidden = true; return { cards: n, on, more: !document.getElementById('arm-more').hidden, ammo: document.getElementById('ammo').className }; });
+  // 무기 고르기(내 가방 무기 탭 #166)·▾ 버튼
+  const ui = await p.evaluate(() => { const o = window.__oreum; o.weapon.open(); const n = document.querySelectorAll('#bag-cards .bag-card').length, on = document.querySelector('#bag-cards .bag-card.on b')?.textContent; document.getElementById('wardrobe-done').click(); return { cards: n, on, more: !document.getElementById('arm-more').hidden, ammo: document.getElementById('ammo').className }; });
   console.log('창', JSON.stringify(ui));
   console.log(errs.length ? `오류 ${errs.length}` : '오류 없음');
   await b.close(); process.exit(errs.length ? 1 : 0);

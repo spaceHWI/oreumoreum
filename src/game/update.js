@@ -1,5 +1,5 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT } from '../balance.js';
+import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG } from '../balance.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
@@ -295,14 +295,16 @@ function step(now) {
     const d = narrow ? 7 : 5.5;
     camTarget.look.copy(look); camTarget.pos.set(look.x + Math.sin(yaw) * d, player.pos.y + (narrow ? 1.5 : 1.6), look.z + Math.cos(yaw) * d);
     ease(dt, false, 6);
-  } else if (cam.mode === 'wardrobe') {
-    const narrow = innerWidth <= 600;
-    const look = player.pos.clone(); look.y += narrow ? -1.6 : 1.25;
-    const yaw = player.heading;
-    if (!narrow) look.add(new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(-1.4));
+  } else if (cam.mode === 'wardrobe') { // 내 가방 (#166): 창이 덮지 않은 쪽(데스크톱 창 왼쪽, 폰 창 위) 가운데에 캐릭터 전신
+    const yaw = player.heading, W = innerWidth, H = innerHeight, th = Math.tan(camera.fov * Math.PI / 360), r = late.bagRect?.();
+    const narrow = W <= 600 || !r, top = BAG.topBar;
+    const freeW = narrow ? W : Math.max(120, r.left), freeH = narrow ? Math.max(120, (r ? r.top : H * 0.4) - top) : H - top;
+    const fill = narrow ? BAG.fillN : BAG.fillW, d = BAG.charH * H / (2 * th * fill * freeH), wpp = 2 * d * th / H; // 화면 1px 이 그 거리에서 몇 m
+    const dx = W / 2 - freeW / 2, dy = H / 2 - (top + freeH / 2); // 캐릭터가 갈 자리와 화면 가운데의 차(px)
+    const look = player.pos.clone(); look.y += BAG.charH * 0.5 - dy * wpp;
+    look.add(new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(dx * wpp)); // 화면 오른쪽으로 시점을 옮겨 캐릭터를 왼쪽에
     camTarget.look.copy(look);
-    const d = narrow ? 10 : 4.6;
-    camTarget.pos.set(look.x + Math.sin(yaw) * d, look.y + (narrow ? 2.2 : 0.5), look.z + Math.cos(yaw) * d);
+    camTarget.pos.set(look.x + Math.sin(yaw) * d, look.y + BAG.lift, look.z + Math.cos(yaw) * d);
     ease(dt, false, 6);
   } else if (cam.mode === 'look') { // 캐릭터 고르기 (#51): 캐릭터 둘레를 천천히 돎. 아래 카드에 가리지 않게 캐릭터를 화면 가운데 조금 위에
     lookS.t += dt;
