@@ -185,7 +185,7 @@ export function updateAmmo() {
 export const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));
 aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
 const placeAim = drape(aimMark, height); // 비탈에서도 땅에 묻히지 않게 (#151)
-const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
+export const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
 aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 export function tickAimMark(time) {
   const t = state.throwAim || refreshLock(); // 고정한 타겟은 늘 보임 (#148, 탈것 위에서도). 사거리 밖이면 흐리게

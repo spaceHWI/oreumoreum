@@ -219,7 +219,7 @@ export function updateContext() {
   if (ui.ctx.dataset.ic !== ic) { ui.ctx.dataset.ic = ic; ui.ctx.querySelector('svg').innerHTML = CTX_ICON[ic] || CTX_ICON.do; }
   updateAmmo();
   // 줍기 버튼: 찾는 거리(#104) 안에도 주울 쓰레기가 없으면 흐리게
-  const can = pickS.cyc >= 0 || !!seekS.on || canPick() || seekable();
+  const can = state.cave ? !!late.caveCanPick?.() : pickS.cyc >= 0 || !!seekS.on || canPick() || seekable(); /* 동굴 안은 동굴 더미 (#195) */
   if (pickBtn.classList.contains('dim') === can) pickBtn.classList.toggle('dim', !can);
 }
 // 상호작용 버튼 아이콘 (지금 될 동작)

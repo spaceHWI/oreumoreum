@@ -425,8 +425,9 @@ async function main() {
   { // 오름펑크 (#165): 쪽지는 귤이 없음(쓰레기 수·귤은 보통 쓰레기와 같음). 칭호가 열리는 업적의 보상 합은 첫날 벌이의 10% 안
     const { NOTES, TITLES } = require('../src/punktext.js'), { BADGES } = require('../src/achievements.js'), src = fs.readFileSync(path.join(__dirname, '../src/game/punkworld.js'), 'utf8');
     const noGyul = NOTES.every((n) => !('gyul' in n) && !('reward' in n)) && !/addCoins|coins\s*[+-]?=|scatterTangerines/.test(src);
+    /* 옷 세트 칭호(t.set, 업적 없음)는 세트를 다 입으면 열림 */
     const ids = new Set(TITLES.map((t) => t.badge)), add = BADGES.filter((b) => ids.has(b.id) && /^b-(earn-10k|stare|unpaid|alien-cs|crow|hare-five|dumper|guard-1|notes|ending)$/.test(b.id)), tot = add.reduce((s, b) => s + b.reward, 0), cap = Math.round(day1 * 0.1);
-    console.log(`쪽지: ${NOTES.length}장, 귤 ${noGyul ? '0 (벌이 그대로)' : '있음'} · 칭호 ${TITLES.length}개, 새 업적 ${add.length}개 보상 합 귤 ${tot} · 첫날 벌이 ${day1} 의 10% ${cap} → ${noGyul && tot <= cap && TITLES.every((t) => BADGES.some((b) => b.id === t.badge)) ? '통과' : '넘음·없는 업적'}`);
+    console.log(`쪽지: ${NOTES.length}장, 귤 ${noGyul ? '0 (벌이 그대로)' : '있음'} · 칭호 ${TITLES.length}개, 새 업적 ${add.length}개 보상 합 귤 ${tot} · 첫날 벌이 ${day1} 의 10% ${cap} → ${noGyul && tot <= cap && TITLES.every((t) => (t.set && !t.badge) || BADGES.some((b) => b.id === t.badge)) ? '통과' : '넘음·없는 업적'}`);
   }
 }
 main();

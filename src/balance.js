@@ -489,6 +489,9 @@ export const ENEMIES = {
   // 들판 떼 전용 (#173, src/game/swarm.js): 구역 3 까마귀(하늘에서 내려와 쪼고 올라감), 구역 5 외계인 드론(작은 비행 접시, 약한 광선). 표의 값은 '보통 적' 기준이고 떼는 SWARM.mob 비율로 낮춤
   crow: { name: '까마귀', hp: 16, walk: 3.4, chase: 7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
   drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
+  // 동굴 전용 (#195, game/cavelife.js): 박쥐(약하고 많음, 낮게 날아 쪼고 올라감) · 눈먼 동굴 게(느리지만 단단, 가까이 와서 집게로 받음). 땅 헤집기 없음
+  bat: { name: '동굴 박쥐', hp: 30, walk: 3.2, chase: 7.5, rush: 10, rest: 2.0, flee: 12, dmg: 14, reward: { gyul: 60, rare: 0.02 }, sight: 12, lose: 26, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.6, fly: 2.2 },
+  crab: { name: '눈먼 동굴 게', hp: 150, walk: 1.6, chase: 3.6, rush: 7.5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 320, rare: 0.05 }, sight: 9, lose: 22, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.0 },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 // 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
@@ -1341,7 +1344,8 @@ export const NET = {
   // 서버가 아는 큰 귤 (#188, server/src/earn.js): 저장의 기록(판 장비·퀘스트·우두머리·소굴·보물·볼거리)으로 몫을 인정해 ② 에 더함
   //   fresh: 지난 저장에 없던(새로 떨어져 바로 판) 장비 수 통 — 초당 freshPerSec 씩 차고 freshBurst 에서 멈춤 (적 1.2%·소굴 12%·보물 35%·우두머리 60% 를 넉넉히)
   //   legend: 그중 전설 (우두머리·보물 4구역부터만 떨어짐). bossGap·denGap: 같은 우두머리·소굴을 다시 인정하기까지 초 (ZONE_GUARD.holdSec 1800·FIELD.den.reopen 1800 보다 조금 짧게)
-  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64 },
+  //   cave (#195): 동굴에서 들고 나온 쓰레기 귤(save.cave.out 누적)이 늘어난 몫 × caveK(베스트·분리수거 증강 여유). 통은 초당 cavePerSec, 최대 caveBurst (가장 큰 배낭 540 × 동굴 귤 39 ≈ 2.1만 한 판)
+  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64, caveK: 1.6, cavePerSec: 12, caveBurst: 26000 },
   clampKeepDays: 30,  // 귤 맞춤 기록(#188 GET /admin/clamps)·운영자 귤 보내기 기록 보관 날짜
   grantMax: 1000000,  // 어드민이 한 번에 보내는 귤 상한 (#188 POST /admin/grant)
   pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
@@ -1948,4 +1952,14 @@ export const CAVE = {
   fade: 0.5, hold: 0.35, near: 2.6,
   moss: 70, crystal: 26,
   lines: { locked: '바람이 새어 나와요. 아직은 무리예요', admin: '지금은 어드민만 들어갈 수 있어요', enter: '용암 동굴', down: '더 깊이 내려갑니다', out: '밖으로 나왔어요' },
+  // 2번 조각 (game/cavelife.js): 외계 쓰레기 더미·들고 나오기·적·층 지킴이
+  // junk.kinds: 동굴 쓰레기 두 가지. as = 배낭에 들어가는 쓰레기 종류(TRASH_TYPES id, 부피·클린하우스 통은 그것), 귤은 부피 × perVol (나머지는 bag.xv)
+  // perVol: 부피 1 의 귤 = 구역 5 평균(쓰레기 종류 섞임 × gv)의 2배 (아래 Z5V). perRoom 방 하나 더미 수 [최소, 최대], n 더미 하나 쓰레기 수, r 더미 반경
+  // lose: 쓰러지면 든 동굴 쓰레기 가운데 이 비율을 잃음. walkR: 줍기 버튼으로 걸어가는 거리
+  junk: { kinds: [{ id: 'glowcan', name: '빛나는 캔', as: 'foam', p: 0.6 }, { id: 'part', name: '알 수 없는 부품', as: 'gear', p: 0.4 }], perVol: 0, perRoom: [1, 2], pocket: 2, n: [6, 11], r: 1.1, lose: 0.5, walkR: 26 },
+  // 적: 방에 들어서면(wake m) 그 방 몫이 나옴. bats [최소, 최대] 박쥐 떼 · crabs 게 · 층 지킴이(guard): 바탕 kind 를 k 배로, 기운·피해·귤
+  //   지킴이는 구멍(아래층) 방에 서 있고 쫓아내야 구멍이 열림. 맨 아래 층은 주인 방 앞 방(주인은 3번 조각). 쉬며 기운이 참 (#183 restRegen, ZONE_BOSS.rest)
+  mobs: { wake: 20, bats: [3, 5], crabs: [0, 2], guard: { kind: 'crab', k: 2.3, name: '동굴 지킴이', hp: 1500, dmg: 40, gyul: 2400, walk: 1.4 } },
+  lines2: { full: '배낭이 가득 찼어요 · 들고 밖으로 나가요', none: '주울 것이 보이지 않아요', guard: '지킴이가 구멍을 막고 있어요', guardGone: '지킴이가 물러났어요 · 아래로 가는 길이 열렸어요', lost: '쓰러져 동굴 쓰레기 절반을 잃었어요', carry: '동굴 쓰레기를 들고 나왔어요 · 클린하우스에 버려요', lostLoad: '동굴에서 길을 잃고 나왔어요 · 동굴 쓰레기 절반을 잃었어요' },
 };
+{ const z = ZONES[4], g = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0), v = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0); CAVE.junk.perVol = Math.round(2 * z.gv * g / v); } /* Z5V: 구역 5 부피 1 귤 × 2 */

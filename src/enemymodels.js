@@ -185,6 +185,57 @@ function buildDrone() {
   };
 }
 
+// 동굴 박쥐 (#195): 작은 몸 + 넓은 막 날개 둘 + 빛나는 눈. 까마귀처럼 def.fly 높이로 날다 조짐·돌진 때 내려옴
+function buildBat() {
+  const root = new THREE.Group(), fly = new THREE.Group(); root.add(fly);
+  const s = BOAR.scale * ENEMIES.bat.size * 0.55;
+  const body = new THREE.Mesh(geo('batBody', () => mergeGeometries([bx(0.3, 0.3, 0.42, 0, 0, 0), bx(0.24, 0.22, 0.2, 0, 0.06, 0.28), bx(0.06, 0.12, 0.04, -0.08, 0.22, 0.32), bx(0.06, 0.12, 0.04, 0.08, 0.22, 0.32)])), lamb('#3a2f45'));
+  body.scale.setScalar(s); fly.add(body);
+  const eyes = new THREE.Mesh(geo('batEyes', () => mergeGeometries([bx(0.05, 0.04, 0.02, -0.06, 0.09, 0.385), bx(0.05, 0.04, 0.02, 0.06, 0.09, 0.385)])), glow('#ff5a4a'));
+  eyes.scale.setScalar(s); fly.add(eyes);
+  const wGeo = geo('batWing', () => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.18, 0.95, 0, 0.1, 0.7, 0, -0.32, 0, 0, 0.18, 0.7, 0, -0.32, 0.25, 0, -0.18], 3)); g.computeVertexNormals(); return g; });
+  const wm = new THREE.MeshLambertMaterial({ color: '#4c3d5c', side: THREE.DoubleSide, flatShading: true });
+  const wl = new THREE.Mesh(wGeo, wm), wr = new THREE.Mesh(wGeo, wm);
+  wl.scale.set(-s, s, s); wr.scale.setScalar(s); wl.position.set(-0.1 * s, 0.08 * s, 0); wr.position.set(0.1 * s, 0.08 * s, 0); fly.add(wl, wr);
+  const head = new THREE.Object3D(); fly.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  const hi = ENEMIES.bat.fly || 2.2;
+  return {
+    root, legs, head, tail, h: hi + 0.3,
+    fx: (dt, time, e) => {
+      const low = e.state === 'wind' || e.state === 'dash' || e.state === 'stagger';
+      e.alt = (e.alt ?? hi) + ((low ? 0.7 : hi) - (e.alt ?? hi)) * Math.min(1, dt * (low ? 7 : 3));
+      fly.position.y = e.alt + Math.sin(time * 5 + e.phase) * 0.16;
+      const f = Math.sin(time * 20 + e.phase) * 0.8; wl.rotation.z = f; wr.rotation.z = -f;
+      fly.rotation.x = low ? 0.4 : 0;
+    },
+  };
+}
+// 눈먼 동굴 게 (#195): 납작한 등딱지 + 집게 둘 + 다리(한 메시) + 하얀 눈. 걸을 때 옆으로 흔들림, 조짐 때 집게를 듦
+function buildCrab() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const s = BOAR.scale * ENEMIES.crab.size * 0.62;
+  const shell = new THREE.Mesh(geo('crabShell', () => mergeGeometries([new THREE.SphereGeometry(0.6, 8, 4).scale(1.25, 0.42, 0.9).translate(0, 0.55, 0).toNonIndexed(), ...[-1, 1].flatMap((sd) => [0, 1, 2].map((k) => bx(0.7, 0.07, 0.08, sd * 0.85, 0.35, -0.25 + k * 0.25).rotateZ(sd * 0.35).toNonIndexed()))])), lamb('#7d5a4c'));
+  shell.scale.setScalar(s); body.add(shell);
+  const eye = new THREE.Mesh(geo('crabEye', () => mergeGeometries([bx(0.08, 0.16, 0.08, -0.18, 0.86, 0.5), bx(0.08, 0.16, 0.08, 0.18, 0.86, 0.5)])), glow('#e9eef2'));
+  eye.scale.setScalar(s); body.add(eye);
+  const cGeo = geo('crabClaw', () => mergeGeometries([bx(0.16, 0.14, 0.45, 0, 0, 0.2), bx(0.3, 0.2, 0.3, 0, 0.02, 0.5), bx(0.08, 0.08, 0.22, 0.06, 0.12, 0.7)]));
+  const cm = lamb('#a0644e'), cl = new THREE.Mesh(cGeo, cm), cr = new THREE.Mesh(cGeo, cm);
+  cl.scale.setScalar(s); cr.scale.setScalar(s); cl.position.set(-0.5 * s, 0.55 * s, 0.45 * s); cr.position.set(0.5 * s, 0.55 * s, 0.45 * s); body.add(cl, cr);
+  const head = new THREE.Object3D(); head.position.set(0, 0.6 * s, 0.6 * s); body.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  return {
+    root, legs, head, tail, h: 0.9 * s,
+    fx: (dt, time, e) => {
+      body.rotation.z = Math.sin(e.phase * 2.2) * 0.08 * Math.min(1, e.speed);
+      const up = e.state === 'wind' || e.state === 'dash' ? 0.9 : 0.15 + Math.sin(time * 2 + e.phase) * 0.1;
+      cl.rotation.x = cr.rotation.x = -up; cl.rotation.y = 0.3; cr.rotation.y = -0.3;
+    },
+  };
+}
+
 // 종류 → 모양. 바꾸려면 여기만
 export const ENEMY_MODELS = {
   piglet: buildPiglet,
@@ -194,6 +245,7 @@ export const ENEMY_MODELS = {
   alien: buildAlien,
   crow: buildCrowFoe, // #173 들판 떼
   drone: buildDrone,
+  bat: buildBat, crab: buildCrab, // #195 동굴
 };
 // #108: 모양을 만들다 오류가 나면(받은 자료가 깨짐 등) 대신할 모양으로 계속
 export function buildEnemyModel(kind) {

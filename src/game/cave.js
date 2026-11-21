@@ -168,6 +168,7 @@ export function enterCave(now = false) {
     cs.add(runner.root);
     placeAt(b.F, b.F.start.x + 2.2, b.F.start.z, 0);
     cam.dist = CAVE.cam.dist; cam.pitch = CAVE.cam.pitch; followCam(0, true);
+    late.caveIn?.(cs); late.caveFloor?.(b.F, 0); /* 2번 조각 (cavelife.js): 적·불빛 장면 옮기기, 이 층 더미·적 */
     state.cave.after = info();
     toast(CAVE.lines.enter + ' 1층');
   };
@@ -176,13 +177,14 @@ export function enterCave(now = false) {
 }
 export function caveDown(now = false) {
   const c = state.cave; if (!c || busyT > 0 || c.fi >= CAVE.floors - 1) return false;
-  const go = () => { c.fi++; const b = buildFloor(c.fi); c.F = b.F; c.tris = b.tris; placeAt(b.F, b.F.start.x + 2.2, b.F.start.z, 0); followCam(0, true); toast(`${CAVE.lines.enter} ${c.fi + 1}층`); };
+  const go = () => { late.caveFloorOff?.(); c.fi++; const b = buildFloor(c.fi); c.F = b.F; c.tris = b.tris; placeAt(b.F, b.F.start.x + 2.2, b.F.start.z, 0); followCam(0, true); late.caveFloor?.(b.F, c.fi); toast(`${CAVE.lines.enter} ${c.fi + 1}층`); };
   if (now) timed(go); else fade(CAVE.lines.down, () => timed(go));
   return true;
 }
 export function exitCave(now = false) {
   const c = state.cave; if (!c || (busyT > 0 && !now)) return false;
   const go = () => {
+    late.caveOut?.(hp.isDown || hp.pending); /* 2번 조각: 들고 나온 쓰레기·쓰러지면 절반 잃음, 적 지우기, 장면 되돌리기 */
     disposeFloor();
     scene.add(runner.root);
     setCaveGround(null); netCave.at = null; state.cave = null;
@@ -196,15 +198,15 @@ export function exitCave(now = false) {
   return true;
 }
 interactables.push({ label: '밖으로 나가기', ic: 'steps', pos: ropePos, r: CAVE.near, when: () => !!state.cave, act: () => exitCave() });
-interactables.push({ label: '더 내려가기', ic: 'down', pos: holePos, r: CAVE.near + 0.6, when: () => !!state.cave && state.cave.fi < CAVE.floors - 1, act: () => caveDown() });
-// 줍기 버튼: 동굴 안에는 아직 주울 것이 없음 (2번 조각). 오름 쓰레기로 걸어가지 않게
-{ const pp = late.pressPick; late.pressPick = (...a) => (state.cave ? toast('여기엔 아직 주울 것이 없어요') : pp(...a)); }
+interactables.push({ label: '더 내려가기', ic: 'down', pos: holePos, r: CAVE.near + 0.6, when: () => !!state.cave && state.cave.fi < CAVE.floors - 1, act: () => { if (late.caveGuard?.()) { toast(CAVE.lines2.guard); return; } caveDown(); } });
+// 줍기 버튼: 동굴 안에서는 동굴 쓰레기 더미 (cavelife.js late.cavePick). 오름 쓰레기로 걸어가지 않게
+{ const pp = late.pressPick; late.pressPick = (...a) => (state.cave ? late.cavePick?.() : pp(...a)); }
 
 // ---------- 매 프레임 (동굴 안: update.js 가 오름 장면 대신 부름) ----------
 const L = new THREE.Vector3(), Cp = new THREE.Vector3(), fwd = new THREE.Vector3();
 function caveFrame(dt) {
   const c = state.cave, F = c.F; c.t += dt;
-  // 쓰러지면 바로 밖으로 (든 것 잃기는 2번 조각)
+  // 쓰러지면 바로 밖으로 (든 동굴 쓰레기 절반을 잃음: cavelife.js caveOut)
   if (hp.isDown || hp.pending) { exitCave(true); renderer.render(scene, camera); return; }
   // 오름 쪽으로 걷게 하는 것(자동 걷기·퀘스트 길 안내 등)은 끔
   if (player.target && !F.inside(player.target.x, player.target.z)) { player.target = null; player.onArrive = null; late.stopAutoGo?.(); }
@@ -221,7 +223,8 @@ function caveFrame(dt) {
   lamp.position.set(player.pos.x + fwd.x * 1.2, player.visY + 2.0, player.pos.z + fwd.z * 1.2);
   // 수정이 천천히 깜빡임
   const fc = floorG?.children[2]; if (fc) fc.material.color.setScalar(0.85 + 0.15 * Math.sin(c.t * 2.2));
-  renderer.render(cs, camera);
+  late.caveTick?.(dt, F); /* 더미·적·지킴이 (cavelife.js) */
+  late.caveDraw?.(true); renderer.render(cs, camera); late.caveDraw?.(false);
 }
 function tickCave(dt) { if (busyT > 0) busyT -= dt; tickMouth(dt); }
 // 동굴 바닥 누르기 (input.js tapGround): 광선을 따라 걸으며 바닥 아래로 들어가는 첫 점
