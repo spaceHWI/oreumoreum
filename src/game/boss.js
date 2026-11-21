@@ -383,7 +383,7 @@ function defeated(c, mine) {
   const log = logOf(z), got = { gyul: D.gyul, mat: D.mat, first, log: { ...log, repel: log.repel + 1 }, s0: log.s0 };
   delete S.log[z]; persist();
   say('quest', 'bossBeat', `${name(z)}${josaEulReul(name(z))} 쫓아냈어요! 귤 ${D.gyul} · ${D.mat}`, 3.4, { ttl: 8 });
-  late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel');
+  late.ach?.emit?.('boss-repel'); late.pace?.note?.('repel'); late.lvGain?.('boss'); // 경험치 (#159)
   pendingSummary = { z, got, at: nowS() + ZONE_GUARD.afterBloom + B.summaryAt }; // 하르방이 솟는 동안 보고 나서
 }
 let pendingSummary = null;

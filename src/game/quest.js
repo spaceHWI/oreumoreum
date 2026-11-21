@@ -9,7 +9,7 @@
 // - 할인권: late.questOff(가게, 값) → 깎을 귤, late.questUse(가게) 한 장 씀 (shop.js 장비·옷, stores.js 머리·에이드)
 // dev: __oreum.quest (state·give(id)·done(id)·count(k, n)·go()·open(giver)·where())
 import * as THREE from 'three';
-import { QUESTS, CLOTHES } from '../balance.js';
+import { QUESTS, CLOTHES, LEVEL } from '../balance.js';
 import { createQuests } from '../quest.js';
 import { STREET } from '../streetlayout.js';
 import { buildRunner, DEFAULT_OUTFIT } from '../runner.js';
@@ -189,6 +189,7 @@ function give(r, q) {
   if (r.coupon) toast(`${CP_NAME[r.coupon[0]] || '할인권'}을 받았어요`, 2.6);
   if (r.item && CL && !CL.own[r.item]) { CL.own[r.item] = 1; persist(); toast(`${CLOTH_NAME[r.item] || '선물'}을 받았어요 · 내 가방에서 입어요`, 3); }
   late.sound?.swell?.(0.6);
+  { const X = LEVEL.xp.quest, main = QUESTS.main.some((m) => m.id === q.id); late.lvGain?.('quest', q.xp ?? (q.ending ? X[1] : main ? Math.round((X[0] + X[1]) / 2) : X[0])); } // 경험치 (#159): 곁가지 20 · 줄기 40 · 끝 장면 60 (q.xp 로 따로 줄 수 있음)
   if (q.ending) ending(q.ending);
 }
 // 끝 장면: 하늘에 큰 글씨 한 줄

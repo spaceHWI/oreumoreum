@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { createDirector } from '../director.js';
 import { JOURNEY } from '../balance.js';
+import { levelOf, augCount } from '../augments.js';
 import { groundAt } from '../world.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
@@ -31,6 +32,8 @@ const FACTS = {
   zone: () => J().maxZ || 0,
   night: () => ((sunState?.el ?? 30) < -4 ? 1 : 0),
   fieldQuest: () => (save.quest?.done?.includes('field1') ? 1 : 0), // #158 퀘스트 '들판 탐사' 를 끝냄
+  lv: () => levelOf(save.lv?.xp || 0).lv, // #159 레벨
+  augs: () => augCount(save), // #159 고른 증강 수
 };
 
 export const director = createDirector({

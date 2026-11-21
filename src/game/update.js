@@ -1,6 +1,7 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { shoeSpeed } from '../loot.js';
 import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
+import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
@@ -95,7 +96,7 @@ function updatePlayer(dt) {
   if (dir && state.fishing?.active) state.fishing.stop(); // 움직이면 낚시를 그만둠 (#44)
   if (p.riding) {
     const d = p.riding;
-    const want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) : 0;
+    const want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) * (1 + augV(save, 'deer')) : 0; // 노루 친구 (#159)
     d.speed += (want - d.speed) * Math.min(1, dt * 5);
     if (dir && (joy.active || p.target)) d.heading += wrapA(Math.atan2(dir.x, dir.z) - d.heading) * Math.min(1, dt * 6);
     if (d.speed > 0.05) {
@@ -120,7 +121,7 @@ function updatePlayer(dt) {
   const slow = joy.active && p.joyMag < 0.6;
   let want, acc = 8;
   if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
-  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * buff.mul('speed') * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
+  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
   p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -237,9 +238,10 @@ function frame(now) {
 }
 function step(now) {
   if (state.osPaused) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
-  const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1); last = now; // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
+  const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
   if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);
-  tickPace(Math.min(0.05, rawDt), now / 1000);
+  late.tickLevel?.(Math.min(0.05, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
+  if (!state.augPause) tickPace(Math.min(0.05, rawDt), now / 1000);
   state.camHold = Math.max(0, state.camHold - dt);
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저
