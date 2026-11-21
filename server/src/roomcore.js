@@ -22,6 +22,9 @@
 //   {t:'bd', z}     방장만: 쫓아냄 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, zg 로 알림)
 // 엔딩 (#168): {t:'end'} 내가 오름의 비밀을 밝힘(구역 5 우두머리 뒤) → 그날(한국 날짜) 이 방 첫 번째면 방 전체에 {t:'end', at, by, names}, 아니면 보낸 사람에게만 {…, solo:1}
 //   그날 두 번째부터는 나머지 사람에게 {t:'endr', by} (오름 방송 한 줄). at = 지금 + STORY.end.lead 초 (모두 같은 시각에 시네마틱을 시작). 도중에 들어온 사람은 hi 의 end = [at, by, names] 로 남은 부분부터
+// 오래 멈춤 (#157): presence 의 a:1 = '지난 NET.idleBeatMs 안에 조작 있음' (받으면 지우고 그 시각만 기억, 남에게 안 보냄).
+//   마지막 a:1 뒤 NET.idleKickSec 가 지나면 {t:'idle'} 후 연결을 닫음(4004, 클라이언트는 자동 재접속 안 함). 어드민(x-adm)은 빼고,
+//   a 를 한 번도 안 보낸 연결(옛 클라이언트)도 닫지 않음. {t:'idle', s} 는 STATS_OPEN(로컬 확인)일 때만: 그 사람의 기준 초를 s 로 (tools/online.js)
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
@@ -88,7 +91,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
+      key: info.key || null, close: info.close || null, adm: !!info.adm, actT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
     peers.set(p.id, p);
     if (!host) host = p.id;
     out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t) }));
@@ -105,6 +108,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
 
   function presence(p, d) {
     if (!d || typeof d !== 'object' || Array.isArray(d) || !isNum(d.x) || !isNum(d.z)) return;
+    if ('a' in d) { if (d.a === 1) p.actT = now(); delete d.a; } // 조작 있음 (#157): 기억만 하고 남에게는 안 보냄
     d.x = Math.max(-4000, Math.min(4000, d.x)); d.z = Math.max(-4000, Math.min(4000, d.z));
     // 이동 판정 (#84): 마지막으로 받아 준 자리에서 (지난 시간 × maxSpeed + 여유) 안이어야 함
     const t = now();
@@ -225,9 +229,20 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         else out(p, JSON.stringify({ t: 'h', h, n: H[h] }));
         break;
       }
+      case 'idle': if (stats && isNum(m.s) && m.s > 0) p.idleSec = Math.min(3600, m.s); break; // 로컬 확인용 (#157)
       case 'ping': out(p, JSON.stringify({ t: 'pong', c: m.c, s: t })); break;
       case 'stats': if (stats) out(p, JSON.stringify({ t: 'stats', n: peers.size, ...st, host })); break;
       default: break;
+    }
+  }
+
+  // 오래 멈춘 사람 내보내기 (#157): 조작 표시를 한 번이라도 보낸 사람만 (옛 클라이언트 대비. 모두 새 버전이 된 뒤 MIN_VER 를 올리면 이 조건은 지워도 됨)
+  function idleCheck(t) {
+    for (const p of [...peers.values()]) {
+      if (!p.actT || p.adm || t - p.actT < (p.idleSec || NET.idleKickSec) * 1000) continue;
+      st.idleOut = (st.idleOut || 0) + 1;
+      out(p, JSON.stringify({ t: 'idle' }));
+      leave(p); try { p.close?.(4004, 'idle'); } catch (e) { /* 이미 끊김 */ }
     }
   }
 
@@ -235,6 +250,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   function step() {
     tick++; st.ticks++;
     if (peers.size) roomSeen = now();
+    if (tick % 10 === 0) idleCheck(now());
     if (heapOut.size) { all(JSON.stringify({ t: 'hs', hs: [...heapOut] })); heapOut.clear(); }
     for (const [z, at] of guardOut) all(JSON.stringify({ t: 'zg', z, at })); guardOut.length = 0;
     const farTick = tick % NET.farEvery === 0, R2 = NET.farR * NET.farR;

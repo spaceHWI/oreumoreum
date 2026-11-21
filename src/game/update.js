@@ -239,7 +239,7 @@ function frame(now) {
   }
 }
 function step(now) {
-  if (state.osPaused) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97): 그리지도 움직이지도 않음
+  if (state.osPaused || state.idleRest) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97)·오래 멈춰 쉬는 중 (#157, idle.js): 그리지도 움직이지도 않음
   const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
   if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);
   late.tickLevel?.(Math.min(0.05, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
