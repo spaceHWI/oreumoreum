@@ -60,9 +60,9 @@ const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-toast', 'ch-arrow', 'shop-
     const c1 = await O(() => window.__oreum.save.coins); notes.push(`[dump] 귤 ${c0} → ${c1}`); if (!(c1 > c0)) notes.push('[dump] 버려도 귤이 늘지 않음'); await shot('dump');
   });
   // 4. 가게
-  await S('stall', async () => { await O(() => window.__oreum.cleanhouse.openShop('tool')); await W(1200); await shot('shop-tool'); for (const t of ['bag', 'shoes', 'weapon']) { await O((t) => document.querySelector(`#shop-tabs [data-tab="${t}"]`)?.click(), t); await W(500); } await shot('shop-last-tab'); await closeAll(); });
-  for (const [id, f] of [['leap', 'leap'], ['salon', 'salon'], ['stone', 'stone'], ['ride', 'rides']]) {
-    await S('shop-' + id, async () => { await O((f) => { const o = window.__oreum; if (f === 'rides') { o.street.go(1); o.rides.open(); } else { o[f].go?.(); o[f].open(); } o.snap(); }, f); await W(2200); await shot('pop-' + id); await O(() => document.getElementById('shoppop-close')?.click()); await W(600); await closeAll(); });
+  await S('dir', async () => { await O(() => window.__oreum.street.guide()); await W(1200); await shot('shop-dir'); await closeAll(); }); // 가게 안내 (#128)
+  for (const [id, f] of [['gear', 'gear'], ['leap', 'leap'], ['salon', 'salon'], ['stone', 'stone'], ['ride', 'rides']]) {
+    await S('shop-' + id, async () => { await O((f) => { const o = window.__oreum; if (f === 'gear') o.street.open('gear'); else if (f === 'rides') { o.street.go(1); o.rides.open(); } else { o[f].go?.(); o[f].open(); } o.snap(); }, f); await W(2200); await shot('pop-' + id); await O(() => document.getElementById('shoppop-close')?.click()); await W(600); await closeAll(); });
   }
   await S('street', async () => { await O(() => { const o = window.__oreum; o.street.go(0, 0.5); o.snap(); }); await W(1800); await shot('street'); });
   // 5. 탈것·마차·낚시·사진사·돌탑·동작

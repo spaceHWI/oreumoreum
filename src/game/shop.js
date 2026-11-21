@@ -1,21 +1,26 @@
-// 상점 팝업(장비 탭)·사는 연출, 옷 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { TOOLS, BAGS, POCKET, SHOES, WEAPONS, WEAR, CLOTHES, wearPrice } from '../balance.js';
+// 장비점 창(도구·배낭·무기)·가게 안내(무엇을 어디서 사는지·길 안내)·살 수 있는 새 물건 점·사는 연출, 옷 (#128. #86 에서 main.js 를 나눔. 파일 순서는 src/modules.js, 규칙은 notes/prototype-v1.md 코드 구조)
+// 사는 것은 모두 가게 거리의 가게에서 (#128): 도구·배낭·무기 = 장비점, 옷·신발 = LEAP, 머리 = 루이네미장원, 탈것 = 탈것 가게, 식사 = 스톤
+// 어디서나 열리던 상점(메뉴·귤 칸)은 가게 안내 → 고르면 그 가게까지 자동 걷기(dump.js startAutoGo(dest)) → 도착하면 그 가게 창
+import { TOOLS, BAGS, POCKET, SHOES, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
 import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
+import { SHOP_ICON } from '../shops.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, CL, wearV, syncEquipGear, persist } from './save.js';
-import { LEAPB, runner, player } from './place.js';
+import { LEAPB, street, shopsBuilt, roofSigns, CH, runner, player } from './place.js';
 import { cam } from './camera.js';
-import { toast, updateStats, closePanels, ach } from './hud.js';
+import { toast, tipMark, updateStats, closePanels, ach } from './hud.js';
 import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
+import { SHOP_POP, openShopPop, refreshShopPop, shopPopNow } from './stores.js';
+import { startAutoGo } from './dump.js';
 import { itemScore, scoreDiff } from '../gearscore.js';
 
-Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, gdBadge, scoreChip }); // 앞 파일에서 부르는 함수
+Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, gdBadge, scoreChip, goShop, shopGuide, gearTabs, fillGearShop, fillShopDir, shopOpened }); // 앞 파일에서 부르는 함수
 
-// ---------- 상점·옷장 ----------
-// 상점 팝업 (#26): 탭 도구·배낭·신발·옷. 장비 탭은 5단계 한 줄(가진 것 체크·안 가진 것은 값, 귤이 모자라면 흑백 #111)
-const GEAR_ROWS = { tool: { k: 'tool', list: TOOLS }, bag: { k: 'bag', list: BAGS }, shoes: { k: 'shoes', list: SHOES }, weapon: { k: 'weapon', list: WEAPONS } };
+// ---------- 장비점 (#128) ----------
+// 세 묶음 도구·배낭·무기 (LEAP 이 없는 맵이면 신발도). 데스크톱은 한 화면에 나란히, 폰은 위쪽 큰 탭. 카드 = 그림·이름·능력 '지금 → 사면'·값 + 큰 [사기]
+const GEAR_ROWS = { tool: { k: 'tool', name: '도구', list: TOOLS }, bag: { k: 'bag', name: '배낭', list: BAGS }, weapon: { k: 'weapon', name: '무기', list: WEAPONS }, shoes: { k: 'shoes', name: '신발', list: SHOES } };
 const gearKeys = () => Object.keys(GEAR_ROWS).filter((k) => !(k === 'shoes' && LEAPB)); // 신발은 LEAP 이 있으면 거기서 (#59)
 const SVG_A = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'; late.SVG_A = SVG_A;
 // 단계마다 그림 (로우폴리 임시 아이콘)
@@ -61,22 +66,20 @@ const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t
 const tutOnly = (k) => { const s = late.tut?.active && late.tut.step; return (s === 'tongs' && k === 'tool') || (s === 'bag' && k === 'bag'); };
 const buyable = (k, i) => { const t = GEAR_ROWS[k].list[i]; return !!t && !t.soon && i >= save.equip[k] && (!tutOnly(k) || i === save.equip[k]); };
 export const canBuyGear = () => gearKeys().filter((k) => GEAR_ROWS[k].list.some((t, i) => buyable(k, i) && save.coins >= t.price)); late.canBuyGear = canBuyGear;
-let shopTab = 'tool', shopPick = null; export { shopTab }; // shopPick: 장비 탭에서 고른 단계(없으면 다음 단계)
+let gearTab = 'tool', justKey = '', justT = 0; // gearTab: 폰에서 보이는 묶음, justKey: 방금 산 카드('장착했어요')
+export const gearTabNow = () => (!$('shoppop').hidden && shopPopNow === 'gear' ? gearTab : null); // 튜토리얼이 누를 곳을 고를 때
+// 예전 상점 열기 (#128 뒤): 사는 창 대신 그 물건을 파는 가게로 길 안내
 export function openShop(tab) {
-  if (cam.mode === 'wardrobe' || player.pose === 'sit') return; closePanels();
-  if (LEAPB && (tab === 'wear' || tab === 'shoes')) tab = 'gear'; // 옷·신발 탭은 LEAP 으로 옮김 (#59)
-  if (tab === 'gear' || !tab) { const ok = canBuyGear(); shopTab = ok[0] || (shopTab === 'wear' || !gearKeys().includes(shopTab) ? 'tool' : shopTab); } else shopTab = tab;
-  if (GEAR_ROWS[shopTab] && !gearKeys().includes(shopTab)) shopTab = 'tool';
-  shopPick = null; wearPick = null; state.shopHintUntil = 0; buildShop(); $('shop').hidden = false;
+  const to = { tool: 'gear', bag: 'gear', weapon: 'gear', shoes: LEAPB ? 'leap' : 'gear', wear: 'leap' }[tab];
+  if (to) goShop(to); else shopGuide();
 }
-document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => { shopTab = b.dataset.tab; shopPick = null; wearPick = null; buildShop(); }));
 export function checkGearBadges() { // 장비 최고 단계 뱃지 (#13)
   const m = ['tool', 'bag', 'shoes'].map((k) => save.equip[k] >= 5);
   if (m.some(Boolean) && !ach.state.badges['b-gear-one']) ach.emit('gear-max-one');
   if (m.every(Boolean) && !ach.state.badges['b-gear-all']) ach.emit('gear-max-all');
 }
 // 사는 연출: 귤이 위 귤 칸에서 빠져나가 산 물건 쪽으로 날아가 사라지고, 숫자가 줄어든다
-function spendFx(toEl, price, from, pill = document.querySelector('#shop .shop-coins'), num = $('shop-coins')) {
+function spendFx(toEl, price, from, pill = document.querySelector('#shoppop .coins-pill'), num = $('shoppop-coins')) {
   pill.classList.remove('drain'); void pill.offsetWidth; pill.classList.add('drain');
   const a = pill.querySelector('i').getBoundingClientRect(), b = toEl.getBoundingClientRect();
   const sx = a.left + a.width / 2, sy = a.top + a.height / 2, tx = b.left + b.width / 2, ty = b.top + b.height / 2;
@@ -99,58 +102,145 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
-  toast(`${next.name} · 바로 착용했어요`);
-  shopPick = null; buildShop();
-  const cell = document.querySelector(`#shop-body .tier[data-i="${i}"]`);
-  if (cell) { cell.classList.add('tier-pop'); spendFx(cell, next.price, from); }
-}
-function buildGearShop(body, k) {
-  const row = GEAR_ROWS[k], cur = save.equip[k], pick = shopPick ?? (row.list[cur]?.soon ? cur - 1 : Math.min(cur, row.list.length - 1));
-  const poor = (i) => i >= cur && !row.list[i].soon && (save.coins < row.list[i].price || !buyable(k, i)); // 귤이 모자라거나 지금 못 사는 단계: 흑백 (#111)
-  const tiers = document.createElement('div'); tiers.className = 'tiers' + (row.list.length > 5 ? ' t6' : '');
-  const CHECK = `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`, LOCK = `${SVG_A} stroke-width="2.5"><path d="M7 11h10v9H7zM9 11V8a3 3 0 0 1 6 0v3"/></svg>`;
-  row.list.forEach((t, i) => {
-    const own = i < cur, isNext = i === cur && !t.soon, lock = !!t.soon;
-    const c = document.createElement('button'); c.type = 'button'; c.dataset.i = i;
-    c.className = 'tier' + (own ? ' own' : '') + (i === cur - 1 ? ' cur' : '') + (isNext ? ' next' : '') + (lock ? ' lock' : '') + (t.soon ? ' soon' : '') + (poor(i) ? ' poor' : '');
-    c.setAttribute('aria-pressed', String(i === pick)); c.setAttribute('aria-label', t.soon ? '준비 중' : `${t.name} ${i + 1}단계`);
-    c.innerHTML = (own ? `<i class="st">${CHECK}</i>` : isNext ? `<i class="st">${SVG_A} stroke-width="3"><path d="M12 19V6M6 11l6-6 6 6"/></svg></i>` : t.soon ? `<i class="st">${LOCK}</i>` : '')
-      + `${SVG_A.replace('<svg', '<svg class="art"')}>${TIER_ART[k][i]}</svg>`
-      + (t.soon ? '' : `<span class="n">${tierStats(k, t)[0][1]}</span>`)
-      + (own || t.soon ? '' : `<span class="pr"><i class="g"></i>${t.price.toLocaleString()}</span>`)
-      + (own || t.soon ? '' : gdBadge(scoreDiff(save, k, i + 1)));
-    c.addEventListener('click', () => { shopPick = i; buildShop(); });
-    tiers.append(c);
-  });
-  const t = row.list[pick], now = cur ? row.list[cur - 1] : POCKET;
-  if (t.soon) { // 아직 없는 무기: 잠긴 그림만
-    const det = document.createElement('div'); det.className = 'tier-detail';
-    const info = document.createElement('div'); info.innerHTML = `${SVG_A.replace('<svg', '<svg class="soon-art"')}>${TIER_ART[k][pick]}</svg>`;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'tier-buy'; b.disabled = true; b.innerHTML = LOCK; b.setAttribute('aria-label', '준비 중');
-    det.append(info, b); body.append(tiers, det); return;
+  toast(`${next.name} · 장착했어요`);
+  justKey = `${k}:${i}`; justT = performance.now();
+  if (!$('shoppop').hidden && shopPopNow === 'gear') {
+    refreshShopPop(); shopOpened('gear');
+    const cell = document.querySelector(`#shoppop-cards .buy-card[data-k="${k}"][data-i="${i}"]`);
+    if (cell) { cell.classList.add('tier-pop'); spendFx(cell, next.price, from); }
+    setTimeout(() => { if (justKey === `${k}:${i}` && performance.now() - justT > 1500) { justKey = ''; if (!$('shoppop').hidden && shopPopNow === 'gear') refreshShopPop(); } }, 1700);
   }
-  const det = document.createElement('div'); det.className = 'tier-detail';
-  const info = document.createElement('div');
-  const stats = tierStats(k, t), was = pick >= cur ? tierStats(k, now) : null;
-  info.innerHTML = `<h3>${t.name}</h3><div class="tier-stats">${stats.map(([ic, v], j) => `<span>${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('')}${scoreChip(itemScore(pick + 1), pick >= cur ? scoreDiff(save, k, pick + 1) : 0)}</div>`;
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'tier-buy';
-  if (pick < cur) { b.disabled = true; b.innerHTML = CHECK; b.setAttribute('aria-label', '가짐'); }
-  else { b.innerHTML = `<i class="g"></i>${t.price.toLocaleString()}`; b.classList.toggle('short', poor(pick)); b.setAttribute('aria-label', `${t.name} 사기`); b.addEventListener('click', () => buyGear(k, pick)); }
-  det.append(info, b);
-  body.append(tiers, det);
+  refreshDots();
+}
+const CHECK = () => `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`;
+function gearTabs(el) {
+  el.classList.add('shop-tabs', 'gear-tabs');
+  if (!gearKeys().includes(gearTab)) gearTab = 'tool';
+  for (const k of gearKeys()) {
+    const row = GEAR_ROWS[k], cur = save.equip[k], art = TIER_ART[k][Math.max(0, Math.min(row.list.length - 1, cur - (k === 'bag' ? 0 : 1)))];
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.tab = k; b.title = row.name; b.setAttribute('aria-pressed', String(k === gearTab));
+    const n = row.list.filter((t, i) => buyable(k, i) && save.coins >= t.price).length;
+    b.innerHTML = `${SVG_A}>${art}</svg><span>${row.name}</span>${n ? `<i class="cnt">${n}</i>` : ''}`;
+    b.addEventListener('click', () => { gearTab = k; refreshShopPop(); });
+    el.append(b);
+  }
+}
+// 한 묶음: 머리(이름·지금 것) + 단계 카드들
+function gearGroup(k) {
+  const row = GEAR_ROWS[k], cur = save.equip[k], now = cur ? row.list[cur - 1] : POCKET;
+  const g = document.createElement('section'); g.className = 'buy-group' + (k === gearTab ? ' on' : ''); g.dataset.k = k;
+  g.innerHTML = `<h3>${SVG_A}>${TIER_ART[k][Math.max(0, cur - 1)] || TIER_ART[k][0]}</svg>${row.name}<small>지금 ${now.name}</small></h3>`;
+  row.list.forEach((t, i) => {
+    const own = i < cur, on = k === 'weapon' ? (save.weaponUse || cur) === i + 1 : i === cur - 1, ok = buyable(k, i), poor = !own && !t.soon && (save.coins < t.price || !ok), just = justKey === `${k}:${i}`;
+    const c = document.createElement('div'); c.dataset.k = k; c.dataset.i = i;
+    c.className = 'buy-card' + (own ? ' own' : '') + (on ? ' on' : '') + (poor ? ' poor' : '') + (t.soon ? ' soon' : '') + (just ? ' just' : '') + (!own && i === cur && !t.soon ? ' next' : '');
+    const stats = t.soon ? [] : tierStats(k, t), was = own ? null : tierStats(k, now);
+    const st = stats.map(([ic, v], j) => `<span>${SVG_A}>${STAT_ICON[ic]}</svg>${was && was[j] && was[j][1] !== v ? `<s>${was[j][1]}</s>→<em>${v}</em>` : v}</span>`).join('');
+    c.innerHTML = `<span class="art">${SVG_A}>${TIER_ART[k][i]}</svg>${own || t.soon ? '' : gdBadge(scoreDiff(save, k, i + 1))}</span>`
+      + `<span class="bn"><b>${t.soon ? '준비 중' : t.name}</b><small class="tier-stats">${st}${t.soon ? '' : scoreChip(itemScore(i + 1), 0)}</small></span>`;
+    const act = document.createElement('span'); act.className = 'ba';
+    if (just) act.innerHTML = `<span class="have">${CHECK()}장착했어요</span>`;
+    else if (own) act.innerHTML = on ? `<span class="have">${CHECK()}${k === 'weapon' ? '쓰는 중' : '착용 중'}</span>` : '<span class="have dim">가짐</span>';
+    else if (t.soon) act.innerHTML = '';
+    else {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'tier-buy buy-btn' + (poor ? ' short' : '');
+      b.innerHTML = !ok ? `지금은 ${row.list[cur]?.name || ''}부터` : save.coins < t.price ? `${(t.price - save.coins).toLocaleString()}귤 더 필요` : `<i class="g"></i>${t.price.toLocaleString()} 사기`;
+      b.setAttribute('aria-label', `${t.name} 사기 · 귤 ${t.price}`); b.addEventListener('click', () => buyGear(k, i)); act.append(b);
+    }
+    c.append(act); g.append(c);
+  });
+  return g;
+}
+function fillGearShop(grid) {
+  if (!gearKeys().includes(gearTab)) gearTab = 'tool';
+  if (late.tut?.active) { const s = late.tut.step; if (s === 'tongs') gearTab = 'tool'; } // 튜토리얼: 집게부터
+  grid.classList.add('gear-grid'); grid.style.setProperty('--n', String(gearKeys().length));
+  for (const k of gearKeys()) grid.append(gearGroup(k));
+  // 가진 것을 고르고 장착하는 창(내 가방 #166)으로 가는 문
+  const foot = document.createElement('div'); foot.className = 'shop-foot';
+  const bag = document.createElement('button'); bag.type = 'button'; bag.className = 'chip'; bag.id = 'gear-bag'; bag.textContent = '내 가방 열기';
+  bag.addEventListener('click', () => { closePanels(); if (late.openBag) late.openBag(); else if (save.equip.weapon > 1) late.openArmWin?.(); else late.openWardrobe?.(); });
+  foot.append(bag); grid.append(foot);
 }
 let drawnCoins = -1; // 그린 때의 귤: 귤 수가 바뀌면 다시 그려 흑백·색을 맞춤 (#111)
-export function shopCoinsChanged() { if (save.coins === drawnCoins) return; if (!$('shop').hidden) buildShop(); if (!$('shoppop').hidden) late.refreshShopPop?.(); drawnCoins = save.coins; }
+export function shopCoinsChanged() { if (save.coins === drawnCoins) return; drawnCoins = save.coins; if (!$('shoppop').hidden) late.refreshShopPop?.(); refreshDots(); }
 late.shopCoinsChanged = shopCoinsChanged;
-function buildShop() {
-  const body = $('shop-body'); body.innerHTML = ''; drawnCoins = save.coins;
-  $('shop-coins').textContent = String(save.coins);
-  document.querySelectorAll('#shop-tabs [data-tab]').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab)); if (b.dataset.tab === 'shoes' || b.dataset.tab === 'wear') b.hidden = !!LEAPB; }); // 옷·신발은 LEAP (#59)
-  if (GEAR_ROWS[shopTab]) { buildGearShop(body, shopTab); return; }
-  buildWearRows(body, true);
+
+// ---------- 살 수 있는 새 물건 점 (#128): 가게 지붕 간판·귤 칸. 그 가게 창을 열면 지금 살 수 있는 것을 '본 것' 으로 (기기에만 저장) ----------
+const SEEN_KEY = 'oreumoreum.shopSeen';
+const seen = (() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}') || {}; } catch (_) { return {}; } })();
+const SHOP_ITEMS = { // 가게마다 아직 안 가진 살 것 [{ key, price }]. 스톤(식사)은 늘 살 수 있어 점이 없음
+  gear: () => gearKeys().flatMap((k) => GEAR_ROWS[k].list.map((t, i) => buyable(k, i) && { key: `${k}:${i + 1}`, price: t.price }).filter(Boolean)),
+  leap: () => [...CLOTHES.filter((c) => LEAP.slots.includes(c.slot) && !CL.own[c.id]).map((c) => ({ key: 'c:' + c.id, price: wearPrice(c) })),
+    ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : [])],
+  salon: () => (save.look ? HAIR.list.filter((h) => !save.hairs[h.key]).map((h) => ({ key: 'h:' + h.key, price: h.price })) : []),
+  ride: () => RIDES.list.filter((r) => !(save.rides.own || []).includes(r.id)).map((r) => ({ key: 'r:' + r.id, price: r.price })),
+};
+const affordable = (id) => (SHOP_ITEMS[id] ? SHOP_ITEMS[id]().filter((x) => x.price <= save.coins) : []);
+const newCount = (id) => affordable(id).filter((x) => !seen[x.key]).length;
+const pillDot = $('gyul-dot');
+export function refreshDots() {
+  let any = false;
+  for (const sh of shopsBuilt) { const n = SHOP_POP[sh.pop]?.when && !SHOP_POP[sh.pop].when() ? 0 : newCount(sh.id); roofSigns?.dot(sh.id, n > 0); if (n) any = true; }
+  if (pillDot && pillDot.hidden === any) pillDot.hidden = !any;
 }
+export function shopOpened(key) {
+  const id = shopsBuilt.find((sh) => sh.pop === key)?.id || (key === 'gear' ? 'gear' : null); if (!id) return;
+  let ch = false; for (const x of affordable(id)) if (!seen[x.key]) { seen[x.key] = 1; ch = true; }
+  if (ch) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch (_) { /* 무시 */ } }
+  refreshDots();
+}
+setTimeout(refreshDots, 0);
+
+// ---------- 가게 안내 (#128): 무엇을 어디서 사는지 · 고르면 그 가게까지 걸어감 ----------
+const shopSvg = (id) => `${SVG_A}>${SHOP_ICON[id] || ''}</svg>`;
+function fillShopDir(grid) {
+  grid.classList.add('dir-grid');
+  for (const sh of shopsBuilt) {
+    const P = SHOP_POP[sh.pop], open = !P?.when || P.when(), n = open ? affordable(sh.id).length : 0, nw = open ? newCount(sh.id) : 0, d = Math.round(Math.hypot(player.pos.x - sh.door.x, player.pos.z - sh.door.z));
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card dir-card' + (open ? '' : ' poor'); b.dataset.shop = sh.id;
+    b.setAttribute('aria-label', `${sh.name} · ${sh.sells}${n ? ` · 지금 살 수 있는 것 ${n}` : ''}`);
+    b.innerHTML = `<span class="food dir-ic">${shopSvg(sh.id)}${nw ? '<i class="ndot"></i>' : ''}</span><span class="mn"><b>${sh.name}</b><small>${sh.sells}</small></span>`
+      + `<span class="mv">${n ? `<span class="bf">살 수 있는 것 ${n}</span>` : ''}<span class="dist">${d < 8 ? '바로 앞' : `${d}m`}</span></span>`;
+    b.addEventListener('click', () => goShop(sh.id));
+    grid.append(b);
+  }
+  if (!shopsBuilt.length) { const p = document.createElement('p'); p.className = 'dir-none'; p.textContent = '이 맵에는 가게 거리가 없어요'; grid.append(p); }
+}
+// 그 가게 앞이면 바로 창, 아니면 가게 앞까지 자동 걷기 → 도착하면 창. msg: 앞에 붙일 말
+export function goShop(id, msg = '') {
+  const tutStall = late.tut?.active && CH && ['tongs', 'bag'].includes(late.tut.step);
+  if (id === 'gear' && CH && (tutStall || !street)) return goTo({ pos: CH.shopFront, near: CLEANHOUSE.shopR, arrive: () => openShopPop('gear') }, '장비점 좌판', msg);
+  if (late.tut?.active) { toast('튜토리얼을 마치면 가게 거리에서 살 수 있어요'); return false; }
+  const sh = shopsBuilt.find((q) => q.id === id); if (!sh) { toast('이 맵에는 그 가게가 없어요'); return false; }
+  const P = SHOP_POP[sh.pop]; if (P?.when && !P.when()) { toast('정낭을 열면 가게 거리가 열려요'); return false; }
+  return goTo({ pos: sh.door, near: sh.r * 0.8, arrive: () => openShopPop(sh.pop) }, sh.name, msg);
+}
+function goTo(dest, name, msg) {
+  if (player.pos.distanceTo(dest.pos) < dest.near) { dest.arrive(); return true; }
+  closePanels();
+  if (startAutoGo(dest)) { toast(`${msg ? msg + ' · ' : ''}${name}까지 걸어가요`); return true; }
+  tipMark(dest.pos); toast(`${msg ? msg + ' · ' : ''}${name}은(는) 가게 거리에 있어요`); return false;
+}
+// 메뉴의 상점·귤 칸: 가게 안내 (튜토리얼 집게·배낭 단계면 좌판으로)
+export function shopGuide() {
+  if (cam.mode === 'wardrobe' || player.pose === 'sit') return;
+  if (late.tut?.active && ['tongs', 'bag'].includes(late.tut.step)) { goShop('gear'); return; }
+  openShopPop('dir');
+}
+
+// ---------- 미니맵·큰 지도의 가게 아이콘 (#128, field.js drawIcons 가 부름) ----------
+const iconImg = {};
+for (const sh of shopsBuilt) { const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#f3ecdc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${SHOP_ICON[sh.id] || ''}</svg>`); iconImg[sh.id] = img; }
+late.shopIcons = (x, uv, s, inC) => {
+  for (const sh of shopsBuilt) {
+    const p = roofSigns?.signs[sh.id]?.pos || sh.door, [u, v] = uv(p.x, p.z); if (!inC(u, v)) continue;
+    const r = s * 0.55; x.fillStyle = '#2f3336'; x.strokeStyle = '#ff8a1f'; x.lineWidth = Math.max(1, s / 7); x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); x.stroke();
+    const img = iconImg[sh.id]; if (img?.complete && img.naturalWidth) x.drawImage(img, u - r * 0.72, v - r * 0.72, r * 1.44, r * 1.44);
+    if (roofSigns?.signs[sh.id]?.dot.visible) { x.fillStyle = '#ff8a1f'; x.beginPath(); x.arc(u + r * 0.8, v - r * 0.8, r * 0.36, 0, 7); x.fill(); }
+  }
+};
 // ---------- 옷 (#52): 칸마다 한 줄. 옷 그림·단계 색·입은 것 체크·없는 것은 값. 가진 옷은 눌러서 바로 갈아입음 ----------
-let wearPick = null; // 상점에서 고른 안 가진 옷 (아래에 능력치 지금 → 바뀔 값과 사기)
 export function wearCloth(slot, id) {
   if (id) CL.wear[slot] = id; else delete CL.wear[slot];
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
@@ -159,40 +249,30 @@ export function buyCloth(id) {
   const c = CLOTH[id]; if (!c || CL.own[id]) return false; const price = wearPrice(c);
   if (save.coins < price) { toast(`귤이 ${price - save.coins}개 모자라요`); return false; }
   const from = save.coins; save.coins -= price; CL.own[id] = 1; late.sound.coin?.(); ach.emit('clothes-buy'); ach.emit('clothes-buy-' + c.slot); // 업적 이벤트 (#59)
-  wearPick = null; wearCloth(c.slot, id);
-  if (!$('shop').hidden) { buildShop(); const cell = document.querySelector(`#shop-body .wear-item[data-id="${id}"]`); if (cell) { cell.classList.add('tier-pop'); spendFx(cell, price, from); } }
+  void from; wearCloth(c.slot, id); refreshDots();
   toast(`${c.name} · 바로 입었어요`);
   return true;
 }
-export function buildWearRows(body, shop) {
+export function buildWearRows(body) { // 옷장: 가진 옷만, 눌러서 바로 갈아입음 (사는 것은 LEAP #128)
   const CHECK = `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`;
   WEAR.slots.forEach((w) => {
-    const list = CLOTHES.filter((c) => c.slot === w.k && (shop || CL.own[c.id])).sort((a, b) => a.tier - b.tier);
+    const list = CLOTHES.filter((c) => c.slot === w.k && CL.own[c.id]).sort((a, b) => a.tier - b.tier);
     const row = document.createElement('div'); row.className = 'w-row wear-row';
     const cur = wearV(w.k), head = document.createElement('div'); head.className = 'wear-head';
     head.innerHTML = `<span class="wear-name">${w.name}</span><span class="wear-stat">${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${wearStatText(w.stat, cur)}</span>`;
     const grid = document.createElement('div'); grid.className = 'wear-grid';
     const cell = (c) => {
-      const id = c?.id || '', has = !c || !!CL.own[id], on = c ? CL.wear[w.k] === id : !CL.wear[w.k], tier = c ? c.tier : 0, price = c ? wearPrice(c) : 0;
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item' + (on ? ' on' : '') + (has ? ' has' : '') + (c ? '' : ' none') + (!has && save.coins < price ? ' poor' : ''); b.dataset.id = id;
+      const id = c?.id || '', on = c ? CL.wear[w.k] === id : !CL.wear[w.k], tier = c ? c.tier : 0;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item has' + (on ? ' on' : '') + (c ? '' : ' none'); b.dataset.id = id;
       b.style.setProperty('--tc', WEAR.tierColor[tier]); b.title = c ? `${c.name} · ${tier}단계` : '없음';
-      b.setAttribute('aria-label', c ? `${c.name} ${tier}단계${has ? '' : ` 귤 ${price}`}` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
-      if (shop && !has) b.setAttribute('aria-expanded', String(wearPick === id));
-      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (has ? '' : `<span class="pr${save.coins < price ? ' short' : ''}"><i class="g"></i>${price.toLocaleString()}</span>`) + (on ? '' : gdBadge(scoreDiff(save, w.k, tier, id || undefined)));
-      b.addEventListener('click', () => { if (has) { wearPick = null; if (!on) wearCloth(w.k, id); if (shop) buildShop(); else late.buildWardrobe(); } else { wearPick = wearPick === id ? null : id; buildShop(); } });
+      b.setAttribute('aria-label', c ? `${c.name} ${tier}단계` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
+      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (on ? '' : gdBadge(scoreDiff(save, w.k, tier, id || undefined)));
+      b.addEventListener('click', () => { if (!on) wearCloth(w.k, id); late.buildWardrobe(); });
       grid.append(b);
     };
     if (w.none) cell(null);
     list.forEach(cell);
     row.append(head, grid);
-    const pc = shop && wearPick && CLOTH[wearPick]?.slot === w.k ? CLOTH[wearPick] : null;
-    if (pc) { // 고른 옷: 능력치 지금 → 바뀔 값, 값
-      const det = document.createElement('div'); det.className = 'tier-detail wear-detail';
-      const nv = w.v[pc.tier], price = wearPrice(pc);
-      det.innerHTML = `<div><h3><i class="tdot" style="background:${WEAR.tierColor[pc.tier]}"></i>${pc.name}</h3><div class="tier-stats"><span>${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${nv !== cur ? `<s>${wearStatText(w.stat, cur)}</s>→<em>${wearStatText(w.stat, nv)}</em>` : wearStatText(w.stat, nv)}</span>${scoreChip(itemScore(pc.tier), scoreDiff(save, w.k, pc.tier, pc.id))}</div></div>`;
-      const bb = document.createElement('button'); bb.type = 'button'; bb.className = 'tier-buy' + (save.coins < price ? ' short' : ''); bb.innerHTML = `<i class="g"></i>${price.toLocaleString()}`; bb.setAttribute('aria-label', `${pc.name} 사기`);
-      bb.addEventListener('click', () => buyCloth(pc.id)); det.append(bb); row.append(det);
-    }
     body.append(row);
   });
 }

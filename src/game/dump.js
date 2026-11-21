@@ -3,6 +3,7 @@ import { nsPaths } from '../namsongi.js';
 import { TRASH_TYPES, CLEANHOUSE, TUT } from '../balance.js';
 import { RIDE_ICON } from '../rides.js';
 import { SCISSORS, SHIRT } from '../shops.js';
+import { HAMMER } from '../hardware.js';
 import { FORK_KNIFE } from '../stoneicons.js';
 import { buildTrailGraph, trailRoute } from '../autowalk.js';
 import * as THREE from 'three';
@@ -11,7 +12,7 @@ import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
 import { $, save, wearV, persist } from './save.js';
 import { scene, camera } from './scene.js';
-import { life, trash, CH, CHS, chNear, cart, player, hp } from './place.js';
+import { life, trash, CH, CHS, chNear, cart, GEARB, roofSigns, player, hp } from './place.js';
 import { cam } from './camera.js';
 import { ui, topFit, toast, addCoins, panelOpen, busy, ach } from './hud.js';
 import { marker, setTarget } from './input.js';
@@ -85,11 +86,14 @@ export function tickDump(dt) {
   dumpS.el.style.visibility = chV.z > 1 ? 'hidden' : '';
   if (allDone && !dumpS.end) { dumpS.end = true; late.sound.recycle?.(); if (dumpS.total > 0) late.gyulShower?.(dumpS.total); // 귤이 쏟아짐 (#89)
     toast(`클린하우스에 버렸어요 · 귤 +${dumpS.total}`); setTimeout(() => late.rankAfterDump?.(), 1600); } // 순위가 오르면 토스트는 버린 토스트 뒤에 (#11)
-  if (dumpS.t > dumpS.dur + 0.9) { if (late.canBuyGear().length) state.shopHintUntil = performance.now() + CLEANHOUSE.shopHint * 1000; dumpS.el.remove(); dumpS.el = null; dumpS.end = false; dumpS.list.forEach((f) => scene.remove(f.mesh)); dumpS.list = []; }
+  if (dumpS.t > dumpS.dur + 0.9) { if (late.canBuyGear().length) { state.shopHintUntil = performance.now() + CLEANHOUSE.shopHint * 1000; cartHint(dumpS.ch); } dumpS.el.remove(); dumpS.el = null; dumpS.end = false; dumpS.list.forEach((f) => scene.remove(f.mesh)); dumpS.list = []; }
 }
+// 능선·굼부리(정상 아래) 클린하우스에서 버리고 살 장비가 있으면: 가게 거리까지는 마차가 빠르다는 안내 (#128, 세션에 한 번. 순간 이동은 없음)
+let cartHinted = false;
+function cartHint(ch) { if (cartHinted || !cart || !['rest', 'crater'].includes(ch?.id) || !late.goShop) return; cartHinted = true; setTimeout(() => toast('장비점은 가게 거리에 있어요 · 마차를 타면 빨라요'), 2600); }
 // 배낭이 찼을 때 클린하우스 방향: 화면 밖이면 가장자리 화살표, 보이면 위에서 가리킴
 const chArrow = $('ch-arrow'), shopArrow = $('shop-arrow');
-state.shopHintUntil = 0; // 버린 직후 살 수 있는 장비가 있으면 이때까지 가판대 쪽 표시
+state.shopHintUntil = 0; // 버린 직후 살 수 있는 장비가 있으면 이때까지 장비점 쪽 표시
 // 목표가 화면 안이면 위에서 가리키고, 밖이면 가장자리에서 그 방향 화살표
 const edgeAt = new Map();
 // 표시 크기(반폭·반높이). 클린하우스 표시는 아래 거리 글자까지 (#90)
@@ -134,6 +138,7 @@ export function placeArrow(el, wp, lift) {
 // 클린하우스 표시를 누르면 탐방로를 따라 자동으로 걸어감 (#40). 조이스틱·방향키·다시 누르기·패널 열림·쓰러짐이면 멈춤
 let autoGo = null, trailG = null; export { autoGo };
 export function stopAutoGo() { if (!autoGo) return; player.running = autoGo.run; player.gait = autoGo.gait; autoGo = null; if (player.target) { player.target = null; player.onArrive = null; marker.visible = false; } }
+// dest (#128 가게 길 안내): { pos, near, arrive() } 가 있으면 클린하우스 대신 그곳까지. 도착하면 arrive()
 // 길 거리로 가장 가까운 클린하우스 (#78)
 const routeLen = (from, r) => { let L = 0, a = from; for (const q of r) { L += Math.hypot(q.x - a.x, q.z - a.z); a = q; } return L; };
 export function chRoute() {
@@ -143,39 +148,51 @@ export function chRoute() {
   return best;
 }
 late.trailRoute = (from, to) => { if (!trailG) trailG = buildTrailGraph(nsPaths, 6); return trailRoute(trailG, from, to); }; // 줍기 버튼 걷기도 같은 길 찾기 (#104)
-export function startAutoGo() {
-  if (!CH || autoGo || busy() || player.riding || hp.isDown) return;
-  const b = chRoute(); if (!b) return;
-  const route = b.r.map((q) => new THREE.Vector3(q.x, height(q.x, q.z), q.z));
-  if (player.pos.distanceTo(b.ch.front) < CLEANHOUSE.arrowNear * 0.4) return;
-  autoGo = { route, i: 0, cur: null, run: player.running, gait: player.gait, ch: b.ch }; player.running = true;
-  const nextWp = () => { const last = autoGo.i === autoGo.route.length - 1; setTarget(autoGo.route[autoGo.i], last ? () => { stopAutoGo(); } : null); if (!last) marker.visible = false; autoGo.cur = player.target; };
+export function startAutoGo(dest = null) {
+  if ((!CH && !dest) || busy() || player.riding || hp.isDown) return false;
+  if (autoGo) { if (!dest) return false; stopAutoGo(); }
+  let route, ch = null;
+  if (dest) {
+    if (player.pos.distanceTo(dest.pos) < (dest.near || 2)) { dest.arrive?.(); return true; }
+    route = late.trailRoute(player.pos, dest.pos).map((q) => new THREE.Vector3(q.x, height(q.x, q.z), q.z));
+    const last = route[route.length - 1]; if (!last || Math.hypot(last.x - dest.pos.x, last.z - dest.pos.z) > 0.5) route.push(dest.pos.clone());
+  } else {
+    const b = chRoute(); if (!b) return false; ch = b.ch;
+    route = b.r.map((q) => new THREE.Vector3(q.x, height(q.x, q.z), q.z));
+    if (player.pos.distanceTo(b.ch.front) < CLEANHOUSE.arrowNear * 0.4) return false;
+  }
+  autoGo = { route, i: 0, cur: null, run: player.running, gait: player.gait, ch, dest }; player.running = true;
+  const nextWp = () => { const last = autoGo.i === autoGo.route.length - 1; setTarget(autoGo.route[autoGo.i], last ? () => { const d = autoGo?.dest; stopAutoGo(); d?.arrive?.(); } : null); if (!last) marker.visible = false; autoGo.cur = player.target; };
   autoGo.next = nextWp; nextWp();
+  return true;
 }
 export function tickAutoGo() {
   if (!autoGo) return;
-  if (busy() || hp.isDown || player.riding || player.target !== autoGo.cur || !CH) { stopAutoGo(); return; }
+  if (busy() || hp.isDown || player.riding || player.target !== autoGo.cur || (!CH && !autoGo.dest)) { stopAutoGo(); return; }
   const last = autoGo.i === autoGo.route.length - 1;
   const dc = Math.hypot(autoGo.cur.x - player.pos.x, autoGo.cur.z - player.pos.z);
-  if (!last && dc < 2.4) { autoGo.i++; autoGo.next(); } else if (last && dc < 0.9) stopAutoGo(); // 도착하면 멈추기만 함(버리기는 직접)
+  if (!last && dc < 2.4) { autoGo.i++; autoGo.next(); } else if (last && dc < 0.9) { const d = autoGo.dest; stopAutoGo(); d?.arrive?.(); } // 클린하우스는 도착하면 멈추기만 함(버리기는 직접), 가게는 창을 엶
 }
 chArrow.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
-chArrow.addEventListener('click', (e) => { e.stopPropagation(); if (autoGo) stopAutoGo(); else startAutoGo(); });
+chArrow.addEventListener('click', (e) => { e.stopPropagation(); if (autoGo?.ch) stopAutoGo(); else startAutoGo(); });
 export function tickChArrow() {
   const full = !!CH && bagRoom() < 1;
   const ch = autoGo?.ch || chNear(); // 가는 중이면 그곳, 아니면 가장 가까운 곳 (#78)
-  const on = !!ch && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen() && (player.pos.distanceTo(ch.front) > CLEANHOUSE.arrowNear || !!autoGo);
+  const on = !!ch && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen() && (player.pos.distanceTo(ch.front) > CLEANHOUSE.arrowNear || !!autoGo?.ch);
   if (!on) { if (!chArrow.hidden) chArrow.hidden = true; }
   else {
     chArrow.hidden = false; placeArrow(chArrow, ch.center, ch.small ? 3.2 : 4.2);
-    chArrow.classList.toggle('full', full); chArrow.classList.toggle('going', !!autoGo);
+    chArrow.classList.toggle('full', full); chArrow.classList.toggle('going', !!autoGo?.ch);
     const d = Math.round(player.pos.distanceTo(ch.front)) + 'm', dn = chArrow.querySelector('small'); if (dn.textContent !== d) dn.textContent = d;
   }
-  // 가판대 쪽 짧은 표시: 앞에 오면 끝
-  if (state.shopHintUntil && (performance.now() > state.shopHintUntil || player.pos.distanceTo(CH.shopFront) < CLEANHOUSE.shopR || !late.canBuyGear().length)) state.shopHintUntil = 0;
+  // 장비점 쪽 짧은 표시 (#128): 튜토리얼 동안은 옆 가판대(장비점 좌판), 그 뒤엔 가게 거리 장비점 지붕 간판. 앞에 오면 끝
+  if (!CH) return;
+  { const stall = !!late.tut?.active || !GEARB; if (CH.mark.visible !== stall) CH.mark.visible = stall; } // 가판대 위 귤 표시는 튜토리얼 동안만
+  const hint = late.tut?.active || !GEARB ? { at: CH.stallTop, door: CH.shopFront, r: CLEANHOUSE.shopR } : { at: roofSigns?.signs.gear?.pos || GEARB.signPos, door: GEARB.door, r: GEARB.r };
+  if (state.shopHintUntil && (performance.now() > state.shopHintUntil || player.pos.distanceTo(hint.door) < hint.r || !late.canBuyGear().length)) state.shopHintUntil = 0;
   const so = !!state.shopHintUntil && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen();
   if (!so) { if (!shopArrow.hidden) shopArrow.hidden = true; return; }
-  shopArrow.hidden = false; placeArrow(shopArrow, CH.stallTop, 0.9);
+  shopArrow.hidden = false; placeArrow(shopArrow, hint.at, 0.9);
 }
 export function updateContext() {
   let best = null, bd = 1e9;
@@ -232,6 +249,8 @@ const CTX_ICON = {
   eat: FORK_KNIFE, // 식사 (#50)
   cut: SCISSORS, // 머리 (#58)
   wear: SHIRT, // 옷 (#59)
+  gear: HAMMER, // 장비점 (#128)
+  dir: '<path d="M4 4h16v12H4zM12 16v5M8 21h8"/><circle cx="8" cy="8" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="16" cy="8" r="1.2"/>', // 가게 안내도 (#128)
   skip: '<path d="M5 5l7 7-7 7M13 5l7 7-7 7"/>',
   steps: '<path d="M3 20h6v-4h5v-4h4V8h3"/><path d="M3 20V9"/>', // 지름길 (#139)
 };

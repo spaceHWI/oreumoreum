@@ -22,7 +22,7 @@ $('chat-form').addEventListener('submit', (e) => { e.preventDefault(); const v =
 $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('chat').hidden = true; });
 
 $('menu-wardrobe').addEventListener('click', () => { closePanels(); late.openWardrobe(); });
-$('menu-shop').addEventListener('click', () => { closePanels(); late.openShop('gear'); });
+$('menu-shop').addEventListener('click', () => { closePanels(); late.shopGuide(); }); // #128 가게 안내
 $('menu-sign').addEventListener('click', () => { closePanels(); late.openSign(); });
 $('ver-text').textContent = `v${VERSION}` + (RELEASE_NOTES[0]?.date ? ` · ${RELEASE_NOTES[0].date.replace(/-/g, '.')}` : ''); // 첫 화면에 새 릴리스 노트 날짜도
 function openNotes() {

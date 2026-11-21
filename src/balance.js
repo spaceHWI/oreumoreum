@@ -238,7 +238,7 @@ export const TRASH = {
   heapDrawR: 420, heapDrawRLow: 260, // 더미를 그리는 거리
 };
 
-// 장비 5단계. 상점에서 순서 없이 사고(#111) 사면 바로 착용 (#10). 저장은 save.equip.{tool,bag,shoes} = 1~5
+// 장비 5단계. 장비점(#128)에서 순서 없이 사고(#111) 사면 바로 착용 (#10). 저장은 save.equip.{tool,bag,shoes} = 1~5
 // rate 는 상점에 보이는 초당 개수 (= per ÷ time)
 // #137 성장 루프 (notes/growth-loop.md 4절): 단계마다 능력이 2배 넘게, 값은 단계마다 약 4배. tools/econ.js 로 맞춤
 //   흐름: 1일(1시간) 구역 1·2단계, 2일 구역 2~3·3단계, 3일 4단계, 4일 구역 4, 5일 5단계·정상
@@ -271,13 +271,13 @@ export const SHOES = [
 // 클린하우스(재활용장): 들머리 한 곳 + 오름 안 작은 것 4곳(#78). 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
 export const CLEANHOUSE = {
   r: 7, // 이 거리 안이면 상호작용 버튼이 '버리기'
-  shopR: 3.2, // 옆 귤 가판대 앞 이 거리 안이면 '상점'
+  shopR: 3.2, // 옆 귤 가판대(튜토리얼 동안만 장비점 좌판, #128) 앞 이 거리 안이면 '장비점'
   dumpTime: 1.9, // 버리기 연출 전체 길이(초). 2초 안
   flyMax: 40, flyMaxLow: 20, // 날아가는 쓰레기 모양 최대 개수 (많으면 묶어서 보여 줌)
   binColors: ['#c9473d', '#3c7fc9', '#e8c13a', '#eeeee6', '#3f9a5a'], // 캔·페트병·비닐·스티로폼·폐어구 통
   arrowNear: 14, // 배낭이 찼을 때 이보다 멀면 방향 화살표
   stallMark: 0.055, // 가판대 위 귤 표시 크기(화면 높이 비율, 멀어도 같은 크기)
-  shopHint: 8, // 버린 직후 살 수 있는 장비가 있으면 가판대 쪽 표시를 띄우는 시간(초)
+  shopHint: 8, // 버린 직후 살 수 있는 장비가 있으면 장비점 쪽 표시를 띄우는 시간(초, #128 가판대 → 가게 거리 장비점)
   // 오름 안 작은 클린하우스 (#78): 탐방로 nsAlong(path, d, side, off) 자리. 지붕 있는 통 넷(캔·페트병·비닐·스티로폼+폐어구), 기능은 들머리 것과 같음(가판대는 없음)
   // 자리는 어느 더미에서든 걸어서(5m/s) 1분 안(길 거리 300 안)에 하나는 닿게 고름. 지금 가장 먼 더미 약 280
   mini: [
@@ -689,7 +689,7 @@ export const SHOP_ST = {
     { s: 11, side: 1, w: 10, d: 9 }, // 1 루이네미장원 (#58)
     { s: 11, side: -1, w: 10, d: 9 }, // 2 LEAP (#59)
     { s: 23, side: 1, w: 10, d: 9 }, // 3 빈 터
-    { s: 23, side: -1, w: 10, d: 9 }, // 4 빈 터
+    { s: 23, side: -1, w: 10, d: 9 }, // 4 장비점 (#128)
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
     { s: 51.1, side: 0, w: 10, d: 9 }, // 6 빈 터 (골목 끝)
   ],
@@ -701,14 +701,22 @@ export const SHOP_ST = {
   benches: [[33.5, -1], [39.5, -1]],
   planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
+  // 지붕 위 큰 아이콘 간판 (#128): 터 땅에서 높이(m, 가게 id 마다)·크기(m). 살 수 있는 새 물건이 있으면 귤색 점
+  roof: { stone: 8.4, salon: 7.2, leap: 7.6, ride: 5.4, gear: 5.6 }, roofSize: 2.3, roofBack: 0.45, // roofBack: 터 앞에서 깊이의 이 비율만큼 안쪽
+  dirR: 3.4, // 들머리 '가게 안내도' 판 앞 이 거리 안이면 상호작용 '가게 안내'
+  cartHintR: 9, // 정상·능선 클린하우스 이 거리 안에서 버리고 나면 '가게 거리 가는 마차' 안내 (세션에 한 번)
 };
+// 장비점 (#128): 가게 거리 4번 터의 철물점 (임시 모양 src/hardware.js). 도구·배낭·무기를 판다. 이름은 실제 가게가 정해지면 바꿈
+export const GEAR_SHOP = { name: '장비점', W: 7.4, D: 5.8, fore: 0.6, r: 6.5 };
 // 가게 목록: 한 줄 = 가게 하나. lot = 위 SHOP_ST.lots 번호(1부터). act = 상호작용 이름, ic = 상호작용 아이콘, pop = 여는 팝업
 // 건물 모양은 src/shops.js SHOP_BUILD[id], 가장자리 아이콘은 SHOP_ICON[id]. 줄이 없는 터는 빈 터('준비 중' 팻말)
+// sells = 가게 안내(#128)에 보이는 파는 것
 export const SHOPS = [
-  { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone' },
-  { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon' },
-  { id: 'leap', name: 'LEAP', lot: 2, act: '옷', ic: 'wear', pop: 'leap' },
-  { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride' }, // #69 (임시 모양)
+  { id: 'gear', name: GEAR_SHOP.name, lot: 4, act: '장비', ic: 'gear', pop: 'gear', sells: '집게·배낭·무기' }, // #128 (임시 모양)
+  { id: 'leap', name: 'LEAP', lot: 2, act: '옷', ic: 'wear', pop: 'leap', sells: '옷·신발' },
+  { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon', sells: '머리 모양' },
+  { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride', sells: '탈것' }, // #69 (임시 모양)
+  { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)

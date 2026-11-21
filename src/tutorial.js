@@ -33,7 +33,7 @@ const SAY = {
   pick: { pc: ['E 키로 쓰레기를 주워요', '쓰레기 옆에서 E 키'], touch: ['쓰레기 3개를 주워요', '쓰레기 옆에서 손 버튼'], ic: 'hand' },
   dump: { pc: ['클린하우스에 버려요', '파란 집 앞에서 F 키'], touch: ['클린하우스에 버려요', '파란 집 앞에서 버튼'], ic: 'dump' },
   bonus: { pc: ['보너스 귤을 받아요!', '보너스 귤을 받아요!'], touch: ['보너스 귤을 받아요!', '보너스 귤을 받아요!'], ic: 'gift' },
-  tongs: { pc: ['가게에서 집게를 사요', '가게 앞에서 F 키'], touch: ['가게에서 집게를 사요', '빛나는 곳을 눌러요'], ic: 'tongs' },
+  tongs: { pc: ['장비점 좌판에서 집게를 사요', '좌판 앞에서 F 키'], touch: ['장비점 좌판에서 집게를 사요', '빛나는 곳을 눌러요'], ic: 'tongs' },
   bag: { pc: ['이제 배낭을 사요', '빛나는 칸을 눌러요'], touch: ['이제 배낭을 사요', '빛나는 칸을 눌러요'], ic: 'bag' },
   gate: { pc: ['정낭을 지나 오름으로!', '빛나는 길을 따라가요'], touch: ['정낭을 지나 오름으로!', '빛나는 길을 따라가요'], ic: 'gate' },
 };
@@ -278,8 +278,8 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
     if (cur === 'pick') { const n = tutTrashNext(); return n && Math.hypot(n.x - player.pos.x, n.z - player.pos.z) < 2.2 ? vis('#btn-pick') : null; }
     if (cur === 'dump') return ctxIc?.() === 'dump' ? vis('#btn-ctx') : null;
     if (cur === 'tongs' || cur === 'bag') {
-      const want = cur === 'tongs' ? 'tool' : 'bag', tab = shopTab?.();
-      if (tab) return tab !== want ? vis(`#shop-tabs [data-tab="${want}"]`) : vis('#shop-body .tier-buy:not([disabled])');
+      const want = cur === 'tongs' ? 'tool' : 'bag', tab = shopTab?.(); // 장비점 창 (#128): 데스크톱은 묶음이 나란히, 폰은 위 탭
+      if (tab) return vis(`#shoppop .buy-group[data-k="${want}"] .buy-card.next .buy-btn`) || vis(`#shoppop-tabs [data-tab="${want}"]`);
       return ctxIc?.() === 'shop' ? vis('#btn-ctx') : null;
     }
     return null;
