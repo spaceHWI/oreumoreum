@@ -121,7 +121,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
     await wait(A.p, 1500);
     const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
-    ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
+    ok((aOn >= 1 || aOn === -1) && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), aOn === -1 ? `동료 꺼짐(#190 BUDDIES.on): B 가 보는 사람 ${bSee.n}명` : `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`); // #190 에서 동료를 끔: 꺼져 있으면 사람 수만 봄
     const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
     const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
     await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
