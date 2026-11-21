@@ -2,7 +2,7 @@
 // 받는 것 (JSON 문자열):
 //   {t:'p', d:{x,z,h,…}}  내 상태 (위치·방향·동작·옷·탈것·말·이모티콘…, net.js 의 presence 그대로). o·nick 은 바뀔 때만 와도 됨 (#115)
 //   {t:'take', h, n?}     더미 h 에서 n(없으면 1)개 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}. 로그인한 사람이면 주운 수 × 더미 값(HEAP_GYUL)을 번 몫으로 셈 (#144)
-//   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭). 방장(host)만
+//   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭·몹). 방장과 움직이는 사람만 (#131), 한 사람 putPerMin·방 전체 putPerMin × crowd^DUMP.crowdExp
 //   {t:'btake', h}        동료(#172)가 더미 h 에서 하나 줄임. 번 몫엔 안 셈, 더미의 마지막 BUDDIES.keep 은 남김
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
@@ -22,13 +22,16 @@
 //   {t:'bd', z}     방장만: 쫓아냄 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, zg 로 알림)
 // 엔딩 (#168): {t:'end'} 내가 오름의 비밀을 밝힘(구역 5 우두머리 뒤) → 그날(한국 날짜) 이 방 첫 번째면 방 전체에 {t:'end', at, by, names}, 아니면 보낸 사람에게만 {…, solo:1}
 //   그날 두 번째부터는 나머지 사람에게 {t:'endr', by} (오름 방송 한 줄). at = 지금 + STORY.end.lead 초 (모두 같은 시각에 시네마틱을 시작). 도중에 들어온 사람은 hi 의 end = [at, by, names] 로 남은 부분부터
-// 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
-import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY } from '../../src/balance.js';
+// 같이 있는 사람 수 (#131): crowd = 최근 DUMP.crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중(presence tu)이 아닌 사람 수, crowdFollow 초에 걸쳐 따라감.
+//   hi 의 np, 바뀌면 방 전체에 {t:'np', n} (0.1 단위). 빈 방 (#131): 마지막 사람이 나간 시각(seen)에서 다음 사람이 들어올 때까지 빈 시간만큼 방이 직접 채움 (src/refill.js), 채운 수는 hi 의 fill
+// 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg, np, fill} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
+import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP } from '../../src/balance.js';
+import { offlineAdds, crowdMul } from '../../src/refill.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 import { TITLES } from '../../src/punktext.js';
 
-const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134). 지금은 비워 둠 → 예: '0.24.0'
+const MIN_VER = '0.24.0'; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134, #145)
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isDeerId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,12}$/.test(v); // 노루 이름 (#92)
 
@@ -38,6 +41,24 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
   const earned = new Map(); // 계정 → 받아 준 줍기로 번 몫 (#144). room.js 가 earnFlushMs 마다 꺼내 계정(Accounts.earn)에 넘김
   let heapsDirty = false, roomSeen = seen || 0, host = null, nextId = 1, tick = 0;
+  // 같이 있는 사람 수 (#131)
+  const HZ = HEAP_DEFS.map((d) => d.zone);
+  let crowd = 1, crowdT = now(), npSent = 1, npT = 0, roomPut = NET.putBurst, roomPutT = now();
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const activeN = (t) => { let n = 0; for (const p of peers.values()) if (!p.tu && t - p.actT < DUMP.crowdActive * 1000) n++; return n; };
+  function followCrowd(t) {
+    const dt = Math.max(0, (t - crowdT) / 1000); crowdT = t; if (!dt) return;
+    const want = Math.max(1, activeN(t)); crowd += (want - crowd) * (1 - Math.exp(-dt * 3 / DUMP.crowdFollow)); // crowdFollow 초면 95%
+    if (Math.abs(want - crowd) < 0.05) crowd = want;
+  }
+  // 빈 방이던 동안 몫을 채움: 채운 수
+  function fillEmpty(t) {
+    if (!(roomSeen > 0) || t <= roomSeen) return 0;
+    let got = 0;
+    for (const [i, n] of offlineAdds(H, HEAP_FULL, HZ, (t - roomSeen) / 1000)) { H[i] = Math.min(HEAP_FULL[i], H[i] + n); got += n; heapOut.set(i, H[i]); }
+    if (got) heapsDirty = true;
+    return got;
+  }
   // 구역 지킴이 (#119): 구역 → 세운 시각(ms). room.js 가 저장·불러옴
   const ZH = {}; HEAP_DEFS.forEach((d, i) => { (ZH[d.zone] ||= []).push(i); });
   const G = new Map(); let guardsDirty = false;
@@ -89,10 +110,12 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
-    peers.set(p.id, p);
+      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
+    const fill = peers.size ? 0 : fillEmpty(t); // 첫 사람이면 빈 동안 몫부터 (#131)
+    if (!peers.size) { crowd = 1; crowdT = t; npSent = 1; }
+    peers.set(p.id, p); roomSeen = t;
     if (!host) host = p.id;
-    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t) }));
+    out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t), end: endLive(t), np: r1(crowd), fill: fill || undefined }));
     return p;
   }
   function leave(p) {
@@ -116,6 +139,9 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         else { st.moveBack++; out(p, JSON.stringify({ t: 'pos', x: p.mx, z: p.mz })); strike(p, 'move'); return; }
       }
     }
+    // 움직임 (#131 사람 수): 마지막으로 센 자리에서 crowdMove m 넘게 가면 움직인 것으로. 처음 자리는 세지 않음
+    if (!p.has) { p.ax = d.x; p.az = d.z; } else if (Math.hypot(d.x - p.ax, d.z - p.az) > DUMP.crowdMove) { p.ax = d.x; p.az = d.z; p.actT = t; }
+    p.tu = !!d.tu;
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
     if ('nick' in d) { d.nick = cleanText(d.nick, NET.nickMax); if (nickBad(d.nick)) d.nick = ''; } // 걸리는 이름은 빈 이름으로 (받는 쪽이 '러너' 로 그림, #162)
@@ -221,9 +247,11 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       }
       case 'put': {
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
-        if (p.id !== host) { out(p, JSON.stringify({ t: 'h', h, n: H[h] })); return; } // 방장만 쌓음
-        const want = Math.max(0, Math.min(m.n | 0, Math.floor(p.putTok), HEAP_FULL[h] - H[h]));
-        if (want) { H[h] += want; p.putTok -= want; heapsDirty = true; heapOut.set(h, H[h]); }
+        // 방장(옛 클라이언트는 방장만 보냄)과 움직이는 사람(튜토리얼 중 아님)만 (#131). 방 전체 몫은 사람 수로 (클라이언트가 보낸 인원은 믿지 않음)
+        if (p.id !== host && (p.tu || t - p.actT >= DUMP.crowdActive * 1000)) { out(p, JSON.stringify({ t: 'h', h, n: H[h] })); return; }
+        followCrowd(t); roomPut = Math.min(NET.putBurst, roomPut + (t - roomPutT) / 1000 * NET.putPerMin * crowdMul(crowd) / 60); roomPutT = t;
+        const want = Math.max(0, Math.min(m.n | 0, Math.floor(p.putTok), Math.floor(roomPut), HEAP_FULL[h] - H[h]));
+        if (want) { H[h] += want; p.putTok -= want; roomPut -= want; heapsDirty = true; heapOut.set(h, H[h]); }
         else out(p, JSON.stringify({ t: 'h', h, n: H[h] }));
         break;
       }
@@ -237,6 +265,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   function step() {
     tick++; st.ticks++;
     if (peers.size) roomSeen = now();
+    if (peers.size && tick % 10 === 0) { const t = now(); followCrowd(t); const v = r1(crowd); if (v !== npSent && t - npT >= 2000) { npSent = v; npT = t; all(JSON.stringify({ t: 'np', n: v })); } } // 사람 수 (#131): 1초마다 따라가고 바뀌면 알림
     if (heapOut.size) { all(JSON.stringify({ t: 'hs', hs: [...heapOut] })); heapOut.clear(); }
     for (const [z, at] of guardOut) all(JSON.stringify({ t: 'zg', z, at })); guardOut.length = 0;
     const farTick = tick % NET.farEvery === 0, R2 = NET.farR * NET.farR;
@@ -261,5 +290,6 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     guards: () => guardList(now()), guardsDirty() { const d = guardsDirty; guardsDirty = false; return d; },
     get seen() { return roomSeen; }, stats: () => ({ n: peers.size, ...st }),
     counts() { let login = 0; for (const p of peers.values()) if (p.acct) login++; return { n: peers.size, login }; }, // 지금 접속 (#186): 사람 수·로그인 수만
+    get crowd() { return crowd; }, active: () => activeN(now()),
   };
 }

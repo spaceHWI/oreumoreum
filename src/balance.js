@@ -261,7 +261,7 @@ export const BLOOM_FX = {
   zone: { camT: 1.5, camDist: 0.6, camPitch: 0.2, column: 260, colT: 2.2, colH: 26, ring: 42, ringT: 2.4, glowT: 2.4, bannerT: 3.2, vib: [30, 50, 30, 50, 90] },
 };
 // 쓰레기 투기꾼·투기 트럭 (#47, src/dumpers.js): 자정 리셋 대신 이들이 와서 더미를 다시 쌓음
-// 주기 = every ÷ players (최소 minEvery). players 는 접속 인원 (지금은 1, 멀티가 붙으면 서버 값)
+// 주기 = every × crowdGap(사람 수) (#131 src/refill.js). players 는 기본 인원 1 (멀티는 방이 센 값 {t:'np'})
 // 한 명 기준 한 시간에 오름 전체 쓰레기 × hourFrac 만큼 쌓임 (3분마다 한 번 → 한 번에 평균 약 38개).
 // 투기꾼은 작은 더미 하나(amt), 트럭 양은 이 평균이 맞게 자동 계산 (src/dumpers.js DUMP_AMT, 약 80)
 // 구역 고르는 무게 = zoneBase + 그 구역 깨끗한 정도 (깨끗한 구역일수록 자주)
@@ -285,8 +285,15 @@ export const DUMP = {
   bagStay: 20, // 땅에 떨어진 봉투가 보이는 시간(초)
   maxTrip: 300, // 한 상태가 이보다 오래 걸리면 조용히 사라짐
   warnT: 3, // 나타날 때 화면 가장자리 방향 표시 시간(초)
-  offlineMaxH: 8, // 접속하지 않은 시간은 한 명 기준 속도로 쌓고, 이 시간 이상이면 오름 전체가 가득
+  // 아무도 없는 동안 (#131, src/refill.js emptyFill): 빈자리가 offlineHalfMin 분이면 절반, offlineMaxH 시간이면 가득 (처음에 더 빨리 참).
+  // 멀티는 방(server roomcore)이 마지막 사람이 나간 시각을 기억해 다음 사람이 들어올 때 한꺼번에, 혼자 하기·손님은 기기 기록(trash seen)으로 같은 규칙.
+  // offlineZone: 구역별 시간 배율 (작을수록 먼저 참. 구역 1·2 를 먼저). 예전: 한 명 기준 속도로 8시간에 가득
+  offlineMaxH: 1.5, offlineHalfMin: 30, offlineZone: { 1: 0.6, 2: 0.8 },
   offlineMin: 60, // 이보다 짧게 비운 건 세지 않음(초)
+  // 같이 있는 사람 수 (#131, src/refill.js): 오름 전체 쌓는 속도 = 한 명 기준 × n^crowdExp. 각자 둘레 투기꾼이 한 사람 몫(n^crowdExp ÷ n)씩 쌓음
+  // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
+  // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
+  crowdExp: 0.8, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
 };
@@ -485,6 +492,29 @@ export const ENEMIES = {
   drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
+// 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
+// m: 보통 알갱이 하나(쫓아낸 귤 ÷ 알갱이 수) 의 몇 배. 아기 멧돼지(알갱이 1)면 이슈 값 그대로 5·10·20·50, 센 적일수록 알갱이가 커서 귀한 귤도 큼 (growth-loop 5절 '대박')
+// 모양: k 크기 배율, flatY 납작함(세로 배율), knob 꼭지 혹 크기, glow 아래 빛 원 배율, sparkle 반짝이 수, pillar 빛기둥 높이, coins 주울 때 '짤랑' 수
+// chance[누가]: 한 번 쫓아낼 때 [한라봉, 천혜향, 레드향, 황금향] 이 나올 확률 (하나만 나옴). 센 적일수록 높음. 귀한 귤이 보통 알갱이 하나를 대신해서
+//   늘어나는 몫 = Σ p × (m - 1) ÷ 알갱이 수 → 적 귤 벌이가 아기 멧돼지 +8%, 들개 +5%, 멧돼지 +8%, 광견병 +10%, 외계인 +12% (node tools/raregyul.js). 전체 벌이는 tools/econ.js
+export const RARE_GYUL = {
+  kinds: [
+    { id: 'hallabong', name: '한라봉', m: 5, color: '#ff9a1a', emissive: '#a84a00', emissiveI: 0.8, k: 1.3, flatY: 1, knob: 0.5, glow: 1.2, sparkle: 0, pillar: 0, coins: 2 },
+    { id: 'cheonhye', name: '천혜향', m: 10, color: '#ff7400', emissive: '#d45a00', emissiveI: 1.3, k: 1.35, flatY: 0.74, knob: 0, glow: 1.8, sparkle: 0, pillar: 0, coins: 3 },
+    { id: 'redhyang', name: '레드향', m: 20, color: '#f2471c', emissive: '#c42a0a', emissiveI: 1.1, k: 1.4, flatY: 0.9, knob: 0.25, glow: 1.8, sparkle: 3, pillar: 2.6, coins: 4 },
+    { id: 'hwanggeum', name: '황금향', m: 50, color: '#ffcf2e', emissive: '#e0a000', emissiveI: 1.5, k: 1.5, flatY: 0.95, knob: 0.2, glow: 2.4, sparkle: 4, pillar: 6, coins: 6 },
+  ],
+  chance: {
+    piglet: [0.05, 0.012, 0.003, 0.0008],
+    dog: [0.07, 0.02, 0.006, 0.0015],
+    boar: [0.09, 0.028, 0.009, 0.0025],
+    rabid: [0.11, 0.035, 0.012, 0.0035],
+    alien: [0.13, 0.045, 0.016, 0.005],
+    walker: [0.04, 0.008, 0.002, 0.0005], // 무단투기꾼 (귤 5, 알갱이 하나 = 귤 1)
+    truck: [0.05, 0.012, 0.003, 0.0008], // 투기 트럭 (귤 30)
+  },
+  fly: { up: [5, 7], spread: [1.2, 2.6], grav: 16, magnetT: 0.7, fly: 14, autoT: 20, life: 90 }, // 튀어 오름·퍼짐·빨려 듦(줍는 범위 life.hooks.pickR2, magnetT 초 뒤부터)·autoT 초 뒤엔 어디 있든 날아옴·life 초 뒤 사라짐
+};
 export const ENEMY_SPAWN = {
   every: 120, first: 120, // 2분마다 한 무리 (들어온 뒤 첫 무리도 2분 뒤). 남송이는 연출 감독(#89 PACE.battle)이 부르고, 이 값은 쓰레기 없는 맵에서만
   group: [2, 3], // 한 무리 마릿수
@@ -722,6 +752,10 @@ export const COMBAT = {
   stuckT: 2, // 적에게 막혀 이 초 넘게 못 빠져나오면 적 사이로 지나갈 수 있음
   autoPick: 3.2, // 싸우는 중에는 이 거리 안 떨어진 귤을 자동으로 주움 (평소는 GYUL_PICK, 둘 중 큰 쪽 #151)
 };
+// 다가가서 쏘기 (#132, game/approach.js): 던지기 버튼을 누르면 감지 거리 안 적을 잡고, 사거리 밖이면 다가가 쏘고, 쫓아내면 다음 적으로 이어 감
+// detect 감지 거리(m), stand 사거리의 이 비율까지 다가감, lowHp 기운이 이 비율 아래면 다가가지 않고 제자리에서만 쏨,
+// reroute 쫓는 동안 길을 다시 찾는 간격(초)·moved 적이 이만큼(m) 움직이면 다시 찾음, stuckT 이 초 동안 가까워지지 않으면 멈춤, handHard 손으로는 사실상 못 잡는 적(손일 때 뒤로 미룸)
+export const APPROACH = { detect: 45, stand: 0.8, lowHp: 0.25, reroute: 0.6, moved: 3, stuckT: 3, gap: 0.12, handHard: ['alien'] };
 
 // 모아 쏘기 (#129): 던지기 버튼(F)을 길게 눌렀다 놓으면 더 센 한 방. 손·활·총·폭탄은 놓을 때 쏨(짧게 누르면 예전 한 발과 같음),
 // 머신건·레이저는 누르는 동안 예전처럼 쏘고 놓는 순간 마무리(집중 연사·굵은 줄기). k = 모은 정도 0~1 (start 초부터 full 초까지)
@@ -1044,10 +1078,27 @@ export const PACE = {
   busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
   riseT: 3, fallT: 5,
   edge: 0.6, camIn: 0.1, sky: 0.12,
-  hitStop: 0.06, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율
-  combo: { gap: 1.6, max: 10 }, // 줍기 콤보: 이 초 안에 이어 주우면 음이 한 칸씩 올라감 (최대 칸)
+  hitStop: 0.05, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율 (#141 0.06 → 0.05). '화면 효과 줄이기'면 없음
   bloomLayer: { heap: 14, zone: 32 }, // 꽃이 피면 음악에 한 겹 더해지는 시간(초)
   delight: { luckyT: 60, luckyMul: 8, deerT: 45, flyT: 40 },
+};
+
+// 손맛 (#141, game/feel.js). notes/growth-loop.md 8절. 귤 보너스는 tools/econ.js 가 '손맛 보너스' 줄로 벌이가 15% 넘게 늘지 않는지 봄
+export const FEEL = {
+  // 줍기 콤보: gap 초 안에 이어 주우면 숫자가 오름(한 번 줍기 = 1). step 마다 귤 bonus 씩 더(최대 max), 단계가 오를 때 색·소리·진동.
+  //   소리 높이는 pitchMax 칸까지 한 음씩. 보너스는 주울 때 bag.xv 에 얹혀 클린하우스에서 받음. 서버 줍기 몫(server/src/heaps.js)은 × (1 + max)
+  combo: { gap: 3, step: 10, bonus: 0.05, max: 0.3, pitchMax: 10, cols: ['#ffffff', '#ffd23a', '#ff9a1f', '#ff6a3a', '#ff4f8b', '#b678ff', '#5ad1ff'] },
+  // 이어 쫓아내기: 앞 적을 쫓아낸 뒤 gap 초 안이면 'n연속!'. 귤 보너스 = 그 적 귤 × min(max, (n - 1) × bonus) (떼 적은 귤이 0 이라 글만)
+  streak: { gap: 4, bonus: 0.1, max: 0.3 },
+  // 피해 숫자: 머리 위로 t 초 동안 rise px 올라가며 사라짐. 급소(비틀거릴 때·가득 모아 쏜 샷)는 크고 노랗게. 한 번에 pool 개까지 (저사양 poolLow)
+  dmg: { t: 0.8, rise: 46, pool: 24, poolLow: 10, fullCh: 0.99 },
+  roll: { t: 0.55, hop: 0.35 }, // 쫓아낸 적: 옆으로 한 바퀴 구르며 달아남 (초·m × 크기). 우두머리는 빼고
+  hurt: { t: 0.45, a: 0.75 }, // 맞으면 화면 가장자리 붉은빛 (초·진하기)
+  low: { hp: 0.25, beat: 0.9, a: 0.45 }, // HP 가 이 비율 아래면 심장 소리(초 간격)·가장자리 맥박(진하기)
+  heapSlow: { t: 0.35, k: 0.35 }, // 더미 마지막 하나: 잠깐 느려짐 (초·시간 배율). '화면 효과 줄이기'면 없음
+  crumble: { n: 12, nLow: 5, t: 0.7 }, // 더미가 한 단계 줄 때 흙먼지 (조각 수·초)
+  // 폰 진동 (되는 기기만, 설정 '진동' 으로 끔). 밀리초 배열
+  vib: { pick: [6], step: [16, 30, 16], heap: [24], repel: [22], streak: [18, 30, 28], hurt: [70] },
 };
 
 // 탐방로 선 모양 (#67). 길이는 실제 m. trailshape.js 가 이 값으로 nsPaths 를 만든다
@@ -1145,7 +1196,7 @@ export const CART = {
   side: 4.6,      // 정류장 팻말·벤치는 길 가운데에서 이만큼 옆
   r: 7,           // 정류장(팻말)에서 이 안이고 마차가 서 있으면 '마차 타기'
   cartR: 6,       // 마차가 이 안에 서 있어도 탈 수 있음
-  seats: 4,       // 자리 수 (모양만. 여러 사람이 같은 자리에 앉아도 됨)
+  seats: 4,       // 자리 수. 다 차면 '자리가 없어요' (#120)
   // 타는 자리 (#174, 지나가는 마차 타기 #120 도 씀): 수레 기준 [옆 x, 엉덩이 y, 앞 z] (배율 적용 전). 양옆 긴 의자 위, 앞을 보고 앉음
   seatPos: [[0.38, 1.22, 0.42], [-0.38, 1.22, 0.42], [0.38, 1.22, -0.5], [-0.38, 1.22, -0.5]],
   driverPos: [0, 1.3, 1.0], // 마부 자리 (앞 콘테나 위 널빤지)
@@ -1154,6 +1205,10 @@ export const CART = {
   markFar: 260, markNear: 18, // 화면 가장자리 마차 표시: 이 거리 사이
   ringR: 60,      // 정류장 남은 시간 고리는 이 안에서만 그림
   jumpOff: 3,     // 뛰어내리면 마차 옆 이만큼에서 점프
+  // 지나가는 마차 타기 (#120): 달리는 수레에서 runR m 안이면 '마차 타기'. 수레 앞뒤 길이 bodyL(반, 배율 뒤)
+  runR: 3, bodyL: 1.1,
+  hopT: 0.4, hopH: 0.9, // 올라타는 폴짝: 초·높이
+  offSide: [2.6, 3.4], offBack: [5, 8, 12], // 달리는 중 내리기: 수레 옆 이 거리(길 위면), 아니면 수레 뒤 길 가운데 이 거리
   scale: 1.4,     // 마차 모양 배율
   // 부딪힘 (#117): 마차 기준 [옆 x, 앞 z, 반지름] (m, 배율 적용 뒤). 수레 셋 · 끌채 · 조랑말 셋. 타고 있는 동안은 꺼짐
   block: [[0, -0.8, 1.25], [0, 0, 1.25], [0, 0.8, 1.25], [0, 1.9, 0.7], [0, 2.6, 0.55], [0, 3.4, 0.55], [0, 4.2, 0.55]],
@@ -1229,7 +1284,7 @@ export const NET = {
   presenceMax: 1500,  // 한 번에 보내는 내 상태 크기 상한 (바이트)
   msgPerSec: 15,      // 한 사람이 1초에 보낼 수 있는 메시지 (넘으면 버림)
   hitPerSec: 3, hitRange: 45, // 귤·활 맞힘 알림: 1초에 몇 번, 맞힌 사람과 거리 상한(m)
-  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭, 방장만): 1분에 넣는 수, 한꺼번에(접속 안 한 동안 쌓인 몫) 넣을 수 있는 수
+  putPerMin: 120, putBurst: 1500, // 다시 쌓기(투기꾼·트럭): 한 사람이 1분에 넣는 수·한꺼번에. 방 전체는 putPerMin × (방이 센 사람 수)^DUMP.crowdExp (#131, 서버가 셈. 방장 + 움직이는 사람만). 빈 방이었던 몫은 방이 직접 채움
   // 저장 확인: 클라이언트가 보낸 귤·장비를 그대로 믿지 않음
   // 귤이 늘 수 있는 몫 (#144): ① 작은 몫(토큰 통: 적·업적·낚시·보너스) + ② 번 몫(earn_bank: 방이 받아 준 줍기 × 더미 구역 값, server/src/heaps.js ZONE_GYUL)
   //   클린하우스에 버린 귤은 ② 에서 먼저 씀. #137 의 고정 큰 몫(earnBurst 100000, earnPerSec 80)은 한 번에 10만 귤 부풀리기를 받아 줘서 되돌림
@@ -1305,6 +1360,26 @@ export const CRASH = {
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
 };
 
+// 이용 통계 (#121): 클라이언트는 숫자만 세다가 flushS 마다·나갈 때 묶음 하나(sendBeacon)로 POST /m. 서버는 날짜별 합계만 (Accounts DO 표 mt)
+// 키: 'in' 같은 이름 또는 '이름:갈래'(sub 에 있는 이름만, 갈래는 [a-z0-9._-]). maxOf 는 합 대신 가장 큰 값
+export const METRICS = {
+  flushS: 300,        // 이만큼(초)마다 한 번 보냄 (+ pagehide·탭 숨김)
+  sampleS: 2,         // 화면 밖에서 상태를 훑는 간격(초). 프레임 안에서는 숫자 더하기만
+  maxBytes: 2000,     // 한 묶음 크기 상한 (넘는 키는 버림)
+  maxKeys: 80,        // 한 묶음 키 수 상한 (서버도 같은 값으로 자름)
+  maxV: 1e6, maxN: 1e4, // 한 키 값·횟수 상한 (서버)
+  dayKeys: 3000,      // 하루·출처마다 새 키 상한 (갈래가 무한히 늘지 않게)
+  keepDays: 90,       // 이 날짜보다 오래된 합계는 Cron 이 지움
+  viewDays: 14,       // 어드민 '수치' 표에 보이는 날짜 수
+  topR: 14,           // 정상 표지석에서 이만큼(m) 안이면 '정상 도착'
+  fpsCut: [20, 30, 45, 55], // 평균 fps 구간 (fps:0 = 20 밑 … fps:4 = 55 이상)
+  ptCut: [1, 5, 15],  // 한 번 플레이 시간 구간(분): pt1·pt5·pt15 = 그 시간을 넘긴 수
+  keys: ['in', 'new', 'ret', 'glog', 'play', 'pt1', 'pt5', 'pt15', 'fpick', 'pick', 'heap', 'dex', 'top', 'earn', 'spend', 'cart', 'down', 'peer', 'peermx', 'emote', 'chat', 'qdown', 'crash', 'fbopen', 'fbsend'],
+  sub: ['dev', 'ref', 'app', 'tut', 'zone', 'buy', 'ride', 'em', 'er', 'tier', 'fps'],
+  maxOf: ['peermx'],
+  srcs: ['live', 'dev', 'adm'], // 실서버 · 개발 서버(/dev/) · 어드민 계정
+};
+
 // 오류 알림 묶어 보기 (#122): 서버 GET /crashes?days= (로그인 없이). server/src/crashes.js
 export const CRASHES = {
   days: 3,            // 기본으로 보는 날 수
@@ -1352,7 +1427,8 @@ export const JOURNEY = {
     { id: 'color', need: {} }, // #155 기본 옷 색
     { id: 'tutorial', need: {} }, // #151
     { id: 'tips', need: { tut: 1 }, after: null }, // #66 상황 팁 (튜토리얼 뒤)
-    { id: 'mateSunja', need: { jeong: 1 } }, // #172 순자 삼춘 (정낭을 나서면)
+    { id: 'fsTip', need: { tut: 1 }, after: 'tips' }, // #189 폰: 전체 화면으로 하는 법 (튜토리얼 직후 한 번, game/simple.js. PC·이미 전체 화면이면 안 열림)
+    { id: 'mateSunja', need: { jeong: 1 }, after: 'tips' }, // #172 순자 삼춘 (정낭을 나서면). after 를 적어 둠: 바로 앞 fsTip 은 PC 에선 안 열림
     { id: 'quest', need: { jeong: 1 } }, // #158 오름지기 첫 퀘스트
     { id: 'heapNear', need: { jeong: 1 } }, // #160 들머리 더미
     { id: 'shopQuest', need: { dumps: 1 } }, // #158 장비점 주인 퀘스트 (첫 버리기 뒤)
@@ -1558,6 +1634,13 @@ export const QUESTS = {
     { id: 'st-ufo', giver: 'jigi', name: '불법 주차', say: ['UFO 가 쓰레기를 쏟고 굼부리로 갔다고요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:ufo', n: 1, ever: true }, fin: ['이제 다 같이 맞설 때예요. 귤 챙겨요.'], reward: { gyul: 5 }, need: 'story:ufo' },
   ],
 };
+
+// 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
+// hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
+// shopT 귤이 새로 다음 장비 값에 닿으면 이만큼 '장비점으로' (장비점 창을 열거나 문 shopR m 안에 오면 끝, 같은 장비로 다시 권하지 않음)
+// bagRoom 배낭 남은 칸이 이보다 작으면 '클린하우스로'
+// after: 줄기 퀘스트가 끝난 뒤 차례 (강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑). 모두 임의값
+export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'daily', 'heap', 'den', 'cairn'] };
 
 // 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
 // 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐

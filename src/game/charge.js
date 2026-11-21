@@ -83,7 +83,7 @@ function handPos(rn, pos, heading, w) {
 function release() {
   const w = C.w, k = C.k, ok = C.t >= CHARGE.start && k > 0;
   C.on = false; endFx();
-  if (!ok) { unpin(); if (SINGLE.has(w.id)) fireWeapon(); return; } // 짧게: 예전 한 발 (머신건·레이저는 이미 쏘는 중)
+  if (!ok) { unpin(); if (SINGLE.has(w.id) && !late.approachOn?.()) fireWeapon(); return; } // 짧게: 예전 한 발 (머신건·레이저는 이미 쏘는 중). 다가가서 쏘기(#132) 중이면 그쪽이 쏨
   fireCharged(w, k);
 }
 // 모은 한 방 (확인용 __oreum.charge.shoot(k) 도 씀)

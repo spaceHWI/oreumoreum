@@ -348,10 +348,17 @@ export function createCart({ scene, height, low = false, col = null, makeDriver 
     const S = stops[st.stop];
     return Math.hypot(p.x - S.pos.x, p.z - S.pos.z) < CART.r || Math.hypot(p.x - pos.x, p.z - pos.z) < CART.cartR ? st.stop : -1;
   }
+  // 달리는 마차 수레까지 거리 (#120). 서 있으면 Infinity. 수레 앞뒤 [-bodyL, bodyL] 선분까지
+  function runDist(p) {
+    if (!st.moving) return Infinity;
+    const s = Math.sin(st.heading), c = Math.cos(st.heading), dx = p.x - pos.x, dz = p.z - pos.z;
+    const lz = Math.max(-CART.bodyL, Math.min(CART.bodyL, dx * s + dz * c)), ex = dx - s * lz, ez = dz - c * lz;
+    return Math.hypot(ex, ez);
+  }
   // 정류장 쪽 내릴 자리 (팻말 앞 길가)
   const exitAt = (i) => { const q = nsAlong(CART.stops[i].path, CART.stops[i].d, CART.stops[i].path === 'approach' ? 1 : -1, CART.side - 1.6); return _a.set(q.x, height(q.x, q.z), q.z).clone(); };
   update(0, Date.now() / 1000);
-  return { update, seat, boardable, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R, driver };
+  return { update, seat, boardable, runDist, exitAt, stops, pos, block: blk, state: st, get heading() { return st.heading; }, mesh: C.g, route: R, driver };
 }
 
 // ---------- 탈것 가게 (가게 거리 빈 터, 임시 모양) ----------

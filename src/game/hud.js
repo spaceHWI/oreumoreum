@@ -44,8 +44,9 @@ state.toastT = 0;
 export function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; state.toastT = sec; topStack(); }
 // 줍기 메시지 (#116): 따로 작은 한 줄. 새로 주우면 바꿔 쓰고, 같은 것을 이어 주우면 ×N. 다른 토스트는 건드리지 않음
 const pm = { name: '', n: 0, t: 0 };
-export function pickMsg(name) {
+export function pickMsg(name, line = '') { // line: 정한 글 그대로 (귀한 귤 '한라봉! 귤 +5' #130)
   const el = $('pickmsg'); if (!el || !name) return;
+  if (line) { pm.name = ''; pm.n = 0; pm.t = 2.6; el.textContent = line; el.hidden = false; return; }
   pm.n = pm.t > 0 && pm.name === name ? pm.n + 1 : 1; pm.name = name; pm.t = 2;
   const c = name.charCodeAt(name.length - 1) - 0xac00, jong = c >= 0 && c <= 11171 ? c % 28 !== 0 : false;
   el.textContent = pm.n > 1 ? `${name} ×${pm.n}` : `${name}${jong ? '을' : '를'} 주웠어요`; el.hidden = false;
@@ -149,7 +150,7 @@ export function updateScore() {
   late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin'];
+export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin', 'fs-tip'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -288,7 +289,7 @@ function buildDex() {
   $('dex-count').textContent = `${got} / ${DEX_LIST.length}`;
   const g = $('dex-grid'); g.innerHTML = ''; let sec = '';
   DEX_LIST.forEach((d) => {
-    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : sec === 'story' ? '수수께끼' : ''; g.append(h); } // 개울 칸 (#44)
+    if ((d.sec || '') !== sec) { sec = d.sec || ''; const h = document.createElement('div'); h.className = 'dex-sec'; h.textContent = sec === 'stream' ? '개울' : sec === 'sight' ? '볼거리' : sec === 'story' ? '수수께끼' : sec === 'gyul' ? '귀한 귤' : ''; g.append(h); } // 개울 칸 (#44)
     const n = dx[d.id] || 0, el = document.createElement('div'); el.className = 'dex-cell' + (n ? '' : ' locked') + (d.rare ? ' rare' : '');
     el.dataset.id = d.id;
     const ic = document.createElement('span'); ic.className = 'dex-ic'; ic.innerHTML = iconSvg(dexIcon(d));

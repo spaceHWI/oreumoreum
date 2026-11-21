@@ -28,10 +28,10 @@ export function setHoldBow(v) {
 const aimFwd = new THREE.Vector3();
 // 타겟 고정 (#148): 감지 거리 안에서 가장 위험한 것 하나를 잡아 두고, 쫓아내거나(목록에서 빠짐) 멀어질 때까지 바꾸지 않음
 // 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 잡아 두지 않고 사거리 안에서만 (예전처럼). 화면에서 누르거나 Tab 으로 바꿈
-// state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요' (다가가기는 #132)
+// state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요'. 누르면 다가가서 쏨 (#132, game/approach.js)
 state.lock = null; state.lockPick = false;
-const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
-const detectR = () => (bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand);
+export const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
+const detectR = () => Math.max(bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand, late.approachR?.() || 0); // 다가가는 중엔 더 멀리까지 잡아 둠 (#132)
 const flat = (t) => Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 function aimScore(t, fl) {
   const dx = t.pos.x - player.pos.x, dz = t.pos.z - player.pos.z, d = Math.hypot(dx, dz);

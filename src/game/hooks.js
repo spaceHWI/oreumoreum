@@ -50,6 +50,7 @@ life.hooks.enemyHit = (dir, def) => {
   if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
   const hatG = CLOTH[CL.wear.hat]?.guard || 0; // 감귤 박스 헬멧 (#164): 받는 피해 더 줄임
   const downed = hp.hit(def.dmg * Math.max(0, 1 - wearV('jacket') - augV(save, 'jacket')) * (1 - hatG) * (1 - buff.add('guard'))); // 잠바(#52)·두꺼운 잠바 증강(#159, 더함): 받는 피해 줄임, 만족한상 버프(#167)
+  late.feel?.hurt(); // 가장자리 붉은빛·진동 (#141)
   // 전투 오름만 (#36), 피해는 적 표(ENEMIES). 0 이 되면 넉백이 끝난 뒤 쓰러짐
   if (hatG) late.boxThud?.(); else sound.stone(); if (downed) return; // 박스를 쓰면 '퉁'
   if (hp.hp < hp.max * COMBAT.lowHp && life.enemies.hesitate()) { say('danger', 'lowHp', '기운이 얼마 없어요. 물러나서 숨 돌리기', 2.8, { ttl: 3 }); return; } // #148 한 싸움에 한 번
@@ -69,7 +70,7 @@ const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (
 life.hooks.enemyWave = (w) => { say('danger', 'wave', `${ENEMY_NAME(w.kind)} ${w.n}마리가 나타났어요! 귤을 맞히면 도망가요`, 2.8, { ttl: 4 }); enemyWarn.start(w); };
 life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(ENEMY_NAME(kind))} 숲으로 돌아갔어요`); };
 life.hooks.enemyRepel = (kind, pos, def) => {
-  life.scatterTangerines(pos, def.reward.gyul, ENEMY_DROP.max);
+  life.scatterTangerines(pos, def.swarm ? def.reward.gyul : late.rareDrop?.(kind, pos, def.reward.gyul, ENEMY_DROP.max) ?? def.reward.gyul, ENEMY_DROP.max); // 귀한 귤 (#130, game/raregyul.js): 알갱이 하나가 가끔 한라봉·천혜향…
   if (trash && Math.random() < def.reward.rare) { const rares = DEX_LIST.filter((d) => d.rare), dx = rares[Math.floor(Math.random() * rares.length)]; const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
@@ -112,7 +113,7 @@ export const dumpers = trash ? createDumpers({
     dumped: (d, n) => { late.mutterDumped?.(d, n); if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
     dress: (d) => late.season?.dress(d), // 산타 투기꾼 (#180)
     repel: (kind, pos, def, d) => {
-      life.scatterTangerines(pos, def.reward); late.season?.repel(d, pos); // 산타면 선물 상자 (#180)
+      life.scatterTangerines(pos, late.rareDrop?.(kind, pos, def.reward) ?? def.reward); late.season?.repel(d, pos); // 귀한 귤 낮은 확률 (#130) // 산타면 선물 상자 (#180)
       sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
       ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.lvGain?.('dumper'); late.story?.dumperRepel?.(); // 경험치 (#159), 이야기 이벤트 (#168)
     },
