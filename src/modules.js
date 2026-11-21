@@ -78,6 +78,7 @@ import './game/moves.js';
 import './game/room.js';
 import './game/stores.js';
 import './game/pickup.js';
+import './game/approach.js'; // 다가가서 쏘기 (#132)
 import './game/area.js';
 import './game/deernet.js';
 import './game/dump.js';

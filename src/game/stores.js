@@ -310,7 +310,7 @@ export const dismountAct = { label: '노루에서 내리기', ic: 'down', act: (
 export const standAct = { label: '일어나기', ic: 'stand', act: () => standUp() };
 // 상호작용 (F·상호작용 버튼): 가까이 할 일이 있으면 그것, 없으면 귤 던지기 (#34)
 const ARM_VERB = { bow: '귤 활 쏘기', gun: '귤 총 쏘기', mg: '머신건 쏘기', laser: '레이저 쏘기', bomb: '폭탄 던지기' }; // #123
-export const throwAct = { get label() { return this.empty ? '귤이 없어요' : lockFar() ? '멀어요' : bowArmed() ? ARM_VERB[weaponNow().id] || '귤 던지기' : '귤 던지기'; }, get empty() { return bowReady() && !armedFor(weaponNow()); }, get ic() { return bowArmed() ? weaponNow().id : 'throw'; }, act: () => (late.pressFire ? late.pressFire() : fireWeapon()) }; // 길게 누르면 모아 쏘기 (#129, game/charge.js)
+export const throwAct = { get label() { return this.empty ? '귤이 없어요' : lockFar() ? '멀어요' : bowArmed() ? ARM_VERB[weaponNow().id] || '귤 던지기' : '귤 던지기'; }, get empty() { return bowReady() && !armedFor(weaponNow()); }, get ic() { return bowArmed() ? weaponNow().id : 'throw'; }, act: () => { late.approachPress?.(); late.pressFire ? late.pressFire() : fireWeapon(); } }; // 다가가서 쏘기 (#132, game/approach.js): 멀거나 이어 갈 적이 있으면 그 상태를 켬 // 길게 누르면 모아 쏘기 (#129, game/charge.js)
 late.throwAct = throwAct; // #148 귤이 없으면 회색(누르면 손으로), 타겟이 사거리 밖이면 '멀어요'
 function doInteract() { if (state.ctxTarget && !hp.isDown && !hp.pending) state.ctxTarget.act(); }
 pressBtn(ui.ctx, () => doInteract());
