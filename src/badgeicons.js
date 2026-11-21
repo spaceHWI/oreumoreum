@@ -5,6 +5,8 @@ const eyes = (x1, x2, y) => `<circle cx="${x1}" cy="${y}" r="1.7" fill="${K}"/><
 const cheeks = (x1, x2, y) => `<circle cx="${x1}" cy="${y}" r="2" fill="${P}" opacity=".7"/><circle cx="${x2}" cy="${y}" r="2" fill="${P}" opacity=".7"/>`;
 
 export const BADGE_ICONS = {
+  // 금연 구역 지킴이 (#156): 빨간 원에 사선, 가운데 담배
+  'b-nosmoke': `<circle cx="24" cy="24" r="16" fill="${W}" stroke="#d8423a" stroke-width="5"/><path d="M12 27 h20 v5 H12z" fill="#f4f1e8" ${s()}/><path d="M27 27 h5 v5 h-5z" fill="#e3a25a" ${s('stroke-width="1.8"')}/><path d="M35 24 q3 -4 0 -8" fill="none" stroke="#9aa0aa" stroke-width="2" stroke-linecap="round"/><path d="M13 13 L35 35" stroke="#d8423a" stroke-width="5" stroke-linecap="round"/>`,
   // 무기 첫 구매 (#123): 귤 활·귤 총·머신건·레이저·폭탄
   'b-arm-bow': `<path d="M14 6 Q36 12 30 42" fill="none" stroke="${W}" stroke-width="4" stroke-linecap="round"/><path d="M14 6 Q36 12 30 42" fill="none" ${s()}/><path d="M14 6 L30 42" ${s()}/><path d="M12 28 L38 16" ${s()}/><circle cx="38" cy="16" r="4" fill="${O}" ${s()}/>`,
   'b-arm-gun': `<path d="M8 18 h24 l4 4 v6 H22 l-2 10 h-7 l2-10 H8z" fill="${O}" ${s()}/><path d="M36 22 h6" ${s()}/><circle cx="42" cy="22" r="3" fill="${Y}" ${s()}/>${eyes(16, 22, 23)}`,

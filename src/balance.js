@@ -290,6 +290,18 @@ export const DUMP = {
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
 };
+// 흡연자 (#156, src/game/smoker.js): 오름 들머리에 가끔 나와 담배를 피움. 플레이어를 공격하지 않음. 귤을 한 번 맞히면 놀라 꽁초 1개를 떨구고 도망 (투기꾼 DUMP.startleT·fleeDist·fadeT 그대로)
+// near 들머리 클린하우스에서 이 거리(m) 안, 탐방로에서 off[0]~off[1] m 비켜난 자리. playerR 플레이어가 들머리 클린하우스 이 거리 안에 있을 때만 every[0]~[1] 초마다 한 명(한 번에 한 명)
+// stay 안 쫓으면 이 초 뒤 꽁초 leaveButts 개를 버리고 걸어 나감. walkIn 나타날 때 이만큼 떨어진 곳에서 걸어옴. reward 쫓으면 귤, buttLife 꽁초가 땅에 남는 초(주울 수 있는 낱개 쓰레기, 비닐 1개로 셈), buttMax 한꺼번에 남는 꽁초 수
+// puff 입 앞 연기 조각 수(저사양 puffLow), jacket 점퍼 색. 귤 벌이: tools/econ.js 가 하루 1시간에서 흡연자 몫이 전체의 3% 아래인지 봄 (들머리 둘레에 있는 시간 econNear)
+export const SMOKER = {
+  name: '흡연자', hp: 1, speed: 1.6, flee: 7, hitR: 1.1,
+  near: 25, off: [2, 5], playerR: 60, every: [240, 420],
+  stay: 90, leaveButts: 3, walkIn: 12, reward: 8,
+  buttLife: 600, buttMax: 12, pickR: 1.1,
+  puff: 5, puffLow: 2, jacket: '#8a8f96',
+  econNear: 0.25,
+};
 export const TRASH = {
   cell: 32, // 튜토리얼 낱개 그리기 범위 칸
   drawR: 110, drawRLow: 70,
