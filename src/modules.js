@@ -93,6 +93,7 @@ import './game/zonedone.js'; // 구역 완료 요약·깨어나는 곳·빠른 �
 import './game/boss.js'; // 구역 우두머리 (#139)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
+import './game/punk.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/start.js';
 import './game/update.js';
 import './game/debug.js';
