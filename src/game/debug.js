@@ -46,6 +46,7 @@ import { placeRunner } from './update.js';
 import { director } from './director.js'; // #176
 import { recApi } from './rec.js'; // 촬영 모드 (#185)
 import { placeAt, placeSpots } from './where.js'; // #153
+import { optSeg } from './optui.js';
 
 Object.assign(late, { exposeDebug }); // 앞 파일에서 부르는 함수
 
@@ -118,8 +119,8 @@ const devLabels = createDevLabels({ camera, world: () => {
   return L;
 } }); late.devLabels = devLabels;
 const GFX = NSW ? ['smooth', 'lite'] : ['smooth', 'lite', 'toon', 'retro']; if (NSW && !GFX.includes(save.gfx)) save.gfx = 'smooth'; const GFX_NAME = { smooth: '기본', lite: '가볍게', toon: '카툰', retro: '레트로' };
-function applyGfx() { renderer.toneMapping = !NSW && (save.gfx === 'toon' || save.gfx === 'retro') ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; applySky(); grass.set(save.gfx !== 'lite'); motes.pts.visible = save.gfx !== 'lite'; retro.on = save.gfx === 'toon' || save.gfx === 'retro'; retro.setMode(save.gfx === 'retro' ? 'retro' : 'toon'); $('menu-gfx').textContent = `그래픽: ${GFX_NAME[save.gfx]}`; sun.shadow.radius = save.gfx === 'retro' ? 1.5 : 3; }
-$('menu-gfx').addEventListener('click', () => { save.gfx = GFX[(GFX.indexOf(save.gfx) + 1) % GFX.length]; persist(); applyGfx(); toast(`${GFX_NAME[save.gfx]} 그래픽`); });
+function applyGfx() { renderer.toneMapping = !NSW && (save.gfx === 'toon' || save.gfx === 'retro') ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; applySky(); grass.set(save.gfx !== 'lite'); motes.pts.visible = save.gfx !== 'lite'; retro.on = save.gfx === 'toon' || save.gfx === 'retro'; retro.setMode(save.gfx === 'retro' ? 'retro' : 'toon'); optSeg($('menu-gfx'), GFX.map((k) => [k, GFX_NAME[k]]), save.gfx, pickGfx); sun.shadow.radius = save.gfx === 'retro' ? 1.5 : 3; }
+function pickGfx(v) { if (save.gfx === v) return; save.gfx = v; persist(); applyGfx(); toast(`${GFX_NAME[save.gfx]} 그래픽`); } // 메뉴 칸 묶음에서 고름 (#201)
 // 성능 단계 (#79): 자동 → 낮음 → 보통 → 높음. 높음 ↔ 낮음·보통은 그려 둔 양(LOW)이 달라 새로고침
 const PERF_ORDER = ['auto', 0, 1, 2];
 const perfTierOf = (v) => (v === 'auto' ? (PERF_AUTO ? TIER : autoTier()) : v);
@@ -127,16 +128,17 @@ function perfLabel() { const v = save.perf ?? 'auto'; return v === 'auto' ? `성
 // #187 비 효과: 보통·약하게·끔 (빗줄기·눈송이만. 회색 하늘·젖은 땅은 그대로). 고른 적 없고 움직임 줄이기 설정이면 '약하게'
 const RAIN_FX = ['full', 'soft', 'off'];
 function rainFxNow() { if (RAIN_FX.includes(save.rainFx)) return save.rainFx; try { return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'soft' : 'full'; } catch { return 'full'; } }
-function applyRainFx() { const k = rainFxNow(); wx.setFx(k); const b = $('menu-rainfx'); if (b) b.textContent = `비 효과: ${WEATHER.fx[k].name}`; }
+function applyRainFx() { const k = rainFxNow(); wx.setFx(k); optSeg($('menu-rainfx'), RAIN_FX.map((f) => [f, WEATHER.fx[f].name]), k, pickRainFx); }
+function pickRainFx(v) { if (rainFxNow() === v && save.rainFx === v) return; save.rainFx = v; persist(); applyRainFx(); toast(`비 효과 ${WEATHER.fx[save.rainFx].name}`); }
 applyRainFx();
-$('menu-rainfx')?.addEventListener('click', () => { save.rainFx = RAIN_FX[(RAIN_FX.indexOf(rainFxNow()) + 1) % RAIN_FX.length]; persist(); applyRainFx(); toast(`비 효과 ${WEATHER.fx[save.rainFx].name}`); });
-$('menu-perf').textContent = perfLabel();
-$('menu-perf').addEventListener('click', () => {
-  const cur = save.perf ?? 'auto', next = PERF_ORDER[(PERF_ORDER.indexOf(cur) + 1) % PERF_ORDER.length], t = perfTierOf(next);
-  save.perf = next; persist(); $('menu-perf').textContent = perfLabel();
+const perfSeg = () => optSeg($('menu-perf'), PERF_ORDER.map((v) => [v, v === 'auto' ? '자동' : PERF.names[v]]), save.perf ?? 'auto', pickPerf, (save.perf ?? 'auto') === 'auto' ? `지금 ${PERF.names[perfTierOf('auto')]}` : ''); // 칸 묶음 (#201)
+perfSeg();
+function pickPerf(next) {
+  const cur = save.perf ?? 'auto'; if (cur === next) return; const t = perfTierOf(next);
+  save.perf = next; persist(); perfSeg();
   if ((t < 2) !== LOW) { toast(`${perfLabel()} · 다시 불러와요`); setTimeout(() => location.reload(), 700); return; }
   quality.auto = next === 'auto'; quality.tier = quality.level = t; applyQuality(); toast(perfLabel());
-});
+}
 applyGfx();
 $('menu-dev').addEventListener('click', () => { closePanels(); devLabels.toggle(); toast(devLabels.on ? '개발용 라벨을 켰어요 (F2로 끄기)' : '개발용 라벨을 껐어요'); });
 addEventListener('keydown', (e) => { if (e.code === 'F2') { e.preventDefault(); devLabels.toggle(); } });

@@ -12,6 +12,7 @@ import { state, late } from './state.js';
 import { $, isTouch, save, persist } from './save.js';
 import { canvas } from './scene.js';
 import { toast } from './hud.js';
+import { optSeg } from './optui.js';
 
 const R = save.rec = Object.assign({ on: 0, shape: 'v', snd: 1, wm: 0, buf: 0, lv: 0, webm: 0, tag: 0 }, save.rec || {});
 const can = typeof MediaRecorder !== 'undefined' && !!canvas.captureStream;
@@ -203,7 +204,7 @@ function sync() {
   ui.menu.setAttribute('aria-pressed', String(!!R.on)); ui.menu.textContent = `촬영: ${R.on ? '켬' : '끔'}`;
   for (const k of ['shape', 'snd', 'wm', 'buf']) ui[k].hidden = !R.on;
   if (!bufOk()) ui.buf.hidden = true;
-  ui.shape.textContent = `영상: ${R.shape === 'v' ? '세로 9:16' : '화면 그대로'}`;
+  optSeg(ui.shape, [['v', '세로 9:16'], ['full', '화면 그대로']], R.shape, pickShape); // 칸 묶음 (#201, optui.js)
   ui.snd.textContent = `영상 소리: ${R.snd ? '켬' : '끔'}`; ui.snd.setAttribute('aria-pressed', String(!!R.snd));
   ui.wm.textContent = `로고: ${R.wm ? '켬' : '끔'}`; ui.wm.setAttribute('aria-pressed', String(!!R.wm));
   ui.buf.textContent = `방금 ${REC.buf}초: ${R.buf ? '켬' : '끔'}`; ui.buf.setAttribute('aria-pressed', String(!!R.buf));
@@ -216,7 +217,7 @@ function setOn(on) {
   sync();
 }
 ui.menu.addEventListener('click', () => setOn(!R.on));
-ui.shape.addEventListener('click', () => { R.shape = R.shape === 'v' ? 'full' : 'v'; persist(); sync(); if (S.main) toast('다음 녹화부터 바뀌어요', 2); });
+function pickShape(v) { if (R.shape === v) return; R.shape = v; persist(); sync(); if (S.main) toast('다음 녹화부터 바뀌어요', 2); }
 ui.snd.addEventListener('click', () => { R.snd = R.snd ? 0 : 1; persist(); sync(); if (S.main) toast('다음 녹화부터 바뀌어요', 2); });
 ui.wm.addEventListener('click', () => { R.wm = R.wm ? 0 : 1; persist(); sync(); });
 ui.buf.addEventListener('click', () => { R.buf = R.buf ? 0 : 1; persist(); if (!R.buf) bufStop(); sync(); });

@@ -187,7 +187,7 @@ const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.
 aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 export function tickAimMark(time) {
   const t = state.throwAim || refreshLock(); // 고정한 타겟은 늘 보임 (#148, 탈것 위에서도). 사거리 밖이면 흐리게
-  aimMark.visible = aimTri.visible = !!t;
+  aimMark.visible = !!t; aimTri.visible = false; /* 머리 위 세모는 발밑 고리와 같은 뜻이라 뺌 (#201) */
   if (!t) return;
   { const far = flat(t) >= fireR() ? 0.35 : 0.85; aimMark.material.opacity = far; aimTri.material.opacity = far + 0.15; }
   const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);
@@ -200,6 +200,7 @@ const edgeEls = Array.from({ length: 3 }, (_, i) => { const el = document.create
 const edgeV = new THREE.Vector3();
 export function tickEdgeAim() {
   const list = [];
+  if (late.edgeWarnOn?.()) { edgeEls.forEach((el) => { if (!el.hidden) el.hidden = true; }); return; } // 나타날 때 표시(hooks.js)가 떠 있으면 그것만 (#201)
   for (const t of life.aimTargets()) {
     const d = Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z); if (d > THROW_AIM.edgeRange) continue;
     edgeV.set(t.pos.x, t.pos.y + 1, t.pos.z).project(camera);

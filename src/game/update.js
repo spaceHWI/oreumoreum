@@ -26,7 +26,7 @@ import { keys, ptrs, joy, marker, setGait } from './input.js';
 import { bowReady, setHoldBow, aimHeading, releaseTangerine, releaseArrow, tickAimMark, tickEdgeAim } from './throw.js';
 import { dismountRide, rideWant, tickRideZone, tickCartRide, tickCartMark } from './ride.js';
 import { tickJump, photoPose, tickQueue, tickPhoto, capture } from './moves.js';
-import { net, social, photog, tmp, alertMark } from './room.js';
+import { net, social, photog, tmp } from './room.js';
 import { mealS, tickMeal, cutS, tickCut, tickLeap, updateBuffUI, tickShopMark } from './stores.js';
 import { toolNow, tickPick, tickFly, tickZone } from './pickup.js';
 import { tickArea } from './area.js';
@@ -342,7 +342,7 @@ function step(now) {
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
   tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); late.tickQuest?.(dt); late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
-  enemyWarn.update(dt); dumpWarn.update(dt); alertMark.visible = life.enemies.near(player.pos, 40); if (alertMark.visible) alertMark.position.y = 3.0 + Math.abs(Math.sin(now / 150)) * 0.3;
+  enemyWarn.update(dt); dumpWarn.update(dt);
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
   if (state.cave) late.caveFrame(dt); /* 동굴 (#195, game/cave.js): 동굴 장면만 그림 */

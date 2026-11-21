@@ -172,10 +172,10 @@ const SHOP_ITEMS = { // 가게마다 아직 안 가진 살 것 [{ key, price }].
 const affordable = (id) => (SHOP_ITEMS[id] ? SHOP_ITEMS[id]().filter((x) => x.price <= save.coins) : []);
 const newCount = (id) => affordable(id).filter((x) => !seen[x.key]).length;
 const pillDot = $('gyul-dot');
+// #201: 점은 '받을 것이 있을 때' 만. 살 수 있는 새 물건은 점을 띄우지 않음 (지붕·귤 칸 점 끔). newCount 는 확인용으로 남김
 export function refreshDots() {
-  let any = false;
-  for (const sh of shopsBuilt) { const n = SHOP_POP[sh.pop]?.when && !SHOP_POP[sh.pop].when() ? 0 : newCount(sh.id); roofSigns?.dot(sh.id, n > 0); if (n) any = true; }
-  if (pillDot && pillDot.hidden === any) pillDot.hidden = !any;
+  for (const sh of shopsBuilt) roofSigns?.dot(sh.id, false);
+  if (pillDot && !pillDot.hidden) pillDot.hidden = true;
 }
 export function shopOpened(key) {
   const id = shopsBuilt.find((sh) => sh.pop === key)?.id || (key === 'gear' ? 'gear' : null); if (!id) return;

@@ -94,6 +94,7 @@ function markTex(ch, fill, ink) {
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = TEXCS; return new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false });
 }
 MARK['!'] = markTex('!', '#ffd23f', '#3a2a00'); MARK['?'] = markTex('?', '#ffd23f', '#3a2a00'); MARK.w = markTex('!', '#ffffff', '#33332e'); MARK.g = markTex('?', '#a9a9a2', '#33332e');
+const MARK_SIDE_NEAR = 30; // 곁가지 받기 표시(흰 !)는 이 거리(m) 안에서만 (#201)
 const givers = new Map(); // id → { id, name, pos, root, runner?, mark: Sprite, h, kind }
 function addGiver(id, pos, root, h, runner = null, face = 0) {
   const d = Q.givers[id]; const sp = new THREE.Sprite(MARK['!']); sp.scale.set(0.9, 0.9, 1); sp.position.y = h; sp.visible = false; root.add(sp);
@@ -298,6 +299,7 @@ function dodge() {
   for (const el of TOPS) { if (el.hidden) continue; const b = el.getBoundingClientRect(); if (b.width && b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top) y = Math.max(y, b.bottom + 8); }
   const t = y ? y + 'px' : ''; if (t !== trTop) trTop = t; TR.style.top = t;
 }
+late.questGuiding = () => !TR.hidden; // 추적 중인 퀘스트 줄이 떠 있는가 (#201: 그동안 마차·가게 가장자리 표시는 쉼)
 function tickTrack(dt) {
   const on = trackOn() && !!trCur;
   if ((trTargetT -= dt) <= 0 || trDirty) {
@@ -390,7 +392,12 @@ late.tickQuest = (dt) => {
   if (needCatch && director.isOpen('quest')) { needCatch = false; const sk = quests.catchUp(); if (sk.length) trackDirty(); }
   if ((markT -= dt) <= 0) {
     markT = 0.4; quests.tick();
-    for (const g of givers.values()) { const m = late.tut?.active ? null : quests.mark(g.id); if (m !== g.cur) { g.cur = m; if (m) g.mark.material = MARK[m]; g.mark.visible = !!m; } }
+    for (const g of givers.values()) {
+      const m = late.tut?.active ? null : quests.mark(g.id); g.cur = m;
+      // 머리 위에 띄우는 것 (#201): 하는 중(g)은 안 띄움, 곁가지(w)는 가까울 때만. 줄기 받기(!)·돌려주기(?)는 늘
+      const show = m === 'g' ? null : m === 'w' && Math.hypot(g.pos.x - player.pos.x, g.pos.z - player.pos.z) > MARK_SIDE_NEAR ? null : m;
+      if (show !== g.shown) { g.shown = show; if (show) g.mark.material = MARK[show]; g.mark.visible = !!show; }
+    }
     // 가게 구경 (곁가지 '마을 구경'): 미장원·LEAP 문 앞에 가 봄 (한 번 가면 멀어질 때까지 다시 안 셈)
     const near = ['salon', 'leap'].map(shopOf).find((sh) => sh && Math.hypot(sh.door.x - player.pos.x, sh.door.z - player.pos.z) < 5);
     if (near && browseAt !== near.id) { browseAt = near.id; count('browse'); } else if (!near) browseAt = null;
