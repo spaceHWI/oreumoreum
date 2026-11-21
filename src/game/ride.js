@@ -12,6 +12,7 @@ import { cam } from './camera.js';
 import { toast, updateStats, panelOpen, busy, ach } from './hud.js';
 import { marker } from './input.js';
 import { setHoldBow } from './throw.js';
+import { ic } from '../icons.js';
 
 Object.assign(late, { toggleRide, openRideWin }); // 앞 파일에서 부르는 함수
 
@@ -97,7 +98,7 @@ export function updateRideBtn() {
   rideBtn.title = `${RIDE_BY[id].name} ${player.ride ? '내리기' : '타기'} (Q) · 길게 누르면 바꾸기`;
   late.bagRefresh?.('ride');
 }
-export const WALK_ICON = '<circle cx="13" cy="4.5" r="1.8"/><path d="M12 8l-2 5 3 2 1 5M10 13l-3 2M12 8l4 3 2-1M13 15l-2 5"/>';
+export const WALK_ICON = ic('walk');
 // 예전 탈것 창(#ridewin)은 내 가방(#166, bag.js) 탈것 탭으로 합침
 export function openRideWin() { late.openBag?.('ride'); }
 // 고르기. '' = 걸어 다니기. 타고 있으면 내렸다가 새 탈것으로 탐 (못 타는 곳이면 고르기만)

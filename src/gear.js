@@ -15,6 +15,7 @@ import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
 import { addClothes, clothAcc, slippers, dark, CLOTH_BUILD, COVER } from './clothes.js';
+import './clothes2.js'; // 겉모습 옷 모양 (#179): CLOTH_BUILD 에 새 kind 를 더함 (addClothes 전에)
 import { CLOTHES, LOOK_COLORS, BOOTS } from './balance.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
@@ -205,6 +206,8 @@ for (const k of ['hat', 'top', 'bottom']) {
   const c = CLOTHES.find((x) => x.id === LOOK_COLORS.ids[k]);
   if (c) LOOK_COLORS[k].forEach(([col], i) => { if (i) ACCESSORIES[`${c.id}~${i}`] = clothAcc(c, { ...c.look, main: col, acc: dark(col, LOOK_COLORS.dark) }); });
 }
+// 겉모습 옷 색 (#179): tint 인 옷은 'id~번호' 장비 (LOOK_COLORS.style, 0번 = 원래 색)
+CLOTHES.filter((c) => c.tint).forEach((c) => LOOK_COLORS.style.forEach(([col], i) => { if (i) ACCESSORIES[`${c.id}~${i}`] = clothAcc(c, { ...c.look, main: col }); })); // 포인트색(acc)은 그대로
 LOOK_COLORS.shoes.forEach(([col], i) => { if (i) ACCESSORIES[`shoes:slip~${i}`] = { ...ACCESSORIES['shoes:slip'], build: (mat) => slippers(mat, col, dark(col, LOOK_COLORS.dark)) }; });
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];
 export const BAG_GEAR = ['back:bag1', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];

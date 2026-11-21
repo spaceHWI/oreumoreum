@@ -6,7 +6,7 @@
 //   save.loot = [{ s 칸, t 단계, g, e }]   안 쓰는 장비 (얻었지만 안 입은 것)
 //   save.lootAuto = 1|0   칸마다 가장 좋은 것 하나만 남기고 자동으로 귤로 바꾸기 (기본 켬)
 import { LOOT, GROWTH, ZONE_BOSS, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR, WEAR_START } from './balance.js';
-import { GEAR_SLOTS, itemScore, slotTier, slotUp, bootsOn } from './gearscore.js';
+import { GEAR_SLOTS, itemScore, slotTier, slotUp, abilityCloth, bootsOn } from './gearscore.js';
 
 export { GEAR_SLOTS };
 export const GEAR4 = ['tool', 'bag', 'shoes', 'weapon'];
@@ -71,8 +71,8 @@ export const gradeName = (g) => LOOT.gradeName[g] || '';
 export const gradeColor = (g) => LOOT.gradeColor[g] || LOOT.gradeColor[0];
 export const itemName = (it) => `${it.g ? gradeName(it.g) + ' ' : ''}${baseName(it.s, it.t)}${it.e ? ` +${it.e}` : ''}`;
 export const itemPts = (it) => itemScore(it.t, it.g, it.e);
-// 지금 그 칸에 쓰는 장비 (옷은 입은 옷)
-export function curItem(save, k) { const t = slotTier(save, k), u = slotUp(save, k); return { s: k, t, g: u.g, e: u.e, id: WEAR_K.includes(k) ? save?.clothes?.wear?.[k] || null : null }; }
+// 지금 그 칸에 쓰는 장비 (옷은 능력을 주는 옷, #179)
+export function curItem(save, k) { const t = slotTier(save, k), u = slotUp(save, k); return { s: k, t, g: u.g, e: u.e, id: WEAR_K.includes(k) ? abilityCloth(save, k) : null }; } // 옷은 능력을 주는 옷 (#179)
 // 입을 수 있나: 장비는 지금 단계와 같을 때만(낮은 단계로 내려가면 산 단계를 잃음), 옷은 가진 옷일 때만 (값을 내지 않은 것을 얻지 않게)
 export function canEquip(save, it) {
   if (GEAR4.includes(it.s)) return it.t >= 1 && it.t === slotTier(save, it.s);
@@ -119,7 +119,7 @@ export function enhance(save, k) {
 // 칸의 등급·강화를 씀 (옷은 그 옷 id)
 export function setUp(save, k, u, clothIdNow) {
   const v = u && (u.g || u.e) ? { g: u.g | 0, e: u.e | 0 } : null;
-  if (WEAR_K.includes(k)) { const id = clothIdNow ?? save.clothes?.wear?.[k]; if (!id) return; save.clothes.up ||= {}; if (v) save.clothes.up[id] = v; else delete save.clothes.up[id]; return; }
+  if (WEAR_K.includes(k)) { const id = clothIdNow ?? abilityCloth(save, k); if (!id) return; save.clothes.up ||= {}; if (v) save.clothes.up[id] = v; else delete save.clothes.up[id]; return; }
   save.gearUp ||= {}; if (v) save.gearUp[k] = v; else delete save.gearUp[k];
 }
 
@@ -170,7 +170,7 @@ export function equipSpare(save, i) {
   const cur = curItem(save, it.s);
   save.loot.splice(i, 1);
   if (cur.t >= 1 && (cur.g || cur.e)) addSpare(save, cur);
-  if (WEAR_K.includes(it.s)) { const id = clothId(it.s, it.t); save.clothes.wear[it.s] = id; setUp(save, it.s, it, id); }
+  if (WEAR_K.includes(it.s)) { const id = clothId(it.s, it.t); setUp(save, it.s, it, id); } // 겉모습(wear)은 그대로, 능력은 가진 옷 중 가장 좋은 것 (#179)
   else { setUp(save, it.s, it); if (it.s === 'shoes' && save.equip?.boots === 2) save.equip.boots = 1; } // 장화(#167)를 신고 있었으면 벗음
   return true;
 }

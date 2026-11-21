@@ -40,6 +40,7 @@ function norm(s) {
   const C = s.clothes; if (!isObj(C.own)) C.own = {}; if (!isObj(C.wear)) C.wear = {};
   for (const id of Object.keys(C.own)) if (!CLOTH[id]) delete C.own[id];
   for (const [k, id] of Object.entries(C.wear)) if (id && !(CLOTH[id]?.slot === k && (C.own[id] || START_CLOTH.has(id)))) delete C.wear[k];
+  if (C.tint !== undefined) { const T = isObj(C.tint) ? C.tint : {}, o = {}; for (const id of Object.keys(T)) { const n = T[id]; if (CLOTH[id]?.tint && Number.isInteger(n) && n > 0 && n < LOOK_COLORS.style.length) o[id] = n; } C.tint = o; } // 겉모습 옷 색 (#179): 색 바꿀 수 있는 옷·범위 안 번호만
   if (!isObj(s.rides)) s.rides = {};
   s.rides.own = Array.isArray(s.rides.own) ? s.rides.own.filter((id, i, a) => RIDE[id] && a.indexOf(id) === i) : [];
   if (!s.rides.own.includes(s.rides.cur)) s.rides.cur = s.rides.own[s.rides.own.length - 1] || null;
@@ -96,6 +97,7 @@ function revertItems(P, S) {
   if (!P.equip.boots) S.equip.boots = 0;
   for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) delete S.clothes.own[id];
   for (const [k, id] of Object.entries(S.clothes.wear)) if (id && !(S.clothes.own[id] || START_CLOTH.has(id))) delete S.clothes.wear[k];
+  if (isObj(S.clothes.tint)) for (const id of Object.keys(S.clothes.tint)) if (!S.clothes.own[id]) delete S.clothes.tint[id];
   S.rides.own = S.rides.own.filter((id) => P.rides.own.includes(id)); if (!S.rides.own.includes(S.rides.cur)) S.rides.cur = S.rides.own[S.rides.own.length - 1] || null;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
   if (S.backs) { for (const id of Object.keys(S.backs.own)) if (!backOwn(P)[id]) delete S.backs.own[id]; if (!S.backs.own[S.backs.cur]) S.backs.cur = null; }

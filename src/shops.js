@@ -8,6 +8,7 @@ import { createManjok, SPOON } from './manjok.js';
 import { createGearShop, HAMMER } from './hardware.js';
 import { createStone } from './stone.js';
 import { FORK_KNIFE } from './stoneicons.js';
+import { ic } from './icons.js';
 import { createSalon } from './salon.js';
 import { createLeap } from './leap.js';
 import { createRideShop, RIDE_SHOP, RIDE_ICON } from './rides.js';
@@ -15,8 +16,8 @@ import { glowSprite } from './propmodel.js';
 
 // 가위 (루이네 미장원 #58, 상호작용 '머리' 아이콘과 같음)
 // 옷 (LEAP #59, 상호작용 '옷' 아이콘과 같음)
-export const SHIRT = '<path d="M8 4l4 2 4-2 4 3-2 4-2-1v10H8V10l-2 1-2-4z"/>';
-export const SCISSORS = '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/>';
+export const SHIRT = ic('wear');
+export const SCISSORS = ic('cut');
 
 // 가장자리 표시·입구 간판 아이콘 (24×24 선 그림)
 export const SHOP_ICON = {

@@ -233,6 +233,13 @@ export const TITLES = [
   { t: '쓰레기 수집가(합법)', badge: 'b-trash-2' },
   { t: '쪽지 수집가', badge: 'b-notes' },
   { t: '은하 환경미화원', badge: 'b-ending' }, // 엔딩(#168 story.js late.titles.give)
+  // 한 벌 맞춤 (#179): set = balance.js OUTFIT_SETS id. 그 묶음 세 벌을 다 가지면 열림 (글은 OUTFIT_SETS title 과 같게)
+  { t: '물질 장인', set: 'haenyeo' },
+  { t: '오름펑크', set: 'punk' },
+  { t: '줍깅 반장', set: 'clean' },
+  { t: '혼저옵서예', set: 'tourist' },
+  { t: '지구 견학 중', set: 'alien' },
+  { t: '귤밭 주인', set: 'farmer' },
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');

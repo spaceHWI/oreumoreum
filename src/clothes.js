@@ -77,7 +77,7 @@ export const COVER = { boots: ['foot', 'shin'],  tee: ['chest', 'waist', 'uppera
 const band = (m, y0, y1, pad, open = 0) => mesh(shell(TORSO, y0, y1, pad, { rows: 1, open }), m);
 
 // ---- 티셔츠 ----
-function tee(mat, L) {
+export function tee(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(TORSO, 0.345, 0.615, 0), M)];
   if (L.long) out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.37, 0.072, 0.058, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.36, s * 0.39, 0.061, 0.059, [ARM.y, ARM.z], { rows: 1, capHi: true }), A)));
   else out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.29, 0.072, 0.066, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.275, s * 0.295, 0.069, 0.069, [ARM.y, ARM.z], { rows: 1 }), A)));
@@ -88,7 +88,7 @@ function tee(mat, L) {
   return G(out);
 }
 // ---- 바지 ----
-function pants(mat, L) {
+export function pants(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), out = [mesh(shell(HIPS, 0.262, 0.4, 0, { rows: 4, capLo: true }), M)];
   if (L.kind === 'shorts') {
     out.push(...both((s) => mesh(tube('y', 0.2, 0.34, 0.082, 0.085, [s * LEG.x, LEG.z]), M)), ...both((s) => mesh(tube('y', 0.195, 0.215, 0.086, 0.086, [s * LEG.x, LEG.z], { rows: 1, capLo: true }), A)));
@@ -101,7 +101,7 @@ function pants(mat, L) {
   return G(out);
 }
 // ---- 베스트 (앞이 트인 조끼, 가장 바깥) ----
-function vest(mat, L) {
+export function vest(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), pad = L.puff ? 0.05 : 0.04, open = 0.42, out = [mesh(shell(TORSO, 0.37, 0.585, pad, { rows: 7, open }), side2(M))];
   if (L.puff) { const S = mat('seam', dark(L.main, 0.78)); [0.42, 0.48, 0.54].forEach((y) => out.push(band(S, y, y + 0.012, pad + 0.004, open))); }
   if (L.bands) [0.42, 0.5].forEach((y) => out.push(band(L.leaf ? mat('band', '#fff4e0') : A, y, y + 0.032, pad + 0.004, open)));
@@ -112,7 +112,7 @@ function vest(mat, L) {
   return G(out);
 }
 // ---- 잠바 (긴소매, 티셔츠 위) ----
-function jacket(mat, L) {
+export function jacket(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), pad = L.puff ? 0.026 : 0.018;
   const out = [mesh(shell(TORSO, 0.31, 0.6, pad, { rows: 9 }), M), ...both((s) => mesh(tube('x', s * 0.13, s * 0.375, 0.086, 0.07, [ARM.y, ARM.z]), M))];
   out.push(at(new THREE.BoxGeometry(0.016, 0.28, 0.012), A, 0, 0.455, frontZ(0.455, pad) - 0.002)); // 지퍼
@@ -124,7 +124,7 @@ function jacket(mat, L) {
   return G(out);
 }
 // ---- 양말 ----
-function socks(mat, L) {
+export function socks(mat, L) {
   // 목 높이 h 는 예전(짧은 다리) 기준 값 → 길어진 정강이에 맞춰 늘림 (#177). 굵기는 다리 단면(legR)을 따라 감쌈
   const M = mat('main', L.main), A = mat('acc', L.acc), h = 0.045 + ((L.h || 0.11) - 0.045) * 1.25, pad = L.thick ? 0.014 : 0.008, r = (y) => legR(y) + pad, out = [];
   out.push(...both((s) => mesh(tube('y', 0.02, h, r(0.04) - 0.003, r(h), [s * LEG.x, LEG.z], { rows: 3, capLo: true }), M)));
@@ -144,7 +144,7 @@ function scarf(mat, L) {
   return G(out);
 }
 // ---- 모자 (머리 뼈에 붙는 단단한 것). 머리 위 가운데 (0, 0.83, 0.045) ----
-const HC = { y: 0.8, z: 0.042 };
+export const HC = { y: 0.8, z: 0.042 };
 function hat(mat, L) {
   const M = mat('main', L.main), A = mat('acc', L.acc), out = [];
   const crown = (rt, rb, h, y) => { const c = at(new THREE.CylinderGeometry(rt, rb, h, 22, 1), M, 0, y, HC.z); c.scale.z = 1.04; const top = at(new THREE.SphereGeometry(rt, 22, 6, 0, Math.PI * 2, 0, Math.PI / 2), M, 0, y + h / 2, HC.z); top.scale.set(1, 0.28, 1.04); return [c, top]; };
@@ -208,6 +208,8 @@ export function boots(mat, L) {
   ]));
   return G(out);
 }
+// 새 모양 종류의 덮는 부위·모자 자르기 (#179, src/clothes2.js 가 채움): KIND_COVER[kind] = 덮는 몸 부위, KIND_HAT[kind] = { clip, hide }
+export const KIND_COVER = {}, KIND_HAT = {};
 export const HAT_CLIP = 0.97; // 모자 윗면 조금 아래: 머리카락(똥머리 등)이 이보다 위로 나오면 감춤 (#106)
 export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, boots, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat, santa: hat, antler: hat, box: hat, scarf };
 // 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
@@ -219,8 +221,8 @@ export const slippers = (mat, sole = '#3c8fd0', strap = '#2f6db5') => { // 색�
 export function clothAcc(c, look = c.look) {
   const L = look || {}, f = CLOTH_BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
   const rigid = c.slot === 'hat';
-  const covers = c.slot === 'top' ? (L.long ? COVER.teeLong : COVER.tee) : c.slot === 'bottom' ? (L.kind === 'long' ? COVER.long : COVER.shorts) : c.slot === 'jacket' ? COVER.jacket : [];
-  return { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: L.kind === 'antler' ? undefined : L.kind === 'box' ? 0.6 : HAT_CLIP, ...(L.kind === 'box' ? { hide: ['head'] } : {}) } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
+  const H = KIND_HAT[L.kind], covers = KIND_COVER[L.kind] || (c.slot === 'top' ? (L.long ? COVER.teeLong : COVER.tee) : c.slot === 'bottom' ? (L.kind === 'long' ? COVER.long : COVER.shorts) : c.slot === 'jacket' ? COVER.jacket : []);
+  return { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: H ? H.clip : L.kind === 'antler' ? undefined : L.kind === 'box' ? 0.6 : HAT_CLIP, ...(L.kind === 'box' || H?.hide ? { hide: ['head'] } : {}) } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
     build: (mat) => f(mat, { kind: c.slot === 'top' ? 'tee' : c.slot === 'hat' ? 'cap' : 'socks', main: '#bbbbbb', acc: '#888888', ...L }) };
 }
 // ACCESSORIES 에 옷을 붙임 (gear.js 가 부름)

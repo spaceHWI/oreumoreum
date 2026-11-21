@@ -50,6 +50,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | shop.js | 장비점 창(#128: 도구·배낭·무기 세 묶음, 폰은 탭)·사는 연출, 가게 안내(무엇을 어디서·`goShop(id)` 길 안내 → 도착하면 창·`shopGuide()` 메뉴/귤 칸), 살 수 있는 새 물건 점(지붕 간판·귤 칸, 본 것은 기기 localStorage), 미니맵 가게 아이콘, 내 가방 옷 줄(`buildWearRows`) |
 | look.js | 캐릭터 고르기·머리, 표지판, 탐방로 고르기 |
 | bag.js | 내 가방(#166): 배낭 칸·B·메뉴로 여는 한 창(`#wardrobe` 패널, 카메라 `cam.mode 'wardrobe'`), 탭 옷·무기·도구·배낭·탈것, 장비 점수·능력 4줄, 없는 것 [사러 가기]. `late.openBag(tab)`·`closeBag`·`bagRefresh`(예전 `openWardrobe`·`closeWardrobe`·`buildWardrobe` 이름도). 탈것·무기 고르기는 ride.js `chooseRide`·arms.js `chooseArm`. 확인 `node tools/bag.js` |
+| thumbs.js | 물건 그림(#184): 옷·도구·배낭·신발·무기·탈것을 실제 3D 모델로 찍은 작은 그림. 따로 만든 작은 렌더러(96px)로 처음 필요할 때 찍어 data URL 캐시, 한가할 때 미리 찍고 15초 안 쓰면 렌더러 버림. `late.itemArt(kind, i, cls)`·`late.rideArt(id)`, 옷은 `clothicons.js ART.thumb` 로 clothSvg 가 먼저 씀 |
+| iconui.js | 아이콘 글자 라벨(#184): 위쪽 칸 아래 2~4글자·폰 아래 버튼 글자를 처음 며칠(body.newbie, `save.lbl`, `balance.js ICON_LABEL`) |
 | nickname.js | 이름 바꾸기(#162): 메뉴 '이름 바꾸기'·내 가방 이름 옆 버튼 → `#nickwin` 창. 처음 한 번 무료, 그다음 귤(`NICK`), 하루 한 번. 로그인했으면 `account.rename` → 서버 `POST /nick`, 손님은 `save.nickRen`. 처음 짓기는 look.js(캐릭터 고르기 이름 칸, `save.nickSet`). 확인 `node tools/nick.js` |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
@@ -70,6 +72,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | smoker.js | 들머리 흡연자(#156): 들머리 클린하우스(CH) 둘레 SMOKER.near m 안·길에서 2~5m 비켜난 자리에 가끔 한 명(투기꾼 모양 `dumpers.js buildWalker({ jacket, withBag })`). 담배 피우는 동작·연기·머리 위 금연 표시·가장자리 표시(hooks.js `makeEdgeWarn`). 귤 한 번 → 놀라 도망·꽁초 1·귤 SMOKER.reward·업적 'smoker-repel'(뱃지 b-nosmoke). 안 쫓으면 꽁초 3개 버리고 떠남. 꽁초는 낱개 쓰레기(가까이 가면 배낭에 비닐 1, 도감 'butt:0', 저장 안 함). 맞히기·조준은 `life.addTargets`, 매 프레임은 `dumpers.update` 를 감쌈. `__oreum.smoker`(spawn·hit·leave·go·state·butts) |
 | mutter.js | 캐릭터 혼잣말(#169): 내 머리 위 실마리 말풍선(내 화면에만). 줄마다 조건·풀림·최대 3번, 일 줄(큰 더미·투기꾼 버림·가게 거리·정상), 한가한 줄. 차례는 감독 kind 'mutter', 글 `punktext.js MUTTER_TEXT`, 수치 balance.js MUTTER, 저장 save.mutter, 설정 '혼잣말'. `late.tickMutter`(update.js 감독 뒤), `__oreum.mutter.say(id)`, 확인 `node tools/mutter.js` |
 | punkworld.js | 오름펑크 세계(#165): 오름 방송(스피커 기둥·자막 띠 `#radio-strip`·상황 방송·설정 '오름 방송', 감독 문 radio)·쪽지(쓰레기 2%, `#punk-note`·칩 `#punk-chip`·도감 칸 late.dexExtra 감쌈)·칭호(업적 창 [칭호] `#punk-title`, save.punk.title → net.js `tt` 이름표 위). 글은 `src/punktext.js`, 수치 balance.js PUNK. `late.tickPunk`, `__oreum.punkWorld` |
+| outfitset.js | 한 벌 맞춤(#179): 겉모습으로 OUTFIT_SETS 세 벌을 입으면 캐릭터 둘레 빛 점(Points 하나, SET_FX)·칭호 토스트. `late.outfitSet = { check, tick, worn, titles }`(칭호는 가진 옷으로 셈, #165 가 씀). wearCloth 가 check, update.js 가 tick. 확인 `node tools/style.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
@@ -90,6 +93,9 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 머리: 머리 장비(gear.js 'hat:short|bob|bun', Tripo 머리, 머리 뼈에 붙음)를 쓰면 그것만. 아니면 runnermodel.js(Tripo)의 목 위 삼각형만 남긴 메시(구운 초록 모자). 눈 깜빡임(#74)·피부색은 머리 재질 셰이더
   - 옷·장비: 칸마다 따로 만든 껍데기. `skin: true` 면 몸과 같은 `skinWeights` 규칙(체형 맞춤 뒤)으로 휨, 아니면 `bone` 에 붙음. 장비 하나는 정점 색으로 구워 한 메시(그리기 1번, 양면 재질만 따로). `covers` 로 덮는 몸 부위를 감춤(옷 사이로 몸이 안 뚫림), 모자는 `clip` 위로 나온 머리카락을 감춤. 상의·하의·신발은 늘 하나(없으면 'top:base'·'bottom:shorts'·'shoes:s1')
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
+  - 겉모습 옷 (#179): balance.js `STYLE_CLOTHES`(tier 0·price·set·tint·fresh, CLOTHES 에 붙음)·`OUTFIT_SETS`(한 벌 맞춤 6). 새 모양 kind 와 있던 kind 의 덧붙임(무늬·멜빵·자락 등)은 `src/clothes2.js` (clothes.js 틀을 씀, gear.js 가 addClothes 전에 읽음). 새 kind 의 덮는 부위 `KIND_COVER`, 모자 자르기 `KIND_HAT`(clothes.js). 그림 clothicons.js `HAT2` 등. 색 바꾸기는 `id~번호` 장비(gear.js, LOOK_COLORS.style), 저장 save.clothes.tint
+  - 겉모습과 능력 (#179): 옷 칸 능력은 gearscore.js `abilityCloth(save, 칸)` = 가진 옷 중 점수 최고. slotTier·slotUp·loot curItem·강화가 이것을 씀. save.clothes.wear 는 겉모습만 (내 가방 옷 탭에서 고름, 능력 옷에 귤색 점)
+  - 확인: `node tools/clothes40.js`(40벌 서기·달리기·뒤·세트 그림), `node tools/style.js [shot]`(겉모습·능력·세트·색·LEAP 새 옷 탭), `node tools/fit.mjs`(뚫림)
   - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
 - 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
 - 오름펑크 글 (#165): punktext.js (#168 STORY_TEXT 뒤) — 방송(RADIO·RADIO_SITU)·쪽지(NOTES, id 는 저장에 씀)·칭호(TITLES, 번호가 멀티로 오가므로 뒤에만 더함). DOM 없음, 서버 validate·roomcore 도 씀
@@ -97,6 +103,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
 - 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
+- 아이콘 (#184): icons.js(아이콘 세트, `tools/icongen.mjs` 로 만듦: Tabler Icons(MIT, THIRD_PARTY.md) + 직접 그린 오름오름 것. `icon(id)`·`ic(id)`, page.html 은 `<svg data-i="id"></svg>` 를 build.mjs 가 채움) · iconart.js(id → 그림 주소로 갈아 끼우기). 목록·그림 뽑을 목록 notes/icons.md, 아이콘 시트 `node tools/iconsheet.mjs <이름>`
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js
 - 레벨·증강 (#159): augments.js — 저장만 읽는 순수 함수(레벨 곡선 `levelOf`·`xpAt`, 저장 고치기 `lvSave`, 증강 값 `augV(save, id)` = 겹친 수 × v, 뽑기 `rollDraw`, 옛 저장 경험치 `oldXp`, 서버 확인 `checkLv`). 능력치 자리마다 장비 값에 더함: 큰손 pickup.js·자석 귤 hooks.js pickR2·분리수거 달인 dump.js·쌍귤 throw.js/arms.js(덤 귤 `tg.twin` 은 못 주움)·빠른 손 charge.js·두꺼운 잠바 hooks.js·노루 친구 ride.js/update.js. 수치 balance.js LEVEL·AUGMENTS. 서버 validate.js·roomcore(`lv` 이름표)·heaps.js(분리수거 몫)
 - 장비 점수 (#137): gearscore.js — 저장(save)만 읽는 순수 함수 `gearScore(save)`(합·줍는 힘·싸우는 힘)·`scoreDiff`(상점·옷장 ▲/▼)·`zoneTone`(구역 빨강/노랑/초록). 수치는 balance.js GROWTH·ZONES rec. 게임(hud·pickup·shop·stores)·멀티 이름표(net.js)·`tools/econ.js` 가 같이 씀. 등급·강화는 save.gearUp / save.clothes.up 자리만
