@@ -237,12 +237,13 @@ function openChest() {
 interactables.push({ label: '상자 열기', ic: 'chest', pos: chestPos, r: CH.r, when: () => !!state.cave && !!D.chest && !chestGot(D.chest.id), act: openChest });
 
 // ---------- 동굴의 주인 ----------
-function wakeOwner() {
-  const R = D.ownerRoom, at = walkNear(D.F, R.x, R.z) || [R.x, R.z];
+function wakeOwner(at0 = null) { // at0: 동굴 적 받는 쪽 (#205)이 칸 주인 자리에 만듦
+  const R = D.ownerRoom, at = at0 || walkNear(D.F, R.x, R.z) || [R.x, R.z];
   const e = life.enemies.spawnStory(OW.kind, at[0], at[1], { id: 'cave', k: OW.k, over: { name: OW.name, hp: OW.hp, dmg: OW.dmg, walk: OW.walk, reward: { gyul: ownerGot() ? OW.small : 0, rare: 0 }, life: 1e9 } });
   e.cave = true; e.owner = true; e.calls = 0; e.fled = 0; e.heading = Math.atan2(player.pos.x - e.pos.x, player.pos.z - e.pos.z);
   D.owner = e; D.ownerSeen = true; D.rainT = frange(Math.random, OW.rain.every);
   toast(L3.owner, 3); late.sound?.fanfare?.();
+  return e;
 }
 function ownerGone() {
   const e = D.owner; e.fled = 1;
@@ -258,18 +259,18 @@ function ownerGone() {
 }
 function tickOwner(dt) {
   const R = D.ownerRoom; if (!R) return;
-  const d = Math.hypot(player.pos.x - R.x, player.pos.z - R.z);
-  if (!D.ownerSeen && d < R.r + OW.wake && !(hp.isDown || hp.pending)) wakeOwner();
+  const d = Math.hypot(player.pos.x - R.x, player.pos.z - R.z), host = late.caveHost?.() ?? true; /* 동굴 적 같이 보기 (#205): 칸 주인만 깨움(같은 칸 사람이 다가가도) */
+  if (!D.ownerSeen && host && ((d < R.r + OW.wake && !(hp.isDown || hp.pending)) || (late.cavePeers?.() || []).some((p) => Math.hypot(p.x - R.x, p.z - R.z) < R.r + OW.wake))) wakeOwner();
   const e = D.owner; if (!e) return;
   D.calls = D.calls.filter((m) => life.enemies.list.includes(m));
   const live = life.enemies.list.includes(e) && e.state !== 'flee';
   if (!live) { if (!e.fled) ownerGone(); if (life.enemies.list.includes(e) && (e.fledT = (e.fledT || 0) + dt) > 3) life.enemies.remove(e); bossBar(false); return; }
   const fight = AGGRO.has(e.state) || d < R.r + 2;
-  if (AGGRO.has(e.state)) e.calmT = 0; else restRegen(e, dt, e.def.hp);
+  if (e.net) { /* 받는 쪽: 기운·드론은 칸 주인 값 */ } else if (AGGRO.has(e.state)) e.calmT = 0; else restRegen(e, dt, e.def.hp);
   if (fight && !(hp.isDown || hp.pending)) {
     if ((D.rainT -= dt) <= 0) { D.rainT = frange(Math.random, OW.rain.every); rockRain(irange(Math.random, OW.rain.n), OW.rain.r, OW.rain.dmg, 5); }
     const f = e.hp / e.def.hp;
-    while (e.calls < OW.call.at.length && f < OW.call.at[e.calls]) {
+    while (!e.net && e.calls < OW.call.at.length && f < OW.call.at[e.calls]) {
       e.calls++;
       for (let k = 0; k < OW.call.n; k++) { const a = Math.random() * 6.28, at = walkNear(D.F, e.pos.x + Math.cos(a) * 4, e.pos.z + Math.sin(a) * 4); if (!at) continue; const m = life.enemies.spawnStory(OW.call.kind, at[0], at[1], { id: 'cave' }); m.cave = true; D.calls.push(m); }
       toast('주인이 드론을 불렀어요!', 2);
@@ -303,6 +304,9 @@ function bossBar(on, e) {
     if (D.chest && !chestGot(D.chest.id)) D.chest.glow.material.opacity = 0.14 + 0.08 * Math.sin(performance.now() / 300);
   };
 }
+
+// 동굴 적 같이 보기 (#205, game/caveshare.js): 받는 쪽이 주인·드론을 만들고 고리를 붙임
+late.caveDeep = { D, owner: (x, z) => wakeOwner([x, z]), call: (m) => { D.calls.push(m); }, seen: () => D.ownerSeen, setSeen: () => { D.ownerSeen = true; } };
 
 // ---------- 확인용 (__oreum.cave 에 더함) ----------
 const tp = (x, z) => { const at = walkNear(D.F, x, z) || [x, z]; player.pos.set(at[0], D.F.floorY(at[0], at[1]), at[1]); player.visY = player.pos.y; player.target = null; D.safe.copy(player.pos); return { x: +at[0].toFixed(1), z: +at[1].toFixed(1) }; };

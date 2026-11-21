@@ -429,6 +429,22 @@ async function startServers() {
       ok(ms.a.filter((m) => m.t === 'rw').length === 1 && ms.b.filter((m) => m.t === 'rw').length === 1, '보상 알림은 한 번씩');
       for (let i = 0; i < 6; i++) core.message(a, JSON.stringify({ t: 'rp', i: 0 })); core.step(); ok(!core.takeEarned(), '끝난 뒤 줍기로 보상 두 번 받기 거절');
     }
+    { // #205 동굴 적 같이 보기: 먼저 들어온 사람이 칸 주인, 칸 주인만 적 상태를 알림·다른 칸엔 안 감·피해는 잘려 칸 주인에게만·칸 주인이 나가면 다음 사람
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { NET: N3, CAVE: CV } = await import('../src/balance.js');
+      let T0 = 1e12; const core = createRoomCore({ now: () => T0 }); const ms = { a: [], b: [], c: [] };
+      const a = core.join((x) => ms.a.push(JSON.parse(x))), bq = core.join((x) => ms.b.push(JSON.parse(x))), cq = core.join((x) => ms.c.push(JSON.parse(x)));
+      const day = '2026-11-21', k1 = '1:' + day, pres = (p, f) => core.message(p, JSON.stringify({ t: 'p', d: { x: 0, z: 0, cv: f, cd: day, cx: CV.x0 + (f - 1) * CV.floorGap, cz: CV.z0 } }));
+      pres(a, 1); T0 += 100; pres(bq, 1); T0 += 100; pres(cq, 2); T0 += 100;
+      ok(ms.b.some((m) => m.t === 'ch' && m.id === a.id && m.k === k1) && ms.c.some((m) => m.t === 'ch' && m.id === cq.id), '동굴 칸 주인: 먼저 들어온 사람 (칸마다 따로)');
+      const row = [1, 0, CV.x0, CV.z0, 0, 1, 30, 30, 0], cs = (p, k) => core.message(p, JSON.stringify({ t: 'cs', k, e: [row] })), n = (k) => ms[k].filter((m) => m.t === 'cs').length;
+      cs(bq, k1); ok(n('a') === 0 && n('c') === 0, '칸 주인 아닌 사람의 동굴 적 상태는 버림');
+      T0 += 200; cs(a, k1); ok(n('b') === 1 && n('c') === 0, '동굴 적 상태는 같은 칸 사람에게만');
+      T0 += 200; cs(a, '2:' + day); ok(n('b') === 1, '지금 칸과 다른 칸 이름의 적 상태는 버림');
+      T0 += 200; core.message(bq, JSON.stringify({ t: 'cx', h: [[1, 1e9]] })); const hx = ms.a.filter((m) => m.t === 'cx');
+      ok(hx.length === 1 && hx[0].h[0][1] <= N3.bossHitMax && hx[0].from === bq.id && !ms.c.some((m) => m.t === 'cx'), `동굴 적 피해는 칸 주인에게만, 잘려서 (${hx[0]?.h[0][1]})`);
+      T0 += 200; core.message(cq, JSON.stringify({ t: 'cx', h: [[1, 5]] })); ok(ms.a.filter((m) => m.t === 'cx').length === 1, '다른 칸 사람의 피해는 안 감');
+      core.leave(a); ok(ms.b.some((m) => m.t === 'ch' && m.id === bq.id), '칸 주인이 나가면 다음 사람이 칸 주인');
+    }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });
