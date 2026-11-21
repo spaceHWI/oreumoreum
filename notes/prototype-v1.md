@@ -58,6 +58,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | forge.js | 강화(#140): 장비점 창 [사기 | 강화] (shop.js `gearTabs`·`fillGearShop` 를 감쌈), 칸 10개·지금 → 다음·필요한 것·[강화]·[가는 길], 재료 주머니·안 쓰는 장비·자동 정리 설정. `__oreum.forge` |
 | quest.js | 퀘스트(#158): `src/quest.js`(차례·진행, DOM 없음)를 게임에 붙임. 주는 사람(오름지기·구역 표지판·가게 주인)과 머리 위 !·?, 상호작용 → 받기·끝내기 창(`#quest`), 추적 줄(`#quest-track`, 누르면 dump.js `startAutoGo`), 퀘스트 창(`#qlog`, L·메뉴), 지도 표시 `late.questIcons`, 셈(ach.emit 감쌈·trash.on·`late.questEv`), 할인권 `late.questOff`·`questUse`, 감독 문 quest·shopQuest·shopQuests. 표는 balance.js QUESTS. `__oreum.quest`, 확인 `node tools/questrun.js` |
 | season.js | 철 이벤트(#180 크리스마스): 켜짐(서버 날짜·어드민 미리 보기), 꾸밈 만들기·숨기기, 쌓인 눈(`NSW.zoneSnow`), 트리(`GET /season` 합계)·접속 달력(`#xmas`)·산타 투기꾼 선물 상자·눈덩이·루돌프·성탄 인사·뱅쇼 빛. `late.season`(isOn·dress·repel·snowThrow·tick·fixed), `__oreum.season`, 확인 `node tools/xmas.js` |
+| punk.js | 오름펑크 아이템(#164): 감귤 박스 헬멧 박스 시야(`#box-view`)·'퉁' 소리(`late.boxThud`), 해녀 테왁 배낭(배낭 겉모습 save.backs, 장비점 카드 `late.backCards`·내 가방 줄 `late.backLookRow`, 망사리 불룩 state.backFill, 개울에 뜸 `stream.hooks.float`·`late.tickSwim`·state.swim). `__oreum.punk`, 확인 `node tools/punk.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |

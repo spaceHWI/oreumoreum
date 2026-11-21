@@ -796,6 +796,7 @@ export const CLOTHES = [
   { id: 'hat:w-straw', slot: 'hat', tier: 2, name: '밀짚모자', look: { kind: 'straw', main: '#e3c77d', acc: '#b5482f' } },
   { id: 'hat:w-bucket', slot: 'hat', tier: 3, name: '버킷햇', look: { kind: 'bucket', main: '#3f78c0', acc: '#f2efe6' } },
   { id: 'hat:w-hike', slot: 'hat', tier: 4, name: '챙 넓은 등산 모자', look: { kind: 'boonie', main: '#6f7f4a', acc: '#9a6ad0', cord: '#2b2b33' } },
+  { id: 'hat:p-box', slot: 'hat', tier: 3, name: '감귤 박스 헬멧', guard: 0.05, desc: '머리는 차갑게, 귤은 따뜻하게', look: { kind: 'box', main: '#c89a5e', acc: '#f29a2e', ink: '#6a4a2a' } }, // 오름펑크 (#164): 모자 3단계 능력 + 받는 피해 -5%, 쓰면 박스 시야
   { id: 'hat:w-gyul', slot: 'hat', tier: 5, name: '귤꽃 모자', look: { kind: 'flower', main: '#f6efe0', acc: '#f29a2e', leaf: '#3f9a5a', petal: '#ffffff' } },
   // 티셔츠
   { id: 'top:w-tee', slot: 'top', tier: 1, name: '기본 반팔', look: { kind: 'tee', main: '#e8dfc8', acc: '#d6ccb2' } },
@@ -1345,3 +1346,20 @@ export const SEASON = {
     ],
   },
 };
+
+// 배낭 겉모습 (#164 오름펑크): 배낭 능력 단계는 그대로, 모양만 바꿈. 장비점에서 사고 내 가방 배낭 탭에서 고름
+// 저장 save.backs = { own: { id: 1 }, cur: id | null }. need = 이 배낭 단계 이상일 때 고를 수 있음. 서버 validate.js 가 값 확인
+export const BACK_LOOKS = [
+  { id: 'tewak', name: '해녀 테왁 배낭', price: 800, need: 3, desc: '물에 빠지면 둥둥 떠요. 숨비소리는 덤', float: true },
+];
+// 테왁으로 물에 뜨기 (#164): 개울에서 빠지지 않고 떠서 지나감
+export const TEWAK = {
+  speed: 0.7, // 물 위 이동 빠르기 배수
+  sink: 0.62, // 물낯에서 몸이 잠기는 깊이 (m)
+  bob: 0.06, bobHz: 1.6, // 둥둥 흔들림
+  ringEvery: 0.7, // 물결 고리 간격(초)
+  fill: [0.34, 0.67], // 망사리 불룩 단계: 배낭이 이만큼 차면 1·2단계
+};
+// 박스 시야 (#164): 감귤 박스 헬멧을 쓰면 화면 가장자리 테두리. 화면 폭 비율 (폰 600px 이하 phone)
+export const BOX_VIEW = { desk: 0.06, phone: 0.04 };
+

@@ -187,6 +187,19 @@ async function startServers() {
       r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
       ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
     }
+    /* ---------- 배낭 겉모습 (#164): 값 내고 사기·없는 것 지움 ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js');
+      const P = { ...S0, coins: 0 }, acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: Date.now() }, t = Date.now();
+      let r = checkSave(P, { ...P, backs: { own: { tewak: 1 }, cur: 'tewak' } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.backs.own.tewak && r.save.backs.cur === null, '귤 없이 테왁 배낭 사기 되돌림');
+      r = checkSave({ ...P, coins: 800 }, { ...P, coins: 0, backs: { own: { tewak: 1, rocket: 1 }, cur: 'rocket' } }, acc, t);
+      ok(!r.fixed.length && r.save.backs.own.tewak && !r.save.backs.own.rocket && r.save.backs.cur === null, '귤 800 으로 테왁 사기·목록에 없는 겉모습 지움');
+      const { WEAR } = await import('../src/balance.js'), bp = WEAR.price[3];
+      r = checkSave({ ...P, coins: 0 }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t); // (옛 값 OLD_PRICE 가 지워지기 전에는 더 싼 쪽으로 셈 #145)
+      const r2 = checkSave({ ...P, coins: bp }, { ...P, coins: 0, clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } }, acc, t);
+      ok(r.fixed.includes('items') && !r.save.clothes.own['hat:p-box'] && !r2.fixed.length && r2.save.clothes.own['hat:p-box'], `감귤 박스 헬멧은 모자 3단계 값(${bp})으로 삼·귤 없으면 되돌림`);
+    }
     // 닉네임·말 넣기
     const bad = '<img src=x onerror=alert(1)>‮관리자\u0000'.repeat(3);
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, nick: bad } } });
