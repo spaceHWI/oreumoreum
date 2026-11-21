@@ -177,7 +177,7 @@ const RUN = {
       tick(dt) {
         t += dt; const u = Math.min(1, t / N.t), sm = u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u), mid = Math.max(0, 1 - Math.abs(u - 0.5) * 6);
         ufo.root.position.set(from[0] + (to[0] - from[0]) * sm, y0 + Math.sin(t * 2) * 0.6, from[1] + (to[1] - from[1]) * sm); ufo.root.rotation.y += dt * 1.4;
-        ufo.setBeam(N.y, 0.45 * mid);
+        { const q = ufo.root.position; ufo.setBeam(q.y - height(q.x, q.z) + 1, 0.45 * mid); } // 빛기둥은 지나는 자리 땅까지 (#192)
         if (!dropped && u >= 0.5) {
           dropped = true; trash?.drop(at.x, at.z, N.trash, 40); trash?.store.commit();
           for (let i = 0; i < N.cans; i++) { const a = i / N.cans * 6.283, x = at.x + Math.sin(a) * 1.4, z = at.z + Math.cos(a) * 1.4; S.cans.push([x, z]); addCan(x, z); }

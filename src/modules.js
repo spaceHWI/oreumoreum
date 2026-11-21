@@ -103,6 +103,7 @@ import './game/nexthint.js'; // 다음 할 일 (#142): 추적 줄에 잠깐 바�
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
 import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
 import './game/buddies.js'; // 동료 캐릭터 3명 (#172)
+import './game/give.js'; // 귤 주기 (#175): 다른 사람·동료에게
 import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: 적·우두머리 후크를 감쌈)
 import './game/feel.js'; // 손맛 (#141): 콤보·피해 숫자·연속·진동 (level 뒤: 적 후크를 감쌈)
 import './game/ending.js'; // 엔딩 시네마틱 (#168)
@@ -114,6 +115,7 @@ import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영
 import './game/simple.js'; // 화면 단순하게·전체 화면 안내 (#189)
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
+import './game/idle.js'; // 오래 멈추면 쉬러 가기 (#157)
 import './game/metrics.js'; // 이용 통계 (#121): 업적·쓰레기·적 후크를 감싸서 셈 (start.js 전)
 import './game/metricsadmin.js'; // 어드민 '수치' 표 (#121)
 import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑

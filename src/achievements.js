@@ -1,43 +1,9 @@
-// 업적: 매일 바뀌는 오늘의 업적 5개 + 평생 업적(뱃지). 보상은 귤과 한정 아이템
+// 업적: 매일 바뀌는 오늘의 할 일 3개(#125, src/daily.js) + 이어 오기 + 평생 업적(뱃지). 보상은 귤과 한정 아이템
 // 이벤트 이름 → 진행도. emit(event, n)
-import { ACH } from './balance.js';
+import { kstDate, kstDayN, todaysTasks, TASK_BY, taskGyul, allGyul, runGyul, runStep, RUN_DAYS } from './daily.js';
+export { kstDate };
 
-// 오늘의 업적 풀. map: 그 맵에서만 가능한 것
-export const DAILY_POOL = [
-  // 남송이 풀 (ns): 쓰레기 줍기 기준 (#13)
-  { id: 'd-trash-50', ev: 'trash', goal: 50, name: '쓰레기 50개 줍기', reward: 10, ns: true },
-  { id: 'd-trash-150', ev: 'trash', goal: 150, name: '쓰레기 150개 줍기', reward: 25, ns: true },
-  { id: 'd-recycle-2', ev: 'recycle', goal: 2, name: '클린하우스 2번 다녀오기', reward: 8, ns: true },
-  { id: 'd-recycle-5', ev: 'recycle', goal: 5, name: '클린하우스 5번 다녀오기', reward: 20, ns: true },
-  { id: 'd-foam-10', ev: 'trash-foam', goal: 10, name: '스티로폼 10개 줍기', reward: 10, ns: true },
-  { id: 'd-gear-5', ev: 'trash-gear', goal: 5, name: '폐어구 5개 줍기', reward: 12, ns: true },
-  { id: 'd-heap-1', ev: 'heap-clear', goal: 1, name: '쓰레기 더미 1곳 치우기', reward: 15, ns: true },
-  { id: 'd-earn-100', ev: 'earn', goal: 100, name: '귤 100 벌기', reward: 10, ns: true },
-  { id: 'd-top-20', ev: 'trash-top', goal: ACH.topPick.goal, name: `정상 근처에서 ${ACH.topPick.goal}개 줍기`, reward: 15, ns: true },
-  { id: 'd-sunpick', ev: 'trash-sun', goal: ACH.sunPick.goal, name: `해돋이·해넘이 때 ${ACH.sunPick.goal}개 줍기`, reward: 20, ns: true },
-  { id: 'd-rainpick', ev: 'trash-rain', goal: 5, name: '비 올 때 5개 줍기', reward: 15, ns: true },
-  { id: 'd-steps-1500', ev: 'steps', goal: 1500, name: '천천히 1,500걸음', reward: 8, ns: true },
-  { id: 'd-steps-4000', ev: 'steps', goal: 4000, name: '오늘은 4,000걸음', reward: 15, ns: true },
-  { id: 'd-ns-ridge', ev: 'view-namsongi', goal: 1, name: '남송이 능선 오르기', reward: 12, map: 'namsongi', ns: true },
-  { id: 'd-stone', ev: 'stone', goal: 1, name: '돌탑에 소원 하나', reward: 6, ns: true },
-  { id: 'd-stone-2', ev: 'stone', goal: 2, name: '돌탑 두 곳에 돌 올리기', reward: 12 },
-  { id: 'd-photo', ev: 'photo', goal: 1, name: '표지석 인증샷', reward: 10, ns: true },
-  { id: 'd-feed', ev: 'feed', goal: 1, name: '동물에게 귤 주기', reward: 8 },
-  { id: 'd-feed-3', ev: 'feed', goal: 3, name: '귤 세 번 나눠 주기', reward: 15 },
-  { id: 'd-follow', ev: 'follower', goal: 1, name: '동물 친구와 함께 걷기', reward: 10 },
-  { id: 'd-ride', ev: 'ride', goal: 1, name: '노루 타 보기', reward: 10 },
-  { id: 'd-ride-dist', ev: 'ride-dist', goal: 300, name: '노루 타고 300m', reward: 15 },
-  { id: 'd-hareubang', ev: 'hareubang', goal: 1, name: '하르방 코에 귤 맞히기', reward: 8 },
-  { id: 'd-boar', ev: 'boar-repel', goal: 1, name: '멧돼지 귤로 쫓기', reward: 15 },
-  { id: 'd-pickup', ev: 'pickup', goal: 8, name: '떨어진 귤 8개 줍기', reward: 6 },
-  { id: 'd-sit', ev: 'sit', goal: 1, name: '쉼터에서 쉬어 가기', reward: 5, ns: true },
-  { id: 'd-emote', ev: 'emote', goal: 5, name: '동작으로 다섯 번 말하기', reward: 5 }, // 호흡 대신 (#76)
-  { id: 'd-dance-top', ev: 'dance-top', goal: 1, name: '전망 좋은 곳에서 춤추기', reward: 8 },
-  { id: 'd-jump', ev: 'jump', goal: 20, name: '점프 20번', reward: 4 },
-  { id: 'd-chat', ev: 'chat', goal: 1, name: '말풍선으로 인사', reward: 4 },
-  { id: 'd-sign', ev: 'sign', goal: 1, name: '탐방 안내 읽기', reward: 3 },
-  { id: 'd-sun', ev: 'sun-watch', goal: 1, name: '정상에서 해돋이나 해넘이 보기', reward: 25 },
-];
+// 오늘의 할 일 (#125): 목록·고르기·보상은 src/daily.js (예전 '오늘의 업적 5개' DAILY_POOL 을 바꿈)
 
 // 평생 업적 → 뱃지. glyph: 뱃지 위 글자, color: 뱃지 색, item: 보상 아이템 키
 export const BADGES = [
@@ -56,10 +22,14 @@ export const BADGES = [
   { id: 'b-arm-mg', ev: 'weapon-buy-mg', goal: 1, name: '귤 소나기', desc: '귤 머신건을 샀어요', glyph: '연', color: '#c9473d', reward: 80 },
   { id: 'b-arm-laser', ev: 'weapon-buy-laser', goal: 1, name: '귤즙 광선', desc: '귤즙 레이저를 샀어요', glyph: '빛', color: '#ff9a1f', reward: 150 },
   { id: 'b-arm-bomb', ev: 'weapon-buy-bomb', goal: 1, name: '귤 폭탄 장인', desc: '귤 폭탄을 샀어요', glyph: '폭', color: '#3f9a5a', reward: 250 },
+  { id: 'b-give', ev: 'gift-give', goal: 100, name: '귤 인심', desc: '귤 100개 나눠 주기', glyph: '심', color: '#f0902a', reward: 20 }, // 귤 주기 (#175, GIVE.achGoal)
   { id: 'b-photo', ev: 'photo', goal: 5, name: '인증샷 장인', desc: '표지석 인증샷 5장', glyph: '찰', color: '#33402a', reward: 20 },
-  { id: 'b-streak-3', ev: 'daily-all', goal: 3, name: '사흘 개근', desc: '오늘의 업적을 모두 마친 날 3일', glyph: '3', color: '#8f7bd6', reward: 40 },
-  { id: 'b-streak-7', ev: 'daily-all', goal: 7, name: '일주일 개근', desc: '오늘의 업적을 모두 마친 날 7일', glyph: '7', color: '#7fb8e8', reward: 100, item: 'glasses:t:round' },
-  { id: 'b-streak-30', ev: 'daily-all', goal: 30, name: '한 달 개근', desc: '오늘의 업적을 모두 마친 날 30일', glyph: '30', color: '#d6a13b', reward: 300 },
+  { id: 'b-streak-3', ev: 'daily-all', goal: 3, name: '사흘 개근', desc: '오늘의 할 일을 모두 마친 날 3일', glyph: '3', color: '#8f7bd6', reward: 40 },
+  { id: 'b-streak-7', ev: 'daily-all', goal: 7, name: '일주일 개근', desc: '오늘의 할 일을 모두 마친 날 7일', glyph: '7', color: '#7fb8e8', reward: 100, item: 'glasses:t:round' },
+  { id: 'b-run-3', ev: 'run-3', goal: 1, name: '사흘 연속', desc: '사흘 이어서 왔어요', glyph: '3', color: '#5aa06a', reward: 0 }, // 이어 오기 (#125): 귤은 daily.js runGyul
+  { id: 'b-run-7', ev: 'run-7', goal: 1, name: '일주일 연속', desc: '이레 이어서 왔어요', glyph: '7', color: '#3f8fb0', reward: 0 },
+  { id: 'b-run-14', ev: 'run-14', goal: 1, name: '두 주 연속', desc: '열나흘 이어서 왔어요', glyph: '14', color: '#c98a2a', reward: 0 },
+  { id: 'b-streak-30', ev: 'daily-all', goal: 30, name: '한 달 개근', desc: '오늘의 할 일을 모두 마친 날 30일', glyph: '30', color: '#d6a13b', reward: 300 },
 ];
 
 // 단계형 뱃지(#13): 같은 fam 은 한 칸에 단계가 올라감. 단계마다 따로 받음. 기존 id 는 그대로
@@ -101,70 +71,65 @@ BADGES.push(
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
 );
 
-export const kstDate = (t = Date.now()) => { const k = new Date(t + 9 * 3600000); return `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, '0')}-${String(k.getUTCDate()).padStart(2, '0')}`; };
-
-function seeded(str) { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 100000) / 100000; }; }
-
-// 날짜로 정해지는 오늘의 업적 5개: 모두에게 같음. 맵 전용은 최대 2개, 보상 높은 것 1개 포함
-// 지금 열려 있는 맵(남송이오름)에서 할 수 있는 것만 오늘의 업적으로 뽑음
-const usable = (a) => !!a.ns;
-export function todaysDaily(date) {
-  const r = seeded('oreum-' + date);
-  const pool = DAILY_POOL.filter(usable);
-  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  const out = []; let mapOnly = 0; const evs = new Set();
-  for (const a of pool) {
-    if (out.length >= 5) break;
-    if (evs.has(a.ev)) continue;
-    if (a.map && mapOnly >= 2) continue;
-    out.push(a); evs.add(a.ev); if (a.map) mapOnly++;
-  }
-  return out;
-}
-
-export function createAchievements({ save, persist, onDone, mapId }) {
+// cond(kind): 지금 'rain'(비)·'night'(해 진 뒤)인가 · zone(): 가 본 가장 깊은 구역(보상) · active(): 오늘의 할 일을 셀 때인가(튜토리얼 중엔 아님)
+export function createAchievements({ save, persist, onDone, mapId, cond = () => false, zone = () => 1, active = () => true }) {
   if (!save.ach || typeof save.ach !== 'object') save.ach = { daily: null, life: {}, badges: {}, allDays: 0, lastAll: null };
   const A = save.ach;
   for (const k of ['life', 'badges']) if (!A[k] || typeof A[k] !== 'object') A[k] = {}; // 예전·깨진 저장 (#16)
   if (A.daily && (typeof A.daily !== 'object' || !Array.isArray(A.daily.items))) A.daily = null;
   delete A.visited; for (const id of Object.keys(A.badges)) if (!BADGES.some((b) => b.id === id)) delete A.badges[id]; // 지운 뱃지는 받은 기록도 지움 (#88)
   A.allDays = Math.max(0, Math.floor(Number(A.allDays)) || 0);
+  { const R = A.run && typeof A.run === 'object' ? A.run : {}; A.run = { n: Math.max(0, Math.floor(Number(R.n)) || 0), last: Math.floor(Number(R.last)) || 0, got: Array.isArray(R.got) ? R.got.filter((x) => RUN_DAYS.includes(x)) : [] }; } // 이어 오기 (#125)
+  // 오늘 것이 아니면(날이 바뀜·예전 '오늘의 업적' 저장) 새로. 같은 날이면 같은 할 일의 진행은 남김
   function ensureDaily() {
-    const d = kstDate();
-    if (!A.daily || A.daily.date !== d || A.daily.items.some((x) => { const f = DAILY_POOL.find((y) => y.id === x.id); return !f || (!usable(f) && !x.done); })) {
-      A.daily = { date: d, items: todaysDaily(d).map((x) => ({ id: x.id, prog: 0, done: false, claimed: false })) };
+    const d = kstDate(), want = todaysTasks(d).map((x) => x.id), D = A.daily;
+    if (!D || D.date !== d || D.items.length !== want.length || D.items.some((x, i) => !x || x.id !== want[i])) {
+      const old = D && D.date === d ? D.items : [];
+      A.daily = { date: d, items: want.map((id) => { const o = old.find((x) => x && x.id === id); return o ? { id, prog: +o.prog || 0, done: !!o.done, claimed: !!o.claimed } : { id, prog: 0, done: false, claimed: false }; }), all: 0, seen: D && D.date === d ? D.seen || 0 : 0 };
       persist();
     }
     return A.daily;
   }
   ensureDaily();
-  const defD = (id) => DAILY_POOL.find((x) => x.id === id);
+  const defD = (id) => (TASK_BY[id] ? { ...TASK_BY[id], reward: taskGyul(zone()) } : null);
   function emit(ev, n = 1) {
     const daily = ensureDaily();
     let changed = false;
-    for (const it of daily.items) {
-      const def = defD(it.id); if (!def || it.done || def.ev !== ev) continue;
-      it.prog = Math.min(def.goal, it.prog + n); changed = true;
-      if (it.prog >= def.goal) { it.done = true; onDone({ kind: 'daily', def }); }
+    if (active()) for (const it of daily.items) {
+      const def = TASK_BY[it.id]; if (!def || it.done || def.ev !== ev) continue;
+      const k = def.x2 && cond(def.x2) ? 2 : 1; // 그날 날씨·시간에 맞으면 두 배로 셈
+      it.prog = Math.min(def.goal, it.prog + n * k); changed = true;
+      if (it.prog >= def.goal) { it.done = true; onDone({ kind: 'daily', def: defD(it.id) }); }
     }
     // 평생
     A.life[ev] = (A.life[ev] || 0) + n;
     for (const b of BADGES) {
       if (b.ev !== ev || A.badges[b.id]) continue;
-      if (A.life[ev] >= b.goal) { A.badges[b.id] = { at: Date.now(), claimed: false }; changed = true; onDone({ kind: 'badge', def: b }); }
+      if (A.life[ev] >= b.goal) { A.badges[b.id] = { at: Date.now(), claimed: !b.reward }; changed = true; onDone({ kind: 'badge', def: b }); }
     }
     if (daily.items.every((x) => x.done) && A.lastAll !== daily.date) { A.lastAll = daily.date; A.allDays++; onDone({ kind: 'allday' }); emitLife('daily-all', 1); }
     if (changed) persist();
   }
   function emitLife(ev, n) { // daily 없이 평생만
     A.life[ev] = (A.life[ev] || 0) + n;
-    for (const b of BADGES) { if (b.ev !== ev || A.badges[b.id]) continue; if (A.life[ev] >= b.goal) { A.badges[b.id] = { at: Date.now(), claimed: false }; onDone({ kind: 'badge', def: b }); } }
+    for (const b of BADGES) { if (b.ev !== ev || A.badges[b.id]) continue; if (A.life[ev] >= b.goal) { A.badges[b.id] = { at: Date.now(), claimed: !b.reward }; onDone({ kind: 'badge', def: b }); } }
     persist();
   }
+  // kind 'daily' (id: 할 일) · 'all' (셋 다) · 'badge'. → { name, reward } | null
   function claim(kind, id) {
     if (kind === 'daily') { const it = ensureDaily().items.find((x) => x.id === id); if (!it || !it.done || it.claimed) return null; it.claimed = true; persist(); return defD(id); }
+    if (kind === 'all') { const d = ensureDaily(); if (d.all || !d.items.every((x) => x.claimed)) return null; d.all = 1; persist(); return { name: '오늘의 할 일 모두', reward: allGyul(zone()) }; }
     const b = A.badges[id]; if (!b || b.claimed) return null; b.claimed = true; persist(); return BADGES.find((x) => x.id === id);
   }
-  const unclaimed = () => ensureDaily().items.filter((x) => x.done && !x.claimed).length + Object.values(A.badges).filter((b) => !b.claimed).length;
-  return { emit, claim, ensureDaily, defD, unclaimed, state: A };
+  const allReady = () => { const d = ensureDaily(); return !d.all && d.items.every((x) => x.claimed); };
+  // 이어 오기: 튜토리얼을 마친 뒤 들어와 있을 때 부름 (날이 바뀌면 다시). 3·7·14일째면 { n, reward } (귤은 부른 쪽이 줌, 뱃지는 여기서)
+  function visit() {
+    const r = runStep(A.run, kstDayN()); if (!r.step) return null;
+    A.run = r.run; let out = null;
+    const n = A.run.n;
+    if (RUN_DAYS.includes(n) && !A.run.got.includes(n)) { A.run.got.push(n); out = { n, reward: runGyul(n, zone()) }; emitLife('run-' + n, 1); }
+    persist(); return out;
+  }
+  const unclaimed = () => ensureDaily().items.filter((x) => x.done && !x.claimed).length + (allReady() ? 1 : 0) + Object.values(A.badges).filter((b) => !b.claimed).length;
+  return { emit, claim, ensureDaily, defD, unclaimed, allReady, visit, state: A, allGyul: () => allGyul(zone()), taskGyul: () => taskGyul(zone()) };
 }

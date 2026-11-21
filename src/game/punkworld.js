@@ -58,12 +58,12 @@ body.banner-on #radio-strip, body.tip-on #radio-strip { top: calc(var(--tb-top, 
 #punk-chip i { position: absolute; right: -3px; top: -3px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--gyul); color: var(--acc-fg); font: 800 11px/16px var(--body); font-style: normal; }
 @keyframes pn-bob { 50% { transform: translateY(-3px); } }
 #punk-note.overlay { z-index: 13; }
-#punk-note .pn-paper { position: relative; width: min(340px, calc(100vw - 48px)); max-height: 70vh; overflow: auto; padding: 22px 22px 16px; background: #f4ecd8; color: #33302a; border-radius: 4px; box-shadow: 0 18px 40px rgba(0,0,0,.4); transform: rotate(-1.2deg); font-family: var(--body); }
+#punk-note .pn-paper { position: relative; box-sizing: border-box; display: flex; flex-direction: column; word-break: keep-all; overflow-wrap: anywhere; width: min(340px, calc(100vw - 48px)); max-height: min(70vh, calc(100vh - 32px)); overflow: hidden; padding: 22px 22px 16px; background: #f4ecd8; color: #33302a; border-radius: 4px; box-shadow: 0 18px 40px rgba(0,0,0,.4); transform: rotate(-1.2deg); font-family: var(--body); }
 #punk-note .pn-paper::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 25px, rgba(80,70,50,.12) 25px 26px); pointer-events: none; border-radius: 4px; }
 #punk-note .pn-from { font-size: 12px; color: #7a7262; margin: 0 0 4px; }
-#punk-note h2 { margin: 0 0 12px; font: 800 19px/1.3 var(--display); color: #2a2722; }
-#punk-note .pn-b { white-space: pre-line; font-size: 15px; line-height: 26px; margin: 0 0 14px; }
-#punk-note .pn-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #7a7262; }
+#punk-note h2 { flex: none; margin: 0 0 12px; font: 800 19px/1.3 var(--display); color: #2a2722; }
+#punk-note .pn-b { flex: 0 1 auto; min-height: 0; overflow-y: auto; white-space: pre-line; font-size: 15px; line-height: 26px; margin: 0 0 14px; }
+#punk-note .pn-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #7a7262; }
 #punk-note .pn-foot button { border: 0; border-radius: 999px; padding: 7px 16px; background: #33302a; color: #f4ecd8; font: 700 13px var(--body); cursor: pointer; }
 #punk-title .pt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 #punk-title .pt-it { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--hair); background: rgba(255,255,255,.06); color: var(--ink); font: 700 13px var(--body); cursor: pointer; }

@@ -7,11 +7,15 @@
 // - 우두머리: save.boss.done[구역] 이 늘면 ZONE_BOSS 귤. 구역마다 bossGap 초에 한 번
 // - 소굴: save.field.den[id] 닫은 시각이 새로우면 FIELD.den 귤. 소굴마다 denGap 초에 한 번
 // - 보물: save.field.tr.got 의 새 id (서버 날짜 하루에 한 번), 볼거리: save.field.sight 의 새 id (계정마다 한 번)
+// - 오늘의 할 일 (#125, src/daily.js): save.ach.daily 의 받은 할 일(claimed)·셋 다(all). 서버 날짜(오늘·어제)의 그날 목록에 있는 것만, 할 일마다 하루 한 번
+//   이어 오기: 서버가 저장을 받은 날로 따로 셈(cred.run). save.ach.run.got 에 새로 들어온 날 수가 서버의 연속 날 수 이하면, 이번 연속에서 한 번
+//   보상 구역은 지난 저장의 journey.maxZ (받은 저장은 지난 것 + 1 까지만 믿음)
 // 기록이 없는 것(적·업적·낚시 등)은 지금처럼 credit 에서
 import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT } from '../../src/balance.js';
 import { sellValue, GEAR_SLOTS, curItem, clothId, WEAR_K } from '../../src/loot.js';
 import { slotTier } from '../../src/gearscore.js';
 import { kstDay } from '../../src/rankday.js';
+import { todaysTasks, taskGyul, allGyul, runGyul, RUN_DAYS, dateOfDay, runStep } from '../../src/daily.js';
 
 const E = NET.earnRec;
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -28,6 +32,9 @@ export function normCred(c) {
     boss: isObj(o.boss) ? o.boss : {}, den: isObj(o.den) ? o.den : {},
     tr: isObj(o.tr) && Array.isArray(o.tr.got) ? { d: num(o.tr.d), got: o.tr.got.slice(0, 64) } : { d: 0, got: [] },
     sight: Array.isArray(o.sight) ? o.sight.slice(0, 64) : [],
+    dl: isObj(o.dl) && typeof o.dl.d === 'string' ? { d: o.dl.d.slice(0, 10), ids: Array.isArray(o.dl.ids) ? o.dl.ids.slice(0, 3) : [], all: o.dl.all ? 1 : 0 } : { d: '', ids: [], all: 0 }, // 오늘의 할 일 (#125)
+    dlp: isObj(o.dlp) && typeof o.dlp.d === 'string' ? { d: o.dlp.d.slice(0, 10), ids: Array.isArray(o.dlp.ids) ? o.dlp.ids.slice(0, 3) : [], all: o.dlp.all ? 1 : 0 } : { d: '', ids: [], all: 0 }, // 어제 것 (자정 넘어 저장)
+    run: isObj(o.run) ? { n: num(o.run.n), last: num(o.run.last), paid: Array.isArray(o.run.paid) ? o.run.paid.filter((x) => RUN_DAYS.includes(x)) : [] } : { n: 0, last: 0, paid: [] },
   };
 }
 
@@ -49,7 +56,7 @@ export function cleanSold(list) {
 // → { room: 인정한 귤, cred, why: { sold, quest, boss, den, tr, sight }, bad: [거절한 판 것] }
 export function recognize(P, S, sold, cred, t) {
   const C = normCred(JSON.parse(JSON.stringify(cred || {})));
-  const why = { sold: 0, quest: 0, boss: 0, den: 0, tr: 0, sight: 0 };
+  const why = { sold: 0, quest: 0, boss: 0, den: 0, tr: 0, sight: 0, daily: 0, run: 0 };
   // 통 채우기 (지난 시각부터)
   const dt = Math.max(0, Math.min(NET.earnWindow * 6, (t - (C.at || t)) / 1000));
   C.fresh = Math.min(E.freshBurst, C.fresh + dt * E.freshPerSec);
@@ -112,6 +119,25 @@ export function recognize(P, S, sold, cred, t) {
     const s = FIELD.sight.list[+m[1]]; if (!s) continue;
     if (psg.has(id) || C.sight.includes(id)) continue;
     C.sight.push(id); why.sight += FIELD.sight.gyul[s[0]] || 0;
+  }
+  // 7) 오늘의 할 일 (#125)
+  const pz = Math.max(1, Math.min(5, Math.floor(Number(P.journey?.maxZ)) || 1)), z = Math.max(pz, Math.min(pz + 1, Math.floor(Number(S.journey?.maxZ)) || 1));
+  const SD = isObj(S.ach?.daily) ? S.ach.daily : null, today = dateOfDay(day), yday = dateOfDay(day - 1);
+  if (C.dl.d !== today) { C.dlp = C.dl.d === yday ? C.dl : { d: yday, ids: [], all: 0 }; C.dl = { d: today, ids: [], all: 0 }; }
+  if (SD && (SD.date === today || SD.date === yday) && Array.isArray(SD.items)) {
+    const R = SD.date === today ? C.dl : C.dlp, want = todaysTasks(SD.date).map((x) => x.id);
+    for (const it of SD.items.slice(0, 3)) {
+      if (!isObj(it) || !it.claimed || !want.includes(it.id) || R.ids.includes(it.id)) continue;
+      R.ids.push(it.id); why.daily += taskGyul(z);
+    }
+    if (SD.all && !R.all && want.every((id) => R.ids.includes(id))) { R.all = 1; why.daily += allGyul(z); }
+  }
+  // 이어 오기: 서버가 본 날로 셈 (저장을 받은 날)
+  { const r = runStep({ n: C.run.n, last: C.run.last, got: C.run.paid }, day); C.run = { n: r.run.n, last: r.run.last, paid: r.run.got }; }
+  const got = Array.isArray(S.ach?.run?.got) ? S.ach.run.got : [];
+  for (const n of RUN_DAYS) {
+    if (!got.includes(n) || C.run.paid.includes(n) || C.run.n < n) continue;
+    C.run.paid.push(n); why.run += runGyul(n, z);
   }
   const room = Object.values(why).reduce((a, b) => a + b, 0);
   return { room, cred: C, why, bad };

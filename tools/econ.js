@@ -7,6 +7,7 @@
 //   node tools/econ.js --norides   탈것(#69) 없이 (비교용)
 //   node tools/econ.js --skip      장비(도구·배낭·신발·무기)를 순서 없이 (#111): 튜토리얼 뒤에는 최고 단계 하나만 귤을 모아 바로 삼
 //   node tools/econ.js --nosmoker  들머리 흡연자(#156) 없이 (비교용)
+//   node tools/econ.js --nodaily   오늘의 할 일·이어 오기(#125) 보상 없이 (비교용)
 //   node tools/econ.js --flow       하루 끝 흐름 확인만 (#137)
 //   node tools/econ.js --noaug      레벨은 세되 증강(#159)을 고르지 않음 (비교용. 기본은 벌이 증강을 먼저 고름: 큰손·분리수거 달인·가벼운 발·노루 친구)
 //   node tools/econ.js --norare     귀한 귤(#130) 없이 (비교용)
@@ -74,6 +75,7 @@ async function main() {
   const { FEEL } = B; let FEEL_ON = !has('--nofeel'); const COMBO_TRIP = has('--combotrip'); // 손맛 (#141): --nofeel 콤보·연속 보너스 없이, --combotrip 콤보가 더미 사이에서도 안 끊긴다고 봄(위 끝)
   const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY, SWARM, SMOKER } = B;
   const SMOKE_H = has('--nosmoker') ? 0 : 3600 * SMOKER.econNear / ((SMOKER.every[0] + SMOKER.every[1]) / 2) * SMOKER.reward; // 들머리 흡연자 (#156): 하루 1시간에 받는 귤 (들머리 둘레에 있는 시간 econNear)
+  const DLY = await import('../src/daily.js'); let DAILY_ON = !has('--nodaily'); // 오늘의 할 일 (#125): 하루 끝에 셋 다 + 그날 이어 오기 보상 (가 본 구역 = 장비 점수로 열린 구역)
   let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
@@ -278,7 +280,8 @@ async function main() {
       }
       if (battle) { st.coins += SMOKE_H; earned += SMOKE_H; } // 흡연자 (#156)
       st.tAll = t0 + 3600; // 하루 1시간에서 넘친 부분은 버림
-      days.push({ day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0, enh: [...GEAR, ...WK, 'weapon'].reduce((s, k) => s + EN(e, k), 0), m5: Math.floor(st.mats.m5 || 0), r5: Math.floor(st.mats.r5 || 0), lv: st.lv, aug: { ...e.aug } });
+      let dly = 0; if (DAILY_ON) { const sc = scoreOf(e, st.weapon), z = Math.max(1, ZONES.filter((Z) => sc >= Z.rec * GROWTH.red).length); dly = DLY.dayMax(z, d + 1); st.coins += dly; }
+      days.push({ dly, day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0, enh: [...GEAR, ...WK, 'weapon'].reduce((s, k) => s + EN(e, k), 0), m5: Math.floor(st.mats.m5 || 0), r5: Math.floor(st.mats.r5 || 0), lv: st.lv, aug: { ...e.aug } });
       if (kinds.every((k) => !next(k)) && d >= 4 && (NOENH || !battle || enhAll())) break;
     }
     const last = buys.length && kinds.every((k) => !next(k)) ? buys[buys.length - 1].at : Infinity;
@@ -305,8 +308,9 @@ async function main() {
   // 다 치운 구역은 목표 + 1 까지만 (너무 빠르지 않게, 5일은 상한 없음)
   // #173 들판 떼로 2일 끝 벌이가 몇 % 늘어 효율 플레이가 2일에 4단계에 닿을 때가 있음 → 2일 상한만 4 (기준은 '5일 목표가 하루 넘게 당겨지지 않음', 아래 들판 떼 줄)
   // #160 들머리 더미로 첫날 벌이가 조금 빨라져 효율 플레이는 1일에 신발 3단계까지 닿을 때가 있음 → 1일 상한만 3 (5일 목표가 하루 넘게 당겨지지 않는지는 아래 '마지막 칸' 이 봄)
-  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 4], zone: 2, open: 3 }, { tier: [4, 4], zone: 3 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
-  function flowCheck(runs) {
+  // #125 오늘의 할 일 보상(1·2일 끝 350·1,000)으로 효율 플레이가 3일에 5단계에 닿음(--nodaily 면 4단계) → 효율만 3일 상한 5 (effHi). 기준은 '5일 목표가 하루 넘게 당겨지지 않음' (아래 오늘의 할 일 줄)
+  const FLOW = [{ tier: [2, 3], zone: 1 }, { tier: [3, 4], zone: 2, open: 3 }, { tier: [4, 4], zone: 3, effHi: 5 }, { tier: [4, 5], zone: 4 }, { tier: [5, 5], zone: 5 }];
+  function flowCheck(runs, eff = false) {
     const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
     const lines = ['흐름 (5번 중 가운데): 일 · 장비 단계(목표) · 다 치운 구역(목표) · 열린 구역 · 장비 점수 · 번 귤 · 할 일 없던 분'];
     let ok = true; const sh = [];
@@ -315,7 +319,7 @@ async function main() {
       const tier = med(ds.map((x) => Math.min(x.e.tool, x.e.bag, x.e.shoes))), zone = med(ds.map((x) => { let z = 0; while (x.cleared.has(z + 1)) z++; return z; }));
       const sc = med(ds.map((x) => x.score)), er = med(ds.map((x) => x.earned)), idle = med(ds.map((x) => x.idle));
       const open = ZONES.filter((Z) => sc >= Z.rec * GROWTH.red).length;
-      const good = tier >= f.tier[0] && tier <= f.tier[1] && zone >= f.zone && (d >= 4 || zone <= f.zone + 1) && (!f.open || open >= f.open); ok = ok && good;
+      const hi = eff && f.effHi ? f.effHi : f.tier[1], good = tier >= f.tier[0] && tier <= hi && zone >= f.zone && (d >= 4 || zone <= f.zone + 1) && (!f.open || open >= f.open); ok = ok && good;
       sh.push(`${d + 1}일 ${tier}단계·구역${zone}${good ? '' : '✗'}`);
       lines.push(`  ${d + 1}일 · ${tier}단계(${f.tier[0] === f.tier[1] ? f.tier[0] : f.tier.join('~')}) · 구역 ${zone}까지(${f.zone}) · 열림 ${open}${f.open ? `(${f.open})` : ''} · 점수 ${sc} · 귤 ${er.toLocaleString()} · ${idle}분 ${good ? '통과' : '✗'}`);
     });
@@ -337,7 +341,7 @@ async function main() {
     console.log('하루 끝 (한 번 돌린 예). 칸은 단계 (배낭 0 = 호주머니, 옷 0 = 없음)');
     if (!FLOW_ONLY) console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), 점수: d.score, '산 것': d.n, '오늘 다 치운 구역': d.zones, '번 귤': d.earned, '우두머리(누적)': d.boss, '할 일 없음(분)': d.idle, '남은 귤': d.coins, ...(NOENH ? {} : { '강화 합(50)': d.enh, '남은 외계 부품·핵': `${d.m5}·${d.r5}` }) })));
     // 흐름 (#137): 5번 돌린 것 모두 하루 끝을 보고, 가운데 값으로 판정
-    const fl = flowCheck(runs);
+    const fl = flowCheck(runs, slack === 0);
     console.log(fl.lines.join('\n'));
     verdict.push(`${title}: 흐름 ${fl.ok ? '통과' : '실패'} (${fl.short})`);
     // 단계별 도달 시각 (5번 돌린 가운데)
@@ -372,6 +376,15 @@ async function main() {
     const lastOf = (on) => { SW_ON = on; const rs = [1, 7, 42, 99, 123].map((s) => seedRun('battle', 0.25, s)).map((x) => x.last).sort((a, b) => a - b); SW_ON = !has('--noswarm'); return rs[2]; };
     const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;
     verdict.push(`들판 떼로 마지막 칸(여유 25%) ${a0 === Infinity ? '-' : hm(a0)} → ${a1 === Infinity ? '-' : hm(a1)}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
+  }
+  // 오늘의 할 일 (#125): 하루 보상(셋 다 + 그날 이어 오기)이 그날 벌이의 15% 안, 5일 목표(마지막 칸, 여유 25%)가 하루 넘게 당겨지지 않음
+  {
+    const r = seedRun('battle', 0, 42), rows = r.days.slice(0, 7).map((x) => ({ 일: x.day, 벌이: x.earned, 할일: x.dly, '%': +(x.dly / Math.max(1, x.earned) * 100).toFixed(1) }));
+    console.log('\n오늘의 할 일 (#125): 하루 끝 보상 (할 일 셋 + 셋 다 + 이어 오기 3·7일째)'); console.table(rows);
+    const worst = Math.max(...rows.map((x) => x['%']));
+    const lastOf = (on) => { DAILY_ON = on; const rs = [1, 7, 42, 99, 123].map((s) => seedRun('battle', 0.25, s)).map((x) => x.last).sort((a, b) => a - b); DAILY_ON = !has('--nodaily'); return rs[2]; };
+    const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;
+    verdict.push(`오늘의 할 일: 하루 보상이 그날 벌이의 최대 ${worst}% → 15% 안 ${worst <= 15 ? '통과' : '넘음'} · 마지막 칸(여유 25%) ${a0 === Infinity ? '-' : hm(a0)} → ${a1 === Infinity ? '-' : hm(a1)}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
   }
   // 흡연자 (#156): 하루 1시간 벌이에서 흡연자 몫이 3% 아래 (가장 적게 버는 1일 기준)
   if (day1Rate) { const pct = SMOKE_H / day1Rate * 100; verdict.push(`흡연자 하루 귤 ${Math.round(SMOKE_H)} = 1일 벌이 ${day1Rate.toLocaleString()} 의 ${pct.toFixed(1)}% → 3% 아래 ${pct < 3 ? '통과' : '넘음'}`); }
