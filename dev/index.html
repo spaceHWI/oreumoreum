@@ -763,6 +763,12 @@ body.hp-down #shop-mark { display: none !important; }
 @media (max-width: 600px) { #arm-more { right: 68px; bottom: -6px; width: 24px; height: 24px; } }
 /* 탄 막대 (#123 머신건·레이저 남은 몫, 폭탄 다시 쥐기) */
 #btn-ctx .ammo.bar b { width: 44px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ff9a2e calc(var(--k, 0) * 100%), rgba(255,255,255,.25) 0); }
+/* 모아 쏘기 (#129): 버튼 둘레에 차오르는 고리, 가득 차면 반짝 */
+#btn-ctx .chg { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; background: conic-gradient(#ffd25a calc(var(--k, 0) * 360deg), rgba(255,255,255,.16) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px)); }
+#btn-ctx .chg[hidden] { display: none; }
+#btn-ctx .chg.full { background: #fff2b0; box-shadow: 0 0 14px #ffd25a; animation: chgFull .5s ease-in-out infinite alternate; }
+@keyframes chgFull { to { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { #btn-ctx .chg.full { animation: none; } }
 #ridewin .menu-card.walk svg.food { padding: 12px; box-sizing: border-box; }
 #ridewin .menu-card.off { opacity: .55; }
 #ridewin .menu-card.on { outline: 2px solid var(--acc); }
@@ -1036,7 +1042,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-85cded1eb7.js">(function () {
+<script data-main="main-6f19e9e377.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
