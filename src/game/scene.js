@@ -31,6 +31,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// WebGL 을 잃은 바로 그 프레임 (#197): 브라우저가 webglcontextlost 를 알리기 전에는 three 가 잃은 줄 모르고 그리는데, 이때 처음 쓰이는 셰이더의
+// 링크 확인(three WebGLProgram onFirstUse)에서 getProgramInfoLog·getShaderInfoLog 가 글 대신 null 을 돌려줘 .trim 에서 멈춘다. 잃은 동안은 빈 글로 돌려준다
+{ const gl = renderer.getContext(); for (const k of ['getProgramInfoLog', 'getShaderInfoLog']) { const f = gl[k].bind(gl); gl[k] = (o) => f(o) ?? ''; } }
 // WebGL 화면을 잃었을 때 (#108): 휴대폰이 메모리가 모자라면 GPU 문맥을 빼앗기도 함. three 가 되살아난 문맥에 모든 걸 다시 올림.
 // 그동안 안내를 보이고, CRASH.glWait 안에 돌아오지 않으면 '다시 불러오기'. 되살아나면 셰이더를 다시 준비
 state.glLost = false;

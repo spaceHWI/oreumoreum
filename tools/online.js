@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -29,6 +29,35 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     return { ctx, p };
   };
   const A = await open('A'), B = await open('B');
+  const raidCheck = async () => { // 오름 레이드 (#181): A 가 바로 열고(로컬 서버 STATS_OPEN) 둘이 같이 → B 가 맞히면 A 화면에서도 기운이 줆 → 부서진 더미 줍기 → 둘 다 보상. 다시 열고 방장 A 가 나가면 B 가 이어받음
+    await A.p.setViewportSize({ width: 480, height: 320 });
+    await A.p.evaluate(() => { const o = window.__oreum; o.player.pose = 'throw'; o.player.poseT = 0; o.player.pos.x += 0.3; });
+    ok(await until(B, () => window.__oreum.peerFight().some((p) => p.on), null, 10000), "A 가 던지면 B 화면 A 머리 위에 '전투 중'");
+    for (const X of [A, B]) await X.p.evaluate(() => { window.__oreum.raid.go(12 + Math.random() * 4); });
+    await A.p.evaluate(() => window.__oreum.raid.start());
+    ok(await until(A, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 40000) && await until(B, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 20000), '레이드: 둘 다 같은 대왕을 봄');
+    const rs = await Promise.all([A, B].map((X) => X.p.evaluate(() => window.__oreum.raid.state())));
+    ok(rs[0].host !== rs[1].host && rs.some((r) => r.puppet), `한 사람이 굴리고 다른 사람은 받아서 그림 (방장 ${rs.map((r) => r.host)}, 받음 ${rs.map((r) => r.puppet)})`);
+    const hp0 = rs[0].hp; await B.p.evaluate(() => window.__oreum.raid.hit(200));
+    ok(await until(A, (h) => window.__oreum.raid.state().hp < h - 100, hp0, 10000), 'B 가 맞히면 A 화면에서도 기운이 줆');
+    const c0 = await Promise.all([A, B].map((X) => X.p.evaluate(() => window.__oreum.save.coins)));
+    for (let k = 0; k < 80 && (await A.p.evaluate(() => window.__oreum.raid.state().ph)) === 2; k++) { for (const X of [A, B]) await X.p.evaluate(() => window.__oreum.raid.hit(150)); await wait(A.p, 400); }
+    ok(await until(B, () => window.__oreum.raid.state().ph === 3 && window.__oreum.raid.state().heaps === 8, null, 10000), '기운 0 → 둘 다 부서진 더미 8개');
+    const hs = await A.p.evaluate(() => window.__oreum.raid.heaps());
+    for (let i = 0; i < hs.length; i++) { const X = i % 2 ? B : A; for (let k = 0; k < 40 && !(await until(X, (i) => !(window.__oreum.raid.state().h || [])[i], i, 300)); k++) await X.p.evaluate((i) => window.__oreum.raid.pick(i), i); } // 소프트웨어 GL 은 느려 걸어 줍기(tools/raid.js)는 시간 안에 못 끝냄: 방에 바로 줍기
+    ok(await until(A, () => window.__oreum.raid.state().ph === 4, null, 10000), '더미를 다 주우면 성공');
+    const c1 = await Promise.all([A, B].map((X) => X.p.evaluate(() => window.__oreum.save.coins)));
+    ok(c1[0] - c0[0] >= 3000 && c1[1] - c0[1] >= 3000, `둘 다 보상 (A +${c1[0] - c0[0]}, B +${c1[1] - c0[1]})`);
+    // 이어받기: 다시 열고 싸움 중에 방장(A)이 나감
+    await wait(A.p, 16000); await A.p.evaluate(() => { window.__oreum.raid.go(14); window.__oreum.raid.start(); }); await B.p.evaluate(() => window.__oreum.raid.go(14));
+    await until(B, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 30000);
+    await B.p.evaluate(() => window.__oreum.raid.hit(300)); await wait(B.p, 1500);
+    const hb = await B.p.evaluate(() => window.__oreum.raid.state().hp);
+    await A.ctx.close(); A.closed = true;
+    ok(await until(B, () => { const s = window.__oreum.raid.state(); return s.host && s.body && !s.puppet; }, null, 20000), '방장이 나가면 B 가 이어받아 굴림');
+    const hb2 = await B.p.evaluate(() => window.__oreum.raid.state());
+    ok(hb2.ph === 2 && hb2.hp <= hb + 1, `이어받아도 기운은 그대로 (${hb} → ${hb2.hp}, 다시 가득 차지 않음)`);
+  };
   ok(await A.p.evaluate(() => document.getElementById('enter').textContent === '손님으로 하기' && !document.getElementById('acct-box').hidden), '첫 화면: 손님으로 하기·베타 안내');
   ok(await A.p.evaluate(() => /7일/.test(document.getElementById('acct-box').textContent)), '베타 안내 문구');
   for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
@@ -53,6 +82,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const ns = (o?.rooms || []).find((r) => r.map === 'namsongi');
     ok(o && o.n === 2 && ns && ns.n === 2 && o.peak.n >= 2, `지금 접속 2명 (${JSON.stringify(o && { n: o.n, rooms: o.rooms, peak: o.peak.n })})`);
   }
+  if (ONLY === 'raid') { await raidCheck(); if (!A.closed) await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return; } // node tools/online.js <서버> raid: 레이드만 (#181)
   { // 옷·닉네임은 바뀔 때만 보냄 (#115): A 가 보내는 것을 세고, 옷을 바꾸면 B 화면에 바로
     await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; window.__sent0 = performance.now(); });
     for (let k = 0; k < 6; k++) { await A.p.evaluate(() => { window.__oreum.player.pos.x += 0.5; }); await wait(A.p, 200); }
@@ -77,7 +107,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.title === t && e.label?.scale.y > 0.9), tt), `A 가 단 칭호가 B 화면 이름표 위에 (${tt})`);
     await A.p.evaluate(() => { window.__oreum.punkWorld.title.set(-1); window.__oreum.player.pos.x += 0.5; });
     ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
-    const C = await open('C'); await C.p.click('#enter');
+    const C = await open('C'); await C.p.click('#enter', { timeout: 120000 }); // 세 번째 브라우저는 느린 환경에서 클릭 처리(입장 준비)가 30초를 넘기도 함
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
     const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
@@ -121,7 +151,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
     await wait(A.p, 1500);
     const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
-    ok((aOn >= 1 || aOn === -1) && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), aOn === -1 ? `동료 꺼짐(#190 BUDDIES.on): B 가 보는 사람 ${bSee.n}명` : `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`); // #190 에서 동료를 끔: 꺼져 있으면 사람 수만 봄
+    ok((aOn >= 1 || aOn === -1) && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn === -1 ? '꺼짐(#190 BUDDIES.on)' : aOn + '명'}, B 가 보는 사람 ${bSee.n}명`);
     const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
     const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
     await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
@@ -216,6 +246,23 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(!!a2 && !b2, `엔딩: 같은 날 두 번째는 끝낸 사람만 (A ${!!a2} · B ${!!b2})`);
     await A.p.evaluate(() => window.__oreum.story.ending.stop());
   }
+  { // 오래 멈춤 (#157, 방장 순서를 쓰는 확인들 뒤): 시간을 짧게 줄여 (가) 조작 없으면 방에서 빠짐 (나) 누르면 같은 자리로 돌아옴 (다) 서버가 닫은 연결엔 다시 붙지 않음
+    await A.p.evaluate(() => window.__oreum.idle.set({ warn: 1, rest: 2 }));
+    const gone = await until(B, () => window.__oreum.net.count === 0, null, 20000);
+    const as = await A.p.evaluate(() => window.__oreum.idle.state());
+    ok(gone && as.mode === 'rest' && as.asleep, `(가) 조작이 없으면 쉬러 가고 B 화면에서 사라짐 (${JSON.stringify({ mode: as.mode, asleep: as.asleep })})`);
+    const ap = await A.p.evaluate(() => { const o = window.__oreum; o.idle.set({ warn: 900, rest: 900 }); o.idle.wake(); return o.player.pos.x; });
+    const back = await until(B, (x) => [...window.__oreum.net.peersById.values()].some((e) => Math.abs(e.tpos.x - x) < 0.5), ap, 20000);
+    ok(back, `(나) 누르면 다시 들어와 같은 자리 (A ${ap.toFixed(1)})`);
+    // 서버 기준을 2초로 (로컬 STATS_OPEN 만 받음). 화면 쪽 시간은 길게 둬서 서버가 닫는지만 봄
+    await A.p.evaluate(() => window.__oreum.net.room.send({ t: 'idle', s: 2 }));
+    const shut = await until(A, () => window.__oreum.idle.state().mode === 'rest', null, 20000);
+    await wait(A.p, 5000);
+    const st2 = await A.p.evaluate(() => ({ open: window.__oreum.net.room.open, mode: window.__oreum.idle.state().mode }));
+    ok(shut && !st2.open && st2.mode === 'rest' && await B.p.evaluate(() => window.__oreum.net.count === 0), `(다) 서버가 닫으면(4004) 쉬는 화면, 다시 붙지 않음 (${JSON.stringify(st2)})`);
+    await A.p.evaluate(() => window.__oreum.idle.wake());
+    ok(await until(B, () => window.__oreum.net.count === 1, null, 20000) && await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1, null, 20000), '깨우면 다시 서로 봄');
+  }
   // 가짜 로그인 → 계정 사본으로 새로고침
   await A.p.evaluate(() => { window.__oreum.save.coins = 40; });
   await A.p.evaluate(() => { window.__old = 1; window.__oreum.online.fake('tester-' + Date.now()); }); // __old: 새로 고친 뒤의 페이지인지 가리려고
@@ -303,5 +350,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.screenshot({ path: 'dist/rank-online.png' });
   await B.p.evaluate(() => window.__oreum.rank.open()); await wait(B.p, 500);
   ok(await B.p.evaluate(() => document.querySelectorAll('#rank-list .rk-mine').length === 3 && /로그인하면/.test(document.getElementById('rank-note').textContent)), '손님: 이 기기 기록 셋과 로그인 안내');
-  await A.ctx.close(); await B.ctx.close(); await b.close(); web.close();
+  await raidCheck();
+  if (!A.closed) await A.ctx.close(); await B.ctx.close(); await b.close(); web.close();
+  // 귤 주기 (#175): 둘 다 로그인한 깨끗한 브라우저로 따로 (A 가 B 옆에서 누르고 있으면 B 귤이 늘고 A 는 준 만큼 줄어듦) — tools/give.js
+  if (!ONLY) { try { require('child_process').execFileSync('node', [path.join(__dirname, 'give.js'), SRV], { stdio: 'inherit' }); } catch (e) { process.exitCode = 1; } }
 })().catch((e) => { console.error(e); process.exit(1); });

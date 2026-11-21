@@ -37,7 +37,8 @@ const TASK = { trash: (n) => n * 1.6, heapRoad: () => 75, heapField: () => 150, 
   if (gate) { await go(gate[0], gate[1]); await W(600); }
   ok(await until(() => window.__oreum.quest.where().jigi.mark === '!', 4000), '오름지기 머리 위 노란 !');
   if (gate) ok(Math.hypot(where.jigi.x - gate[0], where.jigi.z - gate[1]) < 25, '정낭 너머 25m 안에 오름지기');
-  ok(await until(() => window.__oreum.quest.track()?.shown, 6000), '추적 줄 보임');
+  // 폰: 튜토리얼 뒤 전체 화면 안내(#189 #fs-tip)가 한 번 열림 → 닫음 (창이 열려 있으면 추적 줄을 숨김)
+  ok(await until(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); return window.__oreum.quest.track()?.shown; }, 8000), '추적 줄 보임');
   let s = await Q(); ok(/오름지기에게 가기/.test(s.track?.text || ''), `추적 줄: ${s.track?.text}`);
   await shot('start');
   // 추적 줄을 누르면 자동으로 걸어가 창이 열림 (토스트·창이 없게 기다림)

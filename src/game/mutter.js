@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { MUTTER as M, ZONE_BOSS } from '../balance.js';
 import { MUTTER_TEXT as T } from '../punktext.js';
 import { TEXCS } from '../boot.js';
+import { bubbleCanvas, bubbleScale, bubbleLines, bubblePages } from '../bubble.js';
 import { state, late } from './state.js';
 import { save, persist, MAP_ID } from './save.js';
 import { spots, sunState, wx } from './scene.js';
@@ -82,19 +83,17 @@ const alive = (l) => { if (spent(l)) return false; try { if (l.need && !l.need()
 
 // ---------- 말풍선 (채팅 말풍선 모양, 기울인 옅은 글자) ----------
 let bub = null; // { sp, t }
-function makeBubble(text) {
-  const c = document.createElement('canvas'), g = c.getContext('2d'), F = 'italic 500 26px "Noto Sans KR", sans-serif';
-  g.font = F; const w = Math.min(560, Math.max(120, g.measureText(text).width + 44)); c.width = w; c.height = 72; g.font = F;
-  g.fillStyle = 'rgba(251,246,230,0.86)'; g.strokeStyle = 'rgba(51,64,42,0.5)'; g.lineWidth = 3; g.setLineDash([7, 5]);
-  const r = 18; g.beginPath(); g.moveTo(r, 2); g.lineTo(w - r, 2); g.quadraticCurveTo(w - 2, 2, w - 2, r); g.lineTo(w - 2, 50 - r); g.quadraticCurveTo(w - 2, 50, w - r, 50); g.lineTo(w / 2 + 10, 50); g.lineTo(w / 2, 64); g.lineTo(w / 2 - 10, 50); g.lineTo(r, 50); g.quadraticCurveTo(2, 50, 2, 50 - r); g.lineTo(2, r); g.quadraticCurveTo(2, 2, r, 2); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle = '#5d6650'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, 27, w - 24);
-  const tx = new THREE.CanvasTexture(c); tx.colorSpace = TEXCS;
+function makeBubble(text, L) { // 그림은 src/bubble.js 한 틀 (#190). L: 이번 장 줄들
+  const b = bubbleCanvas(text, { L, font: 'italic 500 26px "Noto Sans KR", sans-serif', fill: 'rgba(251,246,230,0.86)', stroke: 'rgba(51,64,42,0.5)', lineW: 3, dash: [7, 5], ink: '#5d6650' });
+  const tx = new THREE.CanvasTexture(b.canvas); tx.colorSpace = TEXCS;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));
-  sp.scale.set(w / 72 * 0.9, 0.9, 1); sp.renderOrder = 10; sp.position.y = M.y; sp.name = 'mutter';
+  const [sx, sy] = bubbleScale(b); sp.scale.set(sx, sy, 1); sp.center.set(0.5, 0); sp.renderOrder = 10; sp.position.y = M.y - 0.42; sp.name = 'mutter';
   return sp;
 }
 function clearBubble() { if (!bub) return; bub.sp.parent?.remove(bub.sp); bub.sp.material.map.dispose(); bub.sp.material.dispose(); bub = null; }
-function showBubble(text) { clearBubble(); const sp = makeBubble(text); runner.root.add(sp); bub = { sp, t: M.sec, text }; }
+// 긴 줄은 두 장으로 (#190): 장마다 M.sec 초, 두 번째 장은 그림만 바꿈(페이드 없이)
+function showBubble(text) { clearBubble(); const P = bubblePages(text), sp = makeBubble(text, P[0]); runner.root.add(sp); bub = { sp, t: M.sec * P.length, T: M.sec * P.length, text, next: P[1] || null }; }
+function flipBubble() { const sp = makeBubble(bub.text, bub.next); sp.material.opacity = bub.sp.material.opacity; runner.root.add(sp); bub.sp.parent?.remove(bub.sp); bub.sp.material.map.dispose(); bub.sp.material.dispose(); bub.sp = sp; bub.next = null; }
 
 // ---------- 차례 ----------
 let lastP = null, clock = 0, lastSay = -1e9, nextAt = M.gap * 0.5 + Math.random() * M.wait, lastClue = 0, chkT = 0, walked = 0, handPose = false, inBig = false, inStreet = false, inTop = false;
@@ -105,8 +104,9 @@ const isOff = () => !!S.off;
 function speak(l, force = false) {
   const text = textOf(l); if (!text) return false;
   const fn = () => { showBubble(text); S.seen[l.id] = (S.seen[l.id] | 0) + 1; persist(); lastSay = clock; nextAt = clock + M.gap + Math.random() * M.wait; delete evAt[l.id]; if (l.id === 'legs') walked = 0; };
-  if (force) { director.begin('mutter', 'mutter:' + l.id, M.sec); fn(); return true; }
-  return director.ask('mutter', 'mutter:' + l.id, fn, { sec: M.sec, queue: false });
+  const sec = M.sec * bubblePages(text).length; // 두 장이면 그만큼 (#190)
+  if (force) { director.begin('mutter', 'mutter:' + l.id, sec); fn(); return true; }
+  return director.ask('mutter', 'mutter:' + l.id, fn, { sec, queue: false });
 }
 // 지금 말할 줄들 (일 줄 먼저, 그다음 덜 말한 줄, 같으면 아무거나)
 function candidates() {
@@ -148,7 +148,7 @@ function watch(dt) {
 
 export function tickMutter(dt) {
   clock += dt;
-  if (bub) { bub.t -= dt; bub.sp.material.opacity = Math.min(1, (M.sec - bub.t) * 4, bub.t * 2.5); if (bub.t <= 0 || isOff()) clearBubble(); }
+  if (bub) { bub.t -= dt; if (bub.next && bub.t <= bub.T - M.sec) flipBubble(); bub.sp.material.opacity = Math.min(1, (bub.T - bub.t) * 4, bub.t * 2.5); if (bub.t <= 0 || isOff()) clearBubble(); }
   if (!trash || !state.sessionOn) return;
   if (!watch(dt) || !ready() || bub) return; // 조건은 checkSec 마다 한 번
   if (clock - lastSay < M.gap) return;
@@ -174,6 +174,7 @@ late.tickMutter = tickMutter;
 // dev
 late.mutterApi = {
   lines: LINES.map((l) => l.id),
+  wrap: (t) => bubbleLines(t), // 말풍선 줄 나눔 (#190, src/bubble.js)
   say: (id) => { const l = BY[id]; if (!l) return false; return speak(l, true); },
   ev: (id) => { evAt[id] = clock; },
   now: () => candidates().map((l) => l.id),

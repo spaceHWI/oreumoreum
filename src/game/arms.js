@@ -19,6 +19,8 @@ import { updateStats, busy, toast, ui } from './hud.js';
 import { keys, marker } from './input.js';
 import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow, fireWeapon, twinRoll, TWIN_YAW, TWIN_MS } from './throw.js';
 import { augV } from '../augments.js';
+import { slotUp } from '../gearscore.js';
+import { heatNew, heatStep, heatCanFire, heatMul } from '../laserheat.js';
 
 Object.assign(Sound.prototype, weaponSounds); // gun·mg·laser·lob·boom
 const sfx = () => late.sound;
@@ -27,6 +29,10 @@ const W = Object.fromEntries(WEAPONS.map((w) => [w.id, w]));
 const ARM_IDS = ['gun', 'mg', 'laser', 'bomb'], CH_IDS = ['hand', 'bow']; // 손·활은 모아 쏜 한 방만 보냄 (#129)
 const A = { cd: 0, aimT: 0, kick: 0, held: false, lasing: false, beam: null, tick: 0, burstT: 0, seq: 0, out: null, outT: 0, bombCd: 0, flash: 0, mgB: null, thick: null }; // mgB·thick: 모아 쏜 머신건 연사·레이저 굵은 줄기 (#129)
 state.lobPending = false;
+// 레이저 과열 (#200): 계속 쏘면 열이 차고, 가득 차면 lock 초 동안 못 쏨. 값 balance.js WEAPONS 레이저 heat, 셈 src/laserheat.js
+const HP = W.laser.heat, HT = heatNew();
+const lzG = () => ((save.weaponUse || save.equip?.weapon) === save.equip?.weapon && save.equip?.weapon === W.laser.tier ? slotUp(save, 'weapon').g || 0 : 0); /* 레이저가 가장 높은 무기일 때 그 등급 */
+let heatStepped = false, steamT = 0;
 state.armKick = 0; // runner 'aim' 반동 (update.js 가 animate 에 넘김)
 
 const peers = () => (late.net?.solo ? [] : [...late.net.peersById.values()].map((e) => ({ id: e.peer, pos: e.pos })));
@@ -80,7 +86,7 @@ function fireArm() {
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   if (w.id === 'gun') { if (A.cd > 0) return; if (!useAmmo(w)) return; shot(w); A.cd = w.cd; }
   else if (w.id === 'mg') { if (A.cd > 0) return; if (!useAmmo(w)) return; shot(w, w.spread); A.cd = 1 / w.rate; A.held = true; }
-  else if (w.id === 'laser') { if (!A.lasing && ((save.ammo.laser || 0) > 0 || save.coins > 0)) { A.lasing = true; A.held = true; A.burstT = 0.15; A.tick = 0; A.seq++; } }
+  else if (w.id === 'laser') { if (!heatCanFire(HT)) return; /* 과열: 식을 때까지 못 쏨 (고리가 보여 줌) */ if (!A.lasing && ((save.ammo.laser || 0) > 0 || save.coins > 0)) { A.lasing = true; A.held = true; A.burstT = 0.15; A.tick = 0; A.seq++; } }
   else if (w.id === 'bomb') {
     if (A.bombCd > 0) { toast('폭탄을 다시 쥐는 중이에요'); return; }
     if (save.coins < w.cost) return;
@@ -115,6 +121,9 @@ function lobVel(from, to, B) {
 
 // 레이저 한 프레임: 대상(없으면 앞)까지 줄기, tick 마다 피해·젖음, 초당 귤 gyulPerSec
 function tickLaser(dt, w) {
+  heatStepped = true;
+  if (!heatCanFire(HT)) { stopLaser(); return; }
+  if (heatStep(HT, dt, true, HP, lzG()) === 'over') { overheat(); return; } /* 과열: 이 걸음부터 귤도 들지 않음 */
   const left = (save.ammo.laser || 0) - w.gyulPerSec * dt * (A.thick ? 1 + (CHARGE.cost - 1) * A.thick.k : 1);
   if (left <= 0) { if (save.coins < 1) { stopLaser(); return; } save.coins -= 1; save.ammo.laser = left + 1; updateStats(); A.flash = 1; } else save.ammo.laser = left;
   const t = aimTarget(); startAim(t);
@@ -128,14 +137,43 @@ function tickLaser(dt, w) {
     // 줄기를 따라 0.5m 마다 맞는지 봄 (가장 가까운 것 하나)
     const dir = to.clone().sub(from), L = dir.length(); dir.divideScalar(L || 1);
     const T = A.thick; // 모아 쏜 굵은 줄기 (#129): 피해 × mul, 맞으면 더 밀림
-    for (let s = 0.5; s <= L + 0.6 && !hit; s += 0.5) hit = life.hitAt(tmpV.copy(from).addScaledVector(dir, s), w.dmg * w.tick * buff.mul('dmg') * weaponMul(save) * (T ? T.mul : 1) * (1 + augV(save, 'twin')), null, { quiet: true, hb: false, ch: T ? T.k * 0.5 : 0 });
+    for (let s = 0.5; s <= L + 0.6 && !hit; s += 0.5) hit = life.hitAt(tmpV.copy(from).addScaledVector(dir, s), w.dmg * w.tick * buff.mul('dmg') * weaponMul(save) * (T ? T.mul : 1) * (1 + augV(save, 'twin')) * heatMul(HT, HP), null, { quiet: true, hb: false, ch: T ? T.k * 0.5 : 0 });
     if (hit && hit !== true) armFx.wet(hit); // (레이저는 줄기라 쌍귤 #159 를 피해로 더함)
     A.lastHit = hit ? 0.25 : Math.max(0, (A.lastHit || 0) - w.tick);
   }
-  armFx.setBeam(A.beam, from, to, dt, (A.lastHit || 0) > 0, A.thick ? 1 + (CHARGE.laser.w - 1) * A.thick.k : 1);
+  armFx.setBeam(A.beam, from, to, dt, (A.lastHit || 0) > 0, A.thick ? 1 + (CHARGE.laser.w - 1) * A.thick.k : 1, HT.k);
   sfx()?.laser?.(true); A.kick = 0.25 + Math.sin(performance.now() / 30) * 0.1;
   sendBurst('laser', to);
 }
+// 과열됨: 빔이 끊기고 '과열!'·치익·총구에서 김과 불꽃
+function overheat() {
+  stopLaser(); toast('과열!', 1.4); sfx()?.hiss?.(); steamT = 0;
+  armFx.sparks?.(muzzle('laser'), LOW ? 5 : 10);
+}
+function tickHeat(dt) {
+  if (!heatStepped && heatStep(HT, dt, false, HP, lzG()) === 'ready') sfx()?.heatReady?.();
+  heatStepped = false;
+  if (HT.lock > 0 && (steamT -= dt) <= 0) { steamT = LOW ? 0.16 : 0.08; armFx.steam?.(muzzle('laser')); }
+  heatRing();
+}
+const heatEl = $('heat'); let heatKey = '';
+function heatRing() {
+  if (!heatEl) return;
+  const show = weaponNow().id === 'laser' && bowReady() && (HT.k > 0.01 || HT.lock > 0), k = Math.round(HT.k * 40) / 40, hot = HT.lock > 0 || k >= HP.hot;
+  const key = show ? `${k}|${HT.lock > 0}|${HT.k >= HP.shake}` : '';
+  if (key === heatKey) return; heatKey = key;
+  heatEl.hidden = !show; if (!show) return;
+  heatEl.style.setProperty('--k', String(k)); heatEl.style.setProperty('--c', hot ? '#ff4a2e' : k >= 0.4 ? '#ffd23a' : '#5fd38a');
+  heatEl.classList.toggle('shake', HT.lock <= 0 && HT.k >= HP.shake); heatEl.classList.toggle('over', HT.lock > 0);
+}
+export const laserHeat = () => HT;
+/* 들판 자동 쏘기(swarm.js)의 레이저 한 발 = sec 초 쏘기. 못 쏘면 0, 쏘면 피해 배수 (같은 과열 규칙) */
+export function laserAuto(sec) {
+  if (!heatCanFire(HT)) return 0;
+  const m = heatMul(HT, HP); heatStepped = true;
+  if (heatStep(HT, sec, true, HP, lzG()) === 'over') overheat();
+  return m;
+} /* 열 0~1·남은 과열 초 (화면 고리·tools) */
 function stopLaser() {
   A.thick = null;
   if (!A.lasing) return;
@@ -148,6 +186,7 @@ export function chargedArm(w, ch) {
   if (w.id === 'gun') { shot(w, 0, ch); A.cd = w.cd; sfx()?.chargeShot?.(ch.k); }
   else if (w.id === 'mg') { const n = Math.max(2, Math.round(CHARGE.mg.n * ch.k)); A.mgB = { n, left: n, T: 0, ch }; sfx()?.chargeShot?.(ch.k); }
   else if (w.id === 'laser') {
+    if (!heatCanFire(HT)) return; /* 과열 중에는 모아 쏜 줄기도 못 쏨 (#200) */
     A.thick = { t: Math.max(0.25, CHARGE.laser.t * ch.k), k: ch.k, mul: ch.mul };
     if (!A.lasing) { A.lasing = true; A.held = true; A.tick = 0; A.seq++; }
     A.burstT = A.thick.t; sfx()?.chargeShot?.(ch.k);
@@ -204,6 +243,7 @@ function tickArms(dt) {
   if (A.thick) { A.thick.t -= dt; if (A.thick.t <= 0) A.thick = null; else A.burstT = Math.max(A.burstT, A.thick.t); } // 굵은 줄기는 놓아도 t 초 이어짐 (#129)
   if (A.lasing) { A.burstT -= dt; if (ok && w.id === 'laser' && (holding() || A.burstT > 0)) tickLaser(dt, w); else stopLaser(); }
   if (A.mgB) tickMgBurst(dt, w, ok);
+  tickHeat(dt);
   if (A.held && w.id === 'mg') {
     if (ok && holding() && armedFor(w)) { if (A.cd <= 0 && useAmmo(w)) { shot(w, w.spread); A.cd += 1 / w.rate; } }
     else { A.held = false; endBurst(); }
@@ -244,7 +284,7 @@ const r1 = (v) => Math.round(v * 10) / 10;
 function sendShot(id, p, k = 0) { if (id === 'mg' && !k) { sendBurst('mg', p); return; } A.seq++; A.out = [id, r1(p.x), r1(p.y), r1(p.z), A.seq]; if (k) A.out.push(0, r1(k)); A.outT = k ? CHARGE.peerMs / 1000 : F.peerSeq; } // k: 모아 쏜 정도 (#129, 7번째 칸)
 function sendBurst(id, p) { if (!A.out || A.out[0] !== id || A.out[5] !== 1) A.seq++; A.out = [id, r1(p.x), r1(p.y), r1(p.z), A.seq, 1]; A.outT = 0.35; }
 function endBurst() { if (A.out && A.out[5] === 1) { A.out = null; A.outT = 0; } }
-export const armsPresence = () => (A.out ? { wf: A.out } : {});
+export const armsPresence = () => ({ ...(A.out ? { wf: A.out } : {}), ...(HT.lock > 0 ? { wh: 1 } : {}) }); /* wh: 레이저 과열 중 (#200, 김만 보임. 옛 클라이언트는 모르는 칸이라 넘김) */
 late.armsSend = sendShot; // 모아 쏜 손·활 (#129, game/charge.js)
 late.armsPresence = armsPresence;
 const peerFx = new Map(); // peer → { seq, beam, mgT, seen }
@@ -261,6 +301,7 @@ function tickPeers(dt) {
   if (alone) return;
   for (const e of net.peersById.values()) {
     const d = e.data?.wf; let s = peerFx.get(e.peer);
+    if (e.data?.wh === 1 && e.runner.root.visible && e.pos.distanceTo(player.pos) < 60) { if (!s) { s = { seq: -1, beam: null, mgT: 0, fresh: true }; peerFx.set(e.peer, s); } if ((s.stT = (s.stT || 0) - dt) <= 0) { s.stT = LOW ? 0.2 : 0.1; armFx.steam?.(peerMuzzle(e, 'laser')); } } /* 과열 김 (#200) */
     const chk = Array.isArray(d) && Number.isFinite(d[6]) ? Math.max(0, Math.min(1, d[6])) : 0;
     const valid = Array.isArray(d) && d.length >= 5 && (ARM_IDS.includes(d[0]) || (chk > 0 && CH_IDS.includes(d[0]))) && [d[1], d[2], d[3], d[4]].every(Number.isFinite) && e.runner.root.visible && e.pos.distanceTo(player.pos) < 90;
     if (!valid) { if (s?.beam) { armFx.offBeam(s.beam); s.beam = null; } continue; }
@@ -305,4 +346,5 @@ export function armsChanged() { stopLaser(); A.held = false; A.cd = 0; A.mgB = n
 
 export const armsTime = () => A.gt || 0;
 const armReady = () => A.cd <= 0 && !A.mgB && !A.lasing && !(weaponNow().id === 'bomb' && A.bombCd > 0); // 다가가서 쏘기(#132)가 다음 발을 쏴도 되나
+late.laserHeat = laserHeat; late.laserAuto = laserAuto; 
 Object.assign(late, { armReady, armsTime, fireArm, releaseBomb, tickArms, armsAmmo, openArmWin, armsChanged, armFx, chargedArm });

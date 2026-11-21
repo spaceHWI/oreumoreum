@@ -6,7 +6,7 @@
 // - 피부색은 재질 색 하나(runner), 발은 양말 색을 따로 받음(cFoot)
 // - 체형(남·여)은 bodyWarp 로 허리·골반 폭만 조금 다르게. 옷(휘는 것)도 같은 함수를 거쳐 몸에 맞음
 import * as THREE from 'three';
-import { TORSO, HIPS, ARM, LEG, LEG_R, BODY, prof, pw } from './clothes.js';
+import { TORSO, HIPS, ARM, LEG, LEG_R, BODY, bodyY, prof, pw } from './clothes.js';
 
 export const REGION = { neck: 0, chest: 1, waist: 2, pelvis: 3, upperarm: 4, forearm: 5, hand: 6, thigh: 7, shin: 8, foot: 9 };
 export const REGION_N = 10;
@@ -20,12 +20,15 @@ function trunkProf(y) {
 }
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 // 체형: 여(f)는 허리를 조금 좁히고 골반을 조금 넓힘. 팔(T포즈 y 0.445 위)·정강이 아래(0.24 아래)는 그대로
+// 그 뒤 다리 길이(#191 BODY.leg): 설계 높이를 bodyY 로 옮김 (몸·휘는 옷 모두 이 함수를 한 번 거침)
 export function bodyWarp(pos, sex) {
-  if (sex !== 'f') return pos;
   for (let i = 0; i < pos.length; i += 3) {
-    const y = pos[i + 1]; if (y < 0.24 || y > 0.445) continue;
-    const hip = smooth(0.24, 0.3, y) * (1 - smooth(0.34, 0.39, y)), waist = smooth(0.37, 0.405, y) * (1 - smooth(0.425, 0.445, y));
-    pos[i] *= 1 + 0.045 * hip - 0.05 * waist;
+    const y = pos[i + 1];
+    if (sex === 'f' && y >= 0.24 && y <= 0.445) {
+      const hip = smooth(0.24, 0.3, y) * (1 - smooth(0.34, 0.39, y)), waist = smooth(0.37, 0.405, y) * (1 - smooth(0.425, 0.445, y));
+      pos[i] *= 1 + 0.045 * hip - 0.05 * waist;
+    }
+    pos[i + 1] = bodyY(y);
   }
   return pos;
 }
