@@ -34,7 +34,7 @@
 //   {t:'rj'} 레이드 자리에 옴(참가 수) · {t:'rh', d} 피해(사람마다 초당 RAID.dps 까지만) · {t:'rp', i} 부서진 더미 i 에서 하나 · {t:'rs', s, a?} 방장만: 몸 자리·패턴 → 다른 사람 모두에게
 //   {t:'rgo'} 바로 열기 (STATS_OPEN 방·어드민만) → 방 전체에 {t:'rv', s, h?} (hi 의 raid 에도), 성공하면 보탠 사람마다 {t:'rw', g, box, xp, top} 이고 로그인한 사람은 g 를 번 몫(#144)에 넣음
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg, np, fill} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
-import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP, GIVE } from '../../src/balance.js';
+import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP, GIVE, CAVE } from '../../src/balance.js';
 import { offlineAdds, crowdMul } from '../../src/refill.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
@@ -120,7 +120,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const t = now();
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
-    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
+    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sentCk: new Map(), ck: '', sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
       key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
     const fill = peers.size ? 0 : fillEmpty(t); // 첫 사람이면 빈 동안 몫부터 (#131)
     if (!peers.size) { crowd = 1; crowdT = t; npSent = 1; }
@@ -139,6 +139,19 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     if (!peers.size) roomSeen = now();
   }
 
+  // 동굴 칸 (#195 4번 조각): presence 의 cv 층(1~CAVE.floors)·cd 오늘의 동굴 날짜·cx·cz 동굴 안 자리(그 층 칸 안). 틀리면 동굴 칸을 지움
+  //   x·z 는 동굴 안이어도 입구 자리(이동 판정 그대로). 칸(ck)이 다른 사람에게는 칸이 바뀔 때 한 번만 보냄 (step). 내 칸이 바뀌면 같은 칸 사람의 마지막 상태를 다시 받음
+  const CAVE_SPAN = CAVE.grid * CAVE.cell / 2 + 2;
+  function caveCell(p, d) {
+    let ck = '';
+    if ('cv' in d) {
+      const f = d.cv, okF = Number.isInteger(f) && f >= 1 && f <= CAVE.floors, okD = typeof d.cd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.cd);
+      const okP = okF && isNum(d.cx) && isNum(d.cz) && Math.abs(d.cx - (CAVE.x0 + (f - 1) * CAVE.floorGap)) <= CAVE_SPAN && Math.abs(d.cz - CAVE.z0) <= CAVE_SPAN;
+      if (okF && okD && okP) ck = f + ':' + d.cd; else { delete d.cv; delete d.cd; delete d.cx; delete d.cz; ck = okF ? 'old' : ''; } // 옛 클라이언트(cv 만)는 아무와도 같은 칸이 아님
+    } else { delete d.cd; delete d.cx; delete d.cz; }
+    if (ck !== p.ck) { p.ck = ck; p.sent.clear(); }
+  }
+
   function presence(p, d) {
     if (!d || typeof d !== 'object' || Array.isArray(d) || !isNum(d.x) || !isNum(d.z)) return;
     if ('a' in d) { if (d.a === 1) p.opT = now(); delete d.a; } // 조작 있음 (#157): 기억만 하고 남에게는 안 보냄
@@ -155,6 +168,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 움직임 (#131 사람 수): 마지막으로 센 자리에서 crowdMove m 넘게 가면 움직인 것으로. 처음 자리는 세지 않음
     if (!p.has) { p.ax = d.x; p.az = d.z; } else if (Math.hypot(d.x - p.ax, d.z - p.az) > DUMP.crowdMove) { p.ax = d.x; p.az = d.z; p.actT = t; }
     p.tu = !!d.tu;
+    caveCell(p, d); // 동굴 칸 (#195)
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
     if (p.acct) d.ac = 1; else delete d.ac; // 로그인한 사람 (#175 귤 주기). 클라이언트가 보낸 값은 버림
     // 남이 볼 글은 다듬어서만 (#84). 그리는 쪽도 늘 캔버스·textContent
@@ -326,8 +340,10 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     for (const r of peers.values()) {
       let parts = null;
       for (const o of peers.values()) {
-        if (o === r || !o.pj || r.sent.get(o.id) === o.ver) continue;
-        if (!farTick && r.d && (o.x - r.x) ** 2 + (o.z - r.z) ** 2 > R2) continue;
+        if (o === r || !o.pj) continue;
+        const other = o.ck !== r.ck; // 다른 칸 (#195): 칸이 바뀐 것만 한 번 (가까움 상관없이)
+        if (other) { if (r.sentCk.get(o.id) === o.ck) continue; r.sentCk.set(o.id, o.ck); }
+        else { if (r.sent.get(o.id) === o.ver) continue; r.sentCk.delete(o.id); if (!farTick && r.d && (o.x - r.x) ** 2 + (o.z - r.z) ** 2 > R2) continue; }
         r.sent.set(o.id, o.ver);
         const full = r.sentSlow.get(o.id) !== o.sver; if (full) r.sentSlow.set(o.id, o.sver);
         (parts ||= []).push('["' + o.id + '",' + (full ? o.pj : o.fj) + ']');

@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)만]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -60,6 +60,18 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const hb2 = await B.p.evaluate(() => window.__oreum.raid.state());
     ok(hb2.ph === 2 && hb2.hp <= hb + 1, `이어받아도 기운은 그대로 (${hb} → ${hb2.hp}, 다시 가득 차지 않음)`);
   };
+  const caveCheck = async () => { // 동굴 같이 들어가기 (#195 4번 조각): 같은 날·같은 층 사람끼리만 보이고, 오름 사람에게 동굴 사람은 안 보임
+    await A.p.evaluate(() => window.__oreum.cave.enter());
+    const hid = await until(B, () => { const l = [...window.__oreum.net.peersById.values()]; return l.length > 0 && l.every((e) => !e.runner.root.visible && e.ck); }, null, 15000);
+    await B.p.evaluate(() => window.__oreum.cave.enter());
+    const at = await A.p.evaluate(() => { const o = window.__oreum; o.cave.goPile(0); return [o.player.pos.x, o.player.pos.z]; });
+    const see = await until(B, ([x, z]) => [...window.__oreum.net.peersById.values()].some((e) => e.runner.root.visible && e.runner.root.parent?.name === 'cave' && Math.hypot(e.tpos.x - x, e.tpos.z - z) < 1.5), at, 15000);
+    await A.p.evaluate(() => window.__oreum.cave.down());
+    const hid2 = await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.runner.root.visible), null, 15000);
+    await A.p.evaluate(() => window.__oreum.cave.exit()); await B.p.evaluate(() => window.__oreum.cave.exit());
+    const back = await until(B, () => [...window.__oreum.net.peersById.values()].some((e) => e.runner.root.visible && e.runner.root.parent?.type === 'Scene' && e.runner.root.parent?.name !== 'cave' && !e.ck), null, 15000);
+    ok(hid && see && hid2 && back, `동굴 칸: 오름 B 에겐 동굴 A 가 안 보임 ${hid} · 같이 들어가면 보임 ${see} · A 가 아래층이면 안 보임 ${hid2} · 둘 다 나오면 다시 보임 ${back}`);
+  };
   ok(await A.p.evaluate(() => document.getElementById('enter').textContent === '손님으로 하기' && !document.getElementById('acct-box').hidden), '첫 화면: 손님으로 하기·베타 안내');
   ok(await A.p.evaluate(() => /7일/.test(document.getElementById('acct-box').textContent)), '베타 안내 문구');
   for (const X of [A, B]) { await X.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */; await wait(X.p, 500); }
@@ -84,6 +96,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const ns = (o?.rooms || []).find((r) => r.map === 'namsongi');
     ok(o && o.n === 2 && ns && ns.n === 2 && o.peak.n >= 2, `지금 접속 2명 (${JSON.stringify(o && { n: o.n, rooms: o.rooms, peak: o.peak.n })})`);
   }
+  if (ONLY === 'cave') { await caveCheck(); await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return; } // node tools/online.js <서버> cave: 동굴 칸만 (#195)
   if (ONLY === 'raid') { await raidCheck(); if (!A.closed) await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return; } // node tools/online.js <서버> raid: 레이드만 (#181)
   { // 옷·닉네임은 바뀔 때만 보냄 (#115): A 가 보내는 것을 세고, 옷을 바꾸면 B 화면에 바로
     await A.p.evaluate(() => { window.__sent = []; const s0 = WebSocket.prototype.send; WebSocket.prototype.send = function (d) { if (typeof d === 'string' && d.startsWith('{"t":"p"')) window.__sent.push(d); return s0.call(this, d); }; window.__sent0 = performance.now(); });
@@ -341,6 +354,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.screenshot({ path: 'dist/rank-online.png' });
   await B.p.evaluate(() => window.__oreum.rank.open()); await wait(B.p, 500);
   ok(await B.p.evaluate(() => document.querySelectorAll('#rank-list .rk-mine').length === 3 && /로그인하면/.test(document.getElementById('rank-note').textContent)), '손님: 이 기기 기록 셋과 로그인 안내');
+  await caveCheck(); // 동굴 칸 (#195): 앞 검사(가만히 있던 사람·엔딩)에 걸리지 않게 끝에서
   await raidCheck();
   if (!A.closed) await A.ctx.close(); await B.ctx.close(); await b.close(); web.close();
   // 귤 주기 (#175): 둘 다 로그인한 깨끗한 브라우저로 따로 (A 가 B 옆에서 누르고 있으면 B 귤이 늘고 A 는 준 만큼 줄어듦) — tools/give.js

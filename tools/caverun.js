@@ -5,6 +5,7 @@
 //    왕복 전·후 JS 힙(가비지 정리 뒤)·지오메트리·텍스처 수. 힙이 처음보다 10% 넘게 늘거나 오류가 나면 실패
 // 3) (늘, 3번 조각) 한 판 어림: 걷기(줄 → 구멍·주인, 더미·곁방 들르기 ×1.5, 나올 때 맨 아래 층 되돌아감) + 줍기(가장 큰 배낭·큰 갈퀴) + 싸움(방 적·지킴이·주인)
 //    무기 머신건(4단계, 동굴 들어갈 때쯤)·레이저(5단계)로 각각, 여유 ×1.25. 머신건 판이 15~25분 안이 목표. 번 귤(쓰레기 온전한 판·절반 판·상자·주인)
+// --live 에서 4번 조각: 층마다 벽 쪽지(읽으면 주운 쪽지에)·동굴 옷(상자·주인 뒤, 가게 목록엔 없음)·퀘스트 셈 caveOut·감독 문 cave·혼잣말 줄
 // --live 에서 3번 조각: 판 수(셋째 판은 절반)·화살표·무너지는 바닥·낙석·물길(테왁 없으면 못 건넘)·상자(하루 한 번)·주인(드론 부름·쫓아내면 큰 보상 하루 한 번)
 const path = require('path');
 const args = process.argv.slice(2);
@@ -87,6 +88,7 @@ async function liveRun() {
   if (back.cave || Math.hypot(back.x - back.e.fx, back.z - back.e.fz) > 3) bad(`나온 자리가 입구가 아님 ${JSON.stringify(back)}`);
   await playRun(p, S);
   await playRun3(p, S);
+  await playRun4(p, S);
   if (errs.length) bad('페이지 오류 ' + errs.join(' | '));
   await b.close();
 }
@@ -250,4 +252,38 @@ async function playRun3(p, S) {
   console.log(`  셋째 판: 판 ${r.n} 배수 ${r.k} · 주운 ${one.n}개 귤 ${Math.round(one.g)} (하나 평균 ${(one.g / Math.max(1, one.n)).toFixed(1)}, 온전한 판 종류 평균 ${full.toFixed(1)})`);
   if (r.n !== 3 || r.k !== 0.5 || !(one.g / one.n < full * 0.75)) bad('셋째 판 쓰레기 귤이 절반이 아님');
   await C(() => window.__oreum.cave.exit()); await W(900);
+}
+
+async function playRun4(p, S) {
+  const C = S, W = (ms) => p.waitForTimeout(ms);
+  console.log('# 4번 조각 (쪽지·옷·퀘스트·감독 문)');
+  const cl = await C(() => window.__oreum.cave.extra.cloth()), r = await C(() => window.__oreum.cave.runs());
+  console.log(`  동굴 옷: ${cl.map(([id, on]) => id + (on ? ' 있음' : ' 없음')).join(' · ')} (주인 ${r.boss || '-'} · 상자 ${r.chest.got.join(',') || '-'})`);
+  if (r.boss && !cl.find(([id]) => id.startsWith('top:'))[1]) bad('주인을 쫓아냈는데 동굴 탐험복이 없음');
+  if (r.chest.got.length && !cl.find(([id]) => id.startsWith('hat:'))[1]) bad('상자를 열었는데 헤드랜턴 헬멧이 없음');
+  const shelf = await C(() => { const o = window.__oreum, st = o.street?.leap; if (!st) return null; const ids = []; for (const k of ['hat', 'top']) { st.slot(k); ids.push(...st.items(k).map((i) => i.id || i.key)); } return ids; });
+  if (shelf && shelf.some((id) => /c-lamp|c-suit/.test(id))) bad('LEAP 목록에 동굴 옷이 보임'); else console.log(`  LEAP 목록에 동굴 옷 없음 (${shelf ? shelf.length + '개 중' : 'LEAP 없음'})`);
+  await C(() => { const o = window.__oreum; o.punkWorld.note.reset(); o.cave.setRuns(0); o.cave.enter(); }); await W(900);
+  const got = [];
+  for (let f = 0; f < 3; f++) {
+    if (f) { await C(() => window.__oreum.cave.down()); await W(700); }
+    const n = await C(() => window.__oreum.cave.extra.note());
+    if (!n || !n.shown) { bad(`${f + 1}층 벽 쪽지가 없음`); continue; }
+    const ok = await C(() => { const o = window.__oreum; o.cave.extra.goNote(); const it = o.interactables.find((i) => i.label === '쪽지 읽기'); return !!it && it.when() && o.player.pos.distanceTo(it.pos) < it.r; });
+    await C(() => window.__oreum.cave.extra.read()); await W(300);
+    const g = await C((id) => ({ got: window.__oreum.punkWorld.note.got().includes(id), shown: window.__oreum.punkWorld.note.shown() }), n.id);
+    await C(() => window.__oreum.punkWorld.note.close()); got.push(n.id);
+    console.log(`  ${f + 1}층 쪽지 ${n.id}: 다가가면 '쪽지 읽기' ${ok} · 주움 ${g.got} · 창 '${g.shown || '(표시만)'}'`);
+    if (!ok || !g.got) bad(`${f + 1}층 쪽지를 읽을 수 없음`);
+  }
+  await C(() => { const o = window.__oreum; o.cave.goPile(0); o.cave.pickAll(); }); await W(300);
+  const q0 = await C(() => window.__oreum.save.quest?.c?.caveOut || 0);
+  await C(() => window.__oreum.cave.exit()); await W(1000);
+  const q1 = await C(() => window.__oreum.save.quest?.c?.caveOut || 0), ent = await C(() => { const p = window.__oreum.quest.goPos('cave'), e = window.__oreum.cave.ent(); return p && Math.hypot(p.x - e.fx, p.z - e.fz); });
+  console.log(`  퀘스트: 들고 나오기 셈 ${q0} → ${q1} · 길 안내 'cave' 입구에서 ${ent?.toFixed(1)}m`);
+  if (q1 !== q0 + 1) bad('들고 나와도 퀘스트 셈 caveOut 이 안 오름'); if (!(ent < 1)) bad("퀘스트 길 안내 'cave' 가 입구가 아님");
+  const door = await C(() => { const o = window.__oreum; o.director.open('cave'); return o.director.state().seen?.cave || o.save.journey?.seen?.cave || null; });
+  const mut = await C(() => window.__oreum.mutter.lines.includes('cave'));
+  console.log(`  감독 문 cave 열림 ${!!door} · 혼잣말 줄 cave ${mut}`);
+  if (!door) bad('감독 문 cave 가 없음'); if (!mut) bad('혼잣말 줄 cave 가 없음');
 }

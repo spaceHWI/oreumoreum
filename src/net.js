@@ -15,8 +15,12 @@ import { titleText } from './punktext.js';
 
 // room 캐퍼빌리티로 같은 오름에 있는 사람 보기 + 손잡기
 // 손잡기는 presence 필드로만 주고받음 (요청 req → 수락 with)
-// 동굴 (#195, game/cave.js 가 채움): at = 동굴 안이면 보낼 입구 자리 {x, z}
-export const netCave = { at: null };
+// 동굴 (#195, game/cave.js 가 채움): at = 동굴 안이면 보낼 입구 자리 {x, z}, fi 층(0~), day 오늘의 동굴 날짜, scene 동굴 장면
+// 같이 들어가기 (4번 조각): 같은 날·같은 층에 있는 사람끼리만 보임(동굴 자리 cx·cz). 오름 사람에게 동굴 사람은, 동굴 사람에게 오름 사람은 안 보임
+//   서버(roomcore)도 칸(cv·cd)이 다르면 칸이 바뀔 때 한 번만 보냄 (전송량 절약)
+export const netCave = { at: null, fi: 0, day: '', scene: null };
+const caveKey = (d) => (Number.isInteger(d?.cv) && d.cv > 0 ? d.cv + ':' + (d.cd || '') : '');
+const myCaveKey = () => (netCave.at ? netCave.fi + 1 + ':' + netCave.day : '');
 export function createNet({ scene, player, save, onToast, onPeersChanged, extra, roomName, rideHook, overHook, cull = null, animR = 1e9, shadowR = 1e9, lobby: wsLobby = null, onRoom = null, solo = null }) { // wsLobby: 멀티 서버 로비 (#7, online.js). 있으면 room 캐퍼빌리티 대신
  // solo(): 참이면 혼자 (#100 튜토리얼 중: 남이 안 보이고 내 모습도 안 보냄). cull: 멀리 있는 사람 감추기, animR: 이 거리 밖은 동작 갱신 생략 (#79) // rideHook(e, dt) → { pose, lift, still, fwd } | null: 탈것 (#69)·노루 (#92)
   const peersById = new Map(); // peer -> { peer, runner, label, pos, heading, data }
@@ -94,14 +98,18 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     if (nick !== e.nick || gs !== e.gs || gg !== e.gg || lv !== e.lv || title !== e.title) { e.nick = nick; e.gs = gs; e.gg = gg; e.lv = lv; e.title = title; if (e.label) { e.runner.root.remove(e.label); e.label.material.map?.dispose(); e.label.material.dispose(); } e.label = makeLabel(nick, gs, gg, lv, title); e.runner.root.add(e.label); }
     const ok = JSON.stringify(d.o || null);
     if (ok !== e.outfitKey) { e.outfitKey = ok; const o = expandOutfit(d.o); if (o) { e.runner.apply(o); e.shadow = null; } }
-    const x = Math.max(-2000, Math.min(2000, d.x)), z = Math.max(-2000, Math.min(2000, d.z)); // 남송이는 들머리가 x -860 쯤이라 ±600 이면 잘렸음 (#79)
+    e.ck = caveKey(d); // 동굴 칸 (#195): 내 칸과 다르면 update 가 숨김
+    const inCv = !!e.ck && Number.isFinite(d.cx) && Number.isFinite(d.cz);
+    const x = inCv ? d.cx : Math.max(-2000, Math.min(2000, d.x)), z = inCv ? d.cz : Math.max(-2000, Math.min(2000, d.z)); // 남송이는 들머리가 x -860 쯤이라 ±600 이면 잘렸음 (#79)
+    if (e.ck !== myCaveKey()) { e.waitPr = pr; return; } // 다른 칸: 내가 그 칸에 들어가면 update 가 다시 놓음
+    e.waitPr = null;
     if (!e.runner.root.visible) { e.pos.set(x, height(x, z), z); e.runner.root.visible = !solo?.(); }
     e.tpos.set(x, groundAt(x, z), z);
     e.theading = typeof d.h === 'number' ? d.h : e.theading;
   }
   function removePeer(id) {
     const e = peersById.get(id); if (!e) return;
-    scene.remove(e.runner.root); cull?.()?.remove(e.runner.root); peersById.delete(id);
+    e.runner.root.parent?.remove(e.runner.root); cull?.()?.remove(e.runner.root); peersById.delete(id);
   }
 
   async function start() {
@@ -147,7 +155,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       ...(extra ? extra() : {}),
     };
     // 동굴 (#195): 동굴 안에서는 진짜 자리 대신 입구 자리에 서 있는 것으로 (서버 이동 판정·자리 한도에 걸리지 않게). cv = 동굴 안
-    if (netCave.at) { obj.x = netCave.at.x; obj.z = netCave.at.z; obj.spd = 0; obj.run = false; obj.pose = 'move'; obj.jy = 0; obj.cv = 1; }
+    // 같이 들어가기 (4번 조각): 진짜 동굴 자리는 cx·cz, 층 cv(1~), 오늘의 동굴 cd. 걷기·동작은 그대로 (같은 칸 사람에게만 감)
+    if (netCave.at) { obj.cx = obj.x; obj.cz = obj.z; obj.x = netCave.at.x; obj.z = netCave.at.z; obj.cv = netCave.fi + 1; obj.cd = netCave.day; }
     const key = JSON.stringify(obj);
     if (!force && key === lastKey) return;
     lastKey = key; lastSent = now;
@@ -158,8 +167,11 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   const prevP = new THREE.Vector3();
   const _tk = [0, 0, 0], _tks = [_tk];
   function update(dt) {
-    const alone = !!solo?.();
+    const alone = !!solo?.(), mk = myCaveKey(), par = netCave.at && netCave.scene ? netCave.scene : scene;
     for (const e of peersById.values()) {
+      if ((e.ck || '') !== mk) { e.runner.root.visible = false; if (e.label) e.label.visible = false; continue; } // 다른 칸(동굴·오름, 다른 층) 사람은 안 보임 (#195)
+      if (e.waitPr) { e.runner.root.visible = false; applyPeer(e.waitPr); } // 칸이 막 같아짐: 받아 둔 마지막 상태로 다시 놓음
+      if (e.runner.root.parent !== par) { par.add(e.runner.root); if (par === scene) cull?.()?.add(e.runner.root, { dynamic: true, shadow: false }); else cull?.()?.remove(e.runner.root); } // 동굴 안이면 동굴 장면에 그림 (멀리 감추기는 오름에서만)
       if (alone) { e.runner.root.visible = false; if (e.label) e.label.visible = false; continue; } // #100 튜토리얼 중엔 혼자
       if (!e.runner.root.visible) { e.pos.copy(e.tpos); e.runner.root.visible = true; }
       const k = Math.min(1, dt * 10);
@@ -190,7 +202,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
 
   function nearestPeer(maxD) {
     let best = null, bd = maxD; if (solo?.()) return null;
-    for (const e of peersById.values()) { const d = e.pos.distanceTo(player.pos); if (d < bd) { bd = d; best = e; } }
+    const mk = myCaveKey();
+    for (const e of peersById.values()) { if ((e.ck || '') !== mk) continue; const d = e.pos.distanceTo(player.pos); if (d < bd) { bd = d; best = e; } }
     return best;
   }
   function hitPeer(peerId) { hitOut = { p: peerId, at: Date.now() }; send(true); setTimeout(() => { if (hitOut && hitOut.p === peerId) { hitOut = null; send(true); } }, 4000); }
