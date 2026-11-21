@@ -1441,3 +1441,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 하르방·산타 투기꾼 모자(`season.js santaHat`)도 같은 몸통으로 바꿈
 - 확인 도구 `tools/hats.js [dist] [모자 id,...]`: 머리 3종 × 앞·옆·뒤·위·달리기를 남녀 한 장씩 가까이 찍음
 - 다른 모자 훑음: 비니·요리사·갓·하르방·귤 반쪽·안전모·기본 모자·밀짚·버킷은 머리가 비치는 틈 없음. 다만 똥머리는 이 모자들 아래 뒤쪽으로 잘린 반달 모양이 보임(머리카락 자체, 틈 아님) — 그대로 둠
+## #199 쪽지 넘겨 보기·종이 배경·그림
+- 쪽지 창을 `src/game/noteview.js` 로 떼어 냄(punkworld.js 는 주기·칩·도감만). 순서는 주운 순서(save.punk.notes 의 때). 새로 주운 창·칩은 그 쪽지(맨 뒤)에서 시작해 ◀ 로 앞 것, 도감에서 열면 그 쪽지부터. ◀ ▶·←→·A·D·좌우 밀기, 끝에서 멈춤(처음으로 안 돎). 창이 열린 동안 ←→·A·D 는 캐릭터를 움직이지 않음(capture 로 먼저 받음). 넘겨 본 것도 읽음(save.punk.unread 에서 뺌), 앞·뒤에 안 읽은 게 있으면 ◀·▶ 에 귤색 점. 아래 '3 / 12'·구역 이름
+- 종이: NOTES 에 `paper` 칸 — memo·notebook·receipt·letter·postcard·alien·form·flyer·crumple·photo·rubbing·diary (CSS 만, 그림 파일 없음). 손글씨는 Nanum Pen Script(구글 글꼴, 처음 열 때만 받음, 못 받으면 고딕). 영수증은 고정폭, 외계 문서·고지서·전단·탁본은 고딕
+- 그림: NOTES 에 `img: true` 면 `assets/notes/<id>.webp` 를 종이 위쪽에 테이프로 붙인 듯(열 때만 받음, 못 받으면 종이만). build.mjs 가 dist/assets/notes 로 복사, publish.yml 이 `assets/` 로 올림. 한 파일 빌드(oreumoreum.html)엔 그림 없음. 아직 그림은 하나도 없음(기획 세션 몫, 이슈 코멘트의 표)
+- 넘김: 옆에서 밀려 들어오는 짧은 움직임 + 종이 쓸리는 소리(audio.js 가 40KB 를 넘어 noteview.js 에서 late.sound 의 noise 로 냄). 저사양(LOW)·움직임 줄이기는 바로 바뀜. 긴 쪽지는 창 안 스크롤(box-sizing border-box, 폰 390 폭에서 30장 모두 화면 안)
+- 확인 `node tools/notes.js [--shot]` (데스크톱·폰, 38줄)

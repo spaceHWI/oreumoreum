@@ -2,7 +2,7 @@
 // 1. 오름 방송: 들머리·가게 거리 스피커 기둥(코드 모델). 감독 문 'radio' 가 열리면 PUNK.radio.every 초마다 '딩동댕' 뒤 이장님 방송이 위쪽 자막 띠로
 //    스피커 PUNK.radio.r m 안에서만. 감독(kind 'radio', 우선순위 맨 뒤·싸움 중엔 안 나옴)을 거침. 상황(구역 완료·우두머리·비·자정)은 다음 방송에 먼저, 멀티는 이름(safeNick 거친 것)
 //    메뉴 설정 '오름 방송' 켜기·끄기 (save.punk.radio)
-// 2. 쪽지: 쓰레기를 주울 때 PUNK.note.p 로 그 구역 쪽지 한 장(쓰레기 수·귤은 그대로). 쪽지 창을 띄움, 싸우는 중·창이 열려 있으면 왼쪽 위 쪽지 표시만(누르면 열림)
+// 2. 쪽지: 쓰레기를 주울 때 PUNK.note.p 로 그 구역 쪽지 한 장(쓰레기 수·귤은 그대로). 쪽지 창을 띄움, 싸우는 중·창이 열려 있으면 왼쪽 위 쪽지 표시만(누르면 열림). 창(종이·넘기기)은 game/noteview.js (#199)
 //    도감 '주운 쪽지' 칸(late.dexExtra 를 감쌈, 누르면 다시 읽기). 다 모으면 업적 b-notes
 // 3. 칭호: 업적(achievements.js BADGES)을 따면 열림(TITLES.badge). 업적 창 [칭호] 에서 하나 골라 이름표 위에 (save.punk.title, -1 은 안 닮)
 //    멀티: net.js 가 옷 묶음(#115)과 같이 tt 로 바뀔 때만 보냄, 서버 roomcore 는 범위만 봄. 감독 문 'title'(구역 3) 이 열리면 소개 한 줄
@@ -28,6 +28,7 @@ import { player, trash, life, col, NS_TUT, street } from './place.js';
 import { toast, ach, panelOpen, closePanels, PANELS, openAch, openDex } from './hud.js';
 import { director, holdWin } from './director.js';
 import { icon } from '../icons.js';
+import { createNoteView } from './noteview.js';
 
 const R = PUNK.radio;
 
@@ -57,14 +58,6 @@ body.banner-on #radio-strip, body.tip-on #radio-strip { top: calc(var(--tb-top, 
 #punk-chip svg { width: 26px; height: 26px; }
 #punk-chip i { position: absolute; right: -3px; top: -3px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--gyul); color: var(--acc-fg); font: 800 11px/16px var(--body); font-style: normal; }
 @keyframes pn-bob { 50% { transform: translateY(-3px); } }
-#punk-note.overlay { z-index: 13; }
-#punk-note .pn-paper { position: relative; box-sizing: border-box; display: flex; flex-direction: column; word-break: keep-all; overflow-wrap: anywhere; width: min(340px, calc(100vw - 48px)); max-height: min(70vh, calc(100vh - 32px)); overflow: hidden; padding: 22px 22px 16px; background: #f4ecd8; color: #33302a; border-radius: 4px; box-shadow: 0 18px 40px rgba(0,0,0,.4); transform: rotate(-1.2deg); font-family: var(--body); }
-#punk-note .pn-paper::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 25px, rgba(80,70,50,.12) 25px 26px); pointer-events: none; border-radius: 4px; }
-#punk-note .pn-from { font-size: 12px; color: #7a7262; margin: 0 0 4px; }
-#punk-note h2 { flex: none; margin: 0 0 12px; font: 800 19px/1.3 var(--display); color: #2a2722; }
-#punk-note .pn-b { flex: 0 1 auto; min-height: 0; overflow-y: auto; white-space: pre-line; font-size: 15px; line-height: 26px; margin: 0 0 14px; }
-#punk-note .pn-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #7a7262; }
-#punk-note .pn-foot button { border: 0; border-radius: 999px; padding: 7px 16px; background: #33302a; color: #f4ecd8; font: 700 13px var(--body); cursor: pointer; }
 #punk-title .pt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 #punk-title .pt-it { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--hair); background: rgba(255,255,255,.06); color: var(--ink); font: 700 13px var(--body); cursor: pointer; }
 #punk-title .pt-it .bdg { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
@@ -82,9 +75,8 @@ const PAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const el = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); Object.assign(e, attrs); if (html) e.innerHTML = html; document.body.append(e); return e; };
 const strip = el('div', { id: 'radio-strip', hidden: true }, `${SPK}<span class="rs-w"><span class="rs-t"></span></span>`); strip.setAttribute('aria-live', 'polite');
 const chip = el('button', { id: 'punk-chip', type: 'button', hidden: true, title: '주운 쪽지' }, `${PAPER}<i></i>`); chip.setAttribute('aria-label', '주운 쪽지 읽기');
-const noteEl = el('div', { id: 'punk-note', className: 'overlay dim', hidden: true }, '<div class="pn-paper" role="dialog" aria-modal="true"><p class="pn-from"></p><h2></h2><p class="pn-b"></p><div class="pn-foot"><span class="pn-n"></span><button type="button" id="punk-note-close">닫기</button></div></div>');
 const titleEl = el('div', { id: 'punk-title', className: 'overlay dim', hidden: true }, '<div class="panel pop"><div class="pop-head"><h2>칭호</h2><button type="button" class="btn small" id="punk-title-close">닫기</button></div><div class="pop-body"><p class="pt-now"></p><div class="pt-list"></div></div></div>');
-PANELS.push('punk-note', 'punk-title'); // 열려 있으면 panelOpen (감독·조작이 기다림), closePanels 가 닫음
+PANELS.push('punk-title'); // 열려 있으면 panelOpen (감독·조작이 기다림), closePanels 가 닫음. punk-note 는 쪽지 창을 만든 뒤(2절)
 
 /* ---------- 1. 스피커 기둥 ---------- */
 const M4 = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1));
@@ -188,22 +180,18 @@ const noteBy = Object.fromEntries(NOTES.map((n) => [n.id, n]));
 const gotN = () => Object.keys(P.notes).length;
 const fightNow = () => !!player.down || !!late.pace?.threat?.() || (state.tension || 0) > 0.3 || !!late.bossFight?.() || !!life?.enemies?.near?.(player.pos, 25);
 function syncChip() { chip.hidden = !P.unread.length; chip.querySelector('i').textContent = P.unread.length > 1 ? String(P.unread.length) : ''; }
-let noteFromDex = false;
-function openNote(id, { dex = false } = {}) {
-  const n = noteBy[id]; if (!n || !P.notes[id]) return false;
-  noteEl.querySelector('.pn-from').textContent = n.from;
-  noteEl.querySelector('h2').textContent = n.t;
-  noteEl.querySelector('.pn-b').textContent = n.b;
-  noteEl.querySelector('.pn-n').textContent = `${zoneName(n.z)} · 주운 쪽지 ${gotN()}/${NOTES.length}`;
-  const i = P.unread.indexOf(id); if (i >= 0) { P.unread.splice(i, 1); persist(); } syncChip();
-  noteFromDex = dex; if (!dex) closePanels();
-  noteEl.hidden = false; if (!dex) holdWin('story', 'note', 'punk-note'); // 감독은 닫힐 때까지 기다림
-  late.sound?.snip?.();
-  return true;
-}
-const closeNote = () => { noteEl.hidden = true; if (noteFromDex && !$('dex').hidden) late.dexRebuild?.(); };
-$('punk-note-close').addEventListener('click', closeNote);
-noteEl.addEventListener('pointerdown', (e) => { if (e.target === noteEl) closeNote(); });
+// 쪽지 창 (#199): 종이 모양·이전/다음 넘기기·그림은 game/noteview.js
+const view = createNoteView({
+  P, NOTES, zoneName, persist, sound: () => late.sound,
+  onRead: () => syncChip(),
+  // 감독은 창이 닫힐 때까지 기다림 (도감에서 연 것은 도감 위에 뜸)
+  onOpen: (dex) => { if (!dex) { closePanels(); holdWin('story', 'note', 'punk-note'); } late.sound?.snip?.(); },
+  onClose: (dex) => { if (dex && !$('dex').hidden) late.dexRebuild?.(); },
+});
+const noteEl = view.el;
+PANELS.push('punk-note');
+const openNote = (id, { dex = false } = {}) => view.open(id, { dex });
+const closeNote = () => view.close();
 chip.addEventListener('click', () => { const id = P.unread[P.unread.length - 1]; if (id) openNote(id); });
 function giveNote(id, { quiet = false } = {}) { // 쪽지 한 장을 얻음. 싸우는 중·창이 열려 있으면 표시만
   if (!noteBy[id] || P.notes[id]) return false;
@@ -310,7 +298,7 @@ late.punkWorld = {
     go: (id = 'trail') => { const s = spots.find((x) => x.id === id); if (!s) return null; player.pos.set(s.x + 3, height(s.x + 3, s.z), s.z); player.visY = player.pos.y; return { x: s.x, z: s.z }; },
     lines: () => ({ radio: RADIO.length, situ: Object.keys(RADIO_SITU).length }),
   },
-  note: { give: (id, quiet) => giveNote(id, { quiet }), drop: (z) => dropNote(z), open: (id) => openNote(id), got: () => Object.keys(P.notes), unread: () => [...P.unread], shown: () => (!noteEl.hidden ? noteEl.querySelector('h2').textContent : null), chip: () => !chip.hidden, close: closeNote, list: NOTES, reset: () => { P.notes = {}; P.unread = []; delete P.ev['note-all']; persist(); syncChip(); } },
+  note: { give: (id, quiet) => giveNote(id, { quiet }), drop: (z) => dropNote(z), open: (id) => openNote(id), got: () => Object.keys(P.notes), unread: () => [...P.unread], shown: () => (!noteEl.hidden ? noteEl.querySelector('h2').textContent : null), chip: () => !chip.hidden, close: closeNote, view: () => view.test(), go: (d) => view.go(d), list: NOTES, reset: () => { P.notes = {}; P.unread = []; delete P.ev['note-all']; persist(); syncChip(); } },
   title: { set: (i) => setTitle(i), now: () => P.title, unlocked: () => TITLES.map((t, i) => unlocked(i)), open: openTitles, list: TITLES, btn: () => !titleBtn.hidden },
   stare: () => +stareT.toFixed(1), day: () => ({ ...P.day }), ev: () => ({ ...P.ev }),
   state: () => JSON.parse(JSON.stringify(P)),
