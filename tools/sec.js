@@ -258,6 +258,12 @@ async function startServers() {
     ok(noN >= want - NET.takePerSec - 1, `빠른 줍기(초당 ${NET.takePerSec}개 넘게) 되돌림 (${want}개 중 ${noN}개)`);
     fast.send({ t: 'take', h: h2, n: 9999 }); await sleep(300);
     ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 2, '한 번에 아주 많이 줍기도 한도 안에서만');
+    { // #172 동료 줍기(btake): 더미는 줄지만 번 몫엔 안 셈 → 동료가 주운 몫이 내 귤로 잡히지 않음. 방에서도 마지막 BUDDIES.keep 은 남김
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL } = await import('../server/src/heaps.js'); const { BUDDIES } = await import('../src/balance.js');
+      let T0 = 1e12; const core = createRoomCore({ now: () => T0 }); const bp = core.join(() => {}, { acct: 'buddy-test' });
+      const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
+      ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
+    }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
     for (let j = 0; j < 300; j++) F.send({ t: 'ping', c: j });
