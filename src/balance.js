@@ -404,6 +404,22 @@ export const ENEMY_SPAWN = {
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
 };
+// 적 무리 (#146, src/enemypack.js): 적끼리 겹치지 않기 · 같은 무리는 플레이어 둘레로 벌려 에워쌈
+export const ENEMY_PACK = {
+  push: 10, pad: 0.3, // 밀어내는 세기: 몸 원(BOAR.bodyR × 크기) 합 + pad 안으로 들어온 만큼을 1초에 이 비율로 풂. 몸 원끼리 겹친 만큼은 바로 풂
+  look: 0.6, yieldT: 0.3, // 앞에 다른 적이 이만큼 안에 있으면 yieldT 초 동안 걸음을 늦춤 (줄지어 기다림)
+  jamT: 0.5, detourT: 1.2, // 밀린 쪽이 돌담·나무·오름 밖에 막힌 채 jamT 초면 detourT 초 동안 옆으로 돌아감
+  close: 3, // 한 무리에서 가까이(COMBAT.ringR 안) 붙는 수. 실제로 한 번에 덤비는 수는 COMBAT.attackers (난이도는 그대로)
+  closeR: 4.6, backR: 3.5, // 붙는 적은 이 둘레까지 다가가고(COMBAT.windD 안), 나머지는 ringR + backR 둘레에서 맴돌다 자리가 나면 들어옴
+  spread: 1.1, arc: 4.4, // 무리 안 이웃 자리 사이 각(rad, 약 63°), 무리 전체가 벌리는 각 상한(rad, 약 250°)
+  lead: 4, arcStep: 0.6, // 멀리서는 자기 자리 방향으로 lead m 씩 다가가고, 둘레로는 한 번에 arcStep rad 앞까지만 보며 돌아감
+  drift: 0.3, driftW: 0.5, // 뒤에서 기다리는 적은 자리를 ±drift rad 만큼 천천히 옮기며 맴돎
+  gather: 0.5, gatherD: 9, // 무리 가운데에서 gatherD m 넘게 떨어지면 가운데로 끌리는 세기
+  vary: 0.12, // 빠르기를 저마다 ±이 비율로 다르게 (같은 걸음으로 겹쳐 보이지 않게)
+  orbit: 0.4, // 멀리서 쏘는 적(외계인)이 제 자리에 닿으면 무리가 함께 한쪽으로 도는 빠르기(× walk)
+  every: 0.25, // 자리를 다시 나누는 간격(초)
+  spawnGap: 0.4, // 처음 놓을 때 몸 원 사이 여유(m)
+};
 // 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
 // dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
 // cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
