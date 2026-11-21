@@ -2,6 +2,7 @@
 import { THROW_AIM, WEAPONS, COMBAT } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
+import { drape } from '../drape.js';
 import { state, late } from './state.js';
 import { $, save, syncEquipGear, persist } from './save.js';
 import { scene, camera } from './scene.js';
@@ -177,6 +178,7 @@ export function updateAmmo() {
 // 겨눈 대상 발밑 표시
 export const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));
 aimMark.visible = false; aimMark.renderOrder = 3; scene.add(aimMark);
+const placeAim = drape(aimMark, height); // 비탈에서도 땅에 묻히지 않게 (#151)
 const aimTri = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.5, 3).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ff8a1f', depthTest: false, transparent: true }));
 aimTri.visible = false; aimTri.renderOrder = 9; scene.add(aimTri);
 export function tickAimMark(time) {
@@ -185,7 +187,7 @@ export function tickAimMark(time) {
   if (!t) return;
   { const far = flat(t) >= fireR() ? 0.35 : 0.85; aimMark.material.opacity = far; aimTri.material.opacity = far + 0.15; }
   const s = t.size * THROW_AIM.mark * (1 + Math.sin(time * 6) * 0.08);
-  aimMark.scale.set(s, 1, s); aimMark.position.set(t.pos.x, height(t.pos.x, t.pos.z) + 0.08, t.pos.z); aimMark.rotation.y = time * 1.5;
+  placeAim(t.pos.x, t.pos.z, Math.round(s * 50) / 50, 0, 0.02);
   aimTri.position.set(t.pos.x, t.pos.y + (t.h || 0.8) * 2 + 0.9 + Math.sin(time * 6) * 0.1, t.pos.z); aimTri.rotation.y = time * 2;
 }
 // 화면 밖 가까운 적 방향 표시 (#56): 가장자리에 귤색 세모 + 종류 아이콘, 가까울수록 크고 진하게, 최대 3개
