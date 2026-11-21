@@ -31,7 +31,7 @@ import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 import { TITLES } from '../../src/punktext.js';
 
-const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134). 지금은 비워 둠 → 예: '0.24.0'
+const MIN_VER = '0.24.0'; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134, #145)
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isDeerId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,12}$/.test(v); // 노루 이름 (#92)
 

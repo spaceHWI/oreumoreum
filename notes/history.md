@@ -1356,3 +1356,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 모아 쏘기(#129): 누르고 있는 동안은 다가가지도 쏘지도 않고 모으기만, 놓으면 charge.js 가 타겟에게 쏨. 짧게 놓은 한 발은 approach 가 쏨(charge.js 는 `late.approachOn` 이면 쏘지 않음)
 - throw.js: `fireR` 내보냄, 켜져 있는 동안 잡아 두는 거리(detectR)를 `late.approachR` 만큼 늘림. arms.js: `late.armReady`(다음 발 쏴도 되나, 폭탄 다시 쥐는 중 토스트가 뜨지 않게)
 - 확인 `node tools/approach.js` (3마리 차례로·W 로 풀림·기운 낮음·줍기·외계인·모으기·적 없음)
+
+- #145 (1단계): 서버 `MIN_VER` 를 0.24.0 으로 올려 옛 클라이언트에 닫을 수 없는 새로고침 알림. `OLD_PRICE` 삭제는 2026-11-22 04:00 KST 뒤에 하므로 이슈는 열어 둠.
