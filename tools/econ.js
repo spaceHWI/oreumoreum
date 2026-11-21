@@ -311,5 +311,11 @@ async function main() {
   { const Q = B.QUESTS, sum = (z) => Q.main.filter((q) => q.z === z).reduce((a, q) => a + (q.reward?.gyul || 0), 0), q1 = sum(1), cap = Math.round(day1 * Q.dayCap);
     console.log(`퀘스트: 첫날(구역 1) 보상 귤 ${q1} · 첫날 벌이 ${day1} 의 ${Math.round(Q.dayCap * 100)}% = ${cap} → ${q1 <= cap ? '통과' : '넘침 (보상을 줄일 것)'}`);
     console.log('  구역별 줄기 보상 합: ' + [1, 2, 3, 4, 5].map((z) => `구역 ${z} ${sum(z)}`).join(' · ')); }
+  { // 오름펑크 (#165): 쪽지는 귤이 없음(쓰레기 수·귤은 보통 쓰레기와 같음). 칭호가 열리는 업적의 보상 합은 첫날 벌이의 10% 안
+    const { NOTES, TITLES } = require('../src/punktext.js'), { BADGES } = require('../src/achievements.js'), src = fs.readFileSync(path.join(__dirname, '../src/game/punk.js'), 'utf8');
+    const noGyul = NOTES.every((n) => !('gyul' in n) && !('reward' in n)) && !/addCoins|coins\s*[+-]?=|scatterTangerines/.test(src);
+    const ids = new Set(TITLES.map((t) => t.badge)), add = BADGES.filter((b) => ids.has(b.id) && /^b-(earn-10k|stare|unpaid|alien-cs|crow|hare-five|dumper|guard-1|notes)$/.test(b.id)), tot = add.reduce((s, b) => s + b.reward, 0), cap = Math.round(day1 * 0.1);
+    console.log(`쪽지: ${NOTES.length}장, 귤 ${noGyul ? '0 (벌이 그대로)' : '있음'} · 칭호 ${TITLES.length}개, 새 업적 ${add.length}개 보상 합 귤 ${tot} · 첫날 벌이 ${day1} 의 10% ${cap} → ${noGyul && tot <= cap && TITLES.every((t) => BADGES.some((b) => b.id === t.badge)) ? '통과' : '넘음·없는 업적'}`);
+  }
 }
 main();

@@ -95,6 +95,7 @@ import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
 import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
+import './game/punk.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호
 import './game/start.js';
 import './game/update.js';
 import './game/debug.js';

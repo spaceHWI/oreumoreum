@@ -206,6 +206,11 @@ async function startServers() {
     await sleep(400);
     const seen = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).find(([id]) => id === P.msgs[0].id)?.[1];
     ok(seen && !/[<>‮]/.test(seen.nick) && [...seen.nick].length <= 16 && !/[<>]/.test(seen.say.t) && [...seen.say.t].length <= 60, '다른 사람에게 가는 닉네임·말풍선 다듬음');
+    { // 칭호 (#165): 번호만 오가고 범위 밖·글은 -1 로
+      const { TITLES } = await import('../src/punktext.js'), ttOf = async (tt, dx) => { P.send(presence(-860 + dx, 0, { tt })); await sleep(400); return Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1]?.tt; };
+      const a = await ttOf(TITLES.length - 1, 0.1), b = await ttOf(TITLES.length + 5, 0.2), c = await ttOf('<b>왕</b>', 0.3);
+      ok(a === TITLES.length - 1 && b === -1 && c === -1, `칭호 번호는 범위만 (${a}, ${b}, ${c})`);
+    }
     // 맞힘: 사거리 밖은 지움
     P.send(presence(-860.5, 0, { ht: { p: Q.msgs[0].id, at: 1 } }));
     Q.send(presence(-700, 5)); await sleep(200);

@@ -78,6 +78,16 @@ BADGES.push(
   { id: 'b-rank-10', ev: 'rank-top10', goal: 1, name: '오늘의 열 명', desc: '오늘 랭킹 10위 안에 들었어요', color: '#ff9a1f', reward: 50 }, // 랭킹 (#11)
   { id: 'b-rank-1', ev: 'rank-top1', goal: 1, name: '오늘의 일등', desc: '오늘 랭킹 1위를 했어요', color: '#e8b94a', reward: 150 },
   { id: 'b-gear-all', ev: 'gear-max-all', goal: 1, name: '완전 무장', desc: '장비를 전부 최고 단계까지', color: '#e8b94a', reward: 400 },
+  // 칭호가 열리는 업적 (#165, 칭호 글은 punktext.js TITLES). 사건은 game/punk.js 가 냄 (stare·trash-day-500·quest-boss1·note-all)
+  { id: 'b-earn-10k', ev: 'earn', goal: 10000, name: '귤값 하는 사람', desc: '귤 10,000개 벌기', color: '#ff9a1f', reward: 50 },
+  { id: 'b-stare', ev: 'boar-stare', goal: 1, name: '멧돼지와 눈싸움', desc: '멧돼지 앞에서 10초 동안 안 맞고 버티기', color: '#6b4a36', reward: 20 },
+  { id: 'b-unpaid', ev: 'trash-day-500', goal: 1, name: '오늘도 무급', desc: '하루에 쓰레기 500개 줍기', color: '#5a7a4a', reward: 50 },
+  { id: 'b-alien-cs', ev: 'enemy-repel-alien', goal: 20, name: '외계인 민원 담당', desc: '외계인을 스무 번 쫓아냈어요', color: '#5fae8a', reward: 60 },
+  { id: 'b-crow', ev: 'crow-steal', goal: 1, name: '까마귀 밥', desc: '까마귀에게 뭔가를 털렸어요', color: '#3a3d48', reward: 10 }, // #163 까마귀 도둑이 사건을 냄
+  { id: 'b-hare-five', ev: 'hareubang-five', goal: 10, name: '하르방 단짝', desc: '하르방과 하이파이브 열 번', color: '#6f6a62', reward: 30 }, // #163 하르방 하이파이브가 사건을 냄
+  { id: 'b-dumper', ev: 'dumper-repel', goal: 30, name: '투기꾼의 악몽', desc: '무단 투기꾼을 서른 번 쫓아냈어요', color: '#8a4a3a', reward: 60 },
+  { id: 'b-guard-1', ev: 'quest-boss1', goal: 1, name: '숲길 지킴이', desc: '오름지기 퀘스트 \'구역의 주인\' 을 끝냈어요', color: '#4f7a36', reward: 20 },
+  { id: 'b-notes', ev: 'note-all', goal: 1, name: '쪽지 수집가', desc: '주운 쪽지 30장을 다 모았어요', color: '#c9a86a', reward: 80 },
 );
 
 export const kstDate = (t = Date.now()) => { const k = new Date(t + 9 * 3600000); return `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, '0')}-${String(k.getUTCDate()).padStart(2, '0')}`; };

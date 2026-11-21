@@ -23,6 +23,7 @@
 import { NET, ZONE_GUARD } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText } from '../../src/safetext.js';
+import { TITLES } from '../../src/punktext.js';
 
 const MIN_VER = ''; // 이보다 낮은 버전의 게임엔 닫을 수 없는 새로고침 알림 (#134). 지금은 비워 둠 → 예: '0.24.0'
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -115,7 +116,8 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 옷·닉네임은 바뀔 때만 옴 (#115): 없으면 앞에 받은 값 그대로. 한 번도 안 받았으면 없는 채로(받는 쪽 기본값). 옛 클라이언트는 늘 실어 보냄
     if ('gs' in d) d.gs = Number.isFinite(d.gs) ? Math.max(0, Math.min(9999, Math.floor(d.gs))) : 0; // 장비 점수 (#137, 이름표 옆 숫자. 보여 주기만)
     if ('gg' in d) d.gg = Number.isFinite(d.gg) ? Math.max(0, Math.min(3, Math.floor(d.gg))) : 0; // 입은 것 중 가장 높은 등급 (#140, 이름표 색)
-    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; if (!('gs' in d) && 'gs' in p.d) d.gs = p.d.gs; if (!('gg' in d) && 'gg' in p.d) d.gg = p.d.gg; }
+    if ('tt' in d) d.tt = Number.isInteger(d.tt) && d.tt >= 0 && d.tt < TITLES.length ? d.tt : -1; // 칭호 번호 (#165): 범위만 봄 (글은 받는 쪽이 목록에서)
+    if (p.d) { if (!('o' in d) && 'o' in p.d) d.o = p.d.o; if (!('nick' in d) && 'nick' in p.d) d.nick = p.d.nick; if (!('gs' in d) && 'gs' in p.d) d.gs = p.d.gs; if (!('gg' in d) && 'gg' in p.d) d.gg = p.d.gg; if (!('tt' in d) && 'tt' in p.d) d.tt = p.d.tt; }
     if ('say' in d) d.say = d.say && typeof d.say === 'object' && isNum(d.say.at) ? { t: cleanText(d.say.t, NET.sayMax), at: d.say.at } : null;
     // 맞힘 알림: 쏜 사람 화면에서 판정한 결과. 서버는 거리·빈도만 봄
     const ht = d.ht;

@@ -49,6 +49,11 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const tee = await A.p.evaluate(() => { const o = window.__oreum; o.save.look = { ...(o.save.look || { sex: 'm', skin: 0 }), colors: { hat: 0, top: 3, bottom: 0, shoes: 0 } }; o.clothes.wear('top', 'top:w-tee'); o.player.pos.x += 0.5; return o.save.outfit.gear.top; });
     const seenTee = await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.data.o?.gr?.top === t), tee);
     ok(tee === 'top:w-tee~3' && seenTee, `A 가 고른 기본 옷 색이 B 화면에 (${tee})`);
+    // 칭호 (#165): A 가 단 칭호가 B 화면 이름표 위에 (번호 tt 만 오가고 글은 목록에서)
+    const tt = await A.p.evaluate(() => { const o = window.__oreum, i = o.punk.title.list.findIndex((t) => t.badge === 'b-first'); o.ach.state.badges['b-first'] ||= { at: Date.now(), claimed: false }; o.punk.title.set(i); o.player.pos.x += 0.5; return o.punk.title.list[i].t; });
+    ok(await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.title === t && e.label?.scale.y > 0.9), tt), `A 가 단 칭호가 B 화면 이름표 위에 (${tt})`);
+    await A.p.evaluate(() => { window.__oreum.punk.title.set(-1); window.__oreum.player.pos.x += 0.5; });
+    ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
     const C = await open('C'); await C.p.click('#enter');
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
