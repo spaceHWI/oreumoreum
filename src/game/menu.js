@@ -1,5 +1,5 @@
 // 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { WX } from '../weather.js';
+import { WX, wxIcon } from '../weather.js';
 import { ONLINE } from '../online.js';
 import { state, late } from './state.js';
 import { $, KEY, save, persist } from './save.js';
@@ -11,7 +11,7 @@ import { initInbox, inboxCheck } from './inbox.js';
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });
-$('btn-menu').addEventListener('click', () => { inboxCheck(); const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
+$('btn-menu').addEventListener('click', () => { inboxCheck(); const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('m-wx').innerHTML = wxIcon(wx.kind) + WX[wx.kind].name; $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
 $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'));
 // 처음부터 다시(#33): 2초 꾹 누르면 이 기기의 저장을 지움. 닉네임·그래픽·소리 설정은 남김 (돌탑의 돌은 서버에 있어 그대로)
 {

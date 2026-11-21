@@ -346,6 +346,13 @@ export const WEATHER = {
   lat: 33.3, lon: 126.3, // 남송이오름(서귀포시 안덕면 서광리) 근처
   pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
   particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
+  // #147 비·눈 모양: 빗줄기는 바람 쪽으로 기운 짧은 선 (len 길이 범위 m, w 굵기 m, thick 비율만큼은 thickK 배 굵게)
+  rainDrift: 6, rainAlpha: 0.8, rainCol: '#e4eaf0', streak: { len: [0.9, 1.7], w: 0.03, thick: 0.08, thickK: 2.4, minPx: 1.1 },
+  snowN: 900, snowLow: 400, snowSize: [4, 5], // 눈송이 수·화면 크기(px)
+  keepMin: 120, // 날씨를 못 받으면 앞에 받은 날씨를 이만큼(분) 그대로 둔다
+  nightDim: 0.16, // 밤 흐림·비 하늘 = 낮 회색 × 이 값
+  cloudLow: 0.45, cloudBig: 0.9, // 비·흐림엔 구름 덩어리를 이만큼 낮게(높이 비율)·크게(배율 더함)
+  floor: 0.42, // 날씨 × 구역 분위기로 땅이 어두워져도 원래 밝기의 이 비율 아래로는 안 내려감
   cloudCount: 11, // namsongi 구름 덩어리 수
 };
 
