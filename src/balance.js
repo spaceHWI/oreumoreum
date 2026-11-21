@@ -1657,3 +1657,14 @@ export const REC = {
 // 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
 // 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
 export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };
+
+// 캐릭터 혼잣말 (#169, src/game/mutter.js · 글은 src/punktext.js MUTTER_TEXT): 내 캐릭터 머리 위에 가끔 실마리 말풍선. 내 화면에만
+// sec 보이는 시간 · gap 혼잣말 사이 최소(초) · wait 그 뒤 더 기다리는 시간(0~wait 고르게, 평균 gap + wait/2 ≈ 3분 15초) · retry 할 말이 없으면 다시 볼 때(초)
+// max 같은 줄 최대 횟수(풀리면 그 전에 안 나옴) · idleAfter 실마리 조건이 이만큼(초) 하나도 없을 때만 한가한 혼잣말 · evTtl 일이 일어난 뒤 이 안에만 그 일 줄(초)
+// near: 조건 거리(m) · bagFull 배낭 비율 · hand 손으로 던진 수 · walk 탈것 없이 걸은 거리(m) · hpLow HP 비율 · boss 이 깨끗함부터 우두머리 실마리(우두머리는 ZONE_BOSS.appear)
+export const MUTTER = {
+  sec: 3.5, gap: 90, wait: 210, retry: 10, max: 3, idleAfter: 300, evTtl: 20, checkSec: 1,
+  near: { heap: 25, den: 30, hareubang: 8, cairn: 10, stream: 8 },
+  bagFull: 0.8, hand: 10, walk: 300, hpLow: 0.5, boss: 0.65, piglets: 4, fieldPicked: 120, nightZone: 3,
+  y: 3.4, // 말풍선 높이 (채팅 말풍선과 같음)
+};
