@@ -1199,3 +1199,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 첫 화면 UFO(`src/game/ufo.js`, 수치 `balance.js UFO`): 코드로 만든 접시(몸통·테두리·덮개 안 초록 외계인·깜빡이는 불빛 8개 InstancedMesh) + 옅은 빛기둥(저사양은 뺌). 카메라 앞 120m 에 화면 좌표로 두어 첫 화면 카메라가 돌아도 늘 화면을 가로지름. 높이는 로고 윗선(접시가 글자 윗부분 뒤를 스침). 처음 2초 뒤, 6초에 걸쳐, 그 뒤 20~30초마다. 지름 = 화면 높이 14%(폰은 폭 30% 넘지 않게)
 - 소리 켠 상태면 `sound.ufo()` 낮은 '웅'(첫 화면은 보통 소리가 아직 꺼져 있어 안 남). 시작하면 장면에서 빼고 지오메트리 정리
 - farCull(#79)이 장면의 무리를 거리로 감추는데 UFO 는 카메라를 따라다녀 `userData.noCull` 로 뺌
+
+## #169 캐릭터 혼잣말
+- `src/game/mutter.js`(swarm 뒤): 내 캐릭터 머리 위 말풍선(채팅 모양, 기울인 옅은 글자·점선 테두리). 3.5초, 사이 90초 + 0~210초(평균 약 3분 15초). 내 화면에만
+- 차례는 감독(kind 'mutter')을 거침 → 싸움·창·튜토리얼·다른 안내 중엔 안 나옴. 'tips' 문(튜토리얼 뒤)이 열려야 시작
+- 줄마다 when·solved·need. 같은 줄 최대 3번(`save.mutter.seen`), 풀리면(그 일을 함) 안 나옴. 일 줄(큰 더미에 들어섬·투기꾼이 버림·가게 거리 처음·정상 처음)은 일이 난 뒤 20초 안에만, 기다림 없이 gap 만 지키면 바로
+- 한가한 혼잣말 10줄은 실마리 조건이 5분 넘게 없을 때만. 글은 `src/punktext.js MUTTER_TEXT`, 수치 `balance.js MUTTER`
+- 갈치 냄새 줄은 만족한상회(#167)가 지어졌을 때만, 없으면 `streetAlt`. 하르방 줄은 지금 있는 '코 맞히기'(ach hareubang)가 풀림
+- 메뉴 설정 '혼잣말: 켬/끔'(save.mutter.off). 투기꾼 버림은 hooks.js `late.mutterDumped`
+- dev `__oreum.mutter.say(id)`·`now()`·`state()`·`time(초)`, 확인 `node tools/mutter.js`
