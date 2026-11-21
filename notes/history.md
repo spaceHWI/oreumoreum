@@ -1375,3 +1375,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - #145 (1단계): 서버 `MIN_VER` 를 0.24.0 으로 올려 옛 클라이언트에 닫을 수 없는 새로고침 알림. `OLD_PRICE` 삭제는 2026-11-22 04:00 KST 뒤에 하므로 이슈는 열어 둠.
 
 - #190 (1번): 동료 3명을 `BUDDIES.on = false` 로 끔(코드는 남김, 감독 문 mate* 등록 안 됨, 메뉴 '동료' 스위치 숨김). 감독 문 `quest` 에 `after: 'tips'` 를 적음: 동료가 빠지면 바로 앞 등록 문이 fsTip(PC 에선 안 열림)이 되어 첫 퀘스트가 안 열렸음. `tools/journey.js` 도 BUDDIES.on 을 봄
+
+- #197 (오류 알림): WebGL 을 잃은 바로 그 프레임에 three 가 처음 쓰는 셰이더의 링크 글을 읽다 `.trim` 에서 멈추던 것. 브라우저가 `webglcontextlost` 를 알리기 전에는 three 가 잃은 줄 모르고 그리는데, 그때 `getProgramInfoLog`·`getShaderInfoLog` 는 글 대신 null 을 준다(three 0.170 은 null 을 보지 않음). `src/game/scene.js` 에서 렌더러를 만든 바로 뒤 이 두 함수가 null 이면 빈 글을 돌려주게 감쌈. 그 프레임만 넘기면 곧 `webglcontextlost` 가 와서 #108 안내·되살리기로 이어진다. 확인 `node tools/gllost.js $PWD lose`(진짜로 잃게 함)·`null`(iOS 처럼 셰이더 글만 null)
