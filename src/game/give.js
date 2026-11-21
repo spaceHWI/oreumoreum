@@ -67,7 +67,7 @@ export const giveAct = {
 interactables.push(giveAct);
 
 // ---------- 누르고 있기 ----------
-const H = { on: null, queue: 0, acc: 0, sendT: 0, sent: [], reason: '' }; // on = { e, t0 }
+const H = { on: null, queue: 0, acc: 0, sendT: 0, sent: [], reason: '' }; /* on = { e, t0 } */
 let ptrHeld = false;
 ui.ctx.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; if (state.ctxTarget === giveAct) ptrHeld = true; });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) ui.ctx.addEventListener(ev, () => { ptrHeld = false; });
@@ -168,7 +168,7 @@ late.giveNet = {
 late.giveExtra = () => (save.giftOff ? { ng: 1 } : {}); // 받지 않기 (room.js extra)
 
 // ---------- 메뉴: 귤 선물 받기/받지 않기 ----------
-{ const b = $('menu-gift'); if (b) { const sync = () => { b.setAttribute('aria-pressed', String(!save.giftOff)); b.textContent = save.giftOff ? '귤 선물: 안 받음' : '귤 선물: 받음'; }; sync(); b.hidden = true; setTimeout(() => { const f = () => { b.hidden = !state.account?.loggedIn; }; f(); state.account?.on?.(f); }, 0); // 로그인한 사람만 받을 수 있음 (계정은 start.js 가 만듦)
+{ const b = $('menu-gift'); if (b) { const sync = () => { b.setAttribute('aria-pressed', String(!save.giftOff)); b.textContent = save.giftOff ? '귤 선물: 안 받음' : '귤 선물: 받음'; }; sync(); b.hidden = true; setTimeout(() => { const f = () => { b.hidden = !state.account?.loggedIn; }; f(); state.account?.on?.(f); }, 0); /* 로그인한 사람만 받을 수 있음 (계정은 start.js 가 만듦) */
   b.addEventListener('click', () => { if (save.giftOff) delete save.giftOff; else save.giftOff = 1; persist(); state.account?.push?.(); sync(); }); } }
 
 // ---------- 동료(#172)에게: 말 걸기 창의 '귤 주기' ----------

@@ -14,6 +14,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     await E(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: o.save.look || { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); try { localStorage.removeItem('oreumoreum.shopSeen'); } catch (_) {} const k = Object.keys(localStorage).find((k) => k.startsWith('oreumoreum.v')) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
     await p.reload(); await W(5000); await p.click('#enter').catch(() => {}); await W(5000);
     if (await E(() => !document.getElementById('look').hidden)) { await p.click('#look-ok'); await W(1500); }
+    if (await E(() => { const f = document.getElementById('fs-tip'); return f && !f.hidden; })) { await p.click('#fs-tip-x').catch(() => {}); await W(400); } /* 폰: 전체 화면 안내(#189)가 처음 한 번 뜨며 화면을 덮음 (#193) */
     await E(() => { const o = window.__oreum; o.setTod(14); o.save.coins = 50; o.save.equip.tool = 1; o.save.equip.bag = 0; o.save.equip.weapon = 1; o.save.weaponUse = 1; });
     const S = await E(() => { const o = window.__oreum; return { shops: o.street.shops.map((s) => s.id), tut: o.tut.active, ctx: o.interactables.filter((i) => i.label === '장비점' || i.label === '가게 안내').map((i) => i.label) }; });
     ok(S.shops.includes('gear'), `가게 거리에 장비점 (${S.shops.join(',')})`);
@@ -51,9 +52,10 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     await E(() => window.__oreum.street.open('gear')); await W(400);
     // 무기 사기 → 장착
     if (mode === 'm') await p.click('#shoppop-tabs [data-tab="weapon"]'); await W(300);
-    await p.click('#shoppop .buy-group[data-k="weapon"] .buy-card[data-i="1"] .buy-btn'); await W(500);
+    /* 누르고 바로 카드 글을 읽음: '장착했어요' 는 1.7초만 보이는데, 느린 화면(소프트웨어 GL)에선 한 프레임이 1초 넘게 걸려 W(500) 뒤면 이미 지나감 (#193) */
+    const justTxt = await E(() => { const q = () => document.querySelector('#shoppop .buy-group[data-k="weapon"] .buy-card[data-i="1"]'); q().querySelector('.buy-btn').click(); return q()?.textContent || ''; }); await W(500);
     ok(await E(() => window.__oreum.save.equip.weapon === 2 && window.__oreum.save.weaponUse === 2), '무기 사면 바로 장착');
-    ok(await E(() => /장착했어요/.test(document.querySelector('#shoppop .buy-group[data-k="weapon"] .buy-card[data-i="1"]')?.textContent || '')), "카드에 '장착했어요'");
+    ok(/장착했어요/.test(justTxt), "카드에 '장착했어요'");
     await shot('3-bought');
     // 옛 자리 4: 내 가방 무기 탭의 안 가진 무기 → 장비점 길 안내 / 옷장 사러 가기 → LEAP
     await E(() => { document.getElementById('shoppop').hidden = true; window.__oreum.street.go(0, 2); }); await W(300);

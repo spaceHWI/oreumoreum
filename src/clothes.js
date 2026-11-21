@@ -88,7 +88,7 @@ export function tee(mat, L) {
   else out.push(...both((s) => mesh(tube('x', s * 0.14, s * 0.29, 0.072, 0.066, [ARM.y, ARM.z]), M)), ...both((s) => mesh(tube('x', s * 0.275, s * 0.295, 0.069, 0.069, [ARM.y, ARM.z], { rows: 1 }), A)));
   for (let i = 0; i < (L.stripes || 0); i++) { const y = 0.375 + i * 0.055; out.push(band(A, y, y + 0.026, 0.003)); }
   if (L.panel) out.push(band(A, 0.5, 0.6, 0.004), ...both((s) => mesh(tube('x', s * 0.15, s * 0.23, 0.075, 0.073, [ARM.y, ARM.z], { rows: 1 }), A)));
-  if (L.gyul) { const Gm = mat('gyul', L.gyul), Lf = mat('leaf', '#3f9a5a'); [[-0.09, 0.5], [0.09, 0.5], [0, 0.445], [-0.11, 0.405], [0.11, 0.405]].forEach(([x, y]) => { const d = at(new THREE.SphereGeometry(0.022, 8, 6), Gm, x, y, frontZ(y, 0.002) - 0.004); d.scale.z = 0.35; out.push(d); out.push(at(new THREE.SphereGeometry(0.009, 6, 4), Lf, x + 0.012, y + 0.02, frontZ(y + 0.02, 0.002) - 0.004)); }); } // 못생긴 스웨터 귤 무늬 (#180)
+  if (L.gyul) { const Gm = mat('gyul', L.gyul), Lf = mat('leaf', '#3f9a5a'); [[-0.09, 0.5], [0.09, 0.5], [0, 0.445], [-0.11, 0.405], [0.11, 0.405]].forEach(([x, y]) => { const d = at(new THREE.SphereGeometry(0.022, 8, 6), Gm, x, y, frontZ(y, 0.002) - 0.004); d.scale.z = 0.35; out.push(d); out.push(at(new THREE.SphereGeometry(0.009, 6, 4), Lf, x + 0.012, y + 0.02, frontZ(y + 0.02, 0.002) - 0.004)); }); } /* 못생긴 스웨터 귤 무늬 (#180) */
   const col = new THREE.Mesh(new THREE.TorusGeometry(0.093, 0.016, 6, 18), L.collar ? mat('collar', L.collar) : A); col.rotation.x = Math.PI / 2; col.position.set(0, 0.6, 0.025); col.scale.set(1, 1.1, 1); out.push(col);
   return G(out);
 }

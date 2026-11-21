@@ -39,6 +39,8 @@ import { tickDirector } from './director.js'; // #176
 import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
+// 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0 };
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -125,7 +127,7 @@ function updatePlayer(dt) {
   const slow = joy.active && p.joyMag < 0.6;
   let want, acc = 8;
   if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
-  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.punkSpeed?.() ?? 1) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) * (late.swarmSpeed?.() ?? 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
+  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.punkSpeed?.() ?? 1) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) * (late.swarmSpeed?.() ?? 1) : 0; /* 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138) */
   p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -233,6 +235,23 @@ applyQuality();
 const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'), xyBox = $('xy'), whereEl = $('where'); let compassRot = null, xyTxt = '', xyDk = '', whereT = 0, whereTxt = '';
 // 매 프레임 (#108): 한 프레임에서 오류가 나도 다음 프레임은 계속 (예전엔 끝에서 다음 프레임을 불러 오류 하나에 게임이 멈춤). 오류는 crash.js 로 알림
 let stepErr = 0;
+// 실서버 감시 (#193): 오류가 나지 않고 조용히 멈춘 것을 오류 알림(crash.js)으로 올린다. 한 번 켤 때 한 번씩만
+// - 게임 루프의 주요 갱신 셈이 3초 넘게 그대로 (루프 한 줄이 꺼짐)
+// - 튜토리얼이 켜졌는데 30초 동안 첫 단계가 시작되지 않음 (#182 사고)
+const WATCH = ['player', 'shops', 'buff', 'tut', 'lamps'];
+const watch = { t: 0, last: null, tutWait: 0, sent: new Set() };
+function watchLoop(dt) {
+  if (!state.sessionOn || lookS.open || document.hidden || state.osPaused) { watch.t = 0; watch.last = null; watch.tutWait = 0; return; }
+  watch.t += dt;
+  if (watch.t >= 3) {
+    const now = { ...state.ticks };
+    if (watch.last) for (const k of WATCH) if (now[k] === watch.last[k] && !watch.sent.has(k)) { watch.sent.add(k); reportCrash(new Error(`게임 루프 셈 ${k} 가 3초 넘게 그대로 (루프가 그 줄을 부르지 않음)`), 'loop'); }
+    watch.last = now; watch.t = 0;
+  }
+  const tut = late.tut;
+  if (tut && tut.active && !tut.step && !(save.tut?.step > 0)) watch.tutWait += dt; else watch.tutWait = 0;
+  if (watch.tutWait > 30 && !watch.sent.has('tut')) { watch.sent.add('tut'); reportCrash(new Error('튜토리얼 시작 뒤 30초 동안 첫 단계가 시작되지 않음'), 'tut'); }
+}
 function frame(now) {
   requestAnimationFrame(frame);
   try { step(now); stepErr = 0; } catch (e) {
@@ -249,9 +268,59 @@ function step(now) {
   if (!state.augPause) tickPace(Math.min(0.05, rawDt), now / 1000);
   late.tickFeel?.(Math.min(0.05, rawDt)); // 손맛 (#141): 숫자·흙먼지·가장자리
   state.camHold = Math.max(0, state.camHold - dt);
+  watchLoop(Math.min(0.05, rawDt));
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저
-  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); late.tickApproach?.(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); late.tickRaid?.(dt); late.tickPeerFight?.(); tickBuddies(dt); late.tickLoot?.(dt); late.tickRare?.(dt); late.tickSwarm?.(dt); } late.tickGive?.(dt); if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); roofSigns?.update(dt, lampNight, camera, renderer.domElement.clientHeight || innerHeight); /* 지붕 간판 크기·밤빛 (#182) */ tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); late.season?.tick(dt, now / 1000); late.tickMeet?.(dt, now / 1000); late.tickPunk?.(dt); late.outfitSet?.tick(dt); state.farCull?.update(dt);
+  // 게임 루프 본문: 문장마다 한 줄 (#193 — 한 줄에 이어 쓰다 중간 // 주석이 뒤 문장을 모두 꺼 버린 사고). tk.* 는 tools/smoke.js 가 '불리는지' 보는 셈. 루프에 새 시스템을 붙이면 셈도 한 줄 더한다
+  const tk = state.ticks;
+  tk.frame++;
+  tickAutoGo();
+  updatePlayer(dt); tk.player++;
+  late.tickCharge?.(dt);
+  late.tickArms(dt);
+  late.tickApproach?.(dt);
+  tickKnock(dt);
+  if (trash) {
+    trash.update(dt, player.pos); tk.trash++;
+    tickPick(dt);
+    tickFly(dt);
+    tickZone(dt);
+    tickArea(dt);
+    late.tickField?.(dt);
+    late.tickGuard?.(dt);
+    if (late.tickBoss) { late.tickBoss(dt); tk.boss++; }
+    late.tickRaid?.(dt); /* raid.js (#181) */
+    late.tickPeerFight?.(); /* peerfight.js */
+    tickBuddies(dt);
+    late.tickLoot?.(dt);
+    late.tickRare?.(dt);
+    if (late.tickSwarm) { late.tickSwarm(dt); tk.swarm++; }
+  }
+  late.tickGive?.(dt); /* 가까운 사람에게 귤 주기 (#175) */
+  if (bloom) bloom.update(dt, player.pos, now / 1000);
+  if (bfx) {
+    bfx.update(dt, now / 1000);
+    if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; }
+  }
+  if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); }
+  shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); tk.shops++;
+  roofSigns?.update(dt, lampNight, camera, renderer.domElement.clientHeight || innerHeight); /* 지붕 간판 크기·밤빛 (#182) */
+  tickCartMark();
+  if (STN) tickMeal(dt); /* 스톤 식사 */
+  if (SAL) tickCut(dt); /* 미장원 머리 */
+  if (LEAPB) tickLeap(); /* LEAP 카메라 되돌리기 */
+  if (shopsBuilt.length) tickShopMark();
+  buff.tick(); tk.buff++;
+  updateBuffUI();
+  late.devLabels.update(dt);
+  if (!lookS.open) { late.tut.update(dt); tk.tut++; }
+  if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); }
+  lamps.update(player.pos, lampNight); tk.lamps++;
+  if (late.season) { late.season.tick(dt, now / 1000); tk.season++; }
+  late.tickMeet?.(dt, now / 1000); /* punkmeet.js */
+  late.tickPunk?.(dt);
+  late.outfitSet?.tick(dt);
+  state.farCull?.update(dt);
   net.update(dt); net.send(false);
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   deerNet.tick(dt); // 멀티 노루 (#92)
@@ -340,7 +409,7 @@ function step(now) {
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
-  tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); late.tickQuest?.(dt); late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
+  tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); if (late.tickQuest) { late.tickQuest(dt); state.ticks.quest++; } late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
   enemyWarn.update(dt); dumpWarn.update(dt);
   updateStats();

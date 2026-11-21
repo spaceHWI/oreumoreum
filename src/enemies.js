@@ -129,7 +129,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     return e;
   }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
-  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } // 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게)
+  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } /* 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게) */
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
@@ -279,7 +279,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       const k = Math.min(1, dt * 6), lim = 0.6;
       e.pitch += (Math.max(-lim, Math.min(lim, tp)) - e.pitch) * k; e.roll += (Math.max(-lim, Math.min(lim, tr)) - e.roll) * k;
       e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * (1 - e.st / COMBAT.staggerT) : 0);
-      if (e.rollT > 0 && e.state === 'flee') { const u = 1 - e.rollT / e.rollD, w = u * u * (3 - 2 * u); e.root.rotation.z += w * Math.PI * 2 * e.rollS; e.root.position.y += e.h * 0.5 * (1 - Math.cos(w * Math.PI * 2)) + Math.sin(u * Math.PI) * e.rollH * e.def.size; e.rollT -= dt; } // 쫓아낸 적이 옆으로 한 바퀴 구름 (#141, hooks.enemyRepel 이 rollT 를 넣음)
+      if (e.rollT > 0 && e.state === 'flee') { const u = 1 - e.rollT / e.rollD, w = u * u * (3 - 2 * u); e.root.rotation.z += w * Math.PI * 2 * e.rollS; e.root.position.y += e.h * 0.5 * (1 - Math.cos(w * Math.PI * 2)) + Math.sin(u * Math.PI) * e.rollH * e.def.size; e.rollT -= dt; } /* 쫓아낸 적이 옆으로 한 바퀴 구름 (#141, hooks.enemyRepel 이 rollT 를 넣음) */
     }
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
       if (!e.warn) { e.warn = new THREE.Mesh(warnGeo.clone(), warnMat); e.warn.renderOrder = 3; group.add(e.warn); e.warnAt = drape(e.warn, height); } // 땅을 따라 휨 (#151)

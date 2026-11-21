@@ -168,7 +168,7 @@ function socks2(mat, L) {
   const g = socks(mat, L);
   if (L.toes) { for (const s of [1, -1]) for (let i = 0; i < 5; i++) add(g, at(new THREE.SphereGeometry(0.014, 6, 4), mat('toe' + i, RAIN[i]), s * LEG.x + (i - 2) * 0.018 * s, 0.022, LEG.z + 0.165)); }
   if (L.rainbow) { const h = 0.045 + ((L.h || 0.11) - 0.045) * 1.25; for (let i = 0; i < 6; i++) { const y = 0.04 + (h - 0.06) * i / 6, y1 = y + (h - 0.06) / 6, R = mat('rb' + i, RAIN[i]); add(g, both((s) => mesh(tube('y', y, y1, legR(y) + 0.01, legR(y1) + 0.01, [s * LEG.x, LEG.z], { rows: 1 }), R))); } }
-  if (L.rim) { const A = mat('acc', L.acc); add(g, both((s) => { const t = at(new THREE.TorusGeometry(0.06, 0.008, 5, 14), A, s * LEG.x, 0.012, LEG.z + 0.06); t.rotation.x = Math.PI / 2; t.scale.set(1, 2.1, 1); return t; }), both((s) => { const t = at(new THREE.ConeGeometry(0.02, 0.05, 6), A, s * LEG.x, 0.014, LEG.z + 0.2); t.rotation.x = Math.PI / 2; return t; })); } // 고무신 테·뾰족 코
+  if (L.rim) { const A = mat('acc', L.acc); add(g, both((s) => { const t = at(new THREE.TorusGeometry(0.06, 0.008, 5, 14), A, s * LEG.x, 0.012, LEG.z + 0.06); t.rotation.x = Math.PI / 2; t.scale.set(1, 2.1, 1); return t; }), both((s) => { const t = at(new THREE.ConeGeometry(0.02, 0.05, 6), A, s * LEG.x, 0.014, LEG.z + 0.2); t.rotation.x = Math.PI / 2; return t; })); } /* 고무신 테·뾰족 코 */
   if (L.fur) { const F = mat('fur', L.acc), h = 0.045 + ((L.h || 0.11) - 0.045) * 1.25; add(g, both((s) => mesh(tube('y', h - 0.035, h, legR(h - 0.035) + 0.019, legR(h) + 0.018, [s * LEG.x, LEG.z], { rows: 1 }), F))); } // 털 테 (바지 안쪽에 들어가게 얇게)
   return g;
 }
