@@ -290,6 +290,23 @@ export class Sound {
       [1980, 2970].forEach((fr, k) => { const o = c.createOscillator(); o.frequency.value = fr * (1 + (Math.random() - 0.5) * 0.02); const g = c.createGain(); g.gain.setValueAtTime(0.03 * vol / (k + 1), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.5); }); }
   }
 
+  chime(vol = 1) { // 오름 방송 '딩동댕' (#165): 목소리 없이 합성음 차임 세 번
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t0 = c.currentTime;
+    [[659.25, 0], [523.25, 0.42], [783.99, 0.84]].forEach(([fr, dt]) => { const t = t0 + dt;
+      [1, 2.01].forEach((m, k) => { const o = c.createOscillator(); o.type = k ? 'sine' : 'triangle'; o.frequency.value = fr * m; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07 * vol / (k * 3 + 1), t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1); o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 1.15); }); });
+  }
+
+  ufo() { // 첫 화면 UFO (#150): 낮은 '웅' 한 번 (떨리며 커졌다 작아짐)
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime, T = 2.4;
+    const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(62, t); o.frequency.linearRampToValueAtTime(48, t + T);
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 260;
+    const lfo = c.createOscillator(); lfo.frequency.value = 7; const lg = c.createGain(); lg.gain.value = 0.35; lfo.connect(lg); const tr = c.createGain(); tr.gain.value = 1; lg.connect(tr.gain);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + T);
+    o.connect(f); f.connect(tr); tr.connect(g); g.connect(this.sfx); o.start(t); lfo.start(t); o.stop(t + T + 0.05); lfo.stop(t + T + 0.05);
+  }
+
   beep(hi) {
     if (!this.on || !this.sfxOn) return;
     const c = this.ctx; const t = c.currentTime;

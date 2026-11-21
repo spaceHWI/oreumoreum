@@ -1,6 +1,7 @@
 // 귤 던지기·귤 활·조준 표시·화면 밖 적 방향 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { THROW_AIM, WEAPONS, COMBAT } from '../balance.js';
 import { weaponMul } from '../loot.js';
+import { augV } from '../augments.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
@@ -108,7 +109,14 @@ export function releaseTangerine() {
   else tg = life.throwTangerine(from, dir, (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1), peers, undefined, null, ch);
   late.season?.snowThrow(tg); // 눈 쌓인 곳에서 눈덩이를 골랐으면 눈덩이로 (#180)
   if (ch) late.chargeLaunch?.(ch, 'hand', tg.mesh.position, () => !tg.enemyHit && !tg.landed && tg.mesh.parent, t);
+  if (twinRoll()) { // 쌍귤 (#159): 조금 비껴 한 발 더. 귤은 더 쓰지 않음(덤 귤은 땅에 닿으면 사라짐)
+    const d2 = (shot ? shot.dir : dir).clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW), vh = shot ? shot.vh : (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1);
+    const f2 = from.clone(); setTimeout(() => { const t2 = life.throwTangerine(f2, d2, vh, peers, shot ? shot.vy : undefined, t, ch); t2.twin = true; }, TWIN_MS);
+  }
 }
+// 쌍귤 증강 (#159): 한 발 더 나갈지. 비껴 나가는 각(rad)·늦게 나가는 시간(ms)
+export const TWIN_YAW = 0.07, TWIN_MS = 90;
+export const twinRoll = () => Math.random() < augV(save, 'twin');
 // 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔
 function aimShot(from, t) {
   const aim = new THREE.Vector3(t.pos.x, t.pos.y + t.h, t.pos.z);
@@ -125,15 +133,15 @@ function aimShot(from, t) {
   }
   return null;
 }
-// 귤 활 쏘기 (#38): 5발에 귤 1개. 남은 화살이 없으면 귤 하나를 써서 채움
+// 귤 활 쏘기 (#38): 한 발에 귤 1개 (#178). 예전에 남은 화살(save.bowAmmo)이 있으면 그것부터 씀
 state.bowPending = false;
 export function fireWeapon() { if (!bowArmed()) throwTangerine(); else if (weaponNow().id === 'bow') shootBow(); else late.fireArm(); }
 function shootBow() {
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   state.emo?.stop();
-  const w = weaponNow();
-  if (save.bowAmmo <= 0) { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = w.perGyul; updateStats(); ammoFlash = 1; }
-  save.bowAmmo -= 1; persist(); updateAmmo();
+  if (save.bowAmmo >= 1) save.bowAmmo -= 1;
+  else { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = 0; updateStats(); }
+  persist(); updateAmmo();
   setHoldBow(true);
   state.throwAim = aimTarget() || state.lock;
   player.target = null; player.onArrive = null; marker.visible = false;
@@ -150,6 +158,7 @@ export function releaseArrow() {
   const vel = (t && arrowShot(from, t, w)) || fwd.clone().multiplyScalar(w.speed).setY(w.grav * 0.12);
   const a = life.shootArrow(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size });
   if (ch) late.chargeLaunch?.(ch, 'bow', a.mesh.position, () => life.arrows.includes(a), t);
+  if (twinRoll()) { const v2 = vel.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW), f2 = from.clone(); setTimeout(() => life.shootArrow(f2, v2, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), grav: w.grav, peersFn: peers, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS); } // 쌍귤 (#159)
   late.sound.bow?.();
 }
 // 거의 곧게 날아가는 화살: 날아갈 시간만큼 중력과 대상의 움직임을 미리 셈
@@ -163,19 +172,12 @@ function arrowShot(from, t, w) {
   }
   return new THREE.Vector3((p.x - from.x) / T, (p.y - from.y) / T + 0.5 * w.grav * T, (p.z - from.z) / T);
 }
-// 남은 화살 표시: 상호작용 버튼 위 작은 점 5개 (활을 쓸 때만). 3~6단계 무기는 game/arms.js armsAmmo (#123)
-let ammoFlash = 0, ammoKey = '';
+// 탄 표시: 활은 한 발에 귤 1개라 눈금 없음 (#178, 버튼에 활 아이콘만). 3~6단계 무기는 game/arms.js armsAmmo (#123)
 export function updateAmmo() {
   const el = $('ammo'); if (!el) return;
   const w = weaponNow(), on = bowReady();
-  if (on && w.id !== 'bow') { ammoKey = ''; late.armsAmmo?.(el); return; }
-  const n = save.bowAmmo, key = `${on}|${n}|${save.coins > 0}`;
-  if (key === ammoKey) return; ammoKey = key;
-  el.hidden = !on; if (!on) return;
-  el.className = 'ammo'; el.style.removeProperty('--k');
-  el.classList.toggle('empty', n <= 0 && save.coins <= 0);
-  el.innerHTML = Array.from({ length: w.perGyul }, (_, i) => `<b class="${i < n ? 'on' : ''}"></b>`).join('');
-  if (ammoFlash) { ammoFlash = 0; el.classList.remove('use'); void el.offsetWidth; el.classList.add('use'); }
+  if (on && w.id !== 'bow') { late.armsAmmo?.(el); return; }
+  el.hidden = true; el.dataset.w = '';
 }
 // 겨눈 대상 발밑 표시
 export const aimMark = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.85, depthWrite: false }));

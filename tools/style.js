@@ -34,6 +34,8 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
   ok(!s.mid && s.worn === 'haenyeo', `해녀 세 벌 → 한 벌 맞춤 (${s.worn})`);
   ok(s.titles.includes('물질 장인') && /물질 장인/.test(s.toast), `칭호 '물질 장인' (토스트: ${s.toast.slice(0, 40)})`);
   await W(400); s = await E(() => window.__oreum.outfitSet.visible()); ok(s, '둘레 효과 보임');
+  s = await E(() => { const T = window.__oreum.punkWorld?.title; if (!T) return null; const i = T.list.findIndex((t) => t.set === 'haenyeo'); return { i, open: T.unlocked()[i], set: T.set(i), alien: T.unlocked()[T.list.findIndex((t) => t.set === 'alien')] }; });
+  ok(s && s.open && s.set === s.i && !s.alien, `칭호 창(#165): 해녀 세 벌을 가지면 '물질 장인' 열림·달기, 안 가진 외계인은 잠김 (${JSON.stringify(s)})`);
   s = await E(() => { const o = window.__oreum; o.clothes.wear('hat', 'hat:s-gat'); return o.outfitSet.worn(); }); ok(!s, '하나 벗으면 효과 꺼짐');
   // 색 바꾸기 (tint)
   s = await E(() => { const o = window.__oreum, sv = o.save; o.clothes.give('hat:s-beanie'); o.clothes.wear('hat', 'hat:s-beanie'); o.bag.open('wear'); const dots = document.querySelectorAll('#wardrobe-body .bag-lc .lc-dots button').length;

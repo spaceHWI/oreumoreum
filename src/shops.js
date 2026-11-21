@@ -10,6 +10,7 @@ import { FORK_KNIFE } from './stoneicons.js';
 import { createSalon } from './salon.js';
 import { createLeap } from './leap.js';
 import { createRideShop, RIDE_SHOP, RIDE_ICON } from './rides.js';
+import { glowSprite } from './propmodel.js';
 
 // 가위 (루이네 미장원 #58, 상호작용 '머리' 아이콘과 같음)
 // 옷 (LEAP #59, 상호작용 '옷' 아이콘과 같음)
@@ -59,25 +60,103 @@ export const SHOP_BUILD = {
   },
 };
 
-// 지붕 위 큰 아이콘 간판 (#128): 가게마다 늘 카메라를 보는 둥근 판(현무암 바탕·귤색 테·흰 아이콘), 살 수 있는 새 물건이 있으면 오른쪽 위 귤색 점
-// shops = place.js shopsBuilt. 반환 { dot(id, on) }
+// 가게 하나 세우기: SHOP_BUILD 결과에 그 가게가 장면에 더한 물건(objs)을 붙임 (#182 지붕 간판이 건물 경계 상자를 잼)
+export function buildShop(id, args) {
+  const { scene } = args, n0 = scene.children.length, r = SHOP_BUILD[id](args);
+  return { ...r, objs: scene.children.slice(n0) };
+}
+
+// 지붕 위 큰 아이콘 간판 (#128·#182): 가게마다 늘 카메라를 보는 둥근 판(현무암 바탕·귤색 테·흰 아이콘), 살 수 있는 새 물건이 있으면 오른쪽 위 귤색 점
+// 자리·높이는 가게 모델 경계 상자에서 자동 (건물 가운데 위, 꼭대기 + 반지름 + roofGap). Tripo 모델이 늦게 오면 다시 잼. 가는 현무암 기둥이 받침
+// 둘레 눈높이에서 그래도 가려지는 간판만 맨 위에 그림(가까이선 살짝 투명). 멀면 화면 최소 크기만큼 키움, 밤엔 뒤에 따뜻한 빛
+// shops = place.js shopsBuilt (objs 포함). 반환 { signs, dot(id, on), update(dt, night, camera, viewH), fit(), seen(from) }
 export function createRoofSigns({ scene, height, street, shops }) {
   const S = SHOP_ST, signs = {};
   const dotMat = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g) => { g.fillStyle = '#fff'; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ff8a1f'; g.beginPath(); g.arc(32, 32, 23, 0, Math.PI * 2); g.fill(); }), depthWrite: false, transparent: true });
+  const poleMat = new THREE.MeshToonMaterial({ color: '#3b4044', gradientMap: gradHard }), poleGeo = new THREE.CylinderGeometry(S.roofPole, S.roofPole * 1.3, 1, 6).translate(0, 0.5, 0);
   for (const sh of shops) {
     const L = street.lot(sh.lot); if (!L || !SHOP_ICON[sh.id]) continue;
-    const k = L.d * S.roofBack, x = L.front.x + L.back.x * k, z = L.front.z + L.back.z * k, y = height(L.x, L.z) + (S.roof[sh.id] || 6);
     const tex = canvasTex(128, 128, (g, up) => {
       g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(66, 68, 58, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#2f3336'; g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#ff8a1f'; g.stroke();
       svgImg(SHOP_ICON[sh.id], '#f3ecdc', (img) => { g.drawImage(img, 26, 26, 76, 76); up(); });
     });
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
-    sp.scale.setScalar(S.roofSize); sp.position.set(x, y, z); sp.renderOrder = 3; scene.add(sp);
-    const dot = new THREE.Sprite(dotMat); dot.scale.setScalar(S.roofSize * 0.34); dot.position.set(x, y + S.roofSize * 0.36, z); dot.center.set(-0.9, 0.5); dot.renderOrder = 4; dot.visible = false; scene.add(dot);
-    signs[sh.id] = { sp, dot, pos: sp.position };
+    sp.scale.setScalar(S.roofSize); sp.renderOrder = 3; scene.add(sp);
+    const dot = new THREE.Sprite(dotMat.clone()); dot.renderOrder = 4; dot.visible = false; scene.add(dot);
+    const glow = glowSprite('#ffcf7a', 1); glow.renderOrder = 2; scene.add(glow);
+    const pole = new THREE.Mesh(poleGeo, poleMat); pole.castShadow = false; scene.add(pole);
+    const meshes = []; for (const o of sh.objs || []) o.traverseVisible((m) => { if (m.isMesh && !m.isSprite) meshes.push(m); }); // 숨긴 것(머리 자르기 효과·접시)은 뺌
+    // 모델이 없으면(objs 없음) 터 가운데 위 6m
+    const k = L.d * 0.45;
+    signs[sh.id] = { sp, dot, glow, pole, meshes, L, reach: Math.max(L.w, L.d), pos: sp.position, top: height(L.x, L.z) + 6, roofY: height(L.x, L.z) + 4, x: L.front.x + L.back.x * k, z: L.front.z + L.back.z * k, size: S.roofSize, onTop: false, sig: '' };
   }
-  return { signs, dot: (id, on) => { const s = signs[id]; if (s && s.dot.visible !== on) s.dot.visible = on; } };
+  const box = new THREE.Box3(), tmp = new THREE.Box3(), ray = new THREE.Raycaster(), V = new THREE.Vector3(), D = new THREE.Vector3();
+  const sigOf = (s) => s.meshes.map((m) => m.geometry.uuid).join();
+  // 가게 경계 상자 → 자리·높이, 지붕 면(가운데에서 아래로 쏨) → 기둥 밑
+  function place(s) {
+    if (!s.meshes.length) return;
+    box.makeEmpty(); const C = new THREE.Vector3();
+    for (const m of s.meshes) { m.updateWorldMatrix(true, false); if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); tmp.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld); tmp.getCenter(C); if (Math.hypot(C.x - s.L.x, C.z - s.L.z) > s.reach) continue; box.union(tmp); } // 터 밖 물건은 뺌
+    if (box.isEmpty()) return;
+    s.x = (box.min.x + box.max.x) / 2; s.z = (box.min.z + box.max.z) / 2; s.top = box.max.y;
+    ray.set(V.set(s.x, s.top + 1, s.z), D.set(0, -1, 0)); ray.far = s.top - box.min.y + 1;
+    const hit = ray.intersectObjects(s.meshes, false)[0]; s.roofY = hit ? hit.point.y : box.min.y;
+    s.sig = sigOf(s);
+  }
+  // 간판 둘레 눈높이 자리에서 간판 가운데까지 막는 물건(지형·간판 빼고 간판 15m 안 물건)이 있는지
+  let near = null;
+  function nearObjs() {
+    const out = [], c = new THREE.Vector3(), sph = new THREE.Sphere(), own = new Set();
+    for (const s of Object.values(signs)) own.add(s.sp).add(s.dot).add(s.glow).add(s.pole);
+    scene.traverse((m) => {
+      if (!m.isMesh || m.isSprite || own.has(m) || !m.visible || !m.geometry || m.isInstancedMesh || m.isSkinnedMesh) return; // 여러 벌 그리는 나무·풀은 맵 전체라 뺌 (가게 터 둘레는 나무를 비움)
+      if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+      m.updateWorldMatrix(true, false); sph.copy(m.geometry.boundingSphere).applyMatrix4(m.matrixWorld);
+      if (sph.radius > 25) return; // 지형·큰 판은 뺌
+      for (const s of Object.values(signs)) { c.set(s.x, sph.center.y, s.z); if (sph.center.distanceTo(c) - sph.radius < 15) { out.push(m); break; } }
+    });
+    return out;
+  }
+  function blocked(s, from) {
+    D.copy(s.sp.position).sub(from); const d = D.length(); ray.set(from, D.normalize()); ray.far = d - s.size * 0.3;
+    return ray.intersectObjects(near, false).some((h) => !(h.object.material && h.object.material.transparent && h.object.material.opacity < 0.3));
+  }
+  // 둘레 12방향 × roofSee 거리, 땅 + roofSeeH 에서 봐서 하나라도 가리면 맨 위에 그림
+  function check(s) {
+    let n = 0;
+    for (const r of S.roofSee) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, x = s.x + Math.sin(a) * r, z = s.z + Math.cos(a) * r; if (blocked(s, V.set(x, height(x, z) + S.roofSeeH, z).clone())) n++; }
+    s.onTop = n > 0; s.blockN = n;
+  }
+  function setY(s) {
+    const y = s.top + s.size / 2 + S.roofGap;
+    s.sp.position.set(s.x, y, s.z); s.sp.scale.setScalar(s.size);
+    s.dot.position.set(s.x, y + s.size * 0.36, s.z); s.dot.scale.setScalar(s.size * 0.34); s.dot.center.set(-0.9, 0.5);
+    s.glow.position.set(s.x, y, s.z); s.glow.scale.setScalar(s.size * 1.7);
+    s.pole.position.set(s.x, s.roofY - 0.1, s.z); s.pole.scale.y = Math.max(0.1, y - s.size * 0.4 - s.roofY + 0.1); // 간판 아래 테두리까지 (아이콘을 가로지르지 않게)
+  }
+  function fit() {
+    for (const s of Object.values(signs)) { place(s); s.size = S.roofSize; setY(s); }
+    near = nearObjs(); for (const s of Object.values(signs)) check(s);
+  }
+  fit();
+  let wait = 0, waited = 0;
+  function update(dt, night, camera, viewH) {
+    // Tripo 모델이 늦게 오면 경계 상자가 바뀜: 0.5초마다 보고 바뀌었으면 다시 잼 (2분까지)
+    if (waited < 120 && (wait += dt) > 0.5) { waited += wait; wait = 0; if (Object.values(signs).some((s) => s.meshes.length && sigOf(s) !== s.sig)) fit(); }
+    const tanH = Math.tan((camera.fov * Math.PI) / 360), cp = camera.position;
+    for (const s of Object.values(signs)) {
+      const d = Math.hypot(cp.x - s.x, cp.y - s.sp.position.y, cp.z - s.z);
+      const want = Math.min(S.roofSize * S.roofMaxK, Math.max(S.roofSize, (S.roofMinPx * 2 * d * tanH) / Math.max(1, viewH)));
+      if (Math.abs(want - s.size) > 0.02) { s.size = want; setY(s); }
+      const dh = Math.hypot(cp.x - s.x, cp.z - s.z), top = s.onTop && dh > S.roofTopNear && d < S.roofTopFar, m = s.sp.material;
+      if (m.depthTest === top) { m.depthTest = !top; s.dot.material.depthTest = !top; s.glow.material.depthTest = !top; s.sp.renderOrder = top ? 999 : 3; s.dot.renderOrder = top ? 1000 : 4; }
+      m.opacity = top && d < S.roofNear ? S.roofFade : 1;
+      s.glow.material.opacity = night * S.roofGlow;
+    }
+  }
+  const seen = (from) => Object.fromEntries(Object.entries(signs).map(([k, s]) => [k, !blocked(s, from)]));
+  return { signs, dot: (id, on) => { const s = signs[id]; if (s && s.dot.visible !== on) s.dot.visible = on; }, update, fit, seen, nearN: () => near.length };
 }
 
 function piece(g, color, jit = 0, seed = 1) {

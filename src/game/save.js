@@ -14,6 +14,7 @@ import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
 import { normLoot, wearUp } from '../loot.js';
 import { slotTier } from '../gearscore.js';
+import { ADJ, NOUN } from '../nickwords.js';
 
 export const $ = (id) => document.getElementById(id);
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -23,8 +24,7 @@ export const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // ---------- 저장 ----------
 export const KEY = saveKey(__DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1'); // 개발 서버는 기록을 따로. 로그인했으면 계정 사본 (#7)
-export const ADJ = ['작은', '느긋한', '고요한', '따스한', '부지런한', '수줍은', '씩씩한', '조용한'];
-export const NOUN = ['억새', '까마귀', '송이', '바람', '노루', '들꽃', '조랑말', '돌담'];
+export { ADJ, NOUN }; // 무작위 이름 낱말은 nickwords.js 에 (#162, 서버와 같이 씀)
 export const pick = (a) => a[Math.floor(Math.random() * a.length)];
 export const save = loadSave(KEY);
 const freshSave = !save.nick || !!save.reset; delete save.reset; // 처음 온 사람
@@ -47,7 +47,7 @@ if (!save.rides || typeof save.rides !== 'object') save.rides = {};
 save.rides.own = Array.isArray(save.rides.own) ? save.rides.own.filter((id, i, a) => RIDE_BY[id] && a.indexOf(id) === i) : [];
 if (!save.rides.own.includes(save.rides.cur)) save.rides.cur = save.rides.own[save.rides.own.length - 1] || null;
 save.rides.walk = save.rides.walk ? 1 : 0; // 1 = 탈것 없이 걸어 다니기를 골라 둠 (#109)
-save.bowAmmo = Math.max(0, Math.min(WEAPONS[1].perGyul, Math.floor(Number(save.bowAmmo)) || 0)); // 귤 하나로 남은 화살 수
+save.bowAmmo = Math.max(0, Math.min(5, Math.floor(Number(save.bowAmmo)) || 0)); // 예전(귤 하나에 5발)에 남은 화살. 다 쓸 때까지 귤을 안 씀 (#178: 지금은 한 발에 귤 1개라 새로 채워지지 않음)
 // 무기 3~6단계 (#123): weaponUse = 골라 쓰는 무기 단계(가진 것 안), ammo = 총·머신건 귤 하나로 남은 발 수, 레이저는 남은 귤 몫 0~1 (활은 예전대로 bowAmmo)
 { const v = Math.floor(Number(save.weaponUse)); save.weaponUse = Math.max(1, Math.min(save.equip.weapon, Number.isFinite(v) && v > 0 ? v : save.equip.weapon)); }
 if (!save.ammo || typeof save.ammo !== 'object' || Array.isArray(save.ammo)) save.ammo = {};

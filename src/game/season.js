@@ -72,6 +72,7 @@ function apply() {
   logoSnow(on);
   applied = on; refreshDot(); late.tips?.refresh?.();
   const v = $('adm-season-v'); if (v) v.textContent = mode === 'on' ? '켬' : mode === 'off' ? '끔' : `기간대로 (${realDay() ? '켜짐' : '꺼짐'})`;
+  document.querySelectorAll('[data-season]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.season === mode))); // #153 고른 것은 눌린 모양
 }
 function setMode(m) { mode = m === 'on' || m === 'off' ? m : ''; try { if (mode) localStorage.setItem(SK, mode); else localStorage.removeItem(SK); } catch (e) { /* 무시 */ } apply(); }
 document.querySelectorAll('[data-season]').forEach((b) => b.addEventListener('click', () => { setMode(b.dataset.season); toast('철 이벤트: ' + (mode === 'on' ? '켬' : mode === 'off' ? '끔' : '기간대로')); }));

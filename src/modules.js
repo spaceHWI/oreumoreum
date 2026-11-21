@@ -86,6 +86,7 @@ import './game/guard.js'; // 구역 지킴이 돌하르방 (#119)
 import './game/shop.js';
 import './game/look.js';
 import './game/bag.js'; // 내 가방 (#166)
+import './game/nickname.js'; // 이름 바꾸기 (#162)
 import './game/hooks.js';
 import './game/guide.js';
 import './game/pace.js';
@@ -95,8 +96,17 @@ import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
 import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
-import './game/punk.js';
-import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호 // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
+import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
+import './game/buddies.js'; // 동료 캐릭터 3명 (#172)
+import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: 적·우두머리 후크를 감쌈)
+import './game/ending.js'; // 엔딩 시네마틱 (#168)
+import './game/story.js'; // 이야기 이벤트 (#168)
+import './game/swarm.js'; // 들판 떼 (#173)
+import './game/smoker.js'; // 들머리 흡연자 (#156)
+import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
+import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
+import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
 import './game/start.js';
+import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
 import './game/debug.js';

@@ -49,6 +49,15 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const tee = await A.p.evaluate(() => { const o = window.__oreum; o.save.look = { ...(o.save.look || { sex: 'm', skin: 0 }), colors: { hat: 0, top: 3, bottom: 0, shoes: 0 } }; o.clothes.wear('top', 'top:w-tee'); o.player.pos.x += 0.5; return o.save.outfit.gear.top; });
     const seenTee = await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.data.o?.gr?.top === t), tee);
     ok(tee === 'top:w-tee~3' && seenTee, `A 가 고른 기본 옷 색이 B 화면에 (${tee})`);
+    // 레벨 (#159): 문이 열린 A 의 레벨이 B 화면 이름표에 (바뀔 때만 실림)
+    const alv = await A.p.evaluate(() => { const o = window.__oreum; o.save.journey = { ...(o.save.journey || {}), seen: { ...(o.save.journey?.seen || {}), level: '2026-01-01' } }; o.level.setXp(5000); o.player.pos.x += 0.5; return o.level.state().lv; });
+    const seenLv = await until(B, (lv) => [...window.__oreum.net.peersById.values()].some((e) => e.lv === lv), alv);
+    ok(alv > 1 && seenLv, `B 가 A 의 레벨을 봄 (레벨 ${alv})`);
+    // 칭호 (#165): A 가 단 칭호가 B 화면 이름표 위에 (번호 tt 만 오가고 글은 목록에서)
+    const tt = await A.p.evaluate(() => { const o = window.__oreum, i = o.punkWorld.title.list.findIndex((t) => t.badge === 'b-first'); o.ach.state.badges['b-first'] ||= { at: Date.now(), claimed: false }; o.punkWorld.title.set(i); o.player.pos.x += 0.5; return o.punkWorld.title.list[i].t; });
+    ok(await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.title === t && e.label?.scale.y > 0.9), tt), `A 가 단 칭호가 B 화면 이름표 위에 (${tt})`);
+    await A.p.evaluate(() => { window.__oreum.punkWorld.title.set(-1); window.__oreum.player.pos.x += 0.5; });
+    ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
     const C = await open('C'); await C.p.click('#enter');
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
@@ -88,6 +97,18 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await wait(A.p, 600);
   const after = await B.p.evaluate(() => window.__oreum.trash.api.store.left(0));
   ok(after === before - 1, `더미 함께 쓰기 (B: ${before} → ${after})`);
+  // 동료 (#172): A 화면의 동료 셋은 B 에게 안 보이고(사람 수 그대로), 동료가 줄인 더미는 B 에도 줄어듦(btake)
+  {
+    const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
+    await wait(A.p, 1500);
+    const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
+    ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
+    const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
+    const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
+    await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
+    const b1 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
+    ok(b1 === b0 - 1, `동료 줍기도 방으로 (B: ${b0} → ${b1})`);
+  }
   // 다시 쌓기는 방장만: B(나중에 온 사람)가 쌓으면 0
   const put = await B.p.evaluate(() => window.__oreum.trash.api.store.putBack(0, 1));
   ok(put === 0, '방장이 아니면 다시 쌓기 안 됨');
@@ -147,6 +168,23 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(on && await A.p.evaluate((id) => { const o = window.__oreum; return !o.deerNet().rides.has(id) && o.life.deerById(id).state !== 'ridden'; }, id), '타는 중 끊기면 노루가 풀림');
     await A.ctx.close(); await b.close(); web.close(); return;
   }
+  // 엔딩 (#168): A 가 끝내면 방이 시작 시각을 정해 B 도 같은 시각에 같은 시네마틱. 같은 날 두 번째는 끝낸 사람(A)만
+  {
+    await A.p.evaluate(() => window.__oreum.story.play('end'));
+    const got = await until(B, () => !!window.__oreum.story.ending.state(), null, 15000);
+    const sa = await A.p.evaluate(() => window.__oreum.story.ending.state()), sb = await B.p.evaluate(() => window.__oreum.story.ending.state());
+    ok(got && sa && sb && sa.mine === true && !sb.mine, `엔딩: A 가 끝내면 B 화면에도 같이 (A ${JSON.stringify(sa)} · B ${JSON.stringify(sb)})`);
+    await until(A, () => window.__oreum.story.ending.state()?.cine === true, null, 15000);
+    const ua = await A.p.evaluate(() => window.__oreum.story.ending.state()?.u), ub = await B.p.evaluate(() => window.__oreum.story.ending.state()?.u);
+    ok(Number.isFinite(ua) && Number.isFinite(ub) && Math.abs(ua - ub) < 1.5, `엔딩: 같은 시각에 시작 (A ${ua}초 · B ${ub}초)`);
+    const c0 = await A.p.evaluate(() => window.__oreum.save.coins);
+    await A.p.evaluate(() => window.__oreum.story.ending.stop()); await B.p.evaluate(() => window.__oreum.story.ending.stop());
+    ok(await until(A, (c0) => window.__oreum.save.coins > c0 && window.__oreum.story.state().done.includes('end'), c0, 10000), '엔딩: 끝낸 A 만 보상·이야기 끝');
+    await A.p.evaluate(() => window.__oreum.story.play('end')); await wait(A.p, 3000);
+    const a2 = await A.p.evaluate(() => window.__oreum.story.ending.state()), b2 = await B.p.evaluate(() => window.__oreum.story.ending.state());
+    ok(!!a2 && !b2, `엔딩: 같은 날 두 번째는 끝낸 사람만 (A ${!!a2} · B ${!!b2})`);
+    await A.p.evaluate(() => window.__oreum.story.ending.stop());
+  }
   // 가짜 로그인 → 계정 사본으로 새로고침
   await A.p.evaluate(() => { window.__oreum.save.coins = 40; });
   await A.p.evaluate(() => { window.__old = 1; window.__oreum.online.fake('tester-' + Date.now()); }); // __old: 새로 고친 뒤의 페이지인지 가리려고
@@ -196,9 +234,24 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const c2 = await A.p.evaluate(() => window.__oreum.save.coins);
     ok(c2 <= c1 + NET.earnBurst + Math.ceil(undo.kept * per * 0.1) + NET.earnPerSec * 30, `10만 귤 부풀리기 바로잡힘 (${c1} + 100000 → ${c2})`);
   }
+  { // 서버가 아는 귤 (#188): 깎이면 알림·의견에 붙일 정보, 저장해 둔 전설 장비를 팔면 안 깎임
+    const cut = await A.p.evaluate(() => window.__oreum.save.lastCut);
+    ok(cut && cut.n > 0 && cut.before > cut.after, `깎이면 알림 정보가 남음 (-${cut?.n})`);
+    const it = { s: 'weapon', t: 6, g: 3, e: 5 };
+    await A.p.evaluate((it) => { const o = window.__oreum; o.save.lootAuto = 0; o.save.loot.push(it); return o.online.account().push(); }, it); await wait(A.p, 800);
+    const s0 = await A.p.evaluate(() => window.__oreum.save.coins);
+    const v = await A.p.evaluate(() => { const o = window.__oreum, i = o.save.loot.findIndex((x) => x.t === 6 && x.g === 3 && x.e === 5); const v = o.loot.sell(i); o.online.account().push(); return v; }); await wait(A.p, 1200);
+    const s1 = await A.p.evaluate(() => ({ c: window.__oreum.save.coins, sold: window.__oreum.save.sold }));
+    ok(v > NET.earnBurst && s1.c === s0 + v && !s1.sold, `가진 전설 무기를 팔면 서버가 그 귤을 인정 (+${v}, 몫 ${NET.earnBurst} 넘음)·판 것 목록 비움`);
+  }
   // 랭킹 (#11): 버리면 저장을 바로 보내고 오늘 순위가 오르면 토스트, 순위표에 내 줄, 손님은 이 기기 기록만
   await wait(A.p, 4000); // 앞의 줍기 몫(초당 takePerSec)이 지나가게
-  const nick = await A.p.evaluate(() => { const o = window.__oreum; o.save.nick = '랭킹확인' + (Date.now() % 1000); const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); return o.save.nick; });
+  // 이름은 저장으로 못 바꿈 (#162): 이름 바꾸기 창으로 (첫 바꾸기 무료, 서버 POST /nick)
+  const nick = '랭킹확인' + (Date.now() % 1000);
+  await A.p.evaluate((n) => { document.getElementById('menu-nick').click(); const i = document.getElementById('nick-new'); i.value = n; i.dispatchEvent(new Event('input')); document.getElementById('nick-new-go').click(); }, nick);
+  for (let k = 0; k < 60 && (await A.p.evaluate(() => window.__oreum.save.nick)) !== nick; k++) await wait(A.p, 250);
+  ok((await A.p.evaluate(() => window.__oreum.save.nick)) === nick, `이름 바꾸기 창 → 서버가 바꿈 (${nick})`);
+  await A.p.evaluate(() => { const o = window.__oreum; const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); });
   await wait(A.p, 1200);
   const rk0 = await A.p.evaluate(() => window.__oreum.rank.state().last[window.__oreum.server.id()]?.rank ?? -1); // 들어올 때 잡은 기준 순위
   await A.p.evaluate(() => { const o = window.__oreum; o.trash.api.store.bag.can = (o.trash.api.store.bag.can || 0) + 3; window.__toasts = []; const t = document.getElementById('toast'); new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); o.cleanhouse.dump(); });

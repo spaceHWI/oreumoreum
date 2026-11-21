@@ -1,5 +1,5 @@
 // 한 벌 맞춤 (#179): 같은 묶음(balance.js OUTFIT_SETS) 3벌을 겉모습으로 입으면 캐릭터 둘레에 작은 빛 점이 돌고, 처음 맞추면 칭호 토스트
-// 능력은 없음. 칭호는 저장하지 않고 가진 옷으로 셈(titles: 세 벌을 다 가진 묶음) → 칭호 고르기(#165)가 쓰면 됨
+// 능력은 없음. 칭호는 punktext.js TITLES 의 set 줄(#165 칭호 창, punkworld.js): 세 벌을 다 가지면 열림. 저장하지 않고 가진 옷으로 셈 (titles)
 // 점은 한 번 그리기(Points 하나), 저사양은 점 수를 줄임. 다른 사람 캐릭터에는 아직 안 붙임
 import * as THREE from 'three';
 import { OUTFIT_SETS, SET_FX } from '../balance.js';
@@ -24,7 +24,7 @@ function check(fromWear) {
   const s = wornSet();
   if (s?.id === cur?.id) return;
   cur = s; pts.visible = !!s; if (s) mat.color.set(s.fx);
-  if (s && fromWear) { toast(`한 벌 맞춤 · ${s.name} · 칭호 '${s.title}'`, 3); late.sound?.fanfare?.(); }
+  if (s && fromWear) { toast(`한 벌 맞춤 · ${s.name} · 칭호 '${s.title}' 를 달 수 있어요`, 3); late.sound?.fanfare?.(); }
 }
 function tick(dt) {
   if (!cur) return;

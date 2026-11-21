@@ -1,7 +1,8 @@
 // 계정 저장 (#7): Durable Object 하나(이름 'all') 안의 SQLite. 칸은 sub·닉네임·게임 저장·치운 양·접속 시각뿐
 import { DurableObject } from 'cloudflare:workers';
-import { NET, FEEDBACK, RANK, HAIR } from '../../src/balance.js';
+import { NET, FEEDBACK, RANK, HAIR, NICK } from '../../src/balance.js';
 import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
+import { cleanText, nickOk, nickBad, nickPrice } from '../../src/safetext.js';
 import { checkSave } from './validate.js';
 import { kstDay, weekStart, lookOf } from '../../src/rankday.js';
 
@@ -26,7 +27,14 @@ export class Accounts extends DurableObject {
     this.sql.exec('CREATE INDEX IF NOT EXISTS rka_sn ON rka (srv, n)');
     const cols = this.sql.exec('PRAGMA table_info(acc)').toArray().map((c) => c.name);
     if (!cols.includes('look')) this.sql.exec('ALTER TABLE acc ADD COLUMN look TEXT');
+    for (const c of ['nick_n', 'nick_day', 'nick_free']) if (!cols.includes(c)) this.sql.exec(`ALTER TABLE acc ADD COLUMN ${c} INTEGER DEFAULT 0`); // 이름 바꾸기 (#162): 바꾼 횟수·마지막 바꾼 날(한국 날)·다음 한 번 무료
     if (!cols.includes('bank')) this.sql.exec('ALTER TABLE acc ADD COLUMN bank REAL DEFAULT 0'); // 번 몫 (#144): 방이 받아 준 줍기 × 더미 값. 버린 귤은 이 안에서
+    if (!cols.includes('cred')) this.sql.exec('ALTER TABLE acc ADD COLUMN cred TEXT'); // 서버가 인정한 기록 (#188 earn.js): 받은 퀘스트·우두머리·소굴·보물·볼거리, 새 전리품 통
+    // 귤 맞춤 기록 (#188): 서버가 귤을 깎은 때마다 한 줄 (clampKeepDays 일 보관). 운영자 귤 보내기 (got: 받는 사람이 받았나)
+    this.sql.exec('CREATE TABLE IF NOT EXISTS clamp (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, sub TEXT, nick TEXT, amt INTEGER, before INTEGER, ask INTEGER, after INTEGER, why TEXT, ver TEXT, info TEXT)');
+    this.sql.exec('CREATE INDEX IF NOT EXISTS clamp_at ON clamp (at)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS gift (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, sub TEXT, n INTEGER, why TEXT, by TEXT, got INTEGER DEFAULT 0, got_at INTEGER)');
+    this.sql.exec('CREATE INDEX IF NOT EXISTS gift_sub ON gift (sub, got)');
 
     if (!hadRank) this.sql.exec("INSERT OR IGNORE INTO rka (sub, srv, n) SELECT sub, 'battle', cleaned FROM acc WHERE cleaned > 0"); // 랭킹 전 치운 양은 전체로
     // #98: 깨끗한 오름 기록을 전투 오름 기록에 더하고 지움 (한 번 옮기면 clean 줄이 없어 다음엔 아무 일 없음)
@@ -56,7 +64,26 @@ export class Accounts extends DurableObject {
     return this.view(r, t);
   }
   view(r, t = Date.now()) {
-    return { nick: r.nick || '', rev: r.rev, save: r.save ? JSON.parse(r.save) : null, cleaned: r.cleaned, lastSeen: t, keepUntil: t + NET.keepDays * 864e5, isNew: !!r.isNew };
+    return { nick: r.nick || '', rev: r.rev, save: r.save ? JSON.parse(r.save) : null, cleaned: r.cleaned, lastSeen: t, keepUntil: t + NET.keepDays * 864e5, isNew: !!r.isNew, nickRen: this.nickRen(r), gifts: this.giftsOf(r.sub) };
+  }
+  nickRen(r) { return { n: r.nick_n || 0, day: r.nick_day || 0, free: r.nick_free ? 1 : 0 }; }
+  // 이름 바꾸기 (#162): 서버가 거르기·하루 한 번·값(바꾼 횟수로 셈)을 확인하고 귤을 빼고 바꿈. price = 클라이언트가 본 값 (다르면 거절하고 지금 값을 알려 줌)
+  rename(sub, name, price, t = Date.now()) {
+    const r = this.row(sub); if (!r || !r.save) return { error: 'no save' };
+    const nick = cleanText(name, NET.nickMax), save = JSON.parse(r.save), R = this.nickRen(r), day = kstDay(t);
+    if (!nickOk(nick) || nick !== String(name).trim().replace(/\s+/g, ' ')) return { error: 'bad' };
+    if (nick === save.nick) return { error: 'same' };
+    if (NICK.perDay && R.day === day) return { error: 'day', nickRen: R };
+    const cost = nickPrice(R.n, R.free);
+    if (price !== cost) return { error: 'price', price: cost, nickRen: R };
+    const coins = Math.max(0, Math.floor(Number(save.coins) || 0));
+    if (coins < cost) return { error: 'coins', price: cost, nickRen: R };
+    const nr = { n: R.free ? R.n : R.n + 1, day, free: 0 };
+    Object.assign(save, { coins: coins - cost, nick, nickSet: 1, nickRen: nr });
+    const rev = (r.rev || 0) + 1;
+    this.sql.exec('UPDATE acc SET save = ?, nick = ?, rev = ?, nick_n = ?, nick_day = ?, nick_free = 0, last_seen = ? WHERE sub = ?', JSON.stringify(save), nick, rev, nr.n, day, t, sub);
+    this.rkCache.clear();
+    return { ok: true, nick, paid: cost, coins: save.coins, rev, nickRen: nr };
   }
   // 세션 확인 (#84): 계정이 있고, 토큰이 계정을 만든 뒤에 나왔고(지웠다 다시 만든 계정의 옛 토큰 거절), 버린 토큰이 아니어야 함
   auth(sub, iat, jti) {
@@ -66,26 +93,54 @@ export class Accounts extends DurableObject {
   }
   revoke(jti, exp) { this.sql.exec('INSERT OR REPLACE INTO rv (j, exp) VALUES (?, ?)', jti, exp); return { ok: true }; }
   get(sub) { const r = this.row(sub); return r ? this.view(r, r.last_seen) : null; }
-  put(sub, save, { migrate = false, free = false } = {}) {
+  put(sub, save, { migrate = false, free = false, ver = '' } = {}) {
     const raw = JSON.stringify(save);
     if (raw.length > NET.saveMax) return { error: 'too big' };
     const t = Date.now();
     let r = this.row(sub); if (!r) { this.touch(sub); r = this.row(sub); }
     const prev = r.save ? JSON.parse(r.save) : null;
     const xday = xmasDay(t);
-    const { save: S, fixed, acc } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal() });
+    // 운영자가 보낸 귤 (#188): 받는 사람이 받았다고 한 것(save.giftGot)만 이번 몫에 더하고 받은 것으로
+    const got = new Set(Array.isArray(save.giftGot) ? save.giftGot.slice(-100).map(Number) : []);
+    const take = this.giftsOf(sub).filter((g) => got.has(g.id)), grant = take.reduce((a, g) => a + g.n, 0);
+    let cred = null; try { cred = r.cred ? JSON.parse(r.cred) : null; } catch (e) { cred = null; }
+    const { save: S, fixed, acc, clamp, nickBad: nb } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, cred }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal(), grant });
+    for (const g of take) this.sql.exec('UPDATE gift SET got = 1, got_at = ? WHERE id = ? AND sub = ?', t, g.id, sub);
     const rev = (r.rev || 0) + 1;
     // 확인한 칸만 바꿔 넣고 나머지(설정·튜토리얼 등)는 받은 그대로
-    const out = { ...save, ...S };
-    this.sql.exec('UPDATE acc SET save = ?, nick = ?, rev = ?, cleaned = ?, credit = ?, pick_credit = ?, bank = ?, saved_at = ?, last_seen = ?, look = ? WHERE sub = ?',
-      JSON.stringify(out), S.nick, rev, S.trash.total, acc.credit, acc.pickCredit, acc.bank, t, t, lookOf(out, hairOk), sub);
+    const out = { ...save, ...S }; delete out.sold; // 판 것 목록(#188)은 셈에만
+    if (nb) this.sql.exec('UPDATE acc SET nick_free = 1 WHERE sub = ?', sub); // 걸린 이름을 서버가 바꿨으면 다음 한 번 무료 (#162)
+    out.nickRen = this.nickRen(this.row(sub)); // 바꾼 횟수 등은 서버 값 (클라이언트가 보낸 것은 버림)
+    this.sql.exec('UPDATE acc SET save = ?, nick = ?, rev = ?, cleaned = ?, credit = ?, pick_credit = ?, bank = ?, cred = ?, saved_at = ?, last_seen = ?, look = ? WHERE sub = ?',
+      JSON.stringify(out), S.nick, rev, S.trash.total, acc.credit, acc.pickCredit, acc.bank, JSON.stringify(acc.cred || {}), t, t, lookOf(out, hairOk), sub);
+    if (clamp && clamp.amt > 0) this.clampAdd(sub, S.nick, clamp, ver, t);
     // 랭킹 (#11): 서버가 확인한 치운 양이 늘어난 만큼만 더함 (서버는 전투 오름 하나, #98). 줄어든 것(처음부터 다시 등)은 빼지 않음
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
     const fix = {};
-    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; }
-    return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5 };
+    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } }
+    if (clamp && clamp.amt > 0) fix.cut = { n: clamp.amt, why: clamp.why }; // 클라이언트가 '귤 ○개를 맞췄어요' 와 의견 보내기에 붙임
+    return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5, gifts: this.giftsOf(sub).filter((g) => !got.has(g.id)) };
   }
+  /* ---------- 귤 맞춤 기록·운영자 귤 보내기 (#188) ---------- */
+  // 깎인 때: 기록 한 줄 + 오류 모으기(fb, kind 'crash')에 한 줄 (2시간 점검이 /crashes 로 알아챔. 닉네임·계정 번호는 넣지 않음)
+  clampAdd(sub, nick, c, ver, t = Date.now()) {
+    const v = String(ver || '').slice(0, 20);
+    this.sql.exec('INSERT INTO clamp (at, sub, nick, amt, before, ask, after, why, ver, info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', t, sub, nick || '', c.amt, c.before, c.ask, c.after, c.why, v, JSON.stringify({ room: c.room, rec: c.rec, bad: c.bad }));
+    this.sql.exec('INSERT INTO fb (at, ip, item, mailed) VALUES (?, ?, ?, 1)', t, 'clamp', JSON.stringify({ at: t, kind: 'crash', ver: v, dev: '', text: `[귤 맞춤 server] coins -${c.amt} (${c.why}) 몫 ${c.room} 인정 ${c.rec} 거절한 판 것 ${c.bad}` }));
+  }
+  clampList(days = 30, k = 300) {
+    return this.sql.exec('SELECT clamp.id AS id, clamp.at AS at, clamp.sub AS sub, clamp.nick AS nick, amt, before, ask, after, why, ver, info FROM clamp WHERE at > ? ORDER BY id DESC LIMIT ?', Date.now() - days * 864e5, k).toArray()
+      .map((r) => ({ ...r, info: (() => { try { return JSON.parse(r.info || '{}'); } catch (e) { return {}; } })() }));
+  }
+  // 아직 받지 않은 귤 선물: [{ id, n, why, at }]
+  giftsOf(sub) { return this.sql.exec('SELECT id, n, why, at FROM gift WHERE sub = ? AND got = 0 ORDER BY id LIMIT 20', sub).toArray(); }
+  grant(sub, n, why, by) {
+    if (!this.row(sub)) return { error: 'no account' };
+    this.sql.exec('INSERT INTO gift (at, sub, n, why, by) VALUES (?, ?, ?, ?, ?)', Date.now(), sub, n, why, by);
+    return { ok: true, id: this.sql.exec('SELECT MAX(id) AS id FROM gift').one().id };
+  }
+  grantList(k = 100) { return this.sql.exec('SELECT gift.id AS id, gift.at AS at, gift.sub AS sub, acc.nick AS nick, n, why, got, got_at FROM gift LEFT JOIN acc ON acc.sub = gift.sub ORDER BY gift.id DESC LIMIT ?', k).toArray(); }
   // 방이 받아 준 줍기로 번 몫 (#144, room.js flushEarn): [[sub, 귤]…]. 없는 계정은 지나감, earnBankMax 에서 멈춤
   earn(list) {
     if (!Array.isArray(list)) return 0;
@@ -129,7 +184,7 @@ export class Accounts extends DurableObject {
       const [q, a] = this.rankFrom(range, srv, t);
       const rows = this.sql.exec(`SELECT t.sub AS sub, t.s AS s, acc.nick AS nick, acc.look AS look FROM (${q}) t JOIN acc ON acc.sub = t.sub ORDER BY t.s DESC, acc.created ASC LIMIT ?`, ...a, RANK.top).toArray();
       const total = this.sql.exec(`SELECT COUNT(*) AS n FROM (${q})`, ...a).one().n;
-      let rk = 0, last = -1; c = { at: t, total, rows: rows.map((r, i) => { if (r.s !== last) { rk = i + 1; last = r.s; } return { sub: r.sub, rank: rk, n: r.s, nick: r.nick || '', look: r.look || '' }; }) };
+      let rk = 0, last = -1; c = { at: t, total, rows: rows.map((r, i) => { if (r.s !== last) { rk = i + 1; last = r.s; } return { sub: r.sub, rank: rk, n: r.s, nick: r.nick && !nickBad(r.nick) ? r.nick : '', look: r.look || '' }; }) };
       this.rkCache.set(key, c);
       if (this.rkCache.size > 24) this.rkCache.delete(this.rkCache.keys().next().value);
     }
@@ -148,6 +203,7 @@ export class Accounts extends DurableObject {
   purge(cutoff) {
     this.sql.exec('DELETE FROM rv WHERE exp < ?', Date.now());
     const n = this.sql.exec('SELECT COUNT(*) AS n FROM acc WHERE last_seen < ?', cutoff).one().n; this.sql.exec('DELETE FROM acc WHERE last_seen < ?', cutoff);
+    this.sql.exec('DELETE FROM clamp WHERE at < ?', Date.now() - NET.clampKeepDays * 864e5); this.sql.exec('DELETE FROM gift WHERE at < ? AND got = 1', Date.now() - NET.clampKeepDays * 864e5); // #188
     this.sql.exec('DELETE FROM rkd WHERE d < ? OR sub NOT IN (SELECT sub FROM acc)', kstDay() - RANK.dayKeep); this.sql.exec('DELETE FROM rka WHERE sub NOT IN (SELECT sub FROM acc)'); this.rkCache.clear();
     return n;
   }

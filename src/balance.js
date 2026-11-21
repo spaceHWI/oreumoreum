@@ -125,6 +125,55 @@ export const FIELD = {
   fog: { n: 128, r: 42 },
   chD: 80, // 권장 배낭으로 길가 더미를 반쯤 치우면 가득 차는 곳에서 구역 클린하우스까지 (7-1절, tools/field.js 가 잼)
 };
+// 들판 떼 (#173, src/game/swarm.js, notes/growth-loop.md '들판 떼' 절): 길에서 offD m 넘게 벗어나면 그 구역 떼가 몰려옴(뱀서류). 모두 임의값
+// offD 들판으로 치는 길에서 거리(m), backD 이보다 가까우면 길로 돌아온 것, backT 길로 돌아온 뒤 떼가 흩어지기까지(초), firstT 들판에 들어선 뒤 첫 적이 보이기까지
+// ring 플레이어 둘레 이 거리(화면 밖 쪽)에서 나옴, gap 한 마리씩 나오는 간격(초), stages 들판에 머문 시간 t초부터 동시에 n마리, elite [간격초, 마리]
+// leaderT 이 초에 떼 대장 1마리, after 대장을 쫓아내면 이 시각(초)으로 되돌아감. cap 동시에 화면에 있는 떼 적 상한(PC·폰·저사양, 성능)
+// mob 떼 적 = 그 구역 보통 적 × (기운·피해·귤 보상(구역별)·크기), life 스스로 떠나기까지. elite 정예 = 보통 적 크기에 기운 × hp. leader 떼 대장 = 크기 × k, 기운 × hp, chest 쫓아내면 보물 상자 귤(구역별)
+// kinds 구역별 떼 (여러 개면 [종류, 비율]), straight 곧게 달려드는 구역(무리 자리 나누기 없이), shard 쫓아낸 한 마리가 떨구는 귤 조각 수, shardN 조각 이만큼이 귤 1
+// magnet 조각이 빨려 오는 거리(m), shardLife 조각이 땅에 남는 초, augAt 조각을 이만큼 모을 때마다 증강 고르기(그 뒤는 augStep 씩 늘림)
+// auto 들판 자동 던지기 간격(초, 무기마다. 무기 원래 간격), shotV 탄 속도, mgN·laserN 연사 무기 한 발 몫, quiet 더미를 다 치우면 그 자리 r m 가 t 초 동안 조용
+// den 소굴 r m 안이면 떼 × more, 그 소굴이 닫혔으면 × closed. slowNew 장비 점수가 구역 권장보다 낮으면 물결 시간이 이 배로 느리게 흐름. lowHp 기운이 이 비율 아래면 떼 전체가 머뭇거림(#148)
+// sack 구역 4 '썩은 귤 자루': 쫓아낸 광견병 들개가 p 확률로 떨굼 → fuse 초 뒤 터져 r m 안 플레이어를 t 초 동안 slow 배로 느리게
+// pickSlow 증강 고르는 창이 떠 있는 동안 화면 빠르기(혼자), multiIframe 멀티에서는 느려지지 않고 이 초 동안 무적
+// econ tools/econ.js: 들판 10분 귤이 길가 10분의 max 배를 넘지 않게, 하루 놀이 중 share 만큼 들판에 있다고 셈
+export const SWARM = {
+  offD: 12, backD: 9, backT: 6, firstT: 1.2,
+  ring: [18, 26], gap: 0.25,
+  stages: [{ t: 0, n: 4 }, { t: 30, n: 8 }, { t: 90, n: 14, elite: [30, 1] }, { t: 180, n: 20, elite: [60, 2] }],
+  leaderT: 300, after: 180,
+  cap: { pc: 24, phone: 16, low: 10 },
+  mob: { hp: 0.3, dmg: 0.4, gyul: [0, 0.08, 0.22, 0.32, 0.4, 0.15], size: 0.7, life: 80 }, // gyul 구역별: 25% 로 두면 구역 1·2 는 길가의 2.5배라 1~3 은 길가와 비슷하게, 4·5 는 서버 ③(NET.swarmPerSec) 안으로 (tools/econ.js, 소수 몫은 확률로 1)
+  elite: { hp: 2 },
+  leader: { k: 1.5, hp: 5, chest: [0, 15, 45, 450, 1200, 3300] },
+  kinds: { 1: [['piglet', 1]], 2: [['dog', 1]], 3: [['boar', 0.65], ['crow', 0.35]], 4: [['rabid', 1]], 5: [['drone', 1]] },
+  straight: [1],
+  shard: [0, 1, 1, 2, 2, 3], shardN: 3, magnet: 3.5, shardLife: 40,
+  augAt: [10, 25, 45, 70, 100], augStep: 35,
+  auto: { hand: 0.8, bow: 0.62, gun: 0.7, mg: 1 / 6, laser: 0.2, bomb: 2 }, shotV: 26, mgN: 30, laserN: 5,
+  quiet: { r: 25, t: 30 },
+  den: { r: 30, more: 1.3, closed: 0.5 },
+  slowNew: 0.6, lowHp: 0.3,
+  sack: { p: 0.2, fuse: 1.2, r: 3, slow: 0.6, t: 3 },
+  pickSlow: 0.3, multiIframe: 2,
+  econ: { max: 1.5, share: 0.1 },
+  // 들판 증강 (그 판에서만, 3단계까지). v 단계마다 값
+  augs: [
+    { id: 'fork', name: '귤 두 갈래', d: '한 번에 귤이 한 줄 더', v: [1, 2, 3] },
+    { id: 'rate', name: '빠른 손', d: '던지는 속도 +30%', v: [1.3, 1.6, 1.9] },
+    { id: 'pierce', name: '관통 귤', d: '귤이 적을 뚫고 지나감', v: [1, 2, 4] },
+    { id: 'burst', name: '터지는 귤', d: '맞으면 둘레 2.5m 에 터짐', v: [2.5, 3.2, 4] },
+    { id: 'orbit', name: '도는 귤', d: '몸 둘레를 귤이 돎', v: [3, 4, 5] },
+    { id: 'back', name: '뒤로도 던지기', d: '등 뒤로도 한 줄', v: [1, 2, 3] },
+    { id: 'magnet', name: '조각 자석', d: '귤 조각을 +3m 멀리서', v: [3, 6, 9] },
+    { id: 'move', name: '가벼운 발', d: '이동 +15%', v: [1.15, 1.3, 1.45] },
+    { id: 'shove', name: '밀쳐 내기', d: '맞으면 둘레 적을 밀어냄', v: [4, 5, 6] },
+    { id: 'rain', name: '귤비', d: '10초마다 둘레 적 모두에 피해', v: [10, 8, 6] },
+    { id: 'heal', name: '귤즙 한 모금', d: '기운 +20 회복', v: [20, 30, 40] },
+    { id: 'power', name: '단단한 귤', d: '귤 피해 +30%', v: [1.3, 1.6, 2] },
+  ],
+};
+
 // 구역 지킴이 돌하르방 (#119, src/game/guard.js · 서버 server/src/roomcore.js): 구역 더미를 모두 치운 순간 그 구역 자리에 서고 holdSec 뒤 가라앉음
 // 자리: 구역 길 위 반(upper, 길이 안 들어가는 구역은 옆 길)에서 길 옆 d m · 반경 r · 이미 있는 하르방에서 keep m 밖 (seed 고정 → 모두 같은 자리)
 // 연출: 꽃 피는 연출(BLOOM_FX.zone)이 먼저, 치운 뒤 afterBloom 초부터 riseT 초 동안 솟음. fresh 초 안에 들은 것만 연출·메시지(그 뒤 들어온 사람은 서 있는 모습만)
@@ -241,6 +290,18 @@ export const DUMP = {
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
 };
+// 흡연자 (#156, src/game/smoker.js): 오름 들머리에 가끔 나와 담배를 피움. 플레이어를 공격하지 않음. 귤을 한 번 맞히면 놀라 꽁초 1개를 떨구고 도망 (투기꾼 DUMP.startleT·fleeDist·fadeT 그대로)
+// near 들머리 클린하우스에서 이 거리(m) 안, 탐방로에서 off[0]~off[1] m 비켜난 자리. playerR 플레이어가 들머리 클린하우스 이 거리 안에 있을 때만 every[0]~[1] 초마다 한 명(한 번에 한 명)
+// stay 안 쫓으면 이 초 뒤 꽁초 leaveButts 개를 버리고 걸어 나감. walkIn 나타날 때 이만큼 떨어진 곳에서 걸어옴. reward 쫓으면 귤, buttLife 꽁초가 땅에 남는 초(주울 수 있는 낱개 쓰레기, 비닐 1개로 셈), buttMax 한꺼번에 남는 꽁초 수
+// puff 입 앞 연기 조각 수(저사양 puffLow), jacket 점퍼 색. 귤 벌이: tools/econ.js 가 하루 1시간에서 흡연자 몫이 전체의 3% 아래인지 봄 (들머리 둘레에 있는 시간 econNear)
+export const SMOKER = {
+  name: '흡연자', hp: 1, speed: 1.6, flee: 7, hitR: 1.1,
+  near: 25, off: [2, 5], playerR: 60, every: [240, 420],
+  stay: 90, leaveButts: 3, walkIn: 12, reward: 8,
+  buttLife: 600, buttMax: 12, pickR: 1.1,
+  puff: 5, puffLow: 2, jacket: '#8a8f96',
+  econNear: 0.25,
+};
 export const TRASH = {
   cell: 32, // 튜토리얼 낱개 그리기 범위 칸
   drawR: 110, drawRLow: 70,
@@ -354,10 +415,14 @@ export const COLLIDE = {
 export const WEATHER = {
   lat: 33.3, lon: 126.3, // 남송이오름(서귀포시 안덕면 서광리) 근처
   pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
-  particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
+  particles: 700, particlesLow: 250, box: 40, rainFall: 20, snowFall: 3.2, // #187: 1400·500·26 → 어지러워서 줄임
   // #147 비·눈 모양: 빗줄기는 바람 쪽으로 기운 짧은 선 (len 길이 범위 m, w 굵기 m, thick 비율만큼은 thickK 배 굵게)
-  rainDrift: 6, rainAlpha: 0.8, rainCol: '#e4eaf0', streak: { len: [0.9, 1.7], w: 0.03, thick: 0.08, thickK: 2.4, minPx: 1.1 },
-  snowN: 900, snowLow: 400, snowSize: [4, 5], // 눈송이 수·화면 크기(px)
+  // #187 어지러움 줄이기: 옅게(rainAlpha 0.8→0.35)·하늘빛에 가까운 색·짧고 느리게·카메라 near m 안은 안 그림(nearFade m 동안 서서히)·멀수록 옅게(far 거리에서 farA 배)
+  rainDrift: 3, rainWindK: 0.6, // 옆 흐름 = rainDrift × max(1, 바람 배율 − rainWindK): 보통 비는 3, 바람 센 날만 크게
+  rainAlpha: 0.35, rainCol: '#c3cad0', streak: { len: [0.6, 1.1], w: 0.03, thick: 0.08, thickK: 1.4, minPx: 1.1, near: 4, nearFade: 2, far: [12, 26], farA: 0.5 },
+  snowN: 900, snowLow: 400, snowSize: [4, 5], snowAlpha: 0.8, // 눈송이 수·화면 크기(px)·불투명도 (#187: 0.95 → 0.8)
+  // #187 설정 '비 효과': 보통·약하게·끔. 빗줄기·눈송이 수와 진하기에 곱함 (끔이어도 회색 하늘·젖은 땅은 남음). prefers-reduced-motion 이면 기본 '약하게'
+  fx: { full: { n: 1, a: 1, name: '보통' }, soft: { n: 0.45, a: 0.6, name: '약하게' }, off: { n: 0, a: 0, name: '끔' } },
   keepMin: 120, // 날씨를 못 받으면 앞에 받은 날씨를 이만큼(분) 그대로 둔다
   nightDim: 0.16, // 밤 흐림·비 하늘 = 낮 회색 × 이 값
   cloudLow: 0.45, cloudBig: 0.9, // 비·흐림엔 구름 덩어리를 이만큼 낮게(높이 비율)·크게(배율 더함)
@@ -400,6 +465,9 @@ export const ENEMIES = {
   boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 6, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
   rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 7.5, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
   alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
+  // 들판 떼 전용 (#173, src/game/swarm.js): 구역 3 까마귀(하늘에서 내려와 쪼고 올라감), 구역 5 외계인 드론(작은 비행 접시, 약한 광선). 표의 값은 '보통 적' 기준이고 떼는 SWARM.mob 비율로 낮춤
+  crow: { name: '까마귀', hp: 16, walk: 3.4, chase: 7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
+  drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 export const ENEMY_SPAWN = {
@@ -430,12 +498,12 @@ export const ENEMY_PACK = {
   spawnGap: 0.4, // 처음 놓을 때 몸 원 사이 여유(m)
 };
 // 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
-// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수
+// dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수 (활 1: 한 발에 귤 하나 #178)
 // cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
 // r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
-  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 5, price: GROWTH.price[2] },
+  { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
   { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
   { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
   { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5] },
@@ -720,8 +788,11 @@ export const SHOP_ST = {
   benches: [[33.5, -1], [39.5, -1]],
   planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
-  // 지붕 위 큰 아이콘 간판 (#128): 터 땅에서 높이(m, 가게 id 마다)·크기(m). 살 수 있는 새 물건이 있으면 귤색 점
-  roof: { stone: 8.4, salon: 7.2, leap: 7.6, ride: 5.4, gear: 5.6 }, roofSize: 2.3, roofBack: 0.45, // roofBack: 터 앞에서 깊이의 이 비율만큼 안쪽
+  // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
+  roofSize: 2.3, roofGap: 0.6, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
+  roofMinPx: 28, roofMaxK: 2.6, // 화면에서 최소 이 px 로 보이게 멀수록 키움 (최대 roofSize × roofMaxK)
+  roofSee: [8, 16, 28], roofSeeH: 3.5, roofNear: 30, roofFade: 0.82, roofTopNear: 12, roofTopFar: 70, // 둘레 이 거리(m)·눈높이에서 가려지면 그 간판만 맨 위에 그림(roofTopNear~roofTopFar 사이만: 가게 바로 앞에선 앞 간판을 덮지 않게), roofNear 안에선 roofFade 만큼 투명
+  roofGlow: 0.5, // 밤 간판 뒤 따뜻한 빛 세기
   dirR: 3.4, // 들머리 '가게 안내도' 판 앞 이 거리 안이면 상호작용 '가게 안내'
   cartHintR: 9, // 정상·능선 클린하우스 이 거리 안에서 버리고 나면 '가게 거리 가는 마차' 안내 (세션에 한 번)
 };
@@ -955,12 +1026,29 @@ export const TRAIL = {
 };
 
 // 첫 화면 (#72): 정상 표지석을 가운데 두고 천천히 도는 카메라
+// 카메라 위아래 범위 (#170). 걸을 때와 탈 때(노루·탈것·마차) 같은 범위로 올려다보고, 탈 때만 조금 더 내려다봄
+export const CAM = {
+  pitchMin: -0.6, pitchMax: 1.25, // 끌어서 돌리는 위아래 각도(라디안). -0.6 이면 평지에서 화면 위 대부분이 하늘
+  ridePitchMax: 1.4, // 탈 때만 더 내려다봄
+  rideDist: 1.15, // 탈 때 카메라 거리 배율 (노루가 화면을 덜 가림). 내리면 1 로 서서히
+  rideDistK: 3, // 거리 배율이 바뀌는 빠르기 (1/초)
+};
 export const TITLE = {
   r: 650,       // 표지석에서 카메라까지 수평 거리(m)
   up: 30,       // 표지석보다 이만큼 높이
   lookUp: -40,  // 바라보는 곳 높이 (표지석 기준)
   spin: 0.035,  // 도는 빠르기 (rad/초)
   notes: 3,     // 첫 화면에 보이는 최근 릴리스 노트 줄 수
+};
+// 첫 화면 UFO (#150): 시작 전 하늘을 가로지르는 비행접시. 시작하면 사라짐
+export const UFO = {
+  first: 2,       // 첫 화면이 뜨고 처음 나타나기까지(초)
+  cross: 6,       // 화면을 가로지르는 시간(초)
+  gap: [20, 30],  // 그 뒤 다시 지나가는 간격(초, 이 사이 아무 값)
+  dist: 120,      // 카메라에서 떨어진 거리(m). 장면 안 하늘에 떠 보이게
+  size: 0.14,     // 접시 지름 = 화면 높이의 이 비율
+  sizeW: 0.3,     // 다만 화면 폭의 이 비율을 넘지 않게 (폰 세로)
+  bob: 0.12,      // 위아래 흔들림(지름 배율)
 };
 
 // 사진사 NPC (#70): 정상 표지석 근처에 삼각대를 세워 두고, 상호작용하면 사진을 찍어 줌. 무료
@@ -1091,6 +1179,8 @@ export const DEER = {
   feedRetry: 8,      // 부탁한 노루가 이 초 안에 안 오면 다시 부탁할 수 있음
 };
 
+// 이름 (#162): 처음 지을 때·바꿀 때 글자 수. 바꾸기 값은 처음 한 번 무료, 그다음 price 부터 grow 배씩 (cap 에서 멈춤). 하루 perDay 번 (한국 날)
+export const NICK = { min: 2, max: 12, price: 2000, grow: 1.5, cap: 20000, perDay: 1 };
 export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
@@ -1109,11 +1199,18 @@ export const NET = {
   // 귤이 늘 수 있는 몫 (#144): ① 작은 몫(토큰 통: 적·업적·낚시·보너스) + ② 번 몫(earn_bank: 방이 받아 준 줍기 × 더미 구역 값, server/src/heaps.js ZONE_GYUL)
   //   클린하우스에 버린 귤은 ② 에서 먼저 씀. #137 의 고정 큰 몫(earnBurst 100000, earnPerSec 80)은 한 번에 10만 귤 부풀리기를 받아 줘서 되돌림
   earnPerSec: 15,     // ① 이 빠르기로 참 (지난 저장 뒤 지난 시간 × 이 값). 5구역 외계인 무리(3마리 × 400, 3~4분마다)가 초당 약 6
-  earnBurst: 4000,    // ① 한꺼번에 받는 몫: 업적·뱃지 몰아 받기, 첫 보너스, 지키기 보너스, 작은 배낭 한 번(종류 운 여유)
+  swarmPerSec: 45,    // ③ 들판 떼 (#173): 저장에 적힌 떼 귤(save.swarm.earn 누적)이 늘어난 몫은 지난 저장 뒤 지난 시간 × 이 값까지 더 받아 줌 (모아 두지 않음). 구역 5 들판 1초 약 40 (tools/econ.js)
+  earnBurst: 20000,   // ① 한꺼번에 받는 몫: 업적·뱃지 몰아 받기, 첫 보너스, 지키기 보너스, 작은 배낭 한 번(종류 운 여유). 긴급(2026-11-21): 4000 → 20000. 전리품 팔기(#140, 5~6단계 전설 7,800~18,000)·퀘스트·보물·우두머리 보상이 4000 을 넘어 사용자 귤이 깎여 사라졌음. 제대로 된 셈(서버가 판 전리품·보상을 아는 것)은 후속 이슈
   earnPickSlack: 1.5, // ② 줍기 하나의 값 = 구역 평균 귤 × 이 여유 × gv × 베스트. 종류는 주울 때 운이라 평균보다 비싼 것이 많이 나올 수 있음
   earnBankMax: 60000, // ② 쌓이는 상한: 정상 구역에서 가장 큰 배낭(부피 540, 보통 쓰레기 330개 안팎 × 줍기 값 123 ≈ 4만)을 채운 몫에 여유
   earnFlushMs: 1000,  // 방이 번 몫을 계정에 넘기는 간격 (버리기 직전에 주운 것도 저장 전에 넘어가게)
   earnWindow: 3600,   // 지난 시간은 이 초까지만 셈 (오래 꺼 뒀다고 귤이 쌓이지 않게)
+  // 서버가 아는 큰 귤 (#188, server/src/earn.js): 저장의 기록(판 장비·퀘스트·우두머리·소굴·보물·볼거리)으로 몫을 인정해 ② 에 더함
+  //   fresh: 지난 저장에 없던(새로 떨어져 바로 판) 장비 수 통 — 초당 freshPerSec 씩 차고 freshBurst 에서 멈춤 (적 1.2%·소굴 12%·보물 35%·우두머리 60% 를 넉넉히)
+  //   legend: 그중 전설 (우두머리·보물 4구역부터만 떨어짐). bossGap·denGap: 같은 우두머리·소굴을 다시 인정하기까지 초 (ZONE_GUARD.holdSec 1800·FIELD.den.reopen 1800 보다 조금 짧게)
+  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64 },
+  clampKeepDays: 30,  // 귤 맞춤 기록(#188 GET /admin/clamps)·운영자 귤 보내기 기록 보관 날짜
+  grantMax: 1000000,  // 어드민이 한 번에 보내는 귤 상한 (#188 POST /admin/grant)
   pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
   migrateCoinsMax: 30000, // 기기 기록을 계정으로 옮길 때 받아 주는 귤 상한
   saveMax: 200000,    // 저장 크기 상한 (바이트)
@@ -1239,8 +1336,46 @@ export const JOURNEY = {
     { id: 'crow', need: { zone: 3 } }, // #163 까마귀 도둑
     { id: 'title', need: { zone: 3 } }, // #165 칭호
     { id: 'gift', need: { zone: 3 } }, // #175 귤 주기 (멀티)
-    { id: 'aliens', need: { zone: 4 } }, // #168 외계인·'분리수거 조약' (구역 4·5)
+    { id: 'aliens', need: { zone: 4 } }, // #168 '미친 개 주의'·'불법 주차 단속'·엔딩 (구역 4·5)
   ],
+};
+
+// 이야기 이벤트 (#168, src/game/story.js · 글은 src/punktext.js): 한 일의 결과로 다음 일이 벌어짐. 사람마다 한 번씩, 한 번에 하나, 하루에 새로 시작하는 것은 perDay 개까지
+// 이벤트 하나 = 조건 → 예고(omen 초 안, 카메라가 잠깐 그쪽, 건너뛸 수 있음) → 벌어지는 일 → 끝(보상·다음 이벤트). 싸우는 중·튜토리얼·창이 열려 있으면 예고를 미룸
+// 조건은 그 일이 '일어날 때' 봄 (옛 저장: 이미 한참 넘긴 사람도 다음 번 그 일이 한 번 더 일어날 때 시작). 셈은 업적 평생 기록(save.ach.life)
+// list 순서가 유저 저니 순서. door: 감독(#176) 문(그 문이 열려야 시작, 등록 안 된 문은 없는 것으로). gyul 끝 보상
+// 모두 임의값. 보상 합은 5일 전체 벌이의 5% 아래 (tools/econ.js 가 봄), 엄마 멧돼지는 권장 장비로 서서 던질 때 잃는 기운 40% 아래 (tools/fight.js)
+export const STORY = {
+  perDay: 4, omen: 2.6, look: 2.2, safeSec: 3, retry: 60, checkSec: 1,
+  list: [
+    { id: 'mom', zone: 1, door: 'storyMom', need: { ev: 'enemy-repel-piglet', n: 5 }, gyul: 60 },
+    { id: 'pair', zone: 1, need: { ev: 'dumper-repel', n: 3 }, gyul: 40 },
+    { id: 'night', zone: 1, door: 'nightLight', need: { boss: 1, night: 1 }, gyul: 0 },
+    { id: 'howl', zone: 2, need: { pack: 'dog' }, gyul: 0 },
+    { id: 'truck', zone: 2, need: { clean: 0.5 }, gyul: 0 },
+    { id: 'meet', zone: 3, need: { ev: 'enemy-repel-boar', n: 10 }, gyul: 80 },
+    { id: 'tour', zone: 3, need: { boss: 3 }, gyul: 0 }, // 관광객(#163) 이 없으면 조용히 건너뜀
+    { id: 'sign', zone: 4, door: 'aliens', need: { enter: 4 }, gyul: 0 },
+    { id: 'ufo', zone: 5, door: 'aliens', need: { ev: 'enemy-repel-alien', n: 3 }, gyul: 0 },
+    { id: 'end', zone: 5, door: 'aliens', need: { boss: 5 }, gyul: 300 },
+  ],
+  // 엄마가 왔다: 엄마(멧돼지 모양 k 배, 아기 멧돼지보다 기운 3배)와 새끼 kids 마리. 숲 가장자리 r m 쯤에서 나옴. 보상 귤은 끝에 한 번(엄마는 흩뿌리지 않음)
+  mom: { kind: 'boar', k: 1.3, hp: 9, dmg: 10, kids: 2, r: [20, 28], life: 240 },
+  // 투기꾼의 복수: 다음 투기꾼은 둘(한 명이 망봄). 망보는 사람 whistle m 안에 오면 휘파람 → 다른 한 명이 서둘러 버림
+  pair: { whistle: 25 },
+  // 수상한 불빛: UFO 가 능선 위를 지나며(지름 k 배, 높이 y, 지나는 시간 t 초) 외계 캔 cans 개와 쓰레기 trash 개를 떨어뜨림. 캔은 다가가면(pickR) 주움
+  night: { k: 3.2, y: 34, t: 9, cans: 3, trash: 8, pickR: 1.8, d: [30, 45] },
+  // 들개 대장의 소집: 무리 하나를 다 쫓은 뒤 긴 울음, wait 초 뒤 n 마리가 반원(r m)으로 다가옴
+  howl: { n: 5, wait: [18, 30], r: 26 },
+  // 멧돼지 가족회의: 능선 빈터(구역 3 우두머리 빈터에서 off m)에 n 마리. calmR 안에 오면 흩어지고 귤 상자
+  meet: { n: 4, off: 14, calmR: 7 },
+  // 미친 개 주의: 구역 4 에 처음 들어선 곳 앞 ahead m 에 쓰러진 표지판. 세우면 뒤 back m 에서 광견병 들개
+  sign: { ahead: 9, r: 2.6, back: 14 },
+  // 불법 주차 단속: UFO 가 플레이어 앞 d m 에 내려와(높이 y) 쓰레기 trash 개를 쏟음
+  ufo: { k: 3.6, y: 14, d: 22, t: 7, trash: 14 },
+  // 엔딩 (사용자 결정 2026-11-21): 같은 방 모두가 함께 강제로 보는 시네마틱 len 초. 시작 lead 초 전 알림, 이미 본 사람은 skipAfter 초 뒤 건너뛰기
+  // 방(서버)은 하루 한 번까지만 모두에게 틀고, 그날 두 번째부터는 끝낸 사람만 (나머지는 방송 한 줄)
+  end: { len: 48, lead: 3, skipAfter: 10, ufos: 7 },
 };
 
 // 처음 고르는 기본 옷 색 (#155, src/lookcolors.js): 기본 모자·반팔·반바지·쓰레빠에만. 줄마다 [색, 이름] 8개, 0번이 지금 기본색
@@ -1376,6 +1511,14 @@ export const QUESTS = {
     { id: 'c-full', giver: 'shop:stone', door: 'shopQuests', after: 'c-fish', name: '든든하게 한 판', say: ['밥 먹었으면 힘 써야죠.', '식사 버프가 있을 때 적 10마리.'], task: '식사 버프 중 적 10마리 쫓기', ask: { k: 'repelBuff', n: 10 }, fin: ['역시 밥심! 에이드는 내가 쏠게요.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
     // 만족한상회 사장 (#167 가게가 들어오면)
     { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?'], task: '만족한상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
+    // ----- 이야기 이벤트 뒤 (#168): '오름지기에게 이야기하기'. 이벤트를 끝냈으면(need·ask 'story:id') 오름지기가 실마리를 한 줄 -----
+    { id: 'st-mom', giver: 'jigi', name: '엄마 멧돼지', say: ['엄마 멧돼지를 만났다면서요?', '멧돼지들이 요즘 왜 이렇게 사나운지 저도 궁금해요.'], task: '오름지기에게 이야기하기', ask: { k: 'story:mom', n: 1, ever: true }, fin: ['…밤에 능선 쪽을 한번 봐요. 말은 거기까지.'], reward: { gyul: 5 }, need: 'story:mom' },
+    { id: 'st-pair', giver: 'jigi', name: '둘이 다니는 투기꾼', say: ['투기꾼들이 둘씩 다닌다고요?', '누가 그 사람들한테 귤을 주는 걸까요.'], task: '오름지기에게 이야기하기', ask: { k: 'story:pair', n: 1, ever: true }, fin: ['쪽지 같은 걸 흘리면 꼭 주워 와요.'], reward: { gyul: 5 }, need: 'story:pair' },
+    { id: 'st-night', giver: 'jigi', name: '어디서 온 걸까?', say: ['그 캔, 어디서 났어요?', '…하늘에서요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:night', n: 1, ever: true }, fin: ['오름 쓰레기는 다 사람이 버린 줄 알았는데.'], reward: { gyul: 5 }, need: 'story:night' },
+    { id: 'st-howl', giver: 'jigi', name: '긴 울음', say: ['들개 대장 울음 들었어요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:howl', n: 1, ever: true }, fin: ['무리를 부르는 건 지킬 게 있다는 뜻이에요.'], reward: { gyul: 5 }, need: 'story:howl' },
+    { id: 'st-meet', giver: 'jigi', name: '멧돼지 가족회의', say: ['멧돼지들이 모여서 회의를 했다고요?', '다들 하늘을 보고 있었다니.'], task: '오름지기에게 이야기하기', ask: { k: 'story:meet', n: 1, ever: true }, fin: ['밤에 능선 위로 뭔가 내려온 뒤부터예요. 걔들이 사나워진 게.'], reward: { gyul: 5 }, need: 'story:meet' },
+    { id: 'st-sign', giver: 'jigi', name: '쓰러진 표지판', say: ['광견병 주의 표지판, 누가 쓰러뜨렸을까요.'], task: '오름지기에게 이야기하기', ask: { k: 'story:sign', n: 1, ever: true }, fin: ['굼부리 바닥엔 오래된 표지판이 하나 더 있대요. 처음 보는 글씨로.'], reward: { gyul: 5 }, need: 'story:sign' },
+    { id: 'st-ufo', giver: 'jigi', name: '불법 주차', say: ['UFO 가 쓰레기를 쏟고 굼부리로 갔다고요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:ufo', n: 1, ever: true }, fin: ['이제 다 같이 맞설 때예요. 귤 챙겨요.'], reward: { gyul: 5 }, need: 'story:ufo' },
   ],
 };
 
@@ -1410,6 +1553,50 @@ export const SEASON = {
   },
 };
 
+// 오름펑크 세계 (#165): 오름 방송·읽을 수 있는 쪽지·칭호. 글은 src/punktext.js, 게임 연결은 game/punkworld.js
+// radio.every 방송 사이 [최소, 최대] 초 · sec 자막 띠가 흐르는 초 · r 스피커 기둥에서 이 m 안에서만 들림 · first 문(JOURNEY 'radio')이 열린 뒤 첫 방송까지 초
+//   situ 상황 방송이 생기면 다음 방송을 이 초 안으로 당김 · situTtl 상황 방송이 기다리는 최대 초 · spots 스피커 자리 [들머리 길 approach 거리(정낭 TUT.gateD 에서), 쪽, 옆 m], 가게 거리 골목 [s, 쪽]
+// note.p 쓰레기 하나 주울 때 쪽지가 나올 확률 (쓰레기 수·귤은 보통 쓰레기와 같음)
+// stare 멧돼지와 눈싸움: 멧돼지(아기 포함)가 r m 안에서 sec 초 동안 안 맞음 · unpaid 하루 쓰레기 수 (칭호 '오늘도 무급')
+export const PUNK = {
+  radio: { every: [480, 900], sec: 6, r: 60, first: 20, situ: 8, situTtl: 600, trail: [18, -1, 4.6], street: [5.4, 1], poleH: 5.2 },
+  note: { p: 0.02 },
+  stare: { r: 8, sec: 10, kinds: ['boar', 'piglet'] },
+  unpaid: 500,
+};
+
+// 레벨과 증강 (#159, src/augments.js·src/game/level.js). 값은 모두 임의 (tools/econ.js 로 맞춤)
+// 경험치: 쓰레기 하나 trash, 더미를 다 치우면 heap(쓰레기 산 mt), 적을 쫓아내면 그 적 귤 보상 × enemyK, 우두머리 boss, 투기꾼 dumper, 퀘스트 quest[최소, 최대] (#158 이 값을 골라 줌)
+// 레벨 L → L+1 에 round(base × L^pow), 최고 max. 레벨업마다 증강 하나를 고름 (고를 수 = 레벨 - 1)
+// reroll: 다시 뽑기 한 번 값(귤). safe: 싸움이 끝나고 이 초 뒤에 고르기 창을 엶. guard: 멀티에서 창을 연 동안 받지 않는 시간(초)
+// glow: 레벨업 빛 시간(초)·반지름(m), barMs: 경험치 띠가 차오르는 시간
+export const LEVEL = {
+  base: 70, pow: 1.6, max: 30,
+  xp: { trash: 1, heap: 10, mt: 40, enemyK: 0.2, enemyMin: 1, boss: 100, dumper: 5, quest: [20, 60] },
+  reroll: 50, safe: 1.5, guard: 2,
+  glow: { t: 1.4, r: 2.2 }, barMs: 600,
+};
+// 증강 12종 (세 갈래 × 4). v = 한 번 고를 때 더하는 값, 최대 max 번 겹침. 수치는 작게: 3번 겹쳐도 장비 한 단계(#137, 2배 넘는 도약)보다 훨씬 작게
+// 셈은 src/augments.js augV(save, id) = 겹친 수 × v. 장비·식사 능력치에 더해짐(곱하지 않음). 장비 점수(gearscore.js)에는 넣지 않음
+// text: 카드 한 줄 ({v} 자리에 1번 값), sec·r: 지속 초·반지름
+export const AUGMENTS = {
+  max: 3,
+  branches: [{ id: 'clean', name: '청소', color: '#5aa55a' }, { id: 'fight', name: '전투', color: '#e0583c' }, { id: 'live', name: '생존', color: '#4a86c8' }],
+  list: [
+    { id: 'bighand', br: 'clean', name: '큰손', v: 0.15, text: '{v}% 확률로 쓰레기 1개 더' },
+    { id: 'magnet', br: 'clean', name: '자석 귤', v: 0.4, text: '귤 모이는 범위 +{v}m' },
+    { id: 'flower', br: 'clean', name: '꽃길', v: 0.08, sec: 8, text: '더미를 치우면 8초 이동 +{v}%' },
+    { id: 'recycle', br: 'clean', name: '분리수거 달인', v: 0.03, text: '클린하우스 귤 +{v}%' },
+    { id: 'twin', br: 'fight', name: '쌍귤', v: 0.04, text: '{v}% 확률로 한 발 더 (귤은 그대로)' },
+    { id: 'burst', br: 'fight', name: '터지는 귤', v: 0.04, r: 1.5, text: '맞은 둘레 1.5m 에 피해 {v}%' },
+    { id: 'sour', br: 'fight', name: '신 귤', v: 0.1, sec: 1.5, text: '맞은 적 1.5초 {v}% 느려짐' },
+    { id: 'quick', br: 'fight', name: '빠른 손', v: 0.08, text: '모아 쏘기 시간 -{v}%' },
+    { id: 'bite', br: 'live', name: '귤 한 입', v: 2, text: '적을 쫓아내면 기운 +{v}' },
+    { id: 'light', br: 'live', name: '가벼운 발', v: 0.02, text: '이동 +{v}%' },
+    { id: 'jacket', br: 'live', name: '두꺼운 잠바', v: 0.03, text: '받는 피해 -{v}%' },
+    { id: 'deer', br: 'live', name: '노루 친구', v: 0.04, text: '탈것 속도 +{v}%' },
+  ],
+};
 // 배낭 겉모습 (#164 오름펑크): 배낭 능력 단계는 그대로, 모양만 바꿈. 장비점에서 사고 내 가방 배낭 탭에서 고름
 // 저장 save.backs = { own: { id: 1 }, cur: id | null }. need = 이 배낭 단계 이상일 때 고를 수 있음. 서버 validate.js 가 값 확인
 export const BACK_LOOKS = [
@@ -1426,3 +1613,47 @@ export const TEWAK = {
 // 박스 시야 (#164): 감귤 박스 헬멧을 쓰면 화면 가장자리 테두리. 화면 폭 비율 (폰 600px 이하 phone)
 export const BOX_VIEW = { desk: 0.06, phone: 0.04 };
 
+
+// 동료 캐릭터 3명 (#172, game/buddies.js). 게임이 움직이는 캐릭터(외부 AI 호출 없음), 내 화면에만. 대사는 src/buddylines.js
+// list: id·이름·문(JOURNEY.doors)·성격(pick 줍는 빠르기 배수, fight 'chase' 달려가 던짐 | 'flee' 물러남, photo 경치 찍으며 멈추는 몫)·옷(outfit.gear)·피부·몸
+// near/far: 플레이어에서 이 거리 안에 머묾(m), 너무 멀면(far 넘으면) 플레이어 쪽으로. greet: 이 거리 안에 오면 돌아보고 손 흔듦(한 번 지나간 뒤 다시 다가와야 또)
+// share: 셋이 합쳐 플레이어가 줍는 속도의 몫까지만 실제 더미를 줄임(플레이어가 하나 주우면 share 만큼 몫이 생김, 몫은 bank 까지 모임)
+// keep: 더미의 마지막 이만큼(비율)은 남김(다 치우는 연출·보상은 플레이어 몫. 서버도 같은 값으로 거름)
+// peers: 방에 사람이 [a] 명 넘으면 1명, [b] 명 넘으면 0명. low: 저사양(TIER 0) 최대 명 수
+// follow: '같이 가요' 시간(초)·뒤 거리(m). throw: 민수 던지기 간격(초)·사거리(m)·달려오는 거리(m). hurt: 맞으면 물러나는 시간(초)
+export const BUDDIES = {
+  list: [
+    { id: 'sunja', name: '순자 삼춘', door: 'mateSunja', pick: 1.4, fight: 'flee', photo: 0, body: 'f', skin: 1,
+      gear: { hair: 'hat:bun', hat: 'hat:w-straw', top: 'top:w-stripe', bottom: 'bottom:w-gal', shoes: 'shoes:slip', hand: 'hand:tongs', back: 'back:none' } },
+    { id: 'minsu', name: '펑크 민수', door: 'mateMinsu', pick: 0.9, fight: 'chase', photo: 0, body: 'm', skin: 0,
+      gear: { hair: 'hat:short', hat: 'hat:w-cap', top: 'top:w-tee~7', bottom: 'bottom:w-long', vest: 'vest:w-old', shoes: 'shoes:s3', hand: 'hand:none', back: 'back:none' } },
+    { id: 'jenny', name: '관광객 제니', door: 'mateJenny', pick: 0.5, fight: 'flee', photo: 0.35, body: 'f', skin: 0,
+      gear: { hair: 'hat:bob', hat: 'hat:w-bucket', top: 'top:w-tee~5', bottom: 'bottom:w-cargo', face: 'face:sunglass', shoes: 'shoes:s2', hand: 'hand:none', back: 'back:round' } },
+  ],
+  near: 20, far: 120, roam: [25, 90], greet: 6, greetGap: 25,
+  walk: 2.2, run: 5.2, pickTime: 1.6, pickR: 1.4, seekR: 60,
+  share: 0.3, bank: 6, keep: 0.2,
+  peers: [4, 8], low: 1,
+  follow: { sec: 600, d: 8 },
+  throw: { every: 1, range: 16, rush: 40, speed: 16 },
+  hurt: 3, hitR: 1.6,
+  cheerR: 150, worryR: 80, ambient: [70, 150], talkR: 3,
+  avoid: { player: 1.4, door: 4, npc: 7 }, // npc: 오름지기(들머리 안내판)·사진사 둘레
+};
+
+// 게임 안 촬영 모드 (#185, game/rec.js). 캔버스만 녹화해 UI 없는 영상(릴스). 값은 임의
+// size: 세로 9:16 영상 크기 단계(큰 것부터). 폰·저사양(TIER 0)은 1단계(720×1280)부터. 녹화 중 fps 가 dropFps 아래로 dropSec 초 이어지면 한 단계 낮춤
+// bps: 단계별 비트레이트. fps: 영상 프레임. maxSec: 한 번에 최대 길이(메모리 보호). marks: 이 초에 진동·작은 소리(릴스 길이 가늠, 소리는 영상에 안 담김)
+// types: MediaRecorder 형식 고르는 순서(mp4 → webm). buf: '방금 30초' 길이(초), 두 녹화기를 buf/2 씩 엇갈려 돌림(PC 만)
+export const REC = {
+  size: [[1080, 1920], [720, 1280], [540, 960]],
+  bps: [8e6, 5e6, 3e6],
+  fps: 30, maxSec: 180, marks: [30, 60],
+  dropFps: 20, dropSec: 3,
+  buf: 30,
+  types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
+  tag: '#오름오름',
+};
+// 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
+// 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
+export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };

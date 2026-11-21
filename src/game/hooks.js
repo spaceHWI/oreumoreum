@@ -4,6 +4,7 @@ import { DEX_LIST } from '../trash.js';
 import { gyulPickR } from '../gearscore.js';
 import { TUT, BOAR, SCATTER, ENEMY_SPAWN, ENEMIES, ENEMY_DROP, DUMP, MUSIC, COMBAT } from '../balance.js';
 import { RIDE_BY } from '../rides.js';
+import { augV } from '../augments.js';
 import { flinchK } from '../bodytilt.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
@@ -32,6 +33,7 @@ save.music.vol = Math.max(0, Math.min(1, Number.isFinite(+save.music.vol) ? +sav
 sound.setMusic(save.music.on); sound.setMusicVol(save.music.vol); setSoundUI();
 life.bind(player, sound);
 life.hooks.enemyHit = (dir, def) => {
+  if (state.cine) return; // 엔딩 시네마틱 동안은 모두 무적 (#168)
   if (player.air && player.jumpV > 0) return;
   if (hp.isDown || hp.pending) return;
   if (player.cart) return; // 마차 위는 안전 (#69)
@@ -47,7 +49,7 @@ life.hooks.enemyHit = (dir, def) => {
   const n = Math.min(save.coins, Math.max(SCATTER.min, Math.min(SCATTER.max, Math.round(save.coins * SCATTER.frac))));
   if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
   const hatG = CLOTH[CL.wear.hat]?.guard || 0; // 감귤 박스 헬멧 (#164): 받는 피해 더 줄임
-  const downed = hp.hit(def.dmg * (1 - wearV('jacket')) * (1 - hatG)); // 잠바(#52): 받는 피해 줄임
+  const downed = hp.hit(def.dmg * Math.max(0, 1 - wearV('jacket') - augV(save, 'jacket')) * (1 - hatG)); // 잠바(#52)·두꺼운 잠바 증강(#159, 더함): 받는 피해 줄임
   // 전투 오름만 (#36), 피해는 적 표(ENEMIES). 0 이 되면 넉백이 끝난 뒤 쓰러짐
   if (hatG) late.boxThud?.(); else sound.stone(); if (downed) return; // 박스를 쓰면 '퉁'
   if (hp.hp < hp.max * COMBAT.lowHp && life.enemies.hesitate()) { say('danger', 'lowHp', '기운이 얼마 없어요. 물러나서 숨 돌리기', 2.8, { ttl: 3 }); return; } // #148 한 싸움에 한 번
@@ -72,12 +74,12 @@ life.hooks.enemyRepel = (kind, pos, def) => {
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
 };
-life.hooks.pickR2 = () => Math.max(gyulPickR(save), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; // 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐). 싸우는 중엔 #148 값과 큰 쪽
+life.hooks.pickR2 = () => Math.max(gyulPickR(save) + augV(save, 'magnet'), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; // 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐) + 자석 귤 증강 (#159, 더함). 싸우는 중엔 #148 값과 큰 쪽
 life.hooks.throwR2 = () => (life.enemies.active() ? COMBAT.autoPick ** 2 : 1.6); // 내가 던진 귤은 예전 범위 (노루가 먹으러 올 틈), 싸우는 중엔 넓게 (#148)
 life.hooks.paced = !!trash; life.hooks.hit = (p, dead) => late.pace?.hit(p, dead); // 몹도 연출 감독이 부름 (#89). 쓰레기 없는 맵은 예전대로
 life.hooks.enemyRoot = (kind, pos, n) => { if (trash) trash.drop(pos.x, pos.z, n, ENEMIES[kind]?.rootR || 14); };
 // 나타날 때 화면 가장자리 방향 표시 (적: 빨간 느낌표, 투기꾼 #47: 봉투 아이콘)
-function makeEdgeWarn(id, html, dur) {
+export function makeEdgeWarn(id, html, dur) { // 흡연자(#156)도 씀
   const el = document.createElement('div'); el.id = id; el.hidden = true; el.setAttribute('aria-hidden', 'true'); el.innerHTML = html; document.body.appendChild(el);
   let t = 0; const at = new THREE.Vector3(), v = new THREE.Vector3();
   return {
@@ -112,7 +114,7 @@ export const dumpers = trash ? createDumpers({
     repel: (kind, pos, def, d) => {
       life.scatterTangerines(pos, def.reward); late.season?.repel(d, pos); // 산타면 선물 상자 (#180)
       sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
-      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel');
+      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.lvGain?.('dumper'); late.story?.dumperRepel?.(); // 경험치 (#159), 이야기 이벤트 (#168)
     },
     offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) state.introToast = m; else toast(m); },
   },

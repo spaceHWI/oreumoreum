@@ -166,7 +166,7 @@ function hairRow() { // 머리: 가진 머리는 눌러서 바꿈, 없는 것은
 const ammoText = (w) => {
   if (w.id === 'hand') return '한 번에 귤 1개';
   if (w.id === 'bomb') return `한 발 귤 ${w.cost}개`;
-  const left = w.id === 'bow' ? save.bowAmmo || 0 : save.ammo?.[w.id] || 0, per = w.id === 'laser' ? `귤 1개 = ${Math.round(1 / w.gyulPerSec)}초` : `귤 1개 = ${w.perGyul}발`;
+  const left = w.id === 'bow' ? save.bowAmmo || 0 : save.ammo?.[w.id] || 0, per = w.id === 'laser' ? `귤 1개 = ${Math.round(1 / w.gyulPerSec)}초` : w.perGyul === 1 ? '한 발에 귤 1' : `귤 1개 = ${w.perGyul}발`;
   return `${per}${left > 0 ? ` · 남은 ${w.id === 'laser' ? Math.round(left / w.gyulPerSec) + '초' : Math.floor(left) + '발'}` : ''}`;
 };
 function fillArm() {
@@ -203,15 +203,16 @@ function fillRide() {
     g.append(card({ icon: RIDE_ICON[R.id], name: R.name, sub: rideStat(R), on, own, lock: own ? null : { shop: 'ride', price: R.price }, click: own ? () => { chooseRide(R.id); buildBag(); } : null, extra }));
   }
 }
-// 아래: 장비 점수와 주요 능력 4줄 (줍는 속도·배낭 용량·이동·무기 피해). 레벨·증강(#159)이 생기면 여기 한 줄
+// 아래: 장비 점수와 주요 능력 4줄 (줍는 속도·배낭 용량·이동·무기 피해), 레벨·증강 한 줄 (#159, level.js late.augFoot)
 function fillFoot() {
   const g = gearScore(save), t = toolNow(), w = WEAPONS[(save.weaponUse || save.equip.weapon || 1) - 1];
   const pick = `${(t.per / t.time).toFixed(1).replace(/\.0$/, '')}/초`, wd = +(w.dmg * weaponMul(save)).toFixed(1); // #140 등급·강화가 얹힌 값
-  const spd = (shoeSpeed(save) * buff.mul('speed')).toFixed(2).replace(/0$/, '');
+  const spd = (shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0))).toFixed(2).replace(/0$/, '');
   const S = late.STAT_ICON || {};
   const row = (ic, name, v) => `<span class="bs">${SVG(S[ic] || '')}<em>${name}</em><b>${v}</b></span>`;
   footEl.innerHTML = `<div class="bag-score">${scoreChip(g.total, 0)}<small>줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}</small></div>`
-    + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${wd}/초` : wd)}</div>`;
+    + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${wd}/초` : wd)}</div>`
+    + (late.lvShown?.() ? late.augFoot?.() || '' : ''); // 레벨·증강 (#159): 장비 점수와 따로
 }
 
 Object.assign(late, { openBag, closeBag, bagRefresh, bagRect, buildWardrobe: buildBag, openWardrobe: () => openBag('wear'), closeWardrobe: closeBag }); // 앞 파일에서 부르는 함수 (예전 옷장 이름도 그대로)

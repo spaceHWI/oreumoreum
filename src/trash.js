@@ -5,20 +5,25 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES } from './balance.js';
 import { zoneAt } from './zones.js';
 import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
 export { HEAP_DEFS, HEAP_SIG, HEAP_TOTAL };
 import { kstDay, weekStart, SRVS } from './rankday.js';
+import { STORY_DEX } from './punktext.js';
 
 // 도감 목록: id 'kind:번호' (흔한 것 0~3, 드문 것 r0~r1). 순서는 종류 순서대로 흔한 4 + 드문 2
 export const DEX_LIST = [];
 TRASH_TYPES.forEach((t) => { DEX.common[t.id].forEach((name, i) => DEX_LIST.push({ id: `${t.id}:${i}`, kind: t.id, name, rare: false })); DEX.rare.filter((r) => r.kind === t.id).forEach((r, i) => DEX_LIST.push({ id: `${t.id}:r${i}`, kind: t.id, name: r.name, rare: true })); });
+// 담배꽁초 (#156): 들머리 흡연자가 버린 꽁초를 주우면 등록 'butt:0'. 더미에서는 안 나옴(kind 가 쓰레기 종류가 아님), 쓰레기 칸 끝
+DEX_LIST.push({ id: 'butt:0', kind: 'butt', name: '담배꽁초', rare: false });
 // 개울 칸 (#44): 낚시로 잡는 물고기 3종 'fish:번호'. 쓰레기가 아니라 kind 'fish', sec 'stream'
 FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', name: f.name, rare: false, sec: 'stream' }));
 // 볼거리 칸 (#138): 오름 들판의 전망 바위·샘·산담·방사탑 'sight:번호' (FIELD.sight.list 순서). 처음 찾으면 등록
 FIELD.sight.list.forEach((s, i) => DEX_LIST.push({ id: `sight:${i}`, kind: 'sight', sk: s[1], name: s[2], rare: false, sec: 'sight' }));
+// 수수께끼 칸 (#168): 이야기 이벤트에서만 얻는 것 'story:번호' ('수상한 불빛' 의 외계 캔)
+DEX_LIST.push({ id: STORY_DEX.id, kind: 'story', name: STORY_DEX.name, rare: false, sec: 'story' });
 
 // 더미 목록 (자리와 상관없이 정해지는 순서)은 src/heapdefs.js (서버와 같이 씀). 저장의 heaps[i] 가 이 순서
 
@@ -72,6 +77,8 @@ export function createLocalTrashStore({ save, persist }) {
     full: (h) => HEAP_FULL[h],
     // 더미 h 에서 하나 꺼냄 (누적 수 +1)
     takeOne(h) { if (!(S.heaps[h] > 0)) return false; S.heaps[h]--; T.total++; rkAdd(1); dirty = true; return true; },
+    // 동료가 하나 줄임 (#172): 누적 수·랭킹·배낭·도감엔 안 셈. 마지막 keep 몫은 남김
+    nibble(h) { if (!(S.heaps[h] > Math.ceil(HEAP_FULL[h] * BUDDIES.keep))) return false; S.heaps[h]--; dirty = true; return true; },
     // 방이 '늦었다'고 거절한 줍기 되돌리기 (#84): 배낭에서 그 종류 하나·누적 수 하나를 뺌
     untake(kind, xv = 0) { if (T.bag[kind] > 0) T.bag[kind]--; T.bag.xv = Math.max(0, T.bag.xv - xv); T.total = Math.max(0, T.total - 1); rkAdd(-1); dirty = true; },
     // 이 기기의 치운 수 (#11): { day, week, all } (srv 기본은 지금 서버)
@@ -356,6 +363,13 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     if (got && !quiet) { syncCols(); dirty = true; emit('changed', {}); emit('refill', { h: i, zone: h0.zone, n: got }); }
     return got;
   }
+  // 동료 줍기 (#172): 더미 i 를 하나 줄임 (배낭·귤·도감·누적 수 없음, 마지막 BUDDIES.keep 몫은 남김). 줄였으면 true
+  function buddyTake(i) {
+    if (!heaps[i] || !store.nibble?.(i)) return false;
+    const before = heaps[i].st; syncCols(); dirty = true;
+    if (heaps[i].st !== before) emit('heap-stage', { h: i, st: heaps[i].st });
+    return true;
+  }
   const bagVol = () => TRASH_TYPES.reduce((s, t) => s + (store.bag[t.id] || 0) * t.vol, 0);
   // 방(서버)이 더미 h 줍기를 거절했을 때 (#84): 그 더미에서 가장 최근에 주운 것 하나를 배낭에서 뺌. 뺐으면 true
   function undoTake(h) {
@@ -400,5 +414,5 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
   };
   // 땅에 없던 쓰레기를 배낭에 바로 넣음 (#44 낚시로 건진 것). 자리가 없으면 false
   function addToBag(kind, cap) { const t = TRASH_TYPES.find((x) => x.id === kind); if (!t || bagVol() + t.vol > cap) return false; store.bag[t.id] = (store.bag[t.id] || 0) + 1; store.commit(); emit('changed', {}); return true; }
-  return { update, any, candidates, take, undoTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps, trail, loops: heaps.loops, ok };
+  return { update, any, candidates, take, undoTake, buddyTake, drop, refill, addToBag, bagVol, clean, zoneClean, zoneAt, store, geos, fxMats, on: (f) => listeners.push(f), test, relayout, heaps, trail, loops: heaps.loops, ok };
 }
