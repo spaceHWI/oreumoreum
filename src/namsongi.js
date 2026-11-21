@@ -130,7 +130,7 @@ uniform highp sampler2D uHt;
 uniform sampler2D uMask; uniform sampler2D uPathT; uniform sampler2D uStroke;
 uniform vec3 uG1; uniform vec3 uG2; uniform vec3 uG3; uniform vec3 uGold; uniform vec3 uForest; uniform vec3 uTea; uniform vec3 uPath;
 uniform vec3 uPl; uniform float uTime; uniform float uWind;
-uniform sampler2D uZoneT; uniform vec4 uZoneB; uniform float uDry[6]; uniform vec3 uMood[6];
+uniform sampler2D uZoneT; uniform vec4 uZoneB; uniform float uDry[6]; uniform vec3 uMood[6]; uniform vec2 uWet;
 vec4 zmood(ivec2 i){ int k=clamp(int(texelFetch(uZoneT,clamp(i,ivec2(0),ivec2(ZN-1)),0).r*255.0+0.5),0,5); return vec4(uDry[k],uMood[k]); }
 // 구역 마른 정도 (#46): x 1 메마름 ~ 0 보통 ~ - 무성함. yzw 구역 분위기 (#136: 밝음·억새빛·어두움). 구역 번호 격자(가장 가까운 칸)를 네 칸 섞어 경계를 부드럽게
 vec4 zoneMood(vec2 p){ if(uZoneB.z<=0.0) return vec4(0.0); vec2 f=(p-uZoneB.xy)/uZoneB.z-0.5; vec2 fl=floor(f); ivec2 i=ivec2(fl); vec2 u=f-fl;
@@ -156,6 +156,7 @@ vec3 groundColor(vec2 p){
   g=mix(g,uForest*(0.82+0.36*n),mk.g*0.78);
   g=mix(g,uGold,smoothstep(88.0,122.0,mk.r*160.0)*(0.55+0.4*n));
   g=mix(g,uTea*(0.8+0.3*n2),teaMask(p));
+  vec3 g0=g; // 구역 분위기 앞의 색 (#147 날씨 아래 한도)
   vec4 zm=zoneMood(p); float pm=pathMask(p), zd=zm.x*(1.0-pm);
   float lum=dot(g,vec3(0.3,0.59,0.11));
   g=mix(g,mix(vec3(lum),g,0.35)*vec3(1.04,0.95,0.7)*(0.84+0.1*n2),max(zd,0.0)*mix(1.0,0.55,zm.y)); // 메마른 땅: 탁한 누런 빛 (초보 구역은 덜)
@@ -167,7 +168,9 @@ vec3 groundColor(vec2 p){
   g=mix(g,g*vec3(0.66,0.78,0.66),dk*off);
   g=mix(g,vec3(0.5,0.27,0.19)*(0.8+0.3*n),dk*smoothstep(0.48,0.74,n2)*0.7*off);
   g=mix(g,mix(uPath,vec3(0.72,0.45,0.34),dk*0.5)*(0.88+0.24*n2),pm);
-  return g;
+  // 비·흐림 (#147): 젖은 땅은 채도·밝기를 낮춤. 구역 어두움과 겹쳐도 uWet.y(원래 밝기 비율) 아래로는 안 내려감
+  float wl=dot(g,vec3(0.3,0.59,0.11)); vec3 wg=mix(g,vec3(wl)*vec3(0.95,1.0,1.03),uWet.x*0.62)*(1.0-0.3*uWet.x);
+  return max(wg,min(g,g0*uWet.y));
 }`;
 
   /* 붓질 텍스처 */
@@ -194,6 +197,7 @@ vec3 groundColor(vec2 p){
     uG1: { value: C('#62a64a') }, uG2: { value: C('#86c257') }, uG3: { value: C('#b9d264') },
     uZoneT: { value: zoneTex }, uZoneB: { value: new T.Vector4(0, 0, 0, 0) }, uDry: { value: [0, 0, 0, 0, 0, 0] }, // 구역 마른 정도 (#46, bloom.js 가 채움)
     uMood: { value: [0, 1, 2, 3, 4, 5].map(() => new T.Vector3()) }, // 구역 분위기 (#136, zonelook.js 가 채움): 밝음·억새빛·어두움
+    uWet: { value: new T.Vector2(0, 0.42) }, // 날씨 젖음 (#147): x 젖은 정도, y 가장 어두울 때 원래 밝기 비율
     uGold: { value: C('#d8b562') }, uForest: { value: C('#4c8442') }, uTea: { value: C('#3f8a48') }, uPath: { value: C('#dcbb8c') },
   };
 
@@ -281,7 +285,7 @@ vec3 groundColor(vec2 p){
   /* 나무·바위용 재질: 흔들림 + 캐릭터를 가리면 점무늬로 비침 */
   function enhance(m, sway, tint) {
     m.onBeforeCompile = (s) => {
-      s.uniforms.uTime = U.uTime; s.uniforms.uPlV = U.uPlV;
+      s.uniforms.uTime = U.uTime; s.uniforms.uPlV = U.uPlV; s.uniforms.uWet = U.uWet;
       if (sway) s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;' + (tint ? '\nattribute vec3 aTint;\nattribute float aTrunk;' : ''))
         .replace('#include <color_vertex>', '#include <color_vertex>' + (tint ? '\nvColor.rgb*=mix(aTint,vec3(1.0),aTrunk);' : ''))
         .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -293,8 +297,9 @@ vec3 groundColor(vec2 p){
       float swy=max(position.y-1.5,0.0);
       transformed.x+=sin(uTime*1.2+ph+position.y*0.5)*0.035*swy;
       transformed.z+=sin(uTime*0.9+ph*1.7+position.x)*0.025*swy;`);
-      s.fragmentShader = s.fragmentShader.replace('#include <common>', `#include <common>
-      uniform vec3 uPlV;
+      s.fragmentShader = s.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n{ float wl=dot(diffuseColor.rgb,vec3(0.3,0.59,0.11)); diffuseColor.rgb=mix(diffuseColor.rgb,vec3(wl),uWet.x*0.55)*(1.0-0.22*uWet.x); }') // 비 (#147)
+        .replace('#include <common>', `#include <common>
+      uniform vec3 uPlV; uniform vec2 uWet;
       float bayer4(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int k=i.x+i.y*4;
         float m[16]=float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.); return (m[k]+0.5)/16.0; }`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
@@ -467,7 +472,7 @@ vec3 groundColor(vec2 p){
     const list = [], k = 5 + Math.floor(rnd() * 4);
     for (let j = 0; j < k; j++) { const g = new T.IcosahedronGeometry(rr(22, 46), 2); g.scale(1.25, 0.7, 1); g.translate((j - k / 2) * rr(26, 38), rr(-6, 14), rr(-14, 14)); list.push(g); }
     const m = new T.Mesh(merge(list), cloudMat), a = rr(0, 6.28), d = rr(4500, 14000) * K;
-    m.position.set(Math.cos(a) * d, rr(900, 1700) * K, Math.sin(a) * d); m.rotation.y = -a + 1.57; m.scale.setScalar(rr(5, 11) * K); clouds.add(m);
+    m.position.set(Math.cos(a) * d, rr(900, 1700) * K, Math.sin(a) * d); m.rotation.y = -a + 1.57; m.scale.setScalar(rr(5, 11) * K); m.userData.base = { y: m.position.y, s: m.scale.x }; clouds.add(m);
   }
   // main.js 의 공용 하늘 코드가 기대하는 모양
   const sky = { clouds, setColors() {}, u: { sunD: { value: new T.Vector3() }, sunC: { value: new T.Color() }, glow: { value: 0 } } };
@@ -508,7 +513,7 @@ vec3 groundColor(vec2 p){
   function setZoneGrid(fn, x0, z0, cell) { for (let j = 0; j < ZN; j++) for (let i = 0; i < ZN; i++) zoneData[j * ZN + i] = fn(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell); zoneTex.needsUpdate = true; U.uZoneB.value.set(x0, z0, cell, 0); return ZN; }
   const zoneDry = U.uDry.value; // [0..5] 구역별 마른 정도. 바꾸면 바로 반영
   const zoneMood = U.uMood.value; // [구역] = Vector3 (#136)
-  return { halla, setZoneGrid, zoneDry, zoneMood, solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  return { halla, setZoneGrid, zoneDry, zoneMood, solids, terrain, grass, sky, skyU, wind: U.uWind, wet: U.uWet.value, look: cur, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */

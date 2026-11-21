@@ -130,6 +130,40 @@ export const ZONE_GUARD = {
   afterBloom: 2.4, riseT: 2.6, sinkT: 3, fresh: 10, lookR: 75, lookT: 2.6,
   pillar: { h: 22, r: 1.1, t: 3.2 }, petals: 120, sparks: 50, dust: 70,
 };
+// 구역 우두머리·구역 완료 (#139, notes/growth-loop.md 2절·7-1절, src/game/boss.js · 확인 node tools/boss.js)
+// 구역이 appear 만큼 깨끗해지고 그 구역 돌하르방(ZONE_GUARD)이 서 있지 않으면 우두머리 빈터(FIELD.boss)에 나옴. 쫓아내면 돌하르방이 서고 구역 완료
+// list[구역]: kind 바탕 적(ENEMIES, 모양을 k 배로 키우고 tint 색을 곱함·머리 위 왕관), hp 기운, dmg 받힐 때 피해, gyul 떨구는 귤, mat 귀한 재료 이름(#140 강화가 씀)
+//   hp 는 그 구역 권장 장비(칸 10개가 모두 구역 번호 단계)의 무기로 맞히기만 하면 약 40초 (손 1·활 4.5·총 10·머신건 16·레이저 40 초당 피해). 피하기·부하까지 40~90초 (tools/boss.js)
+// perPlayer: 싸움에 낀 사람이 하나 늘 때마다 기운 × (1 + 이 값). phase: 기운 비율이 이 값 아래로 내려가면 다음 단계(패턴이 늘어남)
+// near 빈터에서 이 거리 안에 오면 나타남(멀어지면 despawn 밖에서 조용히 사라짐), fight 빈터 반경 + 이만큼 안에 들어오면 싸움 시작(이름·기운 줄)
+// leash 싸우는 사람이 모두 빈터에서 이만큼 멀어지면 빈터로 돌아가 기운을 다 채움 (쓰러져도)
+// 패턴 (미리 보이는 경고 표시 → 피할 수 있게): gap 다음 패턴까지 쉬는 시간[최소, 최대](단계마다 짧아짐)
+//   charge 돌진: warn 초 동안 바닥에 띠(길이 len·폭 w) → 바탕 적 chase × speed 로 그 띠를 달림, rest 초 숨 고르기
+//   call 무리 부르기(기운 50% 아래): 그 구역 적 n 마리, every 초에 한 번까지, 부하가 이미 max 마리면 안 부름
+//   beam 광선(기운 20% 아래): 내 자리와 둘레에 n 개 원(반경 r) → warn 초 뒤 하늘에서 빛 기둥, 원 안이면 dmg × dmgK
+// slow: 쫓아낸 순간 느린 화면(t 초 동안 시간 × k). loot: 귤 알갱이 수. summaryAt: 하르방이 솟기 시작하고 이 초 뒤에 구역 요약
+// netMs 방장이 우두머리 자리를 알리는 간격 (멀티: 방장이 굴리고 다른 사람은 받은 대로 보임)
+// fast 빠른 마차·shortcut 지름길(구역을 한 번 끝낸 사람만): r 이 안이면 상호작용, fade 화면이 어두워졌다 밝아지는 시간
+export const ZONE_BOSS = {
+  appear: 0.8, perPlayer: 0.7, phase: [0.5, 0.2],
+  near: 70, despawn: 120, fight: 10, leash: 38,
+  list: {
+    1: { kind: 'piglet', name: '아기 멧돼지 무리 대장', hp: 32, k: 2.3, tint: '#f2c27a', dmg: 14, gyul: 40, mat: '대장 멧돼지 털' },
+    2: { kind: 'dog', name: '들개 대장', hp: 190, k: 1.8, tint: '#9fb7d6', dmg: 22, gyul: 80, mat: '대장 들개 이빨' },
+    3: { kind: 'boar', name: '큰 멧돼지', hp: 400, k: 1.75, tint: '#c98a6a', dmg: 36, gyul: 500, mat: '큰 엄니' },
+    4: { kind: 'rabid', name: '붉은 눈 들개', hp: 640, k: 1.7, tint: '#e07a6e', dmg: 44, gyul: 1200, mat: '붉은 발톱' },
+    5: { kind: 'alien', name: '외계인 대장', hp: 1600, k: 1.55, tint: '#c7a0ff', dmg: 52, gyul: 2500, mat: '외계 핵' },
+  },
+  gap: [[1.6, 2.6], [1.2, 2.1], [0.9, 1.6]],
+  charge: { warn: 0.95, len: 18, w: 2.6, speed: 1.7, rest: 1.1 },
+  call: { n: [2, 3], every: 16, max: 3 },
+  beam: { warn: 1.15, r: 2.6, n: 3, spread: 5, dmgK: 0.8, every: 7 },
+  walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
+  slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
+  netMs: 200,
+  fast: { r: 6, fade: 0.9, hold: 1.1 },
+  shortcut: { r: 4, off: 4.5, fade: 0.8, hold: 0.8 },
+};
 // 깨끗해진 구역에 꽃과 어린 나무 (#46, src/bloom.js). 깨끗한 정도 c (0~1) 기준
 // 풀 색: c ≤ dryTo 메마름, liveAt 부터 다시 살아남 (dryTo~liveAt 사이 서서히), 1 이면 lush 만큼 더 푸름
 // 꽃: 70% 부터 피기 시작(early 비율의 꽃이 70~98% 사이에 하나씩), 나머지는 100% 에 한꺼번에(물결). 어린 나무는 100% 에 솟음
@@ -312,6 +346,13 @@ export const WEATHER = {
   lat: 33.3, lon: 126.3, // 남송이오름(서귀포시 안덕면 서광리) 근처
   pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
   particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
+  // #147 비·눈 모양: 빗줄기는 바람 쪽으로 기운 짧은 선 (len 길이 범위 m, w 굵기 m, thick 비율만큼은 thickK 배 굵게)
+  rainDrift: 6, rainAlpha: 0.8, rainCol: '#e4eaf0', streak: { len: [0.9, 1.7], w: 0.03, thick: 0.08, thickK: 2.4, minPx: 1.1 },
+  snowN: 900, snowLow: 400, snowSize: [4, 5], // 눈송이 수·화면 크기(px)
+  keepMin: 120, // 날씨를 못 받으면 앞에 받은 날씨를 이만큼(분) 그대로 둔다
+  nightDim: 0.16, // 밤 흐림·비 하늘 = 낮 회색 × 이 값
+  cloudLow: 0.45, cloudBig: 0.9, // 비·흐림엔 구름 덩어리를 이만큼 낮게(높이 비율)·크게(배율 더함)
+  floor: 0.42, // 날씨 × 구역 분위기로 땅이 어두워져도 원래 밝기의 이 비율 아래로는 안 내려감
   cloudCount: 11, // namsongi 구름 덩어리 수
 };
 
@@ -941,6 +982,10 @@ export const NET = {
   nickMax: 16, sayMax: 60, // 닉네임·말풍선 글자 수
   deerMax: 4000,      // 방장이 보내는 노루 무리 메시지 크기 상한 (바이트, #92)
   deerPerSec: 5,      // 노루 메시지(무리·타기·먹이 부탁)는 따로 1초에 이만큼
+  // 구역 우두머리 (#139): 방장이 {t:'bs'} 로 자리·기운·패턴을 알리고, 다른 사람은 맞힌 피해를 방장에게 {t:'bh'}, 쫓아내면 방장이 {t:'bd'} (방이 돌하르방을 세움)
+  bossPerSec: 8,      // 우두머리 메시지는 따로 1초에 이만큼 (방장 알림 5번 + 여유)
+  bossMax: 700,       // 우두머리 메시지 크기 상한 (바이트)
+  bossHitMax: 300,    // 한 번에 알리는 피해 상한 (귤 폭탄 90 × 무리 + 모아 쏘기 여유)
 };
 
 // 랭킹 (#11): 치운 쓰레기 수. 오늘(한국 자정)·이번 주(한국 월요일 0시부터)·전체. 서버는 전투 오름 하나 (#98, 예전 깨끗한 오름 기록은 합침)

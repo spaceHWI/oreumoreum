@@ -2,7 +2,7 @@
 import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong } from '../namsongi.js';
 import { createFootprints } from '../footprints.js';
-import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH } from '../balance.js';
+import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH, WEATHER } from '../balance.js';
 import { crashNote, reportCrash } from '../crash.js';
 import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
 import { STREET } from '../streetlayout.js';
@@ -102,7 +102,7 @@ if (NSW) { /* 남송이오름은 자기 풍경을 직접 만든다 */ } else if 
 const sky = NSW ? NSW.sky : buildSky(scene);
 export const clouds = sky.clouds;
 const bodies = buildSkyBodies(scene);
-export const wx = createWeather({ scene, low: LOW });
+export const wx = createWeather({ scene, low: LOW, renderer });
 if (NSW) bodies.stars.scale.setScalar(14); // 먼 산 뒤로
 export const eoksaeMat = scene.getObjectByName('eoksae')?.material || null;
 scene.fog.color = FOG; G.fogC.value = FOG; const FOG_N = scene.fog.near, FOG_F = scene.fog.far;
@@ -159,19 +159,28 @@ const fogBase = { n: 1, f: 1 }, zoneFog = { n: 1, f: 1 };
 function applyZoneFog() { scene.fog.near = fogBase.n * zoneFog.n; scene.fog.far = fogBase.f * zoneFog.f; G.fogN.value = scene.fog.near; G.fogF.value = scene.fog.far; }
 export function setZoneFog(n, f) { if (zoneFog.n === n && zoneFog.f === f) return; zoneFog.n = n; zoneFog.f = f; applyZoneFog(); }
 // 날씨 반영 (#18): 빛·안개·구름·하늘 회색기·풀 흔들림. 밤낮 계산이 끝난 값 위에 얹는다
-const wxGray = new THREE.Color();
+// #147: 비·흐림·눈은 하늘 전체를 회색 톤(WX top·hor)으로 덮고, 해·햇무리를 가리고, 구름을 낮고 어둡게, 땅을 젖은 빛으로. 밤엔 그 회색을 더 어둡게
+const wxGray = new THREE.Color(), wxTop = new THREE.Color(), wxHor = new THREE.Color(), wxCl = new THREE.Color(), wxTmp = new THREE.Color(), wxHal = { hor: null, hal: new THREE.Color(), gr: null, cl: null };
 function applyWx(el) {
-  const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8);
-  sun.intensity *= c.light; hemi.intensity *= 0.55 + 0.45 * c.light; fill.intensity *= c.light;
-  scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; fogBase.n = scene.fog.near; fogBase.f = scene.fog.far; applyZoneFog();
   const gr = (col, a) => { const l = (col.r + col.g + col.b) / 3; col.lerp(wxGray.setRGB(l * 0.97, l, l * 1.04), a); };
-  gr(FOG, c.gray * 0.8); G.fogC.value.copy(FOG);
+  const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8), dim = WEATHER.nightDim + (1 - WEATHER.nightDim) * day;
+  sun.intensity *= c.light; hemi.intensity *= c.amb; fill.intensity *= c.light;
+  gr(sun.color, c.sky * 0.8); gr(hemi.color, c.sky * 0.6); gr(hemi.groundColor, c.sky * 0.6); // 구름 아래 빛은 노을빛·하늘빛이 거의 빠진 회색
+  sun.shadow.intensity = 1 - 0.75 * Math.max(c.sky, c.wet); // 흐린 날은 그림자를 흐리게
+  bodies.stars.material.opacity *= 1 - c.sky; // 구름에 가린 밤하늘엔 별 없음
+  scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; fogBase.n = scene.fog.near; fogBase.f = scene.fog.far; applyZoneFog();
+  wxTop.copy(c.top).multiplyScalar(dim); wxHor.copy(c.hor).multiplyScalar(dim); wxCl.copy(c.cl).multiplyScalar(dim);
+  gr(FOG, c.gray * 0.8); FOG.lerp(wxHor, c.sky); G.fogC.value.copy(FOG);
   if (NSW) {
     const u = NSW.skyU; gr(u.uTop.value, c.gray); gr(u.uHor.value, c.gray * 0.9); gr(u.uCl.value, c.gray * 0.8); gr(u.uCs.value, c.gray);
-    u.uSunCol.value.multiplyScalar(1 - 0.9 * c.gray); NSW.wind.value = c.wind;
-    const ch = NSW.sky.clouds.children, n = Math.round(ch.length * c.cover); ch.forEach((m, i) => { m.visible = i < n; });
+    u.uTop.value.lerp(wxTop, c.sky); u.uHor.value.lerp(wxHor, c.sky); u.uSea.value.lerp(wxTmp.copy(wxHor).multiplyScalar(0.72), c.sky * 0.85);
+    u.uCl.value.lerp(wxCl, c.sky); u.uCs.value.lerp(wxTmp.copy(wxCl).multiplyScalar(0.72), c.sky);
+    u.uSunCol.value.multiplyScalar((1 - 0.9 * c.gray) * (1 - c.sunHide)); NSW.wind.value = c.wind;
+    NSW.wet.x = c.wet; NSW.wet.y = WEATHER.floor;
+    wxHal.hor = u.uHor.value; wxHal.cl = u.uCl.value; wxHal.gr = NSW.look.gr; wxHal.hal.copy(NSW.look.hal).lerp(wxTmp.copy(wxHor).multiplyScalar(0.82), c.sky); NSW.halla.set(wxHal); // 한라산도 비안개 속으로
+    const ch = NSW.sky.clouds.children, n = Math.round(ch.length * c.cover);
+    ch.forEach((m, i) => { m.visible = i < n; const b = m.userData.base; if (b) { m.position.y = b.y * (1 - WEATHER.cloudLow * c.low); m.scale.setScalar(b.s * (1 + WEATHER.cloudBig * c.low)); } });
   }
-  void day;
 }
 wx.onChange(() => { state.wxT = 0; });
 state.wxT = 0;

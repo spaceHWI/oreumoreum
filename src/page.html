@@ -489,6 +489,8 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
   #menu .grab { width: 36px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.3); margin: 0 auto; }
   #menu .m-stat { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: rgba(255,255,255,.75); padding: 0 4px; }
   #menu .m-stat b { font-family: var(--display); font-weight: 800; font-size: 15px; color: #fff; margin-left: 5px; }
+  #menu .m-wx { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,.8); padding: 0 4px; } /* 지금 날씨 (#147) */
+  #menu .m-wx svg { width: 16px; height: 16px; }
   #menu .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   #menu .tiles button { display: grid; justify-items: center; gap: 6px; padding: 14px 4px 11px; border-radius: 16px; background: rgba(255,255,255,.08); font-size: 12px; font-weight: 500; font-family: var(--body); position: relative; white-space: nowrap; }
   #menu .tiles svg { display: block; width: 24px; height: 24px; }
@@ -866,6 +868,33 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 @keyframes zoneTitle { 0% { opacity: 0; transform: translate(-50%, -40%) scale(.96); } 14% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -54%); } }
 @media (max-width: 600px) { #zone-title b { font-size: 34px; } #zone-title small { font-size: 14px; } #zone-title small::before, #zone-title small::after { width: 20px; } }
 @media (prefers-reduced-motion: reduce) { #zone-title.go { animation-name: zoneTitleFade; } @keyframes zoneTitleFade { 0%, 100% { opacity: 0; } 12%, 80% { opacity: 1; } } }
+/* 구역 우두머리 (#139): 화면 위 이름·기운 줄 · 구역 완료 요약 · 다시 들어올 때 시작 자리 · 빠른 마차·지름길 어두워짐 */
+#boss-bar { position: fixed; z-index: 5; left: 50%; top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 12px); transform: translateX(-50%); width: min(440px, calc(100vw - 150px)); padding: 6px 14px 9px; border-radius: 16px; pointer-events: none; text-align: center; font-family: var(--display); }
+#boss-bar[hidden] { display: none; }
+#boss-bar .bn { display: flex; justify-content: center; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#boss-bar .bn svg { width: 16px; height: 16px; color: var(--tier, var(--gyul)); flex: none; }
+#boss-bar .track { display: block; position: relative; height: 10px; margin-top: 5px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
+#boss-bar .fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff6a3a, var(--gyul)); transition: width .2s ease-out; }
+#boss-bar .mk { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(0,0,0,.45); }
+#boss-bar.ph1 .fill { background: linear-gradient(90deg, #ff4a2a, #ff7a3a); } #boss-bar.ph2 .fill { background: #ff3a2a; animation: hpLow .8s ease-in-out infinite; }
+#boss-bar.roar { animation: bump .45s ease-out; }
+body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloom-banner { translate: 0 var(--boss-h, 54px); } /* 토스트·팁은 기운 줄 아래로 */
+#boss-bar small { position: absolute; right: 10px; top: 6px; font-size: 12px; color: var(--ink-soft); }
+@media (max-width: 600px) { #boss-bar { left: calc(var(--safe-l, 0px) + 12px); transform: none; width: calc(100vw - 160px); padding: 5px 10px 7px; } #boss-bar .bn { font-size: 13px; } } /* 오른쪽 미니맵을 비켜 왼쪽에 */
+#zdone .pop { width: min(400px, 100%); }
+#zdone h2 { color: var(--tier, #fff); }
+.zd-rows { display: grid; gap: 6px; margin: 2px 0 10px; }
+.zd-rows div { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 14px; background: rgba(255,255,255,.07); font-size: 15px; }
+.zd-rows svg { width: 22px; height: 22px; } .zd-rows b { font-family: var(--display); font-weight: 800; font-size: 17px; } .zd-rows b.up { color: #8fe36a; }
+.zd-open { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; } .zd-open span { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.zd-next { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0 0 12px; } .zd-next .tone { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#zdone-ok, #wake-pick .btn { width: 100%; }
+#zdone .pop-head h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#wake-pick .pop { width: min(360px, 100%); } .wake-btns { display: grid; gap: 8px; }
+#fade-go { position: fixed; inset: 0; z-index: 9; background: #0e0f0c; opacity: 0; pointer-events: none; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 18px; transition: opacity var(--ft, .9s) ease; }
+#fade-go.on { opacity: 1; pointer-events: auto; } #fade-go[hidden] { display: none; }
+#fade-go svg { width: 54px; height: 54px; display: block; margin: 0 auto 8px; animation: bump .6s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { #boss-bar.ph2 .fill, #boss-bar.roar, #fade-go svg { animation: none; } }
 /* 오름 지도 (#136): 구역을 세 묶음 색으로, 지금 자리 */
 /* 미니맵 (#138): 위 줄 오른쪽 아래, 둥근 창. 가 본 곳·더미·소굴·보물·볼거리. 누르면 오름 지도 */
 #minimap { position: fixed; z-index: 4; top: calc(var(--tb-top) + var(--tb-h) + 10px); right: var(--tb-r); width: 148px; height: 148px; border-radius: 50%; border: 2px solid var(--hair); background: rgba(20,24,18,.55); box-shadow: 0 4px 14px rgba(0,0,0,.28); cursor: pointer; touch-action: manipulation; }
@@ -1084,6 +1113,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
   <button type="button" id="menu-feedback" class="m-fb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>의견 보내기</button>
+  <div class="m-wx" id="m-wx" aria-label="지금 날씨"></div>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
@@ -1119,7 +1149,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
       <input type="range" id="adm-tod" min="0" max="24" step="0.25" value="12" aria-label="오름 시간대 (0~24시)">
       <div class="adm-row adm-btns"><button type="button" data-h="6.1">해 뜰 때</button><button type="button" data-h="12">낮</button><button type="button" data-h="18.3">해 질 때</button><button type="button" data-h="23">밤</button><button type="button" id="adm-real">실제 시간으로</button></div>
       <div class="adm-row"><span>날씨</span></div>
-      <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="fog">안개</button></div>
+      <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="overcast">흐림</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="snow">눈</button><button type="button" data-wx="fog">안개</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button></div>
       <div class="adm-row"><span>들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</span></div>
@@ -1138,6 +1168,21 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
 <div id="bloom-glow" aria-hidden="true"></div>
 <div id="bloom-banner" role="status" hidden></div>
 <div id="zone-title" role="status" hidden><b></b><small></small></div>
+<div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 18l1.5-10 4.5 4 3-7 3 7 4.5-4L21 18z"/><rect x="3" y="19" width="18" height="2.4" rx="1"/></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small></div>
+<div class="overlay dim" id="zdone" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2 id="zdone-t">구역 완료</h2><button type="button" class="btn small" id="zdone-close">닫기</button></div>
+    <div class="pop-body"><div class="zd-rows" id="zdone-rows"></div><div class="zd-open" id="zdone-open"></div><p class="zd-next" id="zdone-next"></p><button type="button" class="btn primary" id="zdone-ok">좋아요</button></div>
+  </div>
+</div>
+<div class="overlay dim" id="wake-pick" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>어디서 시작할까요?</h2></div>
+    <div class="pop-body wake-btns"><button type="button" class="btn primary" id="wake-ch"></button><button type="button" class="btn" id="wake-start">들머리</button></div>
+  </div>
+</div>
+<div id="fade-go" aria-hidden="true" hidden><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg><span></span></div></div>
+
 <div id="hp-dim" hidden></div>
 <div id="hp-wait" hidden aria-live="polite"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="rgba(20,20,24,.5)" stroke="rgba(255,255,255,.18)" stroke-width="7"/><circle id="hp-ring" cx="50" cy="50" r="40" fill="none" stroke="#ff8a1f" stroke-width="7" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="0"/></svg><b id="hp-num">5</b></div>
 <div class="panel banner-bar" id="queue" hidden><span id="queue-n">앞에 1명이 있어요</span><button type="button" class="btn small" id="queue-cancel">그만두기</button></div>

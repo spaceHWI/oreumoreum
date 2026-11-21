@@ -16,7 +16,7 @@ const RING = 2 * Math.PI * 40;
 // 들것 든 사람: 지금 그림체 캐릭터, 흰 옷(조끼 대신 흰 재킷)·흰 모자
 const CREW_OUTFIT = (base) => ({ ...base, hat: { type: 'cap', color: '#ecebe4', back: false }, shirt: { type: 'tee', color: '#f4f3ee' }, pants: { ...base.pants, color: '#3d4352' }, shoes: { ...base.shoes, color: '#2a2a30' }, gear: { back: 'back:none', hand: 'hand:none' } });
 
-export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, el, enabled, onDown, onUp, regenMul, maxMul, showBar = null }) {
+export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, startAt = null, el, enabled, onDown, onUp, regenMul, maxMul, showBar = null }) {
   const MAX = () => HP.max * (maxMul ? maxMul() : 1); // 티셔츠(#52) 최대 HP
   let hp = MAX(), sinceHit = 99, pending = false, down = null, flashT = 0;
   if (!save.hpDown || typeof save.hpDown !== 'object') save.hpDown = {};
@@ -79,6 +79,8 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
     } else lastNum = -1;
   }
 
+  // 깨어나는 곳 (#139): startAt() 이 {x, z, h} 를 주면 그곳(마지막으로 지난 구역 클린하우스), 아니면 시작 지점
+  const home = () => { const s = startAt?.(); return s && Number.isFinite(s.x) && Number.isFinite(s.z) ? { x: s.x, z: s.z, h: Number.isFinite(s.h) ? s.h : startHeading } : { x: start.x, z: start.z, h: startHeading }; };
   function hit(dmg) {
     if (!enabled() || down || pending) return false;
     hp = Math.max(0, hp - dmg); sinceHit = 0;
@@ -92,7 +94,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
     pending = false;
     const now = Date.now(), fresh = D.n < 0 || !D.at || now - D.at > HP.resetSec * 1000;
     D.n = fresh ? 0 : Math.min(HP.waits.length - 1, D.n + 1); D.at = now; persist();
-    let ux = start.x - P.pos.x, uz = start.z - P.pos.z; const L = Math.hypot(ux, uz);
+    const S = home(); let ux = S.x - P.pos.x, uz = S.z - P.pos.z; const L = Math.hypot(ux, uz);
     if (L < 1) { ux = -Math.sin(h0); uz = -Math.cos(h0); } else { ux /= L; uz /= L; }
     // 머리가 u(시작 지점) 쪽으로 가게 뒤로 눕는다: 앞 = −u
     const h1 = Math.atan2(-ux, -uz);
@@ -156,10 +158,10 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
   }
   // 시작 지점으로 옮김: 발이 시작 지점, 시작 방향을 보고 누움. 들것은 땅에, 두 사람은 양옆(머리·발 쪽)에 섬
   function arrive(P) {
-    const d = down;
-    d.ux = -Math.sin(startHeading); d.uz = -Math.cos(startHeading);
-    d.fx = start.x; d.fz = start.z; d.cx = start.x + d.ux * FOOT; d.cz = start.z + d.uz * FOOT;
-    P.heading = startHeading; setFeet(P, d.fx, d.fz); lie.ang = LIE; lie.y = 0.26;
+    const d = down, S = home();
+    d.ux = -Math.sin(S.h); d.uz = -Math.cos(S.h);
+    d.fx = S.x; d.fz = S.z; d.cx = S.x + d.ux * FOOT; d.cz = S.z + d.uz * FOOT;
+    P.heading = S.h; setFeet(P, d.fx, d.fz); lie.ang = LIE; lie.y = 0.26;
     P.visY = P.pos.y; P.prevX = P.pos.x; P.prevY = P.pos.y; P.prevZ = P.pos.z;
   }
   function placeIdle(dt) { placeCrew(dt, down.cx, down.cz, down.ux, down.uz, 0.14, 0, 1, false); }

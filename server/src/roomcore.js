@@ -15,6 +15,10 @@
 //   되돌리기·버린 메시지가 쌓이면 {t:'kick'} 후 끊고 그 계정·주소는 banSec 초 동안 못 들어옴 ({t:'ban'})
 // 구역 지킴이 돌하르방 (#119): 줍기로 한 구역 더미가 모두 0 이 된 순간(지킴이가 없거나 ZONE_GUARD.holdSec 이 지났으면) 그 시각을 기억하고 방 전체에 {t:'zg', z, at}.
 //   hi 의 zg = [[구역, 세운 시각 ms]…] (아직 서 있는 것만). 다시 쌓여도 지우지 않음(시간으로만). 옛 클라이언트는 모르는 메시지·칸이라 그냥 넘김
+// 구역 우두머리 (#139): 방장이 굴림. 따로 셈(NET.bossPerSec·bossMax)
+//   {t:'bs', z, s?, a?, gone?, done?, f?}  방장만 → 다른 사람 모두에게 (자리·기운·패턴, 사라짐, 쫓아냄과 낀 사람 id)
+//   {t:'bh', z, d}  우두머리를 맞힌 피해 → 방장에게만 {t:'bh', z, d(≤ bossHitMax), from}
+//   {t:'bd', z}     방장만: 쫓아냄 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, zg 로 알림)
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD } from '../../src/balance.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
@@ -39,9 +43,15 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   const guardOut = []; // 이번 틱에 선 것 → hs 뒤에 알림 (꽃이 먼저 피게)
   function zoneEmptied(z, t) {
     if (!ZH[z] || ZH[z].some((i) => H[i] > 0)) return;
+    raiseGuard(z, t);
+  }
+  function raiseGuard(z, t) {
+    if (!ZH[z]) return;
     const at = G.get(z); if (at && t - at < holdMs()) return; // 서 있는 동안은 그대로
     G.set(z, t); guardsDirty = true; guardOut.push([z, t]);
   }
+  const isZone = (z) => Number.isInteger(z) && !!ZH[z];
+  const numArr = (a, n) => Array.isArray(a) && a.length <= n && a.every(isNum);
   const st = { bytesOut: 0, msgsOut: 0, msgsIn: 0, dropped: 0, ticks: 0, moveBack: 0, kicks: 0, takeNo: 0 };
   const bans = new Map(); // 계정·주소 키 → 풀리는 시각 (ms)
   const rides = new Map(); // 노루 이름 → 탄 사람 id (#92). 한 마리에 한 사람
@@ -50,7 +60,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
 
   const out = (p, s) => { st.bytesOut += s.length; st.msgsOut++; try { p.send(s); } catch (e) { /* 끊긴 소켓 */ } };
   const all = (s, except) => { for (const p of peers.values()) if (p !== except) out(p, s); };
-  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); };
+  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); };
   // 최근 strikeWin 초 안의 횟수 세기
   const count = (arr, t) => { while (arr.length && t - arr[0] > NET.strikeWin * 1000) arr.shift(); return arr.length; };
   function kick(p, why) {
@@ -72,7 +82,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec };
+      key: info.key || null, close: info.close || null, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec };
     peers.set(p.id, p);
     if (!host) host = p.id;
     out(p, JSON.stringify({ t: 'hi', id: p.id, host, heaps: H, sig: HEAP_SIG, seen: roomSeen, now: t, cap, rides: [...rides], minVer: MIN_VER, zg: guardList(t) }));
@@ -132,7 +142,9 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const herd = p.id === host && raw.startsWith('{"t":"deer"'); // 방장의 노루 무리 (#92): 크기 상한이 따로
     if (raw.length > (herd ? NET.deerMax : NET.presenceMax) + 64) { drop(p); return; }
     // 노루 메시지는 따로 셈 (#92): 방장이 자리·노루를 함께 보내도 초당 msgPerSec 안
-    if (/^\{"t":"(deer|dv|mount|unmount)"/.test(raw)) { if (p.deerTok < 1) { drop(p); return; } p.deerTok--; } else { if (p.tok < 1) { drop(p); return; } p.tok--; }
+    if (/^\{"t":"(deer|dv|mount|unmount)"/.test(raw)) { if (p.deerTok < 1) { drop(p); return; } p.deerTok--; }
+    else if (/^\{"t":"b[shd]"/.test(raw)) { if (raw.length > NET.bossMax || p.bossTok < 1) { drop(p); return; } p.bossTok--; } // 구역 우두머리 (#139): 따로 셈
+    else { if (p.tok < 1) { drop(p); return; } p.tok--; }
     let m; try { m = JSON.parse(raw); } catch (e) { drop(p); return; }
     if (!m || typeof m !== 'object') return;
     switch (m.t) {
@@ -155,6 +167,24 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         break;
       }
       case 'unmount': if (unride(p)) all(ridesMsg()); break;
+      case 'bs': { // 구역 우두머리 (#139): 방장만. 자리·기운·패턴 [s]·[a], 사라짐 gone, 쫓아냄 done(낀 사람 f)
+        if (p.id !== host || !isZone(m.z)) return;
+        const o = { t: 'bs', z: m.z };
+        if (numArr(m.s, 12)) o.s = m.s; if (numArr(m.a, 16)) o.a = m.a;
+        if (m.gone) o.gone = 1; if (m.done) { o.done = 1; o.f = Array.isArray(m.f) ? m.f.filter((v) => typeof v === 'string' && /^p\d{1,9}$/.test(v)).slice(0, NET.roomCap) : []; }
+        all(JSON.stringify(o), p);
+        break;
+      }
+      case 'bh': { // 우두머리를 맞힌 피해 → 방장에게만 (#139)
+        const hp = host && peers.get(host);
+        if (!hp || hp === p || !isZone(m.z) || !isNum(m.d) || m.d <= 0) return;
+        out(hp, JSON.stringify({ t: 'bh', z: m.z, d: Math.min(NET.bossHitMax, m.d), from: p.id }));
+        break;
+      }
+      case 'bd': // 우두머리를 쫓아냄 (#139): 방장만 → 그 구역 돌하르방을 세움 (서 있지 않을 때만, 줍기로 다 치운 것과 같이 zg)
+        if (p.id !== host || !isZone(m.z)) return;
+        raiseGuard(m.z, t);
+        break;
       case 'p': presence(p, m.d); break;
       case 'take': { // n: 한 번에 주운 수 (#137 묶어 보냄, 없으면 1)
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
