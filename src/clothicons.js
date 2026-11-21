@@ -4,6 +4,7 @@ const P = (d, f, extra = '') => `<path d="${d}" fill="${f}" ${OL} ${extra}/>`;
 function hat(L) {
   const m = L.main, a = L.acc;
   if (L.kind === 'cap') return P('M7 25c0-9 6-15 13-15s13 6 13 15z', m) + P('M20 25h15c0 2-2 3.5-4 3.5H20z', a) + `<circle cx="20" cy="10" r="1.6" fill="${a}"/>`;
+  if (L.kind === 'box') return P('M7 9h26v24H7z', m) + `<circle cx="15" cy="18" r="2.2" fill="#1c1712"/><circle cx="25" cy="18" r="2.2" fill="#1c1712"/><path d="M13 27h14" stroke="${L.ink || '#6a4a2a'}" stroke-width="1.6"/><circle cx="31" cy="12" r="3.2" fill="${a}" ${OL}/>`; // 감귤 박스 헬멧 (#164)
   if (L.kind === 'santa') return P('M6 28c2-12 8-19 16-20 6 0 9 4 11 9l-6 3c-1-3-3-5-6-5-4 1-7 6-8 13z', m) + P('M5 26h24v5H5z', a) + `<circle cx="32" cy="18" r="3" fill="${a}" ${OL}/>`; // 산타 모자 (#180)
   if (L.kind === 'antler') return P('M8 30c0-11 5-17 12-17s12 6 12 17', 'none', `stroke="${a}" stroke-width="2.6"`) + P('M13 15l-3-8M11 10l-4-1M27 15l3-8M29 10l4-1', 'none', `stroke="${m}" stroke-width="2.6"`); // 루돌프 머리띠
   if (L.kind === 'straw') return P('M3 27c0-3 8-5 17-5s17 2 17 5-8 4-17 4S3 30 3 27z', m) + P('M11 25c0-8 4-13 9-13s9 5 9 13z', m) + P('M11.4 21.5h17.2v3H11.4z', a);

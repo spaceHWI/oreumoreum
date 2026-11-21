@@ -155,6 +155,7 @@ function gearGroup(k) {
     }
     c.append(act); g.append(c);
   });
+  if (k === 'bag') late.backCards?.(g); // 배낭 겉모습 (#164 테왁)
   return g;
 }
 function fillGearShop(grid) {

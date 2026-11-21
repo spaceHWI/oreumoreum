@@ -357,10 +357,14 @@ export const COLLIDE = {
 export const WEATHER = {
   lat: 33.3, lon: 126.3, // 남송이오름(서귀포시 안덕면 서광리) 근처
   pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
-  particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
+  particles: 700, particlesLow: 250, box: 40, rainFall: 20, snowFall: 3.2, // #187: 1400·500·26 → 어지러워서 줄임
   // #147 비·눈 모양: 빗줄기는 바람 쪽으로 기운 짧은 선 (len 길이 범위 m, w 굵기 m, thick 비율만큼은 thickK 배 굵게)
-  rainDrift: 6, rainAlpha: 0.8, rainCol: '#e4eaf0', streak: { len: [0.9, 1.7], w: 0.03, thick: 0.08, thickK: 2.4, minPx: 1.1 },
-  snowN: 900, snowLow: 400, snowSize: [4, 5], // 눈송이 수·화면 크기(px)
+  // #187 어지러움 줄이기: 옅게(rainAlpha 0.8→0.35)·하늘빛에 가까운 색·짧고 느리게·카메라 near m 안은 안 그림(nearFade m 동안 서서히)·멀수록 옅게(far 거리에서 farA 배)
+  rainDrift: 3, rainWindK: 0.6, // 옆 흐름 = rainDrift × max(1, 바람 배율 − rainWindK): 보통 비는 3, 바람 센 날만 크게
+  rainAlpha: 0.35, rainCol: '#c3cad0', streak: { len: [0.6, 1.1], w: 0.03, thick: 0.08, thickK: 1.4, minPx: 1.1, near: 4, nearFade: 2, far: [12, 26], farA: 0.5 },
+  snowN: 900, snowLow: 400, snowSize: [4, 5], snowAlpha: 0.8, // 눈송이 수·화면 크기(px)·불투명도 (#187: 0.95 → 0.8)
+  // #187 설정 '비 효과': 보통·약하게·끔. 빗줄기·눈송이 수와 진하기에 곱함 (끔이어도 회색 하늘·젖은 땅은 남음). prefers-reduced-motion 이면 기본 '약하게'
+  fx: { full: { n: 1, a: 1, name: '보통' }, soft: { n: 0.45, a: 0.6, name: '약하게' }, off: { n: 0, a: 0, name: '끔' } },
   keepMin: 120, // 날씨를 못 받으면 앞에 받은 날씨를 이만큼(분) 그대로 둔다
   nightDim: 0.16, // 밤 흐림·비 하늘 = 낮 회색 × 이 값
   cloudLow: 0.45, cloudBig: 0.9, // 비·흐림엔 구름 덩어리를 이만큼 낮게(높이 비율)·크게(배율 더함)
@@ -819,6 +823,7 @@ export const CLOTHES = [
   { id: 'hat:w-straw', slot: 'hat', tier: 2, name: '밀짚모자', look: { kind: 'straw', main: '#e3c77d', acc: '#b5482f' } },
   { id: 'hat:w-bucket', slot: 'hat', tier: 3, name: '버킷햇', look: { kind: 'bucket', main: '#3f78c0', acc: '#f2efe6' } },
   { id: 'hat:w-hike', slot: 'hat', tier: 4, name: '챙 넓은 등산 모자', look: { kind: 'boonie', main: '#6f7f4a', acc: '#9a6ad0', cord: '#2b2b33' } },
+  { id: 'hat:p-box', slot: 'hat', tier: 3, name: '감귤 박스 헬멧', guard: 0.05, desc: '머리는 차갑게, 귤은 따뜻하게', look: { kind: 'box', main: '#c89a5e', acc: '#f29a2e', ink: '#6a4a2a' } }, // 오름펑크 (#164): 모자 3단계 능력 + 받는 피해 -5%, 쓰면 박스 시야
   { id: 'hat:w-gyul', slot: 'hat', tier: 5, name: '귤꽃 모자', look: { kind: 'flower', main: '#f6efe0', acc: '#f29a2e', leaf: '#3f9a5a', petal: '#ffffff' } },
   // 티셔츠
   { id: 'top:w-tee', slot: 'top', tier: 1, name: '기본 반팔', look: { kind: 'tee', main: '#e8dfc8', acc: '#d6ccb2' } },
@@ -915,6 +920,13 @@ export const TRAIL = {
 };
 
 // 첫 화면 (#72): 정상 표지석을 가운데 두고 천천히 도는 카메라
+// 카메라 위아래 범위 (#170). 걸을 때와 탈 때(노루·탈것·마차) 같은 범위로 올려다보고, 탈 때만 조금 더 내려다봄
+export const CAM = {
+  pitchMin: -0.6, pitchMax: 1.25, // 끌어서 돌리는 위아래 각도(라디안). -0.6 이면 평지에서 화면 위 대부분이 하늘
+  ridePitchMax: 1.4, // 탈 때만 더 내려다봄
+  rideDist: 1.15, // 탈 때 카메라 거리 배율 (노루가 화면을 덜 가림). 내리면 1 로 서서히
+  rideDistK: 3, // 거리 배율이 바뀌는 빠르기 (1/초)
+};
 export const TITLE = {
   r: 650,       // 표지석에서 카메라까지 수평 거리(m)
   up: 30,       // 표지석보다 이만큼 높이
@@ -1367,4 +1379,80 @@ export const SEASON = {
       '올겨울 가장 좋은 선물은 깨끗한 오름입니다',
     ],
   },
+};
+
+// 레벨과 증강 (#159, src/augments.js·src/game/level.js). 값은 모두 임의 (tools/econ.js 로 맞춤)
+// 경험치: 쓰레기 하나 trash, 더미를 다 치우면 heap(쓰레기 산 mt), 적을 쫓아내면 그 적 귤 보상 × enemyK, 우두머리 boss, 투기꾼 dumper, 퀘스트 quest[최소, 최대] (#158 이 값을 골라 줌)
+// 레벨 L → L+1 에 round(base × L^pow), 최고 max. 레벨업마다 증강 하나를 고름 (고를 수 = 레벨 - 1)
+// reroll: 다시 뽑기 한 번 값(귤). safe: 싸움이 끝나고 이 초 뒤에 고르기 창을 엶. guard: 멀티에서 창을 연 동안 받지 않는 시간(초)
+// glow: 레벨업 빛 시간(초)·반지름(m), barMs: 경험치 띠가 차오르는 시간
+export const LEVEL = {
+  base: 70, pow: 1.6, max: 30,
+  xp: { trash: 1, heap: 10, mt: 40, enemyK: 0.2, enemyMin: 1, boss: 100, dumper: 5, quest: [20, 60] },
+  reroll: 50, safe: 1.5, guard: 2,
+  glow: { t: 1.4, r: 2.2 }, barMs: 600,
+};
+// 증강 12종 (세 갈래 × 4). v = 한 번 고를 때 더하는 값, 최대 max 번 겹침. 수치는 작게: 3번 겹쳐도 장비 한 단계(#137, 2배 넘는 도약)보다 훨씬 작게
+// 셈은 src/augments.js augV(save, id) = 겹친 수 × v. 장비·식사 능력치에 더해짐(곱하지 않음). 장비 점수(gearscore.js)에는 넣지 않음
+// text: 카드 한 줄 ({v} 자리에 1번 값), sec·r: 지속 초·반지름
+export const AUGMENTS = {
+  max: 3,
+  branches: [{ id: 'clean', name: '청소', color: '#5aa55a' }, { id: 'fight', name: '전투', color: '#e0583c' }, { id: 'live', name: '생존', color: '#4a86c8' }],
+  list: [
+    { id: 'bighand', br: 'clean', name: '큰손', v: 0.15, text: '{v}% 확률로 쓰레기 1개 더' },
+    { id: 'magnet', br: 'clean', name: '자석 귤', v: 0.4, text: '귤 모이는 범위 +{v}m' },
+    { id: 'flower', br: 'clean', name: '꽃길', v: 0.08, sec: 8, text: '더미를 치우면 8초 이동 +{v}%' },
+    { id: 'recycle', br: 'clean', name: '분리수거 달인', v: 0.03, text: '클린하우스 귤 +{v}%' },
+    { id: 'twin', br: 'fight', name: '쌍귤', v: 0.04, text: '{v}% 확률로 한 발 더 (귤은 그대로)' },
+    { id: 'burst', br: 'fight', name: '터지는 귤', v: 0.04, r: 1.5, text: '맞은 둘레 1.5m 에 피해 {v}%' },
+    { id: 'sour', br: 'fight', name: '신 귤', v: 0.1, sec: 1.5, text: '맞은 적 1.5초 {v}% 느려짐' },
+    { id: 'quick', br: 'fight', name: '빠른 손', v: 0.08, text: '모아 쏘기 시간 -{v}%' },
+    { id: 'bite', br: 'live', name: '귤 한 입', v: 2, text: '적을 쫓아내면 기운 +{v}' },
+    { id: 'light', br: 'live', name: '가벼운 발', v: 0.02, text: '이동 +{v}%' },
+    { id: 'jacket', br: 'live', name: '두꺼운 잠바', v: 0.03, text: '받는 피해 -{v}%' },
+    { id: 'deer', br: 'live', name: '노루 친구', v: 0.04, text: '탈것 속도 +{v}%' },
+  ],
+};
+// 배낭 겉모습 (#164 오름펑크): 배낭 능력 단계는 그대로, 모양만 바꿈. 장비점에서 사고 내 가방 배낭 탭에서 고름
+// 저장 save.backs = { own: { id: 1 }, cur: id | null }. need = 이 배낭 단계 이상일 때 고를 수 있음. 서버 validate.js 가 값 확인
+export const BACK_LOOKS = [
+  { id: 'tewak', name: '해녀 테왁 배낭', price: 800, need: 3, desc: '물에 빠지면 둥둥 떠요. 숨비소리는 덤', float: true },
+];
+// 테왁으로 물에 뜨기 (#164): 개울에서 빠지지 않고 떠서 지나감
+export const TEWAK = {
+  speed: 0.7, // 물 위 이동 빠르기 배수
+  sink: 0.62, // 물낯에서 몸이 잠기는 깊이 (m)
+  bob: 0.06, bobHz: 1.6, // 둥둥 흔들림
+  ringEvery: 0.7, // 물결 고리 간격(초)
+  fill: [0.34, 0.67], // 망사리 불룩 단계: 배낭이 이만큼 차면 1·2단계
+};
+// 박스 시야 (#164): 감귤 박스 헬멧을 쓰면 화면 가장자리 테두리. 화면 폭 비율 (폰 600px 이하 phone)
+export const BOX_VIEW = { desk: 0.06, phone: 0.04 };
+
+
+// 동료 캐릭터 3명 (#172, game/buddies.js). 게임이 움직이는 캐릭터(외부 AI 호출 없음), 내 화면에만. 대사는 src/buddylines.js
+// list: id·이름·문(JOURNEY.doors)·성격(pick 줍는 빠르기 배수, fight 'chase' 달려가 던짐 | 'flee' 물러남, photo 경치 찍으며 멈추는 몫)·옷(outfit.gear)·피부·몸
+// near/far: 플레이어에서 이 거리 안에 머묾(m), 너무 멀면(far 넘으면) 플레이어 쪽으로. greet: 이 거리 안에 오면 돌아보고 손 흔듦(한 번 지나간 뒤 다시 다가와야 또)
+// share: 셋이 합쳐 플레이어가 줍는 속도의 몫까지만 실제 더미를 줄임(플레이어가 하나 주우면 share 만큼 몫이 생김, 몫은 bank 까지 모임)
+// keep: 더미의 마지막 이만큼(비율)은 남김(다 치우는 연출·보상은 플레이어 몫. 서버도 같은 값으로 거름)
+// peers: 방에 사람이 [a] 명 넘으면 1명, [b] 명 넘으면 0명. low: 저사양(TIER 0) 최대 명 수
+// follow: '같이 가요' 시간(초)·뒤 거리(m). throw: 민수 던지기 간격(초)·사거리(m)·달려오는 거리(m). hurt: 맞으면 물러나는 시간(초)
+export const BUDDIES = {
+  list: [
+    { id: 'sunja', name: '순자 삼춘', door: 'mateSunja', pick: 1.4, fight: 'flee', photo: 0, body: 'f', skin: 1,
+      gear: { hair: 'hat:bun', hat: 'hat:w-straw', top: 'top:w-stripe', bottom: 'bottom:w-gal', shoes: 'shoes:slip', hand: 'hand:tongs', back: 'back:none' } },
+    { id: 'minsu', name: '펑크 민수', door: 'mateMinsu', pick: 0.9, fight: 'chase', photo: 0, body: 'm', skin: 0,
+      gear: { hair: 'hat:short', hat: 'hat:w-cap', top: 'top:w-tee~7', bottom: 'bottom:w-long', vest: 'vest:w-old', shoes: 'shoes:s3', hand: 'hand:none', back: 'back:none' } },
+    { id: 'jenny', name: '관광객 제니', door: 'mateJenny', pick: 0.5, fight: 'flee', photo: 0.35, body: 'f', skin: 0,
+      gear: { hair: 'hat:bob', hat: 'hat:w-bucket', top: 'top:w-tee~5', bottom: 'bottom:w-cargo', face: 'face:sunglass', shoes: 'shoes:s2', hand: 'hand:none', back: 'back:round' } },
+  ],
+  near: 20, far: 120, roam: [25, 90], greet: 6, greetGap: 25,
+  walk: 2.2, run: 5.2, pickTime: 1.6, pickR: 1.4, seekR: 60,
+  share: 0.3, bank: 6, keep: 0.2,
+  peers: [4, 8], low: 1,
+  follow: { sec: 600, d: 8 },
+  throw: { every: 1, range: 16, rush: 40, speed: 16 },
+  hurt: 3, hitR: 1.6,
+  cheerR: 150, worryR: 80, ambient: [70, 150], talkR: 3,
+  avoid: { player: 1.4, door: 4, npc: 7 }, // npc: 오름지기(들머리 안내판)·사진사 둘레
 };

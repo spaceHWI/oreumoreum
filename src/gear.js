@@ -189,6 +189,16 @@ Object.assign(ACCESSORIES, {
   // 특별 신발 '고진의 파란장화' (#167): 밝은 파랑 고무장화, 윗단·밑창은 어두운 파랑
   'shoes:boots': { slot: 'shoes', label: BOOTS.name, skin: true, covers: COVER.boots, build: (mat) => CLOTH_BUILD.boots(mat, { kind: 'boots', main: '#2f6fe0', acc: '#1d468f' }) },
 });
+// 해녀 테왁 배낭 (#164, 배낭 겉모습 BACK_LOOKS): 주황 둥근 테왁 + 아래 그물 망사리. 0·1·2 는 망사리가 찬 정도 (배낭이 찰수록 불룩)
+[0.62, 0.85, 1.1].forEach((k, i) => {
+  ACCESSORIES['back:tewak' + i] = { slot: 'back', label: '테왁 배낭', bone: 'chest', hide: ['pack'],
+    build: (mat) => { const o = mat('main', '#f2722c'), w = mat('band', '#f6efe2'), n = mat('net', '#2f6b4a'), r = mat('rope', '#d8c59a');
+      const tw = M(new THREE.SphereGeometry(0.16, 12, 9), o, 0, 0.56, -0.24); tw.scale.set(1.05, 0.88, 0.95);
+      const bd = M(new THREE.TorusGeometry(0.15, 0.012, 5, 16), w, 0, 0.56, -0.24); bd.rotation.x = Math.PI / 2;
+      const net = M(new THREE.SphereGeometry(0.13, 10, 8), n, 0, 0.36 - 0.03 * k, -0.22 - 0.04 * k); net.scale.set(1.05 * k, 1.15 * k, 0.8 * k);
+      const ring = (y, rr) => { const t = M(new THREE.TorusGeometry(rr, 0.006, 4, 14), r, 0, y, -0.22 - 0.04 * k); t.rotation.x = Math.PI / 2; return t; };
+      return G(tw, bd, net, ring(0.43 - 0.02 * k, 0.1 * k), ring(0.36 - 0.03 * k, 0.135 * k), ring(0.29 - 0.04 * k, 0.11 * k), CY(0.008, 0.008, 0.16, r, 0, 0.47, -0.24)); } };
+});
 addClothes(ACCESSORIES);
 // 처음 고르는 기본 옷 색 (#155): 기본 모자·반팔·반바지·쓰레빠의 색 바꾼 장비 'id~번호' (0번 = 원래 id). src/lookcolors.js 가 고름
 for (const k of ['hat', 'top', 'bottom']) {

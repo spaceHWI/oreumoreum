@@ -1,5 +1,5 @@
 // 카메라, 첫 화면 궤도 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { BLOOM_FX, PACE, TITLE, CHARGE } from '../balance.js';
+import { BLOOM_FX, PACE, TITLE, CHARGE, CAM } from '../balance.js';
 import * as THREE from 'three';
 import { height } from '../world.js';
 import { state } from './state.js';
@@ -11,10 +11,16 @@ export const cam = { yaw: player.heading + Math.PI, pitch: 0.32, dist: 13, mode:
 export const camTarget = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
 state.camPullT = -1; // 꽃밭 카메라 (#65): 0 부터 camT 초 동안. 조작은 막지 않음
 function camPullK() { const T = BLOOM_FX.zone.camT; if (state.camPullT < 0 || state.camPullT >= T) return 0; const u = state.camPullT / T, sm = (x) => x * x * (3 - 2 * x); return u < 0.35 ? sm(u / 0.35) : u > 0.6 ? sm((1 - u) / 0.4) : 1; }
+// 탈 때(노루·탈것·마차) 카메라 (#170): 위아래 상한만 조금 넓히고 거리를 조금 늘림. 위아래 범위는 걸을 때와 같음
+export const camRiding = () => !!(player.riding || player.ride || player.cart);
+export const camPitchMax = () => (camRiding() ? CAM.ridePitchMax : CAM.pitchMax);
+let rideK = 1;
 export function followCam(dt, snap) {
   const look = player.pos.clone(); look.y = player.visY + 1.6 + (player.riding ? 0.9 : 0);
-  const pk = camPullK(), pitch = Math.min(1.25, cam.pitch + pk * BLOOM_FX.zone.camPitch), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
-  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * (1 + pk * BLOOM_FX.zone.camDist) * (1 - PACE.camIn * (state.tension || 0))); // 긴장 때 조금 가까이 (#89)
+  const pMax = camPitchMax(); if (cam.pitch > pMax && cam.mode === 'follow') cam.pitch = pMax; // 내리면 탈 때만 되던 각도에서 돌아옴
+  const rk = camRiding() ? CAM.rideDist : 1; rideK = snap ? rk : rideK + (rk - rideK) * Math.min(1, dt * CAM.rideDistK);
+  const pk = camPullK(), pitch = Math.min(pMax, cam.pitch + pk * BLOOM_FX.zone.camPitch), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
+  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * rideK * (1 + pk * BLOOM_FX.zone.camDist) * (1 - PACE.camIn * (state.tension || 0))); // 긴장 때 조금 가까이 (#89)
   const p = look.clone().add(off);
   const gh = height(p.x, p.z) + 1.2;
   if (p.y < gh) { look.y += (gh - p.y) * 0.8; p.y = gh; }

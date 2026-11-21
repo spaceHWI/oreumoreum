@@ -88,7 +88,7 @@ export function createManjok({ scene, height, site, low = false, col = null, add
   P2.push(box(0.04, 0.3, 0.04, '#3a2a1e', M4(-1.3, H - 0.1, eZ + 0.03)), box(0.04, 0.3, 0.04, '#3a2a1e', M4(1.3, H - 0.1, eZ + 0.03))); // 매단 끈
   // 밤: 창·문 창호지가 따뜻하게 빛남, 처마 백열등 둘
   const winMat = new THREE.MeshBasicMaterial({ color: '#ffb85a', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
-  root.add(new THREE.Mesh(mergeGeometries([-1, 1].map((s) => new THREE.PlaneGeometry(1.0, 0.85).translate(s * 2.0, 1.35, zH + D / 2 + 0.1)).concat([new THREE.PlaneGeometry(1.1, 1.8).translate(0, 0.98, zH + D / 2 + 0.1)])), winMat));
+  const win = new THREE.Mesh(mergeGeometries([-1, 1].map((s) => new THREE.PlaneGeometry(1.0, 0.85).translate(s * 2.0, 1.35, zH + D / 2 + 0.1)).concat([new THREE.PlaneGeometry(1.1, 1.8).translate(0, 0.98, zH + D / 2 + 0.1)])), winMat); win.visible = false; root.add(win);
   const bulbs = [-1, 1].map((s) => { const sp = glowSprite('#ffcf7a', 0.7); sp.position.set(s * 1.5, H - 0.1, eZ - 0.1); root.add(sp); return sp; });
   // 밤 빛웅덩이 (광원은 더하지 않음: 점광원 하나가 모든 재질의 그리기 값을 늘림)
   const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, 'rgba(255,210,140,1)'); gr.addColorStop(0.5, 'rgba(255,195,120,0.4)'); gr.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
@@ -126,7 +126,11 @@ export function createManjok({ scene, height, site, low = false, col = null, add
   function serve(item) { plate.visible = !!item; if (!item) return; foodMat.color.set(item.food); setLeft(1); }
   function setLeft(k) { food.scale.setScalar(Math.max(0.05, k)); }
 
+  pool.visible = false; for (const b of bulbs) b.visible = false;
+  let lit = false;
   function update(dt, night) {
+    const on = night > 0.01; if (on !== lit) { lit = on; win.visible = pool.visible = on; for (const b of bulbs) b.visible = on; } // 낮엔 안 그림 (그리기 수 줄이기)
+    if (!on) return;
     winMat.opacity = night * 0.7; for (const b of bulbs) b.material.opacity = night;
     poolMat.opacity = night * 0.45;
   }

@@ -5,15 +5,18 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
+import { checkLv } from '../../src/augments.js';
 
 // 예전 값 (#144): 실서버 클라이언트가 아직 #137 앞 값 표(v0.23.7)일 수 있음. 그때 값으로 산 장비가 되돌려지지 않게, 쓴 귤은 지금 값과 이 값 중 작은 쪽으로 셈
 //   release 가 #137 뒤 값 표로 나가고 옛 클라이언트가 다 바뀌면(roomcore MIN_VER) 지움
 const OLD_PRICE = { tool: [0, 100, 400, 1000, 2100], bag: [80, 200, 650, 1100, 2100], shoes: [0, 150, 550, 1100, 2100], weapon: [0, 850], wear: [0, 50, 200, 400, 900], wearNone: 40 };
 const priceOf = (now, old) => (old == null ? now : Math.min(now, old));
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
+const BACK = Object.fromEntries(BACK_LOOKS.map((b) => [b.id, b]));
+const backOwn = (s) => (s.backs && s.backs.own) || {};
 const RIDE = Object.fromEntries(RIDES.list.map((r) => [r.id, r]));
 const START_CLOTH = new Set(Object.values(WEAR_START));
 const START_HAIR = new Set(Object.values(HAIR.start));
@@ -49,10 +52,17 @@ function norm(s) {
   }
   if (isObj(s.season) || s.season !== undefined) s.season = isObj(s.season) && s.season.xmas !== undefined ? { xmas: cleanXmas(s.season.xmas) } : undefined; // 철 이벤트 (#180)
   if (s.season === undefined) delete s.season;
+  if (s.backs !== undefined) { // 배낭 겉모습 (#164): 목록에 있는 것만, 고른 것은 가진 것만
+    const B = isObj(s.backs) ? s.backs : {}, own = {};
+    if (isObj(B.own)) for (const id of Object.keys(B.own)) if (BACK[id] && B.own[id]) own[id] = 1;
+    s.backs = { own, cur: own[B.cur] ? B.cur : null };
+  }
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
 }
+// 레벨·증강 (#159, src/augments.js checkLv): 레벨 0~30(경험치 범위), 증강은 아는 것만·종류마다 3 이하·합이 (레벨 - 1) 이하. 넘는 값은 덜어 냄
+//   분리수거 달인·큰손처럼 귤 벌이에 닿는 증강이 레벨보다 많이 붙지 않게
 
 // 철 이벤트 (#180): 달력·선물 옷은 값을 안 셈
 const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift] : []);
@@ -67,6 +77,7 @@ function spentOf(P, S) {
   if (S.equip.boots && !P.equip.boots) sp += BOOTS.price; // 고진의 파란장화 (#167): 신고 벗기(1↔2)는 공짜
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
+  for (const id of Object.keys(backOwn(S))) if (!backOwn(P)[id]) sp += BACK[id].price; // 배낭 겉모습 (#164)
   return sp;
 }
 function revertItems(P, S) {
@@ -77,6 +88,7 @@ function revertItems(P, S) {
   for (const [k, id] of Object.entries(S.clothes.wear)) if (id && !(S.clothes.own[id] || START_CLOTH.has(id))) delete S.clothes.wear[k];
   S.rides.own = S.rides.own.filter((id) => P.rides.own.includes(id)); if (!S.rides.own.includes(S.rides.cur)) S.rides.cur = S.rides.own[S.rides.own.length - 1] || null;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
+  if (S.backs) { for (const id of Object.keys(S.backs.own)) if (!backOwn(P)[id]) delete S.backs.own[id]; if (!S.backs.own[S.backs.cur]) S.backs.cur = null; }
 }
 
 // 철 이벤트 (#180) 확인: 열린 달력 칸·선물 옷·트리 선물은 늘기만 하고, 새로 연 칸은 서버 날짜로 오늘까지만(지난 날은 귤 miss).
@@ -112,6 +124,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   const S = norm(JSON.parse(JSON.stringify(next)));
   const P = norm(JSON.parse(JSON.stringify(prev || FRESH)));
   const fixed = [...S._lootFix]; delete S._lootFix; delete P._lootFix;
+  if (checkLv(S) && !free) fixed.push('lv'); // #159
   const dt = Math.max(0, Math.min(NET.earnWindow, (t - (acc.savedAt || t)) / 1000));
   let credit = Math.min(NET.earnBurst, (acc.credit ?? NET.earnBurst) + dt * NET.earnPerSec);
   let pickCredit = Math.min(NET.pickBurst, (acc.pickCredit ?? NET.pickBurst) + dt * NET.pickPerSec);
