@@ -1,10 +1,11 @@
 // 전체 화면·화면 방향 (#105)
 // - 터치 기기면 위쪽 줄(#75) 오른쪽에 전체 화면 버튼, 메뉴 설정에도 같은 항목. Fullscreen API 로 들어가고 나옴
-// - 페이지 전체 화면이 안 되는 곳(iPhone Safari)은 버튼 대신 "홈 화면에 추가" 안내를 한 번 (manifest display: standalone, build.mjs)
+// - 페이지 전체 화면이 안 되는 곳(iPhone Safari)은 버튼 대신 "홈 화면에 추가" 안내 창 (#189 game/simple.js, manifest display: standalone, build.mjs)
 // - 홈 화면 앱(standalone)·원스토어 앱 안(#97)은 이미 전체 화면이라 숨김
 // - 돌리면 다시 불러오지 않고 바로 맞춤: 렌더러 크기·화각(scene.js resize, balance.js SCREEN)·위쪽 줄 줄이기(topFit)
 import { onestore } from '../onestore.js';
-import { $, isTouch, save, persist } from './save.js';
+import { $, isTouch } from './save.js';
+import { late } from './state.js';
 import { resize } from './scene.js';
 import { toast, topFit } from './hud.js';
 
@@ -21,7 +22,7 @@ function enter() {
 }
 function exit() { const r = D.exitFullscreen ? D.exitFullscreen() : D.webkitExitFullscreen?.(); return Promise.resolve(r).catch(() => {}); }
 export function toggleFullscreen() {
-  if (!can) { toast(HOME_HINT, 4); return; }
+  if (!can) { if (!late.fsTip?.open('ios')) toast(HOME_HINT, 4); return; } // 안 되는 곳: 홈 화면에 추가 안내 창 (#189, game/simple.js)
   return fsEl() ? exit() : enter();
 }
 
@@ -42,13 +43,7 @@ for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) D.addEventListe
 matchMedia('(display-mode: standalone)').addEventListener?.('change', refresh);
 refresh(); // 원스토어 SDK 가 늦게 알려 와도 page.html 의 .onestore 로 숨김
 
-// 안 되는 곳: 게임에 들어가면 안내를 한 번 (저장에 표시)
-function hintOnce() {
-  if (can || save.fsHint || !isTouch || onestore.on || standalone()) return;
-  save.fsHint = 1; persist(); setTimeout(() => toast(HOME_HINT, 4), 2500);
-}
-const intro = $('intro');
-if (intro) new MutationObserver(() => { if (intro.hidden && !D.body.classList.contains('intro-help-on')) hintOnce(); }).observe(intro, { attributes: true, attributeFilter: ['hidden'] });
+// 안 되는 곳(아이폰)의 안내는 튜토리얼 뒤 한 번 (#189, game/simple.js 전체 화면 안내 창). 예전 save.fsHint 토스트는 뺌
 
 // 돌리기: 다시 불러오지 않고 바로 맞춤. iOS 는 돌린 직후 innerHeight 가 늦게 바뀌어 한 번 더
 function relayout() { resize(); topFit.dirty(); }
