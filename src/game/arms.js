@@ -69,6 +69,7 @@ function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } 
   if (twinRoll()) { const v2 = v.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW * 0.5), f2 = from.clone(); setTimeout(() => armFx.shoot(f2, v2, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS * 0.5); } // 쌍귤 (#159): 탄은 더 쓰지 않음
   if (!ch) save.ammo[w.id] -= 1; A.kick = 1; persist();
   if (w.id === 'gun') sfx()?.gun?.(); else sfx()?.mg?.();
+  late.onShot?.(w.id, from); // 들판 증강 덤 귤 (#194, swarm.js)
   const tp = t ? aimPoint(t, from, 0) : from.clone().addScaledVector(v.clone().normalize(), w.range);
   if (ch && w.id === 'gun') { late.chargeLaunch?.(ch, 'gun', s.p, () => armFx.shots.includes(s), t); sendShot('gun', tp, ch.k); }
   else if (!ch || !A.mgB || A.mgB.left === A.mgB.n) sendShot(w.id, tp, ch ? ch.k : 0);
@@ -105,6 +106,7 @@ function releaseBomb(t) {
   if (twinRoll()) { const v2 = vel.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW * 2), f2 = from.clone(); setTimeout(() => armFx.lob(f2, v2, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), r: w.r, size: ch?.size }), TWIN_MS * 2); } // 쌍귤 (#159)
   if (ch) { const b = armFx.bombs[armFx.bombs.length - 1]; late.chargeLaunch?.(ch, 'bomb', b.g.position, () => armFx.bombs.includes(b), t); }
   sfx()?.lob?.(); sendShot('bomb', to, ch ? ch.k : 0);
+  late.onShot?.('bomb', from); // 들판 증강 덤 귤 (#194, swarm.js)
 }
 function lobVel(from, to, B) {
   const dx = to.x - from.x, dz = to.z - from.z, D = Math.max(0.5, Math.hypot(dx, dz));
@@ -124,7 +126,7 @@ function tickLaser(dt, w) {
   if (!A.beam) A.beam = armFx.beam();
   A.tick -= dt; let hit = null;
   if (A.tick <= 0) {
-    A.tick += w.tick;
+    A.tick += w.tick; late.onShot?.('laser', from); // 들판 증강 덤 귤 (#194, swarm.js)
     // 줄기를 따라 0.5m 마다 맞는지 봄 (가장 가까운 것 하나)
     const dir = to.clone().sub(from), L = dir.length(); dir.divideScalar(L || 1);
     const T = A.thick; // 모아 쏜 굵은 줄기 (#129): 피해 × mul, 맞으면 더 밀림

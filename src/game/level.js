@@ -28,23 +28,20 @@ let saveT = 0; const persistSoon = () => { if (!saveT) saveT = setTimeout(() => 
 
 // ---------- 아이콘 (24 칸, 선) ----------
 const SV = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-export const AUG_ICON = {
-  bighand: SV(ic('aug-bighand')),
-  magnet: SV(ic('magnet')),
-  flower: SV(ic('bloom')),
-  recycle: SV(ic('recycle')),
-  twin: SV(ic('twin')),
-  burst: SV(ic('burst')),
-  sour: SV(ic('sour')),
-  quick: SV(ic('quick')),
-  bite: SV(ic('bite')),
-  light: SV(ic('light')),
-  jacket: SV(ic('jacket')),
-  deer: SV(ic('deer')),
+const OWN = { // 세트에 없는 것 (#194, 같은 24 칸·굵기)
+  fork: '<path d="M12 21v-8"/><path d="M12 13l-6 -7"/><path d="M12 13l6 -7"/><path d="M6 10v-4h4"/><path d="M18 10v-4h-4"/>',
+  back: '<path d="M9 14l-4 -4l4 -4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/>',
+  pierce: '<circle cx="12" cy="12" r="4"/><path d="M3 12h18"/><path d="M18 9l3 3l-3 3"/>',
+  orbit: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><circle cx="20" cy="12" r="2" fill="currentColor"/>',
+  shove: '<path d="M3 12h7"/><path d="M7 9l3 3l-3 3"/><path d="M15 5v14"/><path d="M19 8v8"/>',
 };
+export const AUG_ICON = Object.fromEntries(AUGMENTS.list.map((a) => [a.id, SV(OWN[a.ic] || ic(a.ic))]));
+const augSay = (a) => a.say.replace(/\*\*(.+?)\*\*/, '<b>$1</b>'); // 쉬운 한 줄 (#194): **굵게** 한 곳
+
 const BR = Object.fromEntries(AUGMENTS.branches.map((b) => [b.id, b]));
 const brColor = (id) => BR[AUG_BY[id].br]?.color || '#ff8a1f';
 const stars = (n) => '<i>' + '★'.repeat(n) + '</i>' + '☆'.repeat(Math.max(0, AUGMENTS.max - n));
+const FIELD_TAG = `<span class="fd" title="들판에서만">${SV(ic('field'))}들판</span>`; // 들판에서만 작동 (#194)
 
 // ---------- 위 줄 레벨 칸 ----------
 const pill = $('lv-pill'), lvN = $('lv-n'), lvBar = $('lv-xp'), lvPend = $('lv-pend');
@@ -141,7 +138,7 @@ let open = false, safeT = 0;
 const multi = () => (late.net?.peersById?.size || 0) > 0;
 function safe() {
   return state.sessionOn && !late.tut?.active && !player.riding && !player.ride && !player.cart && !player.knock && !hp.isDown && !hp.pending
-    && cam.mode === 'follow' && !panelOpen() && !document.hidden && !(state.tension > 0.2) && !late.bossFight?.();
+    && cam.mode === 'follow' && !panelOpen() && !document.hidden && (!(state.tension > 0.2) || !!late.swarmOn?.()) && !late.bossFight?.(); // 들판 떼(#194)는 싸움이 끝나지 않으니 빛이 지나면 엶 (혼자면 멈춤)
 }
 function render() {
   if (!L.draw) { L.draw = rollDraw(save); L.rr = 0; persist(); }
@@ -151,9 +148,18 @@ function render() {
   cards.innerHTML = '';
   (L.draw || []).forEach((id, i) => {
     const a = AUG_BY[id], n = augN(save, id), b = document.createElement('button');
-    b.type = 'button'; b.className = 'ap-card'; b.style.setProperty('--br', brColor(id)); b.dataset.id = id;
-    b.innerHTML = `<span class="ic">${AUG_ICON[id] || ''}</span><span class="tx"><span class="br">${BR[a.br].name}</span><b>${a.name}</b><em>${augText(a)}</em></span><span class="st" aria-label="${n}/${AUGMENTS.max}">${stars(n)}</span>`;
-    b.addEventListener('click', () => pick(i));
+    b.type = 'button'; b.className = 'ap-card'; b.style.setProperty('--br', brColor(id)); b.style.setProperty('--i', i); b.dataset.id = id;
+    b.title = `${a.name}: ${augText(a)}${a.field ? ' · 들판에서만' : ''}`; // 숫자는 뒷면에만 (#194): ⓘ·길게 누르기·마우스 올리기
+    b.innerHTML = `<span class="ic">${AUG_ICON[id] || ''}</span><b>${a.name}</b><em>${augSay(a)}</em><span class="st" aria-label="${n}/${AUGMENTS.max}">${stars(n)}</span>${a.field ? FIELD_TAG : ''}`
+      + `<span class="bk">${augText(a)}${a.field ? '<br>들판에서만' : ''}</span><span class="nf" aria-hidden="true">i</span>`;
+    let lp = 0, held = false;
+    b.addEventListener('pointerdown', () => { held = false; clearTimeout(lp); lp = setTimeout(() => { held = true; b.classList.add('flip'); }, 450); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => clearTimeout(lp));
+    b.addEventListener('click', (e) => {
+      if (e.target.closest('.nf')) { b.classList.toggle('flip'); return; } // 뒷면 (숫자)
+      if (held) { held = false; return; } // 길게 눌러 뒷면만 봄
+      pick(i);
+    });
     cards.append(b);
   });
   $('ap-rr-n').textContent = String(LEVEL.reroll);
@@ -162,7 +168,7 @@ function render() {
 const augCountNow = () => Object.values(L.aug).reduce((s, n) => s + n, 0);
 function show() {
   if (!pendingPicks(save)) return;
-  open = true; sheet.hidden = false; render();
+  open = true; sheet.hidden = false; sheet.classList.remove('gift'); void sheet.offsetWidth; sheet.classList.add('gift'); render(); // 선물 상자가 열리듯 (#194, page.html .gift)
   if (multi()) player.iframe = Math.max(player.iframe || 0, LEVEL.guard); else state.augPause = true;
   player.target = null; player.onArrive = null;
   setTimeout(() => cards.querySelector('button')?.focus({ preventScroll: true }), 50);
@@ -204,7 +210,10 @@ export function tickLevel(dt) {
   if (state.flowerT > 0) state.flowerT -= dt;
   tickGlow(dt);
   if (open) { if (!pendingPicks(save) || hp.isDown || sheet.hidden) { sheet.hidden = false; close(); } else if (multi()) { state.augPause = false; player.iframe = Math.max(player.iframe || 0, 0.2); } return; }
-  if (auto && doorOpen() && pendingPicks(save)) { safeT = safe() ? safeT + dt : 0; if (safeT >= LEVEL.safe) { safeT = 0; openPick(false); } }
+  if (auto && doorOpen() && pendingPicks(save)) {
+    const ok = safe(); safeT = ok || late.swarmOn?.() ? safeT + dt : 0; /* 들판 판(#194)은 받혀 넘어져도 세던 시간을 지우지 않음: 빛이 지난 뒤 처음 안전한 때 엶 */
+    if (ok && safeT >= LEVEL.safe) { safeT = 0; openPick(!!late.swarmOn?.()); } /* 들판은 싸움이 이어져 감독 줄(싸우는 중엔 앞 몇 개만)을 기다리지 않고 바로 엶 */
+  }
 }
 paintHud();
 late.tickLevel = tickLevel;
