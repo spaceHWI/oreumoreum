@@ -38,7 +38,7 @@ export const topFit = (() => {
     bottom = bar.getBoundingClientRect().bottom || bottom;
   }
   addEventListener('resize', () => { dirty = true; t = 0; });
-  return { dirty: () => { dirty = true; }, tick(dt) { const v = `${$('hp-bar').hidden}${$('buff-pill').hidden}${document.body.classList.contains('tut')}`; if (v !== vis) { vis = v; dirty = true; t = 0; } t -= dt; if (dirty && t <= 0) { t = 0.2; fit(); } }, fit, get bottom() { return bottom; } };
+  return { dirty: () => { dirty = true; }, tick(dt) { const v = `${$('hp-bar').hidden}${$('buff-pill').hidden}${$('punk-pill')?.hidden}${document.body.classList.contains('tut')}`; if (v !== vis) { vis = v; dirty = true; t = 0; } t -= dt; if (dirty && t <= 0) { t = 0.2; fit(); } }, fit, get bottom() { return bottom; } };
 })();
 state.toastT = 0;
 export function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; state.toastT = sec; topStack(); }

@@ -103,5 +103,7 @@ export function rareDrop(who, pos, reward, maxN = Infinity) {
   spawn(s.kind, s.v, pos); return s.rest;
 }
 late.rareDrop = rareDrop; late.tickRare = tickRare;
+// 정해진 값에 가장 가까운 귀한 귤 하나를 그 자리에 (#163 까마귀가 떨어뜨리는 반짝이는 것). 떨궜으면 true
+late.rareGive = (pos, v = 20) => { const K = RARE_GYUL.kinds.reduce((b, k) => (Math.abs(k.m - v) < Math.abs(b.m - v) ? k : b)); spawn(K, K.m, pos); return true; };
 // 확인용 (window.__oreum.rare): 바로 떨굼·떨어진 것 보기
 late.rareDev = { drop: (id = 'hwanggeum', val) => { const K = RARE_GYUL.kinds.find((k) => k.id === id) || RARE_GYUL.kinds[0]; spawn(K, val ?? K.m, player.pos.clone().add(new THREE.Vector3(2, 0, 0))); return list.length; }, list: () => list.map((d) => ({ id: d.K.id, val: d.val, ground: d.ground, fly: d.fly, t: +d.t.toFixed(2) })) };

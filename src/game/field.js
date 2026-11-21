@@ -170,6 +170,7 @@ function drawIcons(x, uv, s, clip = null) {
     if (!h.field) { x.fillStyle = 'rgba(70,64,56,.9)'; x.strokeStyle = 'rgba(255,255,255,.75)'; x.beginPath(); x.arc(u, v, s * 0.28, 0, 7); x.fill(); x.stroke(); return; }
     const k = h.k === 'mt' ? 1.25 : 0.9; x.fillStyle = '#2e2e34'; x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(u - s * 0.5 * k, v + s * 0.45 * k); x.quadraticCurveTo(u - s * 0.62 * k, v - s * 0.3 * k, u - s * 0.14 * k, v - s * 0.38 * k); x.lineTo(u, v - s * 0.62 * k); x.lineTo(u + s * 0.14 * k, v - s * 0.38 * k); x.quadraticCurveTo(u + s * 0.62 * k, v - s * 0.3 * k, u + s * 0.5 * k, v + s * 0.45 * k); x.closePath(); x.fill(); x.stroke(); });
   late.bossIcons?.(x, uv, s, inC); // 우두머리 빈터 (#139)
+  late.raidIcons?.(x, uv, s, inC); // 레이드 (#181)
   late.shopIcons?.(x, uv, s, inC); // 가게 거리 가게 (#128, game/shop.js)
   late.questIcons?.(x, uv, s, inC); // 퀘스트 주는 사람 (#158, game/quest.js)
   // 소굴: 열림 빨강·닫힘 회색 (가 본 곳만)

@@ -87,7 +87,7 @@ function tapGround(x, y) {
   if (busy()) return;
   if (late.pickLock?.(x, y)) return; // 적을 누르면 그 적을 타겟으로 (#148)
   ray.setFromCamera(new THREE.Vector2((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1), camera);
-  const hit = ray.intersectObject(terrain, false)[0];
+  const hit = state.cave ? late.caveRay?.(ray) : ray.intersectObject(terrain, false)[0]; /* 동굴 (#195): 동굴 바닥 */
   if (!hit) return;
   setTarget(hit.point, null);
 }

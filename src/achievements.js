@@ -22,6 +22,7 @@ export const BADGES = [
   { id: 'b-arm-mg', ev: 'weapon-buy-mg', goal: 1, name: '귤 소나기', desc: '귤 머신건을 샀어요', glyph: '연', color: '#c9473d', reward: 80 },
   { id: 'b-arm-laser', ev: 'weapon-buy-laser', goal: 1, name: '귤즙 광선', desc: '귤즙 레이저를 샀어요', glyph: '빛', color: '#ff9a1f', reward: 150 },
   { id: 'b-arm-bomb', ev: 'weapon-buy-bomb', goal: 1, name: '귤 폭탄 장인', desc: '귤 폭탄을 샀어요', glyph: '폭', color: '#3f9a5a', reward: 250 },
+  { id: 'b-give', ev: 'gift-give', goal: 100, name: '귤 인심', desc: '귤 100개 나눠 주기', glyph: '심', color: '#f0902a', reward: 20 }, // 귤 주기 (#175, GIVE.achGoal)
   { id: 'b-photo', ev: 'photo', goal: 5, name: '인증샷 장인', desc: '표지석 인증샷 5장', glyph: '찰', color: '#33402a', reward: 20 },
   { id: 'b-streak-3', ev: 'daily-all', goal: 3, name: '사흘 개근', desc: '오늘의 할 일을 모두 마친 날 3일', glyph: '3', color: '#8f7bd6', reward: 40 },
   { id: 'b-streak-7', ev: 'daily-all', goal: 7, name: '일주일 개근', desc: '오늘의 할 일을 모두 마친 날 7일', glyph: '7', color: '#7fb8e8', reward: 100, item: 'glasses:t:round' },

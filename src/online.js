@@ -109,7 +109,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
       if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
       gifts(r.gifts);
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
-      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick)) onFix(r.fix);
+      if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick || r.fix.gift)) onFix(r.fix);
       writeLocal();
       changed();
     } catch (e) {

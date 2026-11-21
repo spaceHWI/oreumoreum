@@ -9,7 +9,9 @@ export class Room extends DurableObject {
     this.core = null; this.timer = null; this.saveT = 0; this.earnT = 0; this.onlT = 0; this.name = null;
     ctx.blockConcurrencyWhile(async () => {
       const [heaps, seen, guards] = await Promise.all([ctx.storage.get('heaps'), ctx.storage.get('seen'), ctx.storage.get('zg')]);
-      this.core = createRoomCore({ heaps, seen: seen || 0, stats: env.STATS_OPEN === '1', guards });
+      const newSec = env.FAKE_AUTH === '1' && env.GIFT_NEW_SEC != null && env.GIFT_NEW_SEC !== '' && Number.isFinite(+env.GIFT_NEW_SEC) ? +env.GIFT_NEW_SEC : undefined; // 로컬 검사만 새 계정 기다림을 바꿈 (tools/sec.js)
+      const gift = env.ACCOUNTS ? (a, b, n) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).gift(a, b, n, Date.now(), newSec) : null; // 귤 주기 (#175)
+      this.core = createRoomCore({ heaps, seen: seen || 0, stats: env.STATS_OPEN === '1', guards, gift });
     });
   }
   async fetch(req) {

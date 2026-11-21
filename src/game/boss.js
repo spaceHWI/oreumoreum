@@ -149,7 +149,7 @@ function spawn(z, puppet = false, at = null) {
 function despawn(quiet = true) {
   if (!cur) return;
   const e = cur.e; if (life.enemies.list.includes(e) && e.state === 'boss') life.enemies.remove(e);
-  if (!cur.puppet && e.hp > 0 && e.hp < cur.max) kept[cur.z] = { f: e.hp / cur.max, calm: e.calmT || 0, at: nowS() }; // #183
+  if (e.hp > 0 && e.hp < cur.max) kept[cur.z] = { f: e.hp / cur.max, calm: e.calmT || 0, at: nowS() }; // #183. #181 받던 쪽도 남겨 둠: 방장을 이어받아 다시 띄우면 가득 차서 다시 나오지 않게
   if (!quiet) say('danger', 'bossGone', `${name(cur.z)}${josaIGa(name(cur.z))} 숲으로 돌아갔어요`, 2.8, { ttl: 5 });
   endAct(); cur = null; crown.visible = aura.visible = false; bar(false);
 }
@@ -459,7 +459,7 @@ late.tickBoss = (dt) => {
   tickZoneDone(dt); flushHit(dt); tickBeams(dt);
   if (cur && !life.enemies.list.includes(cur.e)) { endAct(); cur = null; crown.visible = aura.visible = false; bar(false); } // 확인용 지우기 등
   if (isHost()) tickHost(dt);
-  else if (cur?.puppet && nowS() - (cur.netT || 0) > 3) despawn(); // 방장이 3초 넘게 알리지 않음 (방장 화면엔 없음)
+  else if (cur?.puppet && nowS() - (cur.netT || 0) > B.netHold) despawn(); // 방장이 netHold 초 넘게 알리지 않음 (방장 화면엔 없음). #181 그동안은 받던 자리에서 머뭇거림(방장이 끊기면 서버가 다음 방장을 정할 때까지)
   const c = cur;
   if (c) {
     tickAct(dt);

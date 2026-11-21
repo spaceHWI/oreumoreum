@@ -75,7 +75,9 @@ kbd { font-family: var(--body); font-size: 10px; border: 1px solid var(--line); 
 #btn-ctx.soft { animation: none; }
 #btn-ctx.empty { background: var(--paper-2); color: var(--ink-soft); filter: grayscale(1); } /* #148 귤이 없음 */
 #btn-ctx.lit { animation: hintPulse 1.1s ease-in-out infinite; outline: 3px solid var(--acc); outline-offset: 2px; } /* #135 첫 투기꾼: 던지기 버튼이 빛남 */ /* 귤 던지기는 언제나 되는 기본 동작이라 깜빡이지 않음 */
-#btn-ctx span, #btn-pick span { display: block; max-width: 76px; word-break: keep-all; }
+#btn-ctx span, #btn-pick span { display: none; } /* #196 버튼 아래 글씨 없음: 뜻은 title(마우스)·길게 누르기(폰) */
+body:not(.touch) :is(#btn-ctx, #btn-pick)::after { position: absolute; right: 9px; bottom: 9px; min-width: 15px; height: 15px; border-radius: 8px; font: 800 10px/15px var(--display); text-align: center; background: rgba(0,0,0,.28); color: rgba(255,255,255,.85); pointer-events: none; }
+body:not(.touch) #btn-ctx::after { content: "F"; } body:not(.touch) #btn-pick::after { content: "E"; } /* 단축키 구석 표시 */
 @keyframes pulse { 0%, 100% { box-shadow: inset 0 0 0 2px #fff, 0 3px 0 rgba(36,37,31,.35), 0 0 0 0 rgba(156,74,51,0); } 50% { box-shadow: inset 0 0 0 2px #fff, 0 3px 0 rgba(36,37,31,.35), 0 0 0 6px rgba(156,74,51,.3); } }
 .pad .round.sm { width: 60px; height: 60px; font-size: 11px; gap: 0; align-content: center; }
 .pad .round.sm span { display: none; }
@@ -595,8 +597,6 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 #box-view[hidden] { display: none; }
 #xmas-glow { position: fixed; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 90px 20px rgba(255, 140, 60, .32); opacity: 0; transition: opacity 1.2s; }
 #xmas-glow.on { opacity: 1; }
-.logo-snow { position: absolute; left: 0; top: 1.5%; width: 100%; height: auto; pointer-events: none; }
-.intro-logo { position: relative; }
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
 .rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
@@ -985,6 +985,10 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .wear-item .st { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--acc); color: var(--acc-fg); display: grid; place-items: center; }
 .wear-item .abm { position: absolute; top: 5px; left: 5px; width: 9px; height: 9px; border-radius: 50%; background: #ffb347; box-shadow: 0 0 0 2px rgba(0,0,0,.35); } /* 능력을 주는 옷 (#179) */
 .shop-tabs button.new span { color: #ffb347; }
+#shoppop-tabs button.week { position: relative; } #shoppop-tabs button.week span { color: #ffb347; } /* 주간 옷장 (#126): 이번 주 탭 + 남은 날 동그라미 */
+#shoppop-tabs button.week .wk-d { position: absolute; top: 2px; right: 3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: var(--acc); color: var(--acc-fg); font: 800 10px/15px var(--display); font-style: normal; text-align: center; }
+.leap-week { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 6px 4px 2px; color: #fff; } .leap-week svg { width: 20px; height: 20px; color: #ffb347; flex: none; }
+.leap-week b { font-family: var(--display); font-size: 14px; } .leap-week span { font-size: 12px; opacity: .7; }
 .leap-buy .desc { display: block; opacity: .8; font-size: 12px; }
 .wear-item .st svg { width: 10px; height: 10px; }
 .wear-item .pr { position: absolute; left: 0; right: 0; bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 800; }
@@ -1050,10 +1054,16 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 /* 구역 우두머리 (#139): 화면 위 이름·기운 줄 · 구역 완료 요약 · 다시 들어올 때 시작 자리 · 빠른 마차·지름길 어두워짐 */
 #boss-bar { position: fixed; z-index: 5; left: 50%; top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 12px); transform: translateX(-50%); width: min(440px, calc(100vw - 150px)); padding: 6px 14px 9px; border-radius: 16px; pointer-events: none; text-align: center; font-family: var(--display); }
 #boss-bar[hidden] { display: none; }
-#boss-bar .bn { display: flex; justify-content: center; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 오름 레이드 (#181): 우두머리 줄과 같은 꼴, 그 아래 */
+#raid-bar { position: fixed; z-index: 5; left: 50%; top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 12px); transform: translateX(-50%); width: min(440px, calc(100vw - 150px)); padding: 6px 14px 9px; border-radius: 16px; pointer-events: none; text-align: center; font-family: var(--display); }
+body.boss-on #raid-bar { top: calc(var(--tb-top, 12px) + var(--tb-h, 36px) + 20px + var(--boss-h, 54px)); }
+#raid-bar[hidden], #raid-bar .track[hidden] { display: none; }
+#raid-bar .bn svg { width: 16px; height: 16px; color: #ff6a3a; flex: none; }
+#raid-bar.ph1 .fill { background: linear-gradient(90deg, #ff4a2a, #ff7a3a); } #raid-bar.pick .fill { background: linear-gradient(90deg, #6fbf5a, #a6dc6a); }
+#boss-bar .bn, #raid-bar .bn { display: flex; justify-content: center; align-items: center; gap: 6px; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #boss-bar .bn svg { width: 16px; height: 16px; color: var(--tier, var(--gyul)); flex: none; }
-#boss-bar .track { display: block; position: relative; height: 10px; margin-top: 5px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
-#boss-bar .fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff6a3a, var(--gyul)); transition: width .2s ease-out; }
+#boss-bar .track, #raid-bar .track { display: block; position: relative; height: 10px; margin-top: 5px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
+#boss-bar .fill, #raid-bar .fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #ff6a3a, var(--gyul)); transition: width .2s ease-out; }
 #boss-bar .mk { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(0,0,0,.45); }
 #boss-bar.ph1 .fill { background: linear-gradient(90deg, #ff4a2a, #ff7a3a); } #boss-bar.ph2 .fill { background: #ff3a2a; animation: hpLow .8s ease-in-out infinite; }
 #boss-bar.roar { animation: bump .45s ease-out; }
@@ -1090,6 +1100,18 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #quest-track.bump { animation: bump .45s ease-out; }
 @keyframes qpulse { 50% { opacity: .35; } }
 @media (max-width: 600px) { #quest-track { max-width: calc(100vw - 160px); min-height: 44px; gap: 6px; padding: 3px 3px 3px 7px; font-size: 13px; } #quest-track .ql { width: 38px; height: 38px; } }
+/* 대화 창 한 틀 (#190): 퀘스트 받기·끝내기(#quest)·동료(#mate-talk). 이름표(pop-head)·글(talk-say, 한 장 TALK.win.lines 줄, 넘으면 ▶)·버튼(늘 아래)
+   폭 min(92vw, 420px), 글은 낱말 단위 줄바꿈(keep-all), 창이 화면보다 크면 글만 줄고 버튼은 아래에 남음 */
+.talk { width: min(92vw, 420px); max-width: 100%; box-sizing: border-box; }
+.talk .pop-body { display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.talk :is(p, h2, .q-task, .q-rew, .q-name, .mt-line) { word-break: keep-all; overflow-wrap: anywhere; white-space: normal; }
+.talk .pop-head h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.talk .talk-say { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.talk .talk-next { align-self: flex-end; margin: -2px 0 4px; min-width: 44px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,.14); color: #ffd23f; font: 800 14px/1 var(--body); cursor: pointer; animation: talknext 1.1s ease-in-out infinite; }
+.talk .talk-next[hidden] { display: none; }
+.talk :is(.q-go, .mt-acts) { flex: none; margin-top: auto; }
+@keyframes talknext { 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .talk .talk-next { animation: none; } }
 #quest .pop { width: min(420px, 100%); }
 #quest .q-name { margin: 2px 0 8px; font: 800 19px/1.3 var(--display); color: #ffd23f; }
 #quest .q-name.side { color: #fff; }
@@ -1182,7 +1204,7 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #omap-now .tone { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 #omap-c { display: block; width: 100%; aspect-ratio: 1; border-radius: 12px; background: rgba(0,0,0,.25); touch-action: none; }
 .omap-rows { display: grid; gap: 4px; margin-top: 10px; }
-.omap-rows div { display: grid; grid-template-columns: 12px 22px 1fr 30px 54px; align-items: center; gap: 6px; font-size: 14px; padding: 2px 4px; border-radius: 8px; }
+.omap-rows div { display: grid; grid-template-columns: 12px 22px 1fr 30px 40px 46px; align-items: center; gap: 6px; font-size: 14px; padding: 2px 4px; border-radius: 8px; }
 .omap-rows div.now { background: rgba(255,255,255,.12); }
 .omap-rows .sw { width: 12px; height: 12px; border-radius: 3px; }
 .omap-rows b { font-family: var(--display); font-weight: 800; text-align: center; }
@@ -1193,6 +1215,10 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #xy-pill .na { width: 14px; height: 14px; flex: none; }
 #where { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
 #where.swap { animation: whereSwap .45s ease-out; }
+#clean-pill { display: none !important; } /* #196 깨끗함은 지금 구역 값으로, 있는 곳 이름 옆(#where-c). 전체 값은 오름 지도 */
+#where-c { display: flex; align-items: center; gap: 3px; flex: none; } #where-c[hidden] { display: none; } #where-c .sep { font-style: normal; opacity: .5; margin-right: 1px; }
+#xy-pill #where-c svg { width: 13px; height: 13px; } #where-ring { transition: stroke-dasharray .4s ease-out; } #where-c.done #where-cn { color: var(--acc); }
+.omap-rows .pc { text-align: right; font-weight: 800; font-family: var(--display); font-size: 13px; } .omap-rows .pc.done { color: var(--acc); }
 @keyframes whereSwap { 0% { opacity: 0; transform: translateY(5px); } 60% { opacity: 1; transform: translateY(-2px); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { #where.swap { animation: none; } }
 #xy[hidden] { display: none; } #xy { font-weight: 600; opacity: .7; } #xy .sep { font-style: normal; font-weight: 500; opacity: .6; margin: 0 3px; } /* 어드민 '좌표 보기' */
@@ -1217,6 +1243,14 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #buff-pill .ring svg.r .bg { stroke: rgba(255,255,255,.18); } #buff-pill .ring svg.r .fg { stroke: var(--acc); stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
 #buff-pill .ring svg.ic { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
 #buff-pill.end b { color: var(--acc); }
+/* 하르방 기운 (#163): 식사 버프 칸과 같은 모양, 고리는 돌 색 */
+#punk-pill { gap: 6px; padding: 0 12px 0 4px; }
+#punk-pill .ring { position: relative; width: 28px; height: 28px; flex: none; }
+#punk-pill .ring svg.r { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+#punk-pill .ring svg.r circle { fill: none; stroke-width: 3; }
+#punk-pill .ring svg.r .bg { stroke: rgba(255,255,255,.18); } #punk-pill .ring svg.r .fg { stroke: #c9c2b4; stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
+#punk-pill .ring svg.ic { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+#punk-pill.end b { color: var(--acc); }
 /* 값이 바뀔 때만 짧게 튐 */
 .topbar .tpill.bump { animation: bump .35s ease-out; }
 /* 좁으면 (hud.js topFit 이 f1~f6 을 차례로 붙임): 1 구역 번호 칸을 곳 이름 칸에 합치기(색 점·밑줄) 2 업적 고리는 메뉴로 3 배낭 용량·꽃 점 빼기
@@ -1250,11 +1284,11 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 .pop-menu .m-fb { width: 100%; justify-content: center; background: var(--acc); color: var(--acc-fg); font-weight: 800; } .pop-menu .m-fb:hover { background: var(--acc); filter: brightness(1.08); } .pop-menu .m-fb svg { width: 18px; height: 18px; }
 .topbar.f2 #ach-chip { display: none; }
 .topbar.f3 #bag-pill small, .topbar.f3 #bloom-row { display: none; }
-.topbar.f4 #buff-pill { padding: 0 3px; } .topbar.f4 #buff-pill b { display: none; }
+.topbar.f4 #buff-pill, .topbar.f4 #punk-pill { padding: 0 3px; } .topbar.f4 #buff-pill b, .topbar.f4 #punk-pill b { display: none; }
 .topbar.f4 #hp-bar { min-width: 50px; flex-basis: 50px; }
 .topbar.f5 .tpill { padding: 0 7px 0 6px; gap: 3px; } .topbar.f5 .tpill b { font-size: 13px; }
-.topbar.f5 #clean-pill small, .topbar.f5 #xy-pill .na, .topbar.f5 #xy { display: none; } .topbar.f5 #where { max-width: 6.5em; }
-.topbar.f5 #buff-pill { padding: 0 2px; }
+.topbar.f5 #where-c small, .topbar.f5 #where-c .sep, .topbar.f5 #xy-pill .na, .topbar.f5 #xy { display: none; } .topbar.f5 #where { max-width: 6.5em; }
+.topbar.f5 #buff-pill, .topbar.f5 #punk-pill { padding: 0 2px; }
 .topbar.f6 #where { max-width: 4.6em; } .topbar.f6 #xy-pill::before { display: none; }
 .topbar.f7 #xy-pill { display: none; }
 /* 줄 아래 가운데: 토스트·업적 배너 */
@@ -1277,7 +1311,7 @@ body.looking .topbar, body.looking .hud-sub { visibility: hidden; }
   .topbar .tpill b { font-size: 14px; }
   .topbar .tpill small { font-size: 11px; }
   .topbar .tpill svg, #gyul-pill i { width: 15px; height: 15px; }
-  #buff-pill { padding: 0 10px 0 3px; } #buff-pill .ring { width: 25px; height: 25px; }
+  #buff-pill, #punk-pill { padding: 0 10px 0 3px; } #buff-pill .ring, #punk-pill .ring { width: 25px; height: 25px; }
   #hp-bar { flex-basis: 110px; min-width: 56px; }
   #btn-menu { top: var(--tb-top) !important; right: var(--tb-r) !important; width: var(--tb-h) !important; height: var(--tb-h) !important; }
   #btn-menu svg { width: 17px !important; height: 17px !important; }
@@ -1430,17 +1464,7 @@ img.thumb { display: block; object-fit: contain; pointer-events: none; -webkit-u
 .forge-slot .fs-art img.thumb { width: 30px; height: 30px; } .fs-row .fs-art img.thumb { width: 32px; height: 32px; }
 img.ic-art { width: 1em; height: 1em; object-fit: contain; }
 .shop-tabs button img.thumb { width: 26px; height: 26px; margin: -4px 0; }
-/* 글자 라벨: 처음 며칠(body.newbie, game/iconui.js) */
-.topbar .tpill { position: relative; }
-.tpill > .lb { display: none; position: absolute; margin: 0; width: auto; height: auto; background: none; box-shadow: none; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--body); font-style: normal; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.75), 0 0 6px rgba(0,0,0,.45); white-space: nowrap; pointer-events: none; }
-body.newbie .tpill > .lb { display: block; }
-body.newbie .dock button span { display: block; }
-@media (max-width: 600px) {
-  .leap-card .food img.thumb { width: 40px; height: 40px; } .menu-card img.food { width: 54px; height: 54px; } .tier img.art { width: 30px; height: 30px; }
-  body.newbie #btn-ctx span, body.newbie #btn-pick span { display: block; font-size: 10px; margin-top: -2px; }
-  body.newbie .pad #btn-ctx svg, body.newbie .pad #btn-pick svg { width: 28px; height: 28px; }
-  body.newbie #btn-menu span, body.newbie #btn-actions span { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--body); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.75); pointer-events: none; }
-}
+/* 아이콘 아래 글자 라벨(#184 처음 며칠)은 없앰 (#196) */
 
 /* ===== 화면 단순하게 (#189, game/simple.js · 메뉴 '화면 단순하게', 폰 기본 켬): 늘 보이는 것은 조이스틱·줍기·던지기·상황 버튼 하나·귤+HP·메뉴 ===== */
 /* 그 밖의 것은 필요할 때만: .flash 바뀐 순간 2초(레벨·장비 점수·구역), .half 배낭 60% 넘음. 튜토리얼(body.tut) 동안은 예전 그대로 */
@@ -1457,8 +1481,7 @@ body.simple:not(.tut) #buff-pill { padding: 0 3px; } body.simple:not(.tut) #buff
 /* 메뉴는 오른쪽 위 둥근 버튼 하나 (가로 화면도) */
 body.simple:not(.tut) .dock { display: contents !important; }
 body.simple:not(.tut) #btn-menu { position: fixed; z-index: 5; top: var(--tb-top) !important; right: var(--tb-r) !important; left: auto; bottom: auto; width: var(--tb-h) !important; height: var(--tb-h) !important; min-width: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-body.simple:not(.tut) #btn-menu svg { width: 18px !important; height: 18px !important; } body.simple:not(.tut):not(.newbie) #btn-menu span { display: none; }
-body.simple.newbie:not(.tut) #btn-menu span { display: block; position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--body); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.75); white-space: nowrap; pointer-events: none; } /* #184 처음 며칠 글자 라벨 */
+body.simple:not(.tut) #btn-menu svg { width: 18px !important; height: 18px !important; } body.simple:not(.tut) #btn-menu span { display: none; }
 body:not(.simple) #menu-act { display: none !important; }
 @media (min-width: 601px) { body.simple #menu :is(#menu-ach, #menu-act) { display: flex !important; } body.simple #act-chat { display: grid !important; } }
 /* 패드: 큰 버튼 둘(줍기·던지기, 72px) + 상황 버튼 하나(탈것 또는 점프, 48px)를 엄지 호 안에. 노치·홈 바 안전 영역 */
@@ -1528,15 +1551,16 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <div class="panel tpill" id="lv-pill" role="button" tabindex="0" title="레벨 · 경험치 · 누르면 증강" hidden><small class="lvl">Lv</small><b id="lv-n">1</b><i class="xp" aria-hidden="true"><i id="lv-xp"></i></i><s id="lv-pend" class="lv-pend" hidden aria-label="고를 증강"></s></div>
     <div class="panel tpill" id="score-pill" title="장비 점수 · 줍는 힘 · 싸우는 힘" role="button" tabindex="0"><svg data-i="score"></svg><b id="gscore">0</b></div>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg data-i="pocket" class="pk"></svg><svg data-i="bag" class="bg"></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
-    <div class="panel tpill" id="clean-pill" data-tut="clean" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
+    <div class="panel tpill" id="clean-pill" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
   </div>
   <div class="tb-g tb-c">
     <div id="hp-bar" class="panel tpill" role="meter" aria-label="HP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" hidden><svg data-i="hp"></svg><i class="track"><i class="fill" id="hp-fill"></i></i></div>
     <div class="panel tpill" id="buff-pill" hidden><span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg><svg data-i="quick" class="ic"></svg></span><b></b></div>
+    <div class="panel tpill" id="punk-pill" title="하르방 기운 · 귤 모으는 범위 +0.5m · 이동 +3%" hidden><span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 12V6a1.5 1.5 0 0 1 3 0v5M10 11V4.5a1.5 1.5 0 0 1 3 0V11M13 11V6a1.5 1.5 0 0 1 3 0v8c0 4-2 6-5 6-3 0-4-2-5-4l-1-3a1.5 1.5 0 0 1 2.5-1.5L8 14"/></svg></span><b></b></div>
   </div>
   <div class="tb-g tb-r">
     <div class="panel tpill" id="zone-pill" data-tut="hud" title="지금 구역" hidden><svg data-i="zone" class="zm"></svg><svg data-i="bloom" class="zf"></svg><b id="zone-n">1</b></div>
-    <div class="panel tpill" id="xy-pill" data-tut="hud" title="지금 있는 곳"><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="where">들머리</b><b id="xy" hidden><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
+    <div class="panel tpill" id="xy-pill" data-tut="hud" title="지금 있는 곳"><svg class="na" viewBox="-8 -8 16 16" aria-hidden="true"><g id="xy-north"><path d="M0 -7 L4.2 4.5 L0 2 L-4.2 4.5Z" fill="#ff8a1f"/></g></svg><b id="where">들머리</b><span id="where-c" title="이 구역이 깨끗해진 정도" hidden><i class="sep">·</i><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="where-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="where-cn">0</b><small>%</small></span><b id="xy" hidden><span id="xy-x">0</span><i class="sep">·</i><span id="xy-z">0</span></b></div>
     <button type="button" class="panel tpill" id="ach-chip" data-tut="hud" title="오늘의 할 일"><svg class="ring" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,.24)" stroke-width="3.4"/><circle id="ach-ring" cx="12" cy="12" r="9" stroke="#ff8a1f" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="0 56.5" transform="rotate(-90 12 12)"/></svg><b id="ach-count">0/5</b><i class="dot" id="ach-dot" hidden></i></button>
     <button type="button" class="panel tpill" id="fs-chip" title="전체 화면" aria-label="전체 화면" aria-pressed="false" hidden><svg data-i="fullscreen"></svg></button>
     <button type="button" class="panel tpill" id="fb-chip" title="의견 보내기" aria-label="의견 보내기"><svg data-i="feedback"></svg><span class="fbl">의견 보내기</span><span class="fbs">의견</span><i class="fb-bub" id="fb-bub" hidden>불편한 점을 알려 주세요</i></button>
@@ -1646,6 +1670,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="rec-wm" class="rec-opt" aria-pressed="false" hidden>로고: 끔</button>
     <button type="button" id="rec-buf" class="rec-opt" aria-pressed="false" hidden>방금 30초: 끔</button>
     <button type="button" id="menu-mates" aria-pressed="true" title="동료 캐릭터 보이기">동료: 켬</button>
+    <button type="button" id="menu-gift" aria-pressed="true" title="다른 사람이 주는 귤 받기" hidden>귤 선물: 받음</button>
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
@@ -1684,6 +1709,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <div id="bloom-banner" role="status" hidden></div>
 <div id="zone-title" role="status" hidden><b></b><small></small></div>
 <div id="boss-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg data-i="boss"></svg><b id="boss-name"></b></span><i class="track"><i class="fill" id="boss-fill"></i><i class="mk" style="left:50%"></i><i class="mk" style="left:20%"></i></i><small id="boss-n" hidden></small><small id="boss-rg" class="rg" hidden>회복 중</small></div>
+<div id="raid-bar" class="panel" role="status" aria-live="polite" hidden><span class="bn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3c-4.4 0-8 3.6-8 8 0 3 1.6 5.5 4 6.9V21h8v-3.1c2.4-1.4 4-3.9 4-6.9 0-4.4-3.6-8-8-8zm-3 9.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm6 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg><b id="raid-name"></b></span><i class="track" id="raid-track"><i class="fill" id="raid-fill"></i></i></div>
 <div class="overlay dim" id="zdone" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2 id="zdone-t">구역 완료</h2><button type="button" class="btn small" id="zdone-close">닫기</button></div>
@@ -1692,9 +1718,9 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 </div>
 <div id="quest-track" role="button" tabindex="0" title="퀘스트: 누르면 그쪽으로 걸어가요" hidden><i class="qm">!</i><span class="qt"></span><b class="qp"></b><svg data-i="quest-go" class="qa"></svg><small class="qd"></small><button type="button" class="ql" aria-label="퀘스트 목록 (L)" title="퀘스트 목록 (L)"><svg data-i="quests" width="18" height="18"></svg></button></div>
 <div class="overlay dim" id="quest" hidden>
-  <div class="panel pop">
+  <div class="panel pop talk">
     <div class="pop-head"><h2 id="quest-who"></h2><button type="button" class="btn small" id="quest-close">닫기</button></div>
-    <div class="pop-body"><p class="q-name" id="quest-name"></p><div class="q-say" id="quest-say"></div><div class="q-task" id="quest-task"></div><div class="q-rew" id="quest-rew"></div><button type="button" class="btn primary q-go" id="quest-go">받기</button></div>
+    <div class="pop-body"><p class="q-name" id="quest-name"></p><div class="q-say talk-say" id="quest-say"></div><button type="button" class="talk-next" id="quest-next" hidden aria-label="다음 말">▶</button><div class="q-task" id="quest-task"></div><div class="q-rew" id="quest-rew"></div><button type="button" class="btn primary q-go" id="quest-go">받기</button></div>
   </div>
 </div>
 <div class="overlay dim" id="qlog" hidden>
@@ -1809,7 +1835,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   </div>
 </div>
 <div class="overlay" id="mate-talk" hidden role="dialog" aria-label="동료와 이야기">
-  <div class="panel pop">
+  <div class="panel pop talk">
     <div class="pop-head"><h2><i class="mt-bot" aria-hidden="true"></i><span class="mt-name"></span></h2><button type="button" class="btn small" id="mt-close">닫기</button></div>
     <div class="pop-body"><p class="mt-line"></p><div class="mt-acts"><button type="button" class="btn small" id="mt-more">또 얘기해요</button><button type="button" class="btn small primary" id="mt-follow" aria-pressed="false">같이 가요</button></div></div>
   </div>
