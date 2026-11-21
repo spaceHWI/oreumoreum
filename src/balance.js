@@ -337,6 +337,9 @@ export const SHOES = [
   { tier: 4, name: '등산화', speed: 1.3, price: GROWTH.price[4] },
   { tier: 5, name: '바람 신발', speed: 1.45, price: GROWTH.price[5] },
 ];
+// 특별 신발 '고진의 파란장화' (#167): 단계 줄에 끼우지 않음. 저장 save.equip.boots = 0 없음 · 1 가짐(안 신음) · 2 신음
+// 신으면 이동 speed 배, 장비 점수·길 밖 풀밭 느림은 tier 단계 신발과 같게. 값은 tier 단계 값. 파는 곳 LEAP 신발 칸
+export const BOOTS = { id: 'boots', name: '고진의 파란장화', speed: 1.35, tier: 4, price: GROWTH.price[4], desc: '고진 씨가 신던 그 장화. 왜 빠른지는 아무도 모른다.', print: 1.25 }; // print: 발자국 크기 배
 
 // 클린하우스(재활용장): 들머리 한 곳 + 오름 안 작은 것 4곳(#78). 귤은 TRASH_TYPES 의 gyul (캔·페트병·비닐 1, 스티로폼 3, 폐어구 5)
 export const CLEANHOUSE = {
@@ -764,6 +767,25 @@ export const STONE = {
   walkMax: 3, // 자리까지 걸어가다 이 초가 넘으면 바로 앉힘
 };
 
+// 만족한상회 (#167): 가게 거리 6번 터(골목 끝)의 갈치 식당. 스톤과 같은 '식사 → 버프' (식당 공통 틀, 버프는 한 번에 하나). 메뉴·값·버프 모두 임의
+// buff: guard 받는 피해 줄이는 비율 · gyulR 귤 모이는 범위 더하는 m. also: 같이 붙는 버프 { 종류: v }. 건물은 코드로 만든 임시 모양 src/manjok.js
+export const MANJOK = {
+  name: '만족한상회', tag: '갈치는 뼈가 없고, 당신은 귤이 없다',
+  buffSec: 600,
+  menu: [
+    { id: 'manjok', ko: '만족한상', en: '순살 은갈치 조림', price: 260, buff: 'guard', v: 0.2, food: '#c8452c' },
+    { id: 'tonggalchi', ko: '통갈치한상', en: '통갈치 조림 한상', price: 320, buff: 'dmg', v: 0.3, also: { speed: 0.1 }, food: '#b83a26' },
+    { id: 'galchigui', ko: '갈치구이', en: '은갈치 구이', price: 180, buff: 'pick', v: 0.2, food: '#d9c9a8' },
+    { id: 'godeungeo', ko: '고등어구이', en: '고등어 구이', price: 150, buff: 'regen', v: 2, food: '#8a7a5a' },
+    { id: 'hwanggae', ko: '제주 황게장', en: '간장 게장', price: 220, buff: 'gyulR', v: 1, food: '#e0902c' },
+  ],
+  W: 6.6, D: 4.4, H: 2.5, // 돌집 폭·깊이·처마 높이 (m)
+  fore: 3.4, // 터 앞에서 집 앞벽까지 (평상 자리)
+  r: 6.5, // 평상 가운데에서 이 거리 안이면 상호작용이 '식사'
+  eatT: 4.5, walkMax: 3,
+};
+export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
+
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
 // 골목 좌표: s = 길 가운데에서 골목 안쪽으로 거리, t = 오름 쪽(+) / 시작 쪽(-). 골목 가운데 선은 t = 0
 // 터 side: 1 = 골목 오름 쪽 줄(앞이 시작·개울 쪽), -1 = 시작 쪽 줄(앞이 오름 쪽), 0 = 골목 끝(앞이 길 쪽). w = 골목 따라 폭, d = 깊이
@@ -778,7 +800,7 @@ export const SHOP_ST = {
     { s: 23, side: 1, w: 10, d: 9 }, // 3 빈 터
     { s: 23, side: -1, w: 10, d: 9 }, // 4 장비점 (#128)
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
-    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 빈 터 (골목 끝)
+    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
@@ -807,6 +829,7 @@ export const SHOPS = [
   { id: 'salon', name: '루이네 미장원', lot: 1, act: '머리', ic: 'cut', pop: 'salon', sells: '머리 모양' },
   { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride', sells: '탈것' }, // #69 (임시 모양)
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
+  { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -843,7 +866,7 @@ export const LEAP = {
 };
 
 // 옷 (#52): 입는 것마다 능력치. 겉모습과 능력치가 묶여 있음 (입은 것이 곧 능력). 도구·배낭·신발·무기는 위 표 그대로
-// 칸마다 0(없음)~5단계. 같은 단계 옷은 능력이 같고 모양만 다름. 가진 옷은 언제든 갈아입고, 능력은 지금 입은 것만
+// 칸마다 0(없음)~5단계. 같은 단계 옷은 능력이 같고 모양만 다름. #179 부터 능력은 칸마다 가진 옷 중 가장 좋은 것, 겉모습은 가진 옷 아무거나 (wear)
 // stat: rare 드문 쓰레기 확률 배수 · hp 최대 HP 배수 · pocket 주머니(배낭 용량에 더함) · gyul 클린하우스 귤 더하는 비율 · guard 받는 피해 줄이는 비율 · regen HP 회복 배수
 // v: [없음(0단계), 1~5단계]. none: 처음엔 없음(베스트·잠바·양말). 저장은 save.clothes = { own: {id: 1}, wear: {칸: id} }
 export const WEAR = {
@@ -858,6 +881,7 @@ export const WEAR = {
   price: GROWTH.price.slice(0, 6).map((p, t) => t < 2 ? 0 : Math.round(p * GROWTH.wearK)), // 단계별 값 (#137: 장비와 같은 곡선 × wearK). 모자·티셔츠·바지 1단계는 처음부터 가짐
   priceNone1: Math.round(GROWTH.price[1] * GROWTH.wearK), // 없음에서 시작하는 칸(베스트·잠바·양말)의 1단계
   tierColor: ['#7b7b80', '#9a9a94', '#5aa55a', '#4a86c8', '#9a6ad0', '#f29a2e'], // 단계 색: 없음·회색·초록·파랑·보라·귤색
+  styleColor: '#e07aa0', // 겉모습 옷(#179, 능력 없음) 테두리 색
 };
 // 옷 목록: 한 줄이 옷 한 벌. 단계마다 옷을 늘리려면 여기에 줄만 더하면 됨 (같은 단계 = 같은 능력, 모양은 look)
 // look 은 src/clothes.js 가 읽는 모양 값: kind 모양 종류, main 바탕색, acc 포인트색, 그 밖은 종류마다 (stripe 줄무늬색 등)
@@ -906,8 +930,69 @@ export const CLOTHES = [
   { id: 'socks:x-boots', slot: 'socks', tier: 3, name: '빨간 장화', season: 'xmas', look: { kind: 'socks', main: '#c8333a', acc: '#f6f2ea', h: 0.2, thick: true } },
   { id: 'vest:x-scarf', slot: 'vest', tier: 2, name: '목도리', season: 'xmas', look: { kind: 'scarf', main: '#c8333a', acc: '#f6f2ea' } },
 ];
+// 겉모습 옷 (#179): 능력 없는 옷(tier 0). 값은 price 로 따로. 능력은 칸마다 가진 옷 중 가장 좋은 것이 정하고(gearscore.js abilityCloth), 겉모습은 가진 옷 아무거나(save.clothes.wear)
+// set: 한 벌 맞춤 묶음(OUTFIT_SETS), tint: 색 바꾸기 가능(LOOK_COLORS.style, 저장 save.clothes.tint = { id: 번호 }), fresh: LEAP '새로 들어온 것' 탭에 나오는 날
+// 얼굴(선글라스)은 모자 칸, 등(귤 바구니)은 베스트 칸에 넣음 (칸을 늘리지 않음). 모양 새 kind 는 src/clothes2.js, 그림은 clothicons.js
+export const STYLE_CLOTHES = [
+  // 모자 11 (선글라스 포함)
+  { id: 'hat:s-goggle', slot: 'hat', price: 300, name: '해녀 물안경', set: 'haenyeo', desc: '이마에 걸면 숨이 길어지는 기분', look: { kind: 'goggle', main: '#2b2f3a', acc: '#8fd0e8' } },
+  { id: 'hat:s-beanie', slot: 'hat', price: 250, name: '감귤 꼭지 비니', set: 'farmer', tint: true, desc: '머리 위에 귤 꼭지 하나', look: { kind: 'beanie', main: '#f29a2e', acc: '#3f9a5a' } },
+  { id: 'hat:s-harubang', slot: 'hat', price: 600, name: '돌하르방 모자', desc: '쓰면 표정이 근엄해짐 (기분 탓)', look: { kind: 'harubang', main: '#6b6a66', acc: '#4f4e4a' } },
+  { id: 'hat:s-halfgyul', slot: 'hat', price: 450, name: '귤 반쪽 헬멧', desc: '속은 비었어요. 먹은 게 아니에요', look: { kind: 'halfgyul', main: '#f29a2e', acc: '#fff4e0' } },
+  { id: 'hat:s-gat', slot: 'hat', price: 900, name: '말총 갓', desc: '제주 말총으로 엮은 선비 갓', look: { kind: 'gat', main: '#1d1d22', acc: '#3a3a40' } },
+  { id: 'hat:s-chef', slot: 'hat', price: 350, name: '요리사 모자', desc: '스톤 주방장 몰래 빌려 옴', look: { kind: 'chef', main: '#f6f4ee', acc: '#e4e0d6' } },
+  { id: 'hat:s-hard', slot: 'hat', price: 300, name: '안전모', set: 'clean', tint: true, desc: '쓰레기 산 앞에서는 안전 제일', look: { kind: 'hardhat', main: '#f2c94c', acc: '#e8ecef' } },
+  { id: 'hat:s-lamp', slot: 'hat', price: 400, name: '캠핑 헤드랜턴', desc: '불은 안 켜져요. 마음이 밝아짐', look: { kind: 'lamp', main: '#2b2f3a', acc: '#fff3a0' } },
+  { id: 'hat:s-antenna', slot: 'hat', price: 500, name: '외계인 더듬이', set: 'alien', desc: '귤 신호를 잡는 중', look: { kind: 'antenna', main: '#7ad65a', acc: '#c8f26a' } },
+  { id: 'hat:s-paperbag', slot: 'hat', price: 150, name: '종이봉투', desc: '오늘은 아무도 날 못 알아봄', look: { kind: 'paperbag', main: '#c9a86a', acc: '#1c1712' } },
+  { id: 'hat:s-shades', slot: 'hat', price: 300, name: '선글라스', set: 'tourist', tint: true, desc: '모자 칸에 쓰는 얼굴 장식', look: { kind: 'shades', main: '#1d1d22', acc: '#f29a2e' } },
+  // 티 8
+  { id: 'top:s-unpaid', slot: 'top', price: 250, name: "'오늘도 무급' 티", tint: true, desc: '오름지기 자원봉사 공식 티', look: { kind: 'tee2', main: '#ece6d8', acc: '#3a3a40', print: '#3a3a40' } },
+  { id: 'top:s-aloha', slot: 'top', price: 450, name: '하와이안 셔츠', set: 'tourist', desc: '제주에서 하와이 느낌', look: { kind: 'tee2', main: '#3fa8b8', acc: '#f6efe0', flowers: '#f6efe0', collar: '#f6efe0' } },
+  { id: 'top:s-hallabong', slot: 'top', price: 350, name: '한라봉 무늬 티', desc: '꼭지까지 그려 넣음', look: { kind: 'tee', main: '#fff4e0', acc: '#f29a2e', gyul: '#f29a2e' } },
+  { id: 'top:s-tank', slot: 'top', price: 200, name: '멜빵 러닝', tint: true, desc: '팔이 시원해요', look: { kind: 'tank', main: '#f6f4ee', acc: '#c4513f' } },
+  { id: 'top:s-haenyeo', slot: 'top', price: 500, name: '줄무늬 해녀복 상의', set: 'haenyeo', desc: '고무옷에 주황 줄', look: { kind: 'tee', long: true, main: '#1d1d22', acc: '#f2722c', stripes: 3, collar: '#f2722c' } },
+  { id: 'top:s-tour', slot: 'top', price: 200, name: '관광버스 단체 티', desc: '3호차 놓치지 마세요', look: { kind: 'tee2', main: '#f2d83a', acc: '#2f62b8', print: '#2f62b8', num: true } },
+  { id: 'top:s-neonrun', slot: 'top', price: 400, name: '형광 러닝복', tint: true, desc: '밤에도 보여요', look: { kind: 'tee', main: '#c8f24a', acc: '#2b2f3a', panel: true } },
+  { id: 'top:s-ilove', slot: 'top', price: 300, name: "'I ♥ 쓰레기 줍기' 티", set: 'clean', desc: '진심입니다', look: { kind: 'tee2', main: '#f6f4ee', acc: '#c8333a', heart: '#c8333a', print: '#3a3a40' } },
+  // 바지 6
+  { id: 'bottom:s-mombbe', slot: 'bottom', price: 350, name: '꽃무늬 몸뻬', set: 'farmer', tint: true, desc: '귤밭 일등 작업복', look: { kind: 'mombbe', main: '#8a4fa0', acc: '#6e3a82', dots: '#f6c0d8' } },
+  { id: 'bottom:s-rubber', slot: 'bottom', price: 400, name: '해녀 고무 바지', set: 'haenyeo', desc: '물에 들어가도 끄떡없음', look: { kind: 'long', main: '#1d1d22', acc: '#f2722c', belt: true } },
+  { id: 'bottom:s-ripped', slot: 'bottom', price: 450, name: '찢어진 청바지', set: 'punk', desc: '돌담에 걸린 게 아니에요', look: { kind: 'long', main: '#4a6fa8', acc: '#3a5a8a', rips: '#dfe6ef' } },
+  { id: 'bottom:s-leggings', slot: 'bottom', price: 300, name: '형광 레깅스', set: 'alien', tint: true, desc: '우주복 아래 입는 것', look: { kind: 'long', main: '#7ad65a', acc: '#5cb840', tight: true } },
+  { id: 'bottom:s-check', slot: 'bottom', price: 300, name: '체크 반바지', set: 'tourist', desc: '공항에서 바로 갈아입음', look: { kind: 'shorts', main: '#c4513f', acc: '#f2efe6', check: true } },
+  { id: 'bottom:s-overall', slot: 'bottom', price: 500, name: '멜빵 작업 바지', desc: '주머니에 집게 하나 꽂고', look: { kind: 'long', main: '#4a5a78', acc: '#e0b23a', bib: true, pockets: true } },
+  // 베스트·잠바 9 (귤 바구니는 등에 메는 것이라 베스트 칸)
+  { id: 'vest:s-safety', slot: 'vest', price: 300, name: '형광 안전 조끼', set: 'clean', desc: '멀리서도 줍깅 중인 게 보임', look: { kind: 'vest', main: '#ff7a1f', acc: '#e8ecef', bands: true } },
+  { id: 'vest:s-photo', slot: 'vest', price: 500, name: '주머니 12개 사진 조끼', desc: '주머니마다 귤 하나씩', look: { kind: 'vest', main: '#b8a878', acc: '#8d7d50', pockets: 12 } },
+  { id: 'vest:s-padding', slot: 'vest', price: 450, name: '패딩 조끼', tint: true, desc: '한라산 바람 막이', look: { kind: 'vest', main: '#2b2f3a', acc: '#4a4e58', puff: true } },
+  { id: 'vest:s-punk', slot: 'vest', price: 600, name: '가죽 펑크 조끼', set: 'punk', desc: '징이 박힌 오름펑크 조끼', look: { kind: 'vest', main: '#1d1d22', acc: '#c9ccd2', studs: true } },
+  { id: 'jacket:s-raincoat', slot: 'jacket', price: 400, name: '노랑 우비', desc: '제주 날씨는 모르는 거니까', look: { kind: 'jacket', main: '#f2d03a', acc: '#d8b020', hood: true, cuffs: true, hem: true } },
+  { id: 'jacket:s-durumagi', slot: 'jacket', price: 900, name: '한복 두루마기', desc: '오름에 마실 나온 선비', look: { kind: 'jacket', main: '#e8e2d0', acc: '#3f5a8a', hem: true, goreum: true } },
+  { id: 'jacket:s-glow', slot: 'jacket', price: 600, name: '야광 러닝 자켓', set: 'alien', desc: '어두우면 더 빛나는 기분', look: { kind: 'jacket', main: '#b8f04a', acc: '#2b2f3a', bands: true, cuffs: true } },
+  { id: 'vest:s-boxarmor', slot: 'vest', price: 350, name: '귤 상자 갑옷', desc: '골판지 두 겹, 방어력은 기분', look: { kind: 'boxarmor', main: '#c89a5e', acc: '#f29a2e', ink: '#6a4a2a' } },
+  { id: 'vest:s-basket', slot: 'vest', price: 450, name: '등에 멘 귤 바구니', set: 'farmer', desc: '등에 메는 장식 (베스트 칸)', look: { kind: 'basket', main: '#b8915a', acc: '#f29a2e' } },
+  // 양말·신발 6 (신발은 신발 칸 그대로, 이건 양말 칸 겉모습)
+  { id: 'socks:s-toe', slot: 'socks', price: 150, name: '발가락 양말', desc: '발가락마다 다른 색', look: { kind: 'socks', main: '#f6f4ee', acc: '#e090a8', h: 0.11, toes: true } },
+  { id: 'socks:s-odd', slot: 'socks', price: 200, name: '짝짝이 양말', set: 'punk', desc: '일부러 그런 거예요', look: { kind: 'oddsocks', main: '#c4513f', acc: '#2f62b8', h: 0.15 } },
+  { id: 'socks:s-rainbow', slot: 'socks', price: 250, name: '무지개 양말', desc: '비 온 뒤 오름처럼', look: { kind: 'socks', main: '#c4513f', acc: '#3a3a40', h: 0.17, rainbow: true } },
+  { id: 'socks:s-gomusin', slot: 'socks', price: 350, name: '고무신', desc: '신발 위에 신는 마음의 고무신', look: { kind: 'socks', main: '#f6f4ee', acc: '#d8d4ca', h: 0.06, rim: true } },
+  { id: 'socks:s-slipsock', slot: 'socks', price: 150, name: '쓰레빠엔 흰 양말', desc: '제주 동네 패션의 완성', look: { kind: 'socks', main: '#f6f4ee', acc: '#3f78c0', h: 0.15, stripes: 2 } },
+  { id: 'socks:s-furboot', slot: 'socks', price: 600, name: '털 장화', desc: '눈 오는 오름 필수', look: { kind: 'socks', main: '#8a6a3c', acc: '#f2ece0', h: 0.17, thick: true, fur: true } },
+].map((c) => ({ tier: 0, style: true, fresh: '2026-11-21', ...c }));
+CLOTHES.push(...STYLE_CLOTHES);
+// 한 벌 맞춤 (#179): 같은 묶음 3벌을 겉모습으로 입으면 캐릭터 둘레 작은 효과(src/game/outfitset.js) + 칭호(#165 에서 씀). 능력은 없음
+export const OUTFIT_SETS = [
+  { id: 'haenyeo', name: '해녀', title: '물질 장인', fx: '#8fd0e8', items: ['hat:s-goggle', 'top:s-haenyeo', 'bottom:s-rubber'] },
+  { id: 'punk', name: '오름펑크', title: '오름펑크', fx: '#d0d3d8', items: ['vest:s-punk', 'bottom:s-ripped', 'socks:s-odd'] },
+  { id: 'clean', name: '환경미화', title: '줍깅 반장', fx: '#ff8a2a', items: ['hat:s-hard', 'top:s-ilove', 'vest:s-safety'] },
+  { id: 'tourist', name: '관광객', title: '혼저옵서예', fx: '#5ad0e0', items: ['hat:s-shades', 'top:s-aloha', 'bottom:s-check'] },
+  { id: 'alien', name: '외계인', title: '지구 견학 중', fx: '#9af06a', items: ['hat:s-antenna', 'bottom:s-leggings', 'jacket:s-glow'] },
+  { id: 'farmer', name: '귤 농부', title: '귤밭 주인', fx: '#ffb347', items: ['hat:s-beanie', 'bottom:s-mombbe', 'vest:s-basket'] },
+];
+export const SET_FX = { n: 8, lowN: 5, r: 0.75, y: 0.8, spin: 0.9, bob: 0.12, size: 0.16, step: 0.6 }; // 둘레 효과: 점 수(저사양), 반지름·높이(m), 도는 빠르기(rad/s), 위아래, 점 크기, 번갈아 높이
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
-export const wearPrice = (c) => c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];
+export const wearPrice = (c) => c.price != null ? c.price : c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];
 
 // 배경 음악 (#64). 코드로 만드는 소리(music.js). gain 은 효과음(1)에 견준 음악 버스 크기
 export const MUSIC = {
@@ -1320,12 +1405,13 @@ export const STORY = {
 // 포인트색은 고른 색 × dark(0.82). 저장은 save.look.colors = { hat, top, bottom, shoes } 색 번호. 0 이 아니면 장비 id 뒤에 ~번호 (멀티도 이 id 로 봄)
 export const LOOK_COLORS = {
   ids: { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts', shoes: 'shoes:slip' },
-  names: { hat: '모자', top: '티', bottom: '바지', shoes: '신발' },
+  names: { hat: '모자', top: '티', bottom: '바지', shoes: '신발', style: '옷' },
   dark: 0.82,
   hat: [['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
   top: [['#e8dfc8', '흰색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#3a3a40', '먹색']],
   bottom: [['#8a6a3c', '갈색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
   shoes: [['#3c8fd0', '파랑'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#ece6d8', '흰색'], ['#3a3a40', '먹색']],
+  style: [['', '원래 색'], ['#5c9a3c', '초록'], ['#e8913a', '귤색'], ['#c4513f', '빨강'], ['#4a78b8', '파랑'], ['#e3c24a', '노랑'], ['#e090a8', '분홍'], ['#3a3a40', '먹색']], // 겉모습 옷 색 (#179, tint: true 인 옷). 0번 = 옷 원래 색
 };
 // 전리품·재료·강화·장비 등급 (#140, notes/growth-loop.md 5절). 셈은 src/loot.js(순수 함수, 서버 validate.js·tools 도 씀), 게임은 src/game/loot.js·forge.js
 // mats[구역-1]: 그 구역 재료(적·소굴·보물) id·이름·색 + 우두머리가 반드시 주는 귀한 재료(rare, 이름은 ZONE_BOSS.list mat). 재료 주머니 save.mats = { id: 수 } (가방과 따로, 무게 없음)
@@ -1591,6 +1677,9 @@ export const REC = {
   types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
   tag: '#오름오름',
 };
+
+// 아이콘 글자 라벨 (#184): 처음 보는 사람용. 처음 days 일 동안 보이고, 그 뒤엔 튜토리얼을 마치고 taps 번 넘게 눌렀으면 사라짐
+export const ICON_LABEL = { days: 3, taps: 10 };
 // 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
 // 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
 export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };

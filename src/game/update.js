@@ -1,6 +1,7 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { shoeSpeed } from '../loot.js';
-import { PERF, PLACE, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
+import { bootsOn } from '../gearscore.js';
+import { PERF, PLACE, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
 import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
@@ -144,7 +145,7 @@ function updatePlayer(dt) {
     countSteps(moved);
     checkViewpoint();
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
-  if (p.pose === 'sit') p.pos.y = mealS.on ? STN.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
+  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
   late.tickSwim?.(dt); // 테왁 배낭으로 물에 뜸 (#164, game/punk.js): 높이를 물낯에
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
@@ -165,7 +166,7 @@ function countSteps(moved) {
   p.strideAcc += moved;
   const stride = p.running ? 1.7 : 1.1;
   let n = 0;
-  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; if (state.swim) continue; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0); }
+  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; if (state.swim) continue; const bt = bootsOn(save); sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (bt && p.running) sound.squelch?.(); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0, bt ? BOOTS.print : 1); }
   if (n) ach.emit('steps', n);
 }
 function checkViewpoint() {
@@ -247,7 +248,7 @@ function step(now) {
   state.camHold = Math.max(0, state.camHold - dt);
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저
-  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); tickBuddies(dt); late.tickLoot?.(dt); late.tickSwarm?.(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); roofSigns?.update(dt, lampNight, camera, renderer.domElement.clientHeight || innerHeight); /* 지붕 간판 크기·밤빛 (#182) */ tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); late.season?.tick(dt, now / 1000); late.tickPunk?.(dt); state.farCull?.update(dt);
+  tickAutoGo(); updatePlayer(dt); late.tickCharge?.(dt); late.tickArms(dt); tickKnock(dt); if (trash) { trash.update(dt, player.pos); tickPick(dt); tickFly(dt); tickZone(dt); tickArea(dt); late.tickField?.(dt); late.tickGuard?.(dt); late.tickBoss?.(dt); tickBuddies(dt); late.tickLoot?.(dt); late.tickSwarm?.(dt); } if (bloom) bloom.update(dt, player.pos, now / 1000); if (bfx) { bfx.update(dt, now / 1000); if (state.camPullT >= 0) { state.camPullT += dt; if (state.camPullT > BLOOM_FX.zone.camT) state.camPullT = -1; } } if (CH) { CHS.forEach((c) => c.update(dt, lampNight)); tickDump(dt); tickChArrow(); } shopsBuilt.forEach((sh) => sh.update?.(dt, lampNight)); roofSigns?.update(dt, lampNight, camera, renderer.domElement.clientHeight || innerHeight); /* 지붕 간판 크기·밤빛 (#182) */ tickCartMark(); if (STN) tickMeal(dt); if (SAL) tickCut(dt); if (LEAPB) tickLeap(); if (shopsBuilt.length) tickShopMark(); buff.tick(); updateBuffUI(); late.devLabels.update(dt); if (!lookS.open) late.tut.update(dt); if (jeong) { jeong.update(dt); if (!jeong.isOpen && jeongReady()) openJeong(); } lamps.update(player.pos, lampNight); late.season?.tick(dt, now / 1000); late.tickPunk?.(dt); late.outfitSet?.tick(dt); state.farCull?.update(dt);
   net.update(dt); net.send(false);
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   deerNet.tick(dt); // 멀티 노루 (#92)

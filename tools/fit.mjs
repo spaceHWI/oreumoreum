@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { CLOTHES } from '../src/balance.js';
 import * as CL from '../src/clothes.js';
+import '../src/clothes2.js'; // 겉모습 옷 모양 (#179)
 const { CLOTH_BUILD, TORSO, HIPS, ARM, LEG, prof } = CL, BODY = CL.BODY || { crotch: 0.12 }, HIP_TOP = HIPS[HIPS.length - 1][0];
 import { baseBodyGeo, bodyWarp, REGION } from '../src/basebody.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';

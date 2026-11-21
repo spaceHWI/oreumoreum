@@ -15,7 +15,7 @@ import { gradHard } from '../toon.js';
 import { height } from '../world.js';
 import { nsAlong } from '../namsongi.js';
 import { STREET } from '../streetlayout.js';
-import { PUNK, TUT, SHOP_ST, NET } from '../balance.js';
+import { PUNK, TUT, SHOP_ST, NET, OUTFIT_SETS } from '../balance.js';
 import { RADIO, RADIO_SITU, NOTES, TITLES } from '../punktext.js';
 import { BADGES, kstDate } from '../achievements.js';
 import { BADGE_ICONS, iconSvg } from '../badgeicons.js';
@@ -27,6 +27,7 @@ import { scene, wx } from './scene.js';
 import { player, trash, life, col, NS_TUT, street } from './place.js';
 import { toast, ach, panelOpen, closePanels, PANELS, openAch, openDex } from './hud.js';
 import { director, holdWin } from './director.js';
+import { icon } from '../icons.js';
 
 const R = PUNK.radio;
 
@@ -76,7 +77,7 @@ body.banner-on #radio-strip, body.tip-on #radio-strip { top: calc(var(--tb-top, 
 @media (max-width: 600px) { #radio-strip { font-size: 13px; height: 30px; } #punk-title .pt-list { grid-template-columns: 1fr 1fr; } }
 `;
 document.head.append(css);
-const SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h3l7 5V5L6 10H3z"/><path d="M16 8.5c1.6 1.8 1.6 5.2 0 7M18.8 6c3 3.2 3 8.8 0 12"/></svg>';
+const SPK = icon('radio'); // 오름 방송 (#184 아이콘 세트)
 const PAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" fill="#f4ecd8" stroke="#33302a"/><path d="M15 3v4h4M9 11h7M9 14.5h7M9 18h4" stroke="#33302a"/></svg>';
 const el = (tag, attrs = {}, html = '') => { const e = document.createElement(tag); Object.assign(e, attrs); if (html) e.innerHTML = html; document.body.append(e); return e; };
 const strip = el('div', { id: 'radio-strip', hidden: true }, `${SPK}<span class="rs-w"><span class="rs-t"></span></span>`); strip.setAttribute('aria-live', 'polite');
@@ -240,7 +241,9 @@ syncChip();
 
 /* ---------- 3. 칭호 ---------- */
 const BADGE = Object.fromEntries(BADGES.map((b) => [b.id, b]));
-const unlocked = (i) => !!ach.state.badges[TITLES[i]?.badge];
+const SET_BY = Object.fromEntries(OUTFIT_SETS.map((t) => [t.id, t]));
+const setOwned = (id) => !!SET_BY[id] && SET_BY[id].items.every((c) => save.clothes?.own?.[c]); // 한 벌 맞춤 칭호 (#179): 세 벌을 다 가짐
+const unlocked = (i) => (TITLES[i]?.set ? setOwned(TITLES[i].set) : !!ach.state.badges[TITLES[i]?.badge]);
 const titleShown = () => director.isOpen('title') || P.title >= 0; // 문(구역 3)이 열리기 전엔 칭호가 열려도 단추를 숨김
 function setTitle(i) {
   i = Number.isInteger(i) && i >= 0 && i < TITLES.length && unlocked(i) ? i : -1;
@@ -256,8 +259,9 @@ function buildTitles() {
   TITLES.forEach((t, i) => {
     const b = BADGE[t.badge], open = unlocked(i), it = document.createElement('button'); it.type = 'button';
     it.className = 'pt-it' + (open ? '' : ' locked') + (P.title === i ? ' on' : ''); it.disabled = !open;
-    it.innerHTML = `<span class="bdg" style="background:${b?.color || '#555'}">${iconSvg(BADGE_ICONS[b?.id] || BADGE_ICONS[b?.fam] || '')}</span><span><b></b><small></small></span>`;
-    it.querySelector('b').textContent = open ? t.t : '???'; it.querySelector('small').textContent = b ? b.desc : '';
+    const st = SET_BY[t.set];
+    it.innerHTML = `<span class="bdg" style="background:${b?.color || st?.fx || '#555'}">${iconSvg(BADGE_ICONS[b?.id] || BADGE_ICONS[b?.fam] || '')}</span><span><b></b><small></small></span>`;
+    it.querySelector('b').textContent = open ? t.t : '???'; it.querySelector('small').textContent = b ? b.desc : st ? `${st.name} 한 벌 세 벌을 모으면` : '';
     if (open) it.addEventListener('click', () => { setTitle(i); buildTitles(); toast(`칭호 '${t.t}' 를 달았어요`); });
     L.append(it);
   });

@@ -22,8 +22,8 @@ export function createFootprints({ scene, height, surfaceAt, low }) {
   let head = 0, side = 1, dirty = false;
   const m = new THREE.Matrix4(), nrm = new THREE.Vector3(), fwd = new THREE.Vector3(), rgt = new THREE.Vector3(), pos = new THREE.Vector3();
 
-  // 한 걸음 찍기: x,z 는 캐릭터 위치, heading 은 바라보는 각, gait 0 걷기·1 달리기·2 질주
-  function stamp(x, z, heading, gait) {
+  // 한 걸음 찍기: x,z 는 캐릭터 위치, heading 은 바라보는 각, gait 0 걷기·1 달리기·2 질주, big 크기 배 (장화 #167)
+  function stamp(x, z, heading, gait, big = 1) {
     side = -side;
     const sx = Math.sin(heading), cz = Math.cos(heading);
     const px = x + cz * F.side * side, pz = z - sx * F.side * side; // 앞(sx,cz)의 오른쪽 = (cz,-sx)
@@ -31,7 +31,7 @@ export function createFootprints({ scene, height, surfaceAt, low }) {
     nrm.set(height(px - e, pz) - height(px + e, pz), 2 * e, height(px, pz - e) - height(px, pz + e)).normalize();
     fwd.set(sx, 0, cz); fwd.addScaledVector(nrm, -fwd.dot(nrm)).normalize(); rgt.crossVectors(nrm, fwd);
     pos.set(px, hy + 0.05, pz);
-    const k = gait === 2 ? 1.12 : gait === 1 ? 1.05 : 1;
+    const k = (gait === 2 ? 1.12 : gait === 1 ? 1.05 : 1) * big;
     m.makeBasis(rgt.multiplyScalar(F.size[0] * k), nrm, fwd.multiplyScalar(F.size[1] * k)).setPosition(pos);
     im.setMatrixAt(head, m); im.instanceMatrix.needsUpdate = true;
     const onPath = surfaceAt(px, pz) !== 0;

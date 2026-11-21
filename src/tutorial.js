@@ -11,20 +11,21 @@ import { TUT, TANGERINE as TG, TOOLS, BAGS, WALL, SHOP_ST, GYUL_PICK } from './b
 import { nsAlong } from './namsongi.js';
 import { createPens } from './stonewall.js';
 import { drape } from './drape.js';
+import { ic } from './icons.js';
 
 // 토스트 아이콘 (viewBox 24, 선)
 const IC = {
-  zoom: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5M10.5 8v5"/>',
-  walk: '<path d="M8 20c-2 0-2.5-2-2-4l1-4c.5-2 3-2 3 0l-.5 4c-.2 2-.5 4-1.5 4zM16 12c-2 0-2.5-2-2-4l1-4c.5-2 3-2 3 0l-.5 4c-.2 2-.5 4-1.5 4z"/>',
-  run: '<circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2 1-5.5L17 15h3M9 11l2.5-3.5 4 1.5 2 3M5 12l3-1"/>',
-  hand: '<path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2 7-6 7s-6-3-6-6l-1-3a1.4 1.4 0 0 1 2.5-1L8 13"/>',
-  throw: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
-  dump: '<path d="M4 20V10l8-6 8 6v10z"/><path d="M8 20v-6h3v6M13 20v-6h3v6"/>',
-  gift: '<rect x="4" y="9" width="16" height="11" rx="2"/><path d="M12 9v11M4 13h16M12 9c-1-3-5-5-6-2s4 2 6 2c2 0 7 1 6-2s-5-1-6 2"/>',
-  tongs: '<path d="M8 3l3 18M13 3l-2 18"/><rect x="6.5" y="2" width="8" height="4" rx="1.5"/>',
-  bag: '<path d="M9 6a3 3 0 0 1 6 0"/><rect x="5" y="6" width="14" height="15" rx="4"/><rect x="9" y="13" width="6" height="4" rx="1"/>',
-  gate: '<path d="M5 21V5M19 21V5M3 9h18M3 14h18"/>',
-  ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  zoom: ic('zoom'),
+  walk: ic('walk'),
+  run: ic('run'),
+  hand: ic('pick'),
+  throw: ic('target'),
+  dump: ic('cleanhouse'),
+  gift: ic('gift'),
+  tongs: ic('tongs'),
+  bag: ic('bag'),
+  gate: ic('gate'),
+  ok: ic('check'),
 };
 // 할 일 한 줄: [보통, 더 쉬운 말]. PC 는 키 이름, 폰은 화면 버튼. 함수면 지금 상태로 고름
 const SAY = {

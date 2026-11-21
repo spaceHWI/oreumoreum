@@ -16,6 +16,7 @@ import { trash, life, player, hp } from './place.js';
 import { toast, updateStats, panelOpen, topFit, ach } from './hud.js';
 import { say, director } from './director.js';
 import { cam } from './camera.js';
+import { ic } from '../icons.js';
 
 // ---------- 저장 ----------
 const fresh = !save.lv || typeof save.lv !== 'object';
@@ -28,18 +29,18 @@ let saveT = 0; const persistSoon = () => { if (!saveT) saveT = setTimeout(() => 
 // ---------- 아이콘 (24 칸, 선) ----------
 const SV = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const AUG_ICON = {
-  bighand: SV('<path d="M7 12V6a1.5 1.5 0 0 1 3 0v5M10 10.5V4.5a1.5 1.5 0 0 1 3 0V11M13 10.5V5.5a1.5 1.5 0 0 1 3 0V12M16 12V9a1.5 1.5 0 0 1 3 0v5c0 4-2.8 7-6.8 7-2.8 0-4.6-1.4-6-3.6L3.6 14a1.5 1.5 0 0 1 2.4-1.8L7 13.5"/>'),
-  magnet: SV('<path d="M5 4h4v8a3 3 0 0 0 6 0V4h4v8a7 7 0 0 1-14 0z"/><path d="M5 8h4M15 8h4"/>'),
-  flower: SV('<circle cx="12" cy="8" r="2"/><path d="M12 4a2 2 0 1 1 0-.1M16 8a2 2 0 1 1 .1 0M12 12a2 2 0 1 1 0 .1M8 8a2 2 0 1 1-.1 0"/><path d="M12 12v9M12 17c-1.6 0-3.5-1-4.5-3"/>'),
-  recycle: SV('<path d="M8.5 8L12 3l3.5 5"/><path d="M10 3.6L7 9M19 14l2 3.5-2 3h-5"/><path d="M5 14l-2 3.5 2 3h5"/><path d="M17 12l-2 3.5M14 20.5l1.6-2.5M7 12l2 3.5"/>'),
-  twin: SV('<circle cx="8" cy="13" r="4.5"/><circle cx="16.5" cy="11" r="4.5"/><path d="M8 8.5c.4-1.4 1.2-2.3 2.4-2.8M16.5 6.5c.4-1.4 1.2-2.3 2.4-2.8"/>'),
-  burst: SV('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.3 5.3l2.8 2.8M15.9 15.9l2.8 2.8M18.7 5.3l-2.8 2.8M8.1 15.9l-2.8 2.8"/>'),
-  sour: SV('<path d="M4 18c0-6 3.5-11 9-11 4 0 7 2.6 7 6.4 0 3-2.3 5.1-5 5.1-2.4 0-4-1.6-4-3.6 0-1.7 1.2-2.9 2.8-2.9"/><path d="M3 21h18"/>'),
-  quick: SV('<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/>'),
-  bite: SV('<path d="M12 20.5s-7.5-4.6-9.6-9.4C1 7.8 3 4 6.7 4c2.2 0 3.6 1.2 5.3 3.1C13.7 5.2 15.1 4 17.3 4c1 0 1.9.3 2.6.8-1.2.3-2 1.3-2 2.5 0 1.2.8 2.2 2 2.5.3.1.7.2 1 .1-.2.4-.4.8-.6 1.2C19.5 16 12 20.5 12 20.5z"/>'),
-  light: SV('<path d="M3 17h10l4.5-4.5 3.5 1V17a2 2 0 0 1-2 2H3z"/><path d="M2 9h6M4 13h5M8 5h4"/>'),
-  jacket: SV('<path d="M12 3l7 3v5c0 4.6-3 8.1-7 10-4-1.9-7-5.4-7-10V6z"/><path d="M12 8v8M9 11h6"/>'),
-  deer: SV('<path d="M8 3v3.5L6 8.5M8 6.5l2.5 2M16 3v3.5l2 2M16 6.5l-2.5 2"/><path d="M8.5 10.5c0 5.5 1.6 10 3.5 10s3.5-4.5 3.5-10z"/><circle cx="12" cy="18" r=".6" fill="currentColor"/>'),
+  bighand: SV(ic('aug-bighand')),
+  magnet: SV(ic('magnet')),
+  flower: SV(ic('bloom')),
+  recycle: SV(ic('recycle')),
+  twin: SV(ic('twin')),
+  burst: SV(ic('burst')),
+  sour: SV(ic('sour')),
+  quick: SV(ic('quick')),
+  bite: SV(ic('bite')),
+  light: SV(ic('light')),
+  jacket: SV(ic('jacket')),
+  deer: SV(ic('deer')),
 };
 const BR = Object.fromEntries(AUGMENTS.branches.map((b) => [b.id, b]));
 const brColor = (id) => BR[AUG_BY[id].br]?.color || '#ff8a1f';
