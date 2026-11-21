@@ -1327,6 +1327,26 @@ export const CRASH = {
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
 };
 
+// 이용 통계 (#121): 클라이언트는 숫자만 세다가 flushS 마다·나갈 때 묶음 하나(sendBeacon)로 POST /m. 서버는 날짜별 합계만 (Accounts DO 표 mt)
+// 키: 'in' 같은 이름 또는 '이름:갈래'(sub 에 있는 이름만, 갈래는 [a-z0-9._-]). maxOf 는 합 대신 가장 큰 값
+export const METRICS = {
+  flushS: 300,        // 이만큼(초)마다 한 번 보냄 (+ pagehide·탭 숨김)
+  sampleS: 2,         // 화면 밖에서 상태를 훑는 간격(초). 프레임 안에서는 숫자 더하기만
+  maxBytes: 2000,     // 한 묶음 크기 상한 (넘는 키는 버림)
+  maxKeys: 80,        // 한 묶음 키 수 상한 (서버도 같은 값으로 자름)
+  maxV: 1e6, maxN: 1e4, // 한 키 값·횟수 상한 (서버)
+  dayKeys: 3000,      // 하루·출처마다 새 키 상한 (갈래가 무한히 늘지 않게)
+  keepDays: 90,       // 이 날짜보다 오래된 합계는 Cron 이 지움
+  viewDays: 14,       // 어드민 '수치' 표에 보이는 날짜 수
+  topR: 14,           // 정상 표지석에서 이만큼(m) 안이면 '정상 도착'
+  fpsCut: [20, 30, 45, 55], // 평균 fps 구간 (fps:0 = 20 밑 … fps:4 = 55 이상)
+  ptCut: [1, 5, 15],  // 한 번 플레이 시간 구간(분): pt1·pt5·pt15 = 그 시간을 넘긴 수
+  keys: ['in', 'new', 'ret', 'glog', 'play', 'pt1', 'pt5', 'pt15', 'fpick', 'pick', 'heap', 'dex', 'top', 'earn', 'spend', 'cart', 'down', 'peer', 'peermx', 'emote', 'chat', 'qdown', 'crash', 'fbopen', 'fbsend'],
+  sub: ['dev', 'ref', 'app', 'tut', 'zone', 'buy', 'ride', 'em', 'er', 'tier', 'fps'],
+  maxOf: ['peermx'],
+  srcs: ['live', 'dev', 'adm'], // 실서버 · 개발 서버(/dev/) · 어드민 계정
+};
+
 // 오류 알림 묶어 보기 (#122): 서버 GET /crashes?days= (로그인 없이). server/src/crashes.js
 export const CRASHES = {
   days: 3,            // 기본으로 보는 날 수
