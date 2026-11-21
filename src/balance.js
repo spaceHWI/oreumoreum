@@ -1417,7 +1417,7 @@ export const JOURNEY = {
     { id: 'tips', need: { tut: 1 }, after: null }, // #66 상황 팁 (튜토리얼 뒤)
     { id: 'fsTip', need: { tut: 1 }, after: 'tips' }, // #189 폰: 전체 화면으로 하는 법 (튜토리얼 직후 한 번, game/simple.js. PC·이미 전체 화면이면 안 열림)
     { id: 'mateSunja', need: { jeong: 1 }, after: 'tips' }, // #172 순자 삼춘 (정낭을 나서면). after 를 적어 둠: 바로 앞 fsTip 은 PC 에선 안 열림
-    { id: 'quest', need: { jeong: 1 } }, // #158 오름지기 첫 퀘스트
+    { id: 'quest', need: { jeong: 1 }, after: 'tips' }, // #158 오름지기 첫 퀘스트. after 를 적어 둠: 동료가 꺼지면(#190) 바로 앞 등록 문이 fsTip(PC 에선 안 열림)이 됨
     { id: 'heapNear', need: { jeong: 1 } }, // #160 들머리 더미
     { id: 'shopQuest', need: { dumps: 1 } }, // #158 장비점 주인 퀘스트 (첫 버리기 뒤)
     { id: 'level', need: { attacked: 1 }, count: 1 }, // #159 첫 레벨업과 증강
@@ -1729,7 +1729,9 @@ export const BOX_VIEW = { desk: 0.06, phone: 0.04 };
 // keep: 더미의 마지막 이만큼(비율)은 남김(다 치우는 연출·보상은 플레이어 몫. 서버도 같은 값으로 거름)
 // peers: 방에 사람이 [a] 명 넘으면 1명, [b] 명 넘으면 0명. low: 저사양(TIER 0) 최대 명 수
 // follow: '같이 가요' 시간(초)·뒤 거리(m). throw: 민수 던지기 간격(초)·사거리(m)·달려오는 거리(m). hurt: 맞으면 물러나는 시간(초)
+// on: false 면 동료를 모두 끔 (#190: 대화 창 깨짐으로 일단 뺌. 코드는 남김. 감독 문 mate* 도 등록 안 됨, 메뉴 '동료' 스위치 숨김)
 export const BUDDIES = {
+  on: false,
   list: [
     { id: 'sunja', name: '순자 삼춘', door: 'mateSunja', pick: 1.4, fight: 'flee', photo: 0, body: 'f', skin: 1,
       gear: { hair: 'hat:bun', hat: 'hat:w-straw', top: 'top:w-stripe', bottom: 'bottom:w-gal', shoes: 'shoes:slip', hand: 'hand:tongs', back: 'back:none' } },
