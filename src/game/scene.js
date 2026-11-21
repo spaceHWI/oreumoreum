@@ -42,7 +42,7 @@ state.glLost = false;
   });
   canvas.addEventListener('webglcontextrestored', () => {
     state.glLost = false; clearTimeout(lostT); $('gl-lost').hidden = true; crashNote('WebGL 되살아남');
-    setTimeout(() => { try { renderer.compileAsync(scene, camera).catch(() => {}); } catch (e) { /* 다음 그릴 때 준비됨 */ } }, 50);
+    setTimeout(() => { try { prepShaders().catch(() => {}); } catch (e) { /* 다음 그릴 때 준비됨 */ } }, 50);
   });
   $('gl-reload').addEventListener('click', () => location.reload());
 }
@@ -60,6 +60,18 @@ export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: 
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 export const camera = new THREE.PerspectiveCamera(SCREEN.fov, 1, 0.5, NSW ? NSW.camFar : 14000);
+// 셰이더 미리 준비 (#85, #171): three 의 compileAsync 는 기다리는 사이 재질이 버려지면(dispose: 모델이 와서 머리·옷을 갈아 끼울 때 등)
+// 그 재질의 프로그램이 없어져 'isReady' 오류로 멈춘다. 그래서 compile 로 시작만 시키고 기다리기는 여기서 한다: 버려진 재질은 기다릴 것이 없으니 뺀다
+export function prepShaders() {
+  const mats = renderer.compile(scene, camera);
+  return new Promise((done) => {
+    const check = () => {
+      for (const m of mats) { const prog = renderer.properties.has(m) ? renderer.properties.get(m).currentProgram : null; if (!prog || prog.isReady()) mats.delete(m); }
+      if (mats.size) setTimeout(check, 10); else done(scene);
+    };
+    if (renderer.extensions.get('KHR_parallel_shader_compile') === null) setTimeout(check, 10); else check();
+  });
+}
 setBlinkCamera(camera); // 먼 캐릭터는 깜빡임 생략 (#74)
 export function resize() {
   const w = window.innerWidth, h = window.innerHeight;

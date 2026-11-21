@@ -14,7 +14,7 @@ import { kstDate } from '../achievements.js';
 import { isEmote, EMOTE_BY } from '../emotes.js';
 import { state, late } from './state.js';
 import { $, wrapA, save, lookS, ab, persist, MAP_ID } from './save.js';
-import { renderer, quality, retro, post, scene, NSW, camera, resize, sun, applyQuality, fill, rim, SUN_DIR, clouds, wx, eoksaeMat, grass, motes, prints, spots, lamps, sunState, lampNight, applySky, sunEvent } from './scene.js';
+import { renderer, quality, retro, post, scene, NSW, camera, resize, sun, applyQuality, fill, rim, SUN_DIR, clouds, wx, eoksaeMat, grass, motes, prints, spots, lamps, sunState, lampNight, applySky, sunEvent, prepShaders } from './scene.js';
 import { benchPos, benchOut, life, cairns, layoutCairn, stepCairn, fillCairn, tickCairnLod, col, wallPl, wall, stream, jeongReady, jeong, openJeong, shopsBuilt, STN, SAL, LEAPB, buff, trash, CH, CHS, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, camTarget, followCam, titleCam, ease } from './camera.js';
 import { ui, topFit, toast, tickTips, tickPickMsg, updateStats, busy, ach, tickBanner, refreshAchUI } from './hud.js';
@@ -334,11 +334,11 @@ function step(now) {
   if (!warmed) { warmed = true; setTimeout(warm, 30); }
 }
 
-// 첫 화면 (#85): 첫 프레임이 그려지면 로고 화면이 떠 있는 동안 셰이더를 미리 준비(compileAsync)해 시작 버튼 뒤 멈칫함을 없애고,
+// 첫 화면 (#85): 첫 프레임이 그려지면 로고 화면이 떠 있는 동안 셰이더를 미리 준비(prepShaders)해 시작 버튼 뒤 멈칫함을 없애고,
 // 따로 받는 모델(assets.js)을 받기 시작한다. 모델이 와서 갈아 끼울 때마다 새 재질도 미리 준비
 let warmed = false;
 function warm() {
-  const prep = () => renderer.compileAsync(scene, camera).catch(() => {});
+  const prep = () => prepShaders().catch(() => {});
   prep().then(() => { state.shadersReady = true; onestore.ready(); }); // 첫 화면 준비 끝 → 원스토어 startGameAsync (#97)
   setTimeout(() => onestore.ready(), 3000); // 셰이더 준비가 늦어도 앱 로딩 화면이 오래 남지 않게
   startAssets();
