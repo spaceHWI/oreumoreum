@@ -49,6 +49,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | shop.js | 장비점 창(#128: 도구·배낭·무기 세 묶음, 폰은 탭)·사는 연출, 가게 안내(무엇을 어디서·`goShop(id)` 길 안내 → 도착하면 창·`shopGuide()` 메뉴/귤 칸), 살 수 있는 새 물건 점(지붕 간판·귤 칸, 본 것은 기기 localStorage), 미니맵 가게 아이콘, 내 가방 옷 줄(`buildWearRows`) |
 | look.js | 캐릭터 고르기·머리, 표지판, 탐방로 고르기 |
 | bag.js | 내 가방(#166): 배낭 칸·B·메뉴로 여는 한 창(`#wardrobe` 패널, 카메라 `cam.mode 'wardrobe'`), 탭 옷·무기·도구·배낭·탈것, 장비 점수·능력 4줄, 없는 것 [사러 가기]. `late.openBag(tab)`·`closeBag`·`bagRefresh`(예전 `openWardrobe`·`closeWardrobe`·`buildWardrobe` 이름도). 탈것·무기 고르기는 ride.js `chooseRide`·arms.js `chooseArm`. 확인 `node tools/bag.js` |
+| nickname.js | 이름 바꾸기(#162): 메뉴 '이름 바꾸기'·내 가방 이름 옆 버튼 → `#nickwin` 창. 처음 한 번 무료, 그다음 귤(`NICK`), 하루 한 번. 로그인했으면 `account.rename` → 서버 `POST /nick`, 손님은 `save.nickRen`. 처음 짓기는 look.js(캐릭터 고르기 이름 칸, `save.nickSet`). 확인 `node tools/nick.js` |
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |
@@ -68,6 +69,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
+| where.js | 지금 있는 곳 이름(#153): `placeAt(x, z)` 가게 앞·가게 거리·클린하우스·돌탑·정상 전망대·개울가·정낭·구역 문턱('능선 들머리')·구역 이름. 반경은 `balance.js PLACE`. update.js 가 0.3초마다 위쪽 칸(`#where`)에 씀, 확인 `__oreum.where` |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 
 규칙
@@ -103,7 +105,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 구역 우두머리·구역 완료 (#139): 우두머리는 적 하나(enemies.js `spawnBoss`: 모양 k 배·`e.boss`·`e.ctl` 이 패턴, `e.puppet` 이면 자리를 받은 대로, `e.remoteHurt` 면 피해를 방장에게). 수치 balance.js ZONE_BOSS. 방 메시지 roomcore `bs`(방장 → 모두)·`bh`(→ 방장)·`bd`(방장 → 돌하르방 zg), 따로 셈 NET.bossPerSec. 깨어나는 곳은 hp.js `startAt`. 느린 화면은 update.js `state.slowMo`·`slowK`
 - 탈것: rides.js · autowalk.js
   - 마차 모양 (#174): rides.js buildCartMesh(조랑말·콘테나 짐칸·줄무늬 천막·팻말·초롱, `fast` 면 말 둘 + 깃발 = `parkedFastCart`, zonedone.js 가 빠른 마차 팻말 뒤에 세움). 마부는 place.js `cartDriver`(buildRunner, 'ride' 자세, CART.driverR 안에서만 그림). 타는 자리 CART.seatPos·마부 자리 driverPos. 소리 audio.js `hoof`·`cartBell`. 확인 `node tools/cartshot.js [이름]` (HI=1 이면 높은 단계)
-- 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
+- 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js(이름 거르기 `nickOk`·`nickBad`, 목록은 nickwords.js, #162) · feedback.js · rank.js/rankday.js(랭킹 #11)
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - 오류 안전장치 (#108): crash.js — `main.js` 가 맨 먼저 `listenCrashes()`(error·unhandledrejection), `panels.js` 가 보낼 곳(POST /feedback, kind 'crash')을 붙임. `update.js frame()` 은 다음 프레임을 먼저 부르고 `step()` 을 try 로 돌림(오류 하나에 게임이 멈추지 않게). 적 한 마리 오류는 그 적만 지움(enemies.js), 적 모양 오류는 대신할 모양(enemymodels.js buildFallback). WebGL 화면 잃음은 scene.js(#gl-lost 안내 → 되살아남, 안 되면 다시 불러오기). 확인 `node tools/enemyrun.js [iphone|android|all] [--dead|--live]`
 - 오류 알림 읽기 (#122): 서버 `GET /crashes?days=3`(로그인·Origin 없이, server/src/crashes.js 가 버전+오류 글로 묶음, 내보내는 칸은 오류 글·버전·기기 종류·브라우저/OS·마지막 한 일만, 60초 캐시, 값은 balance.js CRASHES). 자리 찾기 `node tools/crashmap.js <버전> <main-해시.js:줄:칸>`(그 버전 커밋을 임시 worktree 에서 소스맵 켜고 dev·release 빌드해 해시가 같은 것으로 원래 파일·줄·함수)

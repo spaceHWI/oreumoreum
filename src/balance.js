@@ -1105,6 +1105,8 @@ export const DEER = {
   feedRetry: 8,      // 부탁한 노루가 이 초 안에 안 오면 다시 부탁할 수 있음
 };
 
+// 이름 (#162): 처음 지을 때·바꿀 때 글자 수. 바꾸기 값은 처음 한 번 무료, 그다음 price 부터 grow 배씩 (cap 에서 멈춤). 하루 perDay 번 (한국 날)
+export const NICK = { min: 2, max: 12, price: 2000, grow: 1.5, cap: 20000, perDay: 1 };
 export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
@@ -1559,3 +1561,6 @@ export const REC = {
   types: ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1,opus', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'],
   tag: '#오름오름',
 };
+// 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
+// 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
+export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };
