@@ -9,6 +9,7 @@
 //   node tools/econ.js --nosmoker  들머리 흡연자(#156) 없이 (비교용)
 //   node tools/econ.js --flow       하루 끝 흐름 확인만 (#137)
 //   node tools/econ.js --noaug      레벨은 세되 증강(#159)을 고르지 않음 (비교용. 기본은 벌이 증강을 먼저 고름: 큰손·분리수거 달인·가벼운 발·노루 친구)
+//   node tools/econ.js --norare     귀한 귤(#130) 없이 (비교용)
 //   node tools/econ.js --live       dist/test.html 을 띄워 더미 자리를 다시 뽑아 tools/econ-map.json 에 저장 (먼저 node build.mjs)
 // 가정 (모두 어림):
 // - 하루 시작엔 오름 전체가 가득 (접속 안 한 시간 ≥ DUMP.offlineMaxH)
@@ -72,6 +73,8 @@ async function main() {
   let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
+  const RG = await import('../src/raregyul.js'), NORARE = has('--norare'); // 귀한 귤 (#130): 쫓아낼 때 기댓값만큼 더함. --norare 로 빼고 견줌
+  const rgEV = (who, g, mx) => (NORARE ? 0 : RG.rareEV(who, g, mx));
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
   const FRONTS = has('--one') || !map.fronts ? [map.front] : map.fronts; // 가장 가까운 클린하우스 기준 (#78)
   const RUN = 10, DETOUR = 1.15, HAND_T = 1.0, BOSS_OVER = 1.5; // … , 우두머리: 맞히기만 한 시간 × 이만큼 (피하기·부하, tools/boss.js 로 잰 비율) // 달리기 속도(main.js), 길 굽이, 손 던지기 동작 시간(runner.js THROW.total)
@@ -149,7 +152,7 @@ async function main() {
   };
   function mobFight(kind, st) {
     const E = ENEMIES[kind], w = weaponOf(st), k = killOf(E.hp, w);
-    return { t: 3 + k.t, gy: E.reward.gyul + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
+    return { t: 3 + k.t, gy: E.reward.gyul + rgEV(kind, E.reward.gyul, B.ENEMY_DROP.max) + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) };
   }
 
   // 들판 떼 (#173): 구역 z(번호)·무기 단계 wt 로 들판에 있는 1초의 귤 (조각 포함, 탄 값 뺌)
@@ -233,7 +236,7 @@ async function main() {
         dumpT += r.t * S;
         while (dumpT >= DUMP.every) {
           dumpT -= DUMP.every; const truck = Math.random() < DUMP.truckP, def = truck ? DUMP.truck : DUMP.walker;
-          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); gainXp(LEVEL.xp.dumper); st.coins += def.reward - Math.ceil(k.gy); earned += def.reward - Math.ceil(k.gy); }
+          if (Math.random() < CHASE) { const k = killOf(def.hp, battle ? weaponOf(st) : WEAPONS[0]); add(6 + k.t); gainXp(LEVEL.xp.dumper); const g = def.reward + rgEV(truck ? 'truck' : 'walker', def.reward) - Math.ceil(k.gy); st.coins += g; earned += g; }
           else { const wts = zones.map((z, i) => DUMP.zoneBase + zoneClean(i)), sum = wts.reduce((a, c) => a + c, 0); let x = Math.random() * sum, i = 0; while (i < 4 && x > wts[i]) { x -= wts[i]; i++; } st.left[i] = Math.min(zones[i].n, st.left[i] + (truck ? 80 : DUMP.walker.amt)); }
         }
         // 몹

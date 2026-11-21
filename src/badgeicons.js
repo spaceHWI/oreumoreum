@@ -22,6 +22,7 @@ const B = {
   // #165 칭호가 열리는 업적
   'b-earn-10k': ['coins'], 'b-stare': ['eye'], 'b-unpaid': ['unpaid'], 'b-alien-cs': ['alien'], 'b-crow': ['crow'], 'b-hare-five': ['hareubang'],
   'b-dumper': ['trash-x'], 'b-guard-1': ['trees'], 'b-notes': ['notes'], 'b-ending': ['planet'],
+  'b-rare-gyul': ['gyul'], // #130 귀한 귤 넷
 };
 export const BADGE_GLYPH = Object.fromEntries(Object.entries(B).map(([k, [id]]) => [k, id]));
 export const BADGE_ICONS = Object.fromEntries(Object.entries(B).map(([k, [id, n]]) => [k, glyph(k, id) + (n ? num(n) : '')]));

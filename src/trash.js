@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES, RARE_GYUL } from './balance.js';
 import { zoneAt } from './zones.js';
 import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
@@ -24,6 +24,8 @@ FISH.species.forEach((f, i) => DEX_LIST.push({ id: `fish:${i}`, kind: 'fish', na
 FIELD.sight.list.forEach((s, i) => DEX_LIST.push({ id: `sight:${i}`, kind: 'sight', sk: s[1], name: s[2], rare: false, sec: 'sight' }));
 // 수수께끼 칸 (#168): 이야기 이벤트에서만 얻는 것 'story:번호' ('수상한 불빛' 의 외계 캔)
 DEX_LIST.push({ id: STORY_DEX.id, kind: 'story', name: STORY_DEX.name, rare: false, sec: 'story' });
+// 귀한 귤 칸 (#130): 적·투기꾼이 떨군 한라봉·천혜향·레드향·황금향 'gyul:id'. 처음 주우면 등록 (game/raregyul.js)
+RARE_GYUL.kinds.forEach((g) => DEX_LIST.push({ id: `gyul:${g.id}`, kind: 'gyul', name: g.name, rare: false, sec: 'gyul' }));
 
 // 더미 목록 (자리와 상관없이 정해지는 순서)은 src/heapdefs.js (서버와 같이 씀). 저장의 heaps[i] 가 이 순서
 
