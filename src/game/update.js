@@ -1,5 +1,6 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG } from '../balance.js';
+import { PERF, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG } from '../balance.js';
+import { shoeSpeed, bootsOn } from '../gearscore.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
 import { onestore } from '../onestore.js';
@@ -118,7 +119,7 @@ function updatePlayer(dt) {
   const slow = joy.active && p.joyMag < 0.6;
   let want, acc = 8;
   if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
-  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * SHOES[save.equip.shoes - 1].speed * buff.mul('speed') * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
+  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * buff.mul('speed') * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) : 0; // 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138)
   p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -139,7 +140,7 @@ function updatePlayer(dt) {
     countSteps(moved);
     checkViewpoint();
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
-  if (p.pose === 'sit') p.pos.y = mealS.on ? STN.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
+  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
     const cl = spots.clamp(nx, nz); if (cl) { nx = cl.x; nz = cl.z; }
@@ -159,7 +160,7 @@ function countSteps(moved) {
   p.strideAcc += moved;
   const stride = p.running ? 1.7 : 1.1;
   let n = 0;
-  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0); }
+  while (p.strideAcc >= stride) { p.strideAcc -= stride; p.steps++; save.totalSteps++; n++; const bt = bootsOn(save); sound.step(surfaceAt(p.pos.x, p.pos.z), p.running); if (bt && p.running) sound.squelch?.(); if (!p.air && !p.riding) prints.stamp(p.pos.x, p.pos.z, p.heading, p.running ? 1 : 0, bt ? BOOTS.print : 1); }
   if (n) ach.emit('steps', n);
 }
 function checkViewpoint() {

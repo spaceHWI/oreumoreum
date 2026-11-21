@@ -15,7 +15,7 @@ import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
 import { addClothes, clothAcc, slippers, dark, CLOTH_BUILD, COVER } from './clothes.js';
-import { CLOTHES, LOOK_COLORS } from './balance.js';
+import { CLOTHES, LOOK_COLORS, BOOTS } from './balance.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
 function dataGeo(D) {
@@ -186,6 +186,8 @@ Object.assign(ACCESSORIES, {
     build: (mat) => { const m = mat('main', '#c08a4a'), p = mat('pocket', '#8a6a3c');
       return G(M(new RoundedBoxGeometry(0.27, 0.27, 0.12, 3, 0.05), m, 0, 0.43, -0.155), M(new RoundedBoxGeometry(0.16, 0.1, 0.045, 2, 0.02), p, 0, 0.37, -0.22)); } },
   'shoes:slip': { slot: 'shoes', label: '쓰레빠', skin: true, build: slippers },
+  // 특별 신발 '고진의 파란장화' (#167): 밝은 파랑 고무장화, 윗단·밑창은 어두운 파랑
+  'shoes:boots': { slot: 'shoes', label: BOOTS.name, skin: true, covers: COVER.boots, build: (mat) => CLOTH_BUILD.boots(mat, { kind: 'boots', main: '#2f6fe0', acc: '#1d468f' }) },
 });
 addClothes(ACCESSORIES);
 // 처음 고르는 기본 옷 색 (#155): 기본 모자·반팔·반바지·쓰레빠의 색 바꾼 장비 'id~번호' (0번 = 원래 id). src/lookcolors.js 가 고름
@@ -197,7 +199,7 @@ LOOK_COLORS.shoes.forEach(([col], i) => { if (i) ACCESSORIES[`shoes:slip~${i}`] 
 export const TOOL_GEAR = ['hand:none', 'hand:tongs', 'hand:rake', 'hand:bigrake', 'hand:vacuum'];
 export const BAG_GEAR = ['back:bag1', 'back:bag2', 'back:bag3', 'back:bag4', 'back:bag5'];
 export const SHOE_GEAR = ['shoes:slip', 'shoes:s2', 'shoes:s3', 'shoes:s4', 'shoes:s5'];
-export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:empty' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] });
+export const equipGear = (eq) => ({ hand: TOOL_GEAR[(eq?.tool || 1) - 1] || TOOL_GEAR[0], back: eq?.bag === 0 ? 'back:empty' : BAG_GEAR[(eq?.bag || 1) - 1] || BAG_GEAR[0], shoes: eq?.boots === 2 ? 'shoes:boots' : SHOE_GEAR[(eq?.shoes || 1) - 1] || SHOE_GEAR[0] }); // 장화를 신었으면 장화 (#167)
 
 // 칸별 장비 목록 (옷장용)
 export const gearList = (slot) => Object.entries(ACCESSORIES).filter(([, a]) => a.slot === slot && !a.npc).map(([k]) => k);

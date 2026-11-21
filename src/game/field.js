@@ -9,6 +9,7 @@
 // (파일 순서는 src/modules.js: dump 뒤)
 import * as THREE from 'three';
 import { FIELD, ENEMY_DROP, ZONES, TRASH_TYPES, BAGS, POCKET } from '../balance.js';
+import { shoeTier } from '../gearscore.js';
 import { createField } from '../field.js';
 import { DEX_LIST } from '../trash.js';
 import { kstDay } from '../rankday.js';
@@ -112,7 +113,7 @@ late.fieldSlow = () => {
   if (!field) return 1;
   const p = player.pos; if (Math.abs(p.x - slowX) + Math.abs(p.z - slowZ) < 0.6) return slowK;
   slowX = p.x; slowZ = p.z;
-  slowK = trash.zoneAt(p.x, p.z) && surfaceAt(p.x, p.z) === 0 ? FIELD.off[Math.max(0, Math.min(FIELD.off.length - 1, (save.equip.shoes || 1) - 1))] : 1;
+  slowK = trash.zoneAt(p.x, p.z) && surfaceAt(p.x, p.z) === 0 ? FIELD.off[Math.max(0, Math.min(FIELD.off.length - 1, shoeTier(save) - 1))] : 1;
   return slowK;
 };
 

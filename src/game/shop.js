@@ -1,7 +1,7 @@
 // 장비점 창(도구·배낭·무기)·가게 안내(무엇을 어디서 사는지·길 안내)·살 수 있는 새 물건 점·사는 연출, 옷 (#128. #86 에서 main.js 를 나눔. 파일 순서는 src/modules.js, 규칙은 notes/prototype-v1.md 코드 구조)
 // 사는 것은 모두 가게 거리의 가게에서 (#128): 도구·배낭·무기 = 장비점, 옷·신발 = LEAP, 머리 = 루이네미장원, 탈것 = 탈것 가게, 식사 = 스톤
 // 어디서나 열리던 상점(메뉴·귤 칸)은 가게 안내 → 고르면 그 가게까지 자동 걷기(dump.js startAutoGo(dest)) → 도착하면 그 가게 창
-import { TOOLS, BAGS, POCKET, SHOES, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, BOOTS, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
 import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
 import { SHOP_ICON } from '../shops.js';
@@ -18,7 +18,7 @@ import { itemScore, scoreDiff, gyulPickR } from '../gearscore.js';
 import { LOOK_COLORS } from '../balance.js';
 import { colorDots, lcIndex } from '../lookcolors.js'; // 기본 옷 색 (#155)
 
-Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, gdBadge, scoreChip, goShop, shopGuide, gearTabs, fillGearShop, fillShopDir, shopOpened }); // 앞 파일에서 부르는 함수
+Object.assign(late, { openShop, spendFx, buyGear, wearCloth, buyCloth, wearBoots, buyBoots, gdBadge, scoreChip, goShop, shopGuide, gearTabs, fillGearShop, fillShopDir, shopOpened }); // 앞 파일에서 부르는 함수
 
 // ---------- 장비점 (#128) ----------
 // 세 묶음 도구·배낭·무기 (LEAP 이 없는 맵이면 신발도). 데스크톱은 한 화면에 나란히, 폰은 위쪽 큰 탭. 카드 = 그림·이름·능력 '지금 → 사면'·값 + 큰 [사기]
@@ -48,6 +48,7 @@ const TIER_ART = {
     '<path d="M2 9h15l2 2v3H9l-1 5H5l1-5H2zM19 10h3M19 12h3M19 14h3M8 9V6h5v3"/>', // 귤 머신건
     '<path d="M3 10h9v4H3zM12 11h2v2h-2M14 12h8M5 14l-1 5h3l1-5M7 7c1-2 3-2 4 0"/>', // 귤즙 레이저
     '<circle cx="11" cy="14" r="7"/><path d="M14 7l2-3M16 4l3 1M18 2v2M9 12c0-1 1-2 2-2"/>'], // 귤 폭탄
+  boots: '<path d="M8 2h7v11l3 1.5a2 2 0 0 1 1 1.8V19H6V2z"/><path d="M8 5h7M6 19v2h13v-2"/>', // 고진의 파란장화 (#167)
 }; late.TIER_ART = TIER_ART;
 const STAT_ICON = {
   per: '<circle cx="6" cy="16" r="2.5"/><circle cx="12" cy="8" r="2.5"/><circle cx="18" cy="16" r="2.5"/>', // 한 번에 몇 개
@@ -102,7 +103,7 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); return; }
   if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= next.price; save.equip[k] = i + 1; if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
+  save.coins -= next.price; save.equip[k] = i + 1; if (k === 'shoes' && save.equip.boots === 2) save.equip.boots = 1; /* 새 신발을 사면 장화를 벗음 (#167) */ if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
@@ -176,7 +177,8 @@ const seen = (() => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || 
 const SHOP_ITEMS = { // 가게마다 아직 안 가진 살 것 [{ key, price }]. 스톤(식사)은 늘 살 수 있어 점이 없음
   gear: () => gearKeys().flatMap((k) => GEAR_ROWS[k].list.map((t, i) => buyable(k, i) && { key: `${k}:${i + 1}`, price: t.price }).filter(Boolean)),
   leap: () => [...CLOTHES.filter((c) => LEAP.slots.includes(c.slot) && !CL.own[c.id]).map((c) => ({ key: 'c:' + c.id, price: wearPrice(c) })),
-    ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : [])],
+    ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : []),
+    ...(LEAPB && !save.equip.boots ? [{ key: 'shoes:boots', price: BOOTS.price }] : [])],
   salon: () => (save.look ? HAIR.list.filter((h) => !save.hairs[h.key]).map((h) => ({ key: 'h:' + h.key, price: h.price })) : []),
   ride: () => RIDES.list.filter((r) => !(save.rides.own || []).includes(r.id)).map((r) => ({ key: 'r:' + r.id, price: r.price })),
 };
@@ -248,6 +250,20 @@ late.shopIcons = (x, uv, s, inC) => {
 export function wearCloth(slot, id) {
   if (id) CL.wear[slot] = id; else delete CL.wear[slot];
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
+}
+// 고진의 파란장화 (#167): save.equip.boots 0 없음 · 1 가짐 · 2 신음. 벗으면 가진 단계 신발 중 가장 좋은 것
+export function wearBoots(on) {
+  if (!save.equip.boots) return;
+  save.equip.boots = on ? 2 : 1;
+  syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
+}
+export function buyBoots() {
+  if (save.equip.boots) return false;
+  if (save.coins < BOOTS.price) { toast(`귤이 ${BOOTS.price - save.coins}개 모자라요`); return false; }
+  save.coins -= BOOTS.price; save.equip.boots = 1; late.sound.coin?.(); ach.emit('clothes-buy'); ach.emit('clothes-buy-shoes'); ach.emit('boots-buy');
+  wearBoots(true); refreshDots();
+  toast(`${BOOTS.name} · 바로 신었어요`);
+  return true;
 }
 export function buyCloth(id) {
   const c = CLOTH[id]; if (!c || CL.own[id]) return false; const price = wearPrice(c);

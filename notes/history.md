@@ -1058,3 +1058,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티: 새 메시지 없음. 받는 쪽은 싸움 밖에서 bs 기운이 오르면 회복 중으로 봄
 - delay 20 → 30: 가장 먼 굼부리 클린하우스에서 처음 쓰러졌다 돌아오는 데 약 46초(직선·달리기), 연달아 4번째면 약 71초
 - tools/boss.js: #176 감독이 우두머리 알림을 차례로 내보내 구역 요약 창이 늦게 뜸 → 기다리는 시간을 늘림(느린 헤드리스). online.js 의 '노루에 걸터앉아 같이 움직임' 실패는 이 작업 전 dev 에서도 같음(차이 4.56m)
+
+## #167 고진의 파란장화·만족한상회
+- 장화: `balance.js BOOTS`(이동 ×1.35, 점수·풀밭 느림은 4단계, 값 GROWTH.price[4]). 단계 줄 밖 특별 신발. 저장 `save.equip.boots` 0 없음·1 가짐·2 신음 (서버 validate 도 같은 칸, 신고 벗기는 공짜)
+- 신발 빠르기·단계는 `gearscore.js shoeSpeed·shoeTier·bootsOn` 한곳 (update·bag·field·점수). 겉모습 `shoes:boots`(clothes.js `boots`, 무릎 아래 파란 고무장화) → 옷 묶음(#115)으로 남에게도 보임
+- LEAP 신발 칸 맨 끝 카드, 내 가방 신발 줄에도. 가진 단계 신발을 누르면 장화를 벗음, 새 신발을 사도 벗음. 달리면 '철벅'(audio `squelch`), 발자국 ×1.25
+- 덤(젖은 땅 느림 면제)은 젖은 땅 느림 처리가 없어 뺌
+- 만족한상회: 가게 거리 6번 터(골목 끝, 스톤과 5m 넘게 떨어짐). `src/manjok.js` 코드로 만든 돌집·파란 함석 지붕·처마 갈치·평상 둘·붓글씨풍 간판(글자만). 지붕 간판·가장자리 표시는 수저 아이콘
+- 식당 공통 틀: `game/stores.js MEAL_SHOPS`(건물 api + 메뉴 표), `mealS.api/cfg`. 메뉴는 `balance.js MANJOK`, 버프 찾기는 `MEALS`(두 식당). 버프 새 종류 guard(받는 피해)·gyulR(귤 모으는 범위 m)·also(두 가지, 통갈치한상) → `buff.add(kind)`
+- 첫 식사 무료(#93)는 두 식당 공통 한 번. 식사 업적 이벤트 'meal' 은 두 식당 모두, 만족한상회는 'meal-manjok' 도
+- 확인 `node tools/manjok.js [--shot]`

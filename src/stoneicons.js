@@ -7,6 +7,12 @@ export const FOOD_SVG = {
   pizza: '<circle cx="32" cy="36" r="24" fill="#e1b064"/><circle cx="32" cy="36" r="20" fill="#d94b2b"/><g fill="#fff6e0"><circle cx="25" cy="30" r="4"/><circle cx="39" cy="31" r="3.6"/><circle cx="33" cy="43" r="4.2"/><circle cx="22" cy="42" r="3"/></g><g fill="#3d9a4a"><ellipse cx="30" cy="36" rx="2.6" ry="1.4" transform="rotate(-30 30 36)"/><ellipse cx="41" cy="40" rx="2.6" ry="1.4" transform="rotate(20 41 40)"/><ellipse cx="27" cy="26" rx="2.4" ry="1.3"/></g><path d="M32 12v48M8 36h48" stroke="#b9853f" stroke-width="1" opacity=".5"/>',
   salad: plate + '<g fill="#6fae4a"><path d="M16 38c2-7 9-9 14-6-4 5-9 8-14 6z"/><path d="M48 38c-2-7-9-9-14-6 4 5 9 8 14 6z"/><path d="M24 33c3-6 13-6 16 0-5 3-11 3-16 0z" fill="#8cc35a"/></g><g fill="#fffaf0"><circle cx="28" cy="38" r="3.2"/><circle cx="36" cy="37" r="2.8"/><circle cx="32" cy="41" r="2.4"/></g><circle cx="22" cy="35" r="1.8" fill="#d8352a"/><circle cx="42" cy="36" r="1.8" fill="#d8352a"/>',
   ade: '<ellipse cx="32" cy="56" rx="14" ry="4" fill="#000" opacity=".18"/><path d="M20 16h24l-3 38a3 3 0 0 1-3 3H26a3 3 0 0 1-3-3z" fill="#ffffff" opacity=".25"/><path d="M21.5 27h21l-2 26a3 3 0 0 1-3 3H26.5a3 3 0 0 1-3-3z" fill="#c2416b"/><rect x="26" y="30" width="6" height="6" rx="1" fill="#fff" opacity=".55"/><rect x="33" y="36" width="5" height="5" rx="1" fill="#fff" opacity=".45"/><path d="M36 6l-4 24" stroke="#f7f5ee" stroke-width="2.4" stroke-linecap="round"/><circle cx="42" cy="24" r="5" fill="#7a2b4f"/><path d="M42 19c1-2 3-3 5-3" stroke="#3d9a4a" stroke-width="1.6" fill="none"/>',
+  // 만족한상회 (#167): 갈치·고등어·게장 (아이콘풍, 실제 사진 아님)
+  manjok: '<ellipse cx="32" cy="42" rx="27" ry="13" fill="#3a3330"/><ellipse cx="32" cy="40" rx="22" ry="9.5" fill="#c8452c"/><g fill="#e9e6df" stroke="#b9b4aa" stroke-width="1"><path d="M14 38c6-5 16-6 24-3l4-3-1 5 1 5-4-3c-8 3-18 2-24-1z"/></g><circle cx="20" cy="38" r="1.2" fill="#2b2b33"/><g fill="#7ab05a"><rect x="40" y="35" width="8" height="2" rx="1" transform="rotate(-20 44 36)"/><rect x="36" y="42" width="7" height="2" rx="1" transform="rotate(15 40 43)"/></g><circle cx="46" cy="42" r="2.4" fill="#f2c94c"/>',
+  tonggalchi: '<rect x="6" y="28" width="52" height="24" rx="6" fill="#3a3330"/><rect x="9" y="31" width="46" height="18" rx="5" fill="#b83a26"/><path d="M10 40c10-6 30-7 40-2l5-4v12l-5-4c-10 5-30 4-40-2z" fill="#e9e6df" stroke="#b9b4aa" stroke-width="1"/><circle cx="15" cy="39" r="1.3" fill="#2b2b33"/><path d="M20 37v6M27 36v8M34 36v8M41 37v6" stroke="#c9c3b8" stroke-width="1"/><circle cx="50" cy="20" r="6" fill="#f4f1ea"/><circle cx="50" cy="20" r="4" fill="#fff"/>',
+  galchigui: '<ellipse cx="32" cy="40" rx="27" ry="14" fill="#f4f1ea"/><path d="M12 40c8-6 26-7 36-3l6-4-1 7 1 7-6-4c-10 4-28 3-36-3z" fill="#d9c9a8" stroke="#a8946a" stroke-width="1.2"/><path d="M20 36l3 8M27 35l3 9M34 35l3 9M41 36l2 7" stroke="#7a5a32" stroke-width="1.6" stroke-linecap="round"/><circle cx="17" cy="39" r="1.3" fill="#2b2b33"/><path d="M46 47c3 1 6 0 7-2" stroke="#f2c94c" stroke-width="3" stroke-linecap="round"/>',
+  godeungeo: '<ellipse cx="32" cy="40" rx="27" ry="14" fill="#f4f1ea"/><path d="M12 40c6-8 26-9 34-3l7-5v16l-7-5c-8 6-28 5-34-3z" fill="#8a7a5a"/><path d="M16 37c8-4 18-5 28-1" stroke="#3d5a6a" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M22 41l4 3M30 40l4 4M38 41l3 3" stroke="#5a4a32" stroke-width="1.6" stroke-linecap="round"/><circle cx="17" cy="39" r="1.5" fill="#2b2b33"/>',
+  hwanggae: '<ellipse cx="32" cy="44" rx="26" ry="11" fill="#3a3330"/><ellipse cx="32" cy="42" rx="21" ry="8" fill="#5a2e1a"/><path d="M18 40c2-9 26-9 28 0c-4 5-24 5-28 0z" fill="#e0902c"/><circle cx="32" cy="39" r="5" fill="#f2c94c"/><g stroke="#e0902c" stroke-width="2.4" stroke-linecap="round"><path d="M18 40l-6-6-2 3M46 40l6-6 2 3M21 43l-5 3M43 43l5 3"/></g><circle cx="28" cy="34" r="1.3" fill="#2b2b33"/><circle cx="36" cy="34" r="1.3" fill="#2b2b33"/>',
 };
 // 버프 아이콘 (24, 선)
 export const BUFF_ICON = {
@@ -14,8 +20,13 @@ export const BUFF_ICON = {
   bag: '<path d="M7 8h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM9 8V6a3 3 0 0 1 6 0v2M12 12v5M9.5 14.5h5"/>',
   dmg: '<circle cx="10" cy="14" r="6"/><path d="M10 8c0-2 1-3 3-4M15 10l6-6M18 4h3v3"/>',
   pick: '<path d="M12 3v11M7 21l5-7 5 7M17 4l3 3M20 4l-3 3"/>',
+  guard: '<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12h6"/>',
+  gyulR: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M5.6 18.4l2-2M16.4 7.6l2-2"/>',
   regen: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M12 10v5M9.5 12.5h5"/>',
 };
 export const FORK_KNIFE = '<path d="M7 3v7a2 2 0 0 0 4 0V3M9 3v18M17 21V3c-2 1-3 4-3 8h3"/>';
 // 버프 수치 글자: +20%, ×2
-export const buffText = (m) => (m.buff === 'regen' ? `×${m.v}` : `+${Math.round(m.v * 100)}%`);
+// guard 는 -20%, gyulR 은 +1m. also(같이 붙는 버프)는 ' · 이동 +10%' 처럼 뒤에
+const ALSO_WORD = { speed: '이동', dmg: '피해', pick: '줍기', bag: '배낭' };
+const one = (k, v) => (k === 'regen' ? `×${v}` : k === 'guard' ? `-${Math.round(v * 100)}%` : k === 'gyulR' ? `+${v}m` : `+${Math.round(v * 100)}%`);
+export const buffText = (m) => one(m.buff, m.v) + Object.entries(m.also || {}).map(([k, v]) => ` · ${ALSO_WORD[k] || k} ${one(k, v)}`).join('');
