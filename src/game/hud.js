@@ -118,7 +118,7 @@ function gyulTick() {
 export function gyulExpect(n) { expected += n; } // 곧 얻을 귤 (효과가 나중에 따로 옴)
 export function gyulFx(n) { const f = Math.min(n, future); future -= f; covered += n - f; gyulCheck(); } // 효과가 n 만큼 맡음
 export function gyulLand(n, plus) {
-  held = Math.max(0, held - n); countTo(Math.max(0, save.coins - held)); // 닿음: 톡 커지고 숫자가 셈
+  held = Math.max(0, held - n); countTo(Math.max(0, save.coins - held)); late.lvLand?.(n); // 닿음: 톡 커지고 숫자가 셈, 레벨 띠도 (#202)
   const g = document.querySelector('.gyul'); if (g) { g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); }
   if (plus && n > 0) { const r = (g || $('gyul-pill')).getBoundingClientRect(), el = document.createElement('div'); el.className = 'fx-plus'; el.textContent = `+${n}`; el.style.left = (r.left + 40) + 'px'; el.style.top = (r.top + 34) + 'px'; document.body.append(el); setTimeout(() => el.remove(), 1000); }
 }

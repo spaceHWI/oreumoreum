@@ -57,7 +57,7 @@ const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLef
 const tut = createTutorial({ save, persist, player, isTouch, camDist: () => cam.zoomed, gyulR: () => gyulPickR(save), toast, // #151 확대 단계·귤 모으는 범위·정낭 안내
   onGyul: (at) => { save.coins += 1; persist(); updateStats(); sound.coin?.(); coinFx(at, 1); }, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH,
   col, low: LOW, addTargets: life.addTargets, sound, juice: (p, d) => life.juiceSplash(p, d), ctxIc: () => state.ctxTarget?.ic, shopTab: gearTabNow, // #62 과녁·눌러야 할 곳, #100 칸 돌담
-  onTop: topStack, onCoins: updateStats, // #100 위쪽 토스트 자리 맞추기, 모자란 귤 채움
+  onTop: topStack, onCoins: (gap) => { if (gap > 0) late.notEarned?.(gap); updateStats(); }, // #100 위쪽 토스트 자리 맞추기, 모자란 귤 채움
   onDone: () => { updateTrashUI(false); wx.calm(false); if ($('dev-tut')) $('dev-tut').hidden = true; } }); late.tut = tut;
 wx.calm(!!NS_TUT && tut.active); // #100 튜토리얼 동안은 맑음 (날씨 이벤트 없음)
 if (NS_TUT && tut.active) document.body.classList.add('tut');

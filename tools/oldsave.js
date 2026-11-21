@@ -1,5 +1,6 @@
 // 예전·깨진 저장으로 들어와도 오류가 없는지 (#16). node tools/oldsave.js
 const { chromium } = require('playwright');
+const OLD_XP = (L) => { let x = 0; for (let i = 1; i < L; i++) x += Math.round(70 * i ** 1.6); return x; }; // #159 곡선으로 레벨 L 에 닿는 경험치
 const SAVES = {
   empty: {},
   v0: { nick: '예전 사람', coins: 321, equip: { tool: 3 }, outfit: { hat: { type: 'cap', color: '#222222' } }, owned: { 'shirt:tee:#ff0000': 1 }, totalSteps: 999, nsV1: 1, ach: { done: {} } },
@@ -31,6 +32,9 @@ const SAVES = {
   // #125: 예전 '오늘의 업적 5개' 기록 · 깨진 이어 오기
   dailyOld: { nick: '예전 업적', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, ach: { daily: { date: '2026-11-21', items: [{ id: 'd-trash-50', prog: 9, done: false, claimed: false }, { id: 'd-sit', prog: 1, done: true, claimed: false }] }, life: { trash: 5 }, badges: {}, allDays: 2, lastAll: '2026-11-19' } },
   dailyBad: { nick: '깨진 할 일', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, ach: { daily: { date: 7, items: [null, 3, { id: 't-photo', prog: 'x' }] }, run: { n: 'q', last: [], got: 'x' }, life: {}, badges: {} } },
+  // #202: 옛 경험치(#159 곡선) 레벨 13·증강 12개 → 번 귤 경험치로 바꿔도 레벨 13 이상·증강 그대로 · 기록이 많은 옛 저장은 기록으로 어림
+  lvOld13: { nick: '옛 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(13) + 5, aug: { recycle: 3, bighand: 3, twin: 3, burst: 3 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 100 }, badges: {} } },
+  lvOldRich: { nick: '옛 부자', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(5), aug: { recycle: 1 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 120000, pickup: 30000 }, badges: {} } },
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
 };
 (async () => {
@@ -51,6 +55,9 @@ const SAVES = {
     if (errs.length || st.fail || !(f2 > (st.frames || 0))) bad++;
     if (!st.step || (st.srv && st.srv !== 'battle')) { bad++; console.log(name, '서버 고르기 흔적·clean 이 남음'); }
     if (name === 'style') { const c = await p.evaluate(() => ({ g: window.__oreum.save.outfit.gear.hat, t: window.__oreum.save.clothes.tint, w: window.__oreum.save.clothes.wear })).catch(() => ({})); if (!(c.g === 'hat:s-beanie~4' && Object.keys(c.t || {}).join() === 'hat:s-beanie' && !c.w?.vest)) { bad++; console.log(name, '겉모습 옷 저장 바로잡기 실패', JSON.stringify(c)); } } // #179
+    if (name.startsWith('lvOld')) { const L = await p.evaluate(() => { const o = window.__oreum; return { ...o.level.state(), v: o.save.lv.v }; }).catch(() => ({}));
+      const want = name === 'lvOld13' ? (L.lv >= 13 && L.aug.recycle === 3 && L.aug.burst === 3 && Object.keys(L.aug).length === 4) : (L.lv >= 12 && L.aug.recycle === 1); /* 부자: 번 귤 15만 → 레벨 12 이상 (#202 곡선) */
+      if (!(want && L.v === 2)) { bad++; console.log(name, '옛 레벨 바꾸기 실패', JSON.stringify({ lv: L.lv, xp: L.xp, aug: L.aug, v: L.v })); } else console.log(name, `레벨 ${L.lv} · 경험치(번 귤) ${L.xp} · 증강 ${JSON.stringify(L.aug)}`); }
     if (name === 'questVet' && st.qnext !== 'heap3') { bad++; console.log(name, '옛 저장 퀘스트 건너뛰기 실패', st.qnext); } // #158
     if (name === 'clean' && !(st.coins === 4321 && st.equip.tool === 3 && st.equip.weapon === 2 && st.total === 900 && st.slots.join() === 'battle' && st.rkAll?.battle === 900 && !('clean' in st.rkAll))) { bad++; console.log(name, '옮기기 실패'); }
     if (name === 'loot' && !(st.mats?.r2 === 2 && st.mats?.m3 === 4 && !('m1' in st.mats) && !('zz' in st.mats) && st.up?.tool?.g === 3 && st.up.tool.e === 5 && st.nloot <= 2)) { bad++; console.log(name, '전리품 저장 바로잡기 실패'); }
