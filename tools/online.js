@@ -229,6 +229,16 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const c2 = await A.p.evaluate(() => window.__oreum.save.coins);
     ok(c2 <= c1 + NET.earnBurst + Math.ceil(undo.kept * per * 0.1) + NET.earnPerSec * 30, `10만 귤 부풀리기 바로잡힘 (${c1} + 100000 → ${c2})`);
   }
+  { // 서버가 아는 귤 (#188): 깎이면 알림·의견에 붙일 정보, 저장해 둔 전설 장비를 팔면 안 깎임
+    const cut = await A.p.evaluate(() => window.__oreum.save.lastCut);
+    ok(cut && cut.n > 0 && cut.before > cut.after, `깎이면 알림 정보가 남음 (-${cut?.n})`);
+    const it = { s: 'weapon', t: 6, g: 3, e: 5 };
+    await A.p.evaluate((it) => { const o = window.__oreum; o.save.lootAuto = 0; o.save.loot.push(it); return o.online.account().push(); }, it); await wait(A.p, 800);
+    const s0 = await A.p.evaluate(() => window.__oreum.save.coins);
+    const v = await A.p.evaluate(() => { const o = window.__oreum, i = o.save.loot.findIndex((x) => x.t === 6 && x.g === 3 && x.e === 5); const v = o.loot.sell(i); o.online.account().push(); return v; }); await wait(A.p, 1200);
+    const s1 = await A.p.evaluate(() => ({ c: window.__oreum.save.coins, sold: window.__oreum.save.sold }));
+    ok(v > NET.earnBurst && s1.c === s0 + v && !s1.sold, `가진 전설 무기를 팔면 서버가 그 귤을 인정 (+${v}, 몫 ${NET.earnBurst} 넘음)·판 것 목록 비움`);
+  }
   // 랭킹 (#11): 버리면 저장을 바로 보내고 오늘 순위가 오르면 토스트, 순위표에 내 줄, 손님은 이 기기 기록만
   await wait(A.p, 4000); // 앞의 줍기 몫(초당 takePerSec)이 지나가게
   const nick = await A.p.evaluate(() => { const o = window.__oreum; o.save.nick = '랭킹확인' + (Date.now() % 1000); const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); return o.save.nick; });

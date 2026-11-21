@@ -14,6 +14,7 @@ import { openLook, introMap, switchMap } from './look.js';
 import { sound, setSoundUI } from './hooks.js';
 import { createRank } from '../rank.js';
 import { SKIN_TONES } from '../runner.js';
+import { VERSION } from '../version.js';
 
 // 첫 화면 (#72): 시작 → 입장 (#98: 서버 고르기 없음, 전투 오름 하나). 소리는 기본 켬, 메뉴에서 끄면 기억함
 function closeIntro() {
@@ -39,10 +40,17 @@ $('enter').disabled = false; $('enter').removeAttribute('aria-busy'); // 게임�
 // 손님 기록 7일 (#94): 지워졌으면 첫 화면에 한 줄, 메뉴에 남은 날짜 (열 때마다 마지막 접속이 갱신돼 NET.keepDays 로 돌아감)
 if (guestExpired) $('intro-expired').hidden = false;
 if (!loggedIn()) { const left = Math.max(0, Math.ceil(((Number(save.lastSeen) || Date.now()) + NET.keepDays * 864e5 - Date.now()) / 864e5)); $('guest-days').textContent = `기록 보관 ${left}일 남음`; $('m-guest').hidden = false; }
+// 귤 맞춤 알림 (#188): 서버가 귤을 깎으면 조용히 덮어쓰지 않고 알림. 의견 보내기에 이 정보가 붙음 (panels.js cutNote, 하루 동안)
+function cutNotice(c, before, after) {
+  save.lastCut = { n: c.n, why: String(c.why || ''), before, after, at: Date.now(), ver: VERSION }; persist();
+  toast(`귤 ${c.n.toLocaleString()}개가 서버 기록과 달라 맞췄어요. 잘못 깎였다면 의견 보내기로 알려 주세요`, 7);
+  const ch = $('fb-chip'); if (ch) { ch.classList.remove('hop'); void ch.offsetWidth; ch.classList.add('hop'); setTimeout(() => ch.classList.remove('hop'), 3000); }
+}
 // 멀티 서버 계정 (#7): 서버 주소가 있을 때만. 첫 화면에 베타 안내·구글 로그인, 메뉴에 남은 날짜·로그아웃·내 기록 지우기
 if (ONLINE) {
-  state.account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => state.sessionOn,
-    onFix: (f) => { if (f.coins != null && f.coins !== save.coins) { save.coins = f.coins; updateStats(); toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; if (f.mealFree) save.mealFree = 1; if ('season' in f) { if (f.season) save.season = f.season; else delete save.season; late.season?.fixed(); } writeLocal(); } });
+  state.account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => state.sessionOn, ver: VERSION,
+    onGift: (g) => { save.coins += g.n; persist(); updateStats(); late.sound?.coin?.(); late.gyulShower?.(g.n); toast(`운영자가 귤 ${g.n.toLocaleString()}개를 보냈어요${g.why ? ': ' + g.why : ''}`, 5); }, // #188
+    onFix: (f) => { if (f.coins != null && f.coins !== save.coins) { const before = save.coins; save.coins = f.coins; updateStats(); if (f.cut?.n > 0) cutNotice(f.cut, before, f.coins); else toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; if (f.mealFree) save.mealFree = 1; if ('season' in f) { if (f.season) save.season = f.season; else delete save.season; late.season?.fixed(); } writeLocal(); } });
   document.querySelector('.intro-beta')?.setAttribute('hidden', '');
   mountLogin({ box: $('acct-box'), enterBtn: $('enter'), account: state.account, localSave: save, hasProgress: save.coins > 5 || (save.trash?.total || 0) > 0 || !!save.tut?.done, toast });
   const syncAcct = () => { $('m-acct').hidden = !state.account.loggedIn; $('acct-days').textContent = `기록 보관 ${state.account.daysLeft()}일 남음`; if (state.account.admin) enableDev(); }; // 서버 어드민이면 개발자 메뉴 (#84)

@@ -1167,3 +1167,16 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 가이드 퀘스트(#158)와 잇기: balance.js `QUESTS.side` 에 'st-mom'·'st-pair'·'st-night'·'st-howl'·'st-meet'·'st-sign'·'st-ufo' (오름지기에게 이야기하기, 귤 5). game/quest.js 의 셈·need 에 'story:id' (그 이벤트를 끝냈나) 를 더함
 - 확인: `__oreum.story.play('mom')` 등, `tools/fight.js mom`, `tools/econ.js`(보상 합 5% 아래), `tools/online.js`(엔딩 같이 보기)
 
+## #188 [긴급] 귤이 사라짐: 서버가 몫을 알게·기록·돌려주기
+- 서버가 아는 귤: `server/src/earn.js recognize` 가 저장의 기록으로 몫을 인정해 bank(#144)에 더함 (늦게 주운 귤 알갱이도 다음 저장에서 받음)
+  - 전리품 팔기: 클라이언트가 `save.sold`(판 것 목록, src/loot.js `noteSold`, 서버가 받으면 보낸 만큼 지움)를 실음. 지난 저장의 loot·입은 장비에 있던 것은 `sellValue` 그대로, 없던 것은 새로 떨어진 것(강화 0·그 칸 단계 이하)으로 보고 통 `NET.earnRec.fresh`(30개, 30초에 1개)·전설 `legend`(3개, 20분에 1개) 안에서만
+  - 퀘스트: `quest.done` 에 새로 든 것(skip 제외)의 보상 귤, 계정마다 퀘스트 하나에 한 번(acc.cred.q, 처음부터 다시 해도 두 번 안 받음), 한 저장에 6개까지
+  - 우두머리 `boss.done` 증가(구역마다 1500초에 한 번)·소굴 `field.den` 새로 닫은 시각(소굴마다 1500초)·보물 `field.tr.got`(서버 날짜 하루에 한 번)·볼거리 `field.sight`(한 번)
+  - 업적·적·낚시·첫 보너스 등 기록이 없는 것은 그대로 credit
+- 깎을 때: 표 clamp 에 한 줄(시각·계정·닉네임·깎인 양·앞/요청/뒤 귤·까닭·버전·몫), 30일 보관, `GET /admin/clamps`(어드민만). 오류 모으기(fb kind crash)에도 `[귤 맞춤 server] …` 한 줄(닉네임·계정 번호 없이 → /crashes 2시간 점검이 알아챔)
+  - 클라이언트: '귤 ○개가 서버 기록과 달라 맞췄어요. 잘못 깎였다면 의견 보내기로 알려 주세요' + 의견 버튼 통통, 하루 안에 보내는 의견 글 끝에 `[귤 맞춤] -n (까닭) 앞 → 뒤 · 시각 · 버전` 이 붙음(save.lastCut)
+- 돌려주기: 어드민 설정 '귤 맞춤·보내기' 패널(깎인 기록을 누르면 계정 번호·양이 보내기 칸에 들어감), `POST /admin/grant {sub, n, why}`(어드민만, 1~`NET.grantMax`). 받는 사람은 `/me`·`/save` 응답 gifts 로 받아 '운영자가 귤 ○개를 보냈어요: 사유' 와 귤, 받은 id 는 save.giftGot → 다음 저장에서 서버가 그 몫을 받아 주고 받은 것으로 침(한 번만). `GET /admin/grants` 로 보낸 기록·받았나
+- 남은 것: `NET.earnBurst` 는 아직 20000 그대로. 새 클라이언트가 실서버에 나가고 하루 지나서 6000 으로 낮춘다(이슈 확인 항목, 그 전에 `tools/econ.js` 흐름에서 깎임 0 확인). 옛 클라이언트(판 것 목록을 안 보냄)는 credit 으로만
+- 20:27 ~ 긴급 조치 사이에 깎인 사람은 기록이 없어 찾을 수 없음 → 신고한 사람부터 계정 번호로 보내기
+- 확인: `node tools/sec.js` 89/89(전설 팔기 안 깎임·꾸민 판 것 거절·새 전설 3개까지·퀘스트 두 번 거절·우두머리 늦게 주워도 받음·같은 우두머리 1500초·/admin 403·깎임 기록·/crashes 한 줄·보낸 귤 한 번만), `node tools/online.js`(깎임 알림 정보·가진 전설 무기 팔기 +40500 인정)
+

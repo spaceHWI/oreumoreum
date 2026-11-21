@@ -11,6 +11,7 @@ import { RANGES, SRVS } from '../../src/rankday.js';
 import { verifyGoogle, signSession, readSession, ipKey } from './auth.js';
 import { cleanItems, sendMail } from './feedback.js';
 import { groupCrashes } from './crashes.js';
+import { cleanText } from '../../src/safetext.js';
 export { Room } from './room.js';
 export { Accounts } from './accounts.js';
 
@@ -146,7 +147,7 @@ export default {
         const s = await who(); if (!s) return json({ error: 'login' }, 401);
         const body = await readJson(req, NET.saveMax + 4096);
         if (!body || typeof body.save !== 'object') return json({ error: 'bad save' }, 400);
-        return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub) }));
+        return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub), ver: cleanText(body.ver, 20) }));
       }
       // 랭킹 (#11): 로그인한 사람만. GET /rank?range=day|week|all → 위 RANK.top 명 + 내 순위, GET /rank/me?srv= → 내 순위 셋
       if ((url.pathname === '/rank' || url.pathname === '/rank/me') && req.method === 'GET') {
@@ -174,6 +175,22 @@ export default {
         if (!(env.STATS_OPEN === '1' || (s && adminSubs(env).has(s.sub)))) return json({ error: 'admin' }, 403);
         const before = Math.max(0, Math.floor(Number(url.searchParams.get('before'))) || 0); // 이어 받기: 이 id 보다 오래된 50개 (#96)
         return json(await accounts(env).feedbackList(50, before));
+      }
+      // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민(ADMIN_SUBS)만. 로컬 확인(STATS_OPEN)도 어드민 계정이어야 함 (남에게 귤을 보내는 길이라)
+      if (url.pathname.startsWith('/admin/')) {
+        const s = await who();
+        if (!(s && adminSubs(env).has(s.sub))) return json({ error: 'admin' }, 403);
+        const A = accounts(env);
+        if (url.pathname === '/admin/clamps' && req.method === 'GET') return json(await A.clampList(Math.max(1, Math.min(NET.clampKeepDays, Math.floor(Number(url.searchParams.get('days'))) || NET.clampKeepDays))));
+        if (url.pathname === '/admin/grants' && req.method === 'GET') return json(await A.grantList());
+        if (url.pathname === '/admin/grant' && req.method === 'POST') {
+          const b = await readJson(req, 4096);
+          const sub = typeof b?.sub === 'string' ? b.sub.trim() : '', n = Math.floor(Number(b?.n)), why = cleanText(b?.why, 60);
+          if (!/^[0-9A-Za-z_-]{1,80}$/.test(sub) || !(n >= 1 && n <= NET.grantMax) || !why) return json({ error: 'bad grant' }, 400);
+          const r = await A.grant(sub, n, why, s.sub);
+          return json(r, r.error ? 404 : 200);
+        }
+        return json({ error: 'not found' }, 404);
       }
       return json({ error: 'not found' }, 404);
     } catch (e) {
