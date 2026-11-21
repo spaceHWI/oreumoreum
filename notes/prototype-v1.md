@@ -17,6 +17,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 
 따로 받는 모델 (#85): 캐릭터·가게 3곳·들개·외계인·멧돼지·머리 3종·발소리 샘플은 JS 에 넣지 않고 `build.mjs` 가 `tools/packassets.mjs` 로 `dist/a/<이름>-<해시>.bin` (meshopt 압축 정점·인덱스 + jpg·mp3) 으로 묶는다. 원본 자료는 그대로 `src/model-*.js`·`runnermodel.js`·`boarmodel.js`·`gear/head-*.js`·`stepsamples.js` 에 두고 고치면 된다(게임 코드는 import 하지 않음). 게임 코드는 `assets.js` 의 `whenAsset(이름, 콜백)` 으로 받고, 받기 전에는 `placeholderGeo`(모델 크기 상자·타원체) 임시 모양을 보인다. 첫 프레임 뒤 `update.js warm()` 이 셰이더를 미리 준비하고(compileAsync) 나머지 모델을 받기 시작한다. 새 모델을 더하면 `packassets.mjs ASSET_SRC` 에 한 줄 더하고 `node tools/assetcheck.mjs` 로 원본과 같은지 본다. 받다가 실패하면 4초부터 두 배씩(최대 1분) 다시 받는다. 첫 화면 '시작' 버튼은 게임 모듈이 다 읽힐 때까지 눌리지 않는다(`start.js`). 느린 연결·실패 확인은 `node tools/slownet.js 3g|fail|dead` (#90).
 
+빌드는 먼저 `tools/lint.js` 로 줄 중간 `//` 주석(주석 안에 코드)·300자 넘는 줄의 `//` 를 찾아 있으면 멈춘다 (#193). 긴 줄에는 `/* */` 만.
+
 빌드 결과: `dist/index.html` + `main-<해시>.js` + `a/*.bin` (Pages), `dist/test.html`·`oreumoreum.html` 은 모델까지 한 파일 (tools/ 가 file:// 로 엶). 홈 화면 추가용 `manifest.webmanifest`·아이콘 PNG 4장(`src/icons/`, `tools/icons.mjs` 로 구움, #91)도 dist 에 함께 나간다.
 
 | 파일 | 하는 일 |
@@ -81,7 +83,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | outfitset.js | 한 벌 맞춤(#179): 겉모습으로 OUTFIT_SETS 세 벌을 입으면 캐릭터 둘레 빛 점(Points 하나, SET_FX)·칭호 토스트. `late.outfitSet = { check, tick, worn, titles }`(칭호는 가진 옷으로 셈, #165 가 씀). wearCloth 가 check, update.js 가 tick. 확인 `node tools/style.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
-| update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
+| update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기. 게임 루프는 문장마다 한 줄(#193). `state.ticks` = 주요 갱신이 불린 셈(`__oreum.ticks`, `tools/smoke.js` 가 봄), `watchLoop` = 셈이 3초 멈춤·튜토리얼 30초 미시작을 오류 알림으로 |
 | where.js | 지금 있는 곳 이름(#153): `placeAt(x, z)` 가게 앞·가게 거리·클린하우스·돌탑·정상 전망대·개울가·정낭·구역 문턱('능선 들머리')·구역 이름. 반경은 `balance.js PLACE`. update.js 가 0.3초마다 위쪽 칸(`#where`)에 씀, 확인 `__oreum.where` |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 

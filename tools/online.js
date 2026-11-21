@@ -31,7 +31,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   const A = await open('A'), B = await open('B');
   ok(await A.p.evaluate(() => document.getElementById('enter').textContent === '손님으로 하기' && !document.getElementById('acct-box').hidden), '첫 화면: 손님으로 하기·베타 안내');
   ok(await A.p.evaluate(() => /7일/.test(document.getElementById('acct-box').textContent)), '베타 안내 문구');
-  for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
+  for (const X of [A, B]) { await X.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */; await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
   if (ONLY === 'cart') { // 지나가는 마차 (#120): A 가 달리는 마차에 타면 B 화면에도 앉은 모습, B 는 A 가 앉은 자리를 피해 앉음
@@ -77,7 +77,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(await until(B, (t) => [...window.__oreum.net.peersById.values()].some((e) => e.title === t && e.label?.scale.y > 0.9), tt), `A 가 단 칭호가 B 화면 이름표 위에 (${tt})`);
     await A.p.evaluate(() => { window.__oreum.punkWorld.title.set(-1); window.__oreum.player.pos.x += 0.5; });
     ok(await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.title)), '칭호를 떼면 B 화면에서도 사라짐');
-    const C = await open('C'); await C.p.click('#enter');
+    const C = await open('C'); await C.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */;
     const an = await A.p.evaluate(() => window.__oreum.save.nick);
     await until(C, ([n, h]) => [...window.__oreum.net.peersById.values()].some((e) => e.nick === n && e.data.o?.h === h), [an, hat]); // 느린 환경: 3초 고정 대신 보일 때까지 (#119)
     const cs = await C.p.evaluate(() => [...window.__oreum.net.peersById.values()].map((e) => [e.nick, e.data.o?.h]));
@@ -231,7 +231,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   const c = await A.p.evaluate(() => window.__oreum.save.coins);
   ok(c < 999999 && c <= 40 + NET.earnBurst + NET.earnPerSec * 60, `귤 부풀리기 바로잡힘 (999999 → ${c})`);
   // 보안 (#84)
-  if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.click('#enter').catch(() => {}); }
+  if (await A.p.evaluate(() => !document.getElementById('intro').hidden)) { await A.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */.catch(() => {}); }
   for (let k = 0; k < 30 && !(await A.p.evaluate(() => window.__oreum.net.ready)); k++) await wait(A.p, 1000);
   ok(await A.p.evaluate(() => window.__oreum.net.ready), '로그인한 채로 방에 붙음 (토큰은 하위 프로토콜)');
   ok(await A.p.evaluate(() => document.getElementById('m-dev').hidden), '서버가 있으면 어드민이 아닌 계정에 개발자 메뉴 없음');
