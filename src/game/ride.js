@@ -1,5 +1,6 @@
 // 탈것(스케이트보드·스쿠터·조랑말), 마차 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { RIDES, CART, SHOP_ST } from '../balance.js';
+import { augV } from '../augments.js';
 import { RIDE_BY, RIDE_ICON, rideRig, rideSpeed } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import * as THREE from 'three';
@@ -66,7 +67,7 @@ export function rideWant(dt, dir, slow) {
   if (!R.up && dir) { const c = p.rideC ? g > RIDES.carryOut : g > RIDES.carryIn; if (c !== p.rideC) { p.rideC = c; syncRideLook(); late.net.send(true); } }
   const k = slow ? 0.6 : 1;
   if (p.rideC) return { want: dir ? RIDES.carry * k : 0, acc: 8 };
-  const v = rideSpeed(p.ride, g, onRoad(p.pos.x, p.pos.z));
+  const v = rideSpeed(p.ride, g, onRoad(p.pos.x, p.pos.z)) * (1 + augV(save, 'deer')); // 노루 친구 (#159): 탈것 속도
   if (dir) return { want: v * k, acc: R.glide ? RIDES.glideAccel : RIDES.accel };
   if (R.glide && p.speed > 0.3) { _coast.set(Math.sin(p.heading), 0, Math.cos(p.heading)); return g < -0.02 ? { want: v, acc: 0.5, coast: _coast } : { want: 0, acc: RIDES.glideStop, coast: _coast }; }
   return { want: 0, acc: RIDES.accel };

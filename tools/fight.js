@@ -2,8 +2,9 @@
 // dist/test.html 남송이 전투 오름에서 구역마다 그 구역 몹 한 무리(3마리)를 18m 둘레에 부르고, 권장 장비(칸 10개가 구역 번호 단계:
 // 무기·티셔츠·잠바·양말)로 F 를 눌러 쫓아냄. 시간은 게임 시간. 기록: 쫓아낸 시간·누른 수·쏜 탄·맞힌 수·잃은 기운(최대의 %)·쓰러짐
 // --move: 서 있지 않고 적에게서 뒤로 물러나며 던짐 (조이스틱 흉내)
+// --aug: 전투 증강 4종(쌍귤·터지는 귤·신 귤·빠른 손)을 3번씩 겹쳐 (#159, 증강 0개와 쫓아내는 시간 차이가 20% 안이어야 함)
 const { chromium } = require('playwright');
-const args = process.argv.slice(2), MOVE = args.includes('--move');
+const args = process.argv.slice(2), MOVE = args.includes('--move'), AUG = args.includes('--aug');
 const ZONES = args.filter((a) => /^\d$/.test(a)).map(Number); if (!ZONES.length) ZONES.push(1, 2, 3, 4, 5);
 const KIND = { 1: 'piglet', 2: 'dog', 3: 'boar', 4: 'rabid', 5: 'alien' }, N = 3, LIMIT = 90;
 (async () => {
@@ -28,15 +29,15 @@ const KIND = { 1: 'piglet', 2: 'dog', 3: 'boar', 4: 'rabid', 5: 'alien' }, N = 3
   const res = [];
   for (const zn of ZONES) {
     const kind = KIND[zn], wear = wearIds.filter((w) => w.tier === zn);
-    await p.evaluate(({ zn, kind, N, wear }) => {
+    await p.evaluate(({ zn, kind, N, wear, AUG }) => {
       const o = window.__oreum; o.enemies.test.clear(); document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
-      o.pace.pacing.test.soon(1e6);
+      o.pace.pacing.test.soon(1e6); o.level?.set(AUG ? { twin: 3, burst: 3, sour: 3, quick: 3 } : {}); // #159
       o.save.equip.weapon = Math.max(1, zn); o.weapon.use(zn); o.save.coins = 5000; o.save.bowAmmo = 0; o.save.ammo = { gun: 0, mg: 0, laser: 0 };
       for (const w of wear) { o.clothes.give(w.id); o.clothes.wear(w.slot, w.id); }
       const x = -60, z = 40; o.player.pos.set(x, o.groundAt(x, z), z); o.player.heading = Math.PI / 2; o.player.knock = null; o.hp.set(o.hp.max);
       for (let i = 0; i < N; i++) { const a = Math.PI / 2 + (i - 1) * 0.5; const e = o.enemies.test.spawn(kind, Math.sin(a) * 18, Math.cos(a) * 18); e.state = 'charge'; e.st = 0; }
       Object.assign(window.__c, { shots: 0, hits: 0, lost: 0, down: 0 }); window.__t0 = o.weapon.t(); window.__hpMax = o.hp.max;
-    }, { zn, kind, N, wear });
+    }, { zn, kind, N, wear, AUG });
     const hold = zn === 4 || zn === 5, gap = { 1: 650, 2: 650, 3: 720 }[zn] || 650;
     let done = null, fired = 0, next = 0;
     if (hold) await p.keyboard.down('f');

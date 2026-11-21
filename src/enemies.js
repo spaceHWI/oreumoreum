@@ -115,7 +115,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1) * (1 + (CHARGE.push - 1) * ch); e.flX = ux / L; e.flZ = uz / L;
       if (e.state === 'wind' || e.state === 'dash') { e.state = 'charge'; e.st = 0; }
     }
-    if (e.hp <= 0) repel(e);
+    hooks.afterHurt?.(e, dmg, quiet); // 증강 (#159 터지는 귤·신 귤, game/level.js)
+    if (e.hp <= 0) { if (live(e)) repel(e); }
     else { if (!quiet) sound?.beep?.(false); if (!AGGRO.has(e.state) && !e.boss) { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 쫓음 (우두머리는 제 패턴대로)
   }
   const live = (e) => e.state !== 'flee' && e.state !== 'leave';
@@ -209,6 +210,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (e.yieldT > 0) want = Math.min(want, d0.walk * 0.5);
     }
     if (e.fl > 0) { e.fl -= dt; want = 0; e.speed = 0; const nx = e.pos.x + e.flX * e.flV * dt, nz = e.pos.z + e.flZ * e.flV * dt; if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); } // 맞아 멈칫 (#148)
+    if (e.sour > 0) { e.sour -= dt; want *= e.sourK ?? 1; if (e.speed > want) e.speed = want; } // 신 귤 (#159): 맞은 뒤 잠깐 느려짐
     if (e.snap) e.speed = want; else e.speed += (want - e.speed) * Math.min(1, dt * 3); // 우두머리 돌진은 바로 (snap)
     e.phase += dt * e.speed * 1.6;
     if (!e.puppet || e.state !== 'boss') {

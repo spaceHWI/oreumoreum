@@ -11,6 +11,7 @@ import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
 import { $, save, wearV, persist } from './save.js';
+import { augV } from '../augments.js';
 import { scene, camera } from './scene.js';
 import { life, trash, CH, CHS, chNear, cart, GEARB, roofSigns, player, hp } from './place.js';
 import { cam } from './camera.js';
@@ -31,7 +32,7 @@ const dumpS = { list: [], t: 0, dur: 0, total: 0, shown: 0, el: null, sndT: 0 };
 export function dumpBag(ch = chNear()) {
   if (!ch || dumpS.el) return;
   const bag = trash.store.bag, per = []; let n = 0, g = 0;
-  const vk = 1 + wearV('vest'); // 베스트(#52): 받는 귤 더함
+  const vk = 1 + wearV('vest') + augV(save, 'recycle'); // 베스트(#52)·분리수거 달인 증강(#159): 받는 귤 더함
   // 구역 귤 배수 (#137): 주울 때 모아 둔 bag.xv 를 종류별 귤에 비례해 나눠 더함
   const base = TRASH_TYPES.reduce((s, t) => s + (bag[t.id] || 0) * t.gyul, 0), zk = base > 0 ? 1 + (bag.xv || 0) / base : 1;
   TRASH_TYPES.forEach((t, k) => { const c = bag[t.id] || 0; if (c > 0) { const pg = Math.round(c * t.gyul * zk * vk); per.push({ k, c, g: pg }); n += c; g += pg; } });

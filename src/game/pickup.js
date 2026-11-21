@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { groundAt } from '../world.js';
 import { state, late } from './state.js';
 import { $, save, wearV, lookS, ab, persist } from './save.js';
+import { augV } from '../augments.js';
 import { scene, wx, spots, sunEvent } from './scene.js';
 import { life, street, buff, trash, CH, CH_MINI, bloom, bfx, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
@@ -63,6 +64,7 @@ function takeNow() {
       const it = trash.take(c, room); if (!it) break;
       room -= it.type.vol; n++; flyToBag(it); late.sound.pick?.(it.type.id); pickMsg(it.type.name);
       if (c.h == null) break;
+      if (room >= 1 && Math.random() < augV(save, 'bighand')) { const it2 = trash.take(c, room); if (it2) { room -= it2.type.vol; flyToBag(it2); late.sound.pick?.(it2.type.id); } } // 큰손 (#159): 하나 더 (도구 한 번 양에 안 셈)
     }
     if (n >= tool.per || room < 1) break;
   }
