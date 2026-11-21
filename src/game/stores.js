@@ -78,6 +78,7 @@ function buildStoneMenu(grid) {
 export function orderMeal(m) {
   if (!STN || mealS.on) return;
   if (!save.mealFree) { save.mealFree = 1; persist(); toast('첫 식사는 무료예요'); } // #93: 첫 한 번은 귤을 받지 않음 (서버 확인은 validate.js)
+  else if (m.drink && late.questUse?.('ade')) toast(`${m.ko} · 셰프가 한 잔 샀어요`); // 퀘스트 에이드 한 잔 (#158)
   else { if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; } save.coins -= m.price; persist(); updateStats(); late.sound.coin?.(); }
   closePanels(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
   Object.assign(mealS, { on: true, item: m, phase: 'walk', t: 0 });
@@ -132,10 +133,10 @@ function buildSalonMenu(grid) {
 export function orderCut(key) {
   const h = HAIR.byKey[key]; if (!SAL || !h || !save.look || cutS.on || mealS.on) return false;
   if (save.outfit.gear?.hair === key) { toast(`지금 ${h.name}예요`); return false; }
-  const has = !!save.hairs[key];
-  if (!has && save.coins < h.price) { toast(`귤이 ${h.price - save.coins}개 모자라요`); return false; }
+  const has = !!save.hairs[key], off = has ? 0 : late.questOff?.('salon', h.price) || 0, pay = h.price - off; // 퀘스트 할인권 (#158): 반값
+  if (!has && save.coins < pay) { toast(`귤이 ${pay - save.coins}개 모자라요`); return false; }
   if (!has) {
-    save.coins -= h.price; save.hairs[key] = 1; persist(); updateStats(); late.sound.coin?.();
+    save.coins -= pay; if (off) { late.questUse('salon'); toast(`할인권으로 ${off}귤 아꼈어요`); } save.hairs[key] = 1; persist(); updateStats(); late.sound.coin?.();
   }
   closePanels(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
   Object.assign(cutS, { on: true, hair: key, phase: 'walk', t: 0 });

@@ -1135,7 +1135,7 @@ export const JOURNEY = {
     { id: 'mateMinsu', need: { zonesDone: 1 } }, // #172 민수 (구역 1 우두머리 뒤)
     { id: 'nightLight', need: { night: 1, picked: 30 } }, // #168 '수상한 불빛' (첫날 밤)
     { id: 'radio', need: { zonesDone: 1 } }, // #165 오름 방송
-    { id: 'shopQuests', need: { days: 2 } }, // #158 #167 가게 NPC 퀘스트 (2일)
+    { id: 'shopQuests', need: {} }, // #158 #167 가게 NPC 퀘스트 (2일째거나 구역 2 에 들어서면: game/quest.js gate)
     { id: 'daily', need: { days: 2 }, count: 1 }, // #125 오늘의 할 일
     { id: 'mateJenny', need: { zone: 2 } }, // #172 제니 (구역 2 에서)
     { id: 'tourist', need: { zone: 2 } }, // #163 관광객
@@ -1144,5 +1144,91 @@ export const JOURNEY = {
     { id: 'title', need: { zone: 3 } }, // #165 칭호
     { id: 'gift', need: { zone: 3 } }, // #175 귤 주기 (멀티)
     { id: 'aliens', need: { zone: 4 } }, // #168 외계인·'분리수거 조약' (구역 4·5)
+  ],
+};
+
+// 퀘스트 (#158, src/quest.js · game/quest.js · 확인 node tools/questrun.js): 유저 저니를 따라가는 줄기 퀘스트 + 곁가지·가게 주인 퀘스트. 이름·말·보상은 모두 임의
+// 줄거리(notes/journey.md 0절): 장마다 물음 하나를 풀고 새 물음 하나. 4장(굼부리) 전에는 외계인과 클린하우스를 잇는 말을 하지 않는다
+// givers 주는 사람: at 'sign' 들머리 안내판 옆(오름지기), board 그 클린하우스(CH id) 옆 표지판, shop 그 가게 앞 주인(가게가 없으면 그 사람 퀘스트는 건너뜀)
+// 퀘스트: id(저장에 쓰므로 바꾸지 않음) · z 구역 · giver 주는 사람 · to 돌려줄 사람(없으면 giver) · name · say 받기 창 말(2~3줄) · task 할 일 한 줄 · fin 끝내기 말
+//   ask { k 셈 이름, n, ever: 받기 전에 한 것도 셈(다시 못 하는 것) } · go 추적 화살표가 가리킬 곳(주는 사람 id·shop:가게·ch 클린하우스·cairn 돌탑·heapRoad·heapField·heap@z·den@z·boss@z) · reward { gyul, coupon: [가게, 수], item: 옷 id } · need 있어야 하는 것(없으면 건너뜀)
+//   셈 이름(k): trash 쓰레기 · heapRoad 길가 더미 · heapField 들판 더미 · heap@z 구역 z 더미 · recycle 버리기 · repel 적 · repel:<종류> · repelBuff 식사 버프 중 쫓은 적 · dumper 투기꾼
+//     den@z 구역 z 소굴 · boss@z 구역 z 우두머리(ever) · zone 가 본 가장 높은 구역(ever) · gearTB 도구+배낭 단계 · gearAll 도구+배낭+무기 · tool · bag · weapon 무기 단계-1(ever)
+//     fish 낚시 · stone 돌탑 · meal 식사 · haircut 머리 · clothes 옷 사기 · photo 사진 · emote 동작 · browse 미장원·LEAP 앞에 가 봄
+// side 곁가지(흰 느낌표): door 감독(JOURNEY.doors) 문이 열려야 · after 이 줄기 퀘스트를 끝낸 뒤
+// coupon 할인권: gear·leap 은 다음 물건 off 비율, salon 다음 머리 반값, ade 스톤 플럼 에이드 한 잔 (game/quest.js coupon)
+// dayCap 첫날(구역 1) 줄기 보상 합이 첫날 귤 벌이에서 넘지 않을 비율 (tools/econ.js 가 봄)
+export const QUESTS = {
+  r: 3.4, near: 40, dayCap: 0.15, coopR: 40, // r 상호작용 거리, near 이 안이면 주는 사람이 움직임, coopR 남이 치운 더미도 이 안이면 셈
+  coupon: { gear: 0.1, leap: 0.1, salon: 0.5 },
+  givers: {
+    jigi: { name: '오름지기', at: 'sign', side: 2.6, fwd: 0.9, look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
+    'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
+    'b:rest': { name: '능선 쉼터 표지판', board: 'rest' },
+    'b:crater': { name: '굼부리 표지판', board: 'crater' },
+    'shop:gear': { name: '철물 삼춘', shop: 'gear', look: { shirt: '#4c5a6e', pants: '#3b3b40', shoes: '#26262b', hat: 'hat:straw' }, hello: ['집게는 손목으로 쓰는 거여', '연장이 좋아야 일이 즐겁지'] },
+    'shop:leap': { name: 'LEAP 점원', shop: 'leap', look: { shirt: '#f2f2f2', pants: '#24262c', shoes: '#f2f2f2' }, hello: ['오늘 핏 좋네요', '오름도 패션이에요'] },
+    'shop:salon': { name: '루이네 원장', shop: 'salon', look: { shirt: '#c9879b', pants: '#3a2f3a', shoes: '#2a222a' }, hello: ['바람에 머리가 다 날렸네', '앞머리 다듬어 줄까요?'] },
+    'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요'] },
+    'shop:satis': { name: '만족한상회 사장', shop: 'satis', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b' }, hello: ['갈치 드실래요?'] },
+  },
+  main: [
+    // ----- 1장 숲길 '이상한 쓰레기' (첫날) -----
+    { id: 'can', z: 1, giver: 'jigi', name: '이상한 쓰레기', say: ['정낭을 넘었네요. 오름은 처음이죠?', '요즘 쓰레기 사이에 처음 보는 게 섞여 나와요. 뭔지 알면 나한테도 좀 알려 줘요.'], task: '쓰레기 10개 줍기', ask: { k: 'trash', n: 10 }, go: 'heapRoad', fin: ['…이 캔, 글자가 어느 나라 말도 아니네요.', '일단 내가 맡아 둘게요. 소문내지 말고요.'], got: '이상한 캔을 주웠어요', reward: { gyul: 10 } },
+    { id: 'heap1', z: 1, giver: 'jigi', name: '첫 청소', say: ['길가에 쌓인 더미 하나만 깨끗이 치워 봐요.', '다 치우면 꽃이 펴요. 오름은 은혜를 꽃으로 갚거든요.'], task: '길가 더미 1곳 다 치우기', ask: { k: 'heapRoad', n: 1 }, go: 'heapRoad', fin: ['봐요, 꽃 폈죠?', '근데 내일 와 보면 또 쌓여 있을 거예요. 누가 자꾸 갖다 놓는지 원.'], reward: { gyul: 20 } },
+    { id: 'dump2', z: 1, giver: 'jigi', name: '클린하우스 단골', say: ['배낭이 무거우면 클린하우스에 비워요.', '분리만 잘 하면 귤로 바꿔 줘요. 세상에 이런 장사가 없죠.'], task: '클린하우스에 2번 버리기', ask: { k: 'recycle', n: 2 }, go: 'ch', fin: ['단골 됐네요. 클린하우스 아저씨가 웃는 거 처음 봤어요.'], reward: { gyul: 20 } },
+    { id: 'piglet3', z: 1, giver: 'jigi', name: '귤은 던지라고 있는 것', say: ['아기 멧돼지들이 길을 헤집고 다녀요.', '귤 하나 맞으면 놀라서 도망가요. 다치게 하는 건 아니에요, 그냥 귤이 싫은 거예요.'], task: '아기 멧돼지 3마리 쫓아내기', ask: { k: 'repel:piglet', n: 3 }, go: 'den@1', fin: ['던지는 폼이 좋던데요? 귤 농사 지어 본 손이에요.'], reward: { gyul: 30 } },
+    { id: 'gear1', z: 1, giver: 'jigi', name: '장비가 사람을 만든다', say: ['맨날 손으로만 줍다간 허리 나가요.', '가게 거리 장비점에서 집게든 배낭이든 한 칸 올려 봐요.'], task: '집게나 배낭 한 칸 올리기', ask: { k: 'gearTB', n: 1 }, go: 'shop:gear', fin: ['오, 장비 반짝반짝하네요. 사람이 달라 보여요.'], reward: { gyul: 30 }, need: 'shop:gear' },
+    { id: 'dumper1', z: 1, giver: 'jigi', name: '불청객', say: ['가끔 봉투 들고 몰래 오는 사람들이 있어요. 무단 투기꾼.', '버리기 전에 귤을 맞히면 줄행랑쳐요. 다음에 오면 꼭 혼내 줘요.'], task: '무단 투기꾼 1명 쫓아내기', ask: { k: 'dumper', n: 1 }, fin: ['도망가는 거 봤어요? 봉투도 안 놓고 가더라고요. 그 봉투 안엔 뭐가 들었을까요.'], reward: { gyul: 20 } },
+    { id: 'field1', z: 1, giver: 'jigi', name: '들판 탐사', say: ['길만 다니면 오름의 반도 못 본 거예요.', '들판 깊숙이 큰 더미가 있어요. 대신 길 밖엔 짐승이 많으니 조심하고요.'], task: '들판 더미 1곳 치우기', ask: { k: 'heapField', n: 1 }, go: 'heapField', fin: ['들판까지 다녀오다니. 이상한 캔, 거기서도 나왔죠? 역시…'], reward: { gyul: 40 } },
+    { id: 'den1', z: 1, giver: 'jigi', name: '소굴 정리', say: ['멧돼지들이 모이는 굴이 숲길에 있어요.', '굴 앞에서 한바탕 쫓아내면 한동안 조용해요.'], task: '숲길 적 소굴 1곳 닫기', ask: { k: 'den@1', n: 1 }, go: 'den@1', fin: ['굴이 조용해졌어요. 그런데 그 큰 녀석은 아직 안 나왔죠?'], reward: { gyul: 50 } },
+    { id: 'boss1', z: 1, giver: 'jigi', name: '구역의 주인', say: ['숲길이 거의 깨끗해지면 그 녀석이 나와요. 왕관 쓴 멧돼지.', '쫓아내면 이 구역은 당신 거예요. 하르방도 세워 줄 거고요.'], task: '숲길 우두머리 쫓아내기', ask: { k: 'boss@1', n: 1, ever: true }, go: 'boss@1', fin: ['해냈네요! 숲길 지킴이예요.', '하르방은 꼭 치운 자리에만 솟는다니까. 신기하죠.'], reward: { gyul: 100 } },
+    { id: 'z2', z: 1, giver: 'jigi', to: 'b:slope', name: '다음 오름 자락으로', say: ['그 캔 말인데요, 숲길 위쪽에서 더 많이 나온대요.', '남쪽 사면 클린하우스 옆 표지판까지 가 봐요. 거기서부턴 표지판이 내 말을 대신해요.'], task: '남쪽 사면 표지판 읽기', ask: { k: 'zone', n: 2, ever: true }, go: 'b:slope', fin: ['[표지판] 남쪽 사면. 여기까지 왔으면 반은 오름 사람.', '— 오름지기. 추신: 투기꾼 봉투 조심.'], reward: { gyul: 20 } },
+    // ----- 2장 남쪽 사면 '누가 시켰나' (둘째 날) -----
+    { id: 'note', z: 2, giver: 'b:slope', name: '떨어진 쪽지', say: ['[표지판] 투기꾼들이 요즘 바빠 보임.', '하나 붙잡으면, 아니 쫓아 보면 뭔가 떨어뜨릴지도.'], task: '투기꾼 1명 쫓아내기', ask: { k: 'dumper', n: 1 }, fin: ['투기꾼이 쪽지를 떨어뜨렸어요: \'굼부리로 가져오면 귤로 쳐 줌\'', '누군가 쓰레기를 모으고 있어요. 대체 누가, 왜?'], got: '구겨진 쪽지를 주웠어요', reward: { gyul: 30 } },
+    { id: 'heap2', z: 2, giver: 'b:slope', name: '사면 대청소', say: ['[표지판] 남쪽 사면 더미 현황: 많음.', '치우는 사람 구함. 보수: 귤.'], task: '남쪽 사면 더미 3곳 치우기', ask: { k: 'heap@2', n: 3 }, go: 'heap@2', fin: ['[표지판] 더미 현황: 조금 덜 많음. 고마움.'], reward: { gyul: 60 } },
+    { id: 'dog5', z: 2, giver: 'b:slope', name: '들개 주의', say: ['[표지판] 들개 출몰. 귤을 싫어함.', '귤을 아주 싫어함.'], task: '들개 5마리 쫓아내기', ask: { k: 'repel:dog', n: 5 }, go: 'den@2', fin: ['[표지판] 들개 출몰 → 들개 가끔 출몰. 고쳐 씀.'], reward: { gyul: 80 } },
+    { id: 'gear2', z: 2, giver: 'b:slope', name: '한 단계 위로', say: ['[표지판] 이 위로는 장비 점검 권장.', '장비점에서 두 칸 올리고 오시오.'], task: '장비 두 칸 올리기', ask: { k: 'gearAll', n: 2 }, go: 'shop:gear', fin: ['[표지판] 장비 점검 끝. 든든함.'], reward: { gyul: 80 }, need: 'shop:gear' },
+    { id: 'den2', z: 2, giver: 'b:slope', name: '들개 무리 터', say: ['[표지판] 들개들이 모이는 터가 사면에 있음.', '터를 정리하면 사면이 한결 조용해짐.'], task: '남쪽 사면 소굴 1곳 닫기', ask: { k: 'den@2', n: 1 }, go: 'den@2', fin: ['[표지판] 터 정리 끝. 이제 그 큰 놈만 남음.'], reward: { gyul: 100 } },
+    { id: 'boss2', z: 2, giver: 'b:slope', name: '사면의 주인', say: ['[표지판] 사면이 깨끗해지면 우두머리 들개가 나옴.', '쫓아내면 사면도 당신 차지.'], task: '남쪽 사면 우두머리 쫓아내기', ask: { k: 'boss@2', n: 1, ever: true }, go: 'boss@2', fin: ['[표지판] 사면의 주인이 바뀜. 축하함.'], reward: { gyul: 200 } },
+    { id: 'z3', z: 2, giver: 'b:slope', to: 'b:rest', name: '밤의 불빛', say: ['[표지판] 밤마다 능선 위에 불빛이 뜬다는 소문.', '능선 쉼터 표지판에 가 보시오. 해 지기 전에.'], task: '능선 쉼터 표지판 읽기', ask: { k: 'zone', n: 3, ever: true }, go: 'b:rest', fin: ['[표지판] 능선. 밤에 하늘을 보면 뭔가 지나감.', '그것은 비행기가 아님. 아마도.'], reward: { gyul: 40 } },
+    // ----- 3장 능선 '밤의 불빛' -----
+    { id: 'heap3', z: 3, giver: 'b:rest', name: '내려놓고 간 것', say: ['[표지판] 불빛이 지나간 자리에 더미가 생김.', '멧돼지가 사나워진 것도 그 더미 탓이라는 말이 있음.'], task: '능선 더미 3곳 치우기', ask: { k: 'heap@3', n: 3 }, go: 'heap@3', fin: ['[표지판] 더미 속에 그 캔이 잔뜩. 누가 하늘에서 버리고 감.', '그럼 그 쪽지의 \'굼부리\'는?'], reward: { gyul: 150 } },
+    { id: 'den3', z: 3, giver: 'b:rest', name: '사나운 굴', say: ['[표지판] 능선 멧돼지 굴 주의.', '캔 냄새를 맡고 모여든다고 함.'], task: '능선 소굴 1곳 닫기', ask: { k: 'den@3', n: 1 }, go: 'den@3', fin: ['[표지판] 굴이 잠잠해짐. 냄새도 덜 남.'], reward: { gyul: 200 } },
+    { id: 'boss3', z: 3, giver: 'b:rest', name: '능선의 주인', say: ['[표지판] 능선의 큰 멧돼지가 길을 막고 있음.', '이 녀석만 지나면 굼부리가 보임.'], task: '능선 우두머리 쫓아내기', ask: { k: 'boss@3', n: 1, ever: true }, go: 'boss@3', fin: ['[표지판] 능선이 열림. 굼부리로 가는 길도.'], reward: { gyul: 500 } },
+    { id: 'z4', z: 3, giver: 'b:rest', to: 'b:crater', name: '굼부리로', say: ['[표지판] 쪽지가 말한 곳, 굼부리.', '굼부리 들머리 표지판에서 기다리겠음.'], task: '굼부리 표지판 읽기', ask: { k: 'zone', n: 4, ever: true }, go: 'b:crater', fin: ['[표지판] 굼부리 바닥에 낯선 표지판이 하나 더 있다고 함.', '누가 세웠는지 아무도 모름.'], reward: { gyul: 80 } },
+    // ----- 4장 굼부리 '클린하우스' -----
+    { id: 'heap4', z: 4, giver: 'b:crater', name: '굼부리 바닥', say: ['[표지판] 굼부리 바닥은 쓰레기로 덮여 있음.', '치우다 보면 그 낯선 표지판이 보일 것.'], task: '굼부리 더미 3곳 치우기', ask: { k: 'heap@4', n: 3 }, go: 'heap@4', fin: ['낯선 표지판을 찾았어요. 우리 클린하우스와 똑같은 모양이에요.', '거기 적힌 이름은… \'지구\'. 지구와 오름이 통째로 외계인의 클린하우스였어요.'], reward: { gyul: 400 } },
+    { id: 'den4', z: 4, giver: 'b:crater', name: '착륙 자국', say: ['[표지판] 우리가 귤로 바꿔 주던 클린하우스도 원래 그들이 세운 것.', '굼부리의 굴부터 닫아 버리시오.'], task: '굼부리 소굴 1곳 닫기', ask: { k: 'den@4', n: 1 }, go: 'den@4', fin: ['[표지판] 굴 하나 닫힘. 그들이 알아챘을 것.'], reward: { gyul: 500 } },
+    { id: 'boss4', z: 4, giver: 'b:crater', name: '굼부리의 주인', say: ['[표지판] 굼부리를 지키는 녀석이 있음.', '이걸 넘으면 정상. 그들이 기다리는 곳.'], task: '굼부리 우두머리 쫓아내기', ask: { k: 'boss@4', n: 1, ever: true }, go: 'boss@4', fin: ['[표지판] 정상으로 가는 길이 열림. 오름 사람들이 귤을 챙기는 중.'], reward: { gyul: 1200 } },
+    { id: 'z5', z: 4, giver: 'b:crater', to: 'b:rest', name: '저항', say: ['[표지판] 오름지기, 가게 주인들, 동료들 모두 정상으로 감.', '능선 쉼터 표지판에서 모이기로 함.'], task: '정상 구역에 들어서기', ask: { k: 'zone', n: 5, ever: true }, go: 'b:rest', fin: ['[표지판] 모두 모였음. 귤 장전 완료.'], reward: { gyul: 200 } },
+    // ----- 5장 정상 '저항' → 끝 '사과' -----
+    { id: 'heap5', z: 5, giver: 'b:rest', name: '규정대로 버렸을 뿐', say: ['외계인들이 말해요: \'우리는 규정대로 버렸을 뿐.\'', '규정이 틀렸다는 걸 보여 줘요. 정상부터 치워요.'], task: '정상 더미 3곳 치우기', ask: { k: 'heap@5', n: 3 }, go: 'heap@5', fin: ['외계인들이 웅성거려요. 깨끗한 클린하우스는 처음 봤대요.'], reward: { gyul: 1000 } },
+    { id: 'den5', z: 5, giver: 'b:rest', name: '착륙장 봉쇄', say: ['정상에 그들의 착륙 자국이 있어요.', '거길 막으면 더는 못 내려와요.'], task: '정상 소굴 1곳 닫기', ask: { k: 'den@5', n: 1 }, go: 'den@5', fin: ['착륙장이 막혔어요. 이제 남은 건 대장뿐.'], reward: { gyul: 1200 } },
+    { id: 'boss5', z: 5, giver: 'b:rest', name: '불편을 줘서', say: ['외계인 대장이 내려와요.', '오름 사람 모두가 당신 뒤에 있어요. 귤을 던져요!'], task: '정상 우두머리 쫓아내기', ask: { k: 'boss@5', n: 1, ever: true }, go: 'boss@5', fin: ['외계인이 자기들 쓰레기를 도로 싣고, 안내서의 \'지구: 클린하우스\' 를 지웠어요.', '그래도 사람들이 버린 쓰레기는 남았어요. 청소는 계속돼요. 다른 오름에도 같은 표지판이 있다는데…'], reward: { gyul: 3000 }, ending: '불편을 줘서 죄송합니다.' },
+  ],
+  side: [
+    // 오름지기 곁가지 (첫 청소 뒤)
+    { id: 'x-fish', giver: 'jigi', after: 'heap1', name: '물멍', say: ['들머리 개울에서 낚시 한 번 해 봐요.', '쓰레기가 낚여도 그건 그거대로 좋은 일이에요.'], task: '낚시 한 번', ask: { k: 'fish', n: 1 }, fin: ['뭐가 낚였든 개울은 조금 더 맑아졌어요.'], reward: { gyul: 10 } },
+    { id: 'x-stone', giver: 'jigi', after: 'heap1', name: '돌 하나', say: ['돌탑에 돌 하나 올려 봐요. 소원은 공짜예요.'], task: '돌탑에 돌 하나', ask: { k: 'stone', n: 1 }, go: 'cairn', fin: ['무슨 소원 빌었어요? 아니, 말하지 마요.'], reward: { gyul: 5 } },
+    { id: 'x-meal', giver: 'jigi', after: 'dump2', name: '밥은 먹고 다녀요', say: ['가게 거리 스톤에서 한 끼 먹고 와요. 든든해야 오래 줍죠.'], task: '스톤에서 식사 한 번', ask: { k: 'meal', n: 1 }, go: 'shop:stone', fin: ['얼굴이 폈네요.'], reward: { gyul: 10 }, need: 'shop:stone' },
+    { id: 'x-browse', giver: 'jigi', after: 'dump2', name: '마을 구경', say: ['가게 거리에 미장원이랑 옷 가게도 있어요.', '사지 않아도 구경은 공짜.'], task: '루이네미장원이나 LEAP 구경', ask: { k: 'browse', n: 1 }, go: 'shop:salon', fin: ['구경 잘 했어요? 다음엔 지갑도 데려가요.'], reward: { gyul: 5 }, need: 'shop:salon' },
+    // 장비점 주인 (첫 버리기 뒤, 감독 문 shopQuest)
+    { id: 'g-tool', giver: 'shop:gear', door: 'shopQuest', name: '손에 맞는 집게', say: ['그 집게, 손에 안 맞지? 딱 보면 알아.', '한 단계 위 걸로 바꿔 봐. 줍는 게 달라져.'], task: '도구 한 단계 올리기', ask: { k: 'tool', n: 1 }, go: 'shop:gear', fin: ['거봐, 손목이 안 아프지?'], reward: { coupon: ['gear', 1] } },
+    { id: 'g-bag', giver: 'shop:gear', door: 'shopQuest', after: 'g-tool', name: '배낭은 클수록 좋다', say: ['배낭 작으면 클린하우스만 들락날락해.', '큰 걸로 하나 장만해.'], task: '배낭 한 단계 올리기', ask: { k: 'bag', n: 1 }, go: 'shop:gear', fin: ['이제 좀 오름 사람 같네.'], reward: { coupon: ['gear', 1] } },
+    { id: 'g-arm', giver: 'shop:gear', door: 'shopQuest', after: 'g-bag', name: '귤도 도구다', say: ['맨손으로 귤 던지는 거, 그거 팔 빠져.', '무기 하나 들여놔.'], task: '무기 하나 사기', ask: { k: 'weapon', n: 1, ever: true }, go: 'shop:gear', fin: ['귤이 날아가는 소리부터 다르지?'], reward: { coupon: ['gear', 1] } },
+    { id: 'g-up', giver: 'shop:gear', door: 'shopQuest', after: 'g-arm', name: '강화 한 번 해 보기', say: ['재료 모아 왔으면 한 번 올려 봐.'], task: '장비 강화 한 번', ask: { k: 'upgrade', n: 1 }, go: 'shop:gear', fin: ['반짝반짝하구먼.'], reward: { coupon: ['gear', 1] }, need: 'loot' },
+    // LEAP 점원 (2일·구역 2, 문 shopQuests)
+    { id: 'l-wear', giver: 'shop:leap', door: 'shopQuests', name: '옷이 날개', say: ['오름도 런웨이예요.', '옷 한 벌 골라 입어 봐요.'], task: 'LEAP 에서 옷 한 벌 사기', ask: { k: 'clothes', n: 1 }, go: 'shop:leap', fin: ['완벽해요. 사진 찍고 싶다.'], reward: { coupon: ['leap', 1] }, need: 'shop:leap' },
+    { id: 'l-codi', giver: 'shop:leap', door: 'shopQuests', after: 'l-wear', name: '오늘의 코디', say: ['모자·티·바지 색 맞춰 입고', '정상 사진사한테 한 장 찍혀 와요.'], task: '사진사에게 사진 찍기', ask: { k: 'photo', n: 1 }, fin: ['이거 매장에 걸어도 돼요? 선물이에요, 양말.'], reward: { item: 'socks:w-stripe' }, need: 'shop:leap' },
+    // 루이네미장원 원장
+    { id: 's-cut', giver: 'shop:salon', door: 'shopQuests', name: '기분 전환', say: ['바람에 머리가 다 날렸네.', '한 번 바꿔 봐요. 기분이 달라져요.'], task: '머리 한 번 바꾸기', ask: { k: 'haircut', n: 1 }, go: 'shop:salon', fin: ['어머, 잘 어울려.'], reward: { coupon: ['salon', 1] }, need: 'shop:salon' },
+    { id: 's-hi', giver: 'shop:salon', door: 'shopQuests', after: 's-cut', name: '소문 좀 내 줘요', say: ['우리 가게 소문 좀 내 줘요.', '만나는 사람한테 인사 세 번만.'], task: '동작으로 인사 3번', ask: { k: 'emote', n: 3 }, fin: ['손님이 늘었어요. 다음 머리는 반값!'], reward: { coupon: ['salon', 1] }, need: 'shop:salon' },
+    // 스톤 셰프
+    { id: 'c-meal', giver: 'shop:stone', door: 'shopQuests', name: '첫 끼', say: ['오름 사람은 밥심이에요.', '아무거나 한 그릇 먹고 가요.'], task: '스톤에서 식사 한 번', ask: { k: 'meal', n: 1 }, go: 'shop:stone', fin: ['잘 먹었죠? 에이드는 서비스.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
+    { id: 'c-fish', giver: 'shop:stone', door: 'shopQuests', after: 'c-meal', name: '재료 구해 오기', say: ['오늘 생선이 똑 떨어졌어요.', '개울에서 두 번만 낚아 와 줘요.'], task: '낚시 2번', ask: { k: 'fish', n: 2 }, fin: ['신선하네요! 에이드 한 잔 더.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
+    { id: 'c-full', giver: 'shop:stone', door: 'shopQuests', after: 'c-fish', name: '든든하게 한 판', say: ['밥 먹었으면 힘 써야죠.', '식사 버프가 있을 때 적 10마리.'], task: '식사 버프 중 적 10마리 쫓기', ask: { k: 'repelBuff', n: 10 }, fin: ['역시 밥심! 에이드는 내가 쏠게요.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
+    // 만족한상회 사장 (#167 가게가 들어오면)
+    { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?'], task: '만족한상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
   ],
 };
