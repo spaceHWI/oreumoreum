@@ -22,6 +22,7 @@ const SAVES = {
   // #164: 배낭 겉모습·박스 헬멧이 깨진 저장
   punk: { nick: '펑크 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 2, bag: 1, shoes: 1, weapon: 1 }, backs: { own: { tewak: 1, nope: 1 }, cur: 'tewak' }, boxView: 'x', clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } },
   punk2: { nick: '펑크 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, backs: 'abc' },
+  style: { nick: '겉모습 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, clothes: { own: { 'hat:s-beanie': 1, 'hat:w-straw': 1, 'top:s-aloha': 1 }, wear: { hat: 'hat:s-beanie', top: 'top:s-aloha', vest: 'vest:s-nope' }, tint: { 'hat:s-beanie': 4, 'top:s-aloha': 2, 'hat:w-straw': 1, zz: 'x' } } }, // #179 겉모습 옷·이상한 색 번호
   // #98: 깨끗한 오름 기록 → 전투 오름으로 (장비·귤·치운 양 그대로, 랭킹 기록은 battle 에 더함)
   clean: { nick: '깨끗한 사람', coins: 4321, equip: { tool: 3, bag: 2, shoes: 1, weapon: 2 }, nsV1: 1, nsV2: 1, nsV3: 1, entered: 1, look: { sex: 'f', skin: 1 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, server: 'clean', srvSwitch: 1,
     trash: { total: 900, srv: { clean: { sig: 'old', heaps: [0, 0] } }, bag: { can: 2 }, rk: { d: 0, w: 0, day: { clean: 5, battle: 1 }, week: { clean: 50, battle: 10 }, all: { clean: 800, battle: 100 } } } },
@@ -31,7 +32,7 @@ const SAVES = {
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   let bad = 0;
-  for (const [name, data] of Object.entries(SAVES)) {
+  for (const [name, data] of Object.entries(SAVES)) { if (process.argv[2] && !process.argv[2].split(',').includes(name)) continue; // node tools/oldsave.js 이름,이름
     const ctx = await b.newContext({ viewport: { width: 480, height: 300 } }); const p = await ctx.newPage(); const errs = [];
     p.on('pageerror', (e) => errs.push(e.message.slice(0, 200)));
     await p.addInitScript((d) => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', 1); localStorage.setItem('oreumoreum.dev', d); localStorage.setItem('oreumoreum.v1', d); } }, JSON.stringify(data));
@@ -45,6 +46,7 @@ const SAVES = {
     console.log(name, JSON.stringify(st), 'frames+', f2 - (st.frames || 0), errs.length ? 'ERR ' + errs.join(' | ') : 'ok');
     if (errs.length || st.fail || !(f2 > (st.frames || 0))) bad++;
     if (!st.step || (st.srv && st.srv !== 'battle')) { bad++; console.log(name, '서버 고르기 흔적·clean 이 남음'); }
+    if (name === 'style') { const c = await p.evaluate(() => ({ g: window.__oreum.save.outfit.gear.hat, t: window.__oreum.save.clothes.tint, w: window.__oreum.save.clothes.wear })).catch(() => ({})); if (!(c.g === 'hat:s-beanie~4' && Object.keys(c.t || {}).join() === 'hat:s-beanie' && !c.w?.vest)) { bad++; console.log(name, '겉모습 옷 저장 바로잡기 실패', JSON.stringify(c)); } } // #179
     if (name === 'questVet' && st.qnext !== 'heap3') { bad++; console.log(name, '옛 저장 퀘스트 건너뛰기 실패', st.qnext); } // #158
     if (name === 'clean' && !(st.coins === 4321 && st.equip.tool === 3 && st.equip.weapon === 2 && st.total === 900 && st.slots.join() === 'battle' && st.rkAll?.battle === 900 && !('clean' in st.rkAll))) { bad++; console.log(name, '옮기기 실패'); }
     if (name === 'loot' && !(st.mats?.r2 === 2 && st.mats?.m3 === 4 && !('m1' in st.mats) && !('zz' in st.mats) && st.up?.tool?.g === 3 && st.up.tool.e === 5 && st.nloot <= 2)) { bad++; console.log(name, '전리품 저장 바로잡기 실패'); }
