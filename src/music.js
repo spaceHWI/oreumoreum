@@ -2,7 +2,7 @@
 // 평소(calm): 느리고 따뜻한 패드 + 드문드문한 종소리 음, 낮은 장조·밤은 낮고 어두운 단조
 // 적 근처(tense): 낮은 반복 베이스 + 떨리는 감화음 + 둥둥 북. 적이 오면 MUSIC.fadeIn 초에 걸쳐 바뀌고,
 // 사라지면 MUSIC.holdOut 초 뒤 MUSIC.fadeOut 초에 걸쳐 원래 음악으로
-import { MUSIC } from './balance.js';
+import { MUSIC, SEASON } from './balance.js';
 
 const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 // [베이스, 패드 음들]
@@ -40,6 +40,7 @@ export class Music {
     this.mode = 'calm'; this.threat = false; this.lastThreat = -1e9; this.tenseUntil = 0;
     this.chordT = 0; this.chordI = 0; this.noteT = 0; this.beatT = 0; this.step = 0; this.bar = 0;
     this.night = false; this.day = 1; this.active = false; this.swellUntil = 0; this.swellT = 0; this.swellI = 0;
+    this.winter = false; this.bellT = 0; this.bellI = 0; // 겨울 판 (#180): 철 이벤트 기간에 종·방울 한 겹 (평소 음악 위)
     this._iv = setInterval(() => this.tick(), 200);
   }
 
@@ -69,6 +70,7 @@ export class Music {
       if (this.noteT < now - 0.5) this.noteT = now + 1;
       while (this.chordT < ahead) this._chord(this.chordT);
       while (this.noteT < ahead) this._note(this.noteT);
+      if (this.winter) { if (this.bellT < now - 0.5) this.bellT = now + 1; while (this.bellT < ahead) this._bell(this.bellT); }
       if (now < this.swellUntil) { if (this.swellT < now - 0.5) this.swellT = now + 0.1; while (this.swellT < Math.min(ahead, this.swellUntil)) this._swell(this.swellT); }
     }
     if (this.mode === 'tense' || now < this.tenseUntil) {
@@ -122,6 +124,27 @@ export class Music {
       const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = hz(m + 12); o.connect(g); g.connect(this.calm); g.connect(this.echo); o.start(t); o.stop(t + 1.45);
     }
     this.swellT = t + (this.swellI % 4 === 0 ? 0.6 : 0.3);
+  }
+
+  // 겨울 판 (#180): 썰매 방울(잘게 떨리는 높은 소리 네 번) 또는 맑은 종(지금 화음 위 음 둘)
+  _bell(t) {
+    const c = this.c, W = SEASON.xmas.music, v = 0.05 * W.gain, mel = this.night ? NIGHT_MEL : DAY_MEL;
+    if (this.bellI++ % 3 !== 2) { // 방울
+      for (let k = 0; k < 4; k++) {
+        const tt = t + k * 0.11, n = c.createBufferSource(); n.buffer = this.noise;
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 6200 + Math.random() * 800; bp.Q.value = 9;
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(v * 0.9, tt + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.09);
+        n.connect(bp); bp.connect(g); g.connect(this.calm); n.start(tt, Math.random() * 1.5); n.stop(tt + 0.1);
+      }
+    } else { // 종
+      for (const [m, dt] of [[mel[(this.bellI * 2) % mel.length] + 12, 0], [mel[(this.bellI * 2 + 2) % mel.length] + 12, 0.32]]) {
+        const tt = t + dt, g = c.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(v * 0.7, tt + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, tt + 2.2);
+        const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = hz(m);
+        const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = hz(m) * 2.76; const g2 = c.createGain(); g2.gain.value = 0.3; // 종 배음
+        o.connect(g); o2.connect(g2); g2.connect(g); g.connect(this.calm); g.connect(this.echo); o.start(tt); o2.start(tt); o.stop(tt + 2.3); o2.stop(tt + 2.3);
+      }
+    }
+    const [a, b] = W.bell; this.bellT = t + a + Math.random() * (b - a);
   }
 
   // ── 적 근처 ──

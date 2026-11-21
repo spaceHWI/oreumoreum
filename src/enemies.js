@@ -221,6 +221,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (e.yieldT > 0) want = Math.min(want, d0.walk * 0.5);
     }
     if (e.fl > 0) { e.fl -= dt; want = 0; e.speed = 0; const nx = e.pos.x + e.flX * e.flV * dt, nz = e.pos.z + e.flZ * e.flV * dt; if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); } // 맞아 멈칫 (#148)
+    if (e.slowT > 0) { e.slowT -= dt; want *= 1 - (e.slowK || 0); } // 눈덩이에 맞아 느려짐 (#180)
     if (e.snap) e.speed = want; else e.speed += (want - e.speed) * Math.min(1, dt * 3); // 우두머리 돌진은 바로 (snap)
     e.phase += dt * e.speed * 1.6;
     if (!e.puppet || e.state !== 'boss') {

@@ -156,6 +156,8 @@ export default {
         const range = RANGES.includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'day';
         return json(await accounts(env).rank(s.sub, range, srv));
       }
+      // 철 이벤트 (#180): 서버 날짜(달력)·모두의 트리 합계. 로그인 안 해도 됨 (손님도 트리를 봄)
+      if (url.pathname === '/season' && req.method === 'GET') return json(await accounts(env).seasonInfo());
       // 의견 보내기 (#77): 로그인 안 해도 됨. 저장하고 개발자 메일로 (FEEDBACK_TO 시크릿)
       if (url.pathname === '/feedback' && req.method === 'POST') {
         const items = cleanItems((await readJson(req, 64e3)).items);

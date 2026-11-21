@@ -65,6 +65,7 @@ export function openStone() { openShopPop('stone'); }
 function buildStoneMenu(grid) {
   const cur = buff.now();
   for (const m of STONE.menu) {
+    if (m.season && !late.season?.isOn(m.season)) continue; // 철 한정 메뉴 (#180)
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card'; b.dataset.id = m.id;
     const min = Math.round((m.sec || STONE.buffSec) / 60);
     b.classList.toggle('poor', !!save.mealFree && save.coins < m.price); b.classList.toggle('on', !!cur && cur.item.id === m.id);
@@ -187,7 +188,7 @@ export function leapItems(k) {
   }
   const w = WSLOT[k], now = wearV(k), out = [];
   if (w.none) out.push({ id: '', tier: 0, name: '없음', price: 0, own: true, on: !CL.wear[k], art: clothSvg(null), now, v: w.v[0], stat: w.stat });
-  CLOTHES.filter((c) => c.slot === k).sort((a, b) => a.tier - b.tier).forEach((c) => out.push({ id: c.id, cloth: c, tier: c.tier, name: c.name, price: wearPrice(c), own: !!CL.own[c.id], on: CL.wear[k] === c.id, art: clothSvg(c), now, v: w.v[c.tier], stat: w.stat }));
+  CLOTHES.filter((c) => c.slot === k && (!c.season || CL.own[c.id] || late.season?.isOn(c.season))).sort((a, b) => a.tier - b.tier).forEach((c) => out.push({ id: c.id, cloth: c, tier: c.tier, name: c.name, price: wearPrice(c), own: !!CL.own[c.id], on: CL.wear[k] === c.id, art: clothSvg(c), now, v: w.v[c.tier], stat: w.stat }));
   return out;
 }
 const leapStatText = (stat, v) => stat === 'speed' ? `×${String(v.toFixed(2)).replace(/0$/, '')}` : wearStatText(stat, v);

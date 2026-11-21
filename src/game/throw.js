@@ -105,6 +105,7 @@ export function releaseTangerine() {
   let tg;
   if (shot) tg = life.throwTangerine(from, shot.dir, shot.vh, peers, shot.vy, t, ch); // 타겟 쪽으로 휨 (#148)
   else tg = life.throwTangerine(from, dir, (THROW_AIM.power + (player.running ? THROW_AIM.runBonus : 0)) * (ch ? Math.sqrt(ch.rng) : 1), peers, undefined, null, ch);
+  late.season?.snowThrow(tg); // 눈 쌓인 곳에서 눈덩이를 골랐으면 눈덩이로 (#180)
   if (ch) late.chargeLaunch?.(ch, 'hand', tg.mesh.position, () => !tg.enemyHit && !tg.landed && tg.mesh.parent, t);
 }
 // 손 위치에서 대상의 겨눌 점까지 포물선(중력 22)으로 닿는 속도. 움직이는 대상은 날아가는 동안 갈 곳을 미리 겨눔

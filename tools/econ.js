@@ -286,6 +286,11 @@ async function main() {
   const J = F.jackpot, jcyc = F.castT + wait + F.pullT + F.showT + F.releaseT, base = fg / cyc * 3600;
   const avgC = (1 - J.p) * cyc + J.p * jcyc, avgG = (1 - J.p) * fg + J.p * J.gyul, tot = avgG / avgC * 3600;
   const day1 = day1Rate, lim = day1 * 0.5;
+  // 철 이벤트 (#180): 이벤트로 얻는 귤(달력 + 산타 선물 상자 하루 상한 + 트리 선물 ÷ 기간 날 수)의 하루 평균이 하루 벌이(1일차 1시간)의 10% 안
+  { const { SEASON } = require('../src/balance.js'), cal = require('../src/seasoncal.js'), X = SEASON.xmas;
+    const days = (X.to[1] - X.from[1]) + 1, calG = Array.from({ length: X.cal.days }, (_, i) => cal.calReward(i + 1).coins || 0).reduce((a, b) => a + b, 0);
+    const santa = X.santa.dayMax * (1 - X.santa.gift) * (X.santa.coins[0] + X.santa.coins[1]) / 2, per = (calG + X.tree.gift) / days + santa, lim2 = day1 * 0.1;
+    console.log(`크리스마스: 달력 귤 ${calG} + 트리 ${X.tree.gift} (${days}일) + 산타 상자 하루 최대 ${Math.round(santa)} → 하루 평균 ${Math.round(per)} · 하루 벌이(1일차 1시간) ${day1} 의 10% ${Math.round(lim2)} → ${per <= lim2 ? '통과' : '넘음'}`); }
   console.log(`잭팟: 확률 1/${Math.round(1 / J.p)}, 귤 ${J.gyul} → 평균 시간당 약 ${Math.round(tot)} (잭팟만 +${Math.round(tot - base)}) · 시간당 잭팟 ${(3600 / avgC * J.p).toFixed(1)}번 · 오름 1일차 시간당 ${day1} 의 절반 ${Math.round(lim)} → ${tot <= lim ? '통과' : '넘음'}`);
   // 퀘스트 (#158): 첫날(구역 1) 줄기 보상 합이 첫날 귤 벌이의 QUESTS.dayCap 을 넘지 않게. 둘째 날 이후 구역 줄도 그날 벌이(가운데 값)와 견줌
   { const Q = B.QUESTS, sum = (z) => Q.main.filter((q) => q.z === z).reduce((a, q) => a + (q.reward?.gyul || 0), 0), q1 = sum(1), cap = Math.round(day1 * Q.dayCap);

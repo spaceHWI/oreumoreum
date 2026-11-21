@@ -686,6 +686,7 @@ export const STONE = {
     { id: 'pizza', ko: '마르게리따', en: 'Pizza Margherita', price: 180, buff: 'pick', v: 0.25, food: '#e8b04a' },
     { id: 'salad', ko: '하우스 리코타 샐러드', en: 'House Ricotta Salad', price: 100, buff: 'regen', v: 2, food: '#7fb65a' },
     { id: 'ade', ko: '플럼 에이드', en: 'Plum Ade', price: 50, buff: 'speed', v: 0.1, sec: 300, food: '#c2416b', drink: true },
+    { id: 'vin', ko: '귤 뱅쇼', en: 'Gyul Vin Chaud', price: 80, buff: 'regen', v: 2, food: '#a8323a', drink: true, season: 'xmas', glow: true }, // 크리스마스 한정 (#180): 철 기간에만 메뉴에 나옴. glow = 화면 가장자리 따뜻한 빛
   ],
   // 자리: 가게 거리(#57) 터 SHOPS 의 lot. 앞(테라스)이 골목 너머 개울·바다(서쪽)를 봄
   s: 8, // Tripo 모델 배율 (#71). 모델 안 자리는 stone.js M
@@ -826,6 +827,12 @@ export const CLOTHES = [
   { id: 'socks:w-hike', slot: 'socks', tier: 3, name: '등산 양말', look: { kind: 'socks', main: '#8b8d92', acc: '#c9473d', h: 0.14, thick: true } },
   { id: 'socks:w-knee', slot: 'socks', tier: 4, name: '무릎 양말', look: { kind: 'socks', main: '#2f3f6a', acc: '#9a6ad0', h: 0.19 } },
   { id: 'socks:w-gyul', slot: 'socks', tier: 5, name: '귤 무늬 양말', look: { kind: 'socks', main: '#f29a2e', acc: '#3f9a5a', h: 0.17, dots: '#fff4e0' } },
+  // 겨울 옷 (#180 크리스마스): season 이 있으면 그 철 기간에만 LEAP 겨울 진열대에 나옴 (가진 것은 언제든 입음). 일부는 접속 달력·산타 투기꾼 선물 (SEASON.xmas)
+  { id: 'hat:x-santa', slot: 'hat', tier: 2, name: '산타 모자', season: 'xmas', look: { kind: 'santa', main: '#c8333a', acc: '#f6f2ea' } },
+  { id: 'hat:x-rudolph', slot: 'hat', tier: 2, name: '루돌프 머리띠', season: 'xmas', look: { kind: 'antler', main: '#8a5a36', acc: '#c8333a' } },
+  { id: 'top:x-ugly', slot: 'top', tier: 3, name: '못생긴 스웨터', season: 'xmas', look: { kind: 'tee', long: true, main: '#b5333a', acc: '#2f7a4a', stripes: 2, gyul: '#f29a2e', collar: '#f6f2ea' } },
+  { id: 'socks:x-boots', slot: 'socks', tier: 3, name: '빨간 장화', season: 'xmas', look: { kind: 'socks', main: '#c8333a', acc: '#f6f2ea', h: 0.2, thick: true } },
+  { id: 'vest:x-scarf', slot: 'vest', tier: 2, name: '목도리', season: 'xmas', look: { kind: 'scarf', main: '#c8333a', acc: '#f6f2ea' } },
 ];
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
 export const wearPrice = (c) => c.tier === 1 && WEAR.slots.find((s) => s.k === c.slot)?.none ? WEAR.priceNone1 : WEAR.price[c.tier];
@@ -1269,4 +1276,35 @@ export const QUESTS = {
     // 만족한상회 사장 (#167 가게가 들어오면)
     { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?'], task: '만족한상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
   ],
+};
+
+// 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
+// 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐
+// 값은 모두 임의(이슈 #180). 이벤트로 얻는 귤은 기간 평균 하루 벌이의 10% 안 (tools/econ.js 가 셈)
+export const SEASON = {
+  xmas: {
+    from: [12, 1], to: [12, 31], // 12월 1일 00:00 ~ 12월 31일 23:59 (KST)
+    snowZones: [4, 5], // 눈이 쌓이는 구역 (굼부리·정상). 눈덩이도 여기서만
+    snow: 0.85, // 쌓인 눈 짙기 (땅·풀)
+    bulbs: { lamp: 12, lampLow: 6, eave: 14, eaveLow: 7, blink: 1.3 }, // 가로등 하나·가게 처마 하나에 꼬마전구 수, 깜빡임 빠르기
+    tree: { step: 3000, stages: 10, gift: 300, poll: 120, at: [-9, 12] }, // 트리: 모두가 주운 쓰레기 step 개마다 한 단계, 마지막 단계는 꼭대기 귤 별. 다 채우면 선물 귤, 서버 다시 묻기(초). at = 들머리 출발점에서 [옆(오른쪽 +), 앞] m
+    cal: { days: 25, miss: 50, coins: [30, 100], every: 5 }, // 접속 달력 12월 1~25일: 귤 30~100, every 일마다 겨울 옷(25일은 눈덩이), 놓친 날은 귤 miss 로 열기
+    calCloth: { 5: 'hat:x-santa', 10: 'vest:x-scarf', 15: 'hat:x-rudolph', 20: 'socks:x-boots' }, // 달력 옷 (25일 = 눈덩이)
+    santa: { p: 1 / 3, gift: 0.1, coins: [20, 60], dayMax: 4, giftMax: 2 }, // 투기꾼 3명 중 1명이 산타. 쫓으면 선물 상자: 귤 또는 (gift 확률) 겨울 옷. 하루 dayMax 개까지, 옷은 모두 giftMax 벌까지
+    snowball: { slow: 0.2, slowT: 1.5, color: '#f4f8ff' }, // 눈덩이: 피해는 손과 같고 맞은 적이 slowT 초 동안 slow 만큼 느려짐. 귤을 쓰지 않음
+    music: { gain: 0.5, bell: [2, 5] }, // 겨울 판 배경음: 종·방울 한 겹 (크기, 방울 사이 초)
+    radio: { every: [150, 300] }, // 성탄 인사 사이(초)
+    lines: [
+      '산타는 굴뚝으로, 쓰레기는 클린하우스로',
+      '루돌프 코가 빨간 건 추워서입니다. 멧돼지 코가 빨간 건 저희도 모릅니다',
+      '올해 착한 일 목록: 쓰레기 줍기. 나쁜 일 목록: 쓰레기 버리기',
+      '선물 포장지는 종이류입니다. 리본은 아닙니다',
+      '오늘 밤 하늘에 썰매가 보여도 놀라지 마세요. 아마 그냥 UFO 입니다',
+      '눈사람은 굼부리에서. 눈덩이는 멧돼지에게',
+      '트리에 귤이 달릴수록 오름이 따뜻해집니다',
+      '메리 크리스마스. 귤 뱅쇼는 스톤에서',
+      '산타 옷을 입은 투기꾼을 보면 신고 대신 귤을 던져 주세요',
+      '올겨울 가장 좋은 선물은 깨끗한 오름입니다',
+    ],
+  },
 };
