@@ -347,6 +347,13 @@ export const WEATHER = {
   pollMin: 30, blendSec: 6, windKmh: 30, // 이 속도(km/h) 이상이면 강풍
   particles: 1400, particlesLow: 500, box: 40, rainFall: 26, snowFall: 3.2,
   cloudCount: 11, // namsongi 구름 덩어리 수
+  keepMin: 120, // 날씨를 못 받으면 앞에 받은 날씨를 이 분까지 둠 (#147, 그 뒤 맑음)
+  // 빗줄기 (#147): n 선 수(LOW nLow), len 길이 m, drift 바람 옆 흐름 m/s(풀 흔들림 배율을 곱함), opacity
+  //   near 카메라 가까이 굵은 띠 수, bandD 카메라에서 거리 [m], bandW 반폭, bandLen 길이, bandOpacity
+  rainLine: { n: 1600, nLow: 600, len: 0.9, drift: 6, opacity: 0.55, color: '#d8e4f0', near: 26, nearLow: 12, bandD: [1.6, 5], bandW: 0.012, bandLen: 1.1, bandOpacity: 0.42 },
+  // 하늘·땅 (#147, game/scene.js applyWx): skyMin 짙은 하늘의 가장 어두운 밝기(밤 제외), lightMin 해·하늘빛 세기 아래 한도(구역 분위기와 곱해도 캐릭터가 보이게)
+  // fogMin 날씨 × 구역 안개 거리 배율의 아래 한도, nightRain 밤비는 하늘을 이만큼 더 어둡게, cloudScale·cloudDrop 비구름(cloud 1)일 때 구름 크기 배율·내려오는 비율
+  skyMin: 0.16, lightMin: 0.35, fogMin: 0.06, nightRain: 0.7, cloudScale: 1.7, cloudDrop: 0.35, cloudDark: 0.5,
 };
 
 // 발자국 (#21): 걸음마다 왼발·오른발 자국. 달리기·질주는 간격이 넓고 조금 진함

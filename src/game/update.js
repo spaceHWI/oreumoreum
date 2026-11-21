@@ -271,7 +271,7 @@ function step(now) {
   }
   topFit.tick(dt);
   G.uT.value = now / 1000; G.uP.value.copy(player.pos); if (player.air) G.uP.value.y = 1e6;
-  wx.update(dt, player.pos, wx.cur.wind); sound.setRain?.(wx.cur.snd); state.wxT -= dt; if (state.wxT <= 0 && !wx.settled) { state.wxT = 0.25; applySky(); }
+  wx.update(dt, player.pos, wx.cur.wind, camera); sound.setRain?.(wx.cur.snd); state.wxT -= dt; if (state.wxT <= 0 && !wx.settled) { state.wxT = 0.25; applySky(); }
   prints.update(dt); grass.update(player.pos, camera.position); if (save.gfx !== 'lite') motes.update(player.pos, now / 1000, dt, lampNight);
   if (eoksaeMat) eoksaeMat.userData.wind.value = now / 1000;
   if (eoksaeMat?.userData.push) {

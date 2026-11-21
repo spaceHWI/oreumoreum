@@ -1,5 +1,5 @@
 // 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { WX } from '../weather.js';
+import { WX, wxIcon } from '../weather.js';
 import { ONLINE } from '../online.js';
 import { state, late } from './state.js';
 import { $, KEY, save, persist } from './save.js';
@@ -8,6 +8,10 @@ import { player } from './place.js';
 import { toast, updateStats, busy, closePanels, ach, openAch } from './hud.js';
 import { marker } from './input.js';
 import { initInbox, inboxCheck } from './inbox.js';
+
+// ---------- 지금 날씨 (#147): 메뉴에 아이콘·이름 ----------
+function showWx() { const el = $('m-wx'); if (el) el.innerHTML = `${wxIcon(wx.kind)}<span>${WX[wx.kind]?.name || ''}</span>`; }
+wx.onChange(showWx); showWx();
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });

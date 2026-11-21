@@ -130,7 +130,7 @@ uniform highp sampler2D uHt;
 uniform sampler2D uMask; uniform sampler2D uPathT; uniform sampler2D uStroke;
 uniform vec3 uG1; uniform vec3 uG2; uniform vec3 uG3; uniform vec3 uGold; uniform vec3 uForest; uniform vec3 uTea; uniform vec3 uPath;
 uniform vec3 uPl; uniform float uTime; uniform float uWind;
-uniform sampler2D uZoneT; uniform vec4 uZoneB; uniform float uDry[6]; uniform vec3 uMood[6];
+uniform sampler2D uZoneT; uniform vec4 uZoneB; uniform float uDry[6]; uniform vec3 uMood[6]; uniform float uWet;
 vec4 zmood(ivec2 i){ int k=clamp(int(texelFetch(uZoneT,clamp(i,ivec2(0),ivec2(ZN-1)),0).r*255.0+0.5),0,5); return vec4(uDry[k],uMood[k]); }
 // 구역 마른 정도 (#46): x 1 메마름 ~ 0 보통 ~ - 무성함. yzw 구역 분위기 (#136: 밝음·억새빛·어두움). 구역 번호 격자(가장 가까운 칸)를 네 칸 섞어 경계를 부드럽게
 vec4 zoneMood(vec2 p){ if(uZoneB.z<=0.0) return vec4(0.0); vec2 f=(p-uZoneB.xy)/uZoneB.z-0.5; vec2 fl=floor(f); ivec2 i=ivec2(fl); vec2 u=f-fl;
@@ -167,6 +167,7 @@ vec3 groundColor(vec2 p){
   g=mix(g,g*vec3(0.66,0.78,0.66),dk*off);
   g=mix(g,vec3(0.5,0.27,0.19)*(0.8+0.3*n),dk*smoothstep(0.48,0.74,n2)*0.7*off);
   g=mix(g,mix(uPath,vec3(0.72,0.45,0.34),dk*0.5)*(0.88+0.24*n2),pm);
+  float wl=dot(g,vec3(0.3,0.59,0.11)); g=mix(g,vec3(wl)*vec3(0.93,0.98,1.02),uWet*0.55)*(1.0-uWet*0.24); // 비·흐림 (#147): 칙칙하고 어둡게, 젖은 길
   return g;
 }`;
 
@@ -194,6 +195,7 @@ vec3 groundColor(vec2 p){
     uG1: { value: C('#62a64a') }, uG2: { value: C('#86c257') }, uG3: { value: C('#b9d264') },
     uZoneT: { value: zoneTex }, uZoneB: { value: new T.Vector4(0, 0, 0, 0) }, uDry: { value: [0, 0, 0, 0, 0, 0] }, // 구역 마른 정도 (#46, bloom.js 가 채움)
     uMood: { value: [0, 1, 2, 3, 4, 5].map(() => new T.Vector3()) }, // 구역 분위기 (#136, zonelook.js 가 채움): 밝음·억새빛·어두움
+    uWet: { value: 0 }, // 비·흐림 (#147): 땅·풀·나무 채도·밝기 낮춤 (game/scene.js applyWx)
     uGold: { value: C('#d8b562') }, uForest: { value: C('#4c8442') }, uTea: { value: C('#3f8a48') }, uPath: { value: C('#dcbb8c') },
   };
 
@@ -281,7 +283,7 @@ vec3 groundColor(vec2 p){
   /* 나무·바위용 재질: 흔들림 + 캐릭터를 가리면 점무늬로 비침 */
   function enhance(m, sway, tint) {
     m.onBeforeCompile = (s) => {
-      s.uniforms.uTime = U.uTime; s.uniforms.uPlV = U.uPlV;
+      s.uniforms.uTime = U.uTime; s.uniforms.uPlV = U.uPlV; s.uniforms.uWet = U.uWet;
       if (sway) s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;' + (tint ? '\nattribute vec3 aTint;\nattribute float aTrunk;' : ''))
         .replace('#include <color_vertex>', '#include <color_vertex>' + (tint ? '\nvColor.rgb*=mix(aTint,vec3(1.0),aTrunk);' : ''))
         .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -294,7 +296,9 @@ vec3 groundColor(vec2 p){
       transformed.x+=sin(uTime*1.2+ph+position.y*0.5)*0.035*swy;
       transformed.z+=sin(uTime*0.9+ph*1.7+position.x)*0.025*swy;`);
       s.fragmentShader = s.fragmentShader.replace('#include <common>', `#include <common>
-      uniform vec3 uPlV;
+      uniform vec3 uPlV; uniform float uWet;`).replace('#include <color_fragment>', `#include <color_fragment>
+      { float wl=dot(diffuseColor.rgb,vec3(0.3,0.59,0.11)); diffuseColor.rgb=mix(diffuseColor.rgb,vec3(wl),uWet*0.45)*(1.0-uWet*0.2); }`)
+        .replace('#include <common>', `#include <common>
       float bayer4(vec2 p){ ivec2 i=ivec2(mod(p,4.0)); int k=i.x+i.y*4;
         float m[16]=float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.); return (m[k]+0.5)/16.0; }`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
@@ -508,7 +512,7 @@ vec3 groundColor(vec2 p){
   function setZoneGrid(fn, x0, z0, cell) { for (let j = 0; j < ZN; j++) for (let i = 0; i < ZN; i++) zoneData[j * ZN + i] = fn(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell); zoneTex.needsUpdate = true; U.uZoneB.value.set(x0, z0, cell, 0); return ZN; }
   const zoneDry = U.uDry.value; // [0..5] 구역별 마른 정도. 바꾸면 바로 반영
   const zoneMood = U.uMood.value; // [구역] = Vector3 (#136)
-  return { halla, setZoneGrid, zoneDry, zoneMood, solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  return { setWet: (v) => { U.uWet.value = v; }, halla, setZoneGrid, zoneDry, zoneMood, solids, terrain, grass, sky, skyU, wind: U.uWind, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */

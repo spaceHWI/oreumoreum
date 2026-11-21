@@ -135,6 +135,7 @@ body.looking #pickmsg, body.hp-down #pickmsg { display: none !important; }
 #menu-music { flex: none; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; }
 #menu-music svg { display: block !important; width: 20px; height: 20px; }
 #menu-music[aria-pressed="false"] { color: var(--ink-soft); opacity: .6; }
+#menu .m-wx { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: var(--ink-soft); padding: 2px 4px; } #menu .m-wx svg { width: 18px; height: 18px; } /* 지금 날씨 (#147) */
 #music-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
 #menu-reset { --p: 0; position: relative; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; color: var(--ink-soft); background: transparent; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #menu-reset::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), rgba(128,128,128,.35) 0); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
@@ -1112,6 +1113,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   <div class="grab ph"></div>
   <button type="button" id="menu-feedback" class="m-fb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>의견 보내기</button>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
+  <div class="m-wx" id="m-wx" title="지금 날씨 (실제 제주)"></div>
   <div class="tiles">
     <button type="button" id="menu-ach" class="ph"><i class="dot" id="ach-dot3" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/></svg>업적</button>
     <button type="button" id="menu-dex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h7v14H4zM13 5h7v14h-7zM6.5 9h2M15.5 9h2"/></svg>도감</button>

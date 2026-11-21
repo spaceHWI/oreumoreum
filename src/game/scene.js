@@ -2,7 +2,7 @@
 import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong } from '../namsongi.js';
 import { createFootprints } from '../footprints.js';
-import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH } from '../balance.js';
+import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH, WEATHER } from '../balance.js';
 import { crashNote, reportCrash } from '../crash.js';
 import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
 import { STREET } from '../streetlayout.js';
@@ -155,23 +155,34 @@ export function applySky() {
   late.sound.setDaylight?.(k);
 }
 // 구역 안개 (#136): 날씨까지 얹은 안개(fogBase)에 구역 배율. area.js 가 setZoneFog 로 천천히 바꿈
-const fogBase = { n: 1, f: 1 }, zoneFog = { n: 1, f: 1 };
-function applyZoneFog() { scene.fog.near = fogBase.n * zoneFog.n; scene.fog.far = fogBase.f * zoneFog.f; G.fogN.value = scene.fog.near; G.fogF.value = scene.fog.far; }
+// 날씨 × 구역은 맑은 날 안개 거리(fogRef)의 WEATHER.fogMin 아래로는 안 줄임 (#147: 비 + 굼부리 안개가 겹쳐 너무 가까이 막히지 않게)
+const fogBase = { n: 1, f: 1 }, zoneFog = { n: 1, f: 1 }, fogRef = { f: 1 };
+function applyZoneFog() { const f = Math.max(fogBase.f * zoneFog.f, fogRef.f * WEATHER.fogMin); scene.fog.far = f; scene.fog.near = Math.min(fogBase.n * zoneFog.n, f * 0.4); G.fogN.value = scene.fog.near; G.fogF.value = scene.fog.far; }
 export function setZoneFog(n, f) { if (zoneFog.n === n && zoneFog.f === f) return; zoneFog.n = n; zoneFog.f = f; applyZoneFog(); }
-// 날씨 반영 (#18): 빛·안개·구름·하늘 회색기·풀 흔들림. 밤낮 계산이 끝난 값 위에 얹는다
-const wxGray = new THREE.Color();
+// 날씨 반영 (#18, #147): 빛·안개·구름·하늘·땅 빛깔·풀 흔들림. 밤낮 계산이 끝난 값 위에 얹는다
+// 비·흐림·눈은 하늘을 파란 기 없는 회색으로(위·지평선 차이도 줄임), 해 원반·햇무리·노을빛을 가리고, 구름을 어둡고 크고 낮게, 땅·풀·나무를 칙칙하게(namsongi uWet)
+const wxGray = new THREE.Color(), lum = (c) => c.r * 0.3 + c.g * 0.59 + c.b * 0.11;
 function applyWx(el) {
-  const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8);
-  sun.intensity *= c.light; hemi.intensity *= 0.55 + 0.45 * c.light; fill.intensity *= c.light;
+  const c = wx.cur, day = THREE.MathUtils.smoothstep(el, -6, 8), W = WEATHER;
+  sun.intensity *= c.light * (1 - 0.45 * c.sunHide); hemi.intensity *= Math.max(W.lightMin, 0.55 + 0.45 * c.light); fill.intensity *= c.light;
+  fogRef.f = scene.fog.far;
   scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; fogBase.n = scene.fog.near; fogBase.f = scene.fog.far; applyZoneFog();
-  const gr = (col, a) => { const l = (col.r + col.g + col.b) / 3; col.lerp(wxGray.setRGB(l * 0.97, l, l * 1.04), a); };
-  gr(FOG, c.gray * 0.8); G.fogC.value.copy(FOG);
+  // 밝기 배율: 낮엔 c.sky, 밤비는 더 어둡게 (회색기만큼만)
+  const dark = 1 - (1 - c.sky * (day + (1 - day) * (c.rain > 0.3 ? W.nightRain : 1))) * c.gray;
+  const gr = (col, a, k = 1) => { const l = lum(col) * k; col.lerp(wxGray.setRGB(l * 0.97, l, l * 1.04), a); };
+  const floor = (col) => { const l = lum(col), m = W.skyMin * day * c.gray; if (l < m && l > 1e-4) col.multiplyScalar(m / l); };
+  gr(FOG, c.gray * 0.85, dark); floor(FOG); G.fogC.value.copy(FOG);
   if (NSW) {
-    const u = NSW.skyU; gr(u.uTop.value, c.gray); gr(u.uHor.value, c.gray * 0.9); gr(u.uCl.value, c.gray * 0.8); gr(u.uCs.value, c.gray);
-    u.uSunCol.value.multiplyScalar(1 - 0.9 * c.gray); NSW.wind.value = c.wind;
-    const ch = NSW.sky.clouds.children, n = Math.round(ch.length * c.cover); ch.forEach((m, i) => { m.visible = i < n; });
+    const u = NSW.skyU;
+    gr(u.uTop.value, c.gray, dark); gr(u.uHor.value, c.gray * 0.95, dark);
+    if (c.flat > 0) { const m = (lum(u.uTop.value) + lum(u.uHor.value)) / 2; u.uTop.value.lerp(wxGray.setRGB(m * 0.97, m, m * 1.04), c.flat); u.uHor.value.lerp(wxGray.setRGB(m * 0.98, m, m * 1.03), c.flat * 0.7); }
+    floor(u.uTop.value); floor(u.uHor.value);
+    const cd = 1 - W.cloudDark * c.cloud; gr(u.uCl.value, c.gray * 0.9, dark * cd); gr(u.uCs.value, c.gray, dark * cd * 0.9);
+    u.uSunCol.value.multiplyScalar((1 - 0.9 * c.gray) * (1 - c.sunHide)); NSW.wind.value = c.wind;
+    NSW.setWet?.(c.wet * (0.6 + 0.4 * day));
+    const ch = NSW.sky.clouds.children, n = Math.round(ch.length * c.cover);
+    ch.forEach((m, i) => { m.visible = i < n; const o = m.userData.wx0 || (m.userData.wx0 = { s: m.scale.x, y: m.position.y }); m.scale.setScalar(o.s * (1 + (W.cloudScale - 1) * c.cloud)); m.position.y = o.y * (1 - W.cloudDrop * c.cloud); });
   }
-  void day;
 }
 wx.onChange(() => { state.wxT = 0; });
 state.wxT = 0;
