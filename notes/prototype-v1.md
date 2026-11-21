@@ -54,6 +54,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |
 | zonedone.js | 구역 완료(#139): 구역 완료 요약 한 장(`#zdone`), 깨어나는 곳(마지막으로 지난 구역 클린하우스, hp.js `startAt` → `late.wakeAt`), 다시 들어올 때 고르기(`#wake-pick`, start.js → `late.afterEnter`), 구역을 끝낸 사람의 빠른 마차(구역 클린하우스 옆 → 가게 거리)·지름길(구역 들어오는 곳 → 위쪽 끝), 구역 기록(줍기·쫓아내기). 저장 `save.boss`. 파일 순서는 pace 뒤(적 후크를 감쌈) |
 | boss.js | 구역 우두머리(#139): 구역 80% 에 빈터(field.bosses)에 나옴, 그 구역 적을 키운 모양(enemies.js `spawnBoss`)·왕관·발밑 고리, 패턴(돌진·무리 부르기·광선, 바닥 경고)·단계(50%·20%)·화면 위 기운 줄(`#boss-bar`), 쫓아내면 느린 화면(`state.slowMo`)·귤·귀한 재료·돌하르방(`late.guard.raise`)·요약. 멀티는 방장이 굴림(`bs`·`bh`·`bd`). `__oreum.boss`, 확인 `node tools/boss.js` |
+| season.js | 철 이벤트(#180 크리스마스): 켜짐(서버 날짜·어드민 미리 보기), 꾸밈 만들기·숨기기, 쌓인 눈(`NSW.zoneSnow`), 트리(`GET /season` 합계)·접속 달력(`#xmas`)·산타 투기꾼 선물 상자·눈덩이·루돌프·성탄 인사·뱅쇼 빛. `late.season`(isOn·dress·repel·snowThrow·tick·fixed), `__oreum.season`, 확인 `node tools/xmas.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
@@ -73,6 +74,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 옷·장비: 칸마다 따로 만든 껍데기. `skin: true` 면 몸과 같은 `skinWeights` 규칙(체형 맞춤 뒤)으로 휨, 아니면 `bone` 에 붙음. 장비 하나는 정점 색으로 구워 한 메시(그리기 1번, 양면 재질만 따로). `covers` 로 덮는 몸 부위를 감춤(옷 사이로 몸이 안 뚫림), 모자는 `clip` 위로 나온 머리카락을 감춤. 상의·하의·신발은 늘 하나(없으면 'top:base'·'bottom:shorts'·'shoes:s1')
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
   - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
+- 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 쓰레기·경제: balance.js · trash.js · cleanhouse.js · bloom.js/bloomfx.js · dumpers.js · achievements.js/badgeicons.js · dexicons.js · buff.js

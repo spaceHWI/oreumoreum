@@ -105,8 +105,9 @@ export const dumpers = trash ? createDumpers({
     paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
     appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); say('danger', 'dumperCome', d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요', 2.8, { ttl: 6 }); },
     dumped: (d, n) => { if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
+    dress: (d) => late.season?.dress(d), // 산타 투기꾼 (#180)
     repel: (kind, pos, def, d) => {
-      life.scatterTangerines(pos, def.reward);
+      life.scatterTangerines(pos, def.reward); late.season?.repel(d, pos); // 산타면 선물 상자 (#180)
       sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
       ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel');
     },

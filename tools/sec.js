@@ -143,6 +143,46 @@ async function startServers() {
     const big = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: c + NET.earnBurst * 2 } } });
     ok(big.j.fixed.includes('coins'), '옛 저장 되돌리기도 몫 안에서만');
     ok((await req('dev', '/save', { method: 'PUT', token: A.token, body: '{"save":' + '"' + 'x'.repeat(260000) + '"}' })).status >= 400, '아주 큰 저장 거절');
+    /* ---------- 철 이벤트 (#180): 달력 날짜 속이기·트리 합계 부풀리기 ---------- */
+    {
+      const { xmasDay, calReward, treeGoal } = await import('../src/seasoncal.js');
+      const { checkSave } = await import('../server/src/validate.js');
+      const xd = xmasDay();
+      const ss = (await req('dev', '/season')).j;
+      ok(ss && Number.isFinite(ss.now) && ss.day === xd && ss.total >= 0, `/season 서버 날짜·트리 합계 (12월 ${ss?.day}일, 합계 ${ss?.total})`);
+      // 실서버 날짜: 기간 밖이면 어떤 칸도, 기간 안이면 내일 칸은 거절
+      const C = await login('dev', 'carol'); const base = { ...S0, coins: 0 };
+      await req('dev', '/save', { method: 'PUT', token: C.token, body: { save: base } });
+      const future = xd ? Math.min(25, xd + 1) : 10;
+      const cal = await req('dev', '/save', { method: 'PUT', token: C.token, body: { save: { ...base, season: { xmas: { days: [future], gift: ['hat:x-santa'], tree: 1 } } } } });
+      const me = (await req('dev', '/me', { token: C.token })).j.save;
+      ok(cal.j.fixed.includes('season') && !(me.season?.xmas?.days || []).includes(future) && !me.season?.xmas?.tree && 'season' in (cal.j.fix || {}), `달력 앞날·기간 밖 칸·트리 선물 거절 (${xd ? '기간 안' : '기간 밖'}, 칸 ${future})`);
+      ok(!(me.season?.xmas?.gift || []).length || xd > 0, '기간 밖 선물 옷 거절');
+      // 트리 부풀리기: 줍기는 줍기 몫(pickCredit) 안에서만 더해지고, 꾸민 합계는 받지 않음
+      const big = await req('dev', '/save', { method: 'PUT', token: C.token, body: { save: { ...base, trash: { total: treeGoal() * 5 } } } });
+      const ss2 = (await req('dev', '/season')).j;
+      ok(big.j.fixed.includes('picked') && ss2.total < treeGoal(), `트리 합계 부풀리기 막힘 (합계 ${ss2.total} < ${treeGoal()})`);
+      // 기간 안 판정 (순수 함수, 날짜를 넣어 봄): 오늘 무료·지난 날 귤 50·앞날 거절·지웠다 다시 열어도 귤 두 번 안 받음
+      const P = { ...S0, coins: 0, season: { xmas: { days: [] } } }, acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: Date.now() };
+      const day10 = calReward(10), t = Date.now();
+      let r = checkSave(P, { ...P, coins: 0 + (calReward(12).coins || 0), season: { xmas: { days: [12] } } }, acc, t, { xday: 12 });
+      ok(!r.fixed.length && r.save.season.xmas.days.includes(12) && r.save.coins === (calReward(12).coins || 0), `기간 안 오늘(12일) 칸 받아 줌 (귤 +${calReward(12).coins || 0})`);
+      r = checkSave(P, { ...P, season: { xmas: { days: [13] } } }, acc, t, { xday: 12 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.days.includes(13), '기간 안 내일(13일) 칸 거절');
+      r = checkSave({ ...P, coins: 100 }, { ...P, coins: 100 - 50 + (day10.coins || 0), season: { xmas: { days: [10] } }, clothes: day10.cloth ? { own: { [day10.cloth]: 1 }, wear: {} } : P.clothes }, acc, t, { xday: 12 });
+      ok(!r.fixed.length && r.save.season.xmas.days.includes(10) && (!day10.cloth || r.save.clothes.own[day10.cloth]), `지난 날(10일) 귤 50 으로 열기·달력 옷은 값 안 셈 (${day10.cloth || day10.coins})`);
+      r = checkSave({ ...P, coins: 10 }, { ...P, coins: 10, season: { xmas: { days: [5] } }, clothes: { own: { 'hat:x-santa': 1 }, wear: {} } }, acc, t, { xday: 12 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.days.includes(5) && !r.save.clothes.own['hat:x-santa'], '귤이 모자라면 지난 날 칸(옷) 거절');
+      const P2 = { ...P, coins: 40, season: { xmas: { days: [12] } } };
+      r = checkSave(P2, { ...P2, coins: 40 + 99, season: undefined }, acc, t, { xday: 12 });
+      ok(r.save.season?.xmas?.days.includes(12) && r.fixed.includes('coins'), '달력 기록을 빼고 보내도 지우지 않고 귤도 안 늘어남');
+      r = checkSave(P, { ...P, coins: 300, season: { xmas: { days: [], tree: 1 } } }, acc, t, { xday: 12, treeDone: false });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.tree && r.save.coins === 0, '트리가 안 찼는데 트리 선물 거절');
+      r = checkSave(P, { ...P, coins: 300, season: { xmas: { days: [], tree: 1 } } }, acc, t, { xday: 12, treeDone: true });
+      ok(!r.fixed.length && r.save.season.xmas.tree === 1 && r.save.coins === 300, '트리가 찼으면 선물 귤 300 받아 줌');
+      r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
+      ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
+    }
     // 닉네임·말 넣기
     const bad = '<img src=x onerror=alert(1)>‮관리자\u0000'.repeat(3);
     await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: 0, nick: bad } } });

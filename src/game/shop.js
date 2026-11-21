@@ -274,7 +274,7 @@ export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 
     };
     if (w.none) cell(null);
     list.forEach(cell);
-    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot)).sort((a, b) => a.tier - b.tier).forEach((c) => {
+    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => a.tier - b.tier).forEach((c) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', WEAR.tierColor[c.tier]);
       b.title = `${c.name} · LEAP 에서 ${wearPrice(c).toLocaleString()}귤`; b.setAttribute('aria-label', `${c.name} 잠김 · LEAP 에서 살 수 있어요`);
       b.innerHTML = clothSvg(c) + `<span class="pr"><i class="g"></i>${wearPrice(c).toLocaleString()}</span>`;
