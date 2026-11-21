@@ -56,7 +56,12 @@ function norm(s) {
     s.look.colors = o;
   }
   if (!isObj(s.swarm)) s.swarm = {}; s.swarm.earn = int(s.swarm.earn, 0, 1e12, 0); // 들판 떼(#173)로 번 귤 누적 (③)
-  if (s.cave !== undefined) { if (!isObj(s.cave)) s.cave = {}; s.cave.out = int(s.cave.out, 0, 1e12, 0); } // 동굴에서 들고 나온 쓰레기 귤 누적 (#195, earn.js 8)
+  if (s.cave !== undefined) { // 동굴 (#195, earn.js 8): 들고 나온 쓰레기 귤 누적 · 오늘 판 수 · 연 상자 · 주인을 쫓아낸 날
+    if (!isObj(s.cave)) s.cave = {}; s.cave.out = int(s.cave.out, 0, 1e12, 0);
+    if (s.cave.runs !== undefined) s.cave.runs = isObj(s.cave.runs) ? { d: String(s.cave.runs.d || '').slice(0, 10), n: int(s.cave.runs.n, 0, 999, 0) } : undefined;
+    if (s.cave.chest !== undefined) s.cave.chest = isObj(s.cave.chest) ? { d: String(s.cave.chest.d || '').slice(0, 10), got: Array.isArray(s.cave.chest.got) ? s.cave.chest.got.filter((x) => typeof x === 'string' && /^c\d$/.test(x)).slice(0, 8) : [] } : undefined;
+    if (s.cave.boss !== undefined) s.cave.boss = typeof s.cave.boss === 'string' ? s.cave.boss.slice(0, 10) : undefined;
+  }
   { const rs = {}, wn = {}, R0 = isObj(s.swarm.rest) ? s.swarm.rest : {}, W0 = isObj(s.swarm.won) ? s.swarm.won : {}; /* 한 판 (#202): 구역 1~5 만, 숫자만 */
     for (let z = 1; z <= 5; z++) { if (Number.isFinite(+R0[z])) rs[z] = Math.max(0, Math.floor(+R0[z])); const w = W0[z]; if (isObj(w)) wn[z] = { at: int(w.at, 0, 1e14, 0), b: int(w.b, 0, SWARM.run.bonusMax[z] || 0, 0) }; }
     s.swarm.rest = rs; s.swarm.won = wn; }

@@ -236,6 +236,38 @@ function buildCrab() {
   };
 }
 
+// 동굴의 주인 (#195 3번 조각): 거대한 외계 분리수거 로봇. 네모난 몸통 앞에 분리수거 통 셋(색 뚜껑), 둥근 머리 + 빛나는 눈띠, 집게 팔 둘, 무한궤도 둘
+//   걸을 때 몸이 덜컹이고, 조짐(wind) 때 팔을 들고 눈이 밝아짐. 크기는 CAVE.owner.k 로 키움
+function buildRobot() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const s = BOAR.scale * ENEMIES.robot.size * 0.5;
+  const hull = new THREE.Mesh(geo('robotHull', () => mergeGeometries([bx(1.5, 1.2, 1.0, 0, 1.25, 0), bx(1.6, 0.14, 1.1, 0, 1.9, 0), bx(0.5, 0.25, 0.5, 0, 2.05, 0)])), lamb('#5d6670'));
+  hull.scale.setScalar(s); body.add(hull);
+  const binGeo = geo('robotBin', () => bx(0.4, 0.62, 0.12, 0, 0, 0));
+  ['#3f8f4a', '#3f6fb0', '#c9a23a'].forEach((c, i) => { const m = new THREE.Mesh(binGeo, lamb(c)); m.scale.setScalar(s); m.position.set((i - 1) * 0.47 * s, 1.18 * s, 0.53 * s); body.add(m); });
+  const tread = new THREE.Mesh(geo('robotTread', () => mergeGeometries([bx(0.42, 0.5, 1.4, -0.62, 0.25, 0), bx(0.42, 0.5, 1.4, 0.62, 0.25, 0)])), lamb('#2b2e33'));
+  tread.scale.setScalar(s); root.add(tread);
+  const headG = new THREE.Group(); headG.position.set(0, 2.35 * s, 0.05 * s); body.add(headG);
+  const dome = new THREE.Mesh(geo('robotDome', () => new THREE.SphereGeometry(0.42, 8, 5).scale(1.15, 0.8, 1).toNonIndexed()), lamb('#7c8792')); dome.scale.setScalar(s); headG.add(dome);
+  const visor = new THREE.Mesh(geo('robotVisor', () => bx(0.62, 0.12, 0.1, 0, 0.02, 0.38)), glow('#7dffb0')); visor.scale.setScalar(s); headG.add(visor);
+  const antenna = new THREE.Mesh(geo('robotAnt', () => mergeGeometries([bx(0.04, 0.4, 0.04, 0, 0.5, 0), bx(0.12, 0.12, 0.12, 0, 0.74, 0)])), glow('#ff6a4a')); antenna.scale.setScalar(s); headG.add(antenna);
+  const armGeo = geo('robotArm', () => mergeGeometries([bx(0.22, 0.22, 0.9, 0, 0, 0.35), bx(0.08, 0.3, 0.26, -0.08, 0, 0.88), bx(0.08, 0.3, 0.26, 0.08, 0, 0.88)]));
+  const am = lamb('#8a939c'), al = new THREE.Mesh(armGeo, am), ar = new THREE.Mesh(armGeo, am);
+  al.scale.setScalar(s); ar.scale.setScalar(s); al.position.set(-0.92 * s, 1.55 * s, 0.1 * s); ar.position.set(0.92 * s, 1.55 * s, 0.1 * s); body.add(al, ar);
+  const head = new THREE.Object3D(); head.position.set(0, 2.35 * s, 0.5 * s); body.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  return {
+    root, legs, head, tail, h: 2.8 * s,
+    fx: (dt, time, e) => {
+      body.position.y = Math.abs(Math.sin(time * 6 + e.phase)) * 0.05 * s * Math.min(1, e.speed);
+      const up = e.state === 'wind' || e.state === 'dash' ? 1.0 : 0.1 + Math.sin(time * 1.6 + e.phase) * 0.08;
+      al.rotation.x = ar.rotation.x = -up; headG.rotation.y = Math.sin(time * 0.9 + e.phase) * 0.35;
+      visor.scale.y = s * (up > 0.5 ? 1.8 : 1 + 0.25 * Math.sin(time * 4));
+    },
+  };
+}
+
 // 종류 → 모양. 바꾸려면 여기만
 export const ENEMY_MODELS = {
   piglet: buildPiglet,
@@ -245,7 +277,7 @@ export const ENEMY_MODELS = {
   alien: buildAlien,
   crow: buildCrowFoe, // #173 들판 떼
   drone: buildDrone,
-  bat: buildBat, crab: buildCrab, // #195 동굴
+  bat: buildBat, crab: buildCrab, robot: buildRobot, // #195 동굴
 };
 // #108: 모양을 만들다 오류가 나면(받은 자료가 깨짐 등) 대신할 모양으로 계속
 export function buildEnemyModel(kind) {

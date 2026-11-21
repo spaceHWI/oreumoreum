@@ -492,6 +492,7 @@ export const ENEMIES = {
   drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
   // 동굴 전용 (#195, game/cavelife.js): 박쥐(약하고 많음, 낮게 날아 쪼고 올라감) · 눈먼 동굴 게(느리지만 단단, 가까이 와서 집게로 받음). 땅 헤집기 없음
   bat: { name: '동굴 박쥐', hp: 30, walk: 3.2, chase: 7.5, rush: 10, rest: 2.0, flee: 12, dmg: 14, reward: { gyul: 60, rare: 0.02 }, sight: 12, lose: 26, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.6, fly: 2.2 },
+  robot: { name: '거대한 분리수거 로봇', hp: 5200, walk: 1.1, chase: 2.6, rush: 6.5, rest: 3.0, flee: 6, dmg: 48, reward: { gyul: 0, rare: 0 }, sight: 30, lose: 60, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.3, ranged: { keep: 9, range: 20, every: 3.2, speed: 12, r: 1.1 } }, /* #195 동굴의 주인 (값은 CAVE.owner 가 덮음) */
   crab: { name: '눈먼 동굴 게', hp: 150, walk: 1.6, chase: 3.6, rush: 7.5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 320, rare: 0.05 }, sight: 9, lose: 22, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.0 },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
@@ -1345,8 +1346,10 @@ export const NET = {
   // 서버가 아는 큰 귤 (#188, server/src/earn.js): 저장의 기록(판 장비·퀘스트·우두머리·소굴·보물·볼거리)으로 몫을 인정해 ② 에 더함
   //   fresh: 지난 저장에 없던(새로 떨어져 바로 판) 장비 수 통 — 초당 freshPerSec 씩 차고 freshBurst 에서 멈춤 (적 1.2%·소굴 12%·보물 35%·우두머리 60% 를 넉넉히)
   //   legend: 그중 전설 (우두머리·보물 4구역부터만 떨어짐). bossGap·denGap: 같은 우두머리·소굴을 다시 인정하기까지 초 (ZONE_GUARD.holdSec 1800·FIELD.den.reopen 1800 보다 조금 짧게)
+  //   caveDayFull (#195 3번 조각): 하루(서버 날짜)에 동굴 쓰레기로 온전히 인정하는 몫. 넘으면 CAVE.runs.halfK 만 (온전한 판 2번 × 가장 큰 배낭 한 판 × caveK 여유)
+  //   동굴 상자(save.cave.chest, 층마다 하루 한 번 CAVE.chest.gyul)·동굴의 주인(save.cave.boss = 날짜, 하루 한 번 CAVE.owner.gyul)도 8) 에서
   //   cave (#195): 동굴에서 들고 나온 쓰레기 귤(save.cave.out 누적)이 늘어난 몫 × caveK(베스트·분리수거 증강 여유). 통은 초당 cavePerSec, 최대 caveBurst (가장 큰 배낭 540 × 동굴 귤 39 ≈ 2.1만 한 판)
-  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64, caveK: 1.6, cavePerSec: 12, caveBurst: 26000, swarmRestK: 0.9 }, /* swarmRestK (#202): 들판 떼 덤은 쉬는 시간의 이만큼 지나야 다시 인정 */
+  earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64, caveK: 1.6, cavePerSec: 12, caveBurst: 26000, swarmRestK: 0.9, caveDayFull: 70000 }, /* swarmRestK (#202): 들판 떼 덤은 쉬는 시간의 이만큼 지나야 다시 인정 */
   clampKeepDays: 30,  // 귤 맞춤 기록(#188 GET /admin/clamps)·운영자 귤 보내기 기록 보관 날짜
   grantMax: 1000000,  // 어드민이 한 번에 보내는 귤 상한 (#188 POST /admin/grant)
   pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
@@ -1962,6 +1965,27 @@ export const CAVE = {
   // 적: 방에 들어서면(wake m) 그 방 몫이 나옴. bats [최소, 최대] 박쥐 떼 · crabs 게 · 층 지킴이(guard): 바탕 kind 를 k 배로, 기운·피해·귤
   //   지킴이는 구멍(아래층) 방에 서 있고 쫓아내야 구멍이 열림. 맨 아래 층은 주인 방 앞 방(주인은 3번 조각). 쉬며 기운이 참 (#183 restRegen, ZONE_BOSS.rest)
   mobs: { wake: 20, bats: [3, 5], crabs: [0, 2], guard: { kind: 'crab', k: 2.3, name: '동굴 지킴이', hp: 1500, dmg: 40, gyul: 2400, walk: 1.4 } },
+  // 3번 조각 (game/cavedeep.js): 하루 판 수·함정·길 찾기·보물·동굴의 주인
+  // runs: 하루(KST)에 보상이 온전한 판 full 번. 그 뒤 판은 동굴 쓰레기 귤 × halfK. 오름에서 동굴로 들어갈 때마다 한 판. 쓰레기 더미는 판마다 다시 참
+  //   서버(earn.js 8)는 하루에 들고 나온 몫을 따로 세어 dayFull(인정 귤) 넘는 몫은 halfK 만 인정 (판 수를 속여도 하루 몫은 같음)
+  runs: { full: 2, halfK: 0.5 },
+  // crumble 무너지는 바닥: 층마다 n 곳(통로 가운데), 반경 r. 밟으면 warn 초 금이 가다 무너짐 → 안에 있으면 dmg, 들어온 자리로 돌아감. down 초 뒤 다시 메워짐
+  // rock 낙석: 적이 깬 방이나 주인 방에서 every 초마다 n 개, 플레이어 둘레 near m 안에 그림자 → warn 초 뒤 떨어짐. r 안이면 dmg. lie 초 뒤 사라짐
+  // water 좁은 물길: 곁방으로 가는 통로를 p 확률로 가로지름(폭 w). 테왁 배낭(#164 float)이 있으면 헤엄쳐 건넘, 없으면 못 건넘
+  // arrow 발광 이끼 화살표: 줄 방에서 구멍(주인 방)까지 길의 방마다 나가는 통로 입구에, 곁방 갈림길에는 큰길 쪽으로
+  trap: {
+    crumble: { n: [2, 3], r: 1.6, warn: 2, dmg: 30, down: 6 },
+    rock: { every: [8, 13], n: [1, 3], near: 4.5, warn: 1.2, r: 1.25, dmg: 26, lie: 2.2 },
+    water: { p: 0.6, w: 2.6 },
+    arrow: { s: 0.9 },
+  },
+  // chest 숨은 방 상자: 곁방 하나에 하나(층 번호 = id). 하루 한 번(KST). gyul 층마다 귤, 재료·장비는 #140 dropLoot('treasure', loot 구역) (높은 등급)
+  chest: { gyul: [1800, 2600, 3400], loot: 5, r: 2.4 },
+  // owner 동굴의 주인(맨 아래 주인 방): ENEMIES.robot 을 k 배로. 방에 들어서면(wake m) 깨어남. 쉬며 기운이 참(#183)
+  //   rain: every 초마다 n 개 낙석(trap.rock 틀, 더 큼 r·dmg) · call: 기운이 at 아래로 내려갈 때마다 kind n 마리 부름
+  //   쫓아내면 그날(KST) 처음 한 번만 큰 보상: 귤 gyul + dropLoot('boss', loot 구역). 그 뒤는 small 귤만 (기록 없음 = credit)
+  owner: { kind: 'robot', k: 2.1, name: '거대한 분리수거 로봇', hp: 5200, dmg: 48, walk: 1.0, wake: 6, gyul: 9000, small: 600, loot: 5, rain: { every: [7, 10], n: [3, 5], r: 1.6, dmg: 34 }, call: { at: [0.66, 0.33], kind: 'drone', n: 3 } },
+  lines3: { today: '오늘의 동굴', half: '오늘 온전한 판은 다 돌았어요 · 쓰레기 귤 절반', crumble: '바닥이 무너졌어요!', crack: '바닥에 금이 가요', water: '물길이 깊어요 · 테왁 배낭이 있으면 건너요', swim: '테왁을 잡고 물길을 건너요', chest: '숨은 상자! 귤이 쏟아져요', chestGot: '오늘은 이미 연 상자예요', owner: '동굴의 주인이 깨어났어요!', ownerGone: '동굴의 주인을 쫓아냈어요! 오늘의 큰 보상', ownerAgain: '동굴의 주인을 또 쫓아냈어요 · 큰 보상은 하루 한 번', rock: '떨어진 돌' },
   lines2: { full: '배낭이 가득 찼어요 · 들고 밖으로 나가요', none: '주울 것이 보이지 않아요', guard: '지킴이가 구멍을 막고 있어요', guardGone: '지킴이가 물러났어요 · 아래로 가는 길이 열렸어요', lost: '쓰러져 동굴 쓰레기 절반을 잃었어요', carry: '동굴 쓰레기를 들고 나왔어요 · 클린하우스에 버려요', lostLoad: '동굴에서 길을 잃고 나왔어요 · 동굴 쓰레기 절반을 잃었어요' },
 };
 { const z = ZONES[4], g = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0), v = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0); CAVE.junk.perVol = Math.round(2 * z.gv * g / v); } /* Z5V: 구역 5 부피 1 귤 × 2 */

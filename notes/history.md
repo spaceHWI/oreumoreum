@@ -1536,3 +1536,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 능력 탭: 내 가방에 '능력' 탭(레벨이 보일 때만) — 레벨·번 귤 띠·고른 증강 카드(누르면 숫자). 위쪽 레벨 칸을 누르면 이 탭(고를 증강이 있으면 고르기 창). 나머지 창 합치기(업적·도감·칭호를 '기록' 탭으로, 장비 한 탭 묶음)는 다음 이슈로
 - 고침: boss.js 우두머리 쫓아낸 줄의 `// 경험치 (#159)` 뒤로 `late.story.bossBeat` 가 주석에 묻혀 있던 것(#168 합치기 사고)이 경험치 줄을 지우며 살아남(관광버스·엔딩 이야기 이벤트)
 - 도구: `tools/swarmrun.js` 새로 (한 판 끝까지·쉬는 시간·다시 시작), `tools/oldsave.js` 옛 레벨 저장 2개, `tools/sec.js` 떼 덤·레벨 몫 줄, `tools/econ.js` 경험치 = 번 귤
+
+
+## #195 동굴 탐험 3번 조각: 함정·보물·동굴의 주인·하루 판 수 (2026-11-22)
+- 새 파일 `src/game/cavedeep.js`. 값은 `balance.js CAVE.runs·trap·chest·owner·lines3`, 주인 모양 `enemymodels.js buildRobot`(`ENEMIES.robot`)
+- 판: `save.cave.runs = { d, n }` (들어갈 때 cavelife.js caveIn 이 셈). 더미 기록 `save.cave.taken` 은 그날 그 판(r)만 → 판마다 다시 참. 셋째 판부터 줍는 귤 × 0.5 (`held.K`, 쓰러져 잃는 몫도 그 값으로)
+- 함정: 무너지는 바닥·낙석(`life.hooks.enemyHit` 으로 받힘·피해)·좁은 물길(테왁 없으면 spots.clamp 가 막음). 발광 이끼 화살표(줄 → 구멍/주인 길)
+- 상자: 곁방에 하나, `save.cave.chest = { d, got: ['c0','c1'] }`, 귤 + `dropLoot('treasure', 5)`. 전리품 묶음(loot.js `late.lootGroup`)도 동굴 장면으로 옮겨 그림
+- 주인: 맨 아래 주인 방, 낙석 비·드론 부르기·#183 쉼. 우두머리 줄(#boss-bar)을 빌려 이름·기운. 쫓아내면 `save.cave.boss = 오늘` + 귤 9,000 + `dropLoot('boss', 5)`, 같은 날 다시면 600(적 보상 = credit)
+- 서버 `earn.js` 8): 하루 인정 몫 `cred.cd`(넘으면 halfK) · 상자 `cred.cc`(층 id 하루 한 번) · 주인 `cred.cb`(오늘·어제 날짜, 하루 한 번). `validate.js` 가 runs·chest·boss 모양을 바로잡음. `NET.earnRec.caveDayFull` 70000
+- 확인: `tools/caverun.js` 한 판 어림(머신건 15~25분 검사) + `--live` 3번 조각(판 수·화살표·바닥·낙석·물길·상자·주인), `tools/sec.js` 동굴 4줄 더함, `tools/econ.js` 동굴 하루 2판 줄(`--nocave` 비교)
+- 남은 것: 4번(멀티 칸·쪽지·옷·퀘스트·감독 문). 입구는 아직 어드민만. 주인 기운 줄이 화면 위 퀘스트 띠와 겹침(오름 우두머리 줄과 같은 자리)

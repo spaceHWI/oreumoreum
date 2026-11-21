@@ -11,9 +11,11 @@
 //   이어 오기: 서버가 저장을 받은 날로 따로 셈(cred.run). save.ach.run.got 에 새로 들어온 날 수가 서버의 연속 날 수 이하면, 이번 연속에서 한 번
 //   보상 구역은 지난 저장의 journey.maxZ (받은 저장은 지난 것 + 1 까지만 믿음)
 // - 동굴 (#195): save.cave.out(들고 나온 동굴 쓰레기 귤 누적)이 늘어난 몫 × caveK. 통(cred.cave)은 초당 cavePerSec 씩 차고 caveBurst 에서 멈춤
+//   하루(서버 날짜)에 인정한 동굴 쓰레기 몫(cred.cd)이 caveDayFull 을 넘으면 넘는 몫은 CAVE.runs.halfK 만 (하루 판 수를 속여도 하루 몫은 같음)
+//   상자: save.cave.chest.got 의 새 id 'c<층>' (서버 날짜 하루에 한 번, cred.cc) · 주인: save.cave.boss 가 오늘(또는 어제) 날짜로 바뀌면 그날 한 번 (cred.cb)
 // - 들판 떼 한 판 (#202): save.swarm.won[구역] = { at, b } 의 at 이 새로우면 덤 b (SWARM.run.bonusMax 까지). 구역마다 쉬는 시간(SWARM.run.rest × swarmRestK) 안에 두 번 인정하지 않음 (서버 시계)
 // 기록이 없는 것(적·업적·낚시 등)은 지금처럼 credit 에서
-import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM } from '../../src/balance.js';
+import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM, CAVE } from '../../src/balance.js';
 import { sellValue, GEAR_SLOTS, curItem, clothId, WEAR_K } from '../../src/loot.js';
 import { slotTier } from '../../src/gearscore.js';
 import { kstDay } from '../../src/rankday.js';
@@ -37,6 +39,9 @@ export function normCred(c) {
     dl: isObj(o.dl) && typeof o.dl.d === 'string' ? { d: o.dl.d.slice(0, 10), ids: Array.isArray(o.dl.ids) ? o.dl.ids.slice(0, 3) : [], all: o.dl.all ? 1 : 0 } : { d: '', ids: [], all: 0 }, // 오늘의 할 일 (#125)
     dlp: isObj(o.dlp) && typeof o.dlp.d === 'string' ? { d: o.dlp.d.slice(0, 10), ids: Array.isArray(o.dlp.ids) ? o.dlp.ids.slice(0, 3) : [], all: o.dlp.all ? 1 : 0 } : { d: '', ids: [], all: 0 }, // 어제 것 (자정 넘어 저장)
     cave: num(o.cave, E.caveBurst), // 동굴 통 (#195)
+    cd: isObj(o.cd) ? { d: num(o.cd.d), g: num(o.cd.g) } : { d: 0, g: 0 }, // 동굴 오늘 인정한 쓰레기 몫 (3번 조각)
+    cc: isObj(o.cc) && Array.isArray(o.cc.got) ? { d: num(o.cc.d), got: o.cc.got.filter((x) => typeof x === 'string').slice(0, CAVE.floors) } : { d: 0, got: [] }, // 동굴 오늘 연 상자
+    cb: typeof o.cb === 'string' ? o.cb.slice(0, 10) : '', // 동굴 주인 큰 보상을 준 날
     run: isObj(o.run) ? { n: num(o.run.n), last: num(o.run.last), paid: Array.isArray(o.run.paid) ? o.run.paid.filter((x) => RUN_DAYS.includes(x)) : [] } : { n: 0, last: 0, paid: [] },
   };
 }
@@ -143,8 +148,16 @@ export function recognize(P, S, sold, cred, t) {
     if (!got.includes(n) || C.run.paid.includes(n) || C.run.n < n) continue;
     C.run.paid.push(n); why.run += runGyul(n, z);
   }
-  // 8) 동굴: 들고 나온 몫 (#195). 하루 판 수는 3번 조각
-  { const o = Math.max(0, (Number(S.cave?.out) || 0) - (Number(P.cave?.out) || 0)), g = Math.min(o * E.caveK, Math.max(0, C.cave)); C.cave -= g; why.cave = Math.floor(g); }
+  // 8) 동굴: 들고 나온 몫 (#195). 하루 몫(caveDayFull)을 넘으면 절반 · 상자 · 주인
+  { const o = Math.max(0, (Number(S.cave?.out) || 0) - (Number(P.cave?.out) || 0));
+    if (C.cd.d !== day) C.cd = { d: day, g: 0 };
+    const full = Math.min(o * E.caveK, Math.max(0, E.caveDayFull - C.cd.g)), rest = o * E.caveK - full, want = full + rest * CAVE.runs.halfK, g = Math.min(want, Math.max(0, C.cave));
+    C.cave -= g; C.cd.g += Math.min(g, full); why.cave = Math.floor(g); }
+  { if (C.cc.d !== day) C.cc = { d: day, got: [] };
+    const cg = isObj(S.cave?.chest) && S.cave.chest.d === dateOfDay(day) && Array.isArray(S.cave.chest.got) ? S.cave.chest.got : [];
+    for (const id of cg.slice(0, 8)) { const m = /^c(\d)$/.exec(id); if (!m || +m[1] >= CAVE.floors || C.cc.got.includes(id)) continue; C.cc.got.push(id); why.cave += CAVE.chest.gyul[+m[1]] || 0; }
+    const bd = typeof S.cave?.boss === 'string' ? S.cave.boss : '';
+    if (bd && bd !== P.cave?.boss && (bd === dateOfDay(day) || bd === dateOfDay(day - 1)) && C.cb !== bd) { C.cb = bd; why.cave += CAVE.owner.gyul; } }
   // 9) 들판 떼 한 판 버팀 (#202)
   const W = isObj(S.swarm?.won) ? S.swarm.won : {}, PW = isObj(P.swarm?.won) ? P.swarm.won : {};
   for (let z = 1; z <= 5; z++) {
