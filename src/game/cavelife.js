@@ -1,5 +1,5 @@
 // 동굴 탐험 (#195) 2번 조각: 외계 쓰레기 더미 줍기 · 들고 나오기 · 동굴 적(박쥐·눈먼 게) · 층 지킴이
-// - 더미: 줄 방 빼고 방마다 CAVE.junk.perRoom 개(곁방은 pocket 개). 오늘 날짜·층 씨앗으로 같은 자리. 주운 양은 save.cave.taken(그날만)에 남아 새로고침해도 다시 차지 않음
+// - 더미: 줄 방 빼고 방마다 CAVE.junk.perRoom 개(곁방은 pocket 개). 오늘 날짜·층 씨앗으로 같은 자리. 주운 양은 save.cave.taken(그날 그 판만)에 남아 새로고침해도 다시 차지 않음. 새 판(save.cave.runs, 3번 조각)이면 다시 참
 //   주운 쓰레기는 보통 배낭(trash.store.bag)에 그 종류(CAVE.junk.kinds[].as)로 들어가고, 구역 5 의 2배 귤 중 종류 귤을 뺀 나머지는 bag.xv 에 얹음 → 클린하우스에서 보통처럼 버림
 //   동굴 안엔 클린하우스가 없으니 '들고 나와야' 귤이 됨. 지금 동굴에서 든 몫은 save.cave.held, 나오면 save.cave.out(누적)에 더함 → 서버(earn.js 8)가 그 몫을 인정
 //   쓰러지면 든 동굴 쓰레기의 CAVE.junk.lose 를 잃음 (오름에서 든 쓰레기는 그대로). 동굴 안에서 새로고침하면 쓰러진 것으로 봄
@@ -34,21 +34,25 @@ function cv() {
   c.out = Math.max(0, Number(c.out) || 0);
   if (!c.held || typeof c.held !== 'object') c.held = {};
   const h = c.held; h.g = Math.max(0, Number(h.g) || 0); h.xv = Math.max(0, Number(h.xv) || 0); if (!h.k || typeof h.k !== 'object') h.k = {};
-  if (!c.taken || typeof c.taken !== 'object' || c.taken.d !== kstDate()) c.taken = { d: kstDate(), p: {} };
+  if (!c.runs || typeof c.runs !== 'object' || c.runs.d !== kstDate()) c.runs = { d: kstDate(), n: 0 }; /* 오늘 판 수 (3번 조각) */
+  c.runs.n = Math.max(0, Math.floor(Number(c.runs.n)) || 0);
+  if (!c.taken || typeof c.taken !== 'object' || c.taken.d !== kstDate() || (c.taken.r ?? c.runs.n) !== c.runs.n) c.taken = { d: kstDate(), r: c.runs.n, p: {} };
   return c;
 }
 const heldN = () => Object.values(cv().held.k).reduce((s, n) => s + (Number(n) || 0), 0);
 // 든 동굴 쓰레기 가운데 k 비율을 배낭에서 뺌. 뺀 귤 몫을 돌려줌
 function loseHeld(k) {
   const c = cv(), h = c.held, bag = trash?.store.bag; if (!bag || !h.g) return 0;
-  let lostG = 0; const want = h.g * k, big = [...KV].sort((a, b) => b.g - a.g);
-  for (let go = true; go;) { go = false; for (const kv of big) { const have = Math.floor(Number(h.k[kv.as]) || 0); if (have > 0 && (bag[kv.as] || 0) > 0 && lostG + kv.g <= want + kv.g * 0.5) { bag[kv.as]--; h.k[kv.as] = have - 1; lostG += kv.g; go = true; break; } } } /* 비싼 것부터 하나씩, 목표(든 몫 × k)에 가장 가깝게 */
+  let lostG = 0; const want = h.g * k, big = [...KV].sort((a, b) => b.g - a.g), K = Number(h.K) || 1;
+  for (let go = true; go;) { go = false; for (const kv of big) { const have = Math.floor(Number(h.k[kv.as]) || 0), g = kv.g * K; if (have > 0 && (bag[kv.as] || 0) > 0 && lostG + g <= want + g * 0.5) { bag[kv.as]--; h.k[kv.as] = have - 1; lostG += g; go = true; break; } } } /* 비싼 것부터 하나씩, 목표(든 몫 × k)에 가장 가깝게. K: 절반 판이면 하나 값도 절반 */
   const lostX = h.g > 0 ? h.xv * Math.min(1, lostG / h.g) : 0;
   bag.xv = Math.max(0, (bag.xv || 0) - lostX); h.xv = Math.max(0, h.xv - lostX); h.g = Math.max(0, h.g - lostG);
   trash.store.commit(); return lostG;
 }
 // 들고 나옴: 든 몫을 out 에 더하고 비움
 function carryOut() { const c = cv(), g = Math.round(c.held.g); if (g > 0) c.out += g; c.held = { g: 0, xv: 0, k: {} }; persist(); return g; }
+// 이번 판 쓰레기 귤 배수: 오늘 온전한 판(CAVE.runs.full)을 넘으면 halfK
+const runK = () => (cv().runs.n > CAVE.runs.full ? CAVE.runs.halfK : 1);
 
 // ---------- 층: 더미 ----------
 const canGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.4, 7), partGeo = (() => { const g = new THREE.BoxGeometry(0.46, 0.22, 0.32); return g; })();
@@ -159,8 +163,9 @@ function takeFrom(p) {
   while (n < tool.per && p.n > 0) {
     const kv = nextKind(p); if (bagRoom() < kv.vol) break;
     p.n--; const [t, k] = p.slot[p.n]; CL.ims[t].setMatrixAt(k, ZERO); CL.ims[t].instanceMatrix.needsUpdate = true;
-    bag[kv.as] = (bag[kv.as] || 0) + 1; bag.xv = (bag.xv || 0) + kv.xv;
-    c.held.k[kv.as] = (Number(c.held.k[kv.as]) || 0) + 1; c.held.g += kv.g; c.held.xv += kv.xv;
+    const K = runK(), g = Math.round(kv.g * K), xv = Math.max(0, g - (kv.g - kv.xv)); /* 절반 판이면 귤도 절반 (종류 귤은 그대로, 나머지 xv 를 줄임) */
+    bag[kv.as] = (bag[kv.as] || 0) + 1; bag.xv = (bag.xv || 0) + xv;
+    c.held.k[kv.as] = (Number(c.held.k[kv.as]) || 0) + 1; c.held.g += g; c.held.xv += xv; c.held.K = K;
     pickMsg(kv.name); late.sound?.pick?.(kv.as); n++;
   }
   if (n) { c.taken.p[p.id] = p.n; trash.store.commit(); persist(); updateTrashUI(true); late.ach?.emit?.('cave-pick', n); }
@@ -176,8 +181,9 @@ function tickPick(dt) {
 }
 
 // ---------- 장면 옮기기 ----------
-const borrowList = () => [life.group, armFx.group, aimMark, aimTri].filter(Boolean);
-function caveIn(cs) { CL.cs = cs; CL.borrowed = borrowList(); for (const o of CL.borrowed) cs.add(o); }
+const borrowList = () => [life.group, armFx.group, aimMark, aimTri, late.lootGroup].filter(Boolean); /* 전리품(#140)도: 동굴 상자·주인 (3번 조각) */
+function caveIn(cs) { const c = cv(); c.runs.n++; persist(); /* 오름에서 들어올 때마다 한 판 (3번 조각) */
+  CL.cs = cs; CL.borrowed = borrowList(); for (const o of CL.borrowed) cs.add(o); }
 function caveOut(downed) {
   let lost = 0;
   if (downed && cv().held.g > 0) lost = loseHeld(J.lose);
@@ -202,7 +208,7 @@ function caveTick(dt) { tickMobs(dt); tickPick(dt); }
 // 동굴 안에서 새로고침함: 쓰러진 것으로 보고 절반을 잃은 뒤 들고 나온 것으로
 if (cv().held.g > 0 && trash) { loseHeld(J.lose); carryOut(); setTimeout(() => toast(L2.lostLoad, 3.6), 4000); }
 
-Object.assign(late, { caveCanPick: () => !!CL.pk || !!nearestPile(J.walkR), caveIn, caveOut, caveFloor: buildFloor, caveFloorOff: clearFloor, caveTick, caveDraw, cavePick, caveGuard: () => !!state.cave && CL.fi < CAVE.floors - 1 && !CL.guardDone });
+Object.assign(late, { caveCanPick: () => !!CL.pk || !!nearestPile(J.walkR), caveIn, caveOut, caveFloor: buildFloor, caveFloorOff: clearFloor, caveTick, caveDraw, cavePick, caveGuard: () => !!state.cave && CL.fi < CAVE.floors - 1 && !CL.guardDone, caveSave: cv, caveRunK: runK, caveFloorNow: () => CL });
 
 // ---------- 확인용 (__oreum.cave 에 더함) ----------
 Object.assign(late.caveApi || (late.caveApi = {}), {
