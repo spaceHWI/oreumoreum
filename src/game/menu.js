@@ -5,7 +5,7 @@ import { state, late } from './state.js';
 import { $, KEY, save, persist } from './save.js';
 import { wx, spots, applySky } from './scene.js';
 import { player } from './place.js';
-import { toast, updateStats, busy, closePanels, ach, openAch } from './hud.js';
+import { toast, topFit, updateStats, busy, closePanels, ach, openAch } from './hud.js';
 import { marker } from './input.js';
 import { initInbox, inboxCheck } from './inbox.js';
 
@@ -19,7 +19,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
   const stop = () => { t0 = 0; cancelAnimationFrame(raf); b.style.setProperty('--p', 0); };
   const doReset = () => {
     state.resetting = true; // 이후 persist 가 옛 저장을 되쓰지 않게
-    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, rainFx: save.rainFx, introSound: save.introSound, music: save.music, reset: 1, _rev: save._rev, _acct: save._acct }; // reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7)
+    const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, rainFx: save.rainFx, introSound: save.introSound, music: save.music, nickSet: save.nickSet, nickRen: save.nickRen, reset: 1, _rev: save._rev, _acct: save._acct }; // reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7)
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
     location.reload();
@@ -49,13 +49,20 @@ export function enableDev() {
       try { if (state.todOverride == null) localStorage.removeItem(TK); else localStorage.setItem(TK, String(state.todOverride)); } catch (e) { /* 무시 */ }
       tv.textContent = state.todOverride == null ? '실제' : `${String(Math.floor(state.todOverride)).padStart(2, '0')}:${String(Math.round((state.todOverride % 1) * 60)).padStart(2, '0')}`;
       if (state.todOverride != null) sl.value = state.todOverride;
+      $('adm-body').querySelectorAll('[data-h]').forEach((b) => b.setAttribute('aria-pressed', String(state.todOverride != null && Math.abs(parseFloat(b.dataset.h) - state.todOverride) < 0.01))); $('adm-real').setAttribute('aria-pressed', String(state.todOverride == null)); // #153 고른 것은 눌린 모양
       applySky();
     };
     try { const v = parseFloat(localStorage.getItem(TK)); if (Number.isFinite(v)) setTod(v); } catch (e) { /* 무시 */ }
     sl.addEventListener('input', () => setTod(parseFloat(sl.value)));
     $('adm-body').querySelectorAll('[data-h]').forEach((b) => b.addEventListener('click', () => setTod(parseFloat(b.dataset.h))));
     $('adm-real').addEventListener('click', () => setTod(null));
-    $('adm-body').querySelectorAll('[data-wx]').forEach((b) => b.addEventListener('click', () => { wx.set(b.dataset.wx || null); toast('날씨: ' + WX[wx.kind].name); }));
+    $('adm-body').querySelectorAll('[data-wx]').forEach((b) => b.addEventListener('click', () => { wx.set(b.dataset.wx || null); toast('날씨: ' + WX[wx.kind].name); $('adm-body').querySelectorAll('[data-wx]').forEach((o) => o.setAttribute('aria-pressed', String((o.dataset.wx || null) === wx.forced))); }));
+    { // 좌표 보기 (#153): 위쪽 곳 이름 칸 옆에 숫자 좌표 (이 기기만)
+      const XK = 'oreumoreum.hwi.xy', xb = $('adm-xy');
+      const setXY = (on) => { $('xy').hidden = !on; xb.setAttribute('aria-pressed', String(on)); try { if (on) localStorage.setItem(XK, '1'); else localStorage.removeItem(XK); } catch (e) { /* 무시 */ } topFit.dirty(); };
+      let on0 = false; try { on0 = localStorage.getItem(XK) === '1'; } catch (e) { /* 무시 */ } setXY(on0);
+      xb.addEventListener('click', () => setXY($('xy').hidden));
+    }
     $('adm-toggle').addEventListener('click', () => { const h = !$('adm-body').hidden; $('adm-body').hidden = h; $('adm-toggle').setAttribute('aria-expanded', String(!h)); });
     let rc = 0;
     $('dev-reset').addEventListener('click', () => {
@@ -67,7 +74,7 @@ export function enableDev() {
     // 들어오기 다시 (#99): 들어오기를 본 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
     $('dev-intro').addEventListener('click', () => {
       state.resetting = true;
-      const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server;
+      const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server; delete keep.nickSet; // #162 이름도 다시 지음 (무료, 테스트용)
       if (keep.pace) keep.pace = { ...keep.pace, hint: 0 }; // #135 투기꾼 안내도 다시
       delete keep.journey; // #176 감독의 문·소개도 처음부터
       try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }

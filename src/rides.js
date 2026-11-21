@@ -388,7 +388,7 @@ export function createRideShop({ scene, height, site, low = false, col = null })
   x.fillStyle = '#2f3336'; x.fillRect(0, 0, 512, 128); x.strokeStyle = '#ff8a1f'; x.lineWidth = 8; x.strokeRect(4, 4, 504, 120);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   ['skate', 'scoot', 'horse'].forEach((k, i) => { const img = new Image(); img.onload = () => { x.drawImage(img, 76 + i * 136, 14, 100, 100); tex.needsUpdate = true; }; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="#f3ecdc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${RIDE_ICON[k]}</svg>`); });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, H - 0.15, D / 2 + 0.86); sign.rotation.x = -0.12; g.add(sign);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: tex })); sign.position.set(0, H - 0.4, D / 2 + 1.0); sign.rotation.x = -0.06; g.add(sign); // 차양 앞에 걺 (#182)
   g.updateMatrixWorld(true);
   const w = (lx, lz, ly = 0) => new THREE.Vector3(lx, ly, lz).applyMatrix4(g.matrixWorld);
   if (col) { const b = w(0, -0.5); col.addBox(b.x, b.z, site.rot, W / 2 - 0.2, D / 2 - 0.9); }
