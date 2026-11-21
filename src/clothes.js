@@ -155,6 +155,18 @@ function hat(mat, L) {
   } else if (L.kind === 'straw') {
     out.push(...crown(0.205, 0.255, 0.17, HC.y + 0.105), at(new THREE.CylinderGeometry(0.42, 0.44, 0.02, 26, 1), M, 0, HC.y + 0.03, HC.z));
     out.push(at(new THREE.CylinderGeometry(0.258, 0.258, 0.045, 22, 1, true), side2(A), 0, HC.y + 0.06, HC.z));
+  } else if (L.kind === 'box') { // 감귤 박스 헬멧 (#164): 뒤집어쓴 골판지 상자, 앞 눈구멍 둘, 옆면 귤 그림과 글씨 줄
+    const I = mat('ink', L.ink || '#6a4a2a'), D = mat('hole', '#1c1712'), W = 0.5, H = 0.46, Dp = 0.5, cy = HC.y + 0.04;
+    out.push(at(new RoundedBoxGeometry(W, H, Dp, 2, 0.02), M, 0, cy, HC.z));
+    out.push(at(new THREE.BoxGeometry(W + 0.01, 0.012, 0.06), I, 0, cy + H / 2 - 0.004, HC.z)); // 위 테이프 자리
+    both((s) => { const e = at(new THREE.CircleGeometry(0.045, 10), D, s * 0.1, cy - 0.02, HC.z + Dp / 2 + 0.002); e.scale.set(1.2, 0.7, 1); out.push(e); }); // 눈구멍
+    both((s) => { // 옆면: 귤 + 잎 + 글씨 줄 ('제주감귤 10kg')
+      const x = s * (W / 2 + 0.003), r = s > 0 ? Math.PI / 2 : -Math.PI / 2;
+      const g = at(new THREE.CircleGeometry(0.075, 14), A, x, cy + 0.06, HC.z); g.rotation.y = r; out.push(g);
+      const lf = at(new THREE.CircleGeometry(0.03, 6), mat('leaf', '#3f9a5a'), x + s * 0.001, cy + 0.14, HC.z + 0.04); lf.rotation.y = r; lf.scale.set(1.5, 0.6, 1); out.push(lf);
+      [[-0.11, 0.2], [-0.16, 0.12]].forEach(([dy, w]) => { const t = at(new THREE.PlaneGeometry(w, 0.022), I, x + s * 0.001, cy + dy, HC.z); t.rotation.y = r; out.push(t); });
+    });
+    out.push(at(new THREE.PlaneGeometry(0.22, 0.02), I, 0, cy - 0.15, HC.z + Dp / 2 + 0.002)); // 앞 글씨 줄
   } else if (L.kind === 'santa') { // 산타 모자 (#180): 흰 털 테 + 뒤로 꺾인 빨간 고깔 + 방울
     const rim = at(new THREE.TorusGeometry(0.255, 0.05, 8, 26), A, 0, HC.y + 0.03, HC.z); rim.rotation.x = Math.PI / 2; rim.scale.set(1, 1.06, 1); out.push(rim);
     const cone = new THREE.Group(); cone.position.set(0, HC.y + 0.05, HC.z); cone.rotation.x = -0.55; out.push(cone);
@@ -186,7 +198,7 @@ function hat(mat, L) {
   return G(out);
 }
 export const HAT_CLIP = 0.97; // 모자 윗면 조금 아래: 머리카락(똥머리 등)이 이보다 위로 나오면 감춤 (#106)
-export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat, santa: hat, antler: hat, scarf };
+export const CLOTH_BUILD = { tee, shorts: pants, long: pants, vest, jacket, socks, cap: hat, straw: hat, bucket: hat, boonie: hat, flower: hat, santa: hat, antler: hat, box: hat, scarf };
 // 쓰레빠 (신발 1단계): 얇은 밑창 + 끈. 발(맨발·양말)은 기본 몸이 그림 (#106)
 export const slippers = (mat, sole = '#3c8fd0', strap = '#2f6db5') => { // 색은 처음 고르기(#155)에서 바꿀 수 있음
   const S = mat('sole', sole), B = mat('strap', strap);
@@ -197,7 +209,7 @@ export function clothAcc(c, look = c.look) {
   const L = look || {}, f = CLOTH_BUILD[L.kind] || (c.slot === 'hat' ? hat : c.slot === 'top' ? tee : c.slot === 'bottom' ? pants : c.slot === 'vest' ? vest : c.slot === 'jacket' ? jacket : socks);
   const rigid = c.slot === 'hat';
   const covers = c.slot === 'top' ? (L.long ? COVER.teeLong : COVER.tee) : c.slot === 'bottom' ? (L.kind === 'long' ? COVER.long : COVER.shorts) : c.slot === 'jacket' ? COVER.jacket : [];
-  return { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: L.kind === 'antler' ? undefined : HAT_CLIP } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
+  return { slot: c.slot, label: c.name, tier: c.tier, cloth: true, ...(rigid ? { bone: 'head', clip: L.kind === 'antler' ? undefined : L.kind === 'box' ? 0.6 : HAT_CLIP, ...(L.kind === 'box' ? { hide: ['head'] } : {}) } : { skin: true }), covers, foot: c.slot === 'socks' ? L.main : undefined,
     build: (mat) => f(mat, { kind: c.slot === 'top' ? 'tee' : c.slot === 'hat' ? 'cap' : 'socks', main: '#bbbbbb', acc: '#888888', ...L }) };
 }
 // ACCESSORIES 에 옷을 붙임 (gear.js 가 부름)

@@ -5,7 +5,7 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 import { checkLv } from '../../src/augments.js';
@@ -15,6 +15,8 @@ import { checkLv } from '../../src/augments.js';
 const OLD_PRICE = { tool: [0, 100, 400, 1000, 2100], bag: [80, 200, 650, 1100, 2100], shoes: [0, 150, 550, 1100, 2100], weapon: [0, 850], wear: [0, 50, 200, 400, 900], wearNone: 40 };
 const priceOf = (now, old) => (old == null ? now : Math.min(now, old));
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
+const BACK = Object.fromEntries(BACK_LOOKS.map((b) => [b.id, b]));
+const backOwn = (s) => (s.backs && s.backs.own) || {};
 const RIDE = Object.fromEntries(RIDES.list.map((r) => [r.id, r]));
 const START_CLOTH = new Set(Object.values(WEAR_START));
 const START_HAIR = new Set(Object.values(HAIR.start));
@@ -49,6 +51,11 @@ function norm(s) {
   }
   if (isObj(s.season) || s.season !== undefined) s.season = isObj(s.season) && s.season.xmas !== undefined ? { xmas: cleanXmas(s.season.xmas) } : undefined; // 철 이벤트 (#180)
   if (s.season === undefined) delete s.season;
+  if (s.backs !== undefined) { // 배낭 겉모습 (#164): 목록에 있는 것만, 고른 것은 가진 것만
+    const B = isObj(s.backs) ? s.backs : {}, own = {};
+    if (isObj(B.own)) for (const id of Object.keys(B.own)) if (BACK[id] && B.own[id]) own[id] = 1;
+    s.backs = { own, cur: own[B.cur] ? B.cur : null };
+  }
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
@@ -68,6 +75,7 @@ function spentOf(P, S) {
   for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) { const c = CLOTH[id]; sp += priceOf(wearPrice(c) || 0, c.tier === 1 ? (wearPrice(c) ? OLD_PRICE.wearNone : 0) : OLD_PRICE.wear[c.tier - 1]); }
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
+  for (const id of Object.keys(backOwn(S))) if (!backOwn(P)[id]) sp += BACK[id].price; // 배낭 겉모습 (#164)
   return sp;
 }
 function revertItems(P, S) {
@@ -77,6 +85,7 @@ function revertItems(P, S) {
   for (const [k, id] of Object.entries(S.clothes.wear)) if (id && !(S.clothes.own[id] || START_CLOTH.has(id))) delete S.clothes.wear[k];
   S.rides.own = S.rides.own.filter((id) => P.rides.own.includes(id)); if (!S.rides.own.includes(S.rides.cur)) S.rides.cur = S.rides.own[S.rides.own.length - 1] || null;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
+  if (S.backs) { for (const id of Object.keys(S.backs.own)) if (!backOwn(P)[id]) delete S.backs.own[id]; if (!S.backs.own[S.backs.cur]) S.backs.cur = null; }
 }
 
 // 철 이벤트 (#180) 확인: 열린 달력 칸·선물 옷·트리 선물은 늘기만 하고, 새로 연 칸은 서버 날짜로 오늘까지만(지난 날은 귤 miss).

@@ -13,7 +13,7 @@ import { Sound } from '../audio.js';
 import { createDumpers } from '../dumpers.js';
 import * as NSB from '../nsbound.js';
 import { state, late } from './state.js';
-import { $, save, wearV, persist, MAP_ID } from './save.js';
+import { $, save, wearV, persist, MAP_ID, CLOTH, CL } from './save.js';
 import { scene, camera } from './scene.js';
 import { life, NS_TUT, trash, runner, player, hp } from './place.js';
 import { topFit, toast, tips, updateStats, ach, onDexGet, gyulFx, gyulLand } from './hud.js';
@@ -47,9 +47,10 @@ life.hooks.enemyHit = (dir, def) => {
   // 가진 귤의 일부가 주변에 흩어짐 (#32): 가진 귤의 10%(3~15개), 가진 것보다 많이는 안 흩어짐
   const n = Math.min(save.coins, Math.max(SCATTER.min, Math.min(SCATTER.max, Math.round(save.coins * SCATTER.frac))));
   if (n > 0) { save.coins -= n; persist(); updateStats(); life.scatterTangerines(player.pos, n); }
-  const downed = hp.hit(def.dmg * Math.max(0, 1 - wearV('jacket') - augV(save, 'jacket'))); // 잠바(#52)·두꺼운 잠바 증강(#159, 더함): 받는 피해 줄임
+  const hatG = CLOTH[CL.wear.hat]?.guard || 0; // 감귤 박스 헬멧 (#164): 받는 피해 더 줄임
+  const downed = hp.hit(def.dmg * Math.max(0, 1 - wearV('jacket') - augV(save, 'jacket')) * (1 - hatG)); // 잠바(#52)·두꺼운 잠바 증강(#159, 더함): 받는 피해 줄임
   // 전투 오름만 (#36), 피해는 적 표(ENEMIES). 0 이 되면 넉백이 끝난 뒤 쓰러짐
-  sound.stone(); if (downed) return;
+  if (hatG) late.boxThud?.(); else sound.stone(); if (downed) return; // 박스를 쓰면 '퉁'
   if (hp.hp < hp.max * COMBAT.lowHp && life.enemies.hesitate()) { say('danger', 'lowHp', '기운이 얼마 없어요. 물러나서 숨 돌리기', 2.8, { ttl: 3 }); return; } // #148 한 싸움에 한 번
   toast(n > 0 ? `${def.name}에 받혔어요! 귤 ${n}개가 흩어졌어요` : `${def.name}에 받혔어요! 귤을 던지면 도망가요`);
 };

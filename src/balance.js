@@ -796,6 +796,7 @@ export const CLOTHES = [
   { id: 'hat:w-straw', slot: 'hat', tier: 2, name: '밀짚모자', look: { kind: 'straw', main: '#e3c77d', acc: '#b5482f' } },
   { id: 'hat:w-bucket', slot: 'hat', tier: 3, name: '버킷햇', look: { kind: 'bucket', main: '#3f78c0', acc: '#f2efe6' } },
   { id: 'hat:w-hike', slot: 'hat', tier: 4, name: '챙 넓은 등산 모자', look: { kind: 'boonie', main: '#6f7f4a', acc: '#9a6ad0', cord: '#2b2b33' } },
+  { id: 'hat:p-box', slot: 'hat', tier: 3, name: '감귤 박스 헬멧', guard: 0.05, desc: '머리는 차갑게, 귤은 따뜻하게', look: { kind: 'box', main: '#c89a5e', acc: '#f29a2e', ink: '#6a4a2a' } }, // 오름펑크 (#164): 모자 3단계 능력 + 받는 피해 -5%, 쓰면 박스 시야
   { id: 'hat:w-gyul', slot: 'hat', tier: 5, name: '귤꽃 모자', look: { kind: 'flower', main: '#f6efe0', acc: '#f29a2e', leaf: '#3f9a5a', petal: '#ffffff' } },
   // 티셔츠
   { id: 'top:w-tee', slot: 'top', tier: 1, name: '기본 반팔', look: { kind: 'tee', main: '#e8dfc8', acc: '#d6ccb2' } },
@@ -1377,4 +1378,47 @@ export const AUGMENTS = {
     { id: 'jacket', br: 'live', name: '두꺼운 잠바', v: 0.03, text: '받는 피해 -{v}%' },
     { id: 'deer', br: 'live', name: '노루 친구', v: 0.04, text: '탈것 속도 +{v}%' },
   ],
+};
+// 배낭 겉모습 (#164 오름펑크): 배낭 능력 단계는 그대로, 모양만 바꿈. 장비점에서 사고 내 가방 배낭 탭에서 고름
+// 저장 save.backs = { own: { id: 1 }, cur: id | null }. need = 이 배낭 단계 이상일 때 고를 수 있음. 서버 validate.js 가 값 확인
+export const BACK_LOOKS = [
+  { id: 'tewak', name: '해녀 테왁 배낭', price: 800, need: 3, desc: '물에 빠지면 둥둥 떠요. 숨비소리는 덤', float: true },
+];
+// 테왁으로 물에 뜨기 (#164): 개울에서 빠지지 않고 떠서 지나감
+export const TEWAK = {
+  speed: 0.7, // 물 위 이동 빠르기 배수
+  sink: 0.62, // 물낯에서 몸이 잠기는 깊이 (m)
+  bob: 0.06, bobHz: 1.6, // 둥둥 흔들림
+  ringEvery: 0.7, // 물결 고리 간격(초)
+  fill: [0.34, 0.67], // 망사리 불룩 단계: 배낭이 이만큼 차면 1·2단계
+};
+// 박스 시야 (#164): 감귤 박스 헬멧을 쓰면 화면 가장자리 테두리. 화면 폭 비율 (폰 600px 이하 phone)
+export const BOX_VIEW = { desk: 0.06, phone: 0.04 };
+
+
+// 동료 캐릭터 3명 (#172, game/buddies.js). 게임이 움직이는 캐릭터(외부 AI 호출 없음), 내 화면에만. 대사는 src/buddylines.js
+// list: id·이름·문(JOURNEY.doors)·성격(pick 줍는 빠르기 배수, fight 'chase' 달려가 던짐 | 'flee' 물러남, photo 경치 찍으며 멈추는 몫)·옷(outfit.gear)·피부·몸
+// near/far: 플레이어에서 이 거리 안에 머묾(m), 너무 멀면(far 넘으면) 플레이어 쪽으로. greet: 이 거리 안에 오면 돌아보고 손 흔듦(한 번 지나간 뒤 다시 다가와야 또)
+// share: 셋이 합쳐 플레이어가 줍는 속도의 몫까지만 실제 더미를 줄임(플레이어가 하나 주우면 share 만큼 몫이 생김, 몫은 bank 까지 모임)
+// keep: 더미의 마지막 이만큼(비율)은 남김(다 치우는 연출·보상은 플레이어 몫. 서버도 같은 값으로 거름)
+// peers: 방에 사람이 [a] 명 넘으면 1명, [b] 명 넘으면 0명. low: 저사양(TIER 0) 최대 명 수
+// follow: '같이 가요' 시간(초)·뒤 거리(m). throw: 민수 던지기 간격(초)·사거리(m)·달려오는 거리(m). hurt: 맞으면 물러나는 시간(초)
+export const BUDDIES = {
+  list: [
+    { id: 'sunja', name: '순자 삼춘', door: 'mateSunja', pick: 1.4, fight: 'flee', photo: 0, body: 'f', skin: 1,
+      gear: { hair: 'hat:bun', hat: 'hat:w-straw', top: 'top:w-stripe', bottom: 'bottom:w-gal', shoes: 'shoes:slip', hand: 'hand:tongs', back: 'back:none' } },
+    { id: 'minsu', name: '펑크 민수', door: 'mateMinsu', pick: 0.9, fight: 'chase', photo: 0, body: 'm', skin: 0,
+      gear: { hair: 'hat:short', hat: 'hat:w-cap', top: 'top:w-tee~7', bottom: 'bottom:w-long', vest: 'vest:w-old', shoes: 'shoes:s3', hand: 'hand:none', back: 'back:none' } },
+    { id: 'jenny', name: '관광객 제니', door: 'mateJenny', pick: 0.5, fight: 'flee', photo: 0.35, body: 'f', skin: 0,
+      gear: { hair: 'hat:bob', hat: 'hat:w-bucket', top: 'top:w-tee~5', bottom: 'bottom:w-cargo', face: 'face:sunglass', shoes: 'shoes:s2', hand: 'hand:none', back: 'back:round' } },
+  ],
+  near: 20, far: 120, roam: [25, 90], greet: 6, greetGap: 25,
+  walk: 2.2, run: 5.2, pickTime: 1.6, pickR: 1.4, seekR: 60,
+  share: 0.3, bank: 6, keep: 0.2,
+  peers: [4, 8], low: 1,
+  follow: { sec: 600, d: 8 },
+  throw: { every: 1, range: 16, rush: 40, speed: 16 },
+  hurt: 3, hitR: 1.6,
+  cheerR: 150, worryR: 80, ambient: [70, 150], talkR: 3,
+  avoid: { player: 1.4, door: 4, npc: 7 }, // npc: 오름지기(들머리 안내판)·사진사 둘레
 };
