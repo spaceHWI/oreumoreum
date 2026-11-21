@@ -1,5 +1,7 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
+import { upMul, legendOn } from '../loot.js';
+import { LOOT } from '../balance.js';
 import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
@@ -18,8 +20,8 @@ Object.assign(late, { startPick, pressPick }); // 앞 파일에서 부르는 함
 
 // ---------- 줍기·배낭 ----------
 export const pickS = { held: false, cyc: -1, got: false, fullT: 0, gyul: -1, combo: 0, comboAt: -1e9 }; late.pickS = pickS;
-export const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick'); return k === 1 ? t : { ...t, time: t.time / k }; }; // 식사 버프(#50) 줍는 속도
-export const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
+export const toolNow = () => { const t = TOOLS[save.equip.tool - 1], k = buff.mul('pick') * upMul(save, 'tool'), rk = legendOn(save, 'reach') ? LOOT.fx.reach.k : 1; return k === 1 && rk === 1 ? t : { ...t, time: t.time / k, r: t.r * rk }; }; // 식사 버프(#50) 줍는 속도, 장비 등급·강화·전설 줍는 거리 (#140)
+export const bagCap = () => Math.floor((save.equip.bag ? BAGS[save.equip.bag - 1] : POCKET).cap * buff.mul('bag') * upMul(save, 'bag')) + wearV('bottom'); // 식사 버프(#50) 배낭 용량, 바지 주머니(#52)
 export const bagRoom = () => (trash ? bagCap() - trash.bagVol() : 0); late.bagRoom = bagRoom;
 export const canPick = () => !!trash && !player.riding && !player.ride && !player.cart && !player.air && (late.tut.gyulNear(player.pos) >= 0 || trash.any(player.pos.x, player.pos.z, toolNow().r, bagRoom())); // 튜토리얼 귤(#62)도 줍기로
 const trashFull = () => !!trash && bagRoom() < 1 && trash.any(player.pos.x, player.pos.z, toolNow().r, 99);

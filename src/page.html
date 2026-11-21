@@ -1114,6 +1114,66 @@ button.bag-card { cursor: pointer; }
   #wardrobe { height: 60%; width: auto; }
   .bag-tabs { padding: 6px 8px 4px; }
 }
+/* 전리품·강화 (#140): 얻은 장비 견주는 창(#loot-pop), 장비점 강화 쪽(.forge-*) */
+#loot-pop { position: fixed; left: 50%; bottom: calc(var(--safe-b, 0px) + 104px); transform: translateX(-50%); z-index: 22; width: min(420px, calc(100% - 24px)); box-sizing: border-box; display: grid; grid-template-columns: 58px 1fr; grid-template-areas: "art bn" "ba ba"; gap: 8px 12px; align-items: center; padding: 12px 14px; border-radius: 20px; background: rgba(30,30,28,.92); color: #fff; border: 2px solid var(--gc, #fff); box-shadow: 0 0 22px color-mix(in srgb, var(--gc, #fff) 45%, transparent), 0 8px 24px rgba(0,0,0,.35); }
+#loot-pop[hidden] { display: none; }
+#loot-pop.in { animation: lootIn .35s cubic-bezier(.2,1.5,.4,1); }
+@keyframes lootIn { from { transform: translate(-50%, 30px) scale(.9); opacity: 0; } }
+#loot-pop .lp-art, .forge-item .fi-art { grid-area: art; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px var(--gc, transparent); }
+#loot-pop .lp-art svg, .forge-item .fi-art svg { width: 40px; height: 40px; }
+#loot-pop[data-g="3"] .lp-art { animation: lootShine 1.4s ease-in-out infinite; }
+@keyframes lootShine { 50% { box-shadow: inset 0 0 0 2px var(--gc), 0 0 18px var(--gc); } }
+#loot-pop .lp-bn, .forge-item .fi-bn { grid-area: bn; display: grid; gap: 2px; min-width: 0; }
+#loot-pop .lp-bn small, .forge-item .fi-bn small { color: var(--gc, #fff); font-family: var(--display); font-weight: 800; font-size: 12px; }
+#loot-pop .lp-bn b, .forge-item .fi-bn b { font-family: var(--display); font-weight: 800; font-size: 17px; }
+#loot-pop .gs, .forge-sc .gs { display: inline-flex; align-items: center; gap: 4px; font: 800 14px var(--display); } #loot-pop .gs svg, .forge-sc .gs svg { width: 15px; height: 15px; color: var(--gyul); flex: none; } #loot-pop .gs .gd, .forge-sc .gs .gd { font-size: 13px; }
+.lp-fx { font-style: normal; font-size: 12px; color: var(--gyul); }
+#loot-pop .lp-ba { grid-area: ba; display: flex; gap: 8px; } #loot-pop .lp-ba .lp-wear { flex: 1; min-height: 46px; font-size: 15px; } #loot-pop .lp-ba .lp-sell { min-height: 46px; display: inline-flex; align-items: center; gap: 5px; }
+#loot-pop .g, .forge-grid .g { width: 12px; height: 12px; border-radius: 50%; background: var(--gyul); display: inline-block; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15); }
+#loot-pop .lp-x { position: absolute; top: 4px; right: 8px; border: 0; background: none; color: rgba(255,255,255,.6); font-size: 20px; line-height: 1; padding: 4px; }
+.forge-switch { grid-column: 1 / -1; display: flex; gap: 6px; }
+.forge-switch button { position: relative; flex: 1; min-height: 40px; border: 1px solid var(--hair); background: rgba(255,255,255,.08); color: #fff; border-radius: 999px; font: 800 14px var(--display); }
+.forge-switch button[aria-pressed="true"] { background: #fff; color: #17171a; }
+.forge-switch .cnt { position: absolute; top: -4px; right: 10px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: var(--acc); color: var(--acc-fg); font: 800 11px/18px var(--display); font-style: normal; }
+#shoppop.forge-on #shoppop-tabs { display: none !important; }
+#shoppop-cards.forge-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.forge-slots { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 5px; }
+.forge-slot { position: relative; display: grid; justify-items: center; gap: 1px; padding: 6px 2px 4px; border-radius: 12px; border: 1px solid transparent; background: rgba(255,255,255,.07); color: #fff; box-shadow: inset 0 -3px 0 var(--gc); font: inherit; }
+.forge-slot.on { border-color: #fff; background: rgba(255,255,255,.16); }
+.forge-slot.none { opacity: .35; }
+.forge-slot .fs-art svg { width: 26px; height: 26px; } .forge-slot small { font-size: 10.5px; opacity: .8; }
+.forge-slot .fs-e { position: absolute; top: 2px; left: 3px; font: 800 10px var(--display); font-style: normal; color: var(--gyul); }
+.forge-slot .fs-dot { position: absolute; top: 3px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--acc); }
+.forge-main { display: grid; gap: 8px; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.07); grid-row: span 2; }
+.forge-item { display: grid; grid-template-columns: 58px 1fr; grid-template-areas: "art bn"; gap: 12px; align-items: center; }
+.forge-item.forge-pop .fi-art { animation: forgePop .5s cubic-bezier(.2,1.6,.4,1); }
+@keyframes forgePop { 40% { transform: scale(1.25); box-shadow: inset 0 0 0 2px var(--gc), 0 0 24px var(--gyul); } }
+.forge-step { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 0; }
+.forge-step .fv { display: grid; justify-items: center; font: 800 22px var(--display); } .forge-step .fv small { font-size: 12px; opacity: .65; } .forge-step .fv.nx { color: #9be28a; } .forge-step .fv.max { color: var(--gyul); font-size: 17px; }
+.forge-step .fa { font-size: 20px; opacity: .6; }
+.forge-sc { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 13px; }
+.forge-need { display: grid; gap: 5px; }
+.forge-need .fn { display: grid; grid-template-columns: 26px 1fr auto; grid-template-areas: "ic nm n" "wh wh go"; align-items: center; gap: 2px 8px; padding: 6px 8px; border-radius: 12px; background: rgba(255,255,255,.06); }
+.forge-need .fn-ic { grid-area: ic; display: grid; place-items: center; } .forge-need .fn-ic svg { width: 22px; height: 22px; } .forge-need .fn-nm { grid-area: nm; font-size: 13.5px; } .forge-need .fn b { grid-area: n; font: 800 14px var(--display); }
+.forge-need .fn.ok b { color: #9be28a; } .forge-need .fn.short b { color: #ff8a7a; }
+.forge-need .fn-where { grid-area: wh; font-size: 11.5px; opacity: .7; } .forge-need .fn-go { grid-area: go; }
+.forge-go { min-height: 52px; font-size: 17px; } .forge-go.short { background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); }
+.forge-note { text-align: center; opacity: .6; font-size: 11.5px; }
+.forge-pouch, .forge-spare { display: grid; gap: 6px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.05); align-content: start; }
+.forge-pouch h4, .forge-spare h4 { margin: 0; font: 800 14px var(--display); } .forge-spare h4 small { opacity: .6; }
+.fp-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 5px; border-radius: 999px; background: rgba(255,255,255,.08); font: 800 13px var(--display); } .fp svg { width: 18px; height: 18px; } .fp.zero { opacity: .4; }
+.fs-auto { display: flex; align-items: center; gap: 6px; font-size: 12.5px; opacity: .85; }
+.fs-row { display: grid; grid-template-columns: 34px 1fr auto auto auto; gap: 6px; align-items: center; padding: 5px 6px; border-radius: 12px; background: rgba(255,255,255,.06); box-shadow: inset 3px 0 0 var(--gc); }
+.fs-row .fs-art svg { width: 28px; height: 28px; } .fs-row .fs-bn { display: grid; min-width: 0; } .fs-row .fs-bn b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fs-row .fs-bn small { font-size: 11px; opacity: .65; }
+.fs-row .btn { display: inline-flex; align-items: center; gap: 4px; }
+.dex-cell.legend b { color: #ff9a2e; } .dex-cell .dex-ic i { display: grid; place-items: center; width: 48px; height: 48px; } .dex-cell .dex-ic i svg { width: 36px; height: 36px; }
+@media (max-width: 600px) {
+  #shoppop-cards.forge-grid { grid-template-columns: 1fr; }
+  .forge-slots { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .forge-main { grid-row: auto; }
+  #loot-pop { bottom: calc(var(--safe-b, 0px) + 150px); }
+}
 </style>
 
 <!-- 인앱 브라우저 안내 (#118): 카카오톡·인스타그램 등 안 브라우저면 바깥 브라우저로 열도록 이끈다. 큰 파일을 받기 전에 먼저 본다 -->

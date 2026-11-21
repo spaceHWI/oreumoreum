@@ -4,6 +4,7 @@
 // 활(#38)·손 던지기는 throw.js 그대로. throw.js fireWeapon 이 3~6단계면 late.fireArm 을 부름
 import * as THREE from 'three';
 import { WEAPONS, WEAPON_FX as F, CHARGE } from '../balance.js';
+import { weaponMul } from '../loot.js';
 import { Sound } from '../audio.js';
 import { weaponSounds } from '../weaponsound.js';
 import { createWeaponFx } from '../weaponfx.js';
@@ -62,7 +63,7 @@ function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } 
   if (t) { const p = aimPoint(t, from, w.speed), T = from.distanceTo(p) / w.speed; v = p.sub(from).divideScalar(T); v.y += 0.5 * w.grav * T; }
   else v = fwd().multiplyScalar(w.speed).setY(w.grav * 0.1);
   if (spread) { v.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (Math.random() - 0.5) * 2 * spread); v.y += (Math.random() - 0.5) * spread * w.speed; }
-  const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg') * (ch?.mul || 1);
+  const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1);
   const s = armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }); // 유도 (#148)
   if (!ch) save.ammo[w.id] -= 1; A.kick = 1; persist();
   if (w.id === 'gun') sfx()?.gun?.(); else sfx()?.mg?.();
@@ -98,7 +99,7 @@ function releaseBomb(t) {
   if (t) { to = new THREE.Vector3(t.pos.x, t.pos.y + 0.3, t.pos.z); const T0 = 0.35 + from.distanceTo(to) * 0.03; if (t.vel) to.addScaledVector(t.vel, T0); }
   else { to = player.pos.clone().addScaledVector(fwd(), 14); to.y = height(to.x, to.z); }
   const vel = lobVel(from, to, B), ch = state.chargeShot; state.chargeShot = null; // 모아 쏘기 (#129)
-  armFx.lob(from, vel, { dmg: w.dmg * buff.mul('dmg') * (ch?.mul || 1), r: w.r * (ch ? 1 + (CHARGE.bombR - 1) * ch.k : 1), ch: ch?.k, size: ch?.size });
+  armFx.lob(from, vel, { dmg: w.dmg * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1), r: w.r * (ch ? 1 + (CHARGE.bombR - 1) * ch.k : 1), ch: ch?.k, size: ch?.size });
   if (ch) { const b = armFx.bombs[armFx.bombs.length - 1]; late.chargeLaunch?.(ch, 'bomb', b.g.position, () => armFx.bombs.includes(b), t); }
   sfx()?.lob?.(); sendShot('bomb', to, ch ? ch.k : 0);
 }
@@ -124,7 +125,7 @@ function tickLaser(dt, w) {
     // 줄기를 따라 0.5m 마다 맞는지 봄 (가장 가까운 것 하나)
     const dir = to.clone().sub(from), L = dir.length(); dir.divideScalar(L || 1);
     const T = A.thick; // 모아 쏜 굵은 줄기 (#129): 피해 × mul, 맞으면 더 밀림
-    for (let s = 0.5; s <= L + 0.6 && !hit; s += 0.5) hit = life.hitAt(tmpV.copy(from).addScaledVector(dir, s), w.dmg * w.tick * buff.mul('dmg') * (T ? T.mul : 1), null, { quiet: true, hb: false, ch: T ? T.k * 0.5 : 0 });
+    for (let s = 0.5; s <= L + 0.6 && !hit; s += 0.5) hit = life.hitAt(tmpV.copy(from).addScaledVector(dir, s), w.dmg * w.tick * buff.mul('dmg') * weaponMul(save) * (T ? T.mul : 1), null, { quiet: true, hb: false, ch: T ? T.k * 0.5 : 0 });
     if (hit && hit !== true) armFx.wet(hit);
     A.lastHit = hit ? 0.25 : Math.max(0, (A.lastHit || 0) - w.tick);
   }

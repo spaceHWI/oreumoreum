@@ -98,7 +98,8 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); return; }
   if (save.coins < next.price) { toast(`귤이 ${next.price - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= next.price; save.equip[k] = i + 1; if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
+  save.coins -= next.price; late.tierUpLoot?.(k); save.equip[k] = i + 1; late.lootTidy?.(); // #140 예전 단계 장비의 등급·강화는 안 쓰는 장비로(자동이면 귤로)
+  if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }

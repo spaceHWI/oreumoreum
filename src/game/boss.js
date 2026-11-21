@@ -3,7 +3,7 @@
 //   모양은 그 구역 적(enemies.js spawnBoss)을 키우고 색을 곱하고 머리 위 왕관·발밑 빛 고리. 빈터 가까이 오면 싸움 시작(화면 위 이름·기운 줄)
 // - 패턴: 기운 50%·20% 에서 단계가 바뀜(포효). 돌진(바닥 띠 경고 → 달림) · 무리 부르기(그 구역 적) · 광선(바닥 원 경고 → 하늘 빛 기둥). 경고를 보고 피할 수 있음
 //   여럿이면 기운이 사람 수에 맞춰 늚. 쓰러지면 마지막으로 지난 구역 클린하우스에서 깨어남(hp.js startAt → late.wakeAt), 우두머리는 빈터로 돌아가 기운을 채움
-// - 쫓아내면: 느린 화면 + 큰 전리품(귤 + 귀한 재료 자리 save.boss.mats, #140 강화가 씀) → 돌하르방(guard.js raise) → 구역 완료 요약 한 장
+// - 쫓아내면: 느린 화면 + 큰 전리품(귤 + 귀한 재료·재료·장비, #140 game/loot.js `late.bossLoot`. save.boss.mats 는 쫓아낸 기록) → 돌하르방(guard.js raise) → 구역 완료 요약 한 장
 // - 구역 완료(save.boss.done)로 열리는 것: 그 구역 클린하우스 옆 '빠른 마차'(가게 거리까지 기다림 없이), 구역 들어오는 곳 옆 '지름길'(구역 위쪽 끝으로), 요약에 다음 구역 권장 점수
 //   (빠른 마차·지름길은 지금은 화면이 어두워졌다 밝아지는 임시 연출. 길·마차 모양은 나중에)
 // - 멀티: 방장이 굴림. {t:'bs'} 로 자리·기운·패턴을 알리고, 받는 쪽은 그대로 보이고(puppet) 맞힌 피해를 {t:'bh'} 로 방장에게. 경고·맞음은 각자 화면에서 제 캐릭터만 셈
@@ -330,7 +330,8 @@ function defeated(c, mine) {
   if (!mine) { if (near) toast(`${name(z)}${josaEulReul(name(z))} 쫓아냈어요!`); return; }
   // 보상: 귤(분수처럼) + 귀한 재료 자리
   life.scatterTangerines(pos, D.gyul, B.loot);
-  S.mats[D.mat] = (S.mats[D.mat] || 0) + 1;
+  S.mats[D.mat] = (S.mats[D.mat] || 0) + 1; // 우두머리 기록 (쓰는 재료 주머니는 save.mats, #140)
+  late.bossLoot?.(z, pos); // #140 귀한 재료·재료·장비가 분수처럼 (game/loot.js)
   const first = !isDone(z); S.done[z] = (S.done[z] || 0) + 1;
   const log = logOf(z), got = { gyul: D.gyul, mat: D.mat, first, log: { ...log, repel: log.repel + 1 }, s0: log.s0 };
   delete S.log[z]; persist();

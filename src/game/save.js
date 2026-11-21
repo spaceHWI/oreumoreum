@@ -11,6 +11,7 @@ import { pickMapId } from '../maps.js';
 import { createAbStats } from '../server.js';
 import { saveKey, loadSave, stampGuest } from '../online.js';
 import { state } from './state.js';
+import { normLoot, wearUp } from '../loot.js';
 
 export const $ = (id) => document.getElementById(id);
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -69,7 +70,8 @@ if (!save.wearV) {
   if (wearRefund) save.coins += wearRefund; save.wearV = 1;
 }
 const wearTier = (k) => { const id = CL.wear[k]; return id && CLOTH[id] ? CLOTH[id].tier : 0; };
-export const wearV = (k) => WSLOT[k].v[wearTier(k)]; // 지금 입은 옷의 능력치
+normLoot(save); // 재료·장비 등급·강화·안 쓰는 장비 (#140, src/loot.js)
+export const wearV = (k) => wearUp(save, k, WSLOT[k].v[wearTier(k)]); // 지금 입은 옷의 능력치 (#140 등급·강화를 얹음)
 export const clothGear = () => { const hasHair = ACCESSORIES[save.outfit.gear.hair]?.slot === 'hair' && !ACCESSORIES[save.outfit.gear.hair].builtin, out = {};
   WEAR.slots.forEach(({ k }) => { out[k] = CL.wear[k] || `${k}:none`; });
   if (!hasHair) out.hat = 'hat:cap'; // 머리를 고르기 전(구운 머리·모자)엔 모자를 겹쳐 쓰지 않음

@@ -1103,3 +1103,40 @@ export const SCREEN = {
 // 내 가방 (#166, src/game/bag.js): 창 옆 캐릭터 미리보기 카메라 (update.js cam.mode 'wardrobe')
 // charH 캐릭터 키(m, 모자 포함 어림), fillW·fillN 창이 덮지 않은 자리 높이에서 캐릭터가 차지할 비율(데스크톱·폰), topBar 위 한 줄 높이(px), lift 카메라를 시점보다 얼마나 위에(m)
 export const BAG = { charH: 2.3, fillW: 0.55, fillN: 0.78, topBar: 56, lift: 0.4 };
+// 전리품·재료·강화·장비 등급 (#140, notes/growth-loop.md 5절). 셈은 src/loot.js(순수 함수, 서버 validate.js·tools 도 씀), 게임은 src/game/loot.js·forge.js
+// mats[구역-1]: 그 구역 재료(적·소굴·보물) id·이름·색 + 우두머리가 반드시 주는 귀한 재료(rare, 이름은 ZONE_BOSS.list mat). 재료 주머니 save.mats = { id: 수 } (가방과 따로, 무게 없음)
+// enemy: 적 하나를 쫓아내면 mat 확률로 재료 1, gear 확률로 장비 하나. den: 소굴을 닫으면 재료 mats[구역]개 + gear 확률 장비. treasure: 보물 재료·장비 확률. boss: 귀한 재료 1(반드시) + 재료 mats[구역] + gear 확률 장비
+// grade[어디서] = 등급 확률 [보통, 좋은, 귀한, 전설]. 전설은 legendZ 구역부터의 우두머리·보물에서만 (그 밖이면 귀한으로)
+// 떨어지는 장비: 그 구역 단계(구역 n = n단계, 정상 무기는 6단계도)와 지금 그 칸 단계 중 낮은 쪽, 칸 10개 중 하나. 지금 것보다 높은 단계는 나오지 않음(서버 값 확인과 맞게: 값을 내지 않은 단계를 얻지 않음)
+// gradeK 등급이 더하는 능력(GROWTH.grade 와 같음), enh 강화: 한 번에 능력 + GROWTH.enh(12%), +GROWTH.enhMax(5)까지, 실패 없음
+//   enh.mats[지금 강화] 그 단계 구역 재료 수, enh.rare[지금 강화] 귀한 재료 수, enh.gyul[지금 강화] × GROWTH.price[단계] 귤
+//   능력 배율 = (1 + 등급) × (1 + 0.12 × 강화). 도구(줍는 빠르기)·배낭(용량)·무기(피해)는 그대로, 신발·옷은 '기본보다 나은 몫' 에 statK 만큼만 (빠르기·HP 가 너무 뛰지 않게)
+// sell: 귤로 바꾸기 = 그 단계 값(GROWTH.price) × sell[등급] × (1 + sellEnh × 강화). spareMax: 안 쓰는 장비 칸 수 (넘으면 가장 낮은 것부터 귤로)
+// fx 전설 효과 (칸 묶음마다 하나): reach 줍는 칸(도구·배낭·신발·모자·바지·베스트) = 줍는 거리 × k, split 무기 = 맞히면 가까운 다른 적(r m 안)에게 피해 × k 로 갈라짐, extra 싸우는 옷(티셔츠·잠바·양말) = 쫓아낸 적 귤 × k
+// drop 떨어지는 연출: up 튀는 빠르기, spread 퍼짐, magnetR 이 안이면 빨려 듦(magnetT 초 뒤부터), autoT 초가 지나면 어디 있든 주머니로, pillar 등급별 빛기둥 높이(보통은 없음)
+export const LOOT = {
+  mats: [
+    { z: 1, id: 'm1', name: '멧돼지 털', color: '#c79a62', rare: 'r1' },
+    { z: 2, id: 'm2', name: '들개 이빨', color: '#efe6cf', rare: 'r2' },
+    { z: 3, id: 'm3', name: '멧돼지 엄니', color: '#f4ead2', rare: 'r3' },
+    { z: 4, id: 'm4', name: '붉은 발톱', color: '#d9473a', rare: 'r4' },
+    { z: 5, id: 'm5', name: '외계 부품', color: '#8fe0d8', rare: 'r5' },
+  ],
+  enemy: { mat: 0.6, gear: 0.012 },
+  den: { mats: [0, 3, 3, 4, 4, 5], gear: 0.12 },
+  treasure: { mats: [0, 1, 1, 2, 2, 3], gear: 0.35 },
+  boss: { mats: [0, 3, 4, 5, 6, 8], gear: 0.6 },
+  grade: { enemy: [0.45, 0.4, 0.15, 0], den: [0.35, 0.45, 0.2, 0], treasure: [0.15, 0.45, 0.3, 0.1], boss: [0, 0.5, 0.38, 0.12] },
+  legendZ: 4,
+  gradeName: ['보통', '좋은', '귀한', '전설'], gradeColor: ['#e8e4d8', '#5fd36a', '#4fa3ff', '#ff9a2e'],
+  enh: { mats: [2, 3, 5, 8, 12], rare: [0, 0, 0, 0, 1], gyul: [0.05, 0.08, 0.12, 0.18, 0.25] },
+  statK: { tool: 1, bag: 1, weapon: 1, shoes: 0.35, hat: 0.5, top: 0.5, bottom: 0.5, vest: 0.5, jacket: 0.5, socks: 0.5 },
+  sell: [0.06, 0.15, 0.3, 0.6], sellEnh: 0.25, spareMax: 30,
+  fx: {
+    reach: { name: '줍는 거리 넓어짐', k: 1.5, slots: ['tool', 'bag', 'shoes', 'hat', 'bottom', 'vest'] },
+    split: { name: '귤이 둘로 갈라짐', k: 0.5, r: 7, slots: ['weapon'] },
+    extra: { name: '쫓아낸 적이 귤을 더 떨굼', k: 1.3, slots: ['top', 'jacket', 'socks'] },
+  },
+  drop: { up: [5, 8], spread: [1.5, 3.2], grav: 16, magnetR: 6, magnetT: 0.7, fly: 14, autoT: 16, pillar: [0, 2.6, 4.2, 7], low: 0.5 },
+  popT: 9, // 장비를 얻으면 견주는 창이 떠 있는 초 (안 누르면 가방에 남음)
+};

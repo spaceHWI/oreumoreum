@@ -133,6 +133,10 @@ async function startServers() {
     ok(fakeItem.status === 200 && !me3.save.rides.own.length && !me3.save.clothes.own['gold-crown'], '목록에 없는 물건 지움');
     const tr = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, trash: { total: 100000 } } } });
     ok(tr.j.fixed.includes('picked'), '치운 양(랭킹) 부풀리기 바로잡힘');
+    // #140 전리품: 강화 +6·없는 등급·재료 음수·없는 재료·없는 칸은 바로잡음
+    const lt = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, gearUp: { tool: { g: 7, e: 6 }, crown: { g: 1, e: 1 } }, mats: { m1: -5, m2: 3, gold: 9 }, loot: [{ s: 'tool', t: 9, g: 1, e: 0 }, { s: 'hat', t: 2, g: 4, e: 0 }, { s: 'bag', t: 2, g: 1, e: 2 }], clothes: { own: {}, wear: {}, up: { 'hat:w-cap': { g: 2, e: 9 }, nope: { g: 1 } } } } } });
+    const me4 = (await req('dev', '/me', { token: A.token })).j.save;
+    ok(lt.status === 200 && ['gearUp', 'mats', 'loot', 'clothesUp'].every((k) => lt.j.fixed.includes(k)) && me4.gearUp.tool.e === 5 && me4.gearUp.tool.g === 3 && !me4.gearUp.crown && !('m1' in me4.mats) && !me4.mats.gold && me4.mats.m2 === 3 && me4.loot.length === 1 && me4.clothes.up['hat:w-cap'].e === 5 && !me4.clothes.up.nope, `전리품 값 바로잡음 (${lt.j.fixed.join(',')})`);
     // 여러 탭·기기: 같은 계정 토큰 둘로 번갈아 부풀려도 몫은 계정 하나
     const A2 = await login('dev', 'alice');
     let c = (await req('dev', '/me', { token: A.token })).j.save.coins;
