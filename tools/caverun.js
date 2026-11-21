@@ -3,7 +3,9 @@
 //    방 수(곁방 빼고) CAVE 범위 · 모든 방이 이어짐 · 줄에서 구멍까지 걸어서 닿음 · 층 삼각형 30만 아래
 // 2) --live: dist/test.html 을 열어 오름 → 동굴 → (아래층) → 오름 왕복 3번. 동굴 안 draw call·삼각형, 장면 바꾸는 시간(ms),
 //    왕복 전·후 JS 힙(가비지 정리 뒤)·지오메트리·텍스처 수. 힙이 처음보다 10% 넘게 늘거나 오류가 나면 실패
-// 1번 조각(맵 띄우기·내리기·걷기)용. 줍기·적·보물이 들어오면(2·3번) 한 판 돌린 시간·번 귤·잃은 기운을 더한다
+// 3) (늘, 3번 조각) 한 판 어림: 걷기(줄 → 구멍·주인, 더미·곁방 들르기 ×1.5, 나올 때 맨 아래 층 되돌아감) + 줍기(가장 큰 배낭·큰 갈퀴) + 싸움(방 적·지킴이·주인)
+//    무기 머신건(4단계, 동굴 들어갈 때쯤)·레이저(5단계)로 각각, 여유 ×1.25. 머신건 판이 15~25분 안이 목표. 번 귤(쓰레기 온전한 판·절반 판·상자·주인)
+// --live 에서 3번 조각: 판 수(셋째 판은 절반)·화살표·무너지는 바닥·낙석·물길(테왁 없으면 못 건넘)·상자(하루 한 번)·주인(드론 부름·쫓아내면 큰 보상 하루 한 번)
 const path = require('path');
 const args = process.argv.slice(2);
 const live = args.includes('--live');
@@ -39,6 +41,7 @@ const bad = (m) => { fail++; console.log('  실패:', m); };
     if (rooms < lo || rooms > hi) bad(`${day}: 방 ${rooms} (${lo}~${hi})`);
     console.log(`${day}: 방 ${rooms} 갈림길 ${branch} 곧장 걸으면 ${Math.round(walkM)}m (~${Math.round(walkM / 5 / 60 * 10) / 10}분)\n  ` + lines.join('\n  '));
   }
+  await estimate(CAVE, genFloor, caveSeed, day0);
   if (live) await liveRun();
   console.log(fail ? `실패 ${fail}` : '통과');
   process.exit(fail ? 1 : 0);
@@ -83,6 +86,7 @@ async function liveRun() {
   if (m1.geo > m0.geo + 2 || m1.tex > m0.tex) bad(`지오메트리·텍스처가 남음`);
   if (back.cave || Math.hypot(back.x - back.e.fx, back.z - back.e.fz) > 3) bad(`나온 자리가 입구가 아님 ${JSON.stringify(back)}`);
   await playRun(p, S);
+  await playRun3(p, S);
   if (errs.length) bad('페이지 오류 ' + errs.join(' | '));
   await b.close();
 }
@@ -137,4 +141,113 @@ async function playRun(p, S) {
   console.log(`  쓰러짐: 든 귤 ${Math.round(h4.held.g)} → 들고 나온 몫 ${kept} · 동굴 밖 ${!h5.inCave}`);
   if (!(h4.held.g > 0) || h5.inCave || Math.abs(kept - h4.held.g / 2) > h4.held.g * 0.12) bad('쓰러지면 절반만 남아야 함');
   console.log(`  (확인 도구로 줄인 한 판 ${Math.round((Date.now() - t0) / 1000)}초)`);
+}
+
+// 3번 조각: 한 판 어림 (며칠치 평균)
+async function estimate(CAVE, genFloor, caveSeed, day0) {
+  const B = await import(path.join(process.cwd(), 'src/balance.js')), { ENEMIES, WEAPONS, TOOLS, BAGS } = B, J = CAVE.junk, MB = CAVE.mobs;
+  const KV = J.kinds.map((k) => { const t = B.TRASH_TYPES.find((x) => x.id === k.as); return { p: k.p, vol: t.vol, g: t.vol * J.perVol }; });
+  const avgVol = KV.reduce((s, k) => s + k.p * k.vol, 0), avgG = KV.reduce((s, k) => s + k.p * k.g, 0), mid = ([a, b]) => (a + b) / 2;
+  const rows = [];
+  for (let d = 0; d < DAYS; d++) {
+    const k = new Date(day0 + d * 86400000 + 9 * 3600000), day = `${k.getUTCFullYear()}-${String(k.getUTCMonth() + 1).padStart(2, '0')}-${String(k.getUTCDate()).padStart(2, '0')}`;
+    let walk = 0, items = 0, mobHp = 0, chests = 0;
+    for (let f = 0; f < CAVE.floors; f++) {
+      const F = genFloor(CAVE, f, caveSeed(day, f)), st = F.start, far = F.far || st;
+      const L = Math.hypot(far.x - st.x, far.z - st.z) * 1.35; walk += L * 1.5 + (f === CAVE.floors - 1 ? L : 0);
+      for (const o of F.rooms) { if (o.kind === 'start') continue; const pocket = o.kind === 'pocket'; items += (pocket ? J.pocket : mid(J.perRoom)) * mid(J.n); if (pocket) chests++;
+        mobHp += pocket ? ENEMIES.crab.hp : mid(MB.bats) * ENEMIES.bat.hp + mid(MB.crabs) * ENEMIES.crab.hp; }
+      mobHp += MB.guard.hp;
+    }
+    rows.push({ walk, items, mobHp, chests });
+  }
+  const A = (k) => rows.reduce((s, r) => s + r[k], 0) / rows.length, items = A('items'), vol = items * avgVol, cap = BAGS[BAGS.length - 1].cap;
+  const carry = Math.min(vol, cap), carried = carry / avgVol, tool = TOOLS[3], pickT = carried / tool.per * (tool.time + 0.6), walkT = A('walk') / 5;
+  const W = (id) => WEAPONS.find((w) => w.id === id), fightT = (w) => (A('mobHp') + CAVE.owner.hp) / w.dmg;
+  const tm = (w) => (walkT + pickT + fightT(w) + 60) * 1.25 / 60, junk = carried * avgG, chest = A('chests') * mid([CAVE.chest.gyul[0], CAVE.chest.gyul[1]]);
+  const mg = tm(W('mg')), lz = tm(W('laser'));
+  console.log(`# 한 판 어림 (${DAYS}일 평균, 여유 ×1.25)\n  걷기 ${Math.round(A('walk'))}m ${(walkT / 60).toFixed(1)}분 · 쓰레기 ${Math.round(items)}개 부피 ${Math.round(vol)} (가장 큰 배낭 ${cap}) 줍기 ${(pickT / 60).toFixed(1)}분 · 적 기운 ${Math.round(A('mobHp'))} + 주인 ${CAVE.owner.hp}`);
+  console.log(`  머신건 ${mg.toFixed(1)}분 · 레이저 ${lz.toFixed(1)}분 (목표 15~25분, 머신건 기준)`);
+  console.log(`  귤: 쓰레기 온전한 판 ${Math.round(junk)} · 절반 판 ${Math.round(junk * CAVE.runs.halfK)} · 상자 ${Math.round(chest)}(하루 한 번) · 주인 ${CAVE.owner.gyul}(하루 한 번) → 하루 온전한 ${CAVE.runs.full}판 ${Math.round(junk * CAVE.runs.full + chest + CAVE.owner.gyul)}`);
+  if (mg < 15 || mg > 25) bad(`머신건 한 판 ${mg.toFixed(1)}분 (15~25분)`);
+  if (junk * CAVE.runs.full * B.NET.earnRec.caveK > B.NET.earnRec.caveDayFull * 1.6) bad('하루 온전한 판 쓰레기 몫이 서버 caveDayFull 보다 훨씬 큼');
+}
+
+// 3번 조각: 판 수 · 함정 · 길 찾기 · 상자 · 주인
+async function playRun3(p, S) {
+  const C = S, W = (ms) => p.waitForTimeout(ms);
+  console.log('# 3번 조각');
+  await C(() => { const o = window.__oreum; if (o.cave.state()) o.cave.exit(); }); await W(900);
+  for (let k = 0; k < 60 && await C(() => window.__oreum.hp.isDown || window.__oreum.hp.pending); k++) await W(1000); /* 2번 조각에서 쓰러진 뒤 일어날 때까지 */
+  await C(() => { const o = window.__oreum; o.cave.setRuns(0); o.hp.set(o.hp.max); o.save.backs = { own: {}, cur: null }; o.cave.enter(); }); await W(800);
+  let r = await C(() => window.__oreum.cave.runs());
+  if (r.n !== 1 || r.k !== 1) bad('첫 판이 온전한 판이 아님 ' + JSON.stringify(r));
+  // 층마다 화살표·바닥·물길·상자, 3층 주인
+  const floors = [];
+  for (let f = 0; f < 3; f++) { if (f) { await C(() => window.__oreum.cave.down()); await W(600); } floors.push(await C(() => window.__oreum.cave.deep())); }
+  console.log('  층: ' + floors.map((d) => `${d.fi + 1}층 화살표 ${d.arrows} 바닥 ${d.crumble.length} 물길 ${d.water.length} 상자 ${d.chest ? d.chest.id : '-'} 주인 ${d.owner ? 'O' : '-'}`).join(' · '));
+  if (floors.some((d) => !d.arrows)) bad('화살표가 없는 층');
+  if (!floors[2].owner) bad('맨 아래 층에 주인 방이 없음');
+  if (!floors.some((d) => d.crumble.length)) bad('무너지는 바닥이 없음');
+  // 주인 (3층): 깨어남 · 기운이 줄면 드론 · 쫓아내면 큰 보상 하루 한 번
+  await C(() => { const o = window.__oreum; o.cave.goOwner(); o.hp.set(o.hp.max); }); await W(1200);
+  let ow = await C(() => window.__oreum.cave.owner());
+  if (!ow.seen || !ow.e) bad('주인이 깨어나지 않음 ' + JSON.stringify(ow));
+  const bar = await C(() => !document.getElementById('boss-bar').hidden);
+  await C(() => window.__oreum.cave.hurtOwner(0.5)); await W(500); ow = await C(() => window.__oreum.cave.owner());
+  console.log(`  주인: 기운 ${ow.e && ow.e.max} · 화면 위 줄 ${bar} · 절반 깎은 뒤 드론 ${ow.calls} · 벽 안 ${ow.e && ow.e.walk}`);
+  if (!bar) bad('주인 기운 줄이 안 보임'); if (!(ow.calls > 0)) bad('주인이 드론을 안 부름');
+  const c0 = await C(() => window.__oreum.save.coins);
+  await C(() => { window.__oreum.hp.set(window.__oreum.hp.max); window.__oreum.cave.repelOwner(); }); await W(4500);
+  ow = await C(() => window.__oreum.cave.owner()); const c1 = await C(() => window.__oreum.save.coins), bar2 = await C(() => !document.getElementById('boss-bar').hidden);
+  console.log(`  주인을 쫓아냄: 오늘 받음 ${ow.got} · 귤 ${c0} → ${c1} · 줄 숨김 ${!bar2}`);
+  if (!ow.got) bad('주인 큰 보상 기록(save.cave.boss)이 안 남음'); if (c1 - c0 < 1000) bad('주인 큰 보상 귤이 안 들어옴'); if (bar2) bad('주인이 떠난 뒤에도 기운 줄이 보임');
+  // 무너지는 바닥 (있는 층)
+  const fc = floors.findIndex((d) => d.crumble.length);
+  await C(() => window.__oreum.cave.exit()); await W(900);
+  await C(() => { window.__oreum.cave.setRuns(0); window.__oreum.cave.enter(); }); await W(800);
+  for (let f = 0; f < fc; f++) { await C(() => window.__oreum.cave.down()); await W(600); }
+  const hp0 = await C(() => { const o = window.__oreum; o.hp.set(o.hp.max); o.cave.crumbleHere(0); return o.hp.hp; }); await W(400);
+  const cr1 = (await C(() => window.__oreum.cave.deep())).crumble[0].st; await W(2300);
+  const cr2 = await C(() => ({ d: window.__oreum.cave.deep().crumble[0], hp: window.__oreum.hp.hp, x: window.__oreum.player.pos.x, z: window.__oreum.player.pos.z }));
+  const away = Math.hypot(cr2.x - cr2.d.x, cr2.z - cr2.d.z);
+  console.log(`  무너지는 바닥: 밟자 ${cr1} → ${cr2.d.st} · 기운 ${Math.round(hp0)} → ${Math.round(cr2.hp)} · 구멍에서 ${away.toFixed(1)}m`);
+  if (cr1 !== 'warn' || cr2.d.st !== 'down' || !(cr2.hp < hp0) || away < 1.5) bad('무너지는 바닥이 금 → 무너짐 → 피해로 가지 않음');
+  // 낙석
+  const hp1 = await C(() => { const o = window.__oreum; o.hp.set(o.hp.max); o.player.iframe = 0; return o.hp.hp; });
+  await C(() => window.__oreum.cave.rockHere()); await W(1800);
+  const hp2 = await C(() => window.__oreum.hp.hp); console.log(`  낙석: 기운 ${Math.round(hp1)} → ${Math.round(hp2)}`); if (!(hp2 < hp1)) bad('낙석에 맞아도 기운이 안 줄어듦');
+  await C(() => window.__oreum.cave.exit()); await W(900);
+  // 상자·물길 (곁방 층)
+  const fw = floors.findIndex((d) => d.water.length), fq = fw >= 0 ? fw : floors.findIndex((d) => d.chest);
+  if (fq < 0) console.log('  (이날 동굴엔 상자가 없음)'); else {
+    await C(() => { window.__oreum.cave.setRuns(0); window.__oreum.cave.enter(); }); await W(800);
+    for (let f = 0; f < fq; f++) { await C(() => window.__oreum.cave.down()); await W(600); }
+    const d = await C(() => window.__oreum.cave.deep());
+    if (d.water.length) {
+      const w0 = await C(() => { const o = window.__oreum; o.cave.goWater(0, -1); const w = o.cave.water(0), sp = o.spots, p = o.player.pos; const tx = w.x + w.dx * 0.2, tz = w.z + w.dz * 0.2; return { block: sp.clamp(tx, tz), x: p.x, z: p.z }; });
+      const w1 = await C(() => { const o = window.__oreum; o.save.equip.bag = 5; o.save.backs = { own: { tewak: 1 }, cur: 'tewak' }; const w = o.cave.water(0), tx = w.x + w.dx * 0.2, tz = w.z + w.dz * 0.2; return o.spots.clamp(tx, tz); });
+      console.log(`  물길: 테왁 없이 ${w0.block ? '막힘' : '건넘'} · 테왁 ${w1 ? '막힘' : '건넘'}`);
+      if (!w0.block) bad('테왁 없이 물길을 건넘'); if (w1 && !(Math.abs(w1.x - w0.x) > 1e-6)) bad('테왁이 있어도 물길을 못 건넘');
+      await C(() => { window.__oreum.save.backs = { own: {}, cur: null }; });
+    }
+    const k0 = await C(() => window.__oreum.save.coins);
+    const got = await C(() => { window.__oreum.cave.goChest(); return window.__oreum.cave.openChest(); }); await W(3500);
+    const k1 = await C(() => window.__oreum.save.coins), again = await C(() => window.__oreum.cave.runs().chest);
+    console.log(`  상자 ${d.chest.id}: 열림 ${got} · 귤 ${k0} → ${k1} · 오늘 연 상자 ${again.got.join(',')}`);
+    if (!got || k1 - k0 < 500 || !again.got.includes(d.chest.id)) bad('상자를 열어도 보상·기록이 없음');
+    await C(() => window.__oreum.cave.exit()); await W(900);
+    await C(() => window.__oreum.cave.enter()); await W(800);
+    for (let f = 0; f < fq; f++) { await C(() => window.__oreum.cave.down()); await W(600); }
+    const d2 = await C(() => window.__oreum.cave.deep()); if (!d2.chest.got) bad('같은 날 다음 판에 상자가 다시 닫혀 있음');
+    await C(() => window.__oreum.cave.exit()); await W(900);
+  }
+  // 셋째 판은 절반: 하나 주운 귤이 반
+  await C(() => { window.__oreum.cave.setRuns(2); window.__oreum.trash.api.test.emptyBag?.(); window.__oreum.cave.enter(); }); await W(800);
+  r = await C(() => window.__oreum.cave.runs());
+  await C(() => { window.__oreum.cave.goPile(0); }); const one = await C(() => { const o = window.__oreum, a = o.cave.held().held.g; o.cave.pickAll(); const h = o.cave.held(); return { g: h.held.g - a, n: h.n }; });
+  const full = await C(() => window.__oreum.cave.junk().kinds.reduce((s, k) => s + k.g, 0) / 2);
+  console.log(`  셋째 판: 판 ${r.n} 배수 ${r.k} · 주운 ${one.n}개 귤 ${Math.round(one.g)} (하나 평균 ${(one.g / Math.max(1, one.n)).toFixed(1)}, 온전한 판 종류 평균 ${full.toFixed(1)})`);
+  if (r.n !== 3 || r.k !== 0.5 || !(one.g / one.n < full * 0.75)) bad('셋째 판 쓰레기 귤이 절반이 아님');
+  await C(() => window.__oreum.cave.exit()); await W(900);
 }

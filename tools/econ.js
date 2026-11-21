@@ -76,6 +76,7 @@ async function main() {
   const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD, LOOT, STORY, SWARM, SMOKER } = B;
   const SMOKE_H = has('--nosmoker') ? 0 : 3600 * SMOKER.econNear / ((SMOKER.every[0] + SMOKER.every[1]) / 2) * SMOKER.reward; // 들머리 흡연자 (#156): 하루 1시간에 받는 귤 (들머리 둘레에 있는 시간 econNear)
   const DLY = await import('../src/daily.js'); let DAILY_ON = !has('--nodaily'); // 오늘의 할 일 (#125): 하루 끝에 셋 다 + 그날 이어 오기 보상 (가 본 구역 = 장비 점수로 열린 구역)
+  let CAVE_ON = !has('--nocave'); const { CAVE } = B; // 동굴 (#195): --nocave 비교용
   let SW_ON = !has('--noswarm'); const SW_HIT = 0.7, SW_MAXK = 0.6; // 들판 떼 (#173): 맞힘 비율, 초당 쫓아내는 수 상한(떼가 다가오는 빠르기. tools/swarm.js 권장 장비 200초에 0.44~0.58)
   const LT = await import('../src/loot.js'), NOENH = has('--noenh'), DAYS = NOENH ? 7 : 20;
   const NOFIELD = has('--nofield');
@@ -184,6 +185,16 @@ async function main() {
     let hp = 0; for (const [k, f] of kinds) hp += f / ws * ENEMIES[k].hp * SWARM.mob.hp;
     return Math.min(SW_MAXK, per * area * SW_HIT / iv / hp) * (SWARM.shard[z] || 1) * (SWARM.shardXp[z] ?? 0);
   }
+  // 동굴 한 판 (#195, tools/caverun.js 어림과 같은 셈): 방 11개쯤·쓰레기 136개(부피 326)·적 기운(박쥐·게·지킴이 3) + 주인. 걷기 500m
+  //   쓰레기는 배낭만큼(부피 평균 2.4), 귤은 CAVE.junk.perVol × 부피. 상자 둘·주인 큰 보상은 하루 첫 판에. 경험치는 쫓아낸 적 몫
+  function caveRun(st, e, first) {
+    const J = CAVE.junk, MB = CAVE.mobs, w = weaponOf(st), vol = Math.min(326, capOf(e)), items = vol / 2.4, tool = toolOf(e);
+    const mobs = [['bat', 4 * 8], ['crab', 1 * 8 + 2]], fightT = mobs.reduce((s, [k, n]) => s + n * killOf(ENEMIES[k].hp, w).t, 0) + 3 * killOf(MB.guard.hp, w).t + killOf(CAVE.owner.hp, w).t;
+    const t = 500 / spdOf(e) + items / tool.per * (tool.time + 0.6) + fightT + 60;
+    const gy = vol * J.perVol + mobs.reduce((s, [k, n]) => s + n * ENEMIES[k].reward.gyul, 0) + 3 * MB.guard.gyul + (first ? CAVE.chest.gyul[0] + CAVE.chest.gyul[1] + CAVE.owner.gyul : CAVE.owner.small);
+    const xp = mobs.reduce((s, [k, n]) => s + n * AG.enemyXp(ENEMIES[k]), 0) + 3 * LEVEL.xp.boss;
+    return { t, gy, xp };
+  }
   const fmt = (sec) => `${Math.floor(sec / 3600) + 1}일 ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}분`;
   const hm = (sec) => `${Math.floor(sec / 3600)}시간 ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}분`;
   const GEAR = ['tool', 'bag', 'shoes'], WK = WEAR.slots.map((w) => w.k);
@@ -243,6 +254,7 @@ async function main() {
       let t = 0; const t0 = st.tAll, earned0 = earned; idleT = 0; dayEnd = t0 + 3599; // 하루 1시간을 넘긴 마지막 나가기에서 산 건 그날 끝으로 셈
       const add = (dt) => { t += dt * S; st.tAll += dt * S; };
       gainXp(QUEST_N[Math.min(d, QUEST_N.length - 1)] * QUEST_XP); // 퀘스트 (#158, 어림): 하루 처음에 한꺼번에
+      if (battle && CAVE_ON && st.lv >= CAVE.minLv && cleared.has(CAVE.needZone)) for (let k = 0; k < CAVE.runs.full; k++) { const c = caveRun(st, e, k === 0); add(c.t); st.coins += c.gy; earned += c.gy; gainXp(c.xp); st.caveRuns = (st.caveRuns || 0) + 1; } // 동굴 (#195): 열리면 하루 처음에 온전한 판 2번
       if (d === 0) { // 튜토리얼: 쓰레기 6개 → 첫 보너스 → 집게·배낭
         t = TUT_MIN * 60; st.tAll += t; st.coins = TUT.firstBonus; buy('tool'); buy('bag'); st.tutDone = true;
       }
@@ -384,6 +396,12 @@ async function main() {
     const lastOf = (on) => { SW_ON = on; const rs = [1, 7, 42, 99, 123].map((s) => seedRun('battle', 0.25, s)).map((x) => x.last).sort((a, b) => a - b); SW_ON = !has('--noswarm'); return rs[2]; };
     const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;
     verdict.push(`들판 떼로 마지막 칸(여유 25%) ${a0 === Infinity ? '-' : hm(a0)} → ${a1 === Infinity ? '-' : hm(a1)}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
+  }
+  // 동굴 (#195): 열리면(레벨 CAVE.minLv·구역 needZone 완료) 하루 온전한 판 2번을 돌아도 마지막 칸(여유 25%)이 하루 넘게 당겨지지 않음
+  if (!FLOW_ONLY) {
+    const lastC = (on) => { CAVE_ON = on; const rs = [1, 7, 42, 99, 123].map((s) => seedRun('battle', 0.25, s)), l = rs.map((x) => x.last).sort((a, b) => a - b)[2], lv = rs.map((x) => x.days[4]?.lv || 0).sort((a, b) => a - b)[2], n = rs[2].st.caveRuns || 0; CAVE_ON = !has('--nocave'); return { l, lv, n, first: rs[2].days.find((x) => x.lv >= CAVE.minLv)?.day }; };
+    const c1 = lastC(true), c0 = lastC(false), pull = c0.l - c1.l;
+    verdict.push(`동굴 하루 ${CAVE.runs.full}판 (열린 날 ${c1.first || '-'}일쯤, 판 ${c1.n}번): 마지막 칸(여유 25%) 동굴 없이 ${c0.l === Infinity ? "-" : hm(c0.l)} → 있으면 ${c1.l === Infinity ? "-" : hm(c1.l)}, 5일 끝 레벨 ${c0.lv} → ${c1.lv}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
   }
   // 오늘의 할 일 (#125): 하루 보상(셋 다 + 그날 이어 오기)이 그날 벌이의 15% 안, 5일 목표(마지막 칸, 여유 25%)가 하루 넘게 당겨지지 않음
   {

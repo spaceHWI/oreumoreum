@@ -122,6 +122,7 @@ import './game/metrics.js'; // 이용 통계 (#121): 업적·쓰레기·적 후�
 import './game/metricsadmin.js'; // 어드민 '수치' 표 (#121)
 import './game/cave.js'; // 동굴 탐험 (#195): 굼부리 용암 동굴, 별도 동굴 장면
 import './game/cavelife.js'; // 동굴 2번 조각 (#195): 쓰레기 더미·들고 나오기·적·지킴이
+import './game/cavedeep.js'; // 동굴 3번 조각 (#195): 하루 판 수·함정·화살표·상자·동굴의 주인
 import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/wish.js'; // 돌탑 소원 글·함께 기도 (#127)
 import './game/start.js';

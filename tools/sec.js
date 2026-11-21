@@ -247,6 +247,18 @@ async function startServers() {
         ok(c4.save.cave.out === run, '동굴 누적을 줄이면 서버가 되돌림 (줄였다 올려 두 번 받기 막음)');
         c1 = checkSave(P, { ...P, coins: 100 + 999999, cave: { out: 999999 } }, acc, t);
         ok(c1.fixed.includes('coins') && c1.save.coins <= 100 + E.caveBurst + 1, `동굴 귤 한 번에 크게 부풀리기 거절 (${c1.save.coins}, 통 ${E.caveBurst})`);
+        // 3번 조각: 하루 몫(caveDayFull)을 넘은 판은 절반 · 상자·주인은 하루 한 번
+        const DL = await import('../src/daily.js'), dayN = DL.kstDayN(t), date = DL.kstDate(t);
+        const used = { ...acc, cred: { cd: { d: dayN, g: E.caveDayFull } } }; /* 오늘 온전한 몫을 다 씀 */
+        c1 = checkSave(P, { ...P, coins: 100 + run, cave: { out: run, runs: { d: date, n: 0 } } }, used, t);
+        ok(Math.abs(c1.rec.why.cave - run * E.caveK * CAVE.runs.halfK) < 2 && c1.fixed.includes('coins'), `하루 몫을 넘긴 판은 판 수를 0 으로 속여도 절반만 인정 (${c1.rec.why.cave})`);
+        c1 = checkSave(P, { ...P, coins: 100, cave: { out: 0, chest: { d: date, got: ['c0', 'c1', 'c7', 'x'] }, boss: date } }, acc, t);
+        ok(c1.rec.why.cave === CAVE.chest.gyul[0] + CAVE.chest.gyul[1] + CAVE.owner.gyul, `동굴 상자 둘·주인 큰 보상은 인정, 없는 층 상자는 거절 (${c1.rec.why.cave})`);
+        let c5 = checkSave(c1.save, { ...c1.save, cave: { out: 0, chest: { d: date, got: [] }, boss: '' } }, { ...c1.acc, savedAt: t + 1000 }, t + 2000);
+        c5 = checkSave(c5.save, { ...c5.save, coins: 100 + CAVE.owner.gyul, cave: { out: 0, chest: { d: date, got: ['c0'] }, boss: date } }, { ...c5.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
+        ok(c5.rec.why.cave === 0 && c5.fixed.includes('coins'), '같은 날 상자·주인을 지웠다 다시 받기 거절');
+        c1 = checkSave(P, { ...P, coins: 100, cave: { out: 0, boss: DL.dateOfDay(dayN - 5) } }, acc, t);
+        ok(c1.rec.why.cave === 0, '지난 날짜 주인 보상은 거절');
       }
       { // 오늘의 할 일 (#125)
         // 오늘의 할 일 (#125): 오늘 목록의 받은 할 일·셋 다는 몫으로 인정, 두 번·다른 날·없는 할 일은 거절, 이어 오기는 서버가 센 날까지만

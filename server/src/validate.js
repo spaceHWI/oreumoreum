@@ -56,7 +56,12 @@ function norm(s) {
     s.look.colors = o;
   }
   if (!isObj(s.swarm)) s.swarm = {}; s.swarm.earn = int(s.swarm.earn, 0, 1e12, 0); // 들판 떼(#173)로 번 귤 누적 (③)
-  if (s.cave !== undefined) { if (!isObj(s.cave)) s.cave = {}; s.cave.out = int(s.cave.out, 0, 1e12, 0); } // 동굴에서 들고 나온 쓰레기 귤 누적 (#195, earn.js 8)
+  if (s.cave !== undefined) { // 동굴 (#195, earn.js 8): 들고 나온 쓰레기 귤 누적 · 오늘 판 수 · 연 상자 · 주인을 쫓아낸 날
+    if (!isObj(s.cave)) s.cave = {}; s.cave.out = int(s.cave.out, 0, 1e12, 0);
+    if (s.cave.runs !== undefined) s.cave.runs = isObj(s.cave.runs) ? { d: String(s.cave.runs.d || '').slice(0, 10), n: int(s.cave.runs.n, 0, 999, 0) } : undefined;
+    if (s.cave.chest !== undefined) s.cave.chest = isObj(s.cave.chest) ? { d: String(s.cave.chest.d || '').slice(0, 10), got: Array.isArray(s.cave.chest.got) ? s.cave.chest.got.filter((x) => typeof x === 'string' && /^c\d$/.test(x)).slice(0, 8) : [] } : undefined;
+    if (s.cave.boss !== undefined) s.cave.boss = typeof s.cave.boss === 'string' ? s.cave.boss.slice(0, 10) : undefined;
+  }
   if (isObj(s.season) || s.season !== undefined) s.season = isObj(s.season) && s.season.xmas !== undefined ? { xmas: cleanXmas(s.season.xmas) } : undefined; // 철 이벤트 (#180)
   if (s.season === undefined) delete s.season;
   if (s.backs !== undefined) { // 배낭 겉모습 (#164): 목록에 있는 것만, 고른 것은 가진 것만

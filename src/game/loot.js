@@ -50,6 +50,7 @@ if (!save.lootV) {
 
 /* ---------- 떨어지는 조각 ---------- */
 const group = new THREE.Group(); group.name = 'loot'; scene.add(group);
+late.lootGroup = group; // 동굴 안에서는 동굴 장면으로 옮겨 그림 (#195 cavelife.js caveIn)
 const geo = { mat: new THREE.DodecahedronGeometry(0.2, 0), rare: new THREE.OctahedronGeometry(0.26, 0), gear: new THREE.OctahedronGeometry(0.34, 0) };
 const pillarGeo = new THREE.CylinderGeometry(0.1, 0.32, 1, 10, 1, true); pillarGeo.translate(0, 0.5, 0);
 const ringGeo = new THREE.RingGeometry(0.42, 0.6, 24); ringGeo.rotateX(-Math.PI / 2);
