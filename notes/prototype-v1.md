@@ -49,6 +49,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | hooks.js | 소리, 동물·적·투기꾼 후크, 받혀 구르기, 귤 효과, 긴장 음악 |
 | pace.js | 연출 감독 연결(#89): `src/pacing.js` 차례대로 투기꾼·트럭·몹 부르기(조짐·보상), 긴장(state.tension)을 화면 가장자리·하늘·카메라·HP 막대·음악에, 지루할 때 작은 즐거움, 맞힌 순간 멈춤 |
 | guide.js | 첫 투기꾼 안내(#135): 보이는 자리·카메라 슬쩍 보기·머리 표시·버튼 빛남·칭찬/아쉬움 토스트, 저장 save.pace.hint (pace.js 가 부름, 파일 순서는 pace 앞) |
+| zonedone.js | 구역 완료(#139): 구역 완료 요약 한 장(`#zdone`), 깨어나는 곳(마지막으로 지난 구역 클린하우스, hp.js `startAt` → `late.wakeAt`), 다시 들어올 때 고르기(`#wake-pick`, start.js → `late.afterEnter`), 구역을 끝낸 사람의 빠른 마차(구역 클린하우스 옆 → 가게 거리)·지름길(구역 들어오는 곳 → 위쪽 끝), 구역 기록(줍기·쫓아내기). 저장 `save.boss`. 파일 순서는 pace 뒤(적 후크를 감쌈) |
+| boss.js | 구역 우두머리(#139): 구역 80% 에 빈터(field.bosses)에 나옴, 그 구역 적을 키운 모양(enemies.js `spawnBoss`)·왕관·발밑 고리, 패턴(돌진·무리 부르기·광선, 바닥 경고)·단계(50%·20%)·화면 위 기운 줄(`#boss-bar`), 쫓아내면 느린 화면(`state.slowMo`)·귤·귀한 재료·돌하르방(`late.guard.raise`)·요약. 멀티는 방장이 굴림(`bs`·`bh`·`bd`). `__oreum.boss`, 확인 `node tools/boss.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
@@ -76,6 +78,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 몸 방향 (#107): bodytilt.js — `orientBody(root, heading, 기울기들)` 이 캐릭터 root 방향을 매번 처음부터 만들고 맞음 움찔·쓰러져 누움을 한 번에 합침, `flinchK(t)` 움찔 곡선. 내 캐릭터(update.js placeRunner·노루 타기)·멀티의 남(net.js)이 같이 씀. root 에 `rotation.y` 만 쓰지 말 것(지난 기울기가 남음). 확인 `node tools/hittilt.js`
 - 구역 구분 (#136): zonelook.js — `findGates`(탐방로가 초보·중수·고수 경계를 넘는 곳), 문턱(초보→중수 열린 정낭+낮은 돌담 `stonewall.js createPens`, 중수→고수 바위 문+방사탑)·안내판(구역·적 그림·권장 점수, 한 메시), 구역 소품(들꽃·억새·돌무더기·쓰러진 나무·그을린 자국·까마귀: 플레이어 둘레만 한 메시에 다시 씀, 부딪힘 없음), 땅·풀 색 `namsongi.js uMood`. 수치는 balance.js ZONE_LOOK. 게임 연결은 game/area.js
 - 맵 전체 쓰기 (#138): heapdefs.js(더미 목록·HEAP_SIG, 서버 server/src/heaps.js 와 같이 씀. 길가 더미 뒤에 들판 더미 `field: true`) · fieldplan.js(8자 고리: 구역 길을 오르막 쪽으로 돌려 클린하우스 높이로 아래·위 반, `placeSide` 왼쪽/오른쪽 들판에 놓기, 굼부리처럼 길이 안 들어가는 구역은 옆 길의 25~65m 옆) · field.js(소굴·보물·볼거리·우두머리 빈터 자리와 모양, 들판 더미 위 까마귀·연기, 종류마다 InstancedMesh). 수치 balance.js FIELD·FIELD_HEAPS·HEAP.sizes.mt·ZONES chMax. 확인 `node tools/field.js [--shot]`
+- 구역 우두머리·구역 완료 (#139): 우두머리는 적 하나(enemies.js `spawnBoss`: 모양 k 배·`e.boss`·`e.ctl` 이 패턴, `e.puppet` 이면 자리를 받은 대로, `e.remoteHurt` 면 피해를 방장에게). 수치 balance.js ZONE_BOSS. 방 메시지 roomcore `bs`(방장 → 모두)·`bh`(→ 방장)·`bd`(방장 → 돌하르방 zg), 따로 셈 NET.bossPerSec. 깨어나는 곳은 hp.js `startAt`. 느린 화면은 update.js `state.slowMo`·`slowK`
 - 탈것: rides.js · autowalk.js
 - 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js · feedback.js · rank.js/rankday.js(랭킹 #11)
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`

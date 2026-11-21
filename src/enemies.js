@@ -31,13 +31,23 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   const okMap = spots.enemyOk || null; // 맵이 적을 허락하지 않으면 없음 (null)
   const okAt = okMap && ((x, z) => okMap(x, z) && !hooks.spawnBlock?.(x, z)); // 다 핀 구역(#46)에는 나오지 않음
 
-  function spawnOne(kind, x, z) {
-    const def = ENEMIES[kind], m = buildEnemyModel(kind);
+  function spawnOne(kind, x, z, over = null) {
+    const def = over ? { ...ENEMIES[kind], ...over } : ENEMIES[kind], m = buildEnemyModel(kind);
     const pos = new THREE.Vector3(x, height(x, z), z);
     m.root.position.copy(pos); group.add(m.root);
     const bar = makeBar(); bar.g.position.set(0, m.h + 0.45, 0); m.root.add(bar.g);
     const e = { ...m, kind, def, pos, heading: rnd() * Math.PI * 2, speed: 0, phase: rnd() * 6, hp: def.hp, state: 'wander', st: 0, life: def.life, rootT: range(rnd, def.rootEvery), shotT: def.ranged ? def.ranged.every * 0.6 : 0, hitCd: 0, flash: 0, bar, chg: 0, pitch: 0, roll: 0 };
     list.push(e);
+    return e;
+  }
+  // 구역 우두머리 (#139, game/boss.js): 바탕 적 모양을 o.k 배로 키움. 기운 막대는 머리 위 대신 화면 위(boss.js). 시간이 다 돼 떠나지 않음
+  // o.ctl(e, dt, time, d, to) → 원하는 빠르기 (돌진·다가감·멈춤, 방향은 ctl 이 정함). e.puppet 이면 자리도 ctl 이 정함(멀티 받는 쪽)
+  // o.remoteHurt(dmg): 맞힌 피해를 방장에게 보냄(받는 쪽, 기운은 방장 값). 쫓아내면 hooks.bossRepel(e)
+  function spawnBoss(kind, x, z, o) {
+    const base = ENEMIES[kind];
+    const e = spawnOne(kind, x, z, { name: o.name, hp: o.hp, dmg: o.dmg, size: base.size * o.k, reward: { gyul: o.gyul, rare: 0 }, life: Infinity, ranged: null, rootEvery: [1e9, 1e9] });
+    e.root.scale.setScalar(o.k); e.h *= o.k; e.bar.g.visible = false;
+    e.state = 'boss'; e.boss = o; e.ctl = o.ctl; e.remoteHurt = o.remoteHurt || null; e.puppet = !!o.puppet;
     return e;
   }
   // 플레이어가 있는 곳의 몹 종류 (#48). 구역 없는 맵이면 kinds 에서 하나, 들머리(0)면 없음
@@ -81,9 +91,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
   function hurt(e, dmg, quiet) {
+    if (e.remoteHurt) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
     if (e.hp <= 0) repel(e);
-    else { if (!quiet) sound?.beep?.(false); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 돌진
+    else { if (!quiet) sound?.beep?.(false); if (e.state !== 'charge' && !e.boss) { e.state = 'charge'; e.st = 0; } } // 맞으면 바로 돌진 (우두머리는 제 패턴대로)
   }
   const live = (e) => e.state !== 'flee' && e.state !== 'leave';
   function hitTest(p, tg, dmg, quiet = false) {
@@ -103,6 +114,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     return out;
   }
   function repel(e) {
+    if (e.boss) { e.state = 'flee'; e.st = 0; e.ctl = null; sound?.boar?.(); hooks.bossRepel?.(e); return; } // #139 우두머리: 느린 화면·큰 전리품은 boss.js
     e.state = 'flee'; e.st = 0; e.bar.g.visible = false;
     sound?.boar?.(); onToast(`${iga(e.def.name)} 놀라 도망가요`);
     hooks.enemyRepel?.(e.kind, e.pos.clone(), e.def);
@@ -114,7 +126,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const to = new THREE.Vector3(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z), d = to.length();
     if ((e.state === 'wander' || e.state === 'root' || e.state === 'charge') && (player.down || e.life <= 0)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 쓰러뜨렸거나 시간이 다 됨
     let want = 0;
-    if (e.state === 'flee' || e.state === 'leave') {
+    if (e.state === 'boss' && e.ctl) { // 구역 우두머리 (#139): 패턴은 boss.js
+      want = e.ctl(e, dt, time, d, to);
+    } else if (e.state === 'flee' || e.state === 'leave') {
       want = e.state === 'flee' ? d0.flee : d0.walk * 1.6;
       turnTo(e, Math.atan2(-to.x, -to.z) + Math.sin(time * 2 + e.phase) * 0.3, Math.min(1, dt * 3));
       if (d > ENEMY_SPAWN.goneD || e.st > 14) { remove(e); if (e.state === 'leave') hooks.enemyGone?.(e.kind); return; }
@@ -139,10 +153,12 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.rootT -= dt; if (e.rootT <= 0) { e.state = 'root'; e.st = 0; e.dropped = false; }
       if (d < d0.sight && !player.down) { e.state = 'charge'; e.st = 0; }
     }
-    e.speed += (want - e.speed) * Math.min(1, dt * 3);
+    if (e.snap) e.speed = want; else e.speed += (want - e.speed) * Math.min(1, dt * 3); // 우두머리 돌진은 바로 (snap)
     e.phase += dt * e.speed * 1.6;
-    const nx = e.pos.x + Math.sin(e.heading) * e.speed * dt, nz = e.pos.z + Math.cos(e.heading) * e.speed * dt;
-    if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); else e.heading += 2.5;
+    if (!e.puppet || e.state !== 'boss') {
+      const nx = e.pos.x + Math.sin(e.heading) * e.speed * dt, nz = e.pos.z + Math.cos(e.heading) * e.speed * dt;
+      if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); else e.heading += 2.5;
+    }
     // 몸 충돌 (#32): 원 둘이 겹치지 않게 적을 뒤로 물림 (뛰어 넘으면 통과). 막혀 못 물러나면 플레이어를 밀어냄
     const minD = BOAR.bodyR * d0.size + COLLIDE.player;
     if (d < minD && player.jumpY < BOAR.jumpClear && !player.air && !player.down) {
@@ -224,8 +240,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     update, hitTest, hitArea, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
     activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
-    planWave, spawnPlan,
-    leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave') { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
+    planWave, spawnPlan, spawnBoss, remove, hurt,
+    leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave' && !e.boss) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),
     // 확인용
     test: {

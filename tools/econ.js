@@ -29,6 +29,7 @@
 // - 들판 (#138): 들판 더미·쓰레기 산은 구역 쓰레기에 더함(쓰레기 산 귤 × HEAP.sizes.mt.gv, 길 밖이라 걷는 거리를 FIELD.off 로 늘림). 소굴은 일하는 구역에서
 //   열린 것 하나를 나가기마다 닫음(다가가기 20초 + 무리 쫓아내기, FIELD.den.reopen 마다 다시), 숨은 보물은 일하는 구역 것을 하루 한 번(25초씩), 볼거리는 처음 한 번(20초)
 //   (--nofield: 들판 없이, --nospots: 들판 더미만 두고 소굴·보물·볼거리 없이, 비교용)
+// - 우두머리 (#139): 일하는 구역이 ZONE_BOSS.appear 만큼 깨끗하고 장비 점수가 빨강이 아니면 쫓아냄 (돌하르방이 서 있는 holdSec 동안은 다시 안 나옴). --noboss 는 비교용
 // - 흐름 (#137, notes/growth-loop.md 4절): 하루 끝 장비 단계(도구·배낭·신발 가장 낮은 것)와 그때까지 다 치운 구역이
 //   1일 구역 1·2단계, 2일 구역 3까지·3단계, 3일 4단계, 4일 구역 4, 5일 5단계·구역 5 인지 봄 (단계는 빠르지도 늦지도 않게)
 const fs = require('fs'), path = require('path');
@@ -53,11 +54,11 @@ async function main() {
   if (has('--live')) await live();
   const B = await import('../src/balance.js');
   const { RIDES } = B;
-  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD } = B;
+  const { TRASH_TYPES, HEAP, ZONES, DUMP, TOOLS, BAGS, POCKET, SHOES, CLEANHOUSE, DEX, TUT, ENEMIES, ENEMY_SPAWN, WEAPONS, BOW, FISH, WEAR, CLOTHES, WEAR_START, wearPrice, GROWTH, FIELD, ZONE_BOSS, ZONE_GUARD } = B;
   const NOFIELD = has('--nofield');
   const map = JSON.parse(fs.readFileSync(MAP, 'utf8'));
   const FRONTS = has('--one') || !map.fronts ? [map.front] : map.fronts; // 가장 가까운 클린하우스 기준 (#78)
-  const RUN = 10, DETOUR = 1.15, HAND_T = 1.0; // 달리기 속도(main.js), 길 굽이, 손 던지기 동작 시간(runner.js THROW.total)
+  const RUN = 10, DETOUR = 1.15, HAND_T = 1.0, BOSS_OVER = 1.5; // … , 우두머리: 맞히기만 한 시간 × 이만큼 (피하기·부하, tools/boss.js 로 잰 비율) // 달리기 속도(main.js), 길 굽이, 손 던지기 동작 시간(runner.js THROW.total)
   const CHASE = +arg('--chase', 0.5), MOB_IN = 0.8; // 쫓아내는 투기꾼 비율, 구역 안에 있는 시간 비율(몹이 나오는)
   const TUT_MIN = 4; // 튜토리얼 걸리는 시간(분)
   const LOG = has('--log');
@@ -137,7 +138,7 @@ async function main() {
   const GEAR = ['tool', 'bag', 'shoes'], WK = WEAR.slots.map((w) => w.k);
   function run(mode, slack) {
     const battle = mode === 'battle', S = 1 + slack; // 모든 행동 시간에 여유를 곱함 (벌지 않는 시간이 고르게 섞임)
-    const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0, denAt: {}, trDay: -1, trGot: new Set(), sights: new Set() };
+    const e = { tool: 1, bag: 0, shoes: 1, ride: 0, ...START_W }, st = { coins: 0, weapon: 1, left: zones.map((z) => z.n), tAll: 0, denAt: {}, trDay: -1, trGot: new Set(), sights: new Set(), bossAt: {} };
     const buys = [], days = [], LIST = { tool: TOOLS, bag: BAGS, shoes: SHOES };
     // 다음 단계: 도구·배낭·신발·무기는 순서대로. 옷은 순서 없이 살 수 있지만 계산은 한 단계씩 다 산다고 봄 (값을 넉넉히 셈)
     // --skip (#111): 튜토리얼 뒤 장비는 최고 단계만 (건너뛴 단계 값은 안 냄)
@@ -200,10 +201,17 @@ async function main() {
           for (let k = 0; k < (FIELD.treasure.n[z] || 0); k++) { const id = z + '-' + k; if (st.trGot.has(id)) continue; st.trGot.add(id); add(25); const g = FIELD.treasure.gyul[z] + FIELD.treasure.rare * DEX.rareGyul; st.coins += g; earned += g; }
           FIELD.sight.list.forEach((x, k) => { if (x[0] !== z || st.sights.has(k)) return; st.sights.add(k); add(20); st.coins += FIELD.sight.gyul[z]; earned += FIELD.sight.gyul[z]; });
         }
+        // 우두머리 (#139): 일하는 구역이 ZONE_BOSS.appear 만큼 깨끗하고 열린(빨강 아닌) 구역이면, 하르방이 서 있는 동안(holdSec) 빼고 한 번 (다가가기 20초 + 쫓아내기 × BOSS_OVER)
+        if (battle && !b.idle && !has('--noboss')) {
+          const z = zones[b.i].id, D = ZONE_BOSS.list[z];
+          if (D && zoneClean(b.i) >= ZONE_BOSS.appear && scoreOf(e, st.weapon) >= zones[b.i].rec * GROWTH.red && st.tAll - (st.bossAt[z] ?? -1e9) >= ZONE_GUARD.holdSec) {
+            st.bossAt[z] = st.tAll; const k = killOf(D.hp, weaponOf(st)); add(20 + k.t * BOSS_OVER); const g = D.gyul - Math.ceil(k.gy * BOSS_OVER); st.coins += g; earned += g; st.bosses = (st.bosses || 0) + 1;
+          }
+        }
         shop();
       }
       st.tAll = t0 + 3600; // 하루 1시간에서 넘친 부분은 버림
-      days.push({ day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length });
+      days.push({ day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0 });
       if (kinds.every((k) => !next(k)) && d >= 4) break;
     }
     const last = buys.length && kinds.every((k) => !next(k)) ? buys[buys.length - 1].at : Infinity;
@@ -249,7 +257,7 @@ async function main() {
     const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
     console.log(`\n== ${title} (투기꾼 쫓아내기 ${CHASE * 100}%) ==`);
     console.log('하루 끝 (한 번 돌린 예). 칸은 단계 (배낭 0 = 호주머니, 옷 0 = 없음)');
-    if (!FLOW_ONLY) console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), 점수: d.score, '산 것': d.n, '오늘 다 치운 구역': d.zones, '번 귤': d.earned, '할 일 없음(분)': d.idle, '남은 귤': d.coins })));
+    if (!FLOW_ONLY) console.table(r.days.map((d) => ({ 일: d.day, 도구: d.e.tool, 배낭: d.e.bag, 신발: d.e.shoes, 탈것: d.e.ride, ...(mode === 'battle' ? { 무기: d.weapon } : {}), ...Object.fromEntries(WK.map((k) => [short[k], d.e[k]])), 점수: d.score, '산 것': d.n, '오늘 다 치운 구역': d.zones, '번 귤': d.earned, '우두머리(누적)': d.boss, '할 일 없음(분)': d.idle, '남은 귤': d.coins })));
     // 흐름 (#137): 5번 돌린 것 모두 하루 끝을 보고, 가운데 값으로 판정
     const fl = flowCheck(runs);
     console.log(fl.lines.join('\n'));

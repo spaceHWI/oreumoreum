@@ -32,6 +32,7 @@ function enter() {
   closeIntro(); endTitleCam();
   if (!save.entered) { save.entered = 1; persist(); state.awe = 5; cam.dist = 30; cam.pitch = 0.35; $('intro-help').hidden = false; }
   if (!save.look) openLook();
+  else late.afterEnter?.(); // 다시 들어온 사람: 마지막 구역 클린하우스·들머리 고르기 (#139, boss.js)
 }
 $('enter').addEventListener('click', enter);
 $('enter').disabled = false; $('enter').removeAttribute('aria-busy'); // 게임을 다 받은 뒤에야 누를 수 있음 (#90, page.html)
