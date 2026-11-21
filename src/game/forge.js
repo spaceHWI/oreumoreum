@@ -3,6 +3,7 @@
 // 셈은 src/loot.js (enhCost·enhance), 장비점 틀은 shop.js(gearTabs·fillGearShop 를 감쌈)
 import { TOOLS, BAGS, POCKET, WEAPONS, WEAR, GROWTH, LOOT, ENEMY_SPAWN, ENEMIES } from '../balance.js';
 import { wearStatText } from '../clothicons.js';
+import { abilityCloth } from '../gearscore.js'; // 옷 능력 (#179)
 import { enhCost, canPay, enhance, enhOk, curItem, itemName, itemPts, gradeColor, gradeName, MAT, MATS, upMul, shoeSpeed, wearUp, diffPts, canEquip, sellValue, fxOf, tidySpare, GEAR_SLOTS, WEAR_K } from '../loot.js';
 import { late } from './state.js';
 import { $, save, persist, WSLOT } from './save.js';
@@ -25,7 +26,7 @@ setInterval(() => { if ($('shoppop').hidden) on = false; }, 500); // 창을 닫�
 // 칸 k 장비 { t, g, e } 의 능력 한 줄 (등급·강화를 얹은 값)
 function abil(k, u) {
   const s2 = { ...save, gearUp: { ...save.gearUp }, clothes: { ...save.clothes, up: { ...(save.clothes.up || {}) } } };
-  if (WEAR_K.includes(k)) { const id = save.clothes.wear[k]; if (id) s2.clothes.up[id] = { g: u.g, e: u.e }; } else s2.gearUp[k] = { g: u.g, e: u.e };
+  if (WEAR_K.includes(k)) { const id = abilityCloth(save, k); if (id) s2.clothes.up[id] = { g: u.g, e: u.e }; } else s2.gearUp[k] = { g: u.g, e: u.e };
   if (k === 'weapon') s2.weaponUse = save.equip.weapon;
   const m = upMul(s2, k), t = curItem(save, k).t;
   if (k === 'tool') { const T = TOOLS[t - 1]; return `${(T.per / T.time * m).toFixed(1).replace(/\.0$/, '')}/초`; }

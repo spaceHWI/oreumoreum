@@ -15,7 +15,7 @@ import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
 import { SHOP_POP, openShopPop, refreshShopPop, shopPopNow } from './stores.js';
 import { startAutoGo } from './dump.js';
-import { itemScore, scoreDiff, gyulPickR } from '../gearscore.js';
+import { itemScore, scoreDiff, gyulPickR, abilityCloth } from '../gearscore.js';
 import { LOOK_COLORS } from '../balance.js';
 import { colorDots, lcIndex } from '../lookcolors.js'; // 기본 옷 색 (#155)
 
@@ -231,10 +231,12 @@ late.shopIcons = (x, uv, s, inC) => {
   }
 };
 // ---------- 옷 (#52): 칸마다 한 줄. 옷 그림·단계 색·입은 것 체크·없는 것은 값. 가진 옷은 눌러서 바로 갈아입음 ----------
-export function wearCloth(slot, id) {
+export function wearCloth(slot, id) { // 겉모습만 바꿈 (#179): 능력은 가진 옷 중 가장 좋은 것 그대로
   if (id) CL.wear[slot] = id; else delete CL.wear[slot];
-  syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
+  syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true); late.outfitSet?.check(true);
 }
+// 겉모습 옷 색 (#179): tint 인 옷의 색 번호 (0 = 원래 색)
+export function tintCloth(id, i) { if (!CLOTH[id]?.tint || !CL.own[id]) return; if (i > 0) CL.tint[id] = i; else delete CL.tint[id]; syncEquipGear(); runner.apply(save.outfit); persist(); net.send(true); }
 export function buyCloth(id) {
   const c = CLOTH[id]; if (!c || CL.own[id]) return false; const off = late.questOff?.('leap', wearPrice(c)) || 0, price = wearPrice(c) - off; // 퀘스트 할인권 (#158)
   if (save.coins < price) { toast(`귤이 ${price - save.coins}개 모자라요`); return false; }
@@ -246,30 +248,32 @@ export function buyCloth(id) {
 export function buildWearRows(body, lock) { // 옷장(내 가방 옷 탭 #166): 가진 옷은 눌러서 바로 갈아입음. lock(옷, 줄) 을 주면 안 가진 옷도 흐리게 (사는 것은 LEAP #128)
   const CHECK = `${SVG_A} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`;
   WEAR.slots.forEach((w) => {
-    const list = CLOTHES.filter((c) => c.slot === w.k && CL.own[c.id]).sort((a, b) => a.tier - b.tier);
+    const list = CLOTHES.filter((c) => c.slot === w.k && CL.own[c.id]).sort((a, b) => (a.tier || 99) - (b.tier || 99)), abId = abilityCloth(save, w.k);
     const row = document.createElement('div'); row.className = 'w-row wear-row';
     const cur = wearV(w.k), head = document.createElement('div'); head.className = 'wear-head';
-    head.innerHTML = `<span class="wear-name">${w.name}</span><span class="wear-stat">${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${wearStatText(w.stat, cur)}</span>`;
+    head.innerHTML = `<span class="wear-name">${w.name}</span><span class="wear-stat" title="능력은 가진 옷 중 가장 좋은 것 · 고르면 모양만 바뀌어요">${SVG_A}>${WEAR_STAT_ICON[w.stat]}</svg>${wearStatText(w.stat, cur)}</span>`;
     const grid = document.createElement('div'); grid.className = 'wear-grid';
     const cell = (c) => {
       const id = c?.id || '', on = c ? CL.wear[w.k] === id : !CL.wear[w.k], tier = c ? c.tier : 0;
       const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item has' + (on ? ' on' : '') + (c ? '' : ' none'); b.dataset.id = id;
-      b.style.setProperty('--tc', WEAR.tierColor[tier]); b.title = c ? `${c.name} · ${tier}단계` : '없음';
-      b.setAttribute('aria-label', c ? `${c.name} ${tier}단계` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
-      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (on ? '' : gdBadge(scoreDiff(save, w.k, tier, id || undefined)));
+      const tag = c ? (c.style ? '겉모습' : `${tier}단계${id === abId ? ' · 능력' : ''}`) : '';
+      b.style.setProperty('--tc', c?.style ? WEAR.styleColor : WEAR.tierColor[tier]); b.title = c ? `${c.name} · ${tag}` : '없음 (능력은 그대로)';
+      b.setAttribute('aria-label', c ? `${c.name} ${tag}` : `${w.name} 벗기`); b.setAttribute('aria-pressed', String(on));
+      b.innerHTML = clothSvg(c) + (on ? `<i class="st">${CHECK}</i>` : '') + (c && id === abId ? '<i class="abm" aria-hidden="true"></i>' : ''); // 능력을 주는 옷 표시 (#179)
       b.addEventListener('click', () => { if (!on) wearCloth(w.k, id); late.buildWardrobe(); });
       grid.append(b);
     };
     if (w.none) cell(null);
     list.forEach(cell);
-    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => a.tier - b.tier).forEach((c) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', WEAR.tierColor[c.tier]);
+    if (lock) CLOTHES.filter((c) => c.slot === w.k && !CL.own[c.id] && LEAP.slots.includes(c.slot) && (!c.season || late.season?.isOn(c.season))).sort((a, b) => (a.tier || 99) - (b.tier || 99)).forEach((c) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'wear-item lock'; b.dataset.id = c.id; b.style.setProperty('--tc', c.style ? WEAR.styleColor : WEAR.tierColor[c.tier]);
       b.title = `${c.name} · LEAP 에서 ${wearPrice(c).toLocaleString()}귤`; b.setAttribute('aria-label', `${c.name} 잠김 · LEAP 에서 살 수 있어요`);
       b.innerHTML = clothSvg(c) + `<span class="pr"><i class="g"></i>${wearPrice(c).toLocaleString()}</span>`;
       b.addEventListener('click', () => lock(c, row)); grid.append(b);
     });
     row.append(head, grid);
     if (LOOK_COLORS.ids[w.k] && CL.wear[w.k] === LOOK_COLORS.ids[w.k]) row.append(baseColorRow(w.k)); // 기본 옷을 입고 있으면 색 바꾸기 (무료)
+    else if (CLOTH[CL.wear[w.k]]?.tint) row.append(styleColorRow(CLOTH[CL.wear[w.k]])); // 겉모습 옷 색 바꾸기 (#179, 무료)
     body.append(row);
   });
 }
@@ -284,3 +288,11 @@ export function baseColorRow(k) {
   return wrap;
 }
 late.baseColorRow = baseColorRow;
+// 겉모습 옷 색 동그라미 (#179): 0번 = 그 옷 원래 색, 나머지는 LOOK_COLORS.style
+export function styleColorRow(c) {
+  const wrap = document.createElement('div'); wrap.className = 'bag-lc'; const row = document.createElement('div'); row.className = 'lc-dots'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', `${c.name} 색`);
+  const cur = CL.tint[c.id] | 0;
+  LOOK_COLORS.style.forEach(([col, name], i) => { const b = document.createElement('button'); b.type = 'button'; b.style.background = col || c.look.main; b.title = name; b.setAttribute('aria-label', `${c.name} ${name}`); b.setAttribute('aria-pressed', String(i === cur));
+    b.addEventListener('click', () => { tintCloth(c.id, i); late.buildWardrobe(); }); row.append(b); });
+  wrap.append(row); return wrap;
+}

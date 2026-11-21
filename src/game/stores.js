@@ -1,6 +1,6 @@
 // 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { itemScore, scoreDiff } from '../gearscore.js';
-import { SHOES, STONE, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG, GEAR_SHOP } from '../balance.js';
+import { itemScore, scoreDiff, buyGain, slotTier } from '../gearscore.js';
+import { SHOES, STONE, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG, GEAR_SHOP, OUTFIT_SETS } from '../balance.js';
 import { SHOP_ICON } from '../shops.js';
 // 장비점·가게 안내 로고 (#128): 둥근 현무암 판에 흰 아이콘 (가게 창 위 칸)
 const iconLogo = (path) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#2f3336"/><g transform="translate(4.2 4.2) scale(.65)" fill="none" stroke="#f3ecdc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`);
@@ -180,41 +180,50 @@ export function tickCut(dt) {
 // 옷은 #52 WEAR·CLOTHES 표, 신발은 SHOES 표(순서 없이 사고 #111, 산 것 중 가장 좋은 것을 신음). 업적 이벤트 clothes-buy, clothes-buy-<칸>
 export const leapS = { on: false, slot: LEAP.slots[0], pick: null, cam: null, tried: false };
 const LEAP_CHECK = `<span class="have">${'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
-const leapSlotName = (k) => k === 'shoes' ? '신발' : WSLOT[k].name;
+const leapSlotName = (k) => k === 'shoes' ? '신발' : k === 'new' ? '새 옷' : WSLOT[k].name;
+const SET_NAME = Object.fromEntries(OUTFIT_SETS.map((t) => [t.id, t.name]));
+// 옷 카드 한 장 (#179): 능력 옷은 사면 오를 때만 바뀔 값, 겉모습 옷(style)은 '겉모습' 과 한 벌 맞춤 이름
+const clothItem = (c, k) => { const w = WSLOT[k], now = wearV(k), up = c.tier > slotTier(save, k);
+  return { id: c.id, cloth: c, slot: k, tier: c.tier, name: c.name, price: wearPrice(c), own: !!CL.own[c.id], on: CL.wear[k] === c.id, art: clothSvg(c), now, v: c.style ? now : up ? w.v[c.tier] : now, stat: c.style ? 'style' : w.stat, set: c.set }; };
+const tierSort = (a, b) => (a.tier || 99) - (b.tier || 99);
 export function leapItems(k) {
   if (k === 'shoes') {
     const n = Math.max(1, save.equip.shoes || 1), now = SHOES[n - 1].speed;
     return SHOES.map((t, i) => ({ id: 'shoes:' + (i + 1), shoes: i + 1, tier: i + 1, name: t.name, price: t.price, own: i < n, on: i === n - 1,
       art: late.itemArt ? late.itemArt('shoes', i, 'art') : `${late.SVG_A.replace('<svg', '<svg class="art"')}>${late.TIER_ART.shoes[i]}</svg>`, now, v: t.speed, stat: 'speed' }));
   }
+  if (k === 'new') return CLOTHES.filter((c) => c.fresh && !CL.own[c.id]).map((c) => clothItem(c, c.slot)); // 새로 들어온 겉모습 옷 (#179): 아직 안 가진 것
   const w = WSLOT[k], now = wearV(k), out = [];
-  if (w.none) out.push({ id: '', tier: 0, name: '없음', price: 0, own: true, on: !CL.wear[k], art: clothSvg(null), now, v: w.v[0], stat: w.stat });
-  CLOTHES.filter((c) => c.slot === k && (!c.season || CL.own[c.id] || late.season?.isOn(c.season))).sort((a, b) => a.tier - b.tier).forEach((c) => out.push({ id: c.id, cloth: c, tier: c.tier, name: c.name, price: wearPrice(c), own: !!CL.own[c.id], on: CL.wear[k] === c.id, art: clothSvg(c), now, v: w.v[c.tier], stat: w.stat }));
+  if (w.none) out.push({ id: '', slot: k, tier: 0, name: '없음', price: 0, own: true, on: !CL.wear[k], art: clothSvg(null), now, v: now, stat: 'style' });
+  CLOTHES.filter((c) => c.slot === k && (!c.season || CL.own[c.id] || late.season?.isOn(c.season))).sort(tierSort).forEach((c) => out.push(clothItem(c, k)));
   return out;
 }
 const leapStatText = (stat, v) => stat === 'speed' ? `×${String(v.toFixed(2)).replace(/0$/, '')}` : wearStatText(stat, v);
-const leapStat = (it) => `${late.SVG_A}>${it.stat === 'speed' ? late.STAT_ICON.speed : WEAR_STAT_ICON[it.stat]}</svg>` + (it.v !== it.now ? `<s>${leapStatText(it.stat, it.now)}</s>→<em>${leapStatText(it.stat, it.v)}</em>` : leapStatText(it.stat, it.v));
+const STYLE_IC = '<path d="M9 4l3 2 3-2 5 3-2 5-2-1v9H8v-9l-2 1-2-5z"/>'; // 겉모습 옷 (#179)
+const leapStat = (it) => it.stat === 'style' ? `${late.SVG_A}>${STYLE_IC}</svg>겉모습${it.set ? ` · ${SET_NAME[it.set]} 한 벌` : ''}` : `${late.SVG_A}>${it.stat === 'speed' ? late.STAT_ICON.speed : WEAR_STAT_ICON[it.stat]}</svg>` + (it.v !== it.now ? `<s>${leapStatText(it.stat, it.now)}</s>→<em>${leapStatText(it.stat, it.v)}</em>` : leapStatText(it.stat, it.v));
 function buildLeapTabs(el) {
   el.classList.add('shop-tabs');
-  for (const k of LEAP.slots) {
+  for (const k of [...LEAP.slots, ...(CLOTHES.some((c) => c.fresh && !CL.own[c.id]) ? ['new'] : [])]) { // 맨 끝 '새 옷' 탭 (#179): 새로 들어온 겉모습 옷
     const b = document.createElement('button'); b.type = 'button'; b.dataset.slot = k; b.title = leapSlotName(k); b.setAttribute('aria-pressed', String(k === leapS.slot));
-    const ic = k === 'shoes' ? `${late.SVG_A}>${late.TIER_ART.shoes[Math.max(1, save.equip.shoes || 1) - 1]}</svg>` : clothSvg(CLOTH[CL.wear[k]] || CLOTHES.find((c) => c.slot === k && c.tier === 1), 'tab-art');
+    if (k === 'new') b.classList.add('new');
+    const ic = k === 'new' ? `${late.SVG_A}>${STYLE_IC}</svg>` : k === 'shoes' ? `${late.SVG_A}>${late.TIER_ART.shoes[Math.max(1, save.equip.shoes || 1) - 1]}</svg>` : clothSvg(CLOTH[CL.wear[k]] || CLOTHES.find((c) => c.slot === k && c.tier === 1), 'tab-art');
     b.innerHTML = `${ic}<span>${leapSlotName(k)}</span>`;
     b.addEventListener('click', () => { leapS.slot = k; leapS.pick = null; leapTryOn(null); refreshShopPop(); });
     el.append(b);
   }
 }
-const leapGd = (it) => it.stat === 'speed' ? scoreDiff(save, 'shoes', it.tier) : scoreDiff(save, leapS.slot, it.tier, it.id || undefined);
+const leapGd = (it) => it.stat === 'speed' ? scoreDiff(save, 'shoes', it.tier) : it.own || !it.cloth ? 0 : buyGain(save, it.slot, it.cloth); // 옷은 사면 오르는 만큼만 (#179: 능력은 가진 것 중 최고)
 function buildLeapCards(grid) {
+  if (leapS.slot === 'new' && !CLOTHES.some((c) => c.fresh && !CL.own[c.id])) leapS.slot = LEAP.slots[1];
   const items = leapItems(leapS.slot);
   for (const it of items) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card leap-card'; b.dataset.id = it.id;
-    b.style.setProperty('--tc', WEAR.tierColor[it.tier]);
+    b.style.setProperty('--tc', it.cloth?.style ? WEAR.styleColor : WEAR.tierColor[it.tier]);
     b.classList.toggle('on', it.on); b.classList.toggle('sel', leapS.pick === it.id); b.classList.toggle('poor', !it.own && save.coins < it.price);
     b.title = it.name; b.setAttribute('aria-pressed', String(leapS.pick === it.id || it.on));
     b.setAttribute('aria-label', `${it.name}${it.tier ? ` ${it.tier}단계` : ''} · ${it.on ? '입고 있음' : it.own ? '가진 옷' : `귤 ${it.price}`}`);
     const gd = it.on || (it.stat === 'speed' && it.own) ? '' : late.gdBadge(leapGd(it)); // 장비 점수 ▲/▼ (#137). 신발은 산 것 중 가장 좋은 것을 신어 아래 단계는 없음
-    b.innerHTML = `<span class="food">${it.art}${it.tier ? '<i class="tc"></i>' : ''}${gd}</span><span class="mn"><b>${it.name}</b><small class="st">${leapStat(it)}</small></span>`
+    b.innerHTML = `<span class="food">${it.art}${it.tier || it.cloth?.style ? '<i class="tc"></i>' : ''}${gd}</span><span class="mn"><b>${it.name}</b><small class="st">${leapStat(it)}</small></span>`
       + `<span class="mv">${it.on ? LEAP_CHECK : it.own ? '' : `<span class="price"><i></i>${it.price.toLocaleString()}</span>`}</span>`;
     b.addEventListener('click', () => pickLeap(it));
     grid.append(b);
@@ -222,7 +231,7 @@ function buildLeapCards(grid) {
   const it = items.find((i) => i.id === leapS.pick && !i.own);
   if (!it) return;
   const bar = document.createElement('div'); bar.className = 'leap-buy';
-  bar.innerHTML = `<div><b><i class="tdot" style="background:${WEAR.tierColor[it.tier]}"></i>${it.name}</b><span class="tier-stats"><span>${leapStat(it)}</span>${late.scoreChip(itemScore(it.tier), leapGd(it))}</span></div>`;
+  bar.innerHTML = `<div><b><i class="tdot" style="background:${it.cloth?.style ? WEAR.styleColor : WEAR.tierColor[it.tier]}"></i>${it.name}</b><span class="tier-stats"><span>${leapStat(it)}</span>${it.cloth?.style ? (it.cloth.desc ? `<small class="desc">${it.cloth.desc}</small>` : '') : late.scoreChip(itemScore(it.tier), leapGd(it))}</span></div>`;
   const bb = document.createElement('button'); bb.type = 'button'; bb.className = 'tier-buy' + (save.coins < it.price ? ' short' : '');
   { bb.innerHTML = save.coins < it.price ? `${(it.price - save.coins).toLocaleString()}귤 더 필요` : `<i class="g"></i>${it.price.toLocaleString()} 사기`; bb.setAttribute('aria-label', `${it.name} 사기`); bb.addEventListener('click', () => buyLeap(it)); } // #128 모자라면 버튼 자리에 '○○귤 더 필요'
   bar.append(bb); grid.append(bar);
@@ -230,14 +239,14 @@ function buildLeapCards(grid) {
 // 입어 보기: 고른 옷(또는 신발)만 바꾼 차림을 캐릭터에 입힘 (저장은 안 함). null 이면 지금 차림으로 되돌림
 export function leapTryOn(it) {
   if (!it) { if (leapS.tried) { runner.apply(save.outfit); leapS.tried = false; } return; }
-  const gear = { ...save.outfit.gear, [leapS.slot]: it.shoes ? SHOE_GEAR[it.shoes - 1] : it.id || `${leapS.slot}:none` };
+  const sl = it.slot || leapS.slot, gear = { ...save.outfit.gear, [sl]: it.shoes ? SHOE_GEAR[it.shoes - 1] : it.id || `${sl}:none` };
   runner.apply({ ...save.outfit, gear }); leapS.tried = true;
 }
 export function pickLeap(it) {
   if (it.own) {
     leapS.pick = null; leapTryOn(null);
     if (it.shoes) { if (!it.on) toast('지금 더 좋은 신발을 신고 있어요'); }
-    else if (!it.on) { late.wearCloth(leapS.slot, it.id || null); late.sound.coin?.(); }
+    else if (!it.on) { late.wearCloth(it.slot || leapS.slot, it.id || null); late.sound.coin?.(); }
   } else {
     leapS.pick = leapS.pick === it.id ? null : it.id;
     leapTryOn(leapS.pick ? it : null);

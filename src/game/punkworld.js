@@ -15,7 +15,7 @@ import { gradHard } from '../toon.js';
 import { height } from '../world.js';
 import { nsAlong } from '../namsongi.js';
 import { STREET } from '../streetlayout.js';
-import { PUNK, TUT, SHOP_ST, NET } from '../balance.js';
+import { PUNK, TUT, SHOP_ST, NET, OUTFIT_SETS } from '../balance.js';
 import { RADIO, RADIO_SITU, NOTES, TITLES } from '../punktext.js';
 import { BADGES, kstDate } from '../achievements.js';
 import { BADGE_ICONS, iconSvg } from '../badgeicons.js';
@@ -241,7 +241,9 @@ syncChip();
 
 /* ---------- 3. 칭호 ---------- */
 const BADGE = Object.fromEntries(BADGES.map((b) => [b.id, b]));
-const unlocked = (i) => !!ach.state.badges[TITLES[i]?.badge];
+const SET_BY = Object.fromEntries(OUTFIT_SETS.map((t) => [t.id, t]));
+const setOwned = (id) => !!SET_BY[id] && SET_BY[id].items.every((c) => save.clothes?.own?.[c]); // 한 벌 맞춤 칭호 (#179): 세 벌을 다 가짐
+const unlocked = (i) => (TITLES[i]?.set ? setOwned(TITLES[i].set) : !!ach.state.badges[TITLES[i]?.badge]);
 const titleShown = () => director.isOpen('title') || P.title >= 0; // 문(구역 3)이 열리기 전엔 칭호가 열려도 단추를 숨김
 function setTitle(i) {
   i = Number.isInteger(i) && i >= 0 && i < TITLES.length && unlocked(i) ? i : -1;
@@ -257,8 +259,9 @@ function buildTitles() {
   TITLES.forEach((t, i) => {
     const b = BADGE[t.badge], open = unlocked(i), it = document.createElement('button'); it.type = 'button';
     it.className = 'pt-it' + (open ? '' : ' locked') + (P.title === i ? ' on' : ''); it.disabled = !open;
-    it.innerHTML = `<span class="bdg" style="background:${b?.color || '#555'}">${iconSvg(BADGE_ICONS[b?.id] || BADGE_ICONS[b?.fam] || '')}</span><span><b></b><small></small></span>`;
-    it.querySelector('b').textContent = open ? t.t : '???'; it.querySelector('small').textContent = b ? b.desc : '';
+    const st = SET_BY[t.set];
+    it.innerHTML = `<span class="bdg" style="background:${b?.color || st?.fx || '#555'}">${iconSvg(BADGE_ICONS[b?.id] || BADGE_ICONS[b?.fam] || '')}</span><span><b></b><small></small></span>`;
+    it.querySelector('b').textContent = open ? t.t : '???'; it.querySelector('small').textContent = b ? b.desc : st ? `${st.name} 한 벌 세 벌을 모으면` : '';
     if (open) it.addEventListener('click', () => { setTitle(i); buildTitles(); toast(`칭호 '${t.t}' 를 달았어요`); });
     L.append(it);
   });
