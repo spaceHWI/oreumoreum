@@ -113,7 +113,7 @@ export function makeTrail(paths) {
 
 /* ---------- 더미 자리 ---------- */
 // ok(x, z): 놓을 수 있는 땅(오름 위, 사물과 안 겹침). 같은 seed 면 늘 같은 자리
-function placeHeaps(trail, ok, height, origin, chs = []) {
+function placeHeaps(trail, ok, height, origin, chs = [], entry = null) {
   const far = (z, x, y) => origin && ZONES[z - 1].maxD && Math.hypot(x - origin.x, y - origin.z) > ZONES[z - 1].maxD;
   const rnd = mulberry(HEAP.seed);
   const tr = trail.samples(4);
@@ -144,6 +144,7 @@ function placeHeaps(trail, ok, height, origin, chs = []) {
     if (!best) { const c = cells[d.zone][Math.floor(rnd() * cells[d.zone].length)] || [0, 0]; best = { x: c[0], z: c[1], y: height(c[0], c[1]) - 0.12 }; } // 끝내 못 찾으면 구역 안 아무 데나
     out.push({ ...best, r: R, k: d.k, zone: d.zone, n: d.n, gv: d.gv, rot: rnd() * Math.PI * 2 });
   });
+  if (entry) placeEntry(out, entry, trail, height, ring);
   // 들판 더미·쓰레기 산 (#138): 8자 고리의 왼쪽 들판(구역 클린하우스보다 낮은 길의 왼쪽), 길에서 FIELD.heapD. 고정 난수 FIELD.seed
   const fr = mulberry(FIELD.seed), farF = (z, x, y) => origin && ZONES[z - 1].maxD && Math.hypot(x - origin.x, y - origin.z) > ZONES[z - 1].maxD;
   const loops = zoneLoops({ samples: tr, zoneAt, height, chs, far: farF });
@@ -159,6 +160,39 @@ function placeHeaps(trail, ok, height, origin, chs = []) {
   });
   out.loops = loops;
   return out;
+}
+
+// #160 들머리 더미: 구역 1 작은 더미 앞쪽 몇 개(저장 순서 그대로)를 정낭 밖 들머리 길가로 옮김. 나머지는 위에서 고른 자리 그대로
+// entry = { pts 들머리 길 [[x,z]…], from 정낭까지 길 m, ch 들머리 클린하우스 {x,z}, eye 정낭 바로 밖 {x,z}, ok(x,z) 놓을 수 있는 땅, blocked(x,z,r) 사물 }
+// 고정 난수(HEAP.entry.seed)라 늘 같은 자리. 못 찾은 더미는 원래 자리에 둠
+function placeEntry(out, E, trail, height, ring) {
+  const C = HEAP.entry; if (!C || !E?.ch || !E.pts?.length) return;
+  const idx = out.map((o, i) => i).filter((i) => out[i].zone === 1 && !out[i].field && out[i].k === 's');
+  const rnd = mulberry(C.seed), road = makeTrail([E.pts]), S = []; let L = 0;
+  for (let i = 0; i < E.pts.length - 1; i++) { const a = E.pts[i], b = E.pts[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]); if (l < 1e-3) continue; const n = Math.ceil(l / 2); for (let j = 0; j < n; j++) if (L + l * j / n >= E.from + C.from) S.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n, (b[0] - a[0]) / l, (b[1] - a[1]) / l]); L += l; }
+  const view = (x, z, R) => { const dx = x - E.eye.x, dz = z - E.eye.z, D = Math.hypot(dx, dz); for (let t = 2; t < D - R - 0.5; t += 1) if (E.blocked(E.eye.x + dx / D * t, E.eye.z + dz / D * t, 0.3)) return false; return true; };
+  const moved = new Set(), keep = () => out.filter((o, i) => !idx.includes(i) || moved.has(i));
+  let k = 0;
+  C.bands.forEach(([d0, d1, n], b) => {
+    const pool = S.filter((p) => { const D = Math.hypot(p[0] - E.ch.x, p[1] - E.ch.z); return D > d0 - 12 && D < d1 + 12; });
+    for (let m = 0; m < n && k < idx.length; m++, k++) {
+      const i = idx[k], R = out[i].r; let best = null;
+      for (let t = 0; t < 800 && !best && pool.length; t++) {
+        const p = pool[Math.floor(rnd() * pool.length)], side = rnd() < 0.5 ? -1 : 1, off = C.off[0] + R + rnd() * (C.off[1] - C.off[0]);
+        const x = p[0] - p[3] * side * off, z = p[1] + p[2] * side * off, D = Math.hypot(x - E.ch.x, z - E.ch.z);
+        if (D < d0 || D > d1) continue;
+        if (road.dist(x, z, R + C.off[0]) < R + C.off[0] - 0.05) continue; // 길을 막지 않게
+        if (trail.dist(x, z, R + HEAP.trailMin + 0.1) < R + HEAP.trailMin) continue;
+        if (keep().some((o) => Math.hypot(o.x - x, o.z - z) < o.r + R + C.gap)) continue;
+        let lo = 1e9, hi = -1e9, sum = 0; for (let a8 = 0; a8 < 8; a8++) { const a = a8 / 8 * Math.PI * 2, y = height(x + Math.cos(a) * R * 0.8, z + Math.sin(a) * R * 0.8); lo = Math.min(lo, y); hi = Math.max(hi, y); sum += y; }
+        if (hi - lo > R * 0.45 + 0.3) continue;
+        if (!ring(x, z, R, E.ok)) continue;
+        if (C.view && b === 0 && E.eye && E.blocked && !view(x, z, R)) continue; // 정낭에서 보이게
+        best = { x, z, y: Math.min(sum / 8, lo + 0.4) - 0.1 };
+      }
+      if (best) { Object.assign(out[i], best, { entry: true }); moved.add(i); }
+    }
+  });
 }
 
 /* ---------- 모양 (로우폴리 임시) ---------- */
@@ -207,10 +241,11 @@ function makeHeapGeo(k, st, low) {
 /* ---------- 쓰레기 세상 ---------- */
 // paths: 오름 위 탐방로 (더미 자리 기준), inBounds: 오름 위인가, fixed: 튜토리얼 낱개 [{x,z,t,r}], col: 사물 충돌 (더미도 등록), origin: 클린하우스 자리 (ZONES maxD 기준)
 // chs: 클린하우스 자리 [{x, z}…] (들머리 + 오름 안, #138 고리 기준·들판 더미가 비켜 감)
-export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null, chs = [] }) {
+// entry: 들머리 더미 자리 (#160, placeEntry). 없으면 구역 1 더미도 오름 위에만
+export function createTrash({ scene, store, height, paths, inBounds, low, fixed = [], col = null, origin = null, rareMul = null, chs = [], entry = null }) {
   const trail = makeTrail(paths);
   const ok = (x, z) => inBounds(x, z) && height(x, z) > 2 && !(col && col.blocked(x, z, 0.45)); // 사물과 겹치지 않게 (#15)
-  const heaps = placeHeaps(trail, ok, height, origin, chs);
+  const heaps = placeHeaps(trail, ok, height, origin, chs, entry && { ...entry, ok: (x, z) => entry.walk(x, z) && !(col && col.blocked(x, z, 0.45)), blocked: (x, z, r) => !!col && col.blocked(x, z, r) });
   const geos = makeGeos();
   const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
   const fxMats = PAL.map((p) => new THREE.MeshToonMaterial({ color: p[0], vertexColors: true, gradientMap: gradHard }));

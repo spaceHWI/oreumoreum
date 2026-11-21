@@ -26,6 +26,10 @@ export const HEAP = {
   nearFrac: 0.6, // 구역 더미 중 길 옆 비율 (나머지는 구역 안 빈터)
   freeMax: 60, // 빈터 더미는 길에서 이만큼 안
   seed: 45,
+  // #160 들머리 더미: 구역 1 길가 더미 앞쪽 몇 개를 정낭 밖 들머리 길가(돌담 안 평지)에 둠. 더미 수·HEAP_SIG 는 그대로(자리만 바뀜)
+  // bands [가까운 m, 먼 m, 개수]: 들머리 클린하우스 가운데에서 거리. off 들머리 길 가운데에서 더미 가장자리까지 m. from 정낭(TUT.gateD)에서 오름 쪽으로 이만큼 지나서부터
+  // gap 더미 가장자리끼리 최소 m. view 가까운 띠 더미는 정낭에서 보이게(사이에 나무·돌 충돌이 없게)
+  entry: { bands: [[15, 40, 3], [40, 80, 3]], off: [3, 8], from: 6, gap: 7, view: true, seed: 160 },
 };
 // 들판 더미 (#138, notes/growth-loop.md 6절): 구역마다 길에서 FIELD.heapD m 떨어진 곳에 큰 더미·쓰레기 산. 길가 더미 뒤에 붙는 순서(저장 heaps 뒤쪽)
 // 자리는 FIELD.seed 고정 난수, 8자 고리의 '왼쪽 들판'(src/fieldplan.js). 바꾸면 HEAP_SIG 가 바뀌어 서버 더미가 새로 가득 참
