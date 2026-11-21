@@ -1,6 +1,6 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { shoeSpeed } from '../loot.js';
-import { PERF, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
+import { PERF, PLACE, SHOES, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
 import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { startAssets, onAnyAsset } from '../assets.js';
@@ -36,6 +36,7 @@ import { tickPace, pace } from './pace.js';
 import { tickDirector } from './director.js'; // #176
 import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
+import { placeAt } from './where.js'; // #153
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -227,7 +228,7 @@ function adaptQuality(dt) { // 자동일 때만: 느리면 한 단계씩 내리�
 }
 applyQuality();
 
-const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'); let compassRot = null, xyTxt = '', xyDk = '';
+const tmpDir = new THREE.Vector3(); const compassDial = $('xy-north'), xyX = $('xy-x'), xyZ = $('xy-z'), xyBox = $('xy'), whereEl = $('where'); let compassRot = null, xyTxt = '', xyDk = '', whereT = 0, whereTxt = '';
 // 매 프레임 (#108): 한 프레임에서 오류가 나도 다음 프레임은 계속 (예전엔 끝에서 다음 프레임을 불러 오류 하나에 게임이 멈춤). 오류는 crash.js 로 알림
 let stepErr = 0;
 function frame(now) {
@@ -271,11 +272,13 @@ function step(now) {
   tickCairnLod(dt);
   cairns.forEach((c) => { if (c.anim > 0) { stepCairn(c, dt); fillCairn(c, c.want || 1); } if (c.drop > 0) { c.drop = Math.max(0, c.drop - dt * 4); c.im.position.y = c.drop * c.drop; } });
   clouds.rotation.y += dt * 0.012;
-  { // 좌표 (#75, 나침반 대신): X·Z 정수 + 화면이 보는 방향 기준 북쪽(-z) 화살표
+  { // 지금 있는 곳 이름 (#153, 좌표 대신) + 화면이 보는 방향 기준 북쪽(-z) 화살표 (#75)
     camera.getWorldDirection(tmpDir); const ang = Math.atan2(tmpDir.x, -tmpDir.z) * 180 / Math.PI;
     const r = Math.round(-ang); if (r !== compassRot) { compassRot = r; compassDial.setAttribute('transform', `rotate(${r})`); }
-    const X = Math.round(player.pos.x), Z = Math.round(player.pos.z), xs = X + ',' + Z;
-    if (xs !== xyTxt) { const dk = `${String(X).length},${String(Z).length}`; if (dk !== xyDk) { xyDk = dk; topFit.dirty(); } xyTxt = xs; xyX.textContent = X; xyZ.textContent = Z; } // 자릿수가 바뀔 때만 폭 다시 잼
+    if (!xyBox.hidden) { const X = Math.round(player.pos.x), Z = Math.round(player.pos.z), xs = X + ',' + Z; // 숫자 좌표는 어드민 '좌표 보기' 일 때만 (#153)
+      if (xs !== xyTxt) { const dk = `${String(X).length},${String(Z).length}`; if (dk !== xyDk) { xyDk = dk; topFit.dirty(); } xyTxt = xs; xyX.textContent = X; xyZ.textContent = Z; } } // 자릿수가 바뀔 때만 폭 다시 잼
+    if ((whereT -= dt) <= 0) { whereT = PLACE.every; const n = placeAt(player.pos.x, player.pos.z); // 지금 있는 곳 이름 (#153): 바뀌면 살짝 떴다 가라앉음
+      if (n !== whereTxt) { whereTxt = n; whereEl.textContent = n; whereEl.classList.remove('swap'); void whereEl.offsetWidth; whereEl.classList.add('swap'); topFit.dirty(); } }
   }
   topFit.tick(dt);
   G.uT.value = now / 1000; G.uP.value.copy(player.pos); if (player.air) G.uP.value.y = 1e6;

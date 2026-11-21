@@ -1479,3 +1479,6 @@ export const BUDDIES = {
   cheerR: 150, worryR: 80, ambient: [70, 150], talkR: 3,
   avoid: { player: 1.4, door: 4, npc: 7 }, // npc: 오름지기(들머리 안내판)·사진사 둘레
 };
+// 지금 있는 곳 이름 (#153, src/game/where.js): 위쪽 칸에 좌표 대신. r = 그 자리에서 이 거리(m) 안이면 그 이름 (임의 15~25)
+// 여러 곳이 겹치면 (거리 ÷ r) 가 가장 작은 곳. 없으면 구역 이름, 구역 문턱이면 '○○ 들머리' (아래 구역에서 edge m 안)
+export const PLACE = { every: 0.3, street: 4, shop: 8, ch: 16, mini: 18, summit: 24, cairn: 14, stream: 18, gate: 12, sign: 14, edge: 14 };

@@ -65,6 +65,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | story.js | 이야기 이벤트(#168): 조건(그 일이 일어날 때) → 예고(감독 'story' + 카메라 glance) → 벌어지는 일 → 끝(보상·`late.quest?.storyDone`). 한 번에 하나, 하루 STORY.perDay, 감독 문(storyMom·nightLight·aliens). 이벤트 mom·pair·night·howl·truck·meet·tour·sign·ufo·end, 수치 balance.js STORY, 글 src/punktext.js. 적은 enemies.js `spawnStory`(키움·calm), 트럭 첫 등장은 dumpers.come 을 감쌈. 저장 `save.story`. `__oreum.story.play(id)` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
+| where.js | 지금 있는 곳 이름(#153): `placeAt(x, z)` 가게 앞·가게 거리·클린하우스·돌탑·정상 전망대·개울가·정낭·구역 문턱('능선 들머리')·구역 이름. 반경은 `balance.js PLACE`. update.js 가 0.3초마다 위쪽 칸(`#where`)에 씀, 확인 `__oreum.where` |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 
 규칙

@@ -5,7 +5,7 @@ import { state, late } from './state.js';
 import { $, KEY, save, persist } from './save.js';
 import { wx, spots, applySky } from './scene.js';
 import { player } from './place.js';
-import { toast, updateStats, busy, closePanels, ach, openAch } from './hud.js';
+import { toast, topFit, updateStats, busy, closePanels, ach, openAch } from './hud.js';
 import { marker } from './input.js';
 import { initInbox, inboxCheck } from './inbox.js';
 
@@ -49,13 +49,20 @@ export function enableDev() {
       try { if (state.todOverride == null) localStorage.removeItem(TK); else localStorage.setItem(TK, String(state.todOverride)); } catch (e) { /* 무시 */ }
       tv.textContent = state.todOverride == null ? '실제' : `${String(Math.floor(state.todOverride)).padStart(2, '0')}:${String(Math.round((state.todOverride % 1) * 60)).padStart(2, '0')}`;
       if (state.todOverride != null) sl.value = state.todOverride;
+      $('adm-body').querySelectorAll('[data-h]').forEach((b) => b.setAttribute('aria-pressed', String(state.todOverride != null && Math.abs(parseFloat(b.dataset.h) - state.todOverride) < 0.01))); $('adm-real').setAttribute('aria-pressed', String(state.todOverride == null)); // #153 고른 것은 눌린 모양
       applySky();
     };
     try { const v = parseFloat(localStorage.getItem(TK)); if (Number.isFinite(v)) setTod(v); } catch (e) { /* 무시 */ }
     sl.addEventListener('input', () => setTod(parseFloat(sl.value)));
     $('adm-body').querySelectorAll('[data-h]').forEach((b) => b.addEventListener('click', () => setTod(parseFloat(b.dataset.h))));
     $('adm-real').addEventListener('click', () => setTod(null));
-    $('adm-body').querySelectorAll('[data-wx]').forEach((b) => b.addEventListener('click', () => { wx.set(b.dataset.wx || null); toast('날씨: ' + WX[wx.kind].name); }));
+    $('adm-body').querySelectorAll('[data-wx]').forEach((b) => b.addEventListener('click', () => { wx.set(b.dataset.wx || null); toast('날씨: ' + WX[wx.kind].name); $('adm-body').querySelectorAll('[data-wx]').forEach((o) => o.setAttribute('aria-pressed', String((o.dataset.wx || null) === wx.forced))); }));
+    { // 좌표 보기 (#153): 위쪽 곳 이름 칸 옆에 숫자 좌표 (이 기기만)
+      const XK = 'oreumoreum.hwi.xy', xb = $('adm-xy');
+      const setXY = (on) => { $('xy').hidden = !on; xb.setAttribute('aria-pressed', String(on)); try { if (on) localStorage.setItem(XK, '1'); else localStorage.removeItem(XK); } catch (e) { /* 무시 */ } topFit.dirty(); };
+      let on0 = false; try { on0 = localStorage.getItem(XK) === '1'; } catch (e) { /* 무시 */ } setXY(on0);
+      xb.addEventListener('click', () => setXY($('xy').hidden));
+    }
     $('adm-toggle').addEventListener('click', () => { const h = !$('adm-body').hidden; $('adm-body').hidden = h; $('adm-toggle').setAttribute('aria-expanded', String(!h)); });
     let rc = 0;
     $('dev-reset').addEventListener('click', () => {
