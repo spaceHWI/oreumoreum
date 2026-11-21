@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -34,6 +34,20 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   for (const X of [A, B]) { await X.p.click('#enter'); await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
+  if (ONLY === 'cart') { // 지나가는 마차 (#120): A 가 달리는 마차에 타면 B 화면에도 앉은 모습, B 는 A 가 앉은 자리를 피해 앉음
+    const run = (X) => X.p.evaluate(() => { const o = window.__oreum, c = o.rides.cart.api; for (let t = 0; t < 240; t += 0.5) { o.rides.cart.shift(t); c.update(0, Date.now() / 1000 + t); if (c.state.moving && c.state.speed > 2 && c.state.left > 20) return t; } return null; });
+    const t = await run(A); await B.p.evaluate((t) => window.__oreum.rides.cart.shift(t), t);
+    const side = () => { const o = window.__oreum, c = o.rides.cart.api, h = c.heading; o.keys.clear(); o.tp(c.pos.x + Math.cos(h) * 2.4, c.pos.z - Math.sin(h) * 2.4, h); o.rides.cart.board(); return o.player.cart && o.player.cart.seat; };
+    const sa = await A.p.evaluate(side); await wait(A.p, 1500);
+    ok(sa != null && await until(B, () => [...window.__oreum.net.peersById.values()].some((e) => e.data.rd === 'cart')), `A 가 달리는 마차에 타면 B 에게 '마차' 로 보임 (자리 ${sa})`);
+    const near = await B.p.evaluate(() => { const o = window.__oreum, c = o.rides.cart.api, e = [...o.net.peersById.values()][0]; return +Math.hypot(e.tpos.x - c.pos.x, e.tpos.z - c.pos.z).toFixed(1); });
+    ok(near < 3, `B 화면에서 A 는 마차 위 (${near}m)`);
+    const sb = await B.p.evaluate(side);
+    ok(sb != null && sb !== sa, `B 는 A 의 자리를 피해 앉음 (A ${sa} · B ${sb})`);
+    const off = await A.p.evaluate(() => { const o = window.__oreum, m = o.rides.cart.api.state.moving; o.rides.cart.leave(false); return m && !o.player.cart && o.rides.state().road; });
+    ok(off && await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => e.data.rd !== 'cart')), 'A 가 달리는 중 내리면 B 화면에서도 내림');
+    await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return;
+  }
   { // 지금 접속 (#186): 두 명이 들어오면 2 (로컬 서버는 STATS_OPEN 이라 로그인 없이 볼 수 있음)
     let o = null; for (let i = 0; i < 20 && !(o && o.n >= 2); i++) { o = await fetch(SRV + '/admin/online', { headers: { Origin: 'http://127.0.0.1:5173' } }).then((r) => r.json()).catch(() => null); if (!(o && o.n >= 2)) await wait(A.p, 250); }
     const ns = (o?.rooms || []).find((r) => r.map === 'namsongi');
@@ -107,7 +121,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
     await wait(A.p, 1500);
     const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
-    ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
+    ok((aOn >= 1 || aOn === -1) && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn === -1 ? '꺼짐(#190 BUDDIES.on)' : aOn + '명'}, B 가 보는 사람 ${bSee.n}명`);
     const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
     const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
     await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
@@ -201,6 +215,23 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const a2 = await A.p.evaluate(() => window.__oreum.story.ending.state()), b2 = await B.p.evaluate(() => window.__oreum.story.ending.state());
     ok(!!a2 && !b2, `엔딩: 같은 날 두 번째는 끝낸 사람만 (A ${!!a2} · B ${!!b2})`);
     await A.p.evaluate(() => window.__oreum.story.ending.stop());
+  }
+  { // 오래 멈춤 (#157, 방장 순서를 쓰는 확인들 뒤): 시간을 짧게 줄여 (가) 조작 없으면 방에서 빠짐 (나) 누르면 같은 자리로 돌아옴 (다) 서버가 닫은 연결엔 다시 붙지 않음
+    await A.p.evaluate(() => window.__oreum.idle.set({ warn: 1, rest: 2 }));
+    const gone = await until(B, () => window.__oreum.net.count === 0, null, 20000);
+    const as = await A.p.evaluate(() => window.__oreum.idle.state());
+    ok(gone && as.mode === 'rest' && as.asleep, `(가) 조작이 없으면 쉬러 가고 B 화면에서 사라짐 (${JSON.stringify({ mode: as.mode, asleep: as.asleep })})`);
+    const ap = await A.p.evaluate(() => { const o = window.__oreum; o.idle.set({ warn: 900, rest: 900 }); o.idle.wake(); return o.player.pos.x; });
+    const back = await until(B, (x) => [...window.__oreum.net.peersById.values()].some((e) => Math.abs(e.tpos.x - x) < 0.5), ap, 20000);
+    ok(back, `(나) 누르면 다시 들어와 같은 자리 (A ${ap.toFixed(1)})`);
+    // 서버 기준을 2초로 (로컬 STATS_OPEN 만 받음). 화면 쪽 시간은 길게 둬서 서버가 닫는지만 봄
+    await A.p.evaluate(() => window.__oreum.net.room.send({ t: 'idle', s: 2 }));
+    const shut = await until(A, () => window.__oreum.idle.state().mode === 'rest', null, 20000);
+    await wait(A.p, 5000);
+    const st2 = await A.p.evaluate(() => ({ open: window.__oreum.net.room.open, mode: window.__oreum.idle.state().mode }));
+    ok(shut && !st2.open && st2.mode === 'rest' && await B.p.evaluate(() => window.__oreum.net.count === 0), `(다) 서버가 닫으면(4004) 쉬는 화면, 다시 붙지 않음 (${JSON.stringify(st2)})`);
+    await A.p.evaluate(() => window.__oreum.idle.wake());
+    ok(await until(B, () => window.__oreum.net.count === 1, null, 20000) && await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1, null, 20000), '깨우면 다시 서로 봄');
   }
   // 가짜 로그인 → 계정 사본으로 새로고침
   await A.p.evaluate(() => { window.__oreum.save.coins = 40; });

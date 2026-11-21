@@ -63,6 +63,12 @@ if (NS_TUT && tut.active) document.body.classList.add('tut');
 if ($('dev-tut')) $('dev-tut').hidden = !tut.active; // 개발자 버튼 '튜토리얼 건너뛰기' (#62)
 else if (!NS_TUT && save.tut && !save.tut.done) { save.tut.done = true; persist(); }
 // ---------- 낚시 (#44) ----------
+// 낚시 전용 업적 사건 (#124): 비 오는 날·밤·물고기 종류 다 낚기. 물고기 종류는 사건 횟수(ach.state.life['fish-<id>'])로 셈
+const fishExtra = (sp) => {
+  if (wx.kind === 'rain') ach.emit('fish-rain');
+  if ((sunState?.el ?? 30) < -4) ach.emit('fish-night');
+  if (sp && !ach.state.life['fish-all'] && FISH.species.every((s) => ach.state.life['fish-' + s.id] > 0)) ach.emit('fish-all');
+};
 // 보상은 F 로 당기는 순간: 물고기 = 귤 5 + 도감 '개울' 칸, 쓰레기 = 호주머니·배낭(클린하우스에서 귤), 드문 것 = 배낭 + 도감(드문 것 귤)
 state.fishing = createFishing({ scene, stream, player, runner, groundAt, height, sound, toast, canJack: () => !late.pace || late.pace.canJack(), onJack: () => late.pace?.note('jackpot'),
   room: () => bagRoom(),
@@ -75,15 +81,16 @@ state.fishing = createFishing({ scene, stream, player, runner, groundAt, height,
         const G = FISH.jackpot.gyul; gyulExpect(G); addCoins(G); ach.emit('earn', G);
         setTimeout(() => { sound.jackpot?.(); gyulShower(G); coinFx(at.clone().setY(at.y + 1.2), G); }, FISH.pullT * 1000);
         ach.emit('fish'); ach.emit('fish-jackpot'); ach.emit('fish-' + sp.id);
+        fishExtra(sp);
       } else {
       gyulExpect(FISH.fishGyul); addCoins(FISH.fishGyul); ach.emit('earn', FISH.fishGyul); setTimeout(() => coinFx(at.clone().setY(at.y + 1.2), FISH.fishGyul), FISH.pullT * 1000);
-      ach.emit('fish'); ach.emit('fish-' + sp.id);
+      ach.emit('fish'); ach.emit('fish-' + sp.id); fishExtra(sp);
       }
     } else if (trash) {
       const kind = c.type === 'trash' ? c.t.kind : c.kind;
       if (trash.addToBag(kind, bagCap())) setTimeout(() => updateTrashUI(true), (FISH.pullT + FISH.stowT) * 1000);
       if (c.type === 'rare') { const dx = DEX_LIST.find((d) => d.rare && d.name === c.name); if (dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); } }
-      ach.emit('fish'); ach.emit('fish-' + (c.type === 'trash' ? c.t.id : 'rare'));
+      ach.emit('fish'); ach.emit('fish-' + (c.type === 'trash' ? c.t.id : 'rare')); fishExtra(null);
     }
   } });
 // ---------- 개발용 라벨 ----------
@@ -137,7 +144,7 @@ if (/(^|[#&])dev($|&)/.test(location.hash)) devLabels.set(true);
 if (wearRefund) { persist(); setTimeout(() => toast(`예전 옷 색은 없어졌어요 · 귤 ${wearRefund}개를 돌려드렸어요`), 3500); } // #52
 // 콘솔 확인 함수 (#84): 개발 빌드는 늘, 공개 빌드(release, PUBLIC=1)는 어드민에게만 (enableDev). 보안은 서버가 지키고, 이건 함부로 만지지 않게 하는 정도
 state.debugReady = false;
-function exposeDebug() { window.__oreum = debugApi(); window.__oreum.where = { at: placeAt, spots: placeSpots, now: () => $('where').textContent }; window.__oreum.story = late.storyApi && { ...late.storyApi, ending: late.endingApi }; window.__oreum.director = { api: director, state: () => director.state(), open: (id) => director.open(id), log: director.log, can: (k) => director.can(k) }; window.__oreum.quest = late.questDebug; window.__oreum.season = late.season?.test; window.__oreum.punk = late.punk; window.__oreum.punkWorld = late.punkWorld; window.__oreum.rec = recApi; window.__oreum.ufo = () => late.ufoNow?.(); window.__oreum.ufoInfo = () => late.ufoInfo?.(); window.__oreum.mutter = late.mutterApi; window.__oreum.rare = late.rareDev; } // 감독 (#176), 퀘스트 (#158)
+function exposeDebug() { window.__oreum = debugApi(); window.__oreum.where = { at: placeAt, spots: placeSpots, now: () => $('where').textContent }; window.__oreum.story = late.storyApi && { ...late.storyApi, ending: late.endingApi }; window.__oreum.director = { api: director, state: () => director.state(), open: (id) => director.open(id), log: director.log, can: (k) => director.can(k) }; window.__oreum.quest = late.questDebug; window.__oreum.season = late.season?.test; window.__oreum.punk = late.punk; window.__oreum.punkWorld = late.punkWorld; window.__oreum.rec = recApi; window.__oreum.idle = late.idleApi; /* 오래 멈춤 (#157) */ window.__oreum.ufo = () => late.ufoNow?.(); window.__oreum.ufoInfo = () => late.ufoInfo?.(); window.__oreum.feel = late.feel?.test; window.__oreum.mutter = late.mutterApi; window.__oreum.rare = late.rareDev; } // 감독 (#176), 퀘스트 (#158)
 function debugApi() { return { bag: { open: (t) => late.openBag(t), close: () => late.closeBag(), s: () => ({ ...bagS, mode: cam.mode, cards: document.querySelectorAll('#bag-cards .bag-card').length }) }, zoneLook: zoneLook && { api: zoneLook, gates: () => zoneLook.gates.map((G) => ({ kind: G.kind, from: G.from, to: G.to, x: +G.x.toFixed(1), z: +G.z.toFixed(1), fx: +G.fx.toFixed(2), fz: +G.fz.toFixed(2), sign: G.sign })), counts: () => zoneLook.counts(), stats: () => zoneLook.stats(), openMap: () => late.openMap?.() }, gearScore: () => gearScore(save), charKit: { THREE, buildRunner, SKIN_TONES, TOOL_GEAR, BAG_GEAR, SHOE_GEAR, CLOTHES, HAIR, ACCESSORIES, OUTFIT_SETS }, outfitSet: late.outfitSet, gearKit: { gearScore, abilityCloth }, screen: () => ({ ...screenInfo(), fov: camera.fov, w: innerWidth, h: innerHeight }), toggleFullscreen, assets: assetInfo, lifeModels: { mount: (i = 0) => mountDeer(life.deer[i]), dismount: () => dismountDeer(), lamps: () => lamps.points.length }, deerNet: () => late.deerNet, feedback, rank, emo: state.emo, doEmote, net, online: ONLINE && { account: () => state.account, fake: (n) => mountLogin.fake?.(n), live: () => !!trash?.store && net.ready }, rides: { // 탈것·마차 (#69)
   give: (id) => { if (RIDE_BY[id] && !save.rides.own.includes(id)) { save.rides.own.push(id); save.rides.cur = id; persist(); updateRideBtn(); } }, mount: (id) => mountRide(id), off: () => dismountRide(), toggle: () => toggleRide(), pick: () => openRideWin(),
   state: () => ({ ride: player.ride, carry: player.rideC, auto: player.rideAuto, cur: save.rides.cur, own: [...save.rides.own], speed: player.speed, grade: player.rideG, road: onRoad(player.pos.x, player.pos.z), zone: noRideZone(player.pos.x, player.pos.z), code: rideCode(), cart: player.cart && { ...player.cart } }),

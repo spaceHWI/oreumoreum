@@ -1,5 +1,5 @@
 // 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, NET } from '../balance.js';
+import { PERF, NET, DAILY } from '../balance.js';
 import { TIER } from '../quality.js';
 import { createPhotographer } from '../photographer.js';
 import * as THREE from 'three';
@@ -40,7 +40,7 @@ export const net = createNet({
     room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
   },
-  extra: () => ({ ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}) }), // tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), dr = 탄 노루 (#92), em = 동작 (#76)
+  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}) }), // tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76)
   rideHook: (e, dt) => peerRide(e, dt),
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)
@@ -52,9 +52,10 @@ state.emo = createEmotes({
   scene, player, save, persist, net, toast, sound: () => late.sound, camera, placeArrow: (el, wp, lift) => late.placeArrow(el, wp, lift), ui: document.body,
   can: emoCan, riding: emoRiding, heapPos: () => nearestHeapPos(), groundAt, myRoot: () => runner.root,
   faceTo: (x, z) => { player.heading = Math.atan2(x - player.pos.x, z - player.pos.z); },
-  onEmote: () => ach.emit('emote'),
+  onEmote: () => { ach.emit('emote'); if (emoteMeet()) ach.emit('emote-meet'); }, // #125 오늘의 할 일 '다른 사람에게 인사': 가까이 사람이 있을 때(방에 아무도 없으면 그냥 인사도)
 });
 state.emo.onChoose = (id) => doEmote(id);
+function emoteMeet() { const ps = [...net.peersById.values()]; return !ps.length || ps.some((e) => e.pos.distanceTo(player.pos) <= DAILY.meetR); }
 state.emo.bindWheel($('emo-wheel'));
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
 social.start();

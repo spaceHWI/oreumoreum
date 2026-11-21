@@ -12,7 +12,7 @@ const path = require('path');
   const { createDirector, PRIO } = await import(path.join(__dirname, '../src/director.js'));
   const { createPacing } = await import(path.join(__dirname, '../src/pacing.js'));
   const { createTips } = await import(path.join(__dirname, '../src/tips.js'));
-  const { JOURNEY, PACE, DUMP } = await import(path.join(__dirname, '../src/balance.js'));
+  const { JOURNEY, PACE, DUMP, BUDDIES } = await import(path.join(__dirname, '../src/balance.js'));
   const arg = (k, d) => { const i = process.argv.indexOf(k); return i < 0 ? d : process.argv[i + 1] ?? true; };
   const seeds = +arg('--seeds', 1), MIN = +arg('--min', 30), DT = 0.25, NOW = process.argv.includes('--now'), OLD = process.argv.includes('--old');
   const mul32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -47,14 +47,14 @@ const path = require('path');
     if (!NOW) {
       const win = (s) => () => { P.win = now + s; }; // 창: 닫힐 때까지 바쁨
       D.register({ id: 'name', kind: 'quest', intro: win(8), sec: 8 }); D.register({ id: 'color', kind: 'quest', intro: win(6), sec: 6 });
-      D.register({ id: 'mateSunja', kind: 'mate', intro: () => {} });
+      if (BUDDIES.on !== false) D.register({ id: 'mateSunja', kind: 'mate', intro: () => {} }); // #190 동료가 꺼져 있으면 문 없음
       D.register({ id: 'quest', kind: 'quest', intro: () => { P.hinted = now; }, sec: 5 });
       D.register({ id: 'heapNear' });
       D.register({ id: 'shopQuest', kind: 'quest', intro: () => { P.hinted = now; }, sec: 5 });
       D.register({ id: 'level', kind: 'level', intro: win(5), sec: 5 });
       D.register({ id: 'storyMom', kind: 'story', intro: () => {}, sec: 4 });
       D.register({ id: 'field', kind: 'intro', intro: () => {} });
-      D.register({ id: 'mateMinsu', kind: 'mate', intro: () => {} });
+      if (BUDDIES.on !== false) D.register({ id: 'mateMinsu', kind: 'mate', intro: () => {} });
       D.register({ id: 'nightLight', kind: 'story', intro: () => {} });
       D.register({ id: 'radio', kind: 'radio', intro: () => {} });
       // 혼잣말 실마리: 한가하면 퀘스트 화살표보다 먼저 한 줄 (#169 자리)

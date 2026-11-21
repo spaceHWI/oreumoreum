@@ -24,7 +24,7 @@ import { director } from './director.js';
 import { net, social } from './room.js';
 import { interactables } from './stores.js';
 
-const ON = !!(trash && NS_TUT && col);
+const ON = !!(B.on !== false && trash && NS_TUT && col); // #190 BUDDIES.on 으로 통째로 끔
 const M = save.mates = (save.mates && typeof save.mates === 'object' && !Array.isArray(save.mates)) ? save.mates : {};
 M.off = M.off ? 1 : 0;
 const DEF = new Map(B.list.map((d) => [d.id, d]));
