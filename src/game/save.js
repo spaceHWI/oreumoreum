@@ -53,6 +53,7 @@ save.bowAmmo = Math.max(0, Math.min(5, Math.floor(Number(save.bowAmmo)) || 0)); 
 if (!save.ammo || typeof save.ammo !== 'object' || Array.isArray(save.ammo)) save.ammo = {};
 for (const w of WEAPONS) if (w.id !== 'bow' && (w.perGyul || w.gyulPerSec)) { const v = Number(save.ammo[w.id]), top = w.perGyul || 1; save.ammo[w.id] = Number.isFinite(v) ? Math.max(0, Math.min(top, w.perGyul ? Math.floor(v) : v)) : 0; }
 for (const k of ['tool', 'bag', 'shoes']) { const lo = k === 'bag' ? 0 : 1, v = Math.floor(Number(save.equip[k])); save.equip[k] = Math.max(lo, Math.min(5, Number.isFinite(v) ? v : 1)); } // 장비 단계 (상점에서 다음 단계만 삼)
+{ const v = Math.floor(Number(save.equip.boots)); save.equip.boots = v >= 0 && v <= 2 ? v : 0; } // 고진의 파란장화 (#167): 0 없음 · 1 가짐 · 2 신음 (예전 저장엔 없음)
 // 장비 단계 → 캐릭터 겉모습(outfit.gear 의 손·등·신발). 네트워크에도 그대로 실려 감
 state.holdBow = false; // 귤 활을 손에 들고 있음 (#38): 쏘면 활, 줍기 누르면 다시 도구
 state.holdRod = false; // 낚시하는 동안 손 도구를 숨김 (#44, 낚싯대는 fishing.js 가 따로 그림)

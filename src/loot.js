@@ -5,8 +5,8 @@
 //   save.clothes.up = { 옷 id: { g, e } }   옷은 옷마다 (갈아입어도 따라감)
 //   save.loot = [{ s 칸, t 단계, g, e }]   안 쓰는 장비 (얻었지만 안 입은 것)
 //   save.lootAuto = 1|0   칸마다 가장 좋은 것 하나만 남기고 자동으로 귤로 바꾸기 (기본 켬)
-import { LOOT, GROWTH, ZONE_BOSS, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR, WEAR_START } from './balance.js';
-import { GEAR_SLOTS, itemScore, slotTier, slotUp, abilityCloth } from './gearscore.js';
+import { LOOT, GROWTH, ZONE_BOSS, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR, WEAR_START } from './balance.js';
+import { GEAR_SLOTS, itemScore, slotTier, slotUp, abilityCloth, bootsOn } from './gearscore.js';
 
 export { GEAR_SLOTS };
 export const GEAR4 = ['tool', 'bag', 'shoes', 'weapon'];
@@ -171,7 +171,7 @@ export function equipSpare(save, i) {
   save.loot.splice(i, 1);
   if (cur.t >= 1 && (cur.g || cur.e)) addSpare(save, cur);
   if (WEAR_K.includes(it.s)) { const id = clothId(it.s, it.t); setUp(save, it.s, it, id); } // 겉모습(wear)은 그대로, 능력은 가진 옷 중 가장 좋은 것 (#179)
-  else setUp(save, it.s, it);
+  else { setUp(save, it.s, it); if (it.s === 'shoes' && save.equip?.boots === 2) save.equip.boots = 1; } // 장화(#167)를 신고 있었으면 벗음
   return true;
 }
 export function sellSpare(save, i) { const it = save.loot[i]; if (!it) return 0; save.loot.splice(i, 1); const v = sellValue(it); save.coins += v; noteSold(save, it); return v; }
@@ -185,7 +185,7 @@ export function tierUp(save, k) {
 }
 
 // ---------- 게임이 쓰는 능력 (식사 버프와 따로 곱함) ----------
-export const shoeSpeed = (save) => statUp(save, 'shoes', SHOES[Math.max(1, save?.equip?.shoes || 1) - 1].speed, 1);
+export const shoeSpeed = (save) => bootsOn(save) ? BOOTS.speed : statUp(save, 'shoes', SHOES[Math.max(1, save?.equip?.shoes || 1) - 1].speed, 1);
 export const weaponMul = (save) => upMul(save, 'weapon');
 const WEAR_UNIT = { rare: 1, hp: 1, regen: 1, pocket: 0, gyul: 0, guard: 0 };
 const WEAR_CAP = { guard: 0.6 };

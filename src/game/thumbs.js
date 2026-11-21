@@ -15,7 +15,7 @@ import { renderer } from './scene.js';
 
 const SZ = 96, IDLE_DROP = 15000;
 const WEAPON_GEAR = [null, 'hand:bow', 'hand:gun', 'hand:mg', 'hand:laser', 'hand:bomb'];
-const KEYS = { tool: TOOL_GEAR, bag: BAG_GEAR, shoes: SHOE_GEAR, weapon: WEAPON_GEAR };
+const KEYS = { tool: TOOL_GEAR, bag: BAG_GEAR, shoes: SHOE_GEAR, weapon: WEAPON_GEAR, boots: ['shoes:boots'] }; // boots: 고진의 파란장화 (#167)
 // 보는 방향 (물건 가운데에서 카메라 쪽). 캐릭터 앞은 +z
 const VIEW = { hat: [0.55, 0.5, 1], back: [-0.7, 0.35, -1], shoes: [0.7, 0.75, 1], hand: [0.35, 0.3, 1], ride: [1, 0.45, 0.55], cloth: [0.45, 0.2, 1] };
 const cache = new Map();
@@ -92,7 +92,7 @@ CLOTH_ART.thumb = (c, cls) => { const url = c && shoot(c.id); return url ? img(u
 late.itemArt = itemArt; late.rideArt = rideArt;
 
 // 한가할 때 미리 찍기: 게임 시작 조금 뒤부터 한 번에 하나씩
-const ALL = () => [...TOOL_GEAR, ...BAG_GEAR, ...SHOE_GEAR, ...WEAPON_GEAR, ...Object.keys(rideDisplay).map((k) => 'ride:' + k), ...CLOTHES.map((c) => c.id)].filter((k) => k && !cache.has(k));
+const ALL = () => [...TOOL_GEAR, ...BAG_GEAR, ...SHOE_GEAR, 'shoes:boots', ...WEAPON_GEAR, ...Object.keys(rideDisplay).map((k) => 'ride:' + k), ...CLOTHES.map((c) => c.id)].filter((k) => k && !cache.has(k));
 export function warmThumbs(delay = 8000) {
   const idle = window.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 200));
   setTimeout(() => { const list = ALL(); const step = (d) => { while (list.length && d.timeRemaining() > 4) shoot(list.shift()); if (list.length) idle(step, { timeout: 3000 }); }; idle(step, { timeout: 3000 }); }, delay);

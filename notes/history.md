@@ -1294,3 +1294,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `GET /admin/online`: `/feedback` 과 같은 어드민 확인(ADMIN_SUBS, 로컬은 STATS_OPEN). 돌려주는 것은 숫자만 `{ n, login, guest, rooms: [{ map, ch, n, login }], peak: { n, at } }`
 - 구역별 인원은 서버가 지형(zoneAt 은 three 를 씀)을 모르므로 어드민 화면이 같은 방 사람 자리(`net.peersById`)로 셈 → '내 방' 만. 좌표는 서버가 내보내지 않음
 - 클라이언트 `src/game/admonline.js`. 서버 없음(혼자 하기)이면 줄을 숨김. #157(쉬는 사람)은 아직 없어 모두 셈: 들어오면 `roomcore counts()` 에서 빼면 됨
+
+
+## #167 고진의 파란장화·만족한상회
+- 장화: `balance.js BOOTS`(이동 ×1.35, 점수·풀밭 느림은 4단계, 값 GROWTH.price[4]). 단계 줄 밖 특별 신발. 저장 `save.equip.boots` 0 없음·1 가짐·2 신음 (서버 validate 도 같은 칸, 신고 벗기는 공짜)
+- 빠르기는 `loot.js shoeSpeed`(장화면 BOOTS.speed, 등급·강화 없음), 단계·점수는 `gearscore.js shoeTier·bootsOn·slotScore`. 전리품·강화(#140)의 신발 칸은 늘 단계 신발(save.equip.shoes), 전리품 신발을 입으면 장화를 벗음. 겉모습 `shoes:boots`(clothes.js `boots`, 무릎 아래 파란 고무장화) → 옷 묶음(#115)으로 남에게도 보임
+- LEAP 신발 칸 맨 끝 카드, 내 가방 신발 줄에도. 가진 단계 신발을 누르면 장화를 벗음, 새 신발을 사도 벗음. 달리면 '철벅'(audio `squelch`), 발자국 ×1.25
+- 덤(젖은 땅 느림 면제)은 젖은 땅 느림 처리가 없어 뺌
+- 만족한상회: 가게 거리 6번 터(골목 끝, 스톤과 5m 넘게 떨어짐). `src/manjok.js` 코드로 만든 돌집·파란 함석 지붕·처마 갈치·평상 둘·붓글씨풍 간판(글자만). 지붕 간판·가장자리 표시는 수저 아이콘
+- 식당 공통 틀: `game/stores.js MEAL_SHOPS`(건물 api + 메뉴 표), `mealS.api/cfg`. 메뉴는 `balance.js MANJOK`, 버프 찾기는 `MEALS`(두 식당). 버프 새 종류 guard(받는 피해)·gyulR(귤 모으는 범위 m)·also(두 가지, 통갈치한상) → `buff.add(kind)`
+- 첫 식사 무료(#93)는 두 식당 공통 한 번. 식사 업적 이벤트 'meal' 은 두 식당 모두, 만족한상회는 'meal-manjok' 도
+- 밤 불빛은 창·전구·빛웅덩이만, 낮엔 안 그림 (점광원·늘 그리는 투명 판을 두면 online.js 세 번째 브라우저가 30초 넘게 멈췄음)
+- 확인 `node tools/manjok.js [--shot]`

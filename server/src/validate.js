@@ -6,7 +6,7 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 import { checkLv } from '../../src/augments.js';
@@ -35,6 +35,7 @@ function norm(s) {
   if (!isObj(s.equip)) s.equip = {};
   for (const [k, [lo]] of Object.entries(TIERS)) s.equip[k] = int(s.equip[k], lo, 5, lo);
   s.equip.weapon = int(s.equip.weapon, 1, W_TOP, 1);
+  s.equip.boots = int(s.equip.boots, 0, 2, 0); // 고진의 파란장화 (#167): 0 없음 · 1 가짐 · 2 신음
   if (!isObj(s.clothes)) s.clothes = {};
   const C = s.clothes; if (!isObj(C.own)) C.own = {}; if (!isObj(C.wear)) C.wear = {};
   for (const id of Object.keys(C.own)) if (!CLOTH[id]) delete C.own[id];
@@ -84,6 +85,7 @@ function spentOf(P, S) {
   for (const [k, [, list]] of Object.entries(TIERS)) if (S.equip[k] > P.equip[k]) sp += priceOf(list[S.equip[k] - 1]?.price || 0, OLD_PRICE[k][S.equip[k] - 1]);
   if (S.equip.weapon > P.equip.weapon) sp += priceOf(WEAPONS[S.equip.weapon - 1]?.price || 0, OLD_PRICE.weapon[S.equip.weapon - 1]);
   for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) { const c = CLOTH[id]; sp += priceOf(wearPrice(c) || 0, c.tier === 1 ? (wearPrice(c) ? OLD_PRICE.wearNone : 0) : OLD_PRICE.wear[c.tier - 1]); }
+  if (S.equip.boots && !P.equip.boots) sp += BOOTS.price; // 고진의 파란장화 (#167): 신고 벗기(1↔2)는 공짜
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
   for (const id of Object.keys(backOwn(S))) if (!backOwn(P)[id]) sp += BACK[id].price; // 배낭 겉모습 (#164)
@@ -92,6 +94,7 @@ function spentOf(P, S) {
 function revertItems(P, S) {
   const free = freeCloths(S);
   for (const k of [...Object.keys(TIERS), 'weapon']) S.equip[k] = Math.min(S.equip[k], P.equip[k]);
+  if (!P.equip.boots) S.equip.boots = 0;
   for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) delete S.clothes.own[id];
   for (const [k, id] of Object.entries(S.clothes.wear)) if (id && !(S.clothes.own[id] || START_CLOTH.has(id))) delete S.clothes.wear[k];
   if (isObj(S.clothes.tint)) for (const id of Object.keys(S.clothes.tint)) if (!S.clothes.own[id]) delete S.clothes.tint[id];
