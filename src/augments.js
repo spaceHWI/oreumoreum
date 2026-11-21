@@ -7,7 +7,7 @@ export const AUG_BY = Object.fromEntries(AUGMENTS.list.map((a) => [a.id, a]));
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 // 레벨 L 에서 L+1 까지 드는 경험치
-export const needXp = (L) => Math.round(LEVEL.base * L ** LEVEL.pow);
+export const needXp = (L) => Math.round(LEVEL.base * L ** LEVEL.pow * (LEVEL.late && L >= LEVEL.late.from ? LEVEL.late.k : 1));
 // 누적 경험치 → { lv, into 이번 레벨에서 모은 것, need 이번 레벨에 드는 것, k 0~1 }
 export function levelOf(xp) {
   let lv = 1, left = Math.max(0, xp || 0);

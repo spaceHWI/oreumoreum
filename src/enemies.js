@@ -139,6 +139,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
     if (e.remoteHurt) { e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
+    if (hooks.dmgIn) dmg *= hooks.dmgIn(e); /* 받는 피해 배수: 단단한 귤 증강 #194 (game/swarm.js) */
     const stag = e.state === 'stagger'; if (stag) dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     hooks.dmgNum?.(e, dmg, stag, ch); // 머리 위 피해 숫자 (#141, game/feel.js)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
