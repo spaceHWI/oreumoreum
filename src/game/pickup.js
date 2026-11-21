@@ -2,7 +2,7 @@
 import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
 import { upMul, legendOn } from '../loot.js';
 import { LOOT } from '../balance.js';
-import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
+import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, FEEL, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
 import * as THREE from 'three';
@@ -57,19 +57,22 @@ export function startPick() {
   player.pose = 'crouch'; player.poseT = 0; player.speed = 0; setHoldBow(false); // 줍기는 도구로 (#38)
   pickS.cyc = 0; pickS.got = false;
 }
+// 줍기 콤보 (#141): 이번 줍기가 이어지는 것이면 몇 번째인지. 보너스 = step 마다 bonus (최대 max). 귤은 trash.take 가 bag.xv 에 얹음
+export const comboNow = () => (performance.now() / 1000 - pickS.comboAt < FEEL.combo.gap ? pickS.combo : 0);
+export const comboBonus = (c) => Math.min(FEEL.combo.max, Math.floor(c / FEEL.combo.step) * FEEL.combo.bonus);
 function takeNow() {
-  const tool = toolNow(); let room = bagRoom(), n = 0;
+  const tool = toolNow(); let room = bagRoom(), n = 0; const cb = comboBonus(comboNow() + 1);
   // 더미는 한 곳에서 도구의 한 번 양(per)만큼 꺼냄 (#45). 튜토리얼 낱개는 하나씩
   for (const c of trash.candidates(player.pos.x, player.pos.z, tool.r, room)) {
     while (n < tool.per && room >= 1) {
-      const it = trash.take(c, room); if (!it) break;
+      const it = trash.take(c, room, cb); if (!it) break;
       room -= it.type.vol; n++; flyToBag(it); late.sound.pick?.(it.type.id); pickMsg(it.type.name);
       if (c.h == null) break;
-      if (room >= 1 && Math.random() < augV(save, 'bighand')) { const it2 = trash.take(c, room); if (it2) { room -= it2.type.vol; flyToBag(it2); late.sound.pick?.(it2.type.id); } } // 큰손 (#159): 하나 더 (도구 한 번 양에 안 셈)
+      if (room >= 1 && Math.random() < augV(save, 'bighand')) { const it2 = trash.take(c, room, cb); if (it2) { room -= it2.type.vol; flyToBag(it2); late.sound.pick?.(it2.type.id); } } // 큰손 (#159): 하나 더 (도구 한 번 양에 안 셈)
     }
     if (n >= tool.per || room < 1) break;
   }
-  if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < PACE.combo.gap ? Math.min(PACE.combo.max, pickS.combo + 1) : 0; pickS.comboAt = now; late.sound.combo?.(pickS.combo); } // 이어 주우면 음이 올라감 (#89)
+  if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < FEEL.combo.gap ? pickS.combo + 1 : 1; pickS.comboAt = now; late.sound.combo?.(Math.min(FEEL.combo.pitchMax, pickS.combo - 1)); late.feel?.combo(pickS.combo); } // 이어 주우면 음이 올라감 (#89), 콤보 숫자·보너스 (#141)
   if (bagRoom() < 1) { late.sound.full?.(); fullToast(); }
 }
 export function tickPick(dt) {
@@ -157,6 +160,7 @@ function tickLook(dt) {
 }
 // 버튼(E)을 누른 순간: 걷는 중이면 멈춤, 범위 안이면 줍기, 아니면 찾아 감
 export function pressPick() {
+  late.stopApproach?.(); // 다가가서 쏘기(#132) 중이면 줍기로 넘어감
   if (seekS.on) { stopSeek(); return; }
   if (!trash || pickS.cyc >= 0 || pickBlocked()) return;
   if (canPick()) { startPick(); return; }
@@ -220,7 +224,7 @@ if (trash) {
 // by: 치운 사람(없으면 나). 다른 사람이 치운 건 가까이(otherR) 있을 때만 보이고 소리는 작게, 진동·동작 없음 (멀티 대비, 지금은 구조만)
 state.cheerQ = 0;
 const HEAP_LVL = { s: 0, l: 1, xl: 2 };
-const canVib = () => 'vibrate' in navigator && matchMedia('(pointer: coarse)').matches;
+const canVib = () => save.vib !== 0 && 'vibrate' in navigator && matchMedia('(pointer: coarse)').matches; // 설정 '진동' (#141)
 function heapFx(hi, { by = null, gyul = 0 } = {}) {
   const h = trash?.heaps[hi]; if (!h || !bfx) return;
   const mine = !by, far = Math.hypot(h.x - player.pos.x, h.z - player.pos.z);

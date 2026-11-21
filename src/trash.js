@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES, RARE_GYUL } from './balance.js';
+import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES, RARE_GYUL, FEEL } from './balance.js';
 import { zoneAt } from './zones.js';
 import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
@@ -324,7 +324,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     return Math.random() < DEX.rareChance * (rareMul ? rareMul() : 1) && rares.length ? rares[Math.floor(Math.random() * rares.length)] : commons[Math.floor(Math.random() * commons.length)];
   }
   // 하나 줍기. c: candidates 의 항목, room: 배낭 남은 부피. 못 주우면 null
-  function take(c, room = 99) {
+  function take(c, room = 99, bonus = 0) { // bonus: 줍기 콤보 귤 비율 (#141, 더미만): 이 쓰레기 귤 × 구역 배수 × bonus 를 xv 에 더함
     let t, pos, color;
     if (c.h != null) {
       const h = heaps[c.h]; if (room < 1 || !store.takeOne(c.h)) return null;
@@ -336,7 +336,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     }
     const type = TRASH_TYPES[t];
     store.bag[type.id] = (store.bag[type.id] || 0) + 1;
-    const xv = c.h != null ? type.gyul * ((heaps[c.h].gv || ZONES[heaps[c.h].zone - 1]?.gv || 1) - 1) : 0; // #137 구역마다 쓰레기 귤 배수 (#138 쓰레기 산은 × HEAP.sizes.mt.gv)
+    const gvH = c.h != null ? (heaps[c.h].gv || ZONES[heaps[c.h].zone - 1]?.gv || 1) : 1, xv = c.h != null ? type.gyul * (gvH - 1 + gvH * Math.max(0, Math.min(FEEL.combo.max, bonus))) : 0; // #137 구역마다 쓰레기 귤 배수 (#138 쓰레기 산은 × HEAP.sizes.mt.gv)
     if (xv > 0) store.bag.xv = (store.bag.xv || 0) + xv;
     if (c.h != null) { recent.push({ h: c.h, kind: type.id, xv }); if (recent.length > 80) recent.shift(); } // 방이 한 번에 되돌리라는 수(NET.takeAsk 64)보다 넉넉히 // 방이 거절하면 되돌릴 수 있게 (#84)
     const dx = rollDex(type), dexNew = store.dexAdd(dx.id);
@@ -346,7 +346,7 @@ export function createTrash({ scene, store, height, paths, inBounds, low, fixed 
     if (c.h != null) {
       const before = heaps[c.h].st; syncCols();
       if (heaps[c.h].st < 0) { emit('heap-clear', { h: c.h, zone: heaps[c.h].zone }); if (!zoneLeft(heaps[c.h].zone)) emit('zone-clear', { zone: heaps[c.h].zone }); }
-      else if (heaps[c.h].st !== before) emit('heap-stage', { h: c.h, st: heaps[c.h].st });
+      else if (heaps[c.h].st !== before) emit('heap-stage', { h: c.h, st: heaps[c.h].st, took: true }); // took: 내가 주워서 줄어듦 (#141 무너지는 효과)
     }
     return { t, type, dex: dx, dexNew, pos, color };
   }

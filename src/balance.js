@@ -740,6 +740,10 @@ export const COMBAT = {
   stuckT: 2, // 적에게 막혀 이 초 넘게 못 빠져나오면 적 사이로 지나갈 수 있음
   autoPick: 3.2, // 싸우는 중에는 이 거리 안 떨어진 귤을 자동으로 주움 (평소는 GYUL_PICK, 둘 중 큰 쪽 #151)
 };
+// 다가가서 쏘기 (#132, game/approach.js): 던지기 버튼을 누르면 감지 거리 안 적을 잡고, 사거리 밖이면 다가가 쏘고, 쫓아내면 다음 적으로 이어 감
+// detect 감지 거리(m), stand 사거리의 이 비율까지 다가감, lowHp 기운이 이 비율 아래면 다가가지 않고 제자리에서만 쏨,
+// reroute 쫓는 동안 길을 다시 찾는 간격(초)·moved 적이 이만큼(m) 움직이면 다시 찾음, stuckT 이 초 동안 가까워지지 않으면 멈춤, handHard 손으로는 사실상 못 잡는 적(손일 때 뒤로 미룸)
+export const APPROACH = { detect: 45, stand: 0.8, lowHp: 0.25, reroute: 0.6, moved: 3, stuckT: 3, gap: 0.12, handHard: ['alien'] };
 
 // 모아 쏘기 (#129): 던지기 버튼(F)을 길게 눌렀다 놓으면 더 센 한 방. 손·활·총·폭탄은 놓을 때 쏨(짧게 누르면 예전 한 발과 같음),
 // 머신건·레이저는 누르는 동안 예전처럼 쏘고 놓는 순간 마무리(집중 연사·굵은 줄기). k = 모은 정도 0~1 (start 초부터 full 초까지)
@@ -1062,10 +1066,27 @@ export const PACE = {
   busyWait: 20, // 낚시·가게·마차·튜토리얼 중이면 공격을 이 초씩 미룸
   riseT: 3, fallT: 5,
   edge: 0.6, camIn: 0.1, sky: 0.12,
-  hitStop: 0.06, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율
-  combo: { gap: 1.6, max: 10 }, // 줍기 콤보: 이 초 안에 이어 주우면 음이 한 칸씩 올라감 (최대 칸)
+  hitStop: 0.05, hitStopK: 0.08, // 맞혔을 때 짧은 멈춤(초)·그동안 시간 배율 (#141 0.06 → 0.05). '화면 효과 줄이기'면 없음
   bloomLayer: { heap: 14, zone: 32 }, // 꽃이 피면 음악에 한 겹 더해지는 시간(초)
   delight: { luckyT: 60, luckyMul: 8, deerT: 45, flyT: 40 },
+};
+
+// 손맛 (#141, game/feel.js). notes/growth-loop.md 8절. 귤 보너스는 tools/econ.js 가 '손맛 보너스' 줄로 벌이가 15% 넘게 늘지 않는지 봄
+export const FEEL = {
+  // 줍기 콤보: gap 초 안에 이어 주우면 숫자가 오름(한 번 줍기 = 1). step 마다 귤 bonus 씩 더(최대 max), 단계가 오를 때 색·소리·진동.
+  //   소리 높이는 pitchMax 칸까지 한 음씩. 보너스는 주울 때 bag.xv 에 얹혀 클린하우스에서 받음. 서버 줍기 몫(server/src/heaps.js)은 × (1 + max)
+  combo: { gap: 3, step: 10, bonus: 0.05, max: 0.3, pitchMax: 10, cols: ['#ffffff', '#ffd23a', '#ff9a1f', '#ff6a3a', '#ff4f8b', '#b678ff', '#5ad1ff'] },
+  // 이어 쫓아내기: 앞 적을 쫓아낸 뒤 gap 초 안이면 'n연속!'. 귤 보너스 = 그 적 귤 × min(max, (n - 1) × bonus) (떼 적은 귤이 0 이라 글만)
+  streak: { gap: 4, bonus: 0.1, max: 0.3 },
+  // 피해 숫자: 머리 위로 t 초 동안 rise px 올라가며 사라짐. 급소(비틀거릴 때·가득 모아 쏜 샷)는 크고 노랗게. 한 번에 pool 개까지 (저사양 poolLow)
+  dmg: { t: 0.8, rise: 46, pool: 24, poolLow: 10, fullCh: 0.99 },
+  roll: { t: 0.55, hop: 0.35 }, // 쫓아낸 적: 옆으로 한 바퀴 구르며 달아남 (초·m × 크기). 우두머리는 빼고
+  hurt: { t: 0.45, a: 0.75 }, // 맞으면 화면 가장자리 붉은빛 (초·진하기)
+  low: { hp: 0.25, beat: 0.9, a: 0.45 }, // HP 가 이 비율 아래면 심장 소리(초 간격)·가장자리 맥박(진하기)
+  heapSlow: { t: 0.35, k: 0.35 }, // 더미 마지막 하나: 잠깐 느려짐 (초·시간 배율). '화면 효과 줄이기'면 없음
+  crumble: { n: 12, nLow: 5, t: 0.7 }, // 더미가 한 단계 줄 때 흙먼지 (조각 수·초)
+  // 폰 진동 (되는 기기만, 설정 '진동' 으로 끔). 밀리초 배열
+  vib: { pick: [6], step: [16, 30, 16], heap: [24], repel: [22], streak: [18, 30, 28], hurt: [70] },
 };
 
 // 탐방로 선 모양 (#67). 길이는 실제 m. trailshape.js 가 이 값으로 nsPaths 를 만든다
@@ -1327,6 +1348,26 @@ export const CRASH = {
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
 };
 
+// 이용 통계 (#121): 클라이언트는 숫자만 세다가 flushS 마다·나갈 때 묶음 하나(sendBeacon)로 POST /m. 서버는 날짜별 합계만 (Accounts DO 표 mt)
+// 키: 'in' 같은 이름 또는 '이름:갈래'(sub 에 있는 이름만, 갈래는 [a-z0-9._-]). maxOf 는 합 대신 가장 큰 값
+export const METRICS = {
+  flushS: 300,        // 이만큼(초)마다 한 번 보냄 (+ pagehide·탭 숨김)
+  sampleS: 2,         // 화면 밖에서 상태를 훑는 간격(초). 프레임 안에서는 숫자 더하기만
+  maxBytes: 2000,     // 한 묶음 크기 상한 (넘는 키는 버림)
+  maxKeys: 80,        // 한 묶음 키 수 상한 (서버도 같은 값으로 자름)
+  maxV: 1e6, maxN: 1e4, // 한 키 값·횟수 상한 (서버)
+  dayKeys: 3000,      // 하루·출처마다 새 키 상한 (갈래가 무한히 늘지 않게)
+  keepDays: 90,       // 이 날짜보다 오래된 합계는 Cron 이 지움
+  viewDays: 14,       // 어드민 '수치' 표에 보이는 날짜 수
+  topR: 14,           // 정상 표지석에서 이만큼(m) 안이면 '정상 도착'
+  fpsCut: [20, 30, 45, 55], // 평균 fps 구간 (fps:0 = 20 밑 … fps:4 = 55 이상)
+  ptCut: [1, 5, 15],  // 한 번 플레이 시간 구간(분): pt1·pt5·pt15 = 그 시간을 넘긴 수
+  keys: ['in', 'new', 'ret', 'glog', 'play', 'pt1', 'pt5', 'pt15', 'fpick', 'pick', 'heap', 'dex', 'top', 'earn', 'spend', 'cart', 'down', 'peer', 'peermx', 'emote', 'chat', 'qdown', 'crash', 'fbopen', 'fbsend'],
+  sub: ['dev', 'ref', 'app', 'tut', 'zone', 'buy', 'ride', 'em', 'er', 'tier', 'fps'],
+  maxOf: ['peermx'],
+  srcs: ['live', 'dev', 'adm'], // 실서버 · 개발 서버(/dev/) · 어드민 계정
+};
+
 // 오류 알림 묶어 보기 (#122): 서버 GET /crashes?days= (로그인 없이). server/src/crashes.js
 export const CRASHES = {
   days: 3,            // 기본으로 보는 날 수
@@ -1374,7 +1415,8 @@ export const JOURNEY = {
     { id: 'color', need: {} }, // #155 기본 옷 색
     { id: 'tutorial', need: {} }, // #151
     { id: 'tips', need: { tut: 1 }, after: null }, // #66 상황 팁 (튜토리얼 뒤)
-    { id: 'mateSunja', need: { jeong: 1 } }, // #172 순자 삼춘 (정낭을 나서면)
+    { id: 'fsTip', need: { tut: 1 }, after: 'tips' }, // #189 폰: 전체 화면으로 하는 법 (튜토리얼 직후 한 번, game/simple.js. PC·이미 전체 화면이면 안 열림)
+    { id: 'mateSunja', need: { jeong: 1 }, after: 'tips' }, // #172 순자 삼춘 (정낭을 나서면). after 를 적어 둠: 바로 앞 fsTip 은 PC 에선 안 열림
     { id: 'quest', need: { jeong: 1 } }, // #158 오름지기 첫 퀘스트
     { id: 'heapNear', need: { jeong: 1 } }, // #160 들머리 더미
     { id: 'shopQuest', need: { dumps: 1 } }, // #158 장비점 주인 퀘스트 (첫 버리기 뒤)
