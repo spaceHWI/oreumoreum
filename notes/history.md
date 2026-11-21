@@ -1392,3 +1392,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 튜토리얼 중엔 할 일을 세지 않음(평생 기록은 셈). 저장 `save.ach.daily = { date, items, all, seen }`, `save.ach.run = { n, last, got }`. 예전 업적 저장은 그날 새 목록으로
 - 서버(#188 방식, `server/src/earn.js` 7): 받은 할 일·셋 다는 서버 날짜 오늘·어제 목록에 있는 것만 할 일마다 하루 한 번(cred.dl·dlp), 이어 오기는 서버가 저장을 받은 날로 따로 센 연속(cred.run) 안에서 한 번. 구역은 지난 저장 maxZ(+1 까지)
 - 확인 `node tools/daily.js [--shot]`, `tools/sec.js` 7줄, `tools/oldsave.js dailyOld,dailyBad`
+
+## #196 UI 아래 글씨 없애기, 깨끗함은 구역 값으로 (2026-11-21)
+- 버튼·칸 아래 글자 없앰: 위쪽 칸 이름표(#184 `.lb`, body.newbie 처음 며칠)·아래 줍기/던지기 버튼 안 글자(데스크톱도)·메뉴/동작 버튼 글자. `iconui.js` 는 그림 미리 찍기만 남음(`save.lbl`·`ICON_LABEL` 은 읽지 않음)
+- 뜻은 데스크톱 title, 폰은 길게 누르면(0.5초, `uitips.js LONG_MS`) title 을 토스트로(그 손을 뗄 때의 누름은 건너뜀). 줍기·던지기(모아 쏘기)·탈것(길게=고르기)·조이스틱은 제외. 데스크톱 줍기·던지기 버튼 구석에 E·F
+- 깨끗함: 위쪽 '오름 전체' 칸(`#clean-pill`)은 늘 숨김(요소는 남김), 있는 곳 이름 옆 `#where-c` 에 지금 구역의 깨끗함(고리 + %). 구역 밖(들머리·가게 거리·길)은 감춤. `pickup.js updateTrashUI` 가 쓰고 `tickZone` 이 1초에 한 번 다시 셈(다른 사람이 치운 것도)
+- 오름 전체 값은 오름 지도: 맨 위 '오름 전체 깨끗함 N%' + 구역 줄마다 %. 꽃·엔딩·업적·서버 방송 규칙은 그대로 전체 값(`trash.clean()`)
