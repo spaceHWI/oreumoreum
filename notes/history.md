@@ -1447,3 +1447,19 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 뜻은 데스크톱 title, 폰은 길게 누르면(0.5초, `uitips.js LONG_MS`) title 을 토스트로(그 손을 뗄 때의 누름은 건너뜀). 줍기·던지기(모아 쏘기)·탈것(길게=고르기)·조이스틱은 제외. 데스크톱 줍기·던지기 버튼 구석에 E·F
 - 깨끗함: 위쪽 '오름 전체' 칸(`#clean-pill`)은 늘 숨김(요소는 남김), 있는 곳 이름 옆 `#where-c` 에 지금 구역의 깨끗함(고리 + %). 구역 밖(들머리·가게 거리·길)은 감춤. `pickup.js updateTrashUI` 가 쓰고 `tickZone` 이 1초에 한 번 다시 셈(다른 사람이 치운 것도)
 - 오름 전체 값은 오름 지도: 맨 위 '오름 전체 깨끗함 N%' + 구역 줄마다 %. 꽃·엔딩·업적·서버 방송 규칙은 그대로 전체 값(`trash.clean()`)
+
+## #199 쪽지 넘겨 보기·종이 배경·그림
+- 쪽지 창을 `src/game/noteview.js` 로 떼어 냄(punkworld.js 는 주기·칩·도감만). 순서는 주운 순서(save.punk.notes 의 때). 새로 주운 창·칩은 그 쪽지(맨 뒤)에서 시작해 ◀ 로 앞 것, 도감에서 열면 그 쪽지부터. ◀ ▶·←→·A·D·좌우 밀기, 끝에서 멈춤(처음으로 안 돎). 창이 열린 동안 ←→·A·D 는 캐릭터를 움직이지 않음(capture 로 먼저 받음). 넘겨 본 것도 읽음(save.punk.unread 에서 뺌), 앞·뒤에 안 읽은 게 있으면 ◀·▶ 에 귤색 점. 아래 '3 / 12'·구역 이름
+- 종이: NOTES 에 `paper` 칸 — memo·notebook·receipt·letter·postcard·alien·form·flyer·crumple·photo·rubbing·diary (CSS 만, 그림 파일 없음). 손글씨는 Nanum Pen Script(구글 글꼴, 처음 열 때만 받음, 못 받으면 고딕). 영수증은 고정폭, 외계 문서·고지서·전단·탁본은 고딕
+- 그림: NOTES 에 `img: true` 면 `assets/notes/<id>.webp` 를 종이 위쪽에 테이프로 붙인 듯(열 때만 받음, 못 받으면 종이만). build.mjs 가 dist/assets/notes 로 복사, publish.yml 이 `assets/` 로 올림. 한 파일 빌드(oreumoreum.html)엔 그림 없음. 아직 그림은 하나도 없음(기획 세션 몫, 이슈 코멘트의 표)
+- 넘김: 옆에서 밀려 들어오는 짧은 움직임 + 종이 쓸리는 소리(audio.js 가 40KB 를 넘어 noteview.js 에서 late.sound 의 noise 로 냄). 저사양(LOW)·움직임 줄이기는 바로 바뀜. 긴 쪽지는 창 안 스크롤(box-sizing border-box, 폰 390 폭에서 30장 모두 화면 안)
+- 확인 `node tools/notes.js [--shot]` (데스크톱·폰, 38줄)
+## #163 오름펑크 상호작용: 하르방 하이파이브·관광객 사진 부탁·까마귀 도둑
+- 새 파일: `src/game/punkmeet.js`(게임 연결, `late.meet`), `src/punkmodels.js`(관광객·까마귀·카메라 아이콘·반짝임·그림자), `src/punksound.js`('탁'·'까악', audio.js 가 40KB 가까워 따로). 수치 balance.js `MEET`
+- 하르방: 들머리·가게 거리(life.hareubangs) + 서 있는 구역 지킴이(#119) 앞 2.5m '인사하기' → emotes 'five'(남에게도 보임) → 손이 닿는 순간 '탁'·들썩·눈 반짝·말풍선 10줄. 하루 한 번(KST) 10분 버프: 귤 모으는 범위 +0.5m(hooks.js pickR2 에 `late.punkPickR`)·이동 +3%(update.js `late.punkSpeed`), 위 줄 `#punk-pill` 한 칸(식사 버프와 따로). 저장 save.meet(망가진 값은 새로, #165 의 save.punk 와 따로)
+- 관광객: 8~12분마다 한 명, 플레이어에서 160m 안 가장 가까운 자리(들머리 클린하우스 옆·정상 사진사 반대쪽·field.sights 볼거리)에 걸어와 손 흔듦·카메라 아이콘. '사진 찍어 주기' → 3·2·1(#countdown)·번쩍(#flash)·셔터 → 귤 10. 1/3 은 쓰레기를 버리고 돌아섬: 9초 안에 귤로 맞히면 사과·도로 줍고 귤 15, 안 맞히면 trash.drop 2개(투기꾼 봉투와 같은 길, 방에선 방장만). 60초 안 찍으면 감. 튜토리얼 중엔 없음. 모양은 dumpers.js `buildWalker(색)`(export, 마스크 끄기)
+- 까마귀: 배낭이 가득 찬 채(bagRoom<1) 30초 → 3~20초 뒤, 5분에 한 번·하루 5번까지. 2초 경고(까악·그림자·감독 danger) → 내려와 배낭에서 가장 많은 쓰레기 1개(xv 도 비율만큼) → 8초 머리 위 맴돎 → 멀어짐. 맞히면(life.addTargets, 타겟 고정 #148) 떨군 쓰레기는 배낭으로(자리 없으면 더미), 반짝이는 것 표 C.drop: 귤 20(귀한 귤 #130 `late.rareGive`(raregyul.js, 값 20 에 가까운 레드향)·영수증 쪽지 #165 `late.receiptDrop`(punkworld.js, 그 구역 안 주운 쪽지, 다 모았으면 귤)). 처음 올 때 팁 'crow'(tips.js)
+- 감독 문(#176 JOURNEY): 관광객은 'tourist'(구역 2), 까마귀는 'crow'(구역 3) 문이 열린 뒤부터. 이야기 이벤트 'tour'(#168) 의 `late.tourists.bus` 는 아직 없음(한 번에 한 명만)
+- 귤 벌이: 관광객 시간당 90 + 까마귀 하루 최대 100 = 190, 1일차 1시간 4,109 의 5%(205) 안 (`node tools/econ.js` 오름펑크 줄)
+- 합치다 고친 것: tools/online.js '동료는 내 화면에만' 이 #190 동료 끄기(BUDDIES.on false) 뒤 늘 실패하던 낡은 검사 → 꺼져 있으면 남에게 안 보이는지만 봄. #165 punkworld.js 가 #164 punk.js 의 `late.tickPunk` 를 덮어써 박스 시야·망사리가 안 돌던 것 → punkworld 는 `late.tickPunkWorld`
+- 확인 `node tools/punkmeet.js`, `__oreum.punk.tourist(litter)`·`crow()`·`five()`·`litterNow()`·`goTourist()`·`shoot()`·`hitCrow()`·`hitTourist()`·`state()`·`resetDay()`
