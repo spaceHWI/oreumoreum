@@ -16,7 +16,7 @@ import { scene } from './scene.js';
 import { life, buff, runner, player } from './place.js';
 import { updateStats, busy, toast, ui, closePanels } from './hud.js';
 import { keys, marker } from './input.js';
-import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow } from './throw.js';
+import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow, fireWeapon } from './throw.js';
 import { cam } from './camera.js';
 
 Object.assign(Sound.prototype, weaponSounds); // gun·mg·laser·lob·boom
@@ -64,7 +64,7 @@ function shot(w, spread = 0) {
   else v = fwd().multiplyScalar(w.speed).setY(w.grav * 0.1);
   if (spread) { v.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (Math.random() - 0.5) * 2 * spread); v.y += (Math.random() - 0.5) * spread * w.speed; }
   const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg');
-  armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range / w.speed + 0.15, peersFn: peers, quiet: !!w.dps });
+  armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t }); // 유도 (#148)
   save.ammo[w.id] -= 1; A.kick = 1; persist();
   if (w.id === 'gun') sfx()?.gun?.(); else sfx()?.mg?.();
   const tp = t ? aimPoint(t, from, 0) : from.clone().addScaledVector(v.clone().normalize(), w.range);
@@ -153,6 +153,8 @@ function tickArms(dt) {
     if (ok && holding() && armedFor(w)) { if (A.cd <= 0 && useAmmo(w)) { shot(w, w.spread); A.cd += 1 / w.rate; } }
     else { A.held = false; endBurst(); }
   } else if (A.held && w.id !== 'laser') A.held = false;
+  // 누르고 있으면 쉬지 않고 이어서 (#148): 받혀 끊겼거나 손·활·총·폭탄이어도 다음 발. 폭탄은 다시 쥐면
+  if (holding() && state.ctxTarget === late.throwAct && !busy() && !player.knock && !A.lasing && !(A.held && w.id === 'mg') && player.pose !== 'throw' && player.pose !== 'bow' && !(w.id === 'bomb' && bowReady() && A.bombCd > 0)) fireWeapon();
   if (player.pose === 'aim') {
     A.aimT -= dt;
     if (A.aimT <= 0 || !ok) { player.pose = 'move'; state.throwAim = null; }
