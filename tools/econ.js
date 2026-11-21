@@ -287,5 +287,9 @@ async function main() {
   const avgC = (1 - J.p) * cyc + J.p * jcyc, avgG = (1 - J.p) * fg + J.p * J.gyul, tot = avgG / avgC * 3600;
   const day1 = day1Rate, lim = day1 * 0.5;
   console.log(`잭팟: 확률 1/${Math.round(1 / J.p)}, 귤 ${J.gyul} → 평균 시간당 약 ${Math.round(tot)} (잭팟만 +${Math.round(tot - base)}) · 시간당 잭팟 ${(3600 / avgC * J.p).toFixed(1)}번 · 오름 1일차 시간당 ${day1} 의 절반 ${Math.round(lim)} → ${tot <= lim ? '통과' : '넘음'}`);
+  // 퀘스트 (#158): 첫날(구역 1) 줄기 보상 합이 첫날 귤 벌이의 QUESTS.dayCap 을 넘지 않게. 둘째 날 이후 구역 줄도 그날 벌이(가운데 값)와 견줌
+  { const Q = B.QUESTS, sum = (z) => Q.main.filter((q) => q.z === z).reduce((a, q) => a + (q.reward?.gyul || 0), 0), q1 = sum(1), cap = Math.round(day1 * Q.dayCap);
+    console.log(`퀘스트: 첫날(구역 1) 보상 귤 ${q1} · 첫날 벌이 ${day1} 의 ${Math.round(Q.dayCap * 100)}% = ${cap} → ${q1 <= cap ? '통과' : '넘침 (보상을 줄일 것)'}`);
+    console.log('  구역별 줄기 보상 합: ' + [1, 2, 3, 4, 5].map((z) => `구역 ${z} ${sum(z)}`).join(' · ')); }
 }
 main();

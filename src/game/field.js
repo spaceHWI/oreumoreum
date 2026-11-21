@@ -53,6 +53,7 @@ function closeDen(d, s) {
   life.scatterTangerines(v3(d, 0.8), FIELD.den.gyul[d.zone] || 0, ENEMY_DROP.max);
   toast('소굴을 닫았어요! 떨어진 귤을 주워요', 3); late.sound?.coin?.();
   late.denLoot?.(d, s); // 다음 이슈(전리품·재료)가 씀
+  late.questEv?.('den@' + d.zone); // 퀘스트 (#158)
 }
 function tickDens(dt) {
   if ((denT -= dt) > 0) return; denT = 0.25; denWait -= 0.25;
@@ -169,6 +170,7 @@ function drawIcons(x, uv, s, clip = null) {
     const k = h.k === 'mt' ? 1.25 : 0.9; x.fillStyle = '#2e2e34'; x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(u - s * 0.5 * k, v + s * 0.45 * k); x.quadraticCurveTo(u - s * 0.62 * k, v - s * 0.3 * k, u - s * 0.14 * k, v - s * 0.38 * k); x.lineTo(u, v - s * 0.62 * k); x.lineTo(u + s * 0.14 * k, v - s * 0.38 * k); x.quadraticCurveTo(u + s * 0.62 * k, v - s * 0.3 * k, u + s * 0.5 * k, v + s * 0.45 * k); x.closePath(); x.fill(); x.stroke(); });
   late.bossIcons?.(x, uv, s, inC); // 우두머리 빈터 (#139)
   late.shopIcons?.(x, uv, s, inC); // 가게 거리 가게 (#128, game/shop.js)
+  late.questIcons?.(x, uv, s, inC); // 퀘스트 주는 사람 (#158, game/quest.js)
   // 소굴: 열림 빨강·닫힘 회색 (가 본 곳만)
   for (const d of field.dens) { if (!seenAt(d.x, d.z)) continue; const [u, v] = uv(d.x, d.z); if (!inC(u, v)) continue; const o = denOpen(d);
     x.fillStyle = o ? '#e0483a' : '#7b7b80'; x.strokeStyle = '#fff'; x.beginPath(); x.arc(u, v, s * 0.5, 0, 7); x.fill(); x.stroke();
