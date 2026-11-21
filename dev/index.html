@@ -520,6 +520,24 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .rk-seg { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.08); }
 .rk-seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 7px 6px; font-size: 13px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
 .rk-seg button[aria-pressed="true"] { background: rgba(255,255,255,.18); color: #fff; }
+/* 크리스마스 (#180): 접속 달력·트리 */
+.xm-tree { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 13px; }
+.xm-tree .bar { flex: 1; height: 10px; border-radius: 99px; background: var(--paper-2); overflow: hidden; }
+.xm-tree .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3f9a5a, var(--gyul)); }
+.xm-cal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.xm-cal button { position: relative; height: 50px; border-radius: 10px; border: 2px solid var(--hair); background: var(--paper-2); color: var(--ink); font: 700 15px var(--display); display: grid; place-items: center; padding: 2px; }
+.xm-cal button small { position: absolute; bottom: 2px; left: 0; right: 0; font: 600 10px var(--body); color: var(--ink-soft); }
+.xm-cal button.done { background: rgba(63, 154, 90, .35); border-color: #3f9a5a; }
+.xm-cal button.today { border-color: var(--gyul); box-shadow: 0 0 0 2px var(--gyul), 0 0 12px rgba(255, 154, 31, .6); animation: xmPulse 1.4s ease-in-out infinite; }
+.xm-cal button.miss { border-style: dashed; }
+.xm-cal button.lock { opacity: .4; }
+.xm-cal button.gift::after { content: ''; position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 2px; background: #c8333a; box-shadow: inset 0 0 0 1px #e8b84a; }
+@keyframes xmPulse { 50% { box-shadow: 0 0 0 2px var(--gyul), 0 0 20px rgba(255, 154, 31, .9); } }
+.xm-snow { margin-top: 10px; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+#xmas-glow { position: fixed; inset: 0; pointer-events: none; z-index: 4; box-shadow: inset 0 0 90px 20px rgba(255, 140, 60, .32); opacity: 0; transition: opacity 1.2s; }
+#xmas-glow.on { opacity: 1; }
+.logo-snow { position: absolute; left: 0; top: 1.5%; width: 100%; height: auto; pointer-events: none; }
+.intro-logo { position: relative; }
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
 .rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
@@ -1205,7 +1223,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-89c2c6a601.js">(function () {
+<script data-main="main-6455da1c3f.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1321,6 +1339,7 @@ button.bag-card { cursor: pointer; }
     <button type="button" id="menu-ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h5l3 8M10 9L8 6H6"/></svg>탈것</button>
     <button type="button" id="menu-shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8zM9 8V6a3 3 0 0 1 6 0v2"/></svg>상점</button>
     <button type="button" id="menu-sign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V4M12 5h7l2 2.5-2 2.5h-7M12 12H6l-2 2.5L6 17h6"/></svg>탐방 안내</button>
+    <button type="button" id="menu-xmas" hidden><i class="dot" id="xmas-dot" hidden></i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l5 7h-3l4 6h-3l3 5H6l3-5H6l4-6H7z"/><path d="M12 21v-2"/></svg>달력</button>
     <button type="button" id="menu-rank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M5 20v-6h4v6M10 20V9h4v11M15 20v-8h4v8M12 3l1 2 2 .3-1.5 1.4.4 2.1L12 7.8l-1.9 1 .4-2.1L9 5.3 11 5z"/></svg>랭킹</button>
     <button type="button" id="menu-sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9c1.2 1.6 1.2 4.4 0 6"/></svg>소리</button>
     <button type="button" id="menu-tips" aria-pressed="true" aria-label="팁 켜기/끄기" title="팁"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.500 10.900c.6.5 1 1.200 1 2.100h5c0-.9.4-1.600 1-2.100A6 6 0 0 0 12 3z"/></svg>팁</button>
@@ -1351,6 +1370,8 @@ button.bag-card { cursor: pointer; }
       <div class="adm-row adm-btns"><button type="button" data-wx="">실제</button><button type="button" data-wx="clear">맑음</button><button type="button" data-wx="overcast">흐림</button><button type="button" data-wx="rain">비</button><button type="button" data-wx="snow">눈</button><button type="button" data-wx="fog">안개</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" id="dev-gyul" aria-label="귤 10,000개 받기">+10,000 귤</button><button type="button" id="dev-reset" aria-label="모두 리셋">모두 리셋</button></div>
       <div class="adm-row adm-btns"><button type="button" id="dev-intro" aria-label="들어오기 다시">들어오기 다시</button></div>
+      <div class="adm-row"><span>철 이벤트</span><b id="adm-season-v">기간대로</b></div>
+      <div class="adm-row adm-btns"><button type="button" data-season="">기간대로</button><button type="button" data-season="on">켜기</button><button type="button" data-season="off">끄기</button></div>
       <div class="adm-row"><span>들어오기 다시: 첫 화면·캐릭터 고르기만 다시 (기록은 그대로). 모두 리셋: 튜토리얼까지 전부 처음부터.</span></div>
       <div class="adm-row adm-btns" id="adm-inbox-row" hidden><button type="button" id="dev-inbox">받은 의견<i class="badge-dot" id="inbox-dot" hidden></i></button></div>
     </div>
@@ -1450,6 +1471,18 @@ button.bag-card { cursor: pointer; }
     <div class="pop-body" id="rank-body"><ol class="rk-list" id="rank-list"></ol><p class="muted rk-note" id="rank-note"></p></div>
   </div>
 </div>
+
+<div class="overlay dim" id="xmas" hidden>
+  <div class="panel pop">
+    <div class="pop-head"><h2>크리스마스 달력</h2><button type="button" class="btn small" id="xmas-close">닫기</button></div>
+    <div class="pop-body">
+      <div class="xm-tree" aria-label="모두의 트리"><span>트리</span><span class="bar"><i id="xmas-bar"></i></span><b id="xmas-stage">0/10</b></div>
+      <div class="xm-cal" id="xmas-cal"></div>
+      <div class="xm-snow" id="xmas-snowrow" hidden><button type="button" class="btn small" id="xmas-snow" aria-pressed="false">눈덩이</button><span class="muted">굼부리·정상에서 손 던지기가 눈덩이로</span></div>
+    </div>
+  </div>
+</div>
+<div id="xmas-glow" aria-hidden="true"></div>
 
 <div class="overlay dim" id="omap" hidden>
   <div class="panel pop">
