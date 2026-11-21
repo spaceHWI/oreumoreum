@@ -62,6 +62,8 @@ async function api(path, { method = 'GET', body, keepalive = false, token = sess
 export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST', body: { items } }) : null;
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
+// 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민만
+export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }) } : null;
 // 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
 export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
 const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
@@ -69,7 +71,8 @@ function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save
 
 /* ---------- 계정 ---------- */
 // getSave: 지금 저장 객체, writeLocal: 이 기기에 바로 씀, onFix({coins,total}): 서버가 바로잡은 값, toast, entered(): 이미 입장했는지
-export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
+// ver: 게임 버전(귤 맞춤 기록용, #188), onGift(g): 운영자가 보낸 귤 { id, n, why } (#188)
+export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver = '', onGift = () => {} }) {
   let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '', admin = false;
   // 서버가 새 토큰을 주면 바꿔 끼움 (#84: 세션 수명 NET.sessionDays, 남은 날이 적으면 /me 가 새로 줌)
   const renew = (r) => { if (sess && r && typeof r.token === 'string' && r.exp > Date.now()) { sess = { ...sess, t: r.token, exp: r.exp }; ls.set(SK, JSON.stringify(sess)); } };
@@ -83,6 +86,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
       const s = getSave();
       if (me.nickRen) s.nickRen = me.nickRen; // 이름 바꾼 횟수·날은 서버 값 (#162)
       if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { writeCache(me.save, me.rev, sess.sub); location.reload(); return; } // 다른 기기에서 더 해 둔 기록
+      gifts(me.gifts);
       if (!me.save) push();
     } catch (e) {
       if (e.status === 401) { sess = null; ls.del(SK); toast('로그인이 풀렸어요. 이번에는 이 기기에만 저장돼요'); changed(); }
@@ -94,9 +98,12 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
     clearTimeout(timer); timer = 0; busy = true; lastPush = Date.now();
     const s = getSave(), body = JSON.stringify(strip(s));
     if (body === lastBody) { busy = false; return; } // 바뀐 것이 없으면 보내지 않음
+    const nSold = Array.isArray(s.sold) ? s.sold.length : 0; // 판 것 목록 (#188): 서버가 받으면 보낸 만큼 지움 (그사이 판 것은 남김)
     try {
-      const r = await api('/save', { method: 'PUT', body: { save: strip(s) }, keepalive });
+      const r = await api('/save', { method: 'PUT', body: { save: strip(s), ver }, keepalive });
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
+      if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
+      gifts(r.gifts);
       if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
       if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick)) onFix(r.fix);
       writeLocal();
@@ -106,6 +113,15 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered }) {
     } finally {
       busy = false; if (again) { again = false; dirty(); }
     }
+  }
+  // 운영자가 보낸 귤 (#188): 받은 id 를 save.giftGot 에 남겨 같은 것을 두 번 받지 않음. 다음 저장에 실려 서버가 받은 것으로 침
+  function gifts(list) {
+    if (!Array.isArray(list) || !list.length) return;
+    const s = getSave(), got = Array.isArray(s.giftGot) ? s.giftGot : (s.giftGot = []);
+    let any = false;
+    for (const g of list) { const id = Number(g?.id), n = Math.floor(Number(g?.n)); if (!(id > 0) || !(n > 0) || got.includes(id)) continue; got.push(id); any = true; onGift({ id, n, why: String(g.why || '') }); }
+    if (got.length > 100) got.splice(0, got.length - 100);
+    if (any) { writeLocal(); dirty(); }
   }
   function dirty() { if (!sess || timer) return; timer = setTimeout(() => { timer = 0; push(); }, NET.saveDebounce); }
   const flush = () => { if (sess && timer) push(true); };

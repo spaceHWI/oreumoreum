@@ -187,6 +187,32 @@ async function startServers() {
       r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
       ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
     }
+    /* ---------- 서버가 아는 귤 (#188): 판 전리품·퀘스트 보상은 몫으로 인정, 꾸민 것은 거절 ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js');
+      const { sellValue } = await import('../src/loot.js');
+      const { QUESTS } = await import('../src/balance.js');
+      const t = Date.now(), acc = { credit: 0, pickCredit: 0, bank: 0, savedAt: t };
+      const P = { ...S0, coins: 100, equip: { tool: 5, bag: 5, shoes: 5, weapon: 5 } };
+      const leg = { s: 'weapon', t: 5, g: 3, e: 2 }, lv = sellValue(leg);
+      let r = checkSave({ ...P, loot: [leg] }, { ...P, coins: 100 + lv, loot: [], sold: [leg] }, acc, t);
+      ok(!r.fixed.length && r.save.coins === 100 + lv && !('sold' in r.save), `가진 전설 장비를 팔면 안 깎임 (귤 +${lv}, 몫 0 에서)`);
+      r = checkSave({ ...P, loot: [] }, { ...P, coins: 100 + lv, loot: [], sold: [leg] }, acc, t);
+      ok(r.fixed.includes('coins') && r.save.coins === 100 && r.clamp?.amt === lv, '없는 장비(강화된 것)를 팔았다고 하면 거절·깎인 양 기록');
+      const fresh = { s: 'weapon', t: 5, g: 3, e: 0 }, fv = sellValue(fresh);
+      r = checkSave(P, { ...P, coins: 100 + fv * 5, sold: Array(5).fill(fresh) }, acc, t);
+      ok(r.fixed.includes('coins') && r.save.coins === 100 + fv * NET.earnRec.legendBurst, `새로 떨어진 전설은 ${NET.earnRec.legendBurst}개까지만 (5개 중)`);
+      const q = [...QUESTS.main, ...(QUESTS.side || [])].filter((x) => x.reward?.gyul).sort((a, b) => b.reward.gyul - a.reward.gyul)[0], qg = q.reward.gyul;
+      r = checkSave(P, { ...P, coins: 100 + qg, quest: { done: [q.id] } }, acc, t);
+      ok(!r.fixed.length && r.save.coins === 100 + qg, `퀘스트 보상(${q.id} ${qg})은 몫으로 인정`);
+      const r2 = checkSave(P, { ...P, coins: 100 + qg, quest: { done: [q.id] } }, { ...r.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
+      ok(r2.fixed.includes('coins') && r2.save.coins <= 100 + NET.earnPerSec * 1, '같은 퀘스트 보상 두 번 받기 거절 (처음부터 다시 해도)');
+      r = checkSave(P, { ...P, coins: 100, boss: { done: { 5: 1 } } }, acc, t);
+      const r3 = checkSave(r.save, { ...r.save, coins: 100 + 2500 }, { ...r.acc, credit: 0, savedAt: t }, t + 5000);
+      ok(!r3.fixed.length, '우두머리 귤은 기록 뒤 저장에서 주워도 받아 줌 (bank)');
+      r = checkSave(r3.save, { ...r3.save, coins: 100 + 5000, boss: { done: { 5: 2 } } }, { ...r3.acc, credit: 0, savedAt: t }, t + 6000);
+      ok(r.fixed.includes('coins'), `같은 우두머리는 ${NET.earnRec.bossGap}초에 한 번만 인정`);
+    }
     /* ---------- 배낭 겉모습 (#164): 값 내고 사기·없는 것 지움 ---------- */
     {
       const { checkSave } = await import('../server/src/validate.js');
@@ -238,6 +264,11 @@ async function startServers() {
     P.send(presence(-860, 0, { nick: '시1발 운영자' })); Q.send(presence(-860, 5)); await sleep(400);
     const seenBad = Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id, d]) => id === P.msgs[0].id && 'nick' in d).pop()?.[1];
     ok(seenBad && seenBad.nick === '', `걸리는 이름은 방에서 빈 이름으로 (#162, ${JSON.stringify(seenBad?.nick)})`);
+    { // 칭호 (#165): 번호만 오가고 범위 밖·글은 -1 로
+      const { TITLES } = await import('../src/punktext.js'), ttOf = async (tt, dx) => { P.send(presence(-860 + dx, 0, { tt })); await sleep(400); return Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1]?.tt; };
+      const a = await ttOf(TITLES.length - 1, 0.1), b = await ttOf(TITLES.length + 5, 0.2), c = await ttOf('<b>왕</b>', 0.3);
+      ok(a === TITLES.length - 1 && b === -1 && c === -1, `칭호 번호는 범위만 (${a}, ${b}, ${c})`);
+    }
     // 맞힘: 사거리 밖은 지움
     P.send(presence(-860.5, 0, { ht: { p: Q.msgs[0].id, at: 1 } }));
     Q.send(presence(-700, 5)); await sleep(200);
@@ -298,6 +329,23 @@ async function startServers() {
     const ug = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     const bg = await req('plain', '/save', { method: 'PUT', token: Bs.token, body: { save: { ...S0, coins: NET.earnBurst * 3 } } });
     ok(ug.j.fixed.includes('coins') && !bg.j.fixed.length, '귤 채우기는 어드민 계정만 서버가 받아 줌');
+    { // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민만
+      ok((await req('plain', '/admin/clamps', { token: U.token })).status === 403 && (await req('plain', '/admin/grant', { method: 'POST', token: U.token, body: { sub: U.sub || 'fake-user1', n: 9, why: 'x' } })).status === 403 && (await req('plain', '/admin/clamps')).status === 403, '어드민 아닌 계정·손님은 /admin/clamps·/admin/grant 403');
+      const cl = await req('plain', '/admin/clamps', { token: Bs.token });
+      const row = (cl.j || []).find((x) => x.sub === 'fake-user1');
+      ok(cl.status === 200 && row && row.amt > 0 && row.why.includes('coins'), `깎이면 기록에 남음 (${row ? '-' + row.amt : '없음'})`);
+      const cr = (await req('plain', '/crashes?days=1', { origin: null })).j;
+      ok((cr?.groups || []).some((g) => g.text.includes('귤 맞춤')) && !JSON.stringify(cr).includes('fake-user1'), '깎임은 오류 모으기(/crashes)에도 한 줄 (계정 번호 없이)');
+      ok((await req('plain', '/admin/grant', { method: 'POST', token: Bs.token, body: { sub: 'fake-nobody', n: 9, why: 'x' } })).status === 404, '없는 계정에 귤 보내기 거절');
+      const g = await req('plain', '/admin/grant', { method: 'POST', token: Bs.token, body: { sub: 'fake-user1', n: 777, why: '잘못 깎인 귤' } });
+      const me = (await req('plain', '/me', { token: U.token })).j, gift = (me.gifts || []).find((x) => x.id === g.j?.id);
+      ok(g.status === 200 && gift && gift.n === 777 && gift.why === '잘못 깎인 귤', '받는 사람은 다음 접속 때 보낸 귤·사유를 받음');
+      const c0 = me.save.coins;
+      const take = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...me.save, coins: c0 + 777, giftGot: [gift.id] } } });
+      const again = await req('plain', '/save', { method: 'PUT', token: U.token, body: { save: { ...me.save, coins: c0 + 777 * 2 + NET.earnBurst, giftGot: [gift.id] } } });
+      const gl = (await req('plain', '/admin/grants', { token: Bs.token })).j || [];
+      ok(!take.j.fixed.includes('coins') && !(take.j.gifts || []).length && again.j.fixed.includes('coins') && gl.some((x) => x.id === gift.id && x.got), '보낸 귤은 한 번만 받아 주고 받은 기록이 남음');
+    }
 
     /* ---------- 이름 (#162): 거르기·처음 짓기·바꾸기 ---------- */
     {

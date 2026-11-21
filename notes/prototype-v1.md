@@ -30,6 +30,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | director.js | 감독(#176): `src/director.js` 를 게임에 붙임. 말을 거는 것은 `director.ask(kind, id, show)`·`say(kind, id, text, sec)` 로 한 번에 하나씩(우선순위·간격·싸움 중 제한), 문 열기(`register({ id, gate, intro, kind, clue })`, 순서·조건은 balance.js JOURNEY, 사실 값 FACTS), 한가할 때 실마리, 끝을 모르는 창은 `holdWin`. `late.director`, `__oreum.director`, 확인 `node tools/journey.js` |
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
+| gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향. 골라 쓰는 무기(`save.weaponUse`), 3~6단계면 `late.fireArm` |
 | arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르기(`chooseArm`, 던지기 버튼 옆 ▾ → 내 가방 무기 탭), 멀티 presence `wf`. 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
@@ -68,6 +69,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | swarm.js | 들판 떼(#173): 길에서 SWARM.offD m 넘게 벗어나면 판(`run`) 시작 → 물결(시간·정예·떼 대장·보물 상자)·화면 밖에서 나오기(enemies.js `spawnSwarm`, def.swarm), 자동 던지기(탄은 여기 InstancedMesh, 무기 간격·피해·귤), 귤 조각(빨려 옴·3개 = 귤 1·`late.xpGain`), 들판 증강 카드(`#swarm-pick`), 썩은 귤 자루, 화면 위 한 줄(`#swarm-bar`), 숨 돌릴 틈(late.pace.cleared 감쌈), 이동 배수 `late.swarmSpeed`(update.js). 저장 save.swarm(auto·best). 메뉴 설정 '자동 던지기'. `__oreum.swarm`(start·stop·t·aug·fill·speed), 확인 `node tools/swarm.js` |
 | smoker.js | 들머리 흡연자(#156): 들머리 클린하우스(CH) 둘레 SMOKER.near m 안·길에서 2~5m 비켜난 자리에 가끔 한 명(투기꾼 모양 `dumpers.js buildWalker({ jacket, withBag })`). 담배 피우는 동작·연기·머리 위 금연 표시·가장자리 표시(hooks.js `makeEdgeWarn`). 귤 한 번 → 놀라 도망·꽁초 1·귤 SMOKER.reward·업적 'smoker-repel'(뱃지 b-nosmoke). 안 쫓으면 꽁초 3개 버리고 떠남. 꽁초는 낱개 쓰레기(가까이 가면 배낭에 비닐 1, 도감 'butt:0', 저장 안 함). 맞히기·조준은 `life.addTargets`, 매 프레임은 `dumpers.update` 를 감쌈. `__oreum.smoker`(spawn·hit·leave·go·state·butts) |
 | mutter.js | 캐릭터 혼잣말(#169): 내 머리 위 실마리 말풍선(내 화면에만). 줄마다 조건·풀림·최대 3번, 일 줄(큰 더미·투기꾼 버림·가게 거리·정상), 한가한 줄. 차례는 감독 kind 'mutter', 글 `punktext.js MUTTER_TEXT`, 수치 balance.js MUTTER, 저장 save.mutter, 설정 '혼잣말'. `late.tickMutter`(update.js 감독 뒤), `__oreum.mutter.say(id)`, 확인 `node tools/mutter.js` |
+| punkworld.js | 오름펑크 세계(#165): 오름 방송(스피커 기둥·자막 띠 `#radio-strip`·상황 방송·설정 '오름 방송', 감독 문 radio)·쪽지(쓰레기 2%, `#punk-note`·칩 `#punk-chip`·도감 칸 late.dexExtra 감쌈)·칭호(업적 창 [칭호] `#punk-title`, save.punk.title → net.js `tt` 이름표 위). 글은 `src/punktext.js`, 수치 balance.js PUNK. `late.tickPunk`, `__oreum.punkWorld` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 |
@@ -90,6 +92,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
   - 새 옷: clothes.js 에 모양 함수 + balance.js CLOTHES 한 줄. 몸 부위 덮기는 COVER 표. 확인 `node tools/chars.js <이름>` (남·여 x 피부 3 x 단계 1·3·5 x 자세 5 표)
   - 체형 치수 (#177): clothes.js 의 TORSO·HIPS(몸통 단면)·ARM·LEG·LEG_R(다리 단면)·BODY(가랑이·골반 관절 hipY·무릎 경계) 표 하나. runner.js 뼈대 골반 관절도 BODY.hipY. 옷이 몸을 뚫는지 `node tools/fit.mjs`
 - 철 이벤트 (#180): seasoncal.js(날짜·달력·트리 셈, 서버 validate.js·accounts.js 도 씀) · season.js(꾸밈 모양). 수치 balance.js SEASON. 서버 `GET /season`, 저장 save.season.xmas
+- 오름펑크 글 (#165): punktext.js (#168 STORY_TEXT 뒤) — 방송(RADIO·RADIO_SITU)·쪽지(NOTES, id 는 저장에 씀)·칭호(TITLES, 번호가 멀티로 오가므로 뒤에만 더함). DOM 없음, 서버 validate·roomcore 도 씀
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
@@ -110,6 +113,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 멀티·저장: online.js · net.js · social.js · server.js(서버는 battle 하나·방 이름 roomFor·기기 통계, #98) · safetext.js(이름 거르기 `nickOk`·`nickBad`, 목록은 nickwords.js, #162) · feedback.js · rank.js/rankday.js(랭킹 #11)
 - 원스토어 앱 (#97): onestore.js — 웹게임 SDK 수명 주기. `main.js` 가 맨 먼저 읽고(진행률), 게임 쪽 할 일은 `start.js` 가 `onestore.connect()` 로 넘김. SDK 스크립트 태그는 `build.mjs` 가 index.html 머리에 넣음. 확인 `node tools/onestore.js`
 - 오류 안전장치 (#108): crash.js — `main.js` 가 맨 먼저 `listenCrashes()`(error·unhandledrejection), `panels.js` 가 보낼 곳(POST /feedback, kind 'crash')을 붙임. `update.js frame()` 은 다음 프레임을 먼저 부르고 `step()` 을 try 로 돌림(오류 하나에 게임이 멈추지 않게). 적 한 마리 오류는 그 적만 지움(enemies.js), 적 모양 오류는 대신할 모양(enemymodels.js buildFallback). WebGL 화면 잃음은 scene.js(#gl-lost 안내 → 되살아남, 안 되면 다시 불러오기). 확인 `node tools/enemyrun.js [iphone|android|all] [--dead|--live]`
+- 서버가 아는 귤 (#188): server/src/earn.js `recognize` — 저장의 기록(판 것 `save.sold`·`quest.done`·`boss.done`·`field.den/tr/sight`)으로 몫을 인정해 bank 에 더함, 계정 기록은 acc.cred(JSON). validate.js `checkSave` 가 부르고 깎으면 `clamp` 를 돌려줌 → accounts.js 가 표 clamp·오류 모으기(fb kind crash)에 남김. 운영자 귤 보내기 표 gift (받는 사람은 `/me`·`/save` 응답 gifts → online.js 가 save.giftGot 에 받은 id). 클라이언트: src/loot.js `noteSold`, start.js `cutNotice`(save.lastCut → panels.js 의견 글 끝에 붙임)
 - 오류 알림 읽기 (#122): 서버 `GET /crashes?days=3`(로그인·Origin 없이, server/src/crashes.js 가 버전+오류 글로 묶음, 내보내는 칸은 오류 글·버전·기기 종류·브라우저/OS·마지막 한 일만, 60초 캐시, 값은 balance.js CRASHES). 자리 찾기 `node tools/crashmap.js <버전> <main-해시.js:줄:칸>`(그 버전 커밋을 임시 worktree 에서 소스맵 켜고 dev·release 빌드해 해시가 같은 것으로 원래 파일·줄·함수)
 - 바닥 표시 (#151): drape.js — 평평한 고리·원을 점마다 땅 높이에 맞춰 휨(튜토리얼 원·가는 곳 marker·타겟 aimMark·줍기 pickMark·돌진 조짐). 귤 모으는 범위는 gearscore.js `gyulPickR(save)` 하나(life.js 떨어진 귤·흩어진 귤, tutorial.js 귤, 가게 배낭 설명)
 - 글: punktext.js (이름·말투 표, #173 들판 떼 SWARM_TEXT 부터. 오름펑크 #165 가 이어서)
