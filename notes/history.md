@@ -992,3 +992,23 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 원인: three `renderer.compileAsync` 는 재질 준비를 10ms 마다 되풀이 확인하는데, 그 사이 재질이 `dispose` 되면(모델이 와서 머리·옷을 갈아 끼울 때 `runner.js` 가 앞 재질을 버림) 프로그램이 없어져 `program.isReady` 에서 멈춤. 타이머 안에서 나는 오류라 `.catch` 로도 안 잡힘
 - 고침: `src/game/scene.js prepShaders()` — `renderer.compile` 로 시작만 시키고 기다리기는 직접, 버려진 재질은 기다리는 목록에서 뺌. `compileAsync` 를 부르던 두 곳(`update.js warm`, WebGL 되살아남)을 바꿈. `compileAsync` 는 직접 부르지 않는다
 - 확인: `__oreum.prepShaders()` 를 부른 바로 뒤 장면의 재질 하나를 dispose → 고치기 전엔 같은 오류, 고친 뒤엔 오류 없이 끝남
+
+## #176 감독 (director)
+- 새 파일 `src/director.js`(차례만 셈, DOM 없음)·`src/game/director.js`(게임 연결, hud 바로 뒤). 수치·문 순서는 balance.js `JOURNEY`
+- 말을 거는 것은 `director.ask(kind, id, show, { sec, ttl })` (토스트는 `say(kind, id, text, sec)`). 우선순위 danger > story > quest > level > intro > tip > mate > mutter > radio. 낮은 것은 높은 것 끝나고 4초 뒤, 같거나 높은 것은 0.6초 뒤, danger 는 낮은 것을 끊음, 싸우는 중엔 danger·story·quest 만, 줄에서 ttl 넘으면 버림
+- 바깥 토스트(주웠어요·샀어요 같은 그 자리 반응)·배너·패널·튜토리얼이 보이는 동안 감독은 기다림(danger 는 빼고)
+- 옮긴 것: 상황 팁(hud.js: 문 'tips' 와 감독 차례일 때만, 띄우면 `begin`), 첫 투기꾼 안내(guide.js 토스트 → danger, 문 'dumper' 가 안 열렸으면 안내 없이), 몹 물결·기운 낮음·투기꾼 옴(hooks.js), 우두머리 알림(boss.js danger, 쫓아냄 quest), 구역 완료 토스트(guard.js quest)·요약 창(boss.js 가 `can('quest')` 일 때 열고 `holdWin` → 닫히면 끝), 권장 점수 경고(area.js danger). 날씨 알림은 아직 없음(날씨가 바뀌어도 토스트를 띄우지 않음)
+- 문 열기: `save.journey = { step, seen: {문: 연 날}, day, n 오늘 소개 수, days, maxZ }`. 등록한 문만 봄(`director.register({ id, gate, intro, kind, clue })`), 지금 등록: tips·dumper·boss·zoneDone·heapHint(실마리). 뒤 이슈 문은 JOURNEY.doors 에 미리 적어 둠(name·color·mateSunja·quest·heapNear·shopQuest·level·storyMom·field·mateMinsu·nightLight·radio·shopQuests·daily·mateJenny·tourist·loot·crow·title·gift·aliens). 사실 값은 game/director.js FACTS
+- 하루 소개 3개는 새 시스템(count: 1 = level·dumper·field·daily·loot)만 셈. 퀘스트·동료·이야기는 안 셈 (임의: 다 세면 첫날 여정이 3개에서 끊김)
+- 속도 조절: 줍기·자동 걷기/눌러 간 곳·낚시·긴장·창 없이 55초면 실마리(가까운 더미 쪽 표시, 예전 팁 'idle' 을 옮김). 그대로면 두 배씩(최대 8배) 늘림
+- 옛 저장(튜토리얼 끝, journey 없음)은 조건을 넘긴 문을 조용히 한꺼번에 엶. 어드민 '들어오기 다시' 가 save.journey 도 지움
+- dev `__oreum.director.state()·open(id)·log·can(kind)`. 확인 `node tools/journey.js [--now|--old|--seeds N]` (30분 흉내 시간표, 겹침·간격·할 일 없음 60초 넘음 0)
+## #177 캐릭터 기본 체형 다듬기
+- 몸 치수 표(clothes.js)만 바꿈: 가랑이 0.12 → 0.265 (다리가 키의 12% → 27%), 골반 관절 hipY 0.24 → 0.34(`BODY`, runner.js 가 RM.P.hipY 대신 씀). 어깨 위(팔·목·머리)·발·키 0.98 은 그대로
+- 몸통: 최대 반폭 0.205 → 0.185(어깨), 허리 0.171, 골반 0.166. 앞뒤 두께 최대 0.325 → 0.27. 겹치는 곳(0.33~0.4)은 티셔츠(TORSO)가 바지(HIPS)보다 조금 넓게
+- 다리 단면 `LEG_R`·`legR(y)` 를 clothes.js 로 옮김(양말·긴바지가 따라 감쌈). 허벅지/정강이 경계 `BODY.knee` 0.22(반바지 끝단 0.195 보다 위)
+- 옷 높이 다시 잡음: 티 0.345~, 바지 0.262~0.4, 반바지 다리 0.2~0.34, 조끼 0.37~, 잠바 0.31~, 벨트는 티 끝단 아래. 양말 목 높이는 예전 값 x1.25(정강이가 길어져서)
+- 여 체형(bodyWarp) 골반·허리 높이를 새 몸에 맞춤
+- 앉기·눕기(sit·ride·sitg·lie)처럼 골반 높이를 정한 자세는 관절이 올라간 만큼(`LIFT`) 내려 엉덩이 자리를 그대로. 걸음은 벌림 x0.82·박자 x0.85(`STRIDE`, 다리 길이 x 벌림 x 박자 ≈ 예전) — 이동 속도는 그대로
+- 확인 `node tools/fit.mjs`: T포즈에서 몸·옷마다 광선으로 바깥면을 재어 안쪽 겹이 바깥 겹을 뚫는 곳을 셈(남·여, CLOTHES 모든 짝). 조끼 위 잠바 깃·몸 안쪽 가려진 곳 같은 예전부터 있던 것 말고 새로 뚫린 곳 없음
+- 비교 사진 notes/shots/body-177-*.jpg

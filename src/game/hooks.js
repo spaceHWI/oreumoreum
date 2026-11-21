@@ -15,6 +15,7 @@ import { $, save, wearV, persist, MAP_ID } from './save.js';
 import { scene, camera } from './scene.js';
 import { life, NS_TUT, trash, runner, player, hp } from './place.js';
 import { topFit, toast, tips, updateStats, ach, onDexGet, gyulFx, gyulLand } from './hud.js';
+import { say } from './director.js'; // 위험 알림은 감독을 거침 (#176)
 import { marker } from './input.js';
 import { dismountRide } from './ride.js';
 import { dismountDeer } from './moves.js';
@@ -47,7 +48,7 @@ life.hooks.enemyHit = (dir, def) => {
   const downed = hp.hit(def.dmg * (1 - wearV('jacket'))); // 잠바(#52): 받는 피해 줄임
   // 전투 오름만 (#36), 피해는 적 표(ENEMIES). 0 이 되면 넉백이 끝난 뒤 쓰러짐
   sound.stone(); if (downed) return;
-  if (hp.hp < hp.max * COMBAT.lowHp && life.enemies.hesitate()) { toast('기운이 얼마 없어요. 물러나서 숨 돌리기'); return; } // #148 한 싸움에 한 번
+  if (hp.hp < hp.max * COMBAT.lowHp && life.enemies.hesitate()) { say('danger', 'lowHp', '기운이 얼마 없어요. 물러나서 숨 돌리기', 2.8, { ttl: 3 }); return; } // #148 한 싸움에 한 번
   toast(n > 0 ? `${def.name}에 받혔어요! 귤 ${n}개가 흩어졌어요` : `${def.name}에 받혔어요! 귤을 던지면 도망가요`);
 };
 // 맞음 움찔 (#107): 짧게 뒤로 밀리고 움찔한 뒤 BOAR.flinchT 안에 바로 섬. 그동안 조작 잠금. 기울기는 bodytilt.js flinchK 가 시간으로만 정함
@@ -61,7 +62,7 @@ export function tickKnock(dt) {
 // 적 (#37): 나타남(경고) · 스스로 떠남 · 쫓아냄(귤 흩뿌림·드문 쓰레기) · 땅 헤집기(쓰레기 흘림)
 const ENEMY_NAME = (k) => ENEMIES[k]?.name || '적';
 const iga = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (c >= 0 && c < 11172 && c % 28 ? '이' : '가'); };
-life.hooks.enemyWave = (w) => { toast(`${ENEMY_NAME(w.kind)} ${w.n}마리가 나타났어요! 귤을 맞히면 도망가요`); enemyWarn.start(w); };
+life.hooks.enemyWave = (w) => { say('danger', 'wave', `${ENEMY_NAME(w.kind)} ${w.n}마리가 나타났어요! 귤을 맞히면 도망가요`, 2.8, { ttl: 4 }); enemyWarn.start(w); };
 life.hooks.enemyGone = (kind) => { if (!life.enemies.list.length) toast(`${iga(ENEMY_NAME(kind))} 숲으로 돌아갔어요`); };
 life.hooks.enemyRepel = (kind, pos, def) => {
   life.scatterTangerines(pos, def.reward.gyul, ENEMY_DROP.max);
@@ -102,7 +103,7 @@ export const dumpers = trash ? createDumpers({
   hooks: {
     canSpawn: () => !NS_TUT || !!save.tut?.done, // 튜토리얼 중엔 안 옴 (#100: 마지막 정낭 단계도)
     paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
-    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); toast(d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요'); },
+    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); say('danger', 'dumperCome', d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요', 2.8, { ttl: 6 }); },
     dumped: (d, n) => { if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
     repel: (kind, pos, def, d) => {
       life.scatterTangerines(pos, def.reward);

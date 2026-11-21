@@ -23,6 +23,7 @@ export const TIP_ICON = {
   peak: P('M3 20l6.500-11 4 6 2.500-3.500L21 20zM9.500 9V3.500l4 1.600-4 1.600'),
 };
 
+// 한가할 때 '가까운 쓰레기 더미는 이쪽이에요'(예전 'idle')는 감독의 실마리로 옮김 (#176, game/director.js heapHint)
 export const TABLE = [
   { id: 'bagFull', when: (S) => S.bagFull && !S.bagOften, ic: 'bag', text: '배낭이 가득 찼어요. 클린하우스에서 버려요', go: 'cleanhouse' },
   { id: 'bagOften', when: (S) => S.bagFull && S.bagOften && S.bagTier < 5, ic: 'bag', text: '귤을 모아 장비점에서 더 큰 배낭을 사 보세요', go: 'shop' },
@@ -38,7 +39,6 @@ export const TABLE = [
   { id: 'buffEnd', when: (S) => S.ev.buffEnd, ic: 'fork', text: '버프가 끝났어요. 스톤에서 다시 식사해요', go: 'stone' },
   { id: 'charge', when: (S) => S.ev.charge, ic: 'hand', text: '버튼을 길게 눌렀다 놓으면 모아 쏘기' }, // #129 첫 적을 쫓아낸 뒤
   { id: 'zoneUp', when: (S) => S.ev.zoneUp, ic: 'peak', text: '위로 갈수록 어려워져요', go: 'map' }, // #136 튜토리얼 뒤 처음 정낭(초보→중수)을 지날 때
-  { id: 'idle', when: (S) => S.idle >= TIP.idleSec, ic: 'arrow', text: '가까운 쓰레기 더미는 이쪽이에요', go: 'heap' },
 ];
 
 export function createTips({ save, persist, show, state, today = () => new Date().toDateString(), rnd = Math.random }) {

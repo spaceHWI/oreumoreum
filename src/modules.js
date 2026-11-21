@@ -65,6 +65,7 @@ import './game/scene.js';
 import './game/place.js';
 import './game/camera.js';
 import './game/hud.js';
+import './game/director.js'; // 감독 (#176): 말을 거는 것을 한 번에 하나씩
 import './game/input.js';
 import './game/menu.js';
 import './game/throw.js';
