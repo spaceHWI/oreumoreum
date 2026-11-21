@@ -5,7 +5,7 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS } from '../../src/balance.js';
 
 // 예전 값 (#144): 실서버 클라이언트가 아직 #137 앞 값 표(v0.23.7)일 수 있음. 그때 값으로 산 장비가 되돌려지지 않게, 쓴 귤은 지금 값과 이 값 중 작은 쪽으로 셈
 //   release 가 #137 뒤 값 표로 나가고 옛 클라이언트가 다 바뀌면(roomcore MIN_VER) 지움
@@ -39,6 +39,11 @@ function norm(s) {
   if (!isObj(s.trash)) s.trash = {};
   s.trash.total = int(s.trash.total, 0, 1e9, 0);
   s.mealFree = s.mealFree ? 1 : 0; // 스톤 첫 식사 무료를 썼는지 (#93)
+  if (isObj(s.look) && 'colors' in s.look) { // 기본 옷 색 번호 (#155): 줄마다 0 ~ 색 수-1 만 남김 (범위 밖·이상한 값은 버림 → 기본색)
+    const c = s.look.colors, o = {};
+    if (isObj(c)) for (const k of ['hat', 'top', 'bottom', 'shoes']) { const n = c[k]; if (Number.isInteger(n) && n >= 0 && n < LOOK_COLORS[k].length) o[k] = n; }
+    s.look.colors = o;
+  }
   s.nick = cleanText(s.nick, NET.nickMax); // 제어·방향 글자·꺾쇠 빼고 16자 (#84)
   return s;
 }

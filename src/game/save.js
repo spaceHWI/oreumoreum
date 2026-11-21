@@ -1,4 +1,5 @@
 // 공용 도구($·isTouch·clamp·wrapA), 저장 불러오기·예전 저장 고치기·persist, 맵·서버 결정, 장비→겉모습 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { tintGear, lcClean } from '../lookcolors.js'; // #155
 import { NSMODE } from '../boot.js';
 import { useNamsongi } from '../namsongi.js';
 import { WEAPONS, HAIR, WEAR, CLOTHES, WEAR_START } from '../balance.js';
@@ -74,10 +75,10 @@ export const clothGear = () => { const hasHair = ACCESSORIES[save.outfit.gear.ha
   WEAR.slots.forEach(({ k }) => { out[k] = CL.wear[k] || `${k}:none`; });
   if (!hasHair) out.hat = 'hat:cap'; // 머리를 고르기 전(구운 머리·모자)엔 모자를 겹쳐 쓰지 않음
   return out; };
-export const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip), ...clothGear() }; if (state.holdBow) save.outfit.gear.hand = 'hand:' + ((WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id === 'hand' ? 'bow' : (WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id); if (state.holdRod) save.outfit.gear.hand = 'hand:none'; };
+export const syncEquipGear = () => { save.outfit.gear = { ...(save.outfit.gear && typeof save.outfit.gear === 'object' ? save.outfit.gear : {}), ...equipGear(save.equip), ...clothGear() }; tintGear(save.outfit.gear, save.look?.colors); /* 기본 옷은 고른 색 (#155) */ if (state.holdBow) save.outfit.gear.hand = 'hand:' + ((WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id === 'hand' ? 'bow' : (WEAPONS[save.weaponUse - 1] || WEAPONS[1]).id); if (state.holdRod) save.outfit.gear.hand = 'hand:none'; };
 syncEquipGear();
 // 캐릭터 고르기 (#51): save.look = { sex: 'm'|'f', skin: 0~2 }. 없으면 입장 뒤 튜토리얼보다 먼저 고르기 화면. save.hairs = 가진 머리(hat 칸 장비)
-export const lookS = { open: false, t: 0, sex: 'm', skin: 0, oldPlayer: !freshSave && !save.look }; // 예전부터 하던 사람은 쓰던 초록 모자도 가짐
+export const lookS = { open: false, t: 0, sex: 'm', skin: 0, colors: { hat: 0, top: 0, bottom: 0, shoes: 0 }, oldPlayer: !freshSave && !save.look }; // 예전부터 하던 사람은 쓰던 초록 모자도 가짐
 if (!save.hairs || typeof save.hairs !== 'object') save.hairs = {};
 if (save.look && typeof save.look === 'object') {
   save.look.sex = save.look.sex === 'f' ? 'f' : 'm'; save.look.skin = Math.max(0, Math.min(SKIN_TONES.length - 1, Math.floor(Number(save.look.skin)) || 0));
@@ -85,6 +86,7 @@ if (save.look && typeof save.look === 'object') {
   if (!save.hairs[save.outfit.gear.hair]) save.outfit.gear.hair = HAIR.start[save.look.sex]; // 안 가진 머리를 쓰고 있으면 기본 머리로
   syncEquipGear();
   save.outfit.skin = { color: SKIN_TONES[save.look.skin] };
+  if (save.look.colors != null) save.look.colors = lcClean(save.look.colors); // 기본 옷 색 (#155): 없으면 지금 기본색
 } else delete save.look;
 if (!save.recycle || typeof save.recycle !== 'object') save.recycle = {};
 save.recycle.visits = Math.max(0, Math.floor(Number(save.recycle.visits) || 0)); // 클린하우스에 버린 횟수
