@@ -11,6 +11,7 @@ import { scene, renderer, spots, lampNight } from './scene.js';
 import { life, NS_TUT, trash, player, hp, bloom, stream } from './place.js';
 import { cam } from './camera.js';
 import { toast, panelOpen, updateStats } from './hud.js';
+import { say, director } from './director.js'; // #176 첫 투기꾼 안내는 감독을 거침
 import { sound, dumpers, enemyWarn, dumpWarn, gyulShower } from './hooks.js';
 import { createGuide } from './guide.js';
 
@@ -68,7 +69,7 @@ const pacing = createPacing({
     delight,
   },
 });
-const guide = createGuide({ dumpers, trash, player, cam, spots, save, persist, toast, state, scene, height });
+const guide = createGuide({ dumpers, trash, player, cam, spots, save, persist, toast: (m) => say('danger', 'guide:' + m, m, 3, { ttl: 6 }), state, scene, height, door: () => director.isOpen('dumper') });
 // 다 치운 더미 (pickup.js heap-clear, 내가 치운 것만)
 function onCleared(h) { cleared.set(h, pacing.t); pacing.note('bloom'); if (!save.pace.bloomed) { save.pace.bloomed = 1; persist(); } }
 // 투기꾼이 노릴 더미 무게: 방금 치운 더미는 0, 플레이어 가까운 더미(PACE.near)를 먼저

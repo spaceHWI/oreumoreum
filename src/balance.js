@@ -1103,3 +1103,46 @@ export const SCREEN = {
 // 내 가방 (#166, src/game/bag.js): 창 옆 캐릭터 미리보기 카메라 (update.js cam.mode 'wardrobe')
 // charH 캐릭터 키(m, 모자 포함 어림), fillW·fillN 창이 덮지 않은 자리 높이에서 캐릭터가 차지할 비율(데스크톱·폰), topBar 위 한 줄 높이(px), lift 카메라를 시점보다 얼마나 위에(m)
 export const BAG = { charH: 2.3, fillW: 0.55, fillN: 0.78, topBar: 56, lift: 0.4 };
+
+// 감독 (#176, src/director.js · game/director.js): 말을 거는 것을 한 번에 하나씩, 유저 저니 순서대로 (notes/journey.md). 시간·횟수는 모두 임의값
+// prio 우선순위(앞이 높음): danger 쓰러짐·위험 알림 > story 이야기 이벤트 예고 > quest 퀘스트 받기·끝내기 창 > level 레벨업 고르기 > intro 새 시스템 소개 > tip 팁 > mate 동료 대사 > mutter 혼잣말 > radio 오름 방송
+// gap 낮은 것은 높은 것이 끝나고 이 초 뒤, quick 같거나 높은 것은 이 초 뒤, preempt 이것보다 앞(=danger)은 지금 나가는 낮은 것을 끊음, fightMax 싸우는 중엔 앞 몇 개만(danger·story·quest)
+// sec 한 번 보이는 기본 시간, ttl 기다릴 수 있는 기본 시간(넘으면 버림), introTtl 문 소개가 기다릴 수 있는 시간, gateSec 문 조건 보는 간격
+// perDay 하루에 새로 소개하는 시스템(count: 1 인 문: 레벨·첫 투기꾼·들판 떼·오늘의 할 일·전리품) 수. 퀘스트·동료·이야기는 안 셈, idleSec 이만큼 한가하면 다음 실마리(60초 안에 나오게 조금 앞), idleBack 실마리를 줘도 그대로면 두 배씩 늘리는 횟수, retry 실마리를 못 냈을 때 다시 볼 때까지(초)
+// doors 문 순서 (notes/journey.md 2절 표). id 는 저장에 쓰므로 바꾸지 않는다. need {사실: 최소}, after 앞 문(없으면 표에서 바로 앞의 등록된 문, null 이면 앞 문 없음), count 1 이면 하루 개수에 셈
+//   사실(facts): tut 튜토리얼 끝 · jeong 정낭을 나섬 · picked 치운 수 · dumps 버린 수 · bloomed 꽃을 피움 · attacked 첫 공격을 겪음 · zonesDone 끝낸 구역 수 · zone 가 본 가장 높은 구역 번호 · days 놀아 본 날 · night 밤
+//   뒤 이슈가 사실을 더하면 game/director.js FACTS 에 한 줄. 등록하지 않은 문(아직 없는 시스템)은 건너뜀
+export const JOURNEY = {
+  prio: ['danger', 'story', 'quest', 'level', 'intro', 'tip', 'mate', 'mutter', 'radio'],
+  gap: 4, quick: 0.6, preempt: 1, fightMax: 3,
+  sec: 3, ttl: 20, introTtl: 600, gateSec: 1,
+  perDay: 3, idleSec: 55, idleBack: 3, retry: 8,
+  doors: [
+    { id: 'name', need: {}, after: null }, // #162 이름 짓기
+    { id: 'color', need: {} }, // #155 기본 옷 색
+    { id: 'tutorial', need: {} }, // #151
+    { id: 'tips', need: { tut: 1 }, after: null }, // #66 상황 팁 (튜토리얼 뒤)
+    { id: 'mateSunja', need: { jeong: 1 } }, // #172 순자 삼춘 (정낭을 나서면)
+    { id: 'quest', need: { jeong: 1 } }, // #158 오름지기 첫 퀘스트
+    { id: 'heapNear', need: { jeong: 1 } }, // #160 들머리 더미
+    { id: 'shopQuest', need: { dumps: 1 } }, // #158 장비점 주인 퀘스트 (첫 버리기 뒤)
+    { id: 'level', need: { attacked: 1 }, count: 1 }, // #159 첫 레벨업과 증강
+    { id: 'dumper', need: { tut: 1, bloomed: 1 }, after: 'tips', count: 1 }, // #135 첫 투기꾼 안내 (꽃 한 번 뒤 첫 공격)
+    { id: 'storyMom', need: { babies: 5 }, after: 'level' }, // #168 '엄마가 왔다' (첫 레벨업 뒤, 새끼 5마리째)
+    { id: 'field', need: { fieldQuest: 1 }, count: 1 }, // #173 들판 떼 본격 (퀘스트 '들판 탐사' 뒤, 그 전엔 물결 1단계까지)
+    { id: 'boss', need: { tut: 1 }, after: 'tips' }, // #139 구역 우두머리 (구역 80%, 나올 때 위험 알림)
+    { id: 'zoneDone', need: { tut: 1 }, after: 'tips' }, // #139 #119 구역 완료·하르방
+    { id: 'mateMinsu', need: { zonesDone: 1 } }, // #172 민수 (구역 1 우두머리 뒤)
+    { id: 'nightLight', need: { night: 1, picked: 30 } }, // #168 '수상한 불빛' (첫날 밤)
+    { id: 'radio', need: { zonesDone: 1 } }, // #165 오름 방송
+    { id: 'shopQuests', need: { days: 2 } }, // #158 #167 가게 NPC 퀘스트 (2일)
+    { id: 'daily', need: { days: 2 }, count: 1 }, // #125 오늘의 할 일
+    { id: 'mateJenny', need: { zone: 2 } }, // #172 제니 (구역 2 에서)
+    { id: 'tourist', need: { zone: 2 } }, // #163 관광객
+    { id: 'loot', need: { zone: 3 }, count: 1 }, // #140 전리품·강화 (구역 3)
+    { id: 'crow', need: { zone: 3 } }, // #163 까마귀 도둑
+    { id: 'title', need: { zone: 3 } }, // #165 칭호
+    { id: 'gift', need: { zone: 3 } }, // #175 귤 주기 (멀티)
+    { id: 'aliens', need: { zone: 4 } }, // #168 외계인·'분리수거 조약' (구역 4·5)
+  ],
+};

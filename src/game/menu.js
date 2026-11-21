@@ -69,6 +69,7 @@ export function enableDev() {
       state.resetting = true;
       const keep = { ...save }; delete keep.entered; delete keep.look; delete keep.server;
       if (keep.pace) keep.pace = { ...keep.pace, hint: 0 }; // #135 투기꾼 안내도 다시
+      delete keep.journey; // #176 감독의 문·소개도 처음부터
       try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
       location.reload();
     });
