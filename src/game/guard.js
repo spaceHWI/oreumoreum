@@ -61,6 +61,7 @@ for (const s of SPOTS) {
   guards.set(s.zone, { s, hb, ids, k: 0, mode: null, t: 0, wait: 0, pillar, pt: -1 });
 }
 const lite = () => quality.level === 0;
+const why = new Map(); // 구역 → 'boss' (우두머리를 쫓아내 선 것, #139 메시지)
 const zoneName = (z) => ZONES[z - 1]?.name || `${z}구역`;
 
 /* ---------- 세운 시각 ---------- */
@@ -113,7 +114,7 @@ function place(g) {
 }
 function startFx(g) {
   const { s } = g, z = g.s.zone, color = BLOOM.zones[z]?.color || '#ffffff', far = Math.hypot(s.x - player.pos.x, s.z - player.pos.z), sm = lite();
-  toast(`${zoneName(z)} 구역을 다 치웠어요! 돌하르방이 지켜 줄 거예요`, 3.6);
+  toast(why.get(z) === 'boss' ? `${zoneName(z)} 구역 완료! 돌하르방이 지켜 줄 거예요` : `${zoneName(z)} 구역을 다 치웠어요! 돌하르방이 지켜 줄 거예요`, 3.6); why.delete(z);
   late.sound?.stone?.(); late.sound?.heapClear?.(2, Math.max(0.2, 1 - far / 120));
   if (bfx && far < 160) {
     bfx.ring(s.x, s.z, 5.5, 1.1, '#e9d2a6', 0, 1.2); // 흙먼지 고리
@@ -150,6 +151,9 @@ late.guard = guards.size ? {
   state: () => [...guards].map(([z, g]) => ({ zone: z, standing: standing(z), k: +g.k.toFixed(2), mode: g.mode, left: atOf(z) ? Math.max(0, Math.round(holdSec - (Date.now() - atOf(z)) / 1000)) : 0, server: !!srv })),
   hold(sec) { holdSec = Math.max(1, +sec || G.holdSec); sync(false); return holdSec; },
   stand(z) { if (!guards.has(z)) return false; save.zg[z] = Date.now(); persist(); sync(true); return true; },
+  standing: (z) => standing(z), server: () => !!srv,
+  // 우두머리를 쫓아냄 (#139, boss.js): 방이 zg 를 알면 방장이 보낸 {t:'bd'} 뒤 방이 알려 줌(여기선 메시지만 정함), 아니면 기기에서 바로 세움
+  raise(z, local) { if (!guards.has(z)) return false; why.set(z, 'boss'); if (srv && !local) return true; if (standing(z)) return false; save.zg[z] = Date.now(); persist(); sync(true); return true; },
   clear(z) { return trash.test.clearZone(z); },
   go(z) { const g = guards.get(z); if (!g) return null; const { s } = g, x = s.x + Math.sin(s.rot) * 7, zz = s.z + Math.cos(s.rot) * 7; player.pos.set(x, height(x, zz), zz); player.visY = player.pos.y; player.heading = s.rot + Math.PI; cam.yaw = s.rot; return { x: +x.toFixed(1), z: +zz.toFixed(1) }; },
   guards,

@@ -220,7 +220,7 @@ export const player = {
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
 // ---------- HP·쓰러짐·들것 귀환 (#36) ----------
-export const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, enabled: () => state.sessionOn, showBar: () => (state.tension || 0) > 0.02, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top'),
+export const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, startAt: () => late.wakeAt?.(), enabled: () => state.sessionOn, showBar: () => (state.tension || 0) > 0.02, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top'),
   el: { bar: $('hp-bar'), fill: $('hp-fill'), dim: $('hp-dim'), wait: $('hp-wait'), ring: $('hp-ring'), num: $('hp-num') },
   onDown: () => { late.closePanels(); if (player.riding) late.dismountDeer(); if (player.pose === 'sit') late.standUp(); state.emo?.stop(); late.ach.emit('down'); },
   onUp: () => late.tips.event('carried'), // 들것으로 돌아옴 (#66)

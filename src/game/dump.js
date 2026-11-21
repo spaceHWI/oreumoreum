@@ -232,4 +232,5 @@ const CTX_ICON = {
   cut: SCISSORS, // 머리 (#58)
   wear: SHIRT, // 옷 (#59)
   skip: '<path d="M5 5l7 7-7 7M13 5l7 7-7 7"/>',
+  steps: '<path d="M3 20h6v-4h5v-4h4V8h3"/><path d="M3 20V9"/>', // 지름길 (#139)
 };
