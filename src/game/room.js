@@ -36,6 +36,7 @@ export const net = createNet({
     late.guardNet?.link(room); // 구역 지킴이 돌하르방 세운 시각 (#119, guard.js)
     late.bossNet?.link(room); // 구역 우두머리 (#139, boss.js)
     late.raidNet?.link(room); // 오름 레이드 (#181, raid.js)
+    late.caveNet?.link(room); // 동굴 적 같이 보기 (#205, caveshare.js)
     late.endNet?.link(room); // 엔딩 시네마틱 (#168, ending.js)
     late.giveNet?.link(room); // 귤 주기 (#175, give.js)
     // 서버가 이동을 되돌림 (#84): 너무 빠르거나 순간 이동이 잦으면 마지막으로 받아 준 자리로
