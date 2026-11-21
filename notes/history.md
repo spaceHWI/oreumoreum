@@ -1547,3 +1547,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 서버 `earn.js` 8): 하루 인정 몫 `cred.cd`(넘으면 halfK) · 상자 `cred.cc`(층 id 하루 한 번) · 주인 `cred.cb`(오늘·어제 날짜, 하루 한 번). `validate.js` 가 runs·chest·boss 모양을 바로잡음. `NET.earnRec.caveDayFull` 70000
 - 확인: `tools/caverun.js` 한 판 어림(머신건 15~25분 검사) + `--live` 3번 조각(판 수·화살표·바닥·낙석·물길·상자·주인), `tools/sec.js` 동굴 4줄 더함, `tools/econ.js` 동굴 하루 2판 줄(`--nocave` 비교)
 - 남은 것: 4번(멀티 칸·쪽지·옷·퀘스트·감독 문). 입구는 아직 어드민만. 주인 기운 줄이 화면 위 퀘스트 띠와 겹침(오름 우두머리 줄과 같은 자리)
+
+## #145 서버의 옛 값(OLD_PRICE) 지우기
+- 11/22 04:00(한국 시간) 뒤. `server/src/validate.js` 의 `OLD_PRICE`·`priceOf` 를 지워, 장비·무기·옷을 산 귤은 지금 값 표로만 셈 (옛 클라이언트는 앞서 `roomcore.js MIN_VER` 0.24.0 으로 새로고침 알림)
+- `tools/sec.js` 의 옛 값 주석 한 줄 정리
