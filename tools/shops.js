@@ -56,10 +56,10 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     ok(await E(() => window.__oreum.save.equip.weapon === 2 && window.__oreum.save.weaponUse === 2), '무기 사면 바로 장착');
     ok(await E(() => /장착했어요/.test(document.querySelector('#shoppop .buy-group[data-k="weapon"] .buy-card[data-i="1"]')?.textContent || '')), "카드에 '장착했어요'");
     await shot('3-bought');
-    // 옛 자리 4: 무기 고르는 창의 안 가진 무기 → 장비점 길 안내 / 옷장 사러 가기 → LEAP
+    // 옛 자리 4: 내 가방 무기 탭의 안 가진 무기 → 장비점 길 안내 / 옷장 사러 가기 → LEAP
     await E(() => { document.getElementById('shoppop').hidden = true; window.__oreum.street.go(0, 2); }); await W(300);
-    await E(() => window.__oreum.weapon.open()); await W(300); await p.click('#armwin-cards .menu-card.off'); await W(500);
-    ok(await E(() => !!window.__oreum.cleanhouse.autoState()), '무기 창 안 가진 무기 → 장비점으로 걸어감');
+    await E(() => window.__oreum.weapon.open()); await W(300); await p.click('#bag-cards .bag-card.lock .go'); await W(500);
+    ok(await E(() => !!window.__oreum.cleanhouse.autoState()), '내 가방 무기 탭 안 가진 무기 [사러 가기] → 장비점으로 걸어감');
     await E(() => window.__oreum.cleanhouse.autoStop());
     await E(() => window.__oreum.street.goShop('leap')); await W(400);
     ok(await E(() => !!window.__oreum.cleanhouse.autoState()), 'LEAP 길 안내');

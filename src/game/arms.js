@@ -1,5 +1,5 @@
 // 무기 3~6단계 (#123): 귤 총(한 발씩)·귤 머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(포물선, 광역)
-// 쏘기·누르고 있기·탄 표시·무기 고르는 창(#armwin, 탈것 창 #109 과 같은 방식)·멀티에 보이기(presence wf 사건만)
+// 쏘기·누르고 있기·탄 표시·무기 고르기(내 가방 무기 탭 #166)·멀티에 보이기(presence wf 사건만)
 // 효과는 src/weaponfx.js, 손에 든 모양 src/weaponmodels.js, 소리 src/weaponsound.js, 수치 balance.js WEAPONS·WEAPON_FX
 // 활(#38)·손 던지기는 throw.js 그대로. throw.js fireWeapon 이 3~6단계면 late.fireArm 을 부름
 import * as THREE from 'three';
@@ -14,10 +14,9 @@ import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
 import { scene } from './scene.js';
 import { life, buff, runner, player } from './place.js';
-import { updateStats, busy, toast, ui, closePanels } from './hud.js';
+import { updateStats, busy, toast, ui } from './hud.js';
 import { keys, marker } from './input.js';
 import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow, fireWeapon } from './throw.js';
-import { cam } from './camera.js';
 
 Object.assign(Sound.prototype, weaponSounds); // gun·mg·laser·lob·boom
 const sfx = () => late.sound;
@@ -279,37 +278,22 @@ function visShot(e, kind, to) {
   armFx.shoot(f, v, { vis: true, life: D / w.speed + 0.05 });
 }
 
-// ---------- 무기 고르는 창 (#armwin): 던지기 버튼 옆 ▾ 또는 메뉴. 가진 것은 눌러 바로 고름, 안 가진 것은 흐리게 값과 함께 ----------
-const armMore = $('arm-more'), armWin = $('armwin'), armCards = $('armwin-cards');
-const armSub = (w) => w.id === 'hand' ? '귤 던지기 · 무료' : w.dps ? `초당 ${w.dmg} · ${w.range}m` : w.r ? `${w.dmg} · 반경 ${w.r}m` : `${w.dmg} · ${w.range}m`;
-function buildArmWin() {
-  armCards.innerHTML = '';
-  const own = save.equip.weapon;
-  WEAPONS.forEach((w, i) => {
-    const has = i < own, cur = save.weaponUse === i + 1;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card' + (has ? '' : ' off') + (cur ? ' on' : ''); b.title = w.name;
-    b.innerHTML = `<svg class="food" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${late.TIER_ART?.weapon?.[i] || ''}</svg><span class="mn"><b>${w.name}</b><small>${armSub(w)}</small></span><span class="mv">${has ? (cur ? '<span class="bf">✓</span>' : '') : `<span class="price"><i></i>${w.price.toLocaleString()}</span>`}</span>`;
-    b.addEventListener('click', () => (has ? chooseArm(i + 1) : showArmShop(w)));
-    armCards.append(b);
-  });
-}
-export function openArmWin() { if (cam.mode === 'wardrobe') return; closePanels(); buildArmWin(); armWin.hidden = false; }
-function chooseArm(tier) {
+// ---------- 무기 고르기: 예전 창(#armwin)은 내 가방(#166, bag.js) 무기 탭으로 합침. 던지기 버튼 옆 ▾ 가 그 탭을 엶 ----------
+const armMore = $('arm-more');
+export const armSub = (w) => w.id === 'hand' ? '귤 던지기 · 무료' : w.dps ? `초당 ${w.dmg} · ${w.range}m` : w.r ? `${w.dmg} · 반경 ${w.r}m` : `${w.dmg} · ${w.range}m`;
+export function openArmWin() { late.openBag?.('arm'); }
+export function chooseArm(tier) {
   if (tier < 1 || tier > save.equip.weapon) return;
   stopLaser(); A.held = false;
   save.weaponUse = tier; persist(); setHoldBow(false); late.net?.send(true);
-  updateArmBtn(); buildArmWin();
+  updateArmBtn();
   late.sound?.beep?.(true);
-}
-function showArmShop(w) { // 안 가진 무기: 가게 거리 장비점으로 길 안내 (#128)
-  armWin.hidden = true;
-  if (late.goShop) late.goShop('gear', `${w.name}은(는) 장비점에서 사요`); else toast(`${w.name}은(는) 장비점에서 사요`);
 }
 // ▾ 는 손 말고 무기를 하나라도 가졌을 때만, 전투 오름에서만(무기가 있는 곳)
 export function updateArmBtn() {
   const show = save.equip.weapon > 1;
   if (armMore.hidden === show) armMore.hidden = !show;
-  if (!armWin.hidden) buildArmWin();
+  late.bagRefresh?.('arm');
 }
 armMore.addEventListener('click', (e) => { e.stopPropagation(); openArmWin(); });
 updateArmBtn();

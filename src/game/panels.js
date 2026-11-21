@@ -21,7 +21,7 @@ $('btn-chat').addEventListener('click', openChat);
 $('chat-form').addEventListener('submit', (e) => { e.preventDefault(); const v = $('chat-input').value; $('chat-input').value = ''; $('chat').hidden = true; canvas.focus(); if (v.trim()) { late.social.say(v, runner.root); ach.emit('chat'); } });
 $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('chat').hidden = true; });
 
-$('menu-wardrobe').addEventListener('click', () => { closePanels(); late.openWardrobe(); });
+$('menu-wardrobe').addEventListener('click', () => { closePanels(); late.openBag('wear'); }); // 내 가방 (#166)
 $('menu-shop').addEventListener('click', () => { closePanels(); late.shopGuide(); }); // #128 가게 안내
 $('menu-sign').addEventListener('click', () => { closePanels(); late.openSign(); });
 $('ver-text').textContent = `v${VERSION}` + (RELEASE_NOTES[0]?.date ? ` · ${RELEASE_NOTES[0].date.replace(/-/g, '.')}` : ''); // 첫 화면에 새 릴리스 노트 날짜도

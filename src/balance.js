@@ -1099,3 +1099,7 @@ export const SCREEN = {
   fovLow: 62,    // 낮은 가로 화면 세로 화각
   lowH: 500,     // 이 높이(px) 이하이면서 가로가 더 길면 낮은 가로 화면 (page.html 의 같은 media query 와 맞춤)
 };
+
+// 내 가방 (#166, src/game/bag.js): 창 옆 캐릭터 미리보기 카메라 (update.js cam.mode 'wardrobe')
+// charH 캐릭터 키(m, 모자 포함 어림), fillW·fillN 창이 덮지 않은 자리 높이에서 캐릭터가 차지할 비율(데스크톱·폰), topBar 위 한 줄 높이(px), lift 카메라를 시점보다 얼마나 위에(m)
+export const BAG = { charH: 2.3, fillW: 0.55, fillN: 0.78, topBar: 56, lift: 0.4 };
