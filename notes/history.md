@@ -1238,3 +1238,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 꽁초: 더미가 아닌 낱개(흡연자 파일이 그림·주움). 주우면 `trash.addToBag('vinyl')` + 도감 'butt:0'(쓰레기 칸 끝, 아이콘 dexicons.js). 더미 수·구역 완료·치운 양(랭킹)에는 안 셈, 저장하지 않음(새로 고치면 사라짐)
 - 멀티: 투기꾼이 방으로 맞춰지지 않고 사람마다 따로 나오므로 흡연자도 그 길 그대로(보내는 것 없음). 귤 8은 서버 ① 작은 몫 안
 - 업적 뱃지 '금연 구역 지킴이'(b-nosmoke, smoker-repel 10번, 30귤). `tools/econ.js`: 흡연자 하루 귤(들머리 둘레에 있는 시간 25% 어림) 22 = 1일 벌이의 0.5%, --nosmoker 비교
+## #169 캐릭터 혼잣말
+- `src/game/mutter.js`(swarm 뒤): 내 캐릭터 머리 위 말풍선(채팅 모양, 기울인 옅은 글자·점선 테두리). 3.5초, 사이 90초 + 0~210초(평균 약 3분 15초). 내 화면에만
+- 차례는 감독(kind 'mutter')을 거침 → 싸움·창·튜토리얼·다른 안내 중엔 안 나옴. 'tips' 문(튜토리얼 뒤)이 열려야 시작
+- 줄마다 when·solved·need. 같은 줄 최대 3번(`save.mutter.seen`), 풀리면(그 일을 함) 안 나옴. 일 줄(큰 더미에 들어섬·투기꾼이 버림·가게 거리 처음·정상 처음)은 일이 난 뒤 20초 안에만, 기다림 없이 gap 만 지키면 바로
+- 한가한 혼잣말 10줄은 실마리 조건이 5분 넘게 없을 때만. 글은 `src/punktext.js MUTTER_TEXT`, 수치 `balance.js MUTTER`
+- 갈치 냄새 줄은 만족한상회(#167)가 지어졌을 때만, 없으면 `streetAlt`. 하르방 줄은 지금 있는 '코 맞히기'(ach hareubang)가 풀림
+- 메뉴 설정 '혼잣말: 켬/끔'(save.mutter.off). 투기꾼 버림은 hooks.js `late.mutterDumped`
+- dev `__oreum.mutter.say(id)`·`now()`·`state()`·`time(초)`, 확인 `node tools/mutter.js`

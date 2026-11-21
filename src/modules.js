@@ -103,6 +103,7 @@ import './game/ending.js'; // 엔딩 시네마틱 (#168)
 import './game/story.js'; // 이야기 이벤트 (#168)
 import './game/swarm.js'; // 들판 떼 (#173)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
+import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
 import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
