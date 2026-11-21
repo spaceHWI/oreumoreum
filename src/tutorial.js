@@ -1,17 +1,20 @@
 // 들머리 튜토리얼 (#31 → #62 → #100). 위쪽 토스트 한 줄로 할 일을 알려 주고, 바닥의 빛나는 원으로 이끈다.
-// 걷기 → 달리기 → 귤 3개 줍기 → 과녁에 귤 3번 맞히기 → (돌다리를 건너) 쓰레기 3개 줍기(호주머니) → 클린하우스에 버리기 → 첫 보너스 귤 → 집게 → 배낭 → 정낭 지나 오름으로
+// 걷기 → 확대·축소(#151) → 달리기 → 귤 3개(지나가면 모임 #151) → 과녁에 귤 3번 맞히기 → (돌다리를 건너) 작은 더미 치우기·꽃(#151, 호주머니) → 클린하우스에 버리기 → 첫 보너스 귤 → 집게 → 배낭 → 정낭 지나 오름으로
 // #100 단계마다 격리된 칸: 들머리 마당을 낮은 돌담(stonewall.js createPens)으로 4칸으로 나눔(TUT.cells). 칸의 단계를 다 하면 다음 칸 정낭이 열리고 길이 빛남.
 // 단계마다 그 행동을 해야 넘어감: 다음 단계 UI 는 그때 나옴(data-tut). 지금 눌러야 할 화면 버튼·상점 칸엔 귤색 맥박 고리(#tut-focus), 나머지 UI 는 살짝 어둡게(body.tut-dim).
 // 진행이 없으면 TUT.fingerT 초 뒤 손가락이 누를 곳을 가리키고, TUT.easyT 초 뒤 토스트를 흔들고 더 쉬운 말로 바꿈. 실패 상태 없음(손 던지기는 귤이 줄지 않음, 살 귤은 모자라면 채움)
 // 건너뛰기는 개발자 버튼(?hwi=1)에만 (menu.js dev-tut → skipAll). 저장 save.tut {step, done, v, gyul[], hits}
-// #44: 점프 단계를 뺌. 예전 저장(save.tut.v 없음)의 단계 번호는 하나씩 당김. #62: v2 → v3 는 귤·과녁 두 단계가 끼어 2 이상이면 둘 밀기
+// #44: 점프 단계를 뺌. 예전 저장(save.tut.v 없음)의 단계 번호는 하나씩 당김. #62: v2 → v3 는 귤·과녁 두 단계가 끼어 2 이상이면 둘 밀기. #151: v3 → v4 는 확대 단계가 걷기 뒤에 끼어 1 이상이면 하나 밀기
+// #151 가게 거리 쪽 길목(SHOP_ST.d)은 돌담 대신 닫힌 정낭. 튜토리얼이 끝나면 다른 칸 담과 함께 사라짐
 import * as THREE from 'three';
-import { TUT, TANGERINE as TG, TOOLS, BAGS, WALL } from './balance.js';
+import { TUT, TANGERINE as TG, TOOLS, BAGS, WALL, SHOP_ST, GYUL_PICK } from './balance.js';
 import { nsAlong } from './namsongi.js';
 import { createPens } from './stonewall.js';
+import { drape } from './drape.js';
 
 // 토스트 아이콘 (viewBox 24, 선)
 const IC = {
+  zoom: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5M10.5 8v5"/>',
   walk: '<path d="M8 20c-2 0-2.5-2-2-4l1-4c.5-2 3-2 3 0l-.5 4c-.2 2-.5 4-1.5 4zM16 12c-2 0-2.5-2-2-4l1-4c.5-2 3-2 3 0l-.5 4c-.2 2-.5 4-1.5 4z"/>',
   run: '<circle cx="14" cy="4.5" r="1.8"/><path d="M6 21l3.5-5 3 2 1-5.5L17 15h3M9 11l2.5-3.5 4 1.5 2 3M5 12l3-1"/>',
   hand: '<path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2 7-6 7s-6-3-6-6l-1-3a1.4 1.4 0 0 1 2.5-1L8 13"/>',
@@ -28,9 +31,10 @@ const SAY = {
   walk: { pc: ['WASD 키로 걸어 봐요', 'W 키를 꾹 눌러요'], touch: ['화면을 눌러 걸어 봐요', '빛나는 동그라미를 눌러요'], ic: 'walk' },
   run: { pc: (r) => (r ? ['빛나는 곳까지 달려요', '빛나는 곳으로 가요'] : ['Shift 키로 달려 봐요', 'Shift 키를 한 번 눌러요']),
     touch: (r) => (r ? ['빛나는 곳까지 달려요', '빛나는 곳으로 가요'] : ['달리기 버튼을 눌러요', '빛나는 버튼을 눌러요']), ic: 'run' },
-  gyul: { pc: ['E 키로 귤을 주워요', '귤 옆에서 E 키를 눌러요'], touch: ['귤 3개를 주워요', '귤 옆에서 손 버튼'], ic: 'hand' },
+  zoom: { pc: ['마우스 휠을 굴려 화면을 당겨 봐요', '휠을 위아래로 굴려요'], touch: ['두 손가락을 벌리거나 오므려 봐요', '두 손가락으로 화면을 벌려요'], ic: 'zoom' }, // #151
+  gyul: { pc: ['귤 쪽으로 걸어가 봐요', '귤 옆을 지나가요'], touch: ['귤 쪽으로 걸어가 봐요', '귤 옆을 지나가요'], ic: 'walk' }, // #151 지나가면 모임
   throw: { pc: ['F 키로 과녁에 던져요', 'F 키만 누르면 맞아요'], touch: ['과녁에 귤을 던져요', '빛나는 버튼만 눌러요'], ic: 'throw' },
-  pick: { pc: ['E 키로 쓰레기를 주워요', '쓰레기 옆에서 E 키'], touch: ['쓰레기 3개를 주워요', '쓰레기 옆에서 손 버튼'], ic: 'hand' },
+  pick: { pc: ['E 키로 쓰레기 더미를 치워요', '더미 옆에서 E 키'], touch: ['쓰레기 더미를 치워요', '더미 옆에서 손 버튼'], ic: 'hand' }, // #151 작은 더미
   dump: { pc: ['클린하우스에 버려요', '파란 집 앞에서 F 키'], touch: ['클린하우스에 버려요', '파란 집 앞에서 버튼'], ic: 'dump' },
   bonus: { pc: ['보너스 귤을 받아요!', '보너스 귤을 받아요!'], touch: ['보너스 귤을 받아요!', '보너스 귤을 받아요!'], ic: 'gift' },
   tongs: { pc: ['장비점 좌판에서 집게를 사요', '좌판 앞에서 F 키'], touch: ['장비점 좌판에서 집게를 사요', '빛나는 곳을 눌러요'], ic: 'tongs' },
@@ -57,20 +61,24 @@ function P(d, lat = 0) {
   const a = nsAlong('approach', 0, 1, lat), b = nsAlong('approach', 1, 1, lat); return [a.x + (a.x - b.x) * -d, a.z + (a.z - b.z) * -d];
 }
 
-export function createTutorial({ save, persist, player, isTouch, pts, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol, bagCap, tutTrashLeft, tutTrashNext, ch, col, low, addTargets, sound, juice, ctxIc, shopTab, onTop, onCoins, onDone }) {
-  const S = (save.tut ||= { step: 0, done: false, v: 3 });
+export function createTutorial({ save, persist, player, isTouch, camDist, gyulR, onGyul, toast, pts, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol, bagCap, tutTrashLeft, tutTrashNext, ch, col, low, addTargets, sound, juice, ctxIc, shopTab, onTop, onCoins, onDone }) {
+  const S = (save.tut ||= { step: 0, done: false, v: 4 });
   if (!S.v) { if (S.step > 2) S.step--; S.v = 2; } // 예전 순서(점프가 3번째)의 저장 → v2
   if (S.v === 2) { if (S.step >= 2) S.step += 2; S.v = 3; persist(); } // #62: 귤·과녁 단계가 달리기 뒤에 끼어듦 (이미 지난 사람은 건너뜀)
+  if (S.v === 3) { if (S.step >= 1) S.step += 1; S.v = 4; persist(); } // #151: 확대 단계가 걷기 뒤에 끼어듦
   if (!Array.isArray(S.gyul)) S.gyul = [];
   S.hits ||= 0;
   const none = { update() {}, notify() {}, skipAll() {}, gyulNear: () => -1, takeGyul() {}, active: false };
   if (!pts || !pts.walk || !stream || !jeong) { return none; }
-  const steps = ['walk', 'run', 'gyul', 'throw', 'pick', 'dump', 'bonus', 'tongs', 'bag', 'gate'];
-  // 단계마다 새로 나오는 UI. 줍기 버튼(E)은 귤 줍기부터, 상호작용 버튼(F)은 과녁 던지기부터 (#62)
-  const UNLOCK = { walk: ['move'], run: ['speed', 'jump'], gyul: ['pick', 'gyul'], throw: ['interact'], pick: ['bag', 'clean'] }; // 위쪽 줄 (#75): 구역·좌표·업적(hud)은 끝나면
+  const steps = ['walk', 'zoom', 'run', 'gyul', 'throw', 'pick', 'dump', 'bonus', 'tongs', 'bag', 'gate'];
+  // 단계마다 새로 나오는 UI. 줍기 버튼(E)은 쓰레기 줍기부터(#151, 귤은 지나가면 모임), 상호작용 버튼(F)은 과녁 던지기부터 (#62)
+  const UNLOCK = { walk: ['move'], run: ['speed', 'jump'], gyul: ['gyul'], throw: ['interact'], pick: ['pick', 'bag', 'clean'] }; // 위쪽 줄 (#75): 구역·좌표·업적(hud)은 끝나면
   const idx = (name) => steps.indexOf(name);
   // 위쪽 토스트 (#60·#66 과 같은 모양): 아이콘 + 한 줄 + 남은 수
   const tEl = document.createElement('div'); tEl.id = 'tut-toast'; tEl.className = 'tip-toast panel'; tEl.setAttribute('role', 'status'); tEl.hidden = true; document.body.append(tEl);
+  tEl.addEventListener('click', (e) => { if (cur === 'zoom' && e.target.closest('.tut-pass')) counters.zoom = 1; });
+  // #151 폰 확대 단계: 화면 가운데 두 손가락이 벌어졌다 오므려지는 그림 (#tut-focus 손가락 그림체)
+  const pinchEl = document.createElement('div'); pinchEl.id = 'tut-pinch'; pinchEl.hidden = true; pinchEl.setAttribute('aria-hidden', 'true'); pinchEl.innerHTML = `<b class="f1">${FINGER}</b><b class="f2">${FINGER}</b>`; document.body.append(pinchEl);
   const arrowEl = document.createElement('div'); arrowEl.id = 'tut-arrow'; arrowEl.className = 'panel round'; arrowEl.hidden = true; arrowEl.innerHTML = '<i class="dot"></i><i class="tip"></i>'; document.body.append(arrowEl);
   // 지금 눌러야 할 곳: 귤색 고리가 퍼지는 맥박. 진행이 없으면 손가락(.idle)
   const focusEl = document.createElement('div'); focusEl.id = 'tut-focus'; focusEl.hidden = true; focusEl.innerHTML = `<i class="ring"></i><i class="ring r2"></i><b class="finger">${FINGER}</b>`; document.body.append(focusEl);
@@ -79,10 +87,12 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   const ring = new THREE.Group(); ring.visible = false; scene.add(ring);
   const glowMat = new THREE.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending });
   const edgeMat = new THREE.MeshBasicMaterial({ color: '#fff3c9', transparent: true, opacity: 0.9, depthWrite: false });
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), glowMat); ring.add(disc);
-  const edge = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), edgeMat); edge.position.y = 0.01; ring.add(edge);
-  const pulse = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), edgeMat.clone()); pulse.position.y = 0.02; ring.add(pulse);
-  ring.renderOrder = 3;
+  // #151 원이 비탈에서 땅에 묻히지 않게: 점마다 땅 높이를 따라 휨 (drape.js). 겹쳐 그릴 때 깜빡이지 않게 조금씩 더 띄움
+  const disc = new THREE.Mesh(new THREE.RingGeometry(0, 1, 32, 4).rotateX(-Math.PI / 2), glowMat); ring.add(disc);
+  const edge = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), edgeMat); ring.add(edge);
+  const pulse = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), edgeMat.clone()); ring.add(pulse);
+  for (const m of [disc, edge, pulse]) m.renderOrder = 3;
+  const dDisc = drape(disc, height), dEdge = drape(edge, height), dPulse = drape(pulse, height);
   const bob = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.6, 4).rotateX(Math.PI), new THREE.MeshBasicMaterial({ color: '#ffb347', depthTest: false, transparent: true }));
   bob.renderOrder = 9; bob.visible = false; scene.add(bob);
 
@@ -99,12 +109,20 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
     return { i, x: p.x, z: p.z, y: y + TG.hover, m, gl, ph: i * 2.1 };
   });
   const gyulLeft = () => gyuls.filter((g) => g.m.visible);
-  function gyulNear(pos) {
-    if (S.done || cur !== 'gyul') return -1;
-    let b = -1, bd = TUT.gyulR; for (const g of gyulLeft()) { const d = Math.hypot(g.x - pos.x, g.z - pos.z); if (d < bd) { bd = d; b = g.i; } }
-    return b;
+  const gyulNear = () => -1; // #151 줍기 버튼으로 줍지 않음 (지나가면 모임)
+  function takeGyul(i) { const g = gyuls[i]; if (!g || !g.m.visible) return null; g.m.visible = false; g.fly = null; if (!S.gyul.includes(i)) S.gyul.push(i); persist(); return g.m.position.clone(); }
+  // #151 귤 모으는 범위(gyulR, 본게임과 같은 값) 안에 들면 GYUL_PICK.suckT 초 동안 캐릭터로 빨려 와 +1
+  function tickGyulPull(dt) {
+    const R = gyulR?.() ?? GYUL_PICK.r;
+    for (const g of gyuls) {
+      if (!g.m.visible) continue;
+      if (!g.fly) { if (cur === 'gyul' && Math.hypot(g.x - player.pos.x, g.z - player.pos.z) < R) g.fly = { t: 0, from: g.m.position.clone() }; continue; }
+      const f = g.fly; f.t += dt; const k = Math.min(1, f.t / GYUL_PICK.suckT), e = k * k;
+      g.m.position.set(f.from.x + (player.pos.x - f.from.x) * e, f.from.y + (player.pos.y + 1 - f.from.y) * e + Math.sin(k * Math.PI) * 0.6, f.from.z + (player.pos.z - f.from.z) * e);
+      g.gl.visible = false;
+      if (k >= 1) { const at = takeGyul(g.i); if (at) { onGyul?.(at); countPop(); } }
+    }
   }
-  function takeGyul(i) { const g = gyuls[i]; if (!g || !g.m.visible) return null; g.m.visible = false; if (!S.gyul.includes(i)) S.gyul.push(i); persist(); return g.m.position.clone(); }
 
   // ---------- #62 과녁 ----------
   const tgt0 = pts.target;
@@ -146,6 +164,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   const cellDone = (i) => idx(cells[i].steps[cells[i].steps.length - 1]) < S.step;
   const latDir = (d) => { const a = P(d, 0), b = P(d, 1); return { c: { x: a[0], z: a[1] }, ux: b[0] - a[0], uz: b[1] - a[1] }; };
   let pens = null;
+  let shopGate = null, shopSaid = false; // #151 가게 거리 쪽 닫힌 정낭 {c, ux, uz}, 다가가면 안내 한 번
   const penGate = []; // 칸 i 끝 정낭 (마지막 칸은 들머리·오름 사이 정낭 jeong)
   if (col && !S.done) {
     const runs = [], gates = [], wet = [TUT.streamD - TUT.streamW + 0.5, TUT.streamD + TUT.streamW - 0.5]; // 개울 위엔 담 없음 (물에 빠지면 낚시꾼이 칸 안으로 건져 줌)
@@ -157,14 +176,18 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
       const g = gate ? WALL.gateW + 0.35 : 0;
       if (gate) { runs.push([P(d, -l), P(d, -g)], [P(d, g), P(d, r)]); } else runs.push([P(d, -l), P(d, 0), P(d, r)]);
     };
+    // #151 가게 거리 쪽 길목: 그 칸 왼쪽 담을 끊고 닫힌 정낭 (튜토리얼 동안 열리지 않음)
+    const sd = SHOP_ST.d, sg = WALL.gateW + 0.35, sCell = cells.findIndex((c, i) => cellFrom(i) < sd - sg && c.to > sd + sg);
     cells.forEach((c, i) => {
       const d0 = cellFrom(i);
-      line(d0, c.to, -c.l); line(d0, c.to, c.r);
+      if (i === sCell) { line(d0, sd - sg, -c.l); line(sd + sg, c.to, -c.l); } else line(d0, c.to, -c.l);
+      line(d0, c.to, c.r);
       if (!i) across(d0, c.l, c.r, false);
       if (i < cells.length - 1) { const n = cells[i + 1]; across(c.to, Math.max(c.l, n.l), Math.max(c.r, n.r), true); gates.push({ ...latDir(c.to), open: cellDone(i) }); }
     });
+    if (sCell >= 0) { const a = P(sd, -cells[sCell].l), b = P(sd + 1, -cells[sCell].l); shopGate = { c: { x: a[0], z: a[1] }, ux: b[0] - a[0], uz: b[1] - a[1], open: false }; gates.push(shopGate); }
     pens = createPens({ scene, height, runs, gates, low, col, hk: TUT.penH });
-    pens.gates.forEach((J, i) => { penGate[i] = J; });
+    pens.gates.forEach((J, i) => { if (gates[i] !== shopGate) penGate[i] = J; });
   }
 
   // 정낭이 열리면 앞뒤로 빛나는 길
@@ -195,7 +218,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   }
 
   let cur = null, timer = 0, tgt = null, tgtR = TUT.ringR, ringOn = true, clock = 0, gap = 0;
-  const counters = { dump: 0, bonus: 0 };
+  const counters = { dump: 0, bonus: 0, zoom: 0 }; let zoom0 = 0;
   const phone = () => isTouch;
   // 토스트: 단계가 시작될 때 할 일 한 줄. 단계가 끝날 때까지 남고, 끝나면 '잘했어요' 뒤 다음 단계로
   let easy = false, sayKey = '';
@@ -211,11 +234,11 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
       const s = SAY[name]; let v = phone() ? s.touch : s.pc; if (typeof v === 'function') v = v(player.running);
       text = v[easy ? 1 : 0]; ic = s.ic;
     }
-    const n = name === 'ok' ? '' : countText(), key = `${name}|${text}|${n}`;
+    const n = name === 'ok' ? '' : countText(), skip = name === 'zoom' && timer > TUT.zoomSkipT, key = `${name}|${text}|${n}|${skip}`; // #151 확대는 8초 뒤 건너뛰기
     if (key === sayKey && !tEl.hidden) return;
     const fresh = !sayKey.startsWith(name + '|') || tEl.hidden; sayKey = key;
-    tEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[ic] || ''}</svg><span>${text}</span>${n ? `<b class="n">${n}</b>` : ''}`;
-    tEl.classList.toggle('ok', name === 'ok'); tEl.hidden = false;
+    tEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[ic] || ''}</svg><span>${text}</span>${n ? `<b class="n">${n}</b>` : ''}${skip ? '<button type="button" class="tut-pass">건너뛰기</button>' : ''}`;
+    tEl.classList.toggle('ok', name === 'ok'); tEl.classList.toggle('go', skip); tEl.hidden = false;
     if (fresh) { tEl.classList.remove('in'); void tEl.offsetWidth; tEl.classList.add('in'); }
     onTop?.();
   }
@@ -240,10 +263,11 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
     // 이 단계까지 나와야 할 UI (중간에 다시 들어와도 앞 단계 UI 가 보이게)
     for (const st of steps.slice(0, idx(name) + 1)) for (const u of UNLOCK[st] || []) unlock(u);
     if (name === 'walk') target(pts.walk);
+    if (name === 'zoom') { target(null); zoom0 = camDist?.() ?? 0; }
     if (name === 'run') target(pts.run);
     if (name === 'gyul') target(nearestGyul(), 1.1);
     if (name === 'throw') target(tgt0, 1.2, false);
-    if (name === 'pick') target(tutTrashNext(), 1.2);
+    if (name === 'pick') target(pts.heap || tutTrashNext(), pts.heap ? 1.6 : 1.2); // #151 작은 더미
     if (name === 'dump') target(ch?.front, 2.4);
     if (name === 'bonus') target(null);
     if (name === 'tongs' || name === 'bag') { topUp(); target(shopFront(), 1.8); }
@@ -253,6 +277,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   // 각 단계의 끝나는 조건
   const doneWhen = {
     walk: () => near(pts.walk, TUT.ringR),
+    zoom: () => counters.zoom > 0 || !camDist || Math.abs(camDist() - zoom0) > zoom0 * TUT.zoomK, // #151 손으로 바꾼 카메라 거리(cam.zoomed)가 시작 값에서 15% 넘게 바뀌면
     run: () => near(pts.run, TUT.ringR) && player.running,
     gyul: () => !gyulLeft().length,
     throw: () => !tgt0 || S.hits >= TUT.hits,
@@ -273,7 +298,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   function focusTarget() {
     if (cur === 'walk') return phone() && !player.speed ? vis('#joy') : null;
     if (cur === 'run') return player.running ? null : vis('#btn-speed');
-    if (cur === 'gyul') return gyulNear(player.pos) >= 0 ? vis('#btn-pick') : null;
+    if (cur === 'gyul') return null; // #151 지나가면 모임
     if (cur === 'throw') return ctxIc?.() === 'throw' && tAim && Math.hypot(tAim.pos.x - player.pos.x, tAim.pos.z - player.pos.z) < 15 ? vis('#btn-ctx') : null;
     if (cur === 'pick') { const n = tutTrashNext(); return n && Math.hypot(n.x - player.pos.x, n.z - player.pos.z) < 2.2 ? vis('#btn-pick') : null; }
     if (cur === 'dump') return ctxIc?.() === 'dump' ? vis('#btn-ctx') : null;
@@ -303,19 +328,21 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   function update(dt) {
     if (S.done) return;
     timer += dt; clock += dt;
-    for (const g of gyuls) if (g.m.visible) { g.m.rotation.y += TG.spin * dt; const b = Math.sin(clock * TG.bobSpeed + g.ph) * TG.bob; g.m.position.y = g.y + b; g.gl.position.y = -TG.hover - b + 0.03; } // 떠서 돌기 (#63)
+    tickGyulPull(dt);
+    for (const g of gyuls) if (g.m.visible && !g.fly) { g.m.rotation.y += TG.spin * dt; const b = Math.sin(clock * TG.bobSpeed + g.ph) * TG.bob; g.m.position.y = g.y + b; g.gl.position.y = -TG.hover - b + 0.03; } // 떠서 돌기 (#63)
     if (pens) pens.update(dt, player.pos);
+    if (shopGate && pens && !shopSaid && Math.hypot(player.pos.x - shopGate.c.x, player.pos.z - shopGate.c.z) < TUT.shopGateR) { shopSaid = true; toast?.('튜토리얼을 마치면 가게 거리가 열려요'); }
     tickLanes(dt);
     if (cur) { if (doneWhen[cur]()) finish(); }
     if (!cur) {
-      if (gap > 0) { gap -= dt; ring.visible = false; bob.visible = false; arrowEl.hidden = true; return; } // '잘했어요' 동안
+      if (gap > 0) { gap -= dt; ring.visible = false; bob.visible = false; arrowEl.hidden = true; pinchEl.hidden = true; return; } // '잘했어요' 동안
       let next = steps[S.step];
       while (next && (next === 'tongs' || next === 'bag') && doneWhen[next]()) { S.step++; next = steps[S.step]; } // 이미 집게·배낭이 있으면 건너뜀
       if (!next) { complete(); return; }
       cells.forEach((c, i) => { if (cellDone(i)) penGate[i]?.open(false); });
       begin(next);
     }
-    if (cur === 'pick') { const n = tutTrashNext(); if (n && (!tgt || Math.hypot(n.x - tgt.x, n.z - tgt.z) > 0.1)) target(n, 1.2); }
+    if (cur === 'pick' && !pts.heap) { const n = tutTrashNext(); if (n && (!tgt || Math.hypot(n.x - tgt.x, n.z - tgt.z) > 0.1)) target(n, 1.2); }
     if (cur === 'gyul') { const n = nearestGyul(); if (n && (!tgt || Math.hypot(n.x - tgt.x, n.z - tgt.z) > 0.1)) target(n, 1.1); }
     tickIdle(dt);
     say(cur); // 남은 수·달리는 중에 따라 바뀐 한 줄
@@ -323,19 +350,22 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
     if (wob > 0) { wob = Math.max(0, wob - dt * 2.2); board.rotation.x = Math.sin(wob * 22) * 0.25 * wob; }
     // 원과 가장자리 화살표 (진행이 없으면 화살표도)
     if (tgt) {
-      ring.visible = ringOn; ring.position.copy(tgt); ring.position.y += 0.05; ring.scale.setScalar(tgtR);
-      const k = (clock * 0.8) % 1; pulse.scale.setScalar(1 + k * 0.5); pulse.material.opacity = 0.8 * (1 - k); disc.material.opacity = 0.25 + Math.sin(clock * 4) * 0.08;
+      ring.visible = ringOn;
+      const k = (clock * 0.8) % 1;
+      if (ringOn) { dDisc(tgt.x, tgt.z, tgtR); dEdge(tgt.x, tgt.z, tgtR, 0, 0.01); dPulse(tgt.x, tgt.z, tgtR * (1 + Math.round(k * 20) / 40), 0, 0.02); } // 퍼지는 고리는 20단계로만 다시 휨 (저사양)
+      pulse.material.opacity = 0.8 * (1 - k); disc.material.opacity = 0.25 + Math.sin(clock * 4) * 0.08;
       bob.visible = ringOn; bob.position.set(tgt.x, tgt.y + 1.5 + Math.abs(Math.sin(clock * 3.2)) * 0.5, tgt.z); bob.rotation.y = clock * 1.6;
       const d = Math.hypot(player.pos.x - tgt.x, player.pos.z - tgt.z);
       const v = tgt.clone(); v.y += 1; const ndc = v.project(camera); const off = ndc.z > 1 || Math.abs(ndc.x) > 0.9 || Math.abs(ndc.y) > 0.85;
       if ((off || d > TUT.arrowFar || (idle >= TUT.fingerT && d > 3)) && !player.rescue) { arrowEl.hidden = false; placeArrow(arrowEl, tgt, 1.6); } else arrowEl.hidden = true;
     } else { ring.visible = false; bob.visible = false; arrowEl.hidden = true; }
     setFocus(focusTarget());
+    pinchEl.hidden = !(cur === 'zoom' && phone());
     focusEl.classList.toggle('idle', idle >= TUT.fingerT); // 손가락은 진행이 없을 때만
   }
   function notify(k, n = 1) { if (k in counters) counters[k] += n; }
   function endUI(quiet) {
-    S.done = true; persist(); target(null); ring.visible = false; bob.visible = false; arrowEl.hidden = true; setFocus(null);
+    S.done = true; persist(); target(null); ring.visible = false; bob.visible = false; arrowEl.hidden = true; pinchEl.hidden = true; setFocus(null);
     S.step = steps.length; cur = null;
     if (pens) { pens.remove(); pens = null; } // 칸 돌담·정낭은 튜토리얼 동안만
     for (const L of lanes) { scene.remove(L.m); L.m.geometry.dispose(); } lanes.length = 0;
@@ -349,6 +379,7 @@ export function createTutorial({ save, persist, player, isTouch, pts, scene, hei
   return { update, notify, skipAll, gyulNear, takeGyul, get active() { return !S.done; }, get step() { return cur; }, get hits() { return S.hits; }, gyuls, board: stand, focus: () => focused,
     toast: () => (tEl.hidden ? null : { text: tEl.querySelector('span')?.textContent || '', n: tEl.querySelector('.n')?.textContent || '', easy, shake: tEl.classList.contains('shake') }),
     idle: () => idle, setIdle: (v) => { idle = v; }, finger: () => !focusEl.hidden && focusEl.classList.contains('idle'),
+    shopGate: () => shopGate && { x: shopGate.c.x, z: shopGate.c.z, ux: shopGate.ux, uz: shopGate.uz, said: shopSaid },
     cells: () => cells.map((c, i) => ({ from: cellFrom(i), to: c.to, l: c.l, r: c.r, steps: c.steps, open: i < cells.length - 1 ? !!penGate[i]?.isOpen : !!jeong.isOpen })), pens: () => pens,
     local: (x, z) => { const a = P(0), b = P(1), fx = b[0] - a[0], fz = b[1] - a[1], dx = x - a[0], dz = z - a[1]; return { d: dx * fx + dz * fz, lat: dx * -fz + dz * fx }; }, // 들머리 길 좌표 (곧은 길)
   };
