@@ -202,9 +202,9 @@ function fillShopDir(grid) {
 }
 // 그 가게 앞이면 바로 창, 아니면 가게 앞까지 자동 걷기 → 도착하면 창. msg: 앞에 붙일 말
 export function goShop(id, msg = '') {
-  const tutStall = late.tut?.active && CH && ['tongs', 'bag'].includes(late.tut.step);
-  if (id === 'gear' && CH && (tutStall || !street)) return goTo({ pos: CH.shopFront, near: CLEANHOUSE.shopR, arrive: () => openShopPop('gear') }, '장비점 좌판', msg);
-  if (late.tut?.active) { toast('튜토리얼을 마치면 가게 거리에서 살 수 있어요'); return false; }
+  const tutGear = id === 'gear' && late.tut?.active && ['tongs', 'bag'].includes(late.tut.step); /* #221 튜토리얼도 가게 거리 장비점 */
+  if (id === 'gear' && CH && !street) return goTo({ pos: CH.shopFront, near: CLEANHOUSE.shopR, arrive: () => openShopPop('gear') }, '장비점 좌판', msg);
+  if (late.tut?.active && !tutGear) { toast('튜토리얼을 마치면 가게 거리에서 살 수 있어요'); return false; }
   const sh = shopsBuilt.find((q) => q.id === id); if (!sh) { toast('이 맵에는 그 가게가 없어요'); return false; }
   const P = SHOP_POP[sh.pop]; if (P?.when && !P.when()) { const w = late.shopWhy?.(sh.id); toast(w ? `준비 중 — ${w} 열려요` : '정낭을 열면 가게 거리가 열려요'); return false; }
   return goTo({ pos: sh.door, near: sh.r * 0.8, arrive: () => openShopPop(sh.pop) }, sh.name, msg);
@@ -215,7 +215,7 @@ function goTo(dest, name, msg) {
   if (startAutoGo(dest)) { toast(`${msg ? msg + ' · ' : ''}${name}까지 걸어가요`); return true; }
   tipMark(dest.pos); toast(`${msg ? msg + ' · ' : ''}${name}은(는) 가게 거리에 있어요`); return false;
 }
-// 메뉴의 상점·귤 칸: 가게 안내 (튜토리얼 집게·배낭 단계면 좌판으로)
+// 메뉴의 상점·귤 칸: 가게 안내 (튜토리얼 집게·배낭 단계면 장비점으로)
 export function shopGuide() {
   if (cam.mode === 'wardrobe' || player.pose === 'sit') return;
   if (late.tut?.active && ['tongs', 'bag'].includes(late.tut.step)) { goShop('gear'); return; }

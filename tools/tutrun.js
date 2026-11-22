@@ -30,7 +30,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   const cells = await p.evaluate(() => window.__oreum.tut.cells());
   ok(cells.length >= 3, `칸 ${cells.length}개`);
   const inCell = (pt, i, pad = 0.6) => p.evaluate(([x, z, i, pad]) => { const o = window.__oreum, L = o.tut.local(x, z), cs = o.tut.cells()[i], l = cs.l, r = cs.r; return L.d > cs.from + pad && L.d < cs.to - pad && L.lat > -l + pad && L.lat < r - pad; }, [pt[0], pt[1], i, pad]);
-  const where = [['walk', t.walk, 0], ['run', t.run, 0], ...t.gyul.map((g, k) => ['gyul' + k, g, 1]), ['target', t.target, 1], ...t.trash.map((g, k) => ['trash' + k, g, 2]), ['clean', t.dump, 3], ['shop', t.shop, 3]];
+  const where = [['walk', t.walk, 0], ['run', t.run, 0], ...t.gyul.map((g, k) => ['gyul' + k, g, 1]), ['target', t.target, 1], ...t.trash.map((g, k) => ['trash' + k, g, 2]), ['clean', t.dump, 3]]; /* #221 장비는 가게 거리 장비점 (칸 밖) */
   for (const [n, pt, i] of where) ok(await inCell(pt, i), `${n} 이 ${i + 1}번 칸 안`);
   ok(await p.evaluate(() => window.__oreum.wx.kind === 'clear'), '튜토리얼 동안 맑음');
   ok(await p.evaluate(() => window.__oreum.net.solo === true), '튜토리얼 동안 혼자');
@@ -104,10 +104,28 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await p.evaluate(() => window.__oreum.cleanhouse.go()); await W(1500); await shot('07-dump');
   await act('f', '#btn-ctx'); await until(() => window.__oreum.save.tut.step >= 7, 15000); await W(600); await shot('08-bonus'); await until(() => window.__oreum.save.tut.step >= 8, 90000);
   await stepIs(8);
-  await p.evaluate(() => { const o = window.__oreum, c = o.cleanhouse.api.shopFront; o.player.pos.set(c.x, o.groundAt(c.x, c.z), c.z); o.snap(); }); await W(1200); await shot('09-tongs');
+  // #221 들머리 좌판 대신 가게 거리 장비점까지 걸어감: 튜토리얼 원(tut.target)을 따라 클릭 이동처럼 걷기
+  ok(await until(() => window.__oreum.tut.shopGate()?.open && window.__oreum.shopGate.isOpen('gear'), 6000), '가게 쪽 정낭·장비점이 열림');
+  ok(await p.evaluate(() => !window.__oreum.cleanhouse.api.mark.visible), '들머리 좌판 표시 없음');
+  const follow = async (doneFn, ms) => { const t1 = Date.now(); let vias = 0, lastVia = false;
+    while (Date.now() - t1 < ms) {
+      const r = await p.evaluate(() => { const o = window.__oreum, g = o.tut.target(); if (g) { o.player.target = o.player.pos.clone().set(g.x, o.groundAt(g.x, g.z), g.z); o.player.onArrive = null; } return { via: !!g && g.r < 1.5 }; });
+      if (r.via && !lastVia) vias++; lastVia = r.via;
+      if (await p.evaluate(doneFn)) return { s: (Date.now() - t1) / 1000, vias };
+      await W(250);
+    } return null; };
+  const wk = await follow(() => window.__oreum.aim.ctx() === 'gear', 90000);
+  ok(!!wk, `장비점 문 앞까지 걸어감 ${wk ? wk.s.toFixed(1) + 's, 정낭 거치기 ' + wk.vias : ''}`);
+  ok(await p.evaluate(() => window.__oreum.tut.gyuls.filter((g) => g.at === 'shop' && !g.m.visible).length >= 1), '골목 귤을 주움');
+  await W(600); await shot('09-tongs');
+  console.log('  (문 앞 토스트)', (await p.evaluate(() => window.__oreum.tut.toast()?.text)));
   await act('f', '#btn-ctx'); await W(1200);
-  const TOOL = '#shoppop .buy-group[data-k="tool"] .buy-card.next .buy-btn', BAG = '#shoppop .buy-group[data-k="bag"] .buy-card.next .buy-btn'; // 장비점 좌판 (#128)
-  ok(await p.evaluate(() => window.__oreum.street?.popNow?.() === 'gear' || !document.getElementById('shoppop').hidden), '좌판에서 장비점 창');
+  const TOOL = '#shoppop .buy-group[data-k="tool"] .buy-card.next .buy-btn', BAG = '#shoppop .buy-group[data-k="bag"] .buy-card.next .buy-btn'; // 장비점 창 (#128)
+  ok(await p.evaluate(() => window.__oreum.street?.popNow?.() === 'gear'), '가게 거리 장비점 창');
+  // 창을 닫아 버리면 다시 안내 (토스트 흔들림), 다시 열기
+  await p.click('#shoppop-close').catch(() => {}); await W(700);
+  ok(await p.evaluate(() => window.__oreum.tut.toast()?.shake && window.__oreum.tut.step === 'tongs'), '창을 닫으면 다시 안내');
+  await act('f', '#btn-ctx'); await W(1200);
   ok(await until(() => document.querySelector('.tut-focus')?.classList.contains('buy-btn'), 4000), '집게 사기 버튼이 빛남');
   console.log('  (빛나는 곳)', await p.evaluate(() => { const f = document.querySelector('.tut-focus'); return f && (f.id || f.className); }), await state());
   if (mode === 'm') await p.tap(TOOL); else await p.click(TOOL);
@@ -118,7 +136,9 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   ok(await until(() => window.__oreum.save.equip.bag >= 1, 10000), '배낭 삼');
   await stepIs(10); await p.click('#shoppop-close').catch(() => {}); await W(1500); await shot('11-gate');
   ok(await p.evaluate(() => window.__oreum.tut.cells()[3].open), '마지막 정낭 열림');
-  await go(...t.beyond); await until(() => window.__oreum.save.tut.done, 30000); await W(1500); await shot('12-done');
+  const wk2 = await follow(() => window.__oreum.save.tut.done, 90000);
+  ok(!!wk2, `정낭 지나 오름까지 걸어감 ${wk2 ? wk2.s.toFixed(1) + 's, 정낭 거치기 ' + wk2.vias : ''}`);
+  await W(1500); await shot('12-done');
   ok(await p.evaluate(() => window.__oreum.save.tut.done), '튜토리얼 끝');
   console.log('  튜토리얼 걸린 시간', ((Date.now() - tStart) / 1000).toFixed(0) + 's');
   ok(await p.evaluate(() => !window.__oreum.tut.pens()), '칸 돌담이 사라짐');

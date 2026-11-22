@@ -49,6 +49,7 @@ const SAVES = {
   // #202: 옛 경험치(#159 곡선) 레벨 13·증강 12개 → 번 귤 경험치로 바꿔도 레벨 13 이상·증강 그대로 · 기록이 많은 옛 저장은 기록으로 어림
   lvOld13: { nick: '옛 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(13) + 5, aug: { recycle: 3, bighand: 3, twin: 3, burst: 3 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 100 }, badges: {} } },
   lvOldRich: { nick: '옛 부자', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(5), aug: { recycle: 1 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 120000, pickup: 30000 }, badges: {} } },
+  tutStall: { nick: '좌판 사람', coins: 30, nsV1: 1, nsV2: 1, nsV3: 1, bagV: 1, entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 9, done: false, v: 4, gyul: [0, 1, 2], hits: 3 }, equip: { tool: 1, bag: 0, shoes: 0, weapon: 1 } }, // #221 들머리 좌판 배낭 단계에 멈춘 저장 → 장비점 가기 처음, 가게 쪽 정낭·장비점 열림
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
 };
 (async () => {
@@ -80,6 +81,8 @@ const SAVES = {
     if (name === 'upMax' || name === 'gearMax') { await p.waitForTimeout(1500); const q = await p.evaluate(() => { const o = window.__oreum, s = o.save.quest; return { done: s.done, side: Object.keys(s.side), cur: s.cur?.id || null, cp: s.cp, coins: o.save.coins, cap: o.quest.cap('upgrade'), tb: o.quest.cap('gearTB'), eq: o.save.equip }; }).catch((e) => ({ e: String(e) }));
       const want = name === 'upMax' ? q.done?.includes('g-up') && !q.side?.includes('g-up') && q.cp?.gear === 1 : q.done?.includes('gear1') && q.cur !== 'gear1'; /* #219 받은 퀘스트가 끝나고 다음 줄이 열림 */
       if (!want) { bad++; console.log(name, '더 채울 수 없는 퀘스트 풀기 실패', JSON.stringify(q)); } else console.log(name, '퀘스트 풀림', JSON.stringify({ done: q.done.slice(-2), cur: q.cur, cp: q.cp, coins: q.coins })); }
+    if (name === 'tutStall') { const t = await p.evaluate(() => { const o = window.__oreum; return { s: o.save.tut.step, v: o.save.tut.v, step: o.tut.step, sg: o.tut.shopGate()?.open, gear: o.shopGate.isOpen('gear'), stall: o.cleanhouse.api.mark.visible }; }).catch(() => ({}));
+      if (!(t.s === 8 && t.v === 5 && t.step === 'tongs' && t.sg && t.gear && !t.stall)) { bad++; console.log(name, '좌판 단계 옮기기 실패', JSON.stringify(t)); } else console.log(name, '장비점 단계', JSON.stringify(t)); }
     if (name === 'questVet' && st.qnext !== 'heap3') { bad++; console.log(name, '옛 저장 퀘스트 건너뛰기 실패', st.qnext); } // #158
     if (name === 'clean' && !(st.coins === 4321 && st.equip.tool === 3 && st.equip.weapon === 2 && st.total === 900 && st.slots.join() === 'battle' && st.rkAll?.battle === 900 && !('clean' in st.rkAll))) { bad++; console.log(name, '옮기기 실패'); }
     if (name === 'loot' && !(st.mats?.r2 === 2 && st.mats?.m3 === 4 && !('m1' in st.mats) && !('zz' in st.mats) && st.up?.tool?.g === 3 && st.up.tool.e === 5 && st.nloot <= 2)) { bad++; console.log(name, '전리품 저장 바로잡기 실패'); }

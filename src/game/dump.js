@@ -185,10 +185,10 @@ export function tickChArrow() {
     chArrow.classList.toggle('full', full); chArrow.classList.toggle('going', !!autoGo?.ch);
     const d = Math.round(player.pos.distanceTo(ch.front)) + 'm', dn = chArrow.querySelector('small'); if (dn.textContent !== d) dn.textContent = d;
   }
-  // 장비점 쪽 짧은 표시 (#128): 튜토리얼 동안은 옆 가판대(장비점 좌판), 그 뒤엔 가게 거리 장비점 지붕 간판. 앞에 오면 끝
+  // 장비점 쪽 짧은 표시 (#128): 가게 거리 장비점 지붕 간판 (거리가 없는 맵만 옆 가판대). 앞에 오면 끝. #221 튜토리얼도 거리 장비점
   if (!CH) return;
-  { const stall = !!late.tut?.active || !GEARB; if (CH.mark.visible !== stall) CH.mark.visible = stall; } // 가판대 위 귤 표시는 튜토리얼 동안만
-  const hint = late.tut?.active || !GEARB ? { at: CH.stallTop, door: CH.shopFront, r: CLEANHOUSE.shopR } : { at: roofSigns?.signs.gear?.pos || GEARB.signPos, door: GEARB.door, r: GEARB.r };
+  { const stall = !GEARB; if (CH.mark.visible !== stall) CH.mark.visible = stall; } /* 가판대 위 귤 표시는 가게 거리가 없는 맵만 */
+  const hint = !GEARB ? { at: CH.stallTop, door: CH.shopFront, r: CLEANHOUSE.shopR } : { at: roofSigns?.signs.gear?.pos || GEARB.signPos, door: GEARB.door, r: GEARB.r };
   if (state.shopHintUntil && (performance.now() > state.shopHintUntil || player.pos.distanceTo(hint.door) < hint.r || !late.canBuyGear().length)) state.shopHintUntil = 0;
   const so = !!state.shopHintUntil && !dumpS.el && cam.mode !== 'wardrobe' && !panelOpen();
   if (!so) { if (!shopArrow.hidden) shopArrow.hidden = true; return; }

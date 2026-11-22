@@ -129,7 +129,6 @@ function tickOpen(dt) {
 /* ---------- 닫힌 가게 앞 '준비 중' ---------- */
 let nearAt = null;
 function tickNear() {
-  if (late.tut?.active) return;
   let hit = null;
   for (const sh of shopsBuilt) {
     if (!sh.door || gate.isOpen(sh.id)) continue;
@@ -163,6 +162,8 @@ late.tickShopGate = (dt) => {
   if ((t -= dt) > 0) return; t = 0.5;
   tickFull(); sync(); tickOpen(0.5); tickNear();
 };
+
+late.tutOpenGear = () => { if (gate.opened('gear')) return; opening('gear'); }; /* #221 튜토리얼 장비점 단계: 셔터가 올라가고 주인이 손 흔듦 */
 
 late.shopGateDebug = {
   api: gate, state: () => gate.state(), isOpen: (id) => gate.isOpen(id), why: (id) => gate.why(id), check: () => gate.check(),
