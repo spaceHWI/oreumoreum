@@ -116,7 +116,7 @@ function showLine(key, n, text) {
   const t = nowS();
   if (line.key !== key || t > line.until) { line.key = key; line.n = 0; }
   line.n += n; line.until = t + GIVE.lineSec;
-  toast(text(line.n), GIVE.lineSec);
+  toast(text(line.n), GIVE.lineSec, 'multi');
 }
 const WHY = { coins: '귤이 모자라요', day: '오늘은 더 줄 수 없어요', full: '그분은 오늘 더 받을 수 없어요', off: '귤 선물을 받지 않는 분이에요', new: '계정을 만든 지 하루가 지나야 줄 수 있어요', login: '로그인해야 줄 수 있어요', far: '조금 더 가까이 가 주세요' };
 

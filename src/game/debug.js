@@ -157,3 +157,4 @@ function debugApi() { return { bag: { open: (t) => late.openBag(t), close: () =>
   tp: (x, z, h, pitch = 0.2, dist = 13, yawOff = 0) => { player.pos.set(x, height(x, z), z); player.visY = player.pos.y; player.heading = h; player.viewSeen = true; state.awe = 0; state.aweBack = 0; cam.yaw = h + Math.PI + yawOff; cam.pitch = pitch; cam.dist = dist; placeRunner(); followCam(0, true); } }; }
 state.debugReady = true;
 if (!__PUBLIC__ || devOn) exposeDebug();
+{ const msgDev = () => { if (window.__oreum) { window.__oreum.msg = late.msg; window.__oreum.msglog = late.msgLog; } }; const base = late.exposeDebug; late.exposeDebug = () => { base(); msgDev(); }; msgDev(); } /* 메시지 줄 (#252) */
