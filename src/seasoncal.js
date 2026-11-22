@@ -22,15 +22,18 @@ export function calCost(d, today) { return d === today ? 0 : X.cal.miss; }
 export const calOpenable = (d, today) => Number.isInteger(d) && d >= 1 && d <= X.cal.days && today >= 1 && d <= today;
 // 달력·선물로 받는 겨울 옷 (서버가 값을 안 셈)
 export const calClothIds = (days) => (days || []).map((d) => X.calCloth[d]).filter(Boolean);
-export const XMAS_CLOTHES = CLOTHES.filter((c) => c.season === 'xmas').map((c) => c.id);
+export const XMAS_CLOTHES = CLOTHES.filter((c) => c.season === 'xmas' && !c.cal).map((c) => c.id); // 선물 상자로 나올 수 있는 겨울 옷 (다 열기 옷 cal 은 빼고)
+// 다 열면 (#222): 25칸을 모두 열었는지 · 받은 다 열기 옷 (xs.full 이면 X.full.cloth, 서버가 값을 안 셈)
+export const calAllOpen = (days) => Array.isArray(days) && new Set(days.filter((d) => Number.isInteger(d) && d >= 1 && d <= X.cal.days)).size >= X.cal.days;
+export const fullClothIds = (xs) => (xs?.full ? [...X.full.cloth] : []);
 // 트리 단계: 모두가 주운 수 → 0 ~ stages
 export const treeStage = (n) => Math.max(0, Math.min(X.tree.stages, Math.floor((Number(n) || 0) / X.tree.step)));
 export const treeGoal = () => X.tree.step * X.tree.stages;
-// 저장 save.season.xmas = { days: [열린 칸], gift: [선물로 받은 옷 id], tree: 다 채운 선물 받음 1, snow: 눈덩이 고름 1, gd: 선물 상자 받은 날, gn: 그날 받은 수, seen: 본 트리 단계, lp: 서버 없이 할 때 기간에 주운 수 }
+// 저장 save.season.xmas = { days: [열린 칸], gift: [선물로 받은 옷 id], tree: 다 채운 선물 받음 1, snow: 눈덩이 고름 1, full: 다 열기 선물 받음 1 (#222), gd: 선물 상자 받은 날, gn: 그날 받은 수, seen: 본 트리 단계, lp: 서버 없이 할 때 기간에 주운 수 }
 export function cleanXmas(o) {
   const v = o && typeof o === 'object' && !Array.isArray(o) ? o : {};
   const days = Array.isArray(v.days) ? [...new Set(v.days.filter((d) => Number.isInteger(d) && d >= 1 && d <= X.cal.days))].sort((a, b) => a - b) : [];
   const gift = Array.isArray(v.gift) ? [...new Set(v.gift.filter((id) => XMAS_CLOTHES.includes(id)))].slice(0, X.santa.giftMax) : [];
   const int = (n, hi) => (Number.isInteger(n) && n >= 0 && n <= hi ? n : 0);
-  return { days, gift, tree: v.tree ? 1 : 0, snow: v.snow ? 1 : 0, gd: int(v.gd, 31), gn: int(v.gn, 99), seen: int(v.seen, X.tree.stages), lp: int(v.lp, 1e7) };
+  return { days, gift, tree: v.tree ? 1 : 0, snow: v.snow ? 1 : 0, full: v.full ? 1 : 0, gd: int(v.gd, 31), gn: int(v.gn, 99), seen: int(v.seen, X.tree.stages), lp: int(v.lp, 1e7) };
 }

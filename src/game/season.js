@@ -6,7 +6,9 @@
 import { veiled } from '../ufoveil.js';
 import * as THREE from 'three';
 import { SEASON, CLOTHES } from '../balance.js';
-import { xmasDay, kst, calReward, calCost, calOpenable, treeStage, cleanXmas, XMAS_CLOTHES } from '../seasoncal.js';
+import { icon, setIcon } from '../icons.js';
+import { clothSvg } from '../clothicons.js';
+import { xmasDay, kst, calReward, calCost, calOpenable, treeStage, cleanXmas, XMAS_CLOTHES, calAllOpen } from '../seasoncal.js';
 import { buildTree, buildWreath, santaHat, rudolph, dressSanta, giftBox, makeBulbs, lampSpiral, eaveLine, snowMat, bake } from '../season.js';
 import { STREET } from '../streetlayout.js';
 import { getSeason } from '../online.js';
@@ -98,21 +100,50 @@ function tickTree(dt) {
   }
 }
 
-/* ---------- 접속 달력 ---------- */
-function refreshDot() { const d = calDay(), xs = save.season?.xmas; $('xmas-dot').hidden = !(xmasOn() && d >= 1 && d <= X.cal.days && !(xs?.days || []).includes(d)); }
+/* ---------- 접속 달력: 어드벤트 달력 모양 (#222). 판·문 색과 놓는 순서는 X.calLook ---------- */
+const LK = X.calLook, FULL = X.full;
+const fullReady = (xs = save.season?.xmas) => !!xs && !xs.full && calAllOpen(xs.days);
+function refreshDot() {
+  const d = calDay(), xs = save.season?.xmas, on = xmasOn() && ((d >= 1 && d <= X.cal.days && !(xs?.days || []).includes(d)) || fullReady(xs));
+  $('xmas-dot').hidden = !on; $('menu-xmas').classList.toggle('ring', on && !LOW);
+}
 function rewardText(r) { return r.coins ? `귤 ${r.coins}` : r.cloth ? CN[r.cloth]?.name || '겨울 옷' : '눈덩이'; }
-function buildCal() {
-  const xs = XS(), today = calDay(), box = $('xmas-cal'); box.innerHTML = '';
-  for (let d = 1; d <= X.cal.days; d++) {
+const rewardArt = (r) => (r.cloth && CN[r.cloth] ? clothSvg(CN[r.cloth]) : icon(r.coins ? 'gyul' : 'snow'));
+const light = (hex) => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11) > 150; };
+function lookVars() {
+  const b = $('xmas-board'), [o, i, e] = LK.board;
+  b.style.setProperty('--xb', o); b.style.setProperty('--xi', i); b.style.setProperty('--xe', e); b.style.setProperty('--xr', LK.roof); b.style.setProperty('--xk', LK.ink); b.style.setProperty('--xg', LK.ribbon);
+  $('xmas-title').textContent = LK.title;
+  const f = $('xmas-flakes'); if (f.childElementCount || LOW) return;
+  for (let k = 0; k < LK.flakes; k++) { /* 가장자리 눈송이: 판 양옆에 많이 */
+    const el = document.createElement('i'), side = k % 2 ? 1 : 0, x = side ? 82 + ((k * 7) % 17) : (k * 11) % 18;
+    el.style.left = `${x}%`; el.style.setProperty('--dx', `${((k * 13) % 21) - 10}px`); el.style.animationDuration = `${6 + ((k * 5) % 7)}s`; el.style.animationDelay = `-${(k * 1.7) % 9}s`;
+    const sz = 3 + (k % 3); el.style.width = el.style.height = `${sz}px`; f.append(el);
+  }
+}
+function buildCal(fresh = 0) {
+  const xs = XS(), today = calDay(), box = $('xmas-cal'); box.innerHTML = ''; lookVars();
+  for (const d of LK.order) {
     const b = document.createElement('button'); b.type = 'button'; const done = xs.days.includes(d), r = calReward(d), can = calOpenable(d, today);
-    b.className = done ? 'done' : d === today ? 'today' : can ? 'miss' : 'lock'; if (!r.coins) b.classList.add('gift');
-    b.innerHTML = `${d}<small>${done ? '받음' : d === today ? '열기' : can ? `귤 ${X.cal.miss}` : ''}</small>`;
+    const big = LK.big.includes(d), ctr = d === LK.center;
+    b.className = `xm-d ${done ? 'done' : d === today ? 'today' : can ? 'miss' : 'lock'}${big ? ' big' : ''}${ctr ? ' ctr' : ''}${done && d === fresh ? ' pop' : ''}`;
+    b.style.setProperty('--ins', big || ctr ? '2%' : `${5 + ((d * 7) % 5) * 2.5}%`); /* 문 크기·기울기가 조금씩 다름 */
+    b.style.setProperty('--rot', `${big || ctr ? 0 : (((d * 13) % 5) - 2) * 0.8}deg`); const dc = LK.door[d % LK.door.length]; b.style.setProperty('--dc', dc); if (light(dc)) b.style.setProperty('--dt', LK.ink);
+    const tag = done ? rewardText(r) : d === today ? '열기' : can ? `귤 ${X.cal.miss}` : '';
+    b.innerHTML = `<span class="xm-in">${rewardArt(r)}<small></small></span><span class="xm-door"><b>${d}</b><small></small></span>`;
+    b.querySelector('.xm-in small').textContent = done && !ctr ? rewardText(r) : ''; b.querySelector('.xm-door small').textContent = done ? '' : tag;
     b.setAttribute('aria-label', `12월 ${d}일 · ${rewardText(r)} · ${done ? '받음' : d === today ? '오늘 열기' : can ? `귤 ${X.cal.miss}로 열기` : '아직'}`);
     b.disabled = done || !can; b.addEventListener('click', () => openDay(d));
     box.append(b);
   }
   const st = treeStage(treeTotal()); $('xmas-bar').style.width = `${(st / X.tree.stages) * 100}%`; $('xmas-stage').textContent = `${st}/${X.tree.stages}`;
   const own = xs.days.includes(X.cal.days); $('xmas-snowrow').hidden = !own; $('xmas-snow').setAttribute('aria-pressed', String(!!xs.snow)); $('xmas-snow').textContent = xs.snow ? '눈덩이 쓰는 중' : '눈덩이 쓰기';
+  const n = new Set(xs.days).size, ready = fullReady(xs), fl = $('xmas-full'), coat = CN[FULL.cloth[0]];
+  fl.classList.toggle('ready', ready); fl.classList.toggle('got', !!xs.full);
+  if (!$('xmas-full-ic').childElementCount) $('xmas-full-ic').innerHTML = coat ? clothSvg(coat) : icon('gift');
+  $('xmas-full-name').textContent = xs.full ? `${FULL.name} · 칭호 '${FULL.title}' 받음` : `${FULL.name} · 칭호 '${FULL.title}' · 귤 ${FULL.coins}`;
+  $('xmas-full-bar').style.width = `${(Math.min(n, X.cal.days) / X.cal.days) * 100}%`; $('xmas-full-n').textContent = `${Math.min(n, X.cal.days)}/${X.cal.days}`;
+  $('xmas-full-get').hidden = !ready;
 }
 function openCal() { if (!xmasOn()) return; closePanels(); buildCal(); $('xmas').hidden = false; }
 function openDay(d) {
@@ -125,15 +156,25 @@ function openDay(d) {
   if (r.coins) { late.notEarned?.(r.coins); save.coins += r.coins; gyulShower(r.coins); }
   if (r.cloth && CN[r.cloth]) { CL.own[r.cloth] = 1; toast(`${CN[r.cloth].name}을(를) 받았어요 · 내 가방에서 입어요`, 3.4); }
   if (r.snow) { xs.snow = 1; toast('눈덩이를 받았어요 · 굼부리·정상에서 손으로 던지면 눈덩이', 3.6); }
-  persist(); updateStats(); sound.coin?.(); buildCal(); refreshDot();
+  persist(); updateStats(); sound[LK.sound]?.(0.8); sound.coin?.(); buildCal(d); refreshDot();
   return true;
 }
+/* 다 열면 (#222): 25칸을 모두 연 뒤 한 번. 옷 두 벌(산타 모자와 한 벌 → 칭호) + 귤(레벨에 안 셈). 서버 seasonCheck 가 25칸을 확인 */
+function claimFull() {
+  const xs = XS(); if (!fullReady(xs)) return false;
+  xs.full = 1; for (const id of FULL.cloth) if (CN[id]) CL.own[id] = 1;
+  late.notEarned?.(FULL.coins); save.coins += FULL.coins; gyulShower(FULL.coins);
+  persist(); updateStats(); sound.fanfare?.(); toast(`${FULL.name}·칭호 '${FULL.title}' · 귤 +${FULL.coins} · 내 가방에서 입어요`, 4.2);
+  buildCal(); refreshDot(); return true;
+}
+$('xmas-full-get').addEventListener('click', claimFull);
+setIcon($('menu-xmas').querySelector('svg'), LK.icon);
 $('menu-xmas').addEventListener('click', openCal);
 $('xmas-snow').addEventListener('click', () => { const xs = XS(); if (!xs.days.includes(X.cal.days)) return; xs.snow = xs.snow ? 0 : 1; persist(); buildCal(); });
 let calAsked = false;
 function tickCal() {
   if (calAsked || !state.sessionOn || !save.tut?.done || panelOpen()) return;
-  const d = calDay(); if (!(d >= 1 && d <= X.cal.days) || XS().days.includes(d)) return;
+  const d = calDay(); if (!fullReady(XS()) && (!(d >= 1 && d <= X.cal.days) || XS().days.includes(d))) return;
   calAsked = true; late.director?.ask('quest', 'xmasCal', () => openCal(), { sec: 6, ttl: 600 }); // 그날 처음 들어오면 달력 (감독 차례로)
 }
 
@@ -222,7 +263,7 @@ late.season = {
   fixed: () => { if (!$('xmas').hidden) buildCal(); refreshDot(); },
   test: {
     state: () => ({ on: xmasOn(), mode, realDay: realDay(), calDay: calDay(), srv: { ...srv }, xs: structuredClone(save.season?.xmas || null), stage: deco?.tree.stage ?? -1, gifts: gifts.length, decoN: deco ? { bulbs: deco.bulbs.mesh.count, wreaths: deco.wreaths.length, hats: deco.hats.length } : null, snow: NSW?.zoneSnow ? [...NSW.zoneSnow] : null, snowReady: snowReady() }),
-    mode: setMode, open: openCal, day: openDay, total: (n) => { srv.total = n; tickTree(); }, gift: (x = player.pos.x + 3, z = player.pos.z) => repel({ santa: true }, new THREE.Vector3(x, 0, z)),
+    mode: setMode, open: openCal, day: openDay, full: claimFull, fullReady: () => fullReady(XS()), now: (ms) => { srv.now = ms; srv.at = performance.now(); apply(); }, /* 서버 날짜 흉내 (#222 화면 확인) */ total: (n) => { srv.total = n; tickTree(); }, gift: (x = player.pos.x + 3, z = player.pos.z) => repel({ santa: true }, new THREE.Vector3(x, 0, z)),
     santa: () => { const d = late.dumpers?.list.find((v) => v.kind === 'walker' && !v.santa); if (d) dressSanta(d); return !!d; }, treePos: () => deco?.pos.clone(), puff,
   },
 };

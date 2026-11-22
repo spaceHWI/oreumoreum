@@ -1003,6 +1003,9 @@ export const CLOTHES = [
   { id: 'top:x-ugly', slot: 'top', tier: 3, name: '못생긴 스웨터', season: 'xmas', look: { kind: 'tee', long: true, main: '#b5333a', acc: '#2f7a4a', stripes: 2, gyul: '#f29a2e', collar: '#f6f2ea' } },
   { id: 'socks:x-boots', slot: 'socks', tier: 3, name: '빨간 장화', season: 'xmas', look: { kind: 'socks', main: '#c8333a', acc: '#f6f2ea', h: 0.2, thick: true } },
   { id: 'vest:x-scarf', slot: 'vest', tier: 2, name: '목도리', season: 'xmas', look: { kind: 'scarf', main: '#c8333a', acc: '#f6f2ea' } },
+  /* 달력을 다 열면 받는 '오름 산타' 한 벌 (#222, SEASON.xmas.full): 겉모습 옷(능력 없음). cal = 가게에 내지 않음·선물 상자에서도 안 나옴. 산타 모자(5일 칸)와 같이 입으면 한 벌 */
+  { id: 'jacket:x-coat', slot: 'jacket', tier: 0, style: true, cal: 1, price: 0, name: '오름 산타 코트', season: 'xmas', desc: '25일을 다 연 사람만', look: { kind: 'jacket', main: '#c8333a', acc: '#f6f2ea', cuffs: true, hem: true } },
+  { id: 'bottom:x-pants', slot: 'bottom', tier: 0, style: true, cal: 1, price: 0, name: '오름 산타 바지', season: 'xmas', desc: '주머니에 귤 하나', look: { kind: 'long', main: '#c8333a', acc: '#1d1d22', belt: true } },
 ];
 // 겉모습 옷 (#179): 능력 없는 옷(tier 0). 값은 price 로 따로. 능력은 칸마다 가진 옷 중 가장 좋은 것이 정하고(gearscore.js abilityCloth), 겉모습은 가진 옷 아무거나(save.clothes.wear)
 // set: 한 벌 맞춤 묶음(OUTFIT_SETS), tint: 색 바꾸기 가능(LOOK_COLORS.style, 저장 save.clothes.tint = { id: 번호 }), fresh: LEAP '새로 들어온 것' 탭에 나오는 날
@@ -1101,6 +1104,7 @@ export const OUTFIT_SETS = [
   { id: 'tourist', name: '관광객', title: '혼저옵서예', fx: '#5ad0e0', items: ['hat:s-shades', 'top:s-aloha', 'bottom:s-check'] },
   { id: 'alien', name: '외계인', title: '지구 견학 중', fx: '#9af06a', items: ['hat:s-antenna', 'bottom:s-leggings', 'jacket:s-glow'] },
   { id: 'farmer', name: '귤 농부', title: '귤밭 주인', fx: '#ffb347', items: ['hat:s-beanie', 'bottom:s-mombbe', 'vest:s-basket'] },
+  { id: 'xsanta', name: '오름 산타', title: '개근 산타', fx: '#ff6a5a', items: ['hat:x-santa', 'jacket:x-coat', 'bottom:x-pants'] }, /* #222 크리스마스 달력 25칸을 다 열면 (SEASON.xmas.full) */
 ];
 export const SET_FX = { n: 8, lowN: 5, r: 0.75, y: 0.8, spin: 0.9, bob: 0.12, size: 0.16, step: 0.6 }; // 둘레 효과: 점 수(저사양), 반지름·높이(m), 도는 빠르기(rad/s), 위아래, 점 크기, 번갈아 높이
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
@@ -1857,6 +1861,17 @@ export const SEASON = {
     tree: { step: 3000, stages: 10, gift: 300, poll: 120, at: [-9, 12] }, // 트리: 모두가 주운 쓰레기 step 개마다 한 단계, 마지막 단계는 꼭대기 귤 별. 다 채우면 선물 귤, 서버 다시 묻기(초). at = 들머리 출발점에서 [옆(오른쪽 +), 앞] m
     cal: { days: 25, miss: 50, coins: [30, 100], every: 5 }, // 접속 달력 12월 1~25일: 귤 30~100, every 일마다 겨울 옷(25일은 눈덩이), 놓친 날은 귤 miss 로 열기
     calCloth: { 5: 'hat:x-santa', 10: 'vest:x-scarf', 15: 'hat:x-rudolph', 20: 'socks:x-boots' }, // 달력 옷 (25일 = 눈덩이)
+    // 다 열면 (#222): 25칸을 모두 열면 한 번. cloth = 받는 옷(산타 모자와 합쳐 OUTFIT_SETS set 한 벌 → 칭호 title), 귤 coins(레벨에 안 셈). 서버 validate.js seasonCheck 가 25칸 확인
+    full: { coins: 500, cloth: ['jacket:x-coat', 'bottom:x-pants'], set: 'xsanta', name: '오름 산타 세트', title: '개근 산타' },
+    // 달력 모양 (#222): 다음 철(설·한가위)도 이 틀로. board 판 [바깥, 가운데 밝은 곳, 테두리], roof 지붕 눈, ink 밝은 문 위 글자, door 문 색 돌림(밝은 색 문은 글자를 ink 로), big 큰 문(리본) 날, center 가운데 가장 큰 문 날·모양(tree|moon|knot)
+    //   order 5×5 칸에 놓는 날 순서(가운데 = center), flakes 내리는 눈송이 수(저사양 0), icon 메뉴 입구 아이콘, sound 문 여는 소리(audio.js)
+    calLook: {
+      title: '크리스마스 달력', board: ['#8e2229', '#c0434a', '#f3ead3'], roof: '#fbfdff', ink: '#3a2414',
+      door: ['#2f7a4a', '#e8b84a', '#1f5a3c', '#f3ead3', '#3f8f6a'], ribbon: '#e8b84a',
+      big: [5, 10, 15, 20], center: 25, centerShape: 'tree',
+      order: [7, 18, 3, 12, 22, 14, 1, 20, 9, 16, 5, 24, 25, 11, 2, 19, 10, 6, 23, 15, 13, 4, 17, 8, 21],
+      flakes: 14, icon: 'gift', sound: 'cartBell',
+    },
     santa: { p: 1 / 3, gift: 0.1, coins: [20, 60], dayMax: 4, giftMax: 2 }, // 투기꾼 3명 중 1명이 산타. 쫓으면 선물 상자: 귤 또는 (gift 확률) 겨울 옷. 하루 dayMax 개까지, 옷은 모두 giftMax 벌까지
     snowball: { slow: 0.2, slowT: 1.5, color: '#f4f8ff' }, // 눈덩이: 피해는 손과 같고 맞은 적이 slowT 초 동안 slow 만큼 느려짐. 귤을 쓰지 않음
     music: { gain: 0.5, bell: [2, 5] }, // 겨울 판 배경음: 종·방울 한 겹 (크기, 방울 사이 초)

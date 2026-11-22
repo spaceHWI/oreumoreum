@@ -19,6 +19,7 @@ const SAVES = {
   questVet: { nick: '고참', coins: 900, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 4, bag: 4, shoes: 3, weapon: 3 }, boss: { done: { 1: 1, 2: 2 } }, journey: { step: 9, seen: { quest: '2026-11-20' }, day: '2026-11-20', n: 0, days: 3, maxZ: 3 }, ach: { life: { trash: 900, 'heap-clear': 30, recycle: 20 } } },
   // #180: 철 이벤트 기록이 깨진 저장
   season: { nick: '산타 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, season: { xmas: { days: [3, 'x', 99, 3], gift: ['hat:nope', 7], tree: 'q', snow: 1, gd: -1, seen: 77 } }, buff: { id: 'vin', left: 30 }, clothes: { own: { 'hat:x-santa': 1 }, wear: { hat: 'hat:x-santa' } } },
+  season3: { nick: '개근 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, season: { xmas: { days: Array.from({ length: 25 }, (_, i) => i + 1), gift: [], full: 'q' } }, clothes: { own: { 'hat:x-santa': 1 }, wear: {} } }, // #222 다 열기 전 저장: 25칸을 다 연 옛 저장(다 열기 기록 없음·깨진 값)
   season2: { nick: '산타 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, season: 'abc' },
   ufo: { nick: '불빛 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, boss: { done: { 1: 1, 2: 1, 3: 1 } }, story: { done: ['night'] }, ufo: { close: 'x', clear: 7, trace: { d: 3, x: 'a' } } }, // #207 UFO 드러남 단계
   ufo2: { nick: '불빛 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, ufo: 'abc' },

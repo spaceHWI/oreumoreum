@@ -194,6 +194,21 @@ async function startServers() {
       ok(!r.fixed.length && r.save.season.xmas.tree === 1 && r.save.coins === 300, '트리가 찼으면 선물 귤 300 받아 줌');
       r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
       ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
+      /* 다 열기 (#222): 25칸이 다 확인됐을 때만 한 번 (귤 500 + 산타 한 벌), 24칸·날짜 속이기·두 번 받기·옷만 몰래 갖기는 거절 */
+      const { SEASON: SN } = await import('../src/balance.js'), FU = SN.xmas.full, all = Array.from({ length: 25 }, (_, i) => i + 1), fOwn = Object.fromEntries(FU.cloth.map((id) => [id, 1]));
+      const PA = { ...S0, coins: 0, season: { xmas: { days: all } } };
+      r = checkSave(PA, { ...PA, coins: FU.coins, season: { xmas: { days: all, full: 1 } }, clothes: { own: { ...fOwn }, wear: {} } }, acc, t, { xday: 25 });
+      ok(!r.fixed.length && r.save.season.xmas.full === 1 && r.save.coins === FU.coins && FU.cloth.every((id) => r.save.clothes.own[id]), `25칸 다 열면 귤 ${FU.coins}·${FU.name} 받아 줌`);
+      const PF = r.save;
+      r = checkSave(PF, { ...PF, coins: PF.coins + FU.coins, season: { xmas: { ...PF.season.xmas, full: 1 } } }, acc, t, { xday: 25 });
+      ok(r.fixed.includes('coins') && r.save.coins === PF.coins, '다 열기 귤 두 번 받기 거절');
+      const P24 = { ...S0, coins: 0, season: { xmas: { days: all.slice(0, 24) } } };
+      r = checkSave(P24, { ...P24, coins: FU.coins, season: { xmas: { days: all.slice(0, 24), full: 1 } }, clothes: { own: { ...fOwn }, wear: {} } }, acc, t, { xday: 25 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.full && r.save.coins === 0 && !FU.cloth.some((id) => r.save.clothes.own[id]), '24칸만 열고 다 열기 거절 (귤·옷 되돌림)');
+      r = checkSave(P24, { ...P24, coins: FU.coins + (calReward(25).coins || 0), season: { xmas: { days: all, full: 1 } }, clothes: { own: { ...fOwn }, wear: {} } }, acc, t, { xday: 20 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.full && !r.save.season.xmas.days.includes(25) && r.save.coins === 0, '날짜 속여 25일 칸을 열고 다 열기 거절 (서버 날짜 20일)');
+      r = checkSave(P, { ...P, clothes: { own: { ...fOwn }, wear: { jacket: FU.cloth[0] } } }, acc, t, { xday: 12 });
+      ok(!FU.cloth.some((id) => r.save.clothes.own[id]) && !r.save.clothes.wear.jacket, '다 열기 옷을 몰래 갖기 거절 (가게 옷 아님)');
     }
     /* ---------- 주간 옷장 (#126): 이번 주 한정 옷만 살 수 있고 값을 셈, 지난주·다음 주 옷은 되돌림 ---------- */
     {

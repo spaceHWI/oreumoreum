@@ -419,11 +419,11 @@ async function main() {
   const J = F.jackpot, jcyc = F.castT + wait + F.pullT + F.showT + F.releaseT, base = fg / cyc * 3600;
   const avgC = (1 - J.p) * cyc + J.p * jcyc, avgG = (1 - J.p) * fg + J.p * J.gyul, tot = avgG / avgC * 3600;
   const day1 = day1Rate, lim = day1 * 0.5;
-  // 철 이벤트 (#180): 이벤트로 얻는 귤(달력 + 산타 선물 상자 하루 상한 + 트리 선물 ÷ 기간 날 수)의 하루 평균이 하루 벌이(1일차 1시간)의 10% 안
+  // 철 이벤트 (#180): 이벤트로 얻는 귤(달력 + 다 열기(#222) + 산타 선물 상자 하루 상한 + 트리 선물 ÷ 기간 날 수)의 하루 평균이 하루 벌이(1일차 1시간)의 10% 안
   { const { SEASON } = require('../src/balance.js'), cal = require('../src/seasoncal.js'), X = SEASON.xmas;
     const days = (X.to[1] - X.from[1]) + 1, calG = Array.from({ length: X.cal.days }, (_, i) => cal.calReward(i + 1).coins || 0).reduce((a, b) => a + b, 0);
-    const santa = X.santa.dayMax * (1 - X.santa.gift) * (X.santa.coins[0] + X.santa.coins[1]) / 2, per = (calG + X.tree.gift) / days + santa, lim2 = day1 * 0.1;
-    console.log(`크리스마스: 달력 귤 ${calG} + 트리 ${X.tree.gift} (${days}일) + 산타 상자 하루 최대 ${Math.round(santa)} → 하루 평균 ${Math.round(per)} · 하루 벌이(1일차 1시간) ${day1} 의 10% ${Math.round(lim2)} → ${per <= lim2 ? '통과' : '넘음'}`); }
+    const santa = X.santa.dayMax * (1 - X.santa.gift) * (X.santa.coins[0] + X.santa.coins[1]) / 2, per = (calG + X.tree.gift + X.full.coins) / days + santa, lim2 = day1 * 0.1;
+    console.log(`크리스마스: 달력 귤 ${calG} + 트리 ${X.tree.gift} + 다 열기 ${X.full.coins} (${days}일) + 산타 상자 하루 최대 ${Math.round(santa)} → 하루 평균 ${Math.round(per)} · 하루 벌이(1일차 1시간) ${day1} 의 10% ${Math.round(lim2)} → ${per <= lim2 ? '통과' : '넘음'}`); }
   // 오름펑크 (#163): 관광객(사진 귤 + 쓰레기를 버리면 맞혀 더 받음, 모두 맞힌다고 봄)·까마귀(하루 상한 다 오고 모두 맞힘, 귀한 귤·영수증도 귤로 셈)의 시간당 귤이 하루 벌이(1일차 1시간)의 5% 안. 하르방은 귤 없음
   { const { MEET } = require('../src/balance.js'), T = MEET.tourist, C = MEET.crow;
     const tour = 3600 / ((T.every[0] + T.every[1]) / 2) * (T.gyul + T.litterP * T.sorryGyul), crow = Math.min(C.dayMax, 3600 / C.cd) * C.drop.reduce((a, d) => a + d[1] * d[2], 0), lim3 = day1 * 0.05;

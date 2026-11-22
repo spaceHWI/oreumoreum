@@ -263,6 +263,7 @@ export const TITLES = [
   { t: '혼저옵서예', set: 'tourist' },
   { t: '지구 견학 중', set: 'alien' },
   { t: '귤밭 주인', set: 'farmer' },
+  { t: '개근 산타', set: 'xsanta' }, /* #222 크리스마스 달력 다 열기 (맨 끝에 더해 번호를 바꾸지 않음) */
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');

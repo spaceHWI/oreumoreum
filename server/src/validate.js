@@ -7,7 +7,7 @@
 // - 치운 양(누적)도 같은 방식
 import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
 import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM } from '../../src/balance.js';
-import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
+import { cleanXmas, calOpenable, calCost, calReward, calClothIds, calAllOpen, fullClothIds } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 import { checkLv } from '../../src/augments.js';
 import { TITLES, NOTES } from '../../src/punktext.js';
@@ -83,7 +83,7 @@ function norm(s) {
 //   분리수거 달인·큰손처럼 귤 벌이에 닿는 증강이 레벨보다 많이 붙지 않게
 
 // 철 이벤트 (#180): 달력·선물 옷은 값을 안 셈
-const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift] : []);
+const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift, ...fullClothIds(S.season.xmas)] : []); // 다 열기 옷 (#222) 은 seasonCheck 가 full 을 확인한 뒤에 셈
 // 새로 산 것들의 값
 function spentOf(P, S) {
   const free = freeCloths(S);
@@ -131,6 +131,8 @@ function seasonCheck(P, S, { xday = 0, treeDone = false }, fixed, budget = Infin
   SX.gift = [...new Set([...P0.gift, ...(xday ? gAdd : [])])].slice(0, Math.max(P0.gift.length, SEASON.xmas.santa.giftMax));
   if (SX.tree && !P0.tree) { if (treeDone && xday) out.room += SEASON.xmas.tree.gift; else { SX.tree = 0; fixed.push('season'); } }
   if (P0.tree) SX.tree = 1;
+  if (SX.full && !P0.full) { if (calAllOpen(SX.days)) out.room += SEASON.xmas.full.coins; else { SX.full = 0; fixed.push('season'); } } /* 다 열기 (#222): 확인된 칸이 25개일 때만, 한 번 */
+  if (P0.full) SX.full = 1;
   if (SX.snow && !SX.days.includes(SEASON.xmas.cal.days)) SX.snow = 0;
   return out;
 }
@@ -203,6 +205,11 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
     const wk = weeklyBuyable(t, WEEKLY.grace);
     for (const id of Object.keys(S.clothes.own)) if (WEEKLY_IDS.has(id) && !P.clothes.own[id] && !wk.has(id)) { delete S.clothes.own[id]; if (!fixed.includes('items')) fixed.push('items'); }
     for (const [k, id] of Object.entries(S.clothes.wear)) if (id && WEEKLY_IDS.has(id) && !S.clothes.own[id]) delete S.clothes.wear[k];
+  }
+  { /* 다 열기 옷 (#222): 가게에서 못 사는 옷. 다 열기(full)로 받은 것이 아니면 되돌림 */
+    const fr = freeCloths(S);
+    for (const id of Object.keys(S.clothes.own)) if (CLOTH[id]?.cal && !P.clothes.own[id] && !fr.has(id)) { delete S.clothes.own[id]; if (!fixed.includes('items')) fixed.push('items'); }
+    for (const [k, id] of Object.entries(S.clothes.wear)) if (id && CLOTH[id]?.cal && !S.clothes.own[id]) delete S.clothes.wear[k];
   }
   let spent = spentOf(P, S) + sx.spent;
   if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
