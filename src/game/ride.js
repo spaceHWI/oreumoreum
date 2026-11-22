@@ -134,6 +134,7 @@ export function buildRideMenu(grid) {
     b.addEventListener('click', () => (own ? pickRide(R) : buyRide(R, b)));
     grid.append(b);
   }
+  late.deerPal?.saddleCard(grid); /* 노루 안장 (#247, deerpal.js) */
 }
 function pickRide(R) { save.rides.cur = R.id; save.rides.walk = 0; persist(); if (player.ride && player.ride !== R.id) { dismountRide(); mountRide(R.id, true); } updateRideBtn(); late.refreshShopPop(); }
 export function buyRide(R, cell) {
@@ -231,7 +232,7 @@ export function tickCartMark() {
 
 // 다른 사람의 탈것 (#69): presence rd 값대로 모양·자세·높이
 export function peerRide(e, dt) {
-  const dr = typeof e.data.dr === 'string' && e.data.dr ? late.deerNet?.peerDeer(e) : null; // 노루를 탄 사람 (#92): 걸터앉아 노루 등 높이로
+  const dr = typeof e.data.dr === 'string' && e.data.dr ? late.deerNet?.peerDeer(e) : e.data.dpr ? late.deerPal?.peerMount(e) : null; // 노루를 탄 사람 (#92): 걸터앉아 노루 등 높이로. 남의 내 노루(#247)도 같게
   if (dr) { e.rig?.set(''); return { pose: 'ride', lift: (dr.seatY ?? 0.95) + (dr.speed > 4 ? Math.abs(Math.sin(dr.phase * 0.5)) * 0.25 : 0), fwd: dr.seatZ || 0 }; }
   const rd = typeof e.data.rd === 'string' ? e.data.rd : '';
   if (!rd && !e.rig) return null;

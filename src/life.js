@@ -276,7 +276,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
         if (tg.eatT < 0) {
           tg.eaten = true; group.remove(tg.mesh); a.target = null;
           a.followUntil = time + 60; a.state = 'follow'; a.heart.visible = true; a.heartT = 2.5; a.followWho = tg.feeder || null; // 다른 사람이 준 귤이면 그 사람을 따라감 (#92)
-          if (!tg.feeder) { sound.crunch?.(); hooks.fed?.(a.kind); onToast(a.kind === 'deer' ? '노루가 귤을 먹고 졸졸 따라와요' : '조랑말이 귤을 먹고 따라와요'); }
+          if (!tg.feeder) { sound.crunch?.(); hooks.fed?.(a.kind, a); onToast(a.kind === 'deer' ? '노루가 귤을 먹고 졸졸 따라와요' : '조랑말이 귤을 먹고 따라와요'); }
         }
         return 0;
       }
@@ -326,6 +326,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     if (!player || !sound) return;
     // 노루
     for (const d of deer) {
+      if (d.taken) continue; /* 내 노루가 된 무리 노루 (#247, game/deerpal.js): 숨겨 두고 멈춤 */
       d.t -= dt; d.phase += dt * (d.speed > 0.1 ? d.speed * 2.2 : 0);
       tickHeart(d, dt);
       if (d.state === 'ridden') {
@@ -532,7 +533,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
     let m = 0; for (const t of extra) { areaOut.length = 0; t.aimTargets(areaOut); for (const a of areaOut) if (Math.hypot(a.pos.x - p.x, a.pos.z - p.z) < r + a.size * 0.5) { hDummy.vel.set(0, 0, 0); if (t.hitTest(aTmp.set(a.pos.x, a.pos.y + a.h, a.pos.z), hDummy, dmg, n + m > 0)) m++; } }
     return n + m;
   }
-  function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
+  function nearestDeer(pos, maxD) { let best = null, bd = maxD; for (const d of deer) { if (d.taken || d.state === 'flee' || d.state === 'ridden') continue; const dd = d.pos.distanceTo(pos); if (dd < bd) { bd = dd; best = d; } } return best; }
   function mount(d) { d.state = 'ridden'; d.speed = 0; d.t = 0; d.target = null; d.followUntil = 0; return d; }
   function dismount(d) { d.state = 'walk'; d.t = 2; d.heading += 1.2; }
   const followers = () => [...deer, ...horses].filter((a) => a.followUntil > performance.now() / 1000 && !a.followWho).length;

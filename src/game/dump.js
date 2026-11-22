@@ -202,10 +202,13 @@ export function updateContext() {
   else if (player.cart) best = cartOffAct; // 마차 (#69): 내리기. 달리는 중에도 옆 길 위로 (#120), 점프는 뛰어내리기
   else if (!busy() && !player.onArrive) {
     for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
-    const d = life.nearestDeer(player.pos, 2.6);
-    if (d) { if (!state.deerAct || state.deerAct.deer !== d) state.deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = state.deerAct; }
+    const pa = late.deerPalAct?.(); /* 노루 친구 (#247): 내 노루 타기·들판 노루 귤 주기 */
+    const d = pa ? null : life.nearestDeer(player.pos, 2.6);
+    if (pa && !pa.mine) best = pa;
+    else if (d) { if (!state.deerAct || state.deerAct.deer !== d) state.deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = state.deerAct; }
     if (cart && !best && cartNear()) best = cartOnAct; // 정류장에 마차가 서 있거나 (#69) 달리는 마차 가까이면 (#120) 타기. 탈것 가게가 닫혀 있어도 마차는 탐 (#244)
     if (state.fishing && !player.ride && (state.fishing.active || (!best && state.fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
+    if (!best && pa?.mine) best = pa; /* 내 노루 타기·귤 주기는 다른 할 일이 없을 때 */
     if (!best) best = player.ride ? rideOffAct : throwAct; // 할 일이 없으면 귤 던지기 (탈것 위에선 내리기)
   }
   if (best !== state.ctxTarget) { state.ctxTarget = best; ui.ctx.classList.toggle('idle', !best); ui.ctx.classList.toggle('soft', best === throwAct); }
