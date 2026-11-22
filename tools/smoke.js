@@ -5,7 +5,7 @@
 // 3) 튜토리얼을 건너뛴 저장: 걷기·줍기 한 번·던지기 한 번·가게 창 열고 닫기·내 가방 열고 닫기
 // 먼저 node build.mjs (dist/test.html 을 씀)
 const { chromium, devices } = require('playwright');
-const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk', 'cases'];
+const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk', 'cases', 'reports'];
 const modes = process.argv[2] ? [process.argv[2]] : ['d', 'm'];
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };
 const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';

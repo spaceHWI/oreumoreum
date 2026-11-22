@@ -223,6 +223,7 @@ function claimBtn(cls, reward, take) {
   });
   return b;
 }
+late.buildAch = () => buildAch(); // 미확인 제보 (#238) 를 끝내면 다시 그림
 function buildAch() {
   const d = ach.ensureDaily();
   const [yy, mm, dd] = d.date.split('-');
@@ -255,6 +256,7 @@ function buildAch() {
     else { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = `귤 ${ach.allGyul()}`; }
     row.append(t, right); list.append(row);
   }
+  late.reportRow?.(list); // 매일 미확인 제보 (#238, game/reports.js)
   { // 이어 오기 (#125): 연속 날 수 · 다음 보상 날
     const R = ach.state.run, nx = RUN_DAYS.find((n) => n > R.n);
     $('ach-run').textContent = R.n ? `이어 오기 ${R.n}일째${nx ? ` · ${nx}일째 보상` : ''}` : '';

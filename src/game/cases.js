@@ -296,6 +296,7 @@ function build() {
     h += `<div class="cf-case"><span class="cf-stamp ${done ? 'done' : 'open'}">${done ? '종결' : '미해결'}</span><h3>${esc(c.name)}</h3><p class="cf-sub">사건 ${c.n} · ${esc(zoneName(c.zone))} · 증거 ${evN(c)}/${c.ev.length}</p><div class="cf-row">${cells.join('')}</div></div>`;
   }
   $('case-file-body').innerHTML = h;
+  late.reportBoard?.($('case-file-body')); // 오늘의 미확인 제보 칸 (#238, game/reports.js)
 }
 $('case-file-body').addEventListener('click', (e) => { const b = e.target.closest('[data-note]'); if (!b) return; win.hidden = true; late.punkWorld?.note?.open(b.dataset.note); });
 function openFile() { closePanels(); build(); win.hidden = false; }
