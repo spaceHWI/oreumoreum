@@ -10,7 +10,7 @@ import { cam, endTitleCam } from './camera.js';
 import { toast, updateStats, closePanels, ach, panelOpen, cancelAll } from './hud.js';
 import { enableDev } from './menu.js';
 import { dropAdm } from '../mview.js';
-import { startSession } from './room.js';
+import { startSession, net } from './room.js';
 import { openLook, introMap, switchMap } from './look.js';
 import { sound, setSoundUI } from './hooks.js';
 import { createRank } from '../rank.js';
@@ -69,7 +69,8 @@ if (ONLINE) {
 // ---------- 랭킹 (#11): 메뉴·클린하우스 옆 게시판에서 열기, 버린 뒤 순위 토스트 ----------
 const rankFace = (look) => { const [k, sk] = String(look).split('|'); return k ? late.HEAD_SVG(k, SKIN_TONES[Math.max(0, Math.min(SKIN_TONES.length - 1, +sk || 0))]) : '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="22" r="11" fill="rgba(255,255,255,.35)"/></svg>'; };
 export const rank = createRank({ account: state.account, store: trash?.store || null, face: rankFace, toast, ach, save, persist, onOpen: closePanels,
-  el: { box: $('rank'), list: $('rank-list'), note: $('rank-note'), range: $('rank-range') } });
+  el: { box: $('rank'), list: $('rank-list'), note: $('rank-note'), range: $('rank-range') },
+  guests: () => (net.solo ? 0 : [...net.peersById.values()].filter((e) => e.data && e.data.ac !== 1).length) }); /* #261: 같은 방 손님 수 */
 if (state.account?.loggedIn) setTimeout(() => rank.prime(), 2500); // 오늘 순위 기준
 late.openRank = () => rank.open(); late.rankAfterDump = () => rank.afterDump();
 $('menu-rank').addEventListener('click', () => rank.open());

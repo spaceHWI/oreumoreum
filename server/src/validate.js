@@ -15,6 +15,7 @@ import { recognize, cleanSold, normCred } from './earn.js';
 import { WEEKLY_IDS, weeklyBuyable } from '../../src/weekly.js';
 import { normTok, TOK_CLOTHES } from '../../src/token.js';
 import { tokenCheck } from './token.js';
+import { kstDay, weekStart } from '../../src/rankday.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const BACK = Object.fromEntries(BACK_LOOKS.map((b) => [b.id, b]));
@@ -175,6 +176,13 @@ function giftDone(S, g, fixed) {
 // → { save, fixed: [바로잡은 칸], acc: 새 credit·pickCredit·bank·cred, rec: 서버가 인정한 몫(#188), clamp: 깎인 귤, nickBad: 걸린 이름을 무작위로 바꿨음 }
 // free: 어드민 계정 (#84, 시크릿 ADMIN_SUBS). 귤·치운 양 몫을 보지 않음 (개발자 버튼 '귤 채우기')
 // grant: 운영자가 보낸 귤 가운데 이 저장이 받았다고 한 몫 (#188 POST /admin/grant)
+// 기기 기록 옮기기의 '오늘 치운 수' (#261): 기기 기록(trash.rk)의 날이 서버의 오늘이고, 이번 주·전체 치운 수·남은 줍기 몫을 넘지 않는 만큼만
+export function migDay(next, S, t, pickCredit) {
+  const rk = isObj(next?.trash?.rk) ? next.trash.rk : null;
+  if (!rk || Number(rk.d) !== kstDay(t)) return 0;
+  const day = int(rk.day?.battle, 0, 1e9, 0), week = Number(rk.w) === weekStart(kstDay(t)) ? int(rk.week?.battle, 0, 1e9, 0) : day;
+  return Math.max(0, Math.floor(Math.min(day, week, S.trash.total, pickCredit)));
+}
 export function checkSave(prev, next, acc, t, { migrate = false, free = false, xday = 0, treeDone = false, grant = 0 } = {}) {
   if (!isObj(next)) throw new Error('bad save');
   const S = norm(JSON.parse(JSON.stringify(next)));
@@ -198,7 +206,8 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
     // 기기 기록 옮기기: 지난 기록을 확인할 길이 없어 목록 확인과 귤 상한만
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
     if (S.tok.n > TOKEN.server.migrateMax) { S.tok.n = TOKEN.server.migrateMax; fixed.push('tok'); } // 징표 (#255)
-    return done({ save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow });
+    const rkDay = migDay(next, S, t, pickCredit); pickCredit -= rkDay; /* #261: 손님 때 오늘 치운 몫은 오늘·이번 주 표에도. 치운 양 빠르기(pickBurst) 안에서만 */
+    return done({ save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow, rkDay });
   }
   if (P.cave && (!S.cave || S.cave.out < P.cave.out)) { S.cave = { ...(S.cave || {}), out: P.cave.out }; } // 동굴 누적은 줄지 않음 (#195: 줄였다 다시 올려 두 번 받기 막음)
   const rc = recognize(P, S, sold, cred, t); cred = rc.cred; // 서버가 아는 큰 귤 (#188): bank 에 더해 늦게 들어오는 귤도 받음

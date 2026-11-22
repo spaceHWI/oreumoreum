@@ -223,7 +223,7 @@ function fillFoot() {
   const spd = (shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0))).toFixed(2).replace(/0$/, '');
   const S = late.STAT_ICON || {};
   const row = (ic, name, v) => `<span class="bs">${SVG(S[ic] || '')}<em>${name}</em><b>${v}</b></span>`;
-  footEl.innerHTML = `<div class="bag-score">${scoreChip(g.total, 0)}<small>줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}</small></div>`
+  footEl.innerHTML = `<div class="bag-score"><em class="bs-k">장비 힘</em>${scoreChip(g.total, 0)}<small>줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}</small></div>`
     + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${wd}/초` : wd)}</div>`
     + (late.tokFoot?.() || '') /* 징표·싸움 차림 (#255) */
     + (late.lvShown?.() && bagS.tab !== 'stat' ? late.augFoot?.() || '' : ''); // 레벨·증강 (#159): 장비 점수와 따로 (능력 탭에선 위에 크게)

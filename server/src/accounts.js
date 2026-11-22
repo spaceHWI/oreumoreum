@@ -58,6 +58,7 @@ export class Accounts extends DurableObject {
     // 이용 통계 (#121): 날(한국 날 번호)·출처(live·dev·adm)·키마다 합과 횟수 한 줄. 계정·IP 는 넣지 않음
     this.sql.exec('CREATE TABLE IF NOT EXISTS mt (d INTEGER, src TEXT, k TEXT, sum REAL, n INTEGER, PRIMARY KEY (d, src, k))');
     wishInit(this.sql); // 돌탑 소원 (#127, wishes.js)
+    this.sql.exec('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v INTEGER)'); /* 값 하나짜리 기록: rkLast = 마지막으로 순위가 늘어난 시각 (#250) */
     this.rkCache = new Map();
   }
   /* ---------- 돌탑 소원 (#127): server/src/wishes.js ---------- */
@@ -84,11 +85,16 @@ export class Accounts extends DurableObject {
     return this.sql.exec('SELECT room, n, login FROM onl ORDER BY room').toArray();
   }
   // 어드민 창 (#186): 숫자만. rooms = [{ map, ch, n, login }]
+  // 랭킹 상태 (#250, 어드민 '지금 접속' 아래 한 줄): 오늘·이번 주·전체 순위표 사람 수와 마지막으로 순위가 늘어난 시각. 닉네임·계정 번호는 넣지 않음
+  rankStat(srv = 'battle', t = Date.now()) {
+    const cnt = (range) => { const [q, a] = this.rankFrom(range, srv, t); return this.sql.exec(`SELECT COUNT(*) AS n FROM (${q})`, ...a).one().n; };
+    return { day: cnt('day'), week: cnt('week'), all: cnt('all'), last: this.sql.exec("SELECT v FROM kv WHERE k = 'rkLast'").toArray()[0]?.v || 0 };
+  }
   online(t = Date.now()) {
     const rooms = this.onlineRows(t).map((r) => { const m = /^oreum-([a-z0-9]+)(?:-battle)?#(\d+)$/.exec(r.room); return { map: m ? m[1] : r.room.split('#')[0], ch: m ? Number(m[2]) : 0, n: r.n, login: r.login }; });
     const n = rooms.reduce((a, r) => a + r.n, 0), login = rooms.reduce((a, r) => a + r.login, 0);
     const pk = this.sql.exec('SELECT n, at FROM onlpk WHERE d = ?', kstDay(t)).toArray()[0];
-    return { now: t, n, login, guest: n - login, rooms, peak: pk ? { n: Math.max(pk.n, n), at: pk.n >= n ? pk.at : t } : { n, at: t } };
+    return { now: t, n, login, guest: n - login, rooms, rank: this.rankStat('battle', t), peak: pk ? { n: Math.max(pk.n, n), at: pk.n >= n ? pk.at : t } : { n, at: t } };
   }
   // 이번 철 트리 합계: 기간 첫날부터 오늘까지
   seasonTotal(t = Date.now()) {
@@ -136,11 +142,11 @@ export class Accounts extends DurableObject {
   }
   revoke(jti, exp) { this.sql.exec('INSERT OR REPLACE INTO rv (j, exp) VALUES (?, ?)', jti, exp); return { ok: true }; }
   get(sub) { this.fileGrants(); const r = this.row(sub); return r ? this.view(r, r.last_seen) : null; }
-  put(sub, save, { migrate = false, free = false, ver = '' } = {}) {
+  put(sub, save, { migrate = false, free = false, ver = '', at = 0 } = {}) {
     const raw = JSON.stringify(save);
     if (raw.length > NET.saveMax) return { error: 'too big' };
     this.fileGrants();
-    const t = Date.now();
+    const t = at || Date.now(); /* at: 로컬 검사(FAKE_AUTH, tools/rankrun.js)만 시각을 넣어 봄 (#250) */
     let r = this.row(sub); if (!r) { this.touch(sub); r = this.row(sub); }
     const prev = r.save ? JSON.parse(r.save) : null;
     const xday = xmasDay(t);
@@ -148,7 +154,7 @@ export class Accounts extends DurableObject {
     const got = new Set(Array.isArray(save.giftGot) ? save.giftGot.slice(-100).map(Number) : []);
     const take = this.giftsOf(sub).filter((g) => got.has(g.id)), grant = take.reduce((a, g) => a + g.n, 0);
     let cred = null; try { cred = r.cred ? JSON.parse(r.cred) : null; } catch (e) { cred = null; }
-    const { save: S, fixed, acc, clamp, nickBad: nb, lvCut } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, cred, gin: r.gin || 0, gout: r.gout || 0 }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal(), grant });
+    const { save: S, fixed, acc, clamp, nickBad: nb, lvCut, rkDay = 0 } = checkSave(prev, save, { credit: r.credit, pickCredit: r.pick_credit, bank: r.bank, savedAt: r.saved_at, cred, gin: r.gin || 0, gout: r.gout || 0 }, t, { migrate: migrate && !prev, free, xday, treeDone: xday > 0 && this.seasonTotal(t) >= treeGoal(), grant });
     for (const g of take) this.sql.exec('UPDATE gift SET got = 1, got_at = ? WHERE id = ? AND sub = ?', t, g.id, sub);
     const rev = (r.rev || 0) + 1;
     // 확인한 칸만 바꿔 넣고 나머지(설정·튜토리얼 등)는 받은 그대로
@@ -161,6 +167,7 @@ export class Accounts extends DurableObject {
     // 랭킹 (#11): 서버가 확인한 치운 양이 늘어난 만큼만 더함 (서버는 전투 오름 하나, #98). 줄어든 것(처음부터 다시 등)은 빼지 않음
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
+    if (rkDay > 0 && gain > 0) this.rankDay(sub, 'battle', Math.min(rkDay, gain), t); /* #261: 손님 때 오늘 치운 몫 (전체는 위에서 다 넣음) */
     const fix = {};
     if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } if (fixed.includes('gift')) { fix.coins = S.coins; fix.gift = S.gift; } if (fixed.includes('lvxp')) fix.lv = { cut: lvCut || 0 }; if (fixed.includes('tok') || fixed.includes('tokItems')) fix.tok = S.tok; if (fixed.includes('tokItems')) fix.reload = 1; }
     if (clamp && clamp.amt > 0) fix.cut = { n: clamp.amt, why: clamp.why }; // 클라이언트가 '귤 ○개를 맞췄어요' 와 의견 보내기에 붙임
@@ -245,9 +252,18 @@ export class Accounts extends DurableObject {
   /* ---------- 랭킹 (#11) ---------- */
   // onlyAll: 기기 기록을 옮긴 몫은 오늘·이번 주에 넣지 않음
   rankAdd(sub, srv, n, t = Date.now(), onlyAll = false) {
+    const had = this.sql.exec('SELECT 1 AS x FROM rka WHERE sub = ? AND srv = ? AND n > 0', sub, srv).toArray().length && (onlyAll || this.sql.exec('SELECT 1 AS x FROM rkd WHERE sub = ? AND srv = ? AND d = ? AND n > 0', sub, srv, kstDay(t)).toArray().length);
+    if (!had) this.rkCache.clear(); /* #261: 표에 처음 오르는 사람은 캐시(RANK.cacheMs)를 기다리지 않고 바로 보이게 */
     this.sql.exec('INSERT INTO rka (sub, srv, n) VALUES (?, ?, ?) ON CONFLICT (sub, srv) DO UPDATE SET n = n + excluded.n', sub, srv, n);
     if (!onlyAll) this.sql.exec('INSERT INTO rkd (sub, srv, d, n) VALUES (?, ?, ?, ?) ON CONFLICT (sub, srv, d) DO UPDATE SET n = n + excluded.n', sub, srv, kstDay(t), n);
+    this.sql.exec("INSERT INTO kv (k, v) VALUES ('rkLast', ?) ON CONFLICT (k) DO UPDATE SET v = MAX(v, excluded.v)", t);
     if (!onlyAll && xmasDay(t)) this.sql.exec('INSERT INTO ssn (d, n) VALUES (?, ?) ON CONFLICT (d) DO UPDATE SET n = n + excluded.n', kstDay(t), n); // 트리 (#180)
+  }
+  // 오늘 표(이번 주 표는 날 합)에만 더함 (#261 기기 기록 옮기기). 철 트리(ssn)도 같은 날 몫
+  rankDay(sub, srv, n, t = Date.now()) {
+    this.sql.exec('INSERT INTO rkd (sub, srv, d, n) VALUES (?, ?, ?, ?) ON CONFLICT (sub, srv, d) DO UPDATE SET n = n + excluded.n', sub, srv, kstDay(t), n);
+    if (xmasDay(t)) this.sql.exec('INSERT INTO ssn (d, n) VALUES (?, ?) ON CONFLICT (d) DO UPDATE SET n = n + excluded.n', kstDay(t), n);
+    this.rkCache.clear();
   }
   // range 의 (sub, s) 묶음을 만드는 SQL 과 값
   rankFrom(range, srv, t) {
@@ -259,7 +275,7 @@ export class Accounts extends DurableObject {
   rank(sub, range, srv, t = Date.now()) {
     const key = range + '|' + srv + '|' + kstDay(t);
     let c = this.rkCache.get(key);
-    if (!c || t - c.at > RANK.cacheMs) {
+    if (!c || Math.abs(t - c.at) > RANK.cacheMs) {
       const [q, a] = this.rankFrom(range, srv, t);
       const rows = this.sql.exec(`SELECT t.sub AS sub, t.s AS s, acc.nick AS nick, acc.look AS look FROM (${q}) t JOIN acc ON acc.sub = t.sub ORDER BY t.s DESC, acc.created ASC LIMIT ?`, ...a, RANK.top).toArray();
       const total = this.sql.exec(`SELECT COUNT(*) AS n FROM (${q})`, ...a).one().n;
@@ -268,7 +284,7 @@ export class Accounts extends DurableObject {
       if (this.rkCache.size > 24) this.rkCache.delete(this.rkCache.keys().next().value);
     }
     const me = this.rankOf(sub, range, srv, t);
-    return { range, srv, total: c.total, top: c.rows.map(({ sub: s, ...r }) => (s === sub ? { ...r, me: true } : r)), me };
+    return { range, srv, total: c.total, top: c.rows.map(({ sub: s, ...r }) => (s === sub ? { ...r, ...(me.n ? { n: me.n, rank: me.rank } : {}), me: true } : r)), me }; /* 내 줄은 캐시(RANK.cacheMs) 말고 바로 센 값 (#250: 버린 직후 내 수가 옛 값으로 보이던 것) */
   }
   // 내 순위만 (캐시 없이 바로): { rank (없으면 0), n }
   rankOf(sub, range, srv, t = Date.now()) {

@@ -149,7 +149,7 @@ export default {
         const s = await who(); if (!s) return json({ error: 'login' }, 401);
         const body = await readJson(req, NET.saveMax + 4096);
         if (!body || typeof body.save !== 'object') return json({ error: 'bad save' }, 400);
-        return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub), ver: cleanText(body.ver, 20) }));
+        return json(await accounts(env).put(s.sub, body.save, { migrate: !!body.migrate, free: adminSubs(env).has(s.sub), ver: cleanText(body.ver, 20), at: env.FAKE_AUTH === '1' && Number.isFinite(body.at) && body.at > 0 ? body.at : 0 })); /* at: 로컬 검사만 (#250) */
       }
       // 이름 바꾸기 (#162): POST /nick {nick, price} → { ok, nick, paid, coins, rev, nickRen } 또는 { error: bad|same|day|price|coins (, price) }
       if (url.pathname === '/nick' && req.method === 'POST') {
@@ -164,9 +164,10 @@ export default {
       if ((url.pathname === '/rank' || url.pathname === '/rank/me') && req.method === 'GET') {
         const s = await who(); if (!s) return json({ error: 'login' }, 401);
         const srv = SRVS[0]; // 서버는 전투 오름 하나 (#98). 예전 클라이언트의 srv=clean 도 battle 로
-        if (url.pathname === '/rank/me') return json(await accounts(env).rankMe(s.sub, srv));
+        const qa = Number(url.searchParams.get('at') || NaN), at = env.FAKE_AUTH === '1' && qa > 0 ? qa : Date.now(); /* 로컬 검사(tools/rankrun.js)만 날을 바꿔 봄 (#250) */
+        if (url.pathname === '/rank/me') return json(await accounts(env).rankMe(s.sub, srv, at));
         const range = RANGES.includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'day';
-        return json(await accounts(env).rank(s.sub, range, srv));
+        return json(await accounts(env).rank(s.sub, range, srv, at));
       }
       // 이용 통계 (#121): 로그인 없이. 묶음 하나(text/plain, sendBeacon)를 날짜별 합계에 더하기만. 요청 수는 위 RL_API 를 같이 씀
       if (url.pathname === '/m' && req.method === 'POST') {
