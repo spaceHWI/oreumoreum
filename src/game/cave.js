@@ -7,7 +7,7 @@
 // dev: __oreum.cave (enter·exit·down·state·stats)
 import * as THREE from 'three';
 import { CAVE } from '../balance.js';
-import { genFloor, caveMesh, caveDots, caveSeed } from '../cavegen.js';
+import { genFloor, caveMesh, caveDots, caveSeed, caveK } from '../cavegen.js';
 import { kstDate } from '../daily.js';
 import { height, setCaveGround } from '../world.js';
 import { CRATER } from '../zones.js';
@@ -25,6 +25,10 @@ import { isDone } from './zonedone.js';
 import { dismountRide, leaveCart } from './ride.js';
 
 state.cave = null;
+/* 카메라 안 (#214): 'a' 내려다보기·천장 없음 / 'b' 넓은 굴 / 'c' 지금. 이 기기에 저장(CAM_KEY), 없으면 CAVE.camMode. 바꾸기·버튼은 game/cavecam.js */
+export const CAM_KEY = 'oreumoreum.caveCam';
+state.caveCam = (() => { try { const v = localStorage.getItem(CAM_KEY); return v === 'a' || v === 'b' || v === 'c' ? v : CAVE.camMode; } catch (e) { return CAVE.camMode; } })();
+export const caveKNow = () => caveK(CAVE, state.caveCam);
 const lam = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
 
 // ---------- 입구 (오름 굼부리 바닥) ----------
@@ -75,20 +79,21 @@ function makeScene() {
   lamp = new THREE.PointLight(CAVE.lamp.color, CAVE.lamp.i, CAVE.lamp.r, 1.4); cs.add(lamp);
 }
 const caveMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
+const caveMatA = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), capMat = new THREE.MeshBasicMaterial({ color: '#030303' }); /* 내려다보기(#214 a): 앞면만 = 카메라 쪽 벽이 안 보임 · 자른 윗면 */
 function disposeFloor() {
   if (!floorG) return;
-  floorG.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material !== caveMat) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose()); });
+  floorG.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material !== caveMat && o.material !== caveMatA && o.material !== capMat) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose()); });
   cs.remove(floorG); floorG = null;
 }
 function buildFloor(fi) {
   disposeFloor();
-  const day = kstDate(), F = genFloor(CAVE, fi, caveSeed(day, fi)); netCave.fi = fi; netCave.day = day; /* 같이 들어가기 (4번 조각): 같은 날·층 사람끼리 */
-  const M = caveMesh(F, CAVE), geo = new THREE.BufferGeometry();
+  const K = caveKNow(), day = kstDate(), F = genFloor(K, fi, caveSeed(day, fi)); netCave.fi = fi; netCave.day = day + (K.mode === 'b' ? 'b' : ''); /* 같이 들어가기 (4번 조각): 같은 날·층·(넓은 굴이면 그것끼리) 사람끼리 */
+  const M = caveMesh(F, K), geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(M.pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(M.col, 3)); geo.computeVertexNormals(); geo.computeBoundingSphere();
   const g = new THREE.Group(); g.name = 'cave-floor-' + fi;
-  g.add(new THREE.Mesh(geo, caveMat));
+  g.add(new THREE.Mesh(geo, K.cut ? caveMatA : caveMat));
   // 발광 이끼·수정 (한 종류에 그리기 한 번)
-  const D = caveDots(F, CAVE), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
+  const D = caveDots(F, K), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
   const moss = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.32, 0), new THREE.MeshBasicMaterial({ color: '#ffffff' }), D.moss.length);
   D.moss.forEach((d, i) => { q.setFromEuler(new THREE.Euler(0, d.a, 0)); s.set(d.s * 1.4, 0.18, d.s); p.set(d.x, d.y + 0.05, d.z); m4.compose(p, q, s); moss.setMatrixAt(i, m4); moss.setColorAt(i, c.set(d.c > 0.5 ? '#2fe0b0' : '#7cf05a').multiplyScalar(0.55)); });
   const crys = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.4, 0), new THREE.MeshBasicMaterial({ color: '#ffffff' }), D.crystal.length);
@@ -96,7 +101,7 @@ function buildFloor(fi) {
   g.add(moss, crys);
   // 줄(밖으로): 첫 방 가운데, 천장 구멍에서 내려온 밧줄과 옅은 빛
   ropePos.set(F.start.x, F.floorY(F.start.x, F.start.z), F.start.z);
-  const top = F.ceilY(F.start.x, F.start.z);
+  const top = K.cut ? ropePos.y + K.cut + 2.5 : F.ceilY(F.start.x, F.start.z);
   const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, top - ropePos.y + 1, 5), lam('#a07a4a')); rope.position.set(ropePos.x, (top + ropePos.y) / 2, ropePos.z); g.add(rope);
   const knot = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.07, 4, 8), lam('#8a6a40')); knot.rotation.x = Math.PI / 2; knot.position.set(ropePos.x, ropePos.y + 0.08, ropePos.z); g.add(knot);
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.8, top - ropePos.y, 10, 1, true), new THREE.MeshBasicMaterial({ color: '#cfe4ff', transparent: true, opacity: fi ? 0.05 : 0.11, depthWrite: false, side: THREE.DoubleSide, fog: false }));
@@ -109,6 +114,7 @@ function buildFloor(fi) {
     for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; m4.compose(p.set(holePos.x + Math.cos(a) * 1.9, holePos.y + 0.15, holePos.z + Math.sin(a) * 1.9), q.setFromEuler(new THREE.Euler(k, k * 2, 0)), s.set(1, 0.7, 1)); ring.setMatrixAt(k, m4); }
     g.add(ring);
   } else holePos.set(1e9, 0, 1e9);
+  if (M.cap) { const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.BufferAttribute(M.cap, 3)); cg.computeBoundingSphere(); const cm = new THREE.Mesh(cg, capMat); cm.name = 'cave-cap'; g.add(cm); }
   cs.add(g); floorG = g;
   return { F, tris: M.tris };
 }
@@ -137,6 +143,17 @@ function placeAt(F, x, z, face) {
   cam.yaw = face + Math.PI;
 }
 
+// ---------- 카메라 안 (#214) ----------
+// 들어갈 때: 안마다 카메라 거리·각, 안개·헤드랜턴. a 는 거리 = 높이 / sin(각), 안개는 매 프레임 카메라 거리에 맞춤(caveFrame)
+const aDist = () => { const A = CAVE.view.a; return A.h / Math.sin(A.pitch); };
+function applyView() {
+  const m = state.caveCam, B = CAVE.view.b;
+  if (m === 'a') { cam.dist = aDist(); cam.pitch = CAVE.view.a.pitch; }
+  else { const C = m === 'b' ? B.cam : CAVE.cam; cam.dist = C.dist; cam.pitch = C.pitch; }
+  cs.fog.near = m === 'b' ? B.fog[0] : CAVE.fog[0]; cs.fog.far = m === 'b' ? B.fog[1] : CAVE.fog[1];
+  lamp.distance = m === 'b' ? B.lamp.r : CAVE.lamp.r; lamp.intensity = m === 'b' ? B.lamp.i : CAVE.lamp.i;
+}
+
 // ---------- 들어가기·나가기 ----------
 let busyT = 0;
 const info = () => { const m = renderer.info.memory; return { geo: m.geometries, tex: m.textures, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null }; };
@@ -163,11 +180,11 @@ export function enterCave(now = false) {
     if (!cs) makeScene();
     const back = { x: entFront.x, z: entFront.z, yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist };
     state.cave = { fi: 0, F: null, back, t: 0, before };
-    const b = buildFloor(0); state.cave.F = b.F; state.cave.tris = b.tris;
+    const b = buildFloor(0); state.cave.F = b.F; state.cave.tris = b.tris; state.cave.K = caveKNow(); state.cave.mode = state.caveCam;
     setCaveGround(caveGround); netCave.at = { x: entFront.x, z: entFront.z }; netCave.scene = cs;
     cs.add(runner.root);
     placeAt(b.F, b.F.start.x + 2.2, b.F.start.z, 0);
-    cam.dist = CAVE.cam.dist; cam.pitch = CAVE.cam.pitch; followCam(0, true);
+    applyView(); followCam(0, true);
     late.caveIn?.(cs); late.caveFloor?.(b.F, 0); /* 2번 조각 (cavelife.js): 적·불빛 장면 옮기기, 이 층 더미·적 */
     state.cave.after = info();
     toast(CAVE.lines.enter + ' 1층');
@@ -211,8 +228,13 @@ function caveFrame(dt) {
   // 오름 쪽으로 걷게 하는 것(자동 걷기·퀘스트 길 안내 등)은 끔
   if (player.target && !F.inside(player.target.x, player.target.z)) { player.target = null; player.onArrive = null; late.stopAutoGo?.(); }
   // 카메라: 가깝게, 벽·천장을 뚫지 않게 (플레이어 머리에서 카메라 쪽으로 걸어 보며 막히는 곳 앞에서 멈춤)
-  if (cam.dist > CAVE.cam.max) cam.dist = CAVE.cam.max;
-  if (cam.mode === 'follow') {
+  // 내려다보기(#214 a): 각은 고정(좌우만 돌림, 저절로 돌지 않음), 거리는 좁은 범위, 천장이 없어 당기지 않음. 안개는 카메라 거리 + [시작, 끝]
+  const top = state.caveCam === 'a', A = CAVE.view.a;
+  if (top) {
+    cam.pitch = A.pitch; const d0 = aDist(); cam.dist = Math.max(d0 * A.zoom[0], Math.min(d0 * A.zoom[1], cam.dist)); state.camHold = Math.max(state.camHold, 0.2);
+    if (cam.mode === 'follow') { const d = camera.position.distanceTo(player.pos); cs.fog.near = d + A.fog[0]; cs.fog.far = d + A.fog[1]; }
+  } else { const mx = state.caveCam === 'b' ? CAVE.view.b.cam.max : CAVE.cam.max; if (cam.dist > mx) cam.dist = mx; }
+  if (cam.mode === 'follow' && !top) {
     L.set(player.pos.x, player.visY + 1.5, player.pos.z); Cp.copy(cam.pos);
     let safe = 1; const n = 16;
     for (let k = 1; k <= n; k++) { const t = k / n, x = L.x + (Cp.x - L.x) * t, z = L.z + (Cp.z - L.z) * t, y = L.y + (Cp.y - L.y) * t; if (!F.open(x, z) || y > F.ceilY(x, z) - 0.4 || y < F.floorY(x, z) + 0.3) { safe = Math.max(0.1, (k - 1.5) / n); break; } }
@@ -224,13 +246,15 @@ function caveFrame(dt) {
   // 수정이 천천히 깜빡임
   const fc = floorG?.children[2]; if (fc) fc.material.color.setScalar(0.85 + 0.15 * Math.sin(c.t * 2.2));
   late.caveTick?.(dt, F); /* 더미·적·지킴이 (cavelife.js) */
+  late.caveCamTick?.(dt); /* 카메라 안 (#214, cavecam.js): 넓은 굴에서 카메라가 가까우면 캐릭터 반투명 · 내려다보기 가장자리 어둠 */
   late.caveDraw?.(true); renderer.render(cs, camera); late.caveDraw?.(false);
 }
 function tickCave(dt) { if (busyT > 0) busyT -= dt; tickMouth(dt); }
 // 동굴 바닥 누르기 (input.js tapGround): 광선을 따라 걸으며 바닥 아래로 들어가는 첫 점
 function caveRay(ray) {
   const c = state.cave; if (!c) return null; const F = c.F, o = ray.ray.origin, d = ray.ray.direction;
-  for (let t = 0.5; t < 30; t += 0.25) { const x = o.x + d.x * t, z = o.z + d.z * t, y = o.y + d.y * t; if (!F.open(x, z)) return null; if (y <= F.floorY(x, z)) return { point: new THREE.Vector3(x, F.floorY(x, z), z) }; }
+  const cut = c.K?.cut; /* 내려다보기(#214 a): 카메라가 바위 위에 있으니 자른 높이 아래로 내려온 뒤부터 벽을 봄 */
+  for (let t = 0.5; t < 60; t += 0.25) { const x = o.x + d.x * t, z = o.z + d.z * t, y = o.y + d.y * t; if (!F.open(x, z)) { if (cut && y > F.floorY(x, z) + cut) continue; return null; } if (y <= F.floorY(x, z)) return { point: new THREE.Vector3(x, F.floorY(x, z), z) }; }
   return null;
 }
 Object.assign(late, { caveFrame, caveRay, tickCave });
@@ -243,5 +267,5 @@ late.caveApi = {
   goEnt: () => { player.pos.copy(entFront); player.visY = player.pos.y; player.heading = entFace + Math.PI; },
   state: () => { const c = state.cave; return c && { fi: c.fi, rooms: c.F.rooms.length, branch: c.F.branch, cells: c.F.floorCells, tris: c.tris, x: +player.pos.x.toFixed(1), z: +player.pos.z.toFixed(1), y: +player.pos.y.toFixed(2), walk: c.F.walk(player.pos.x, player.pos.z), rope: { x: ropePos.x, z: ropePos.z }, hole: c.F.far?.kind === 'down' ? { x: holePos.x, z: holePos.z } : null, far: c.F.far, t: +c.t.toFixed(1) }; },
   stats: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ...info(), lastMs: log.lastMs, ms: log.ms, trips: log.trips }),
-  scene: () => cs, gen: (fi = 0, day = kstDate()) => genFloor(CAVE, fi, caveSeed(day, fi)),
+  scene: () => cs, gen: (fi = 0, day = kstDate(), mode = state.caveCam) => genFloor(caveK(CAVE, mode), fi, caveSeed(day, fi)),
 };

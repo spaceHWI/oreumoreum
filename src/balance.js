@@ -2059,6 +2059,14 @@ export const CAVE = {
   floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
   roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,
   cam: { dist: 7.5, max: 9, pitch: 0.2 },
+  // 카메라 두 안 해 보기 (#214): camMode 기본 안(이 기기에 고른 값이 없을 때). 'a' 내려다보기·천장 없음 / 'b' 넓은 굴 / 'c' 지금(어깨 뒤, 좁은 굴)
+  //   a: pitch 내려다보는 각(라디안, 60°) · h 캐릭터 위 높이(m, 거리 = h / sin) · zoom 거리 배율 [최소, 최대] · cut 벽을 자르는 높이(m, 윗면은 검게) · fog 카메라 거리 + [시작, 끝] · ring 화면 가장자리 어둠(시야 원 반지름, 화면 짧은 변 비율)
+  //   b: k 통로 폭·방 크기·칸 배율 · ceilK 천장 높이 배율 · x0·floorGap 층 자리(넓어진 층이 겹치지 않고 서버 자리 한도 ±4000 안) · cam 거리·최대·숙임 · lamp·fog 넓은 굴에 맞춤 · fadeD 카메라가 이만큼(m) 가까우면 캐릭터 반투명
+  camMode: 'a',
+  view: {
+    a: { pitch: 1.047, h: 14, zoom: [0.85, 1.2], cut: 2.4, fog: [2, 15], ring: 0.42 },
+    b: { k: 2.5, ceilK: 3, x0: 3100, floorGap: 345, cam: { dist: 9, max: 13, pitch: 0.24 }, lamp: { r: 30, i: 80 }, fog: [9, 34], fadeD: 2.4 },
+  },
   lamp: { r: 13, i: 46, color: '#ffe2b0' },
   fog: [5, 14], ambient: 0.55,
   fade: 0.5, hold: 0.35, near: 2.6,

@@ -6,6 +6,8 @@
 // 3) (늘, 3번 조각) 한 판 어림: 걷기(줄 → 구멍·주인, 더미·곁방 들르기 ×1.5, 나올 때 맨 아래 층 되돌아감) + 줍기(가장 큰 배낭·큰 갈퀴) + 싸움(방 적·지킴이·주인)
 //    무기 머신건(4단계, 동굴 들어갈 때쯤)·레이저(5단계)로 각각, 여유 ×1.25. 머신건 판이 15~25분 안이 목표. 번 귤(쓰레기 온전한 판·절반 판·상자·주인)
 // --live 에서 4번 조각: 층마다 벽 쪽지(읽으면 주운 쪽지에)·동굴 옷(상자·주인 뒤, 가게 목록엔 없음)·퀘스트 셈 caveOut·감독 문 cave·혼잣말 줄
+// 카메라 두 안 (#214): (늘) a 내려다보기(벽 자름·천장 없음)·b 넓은 굴(같은 씨앗을 k 배) 층마다 걸어서 닿음·삼각형. --live 에서 a·b·지금 세 안으로
+//   통로 걷기 / 적 무리와 싸움 / 주인 방 3장면 그림(notes/shots/214/, --shots 다른 곳)·draw call·삼각형·프레임 시간, 더미·적·지킴이·주인·같이 보기 칸 이름
 // --live 에서 3번 조각: 판 수(셋째 판은 절반)·화살표·무너지는 바닥·낙석·물길(테왁 없으면 못 건넘)·상자(하루 한 번)·주인(드론 부름·쫓아내면 큰 보상 하루 한 번)
 const path = require('path');
 const args = process.argv.slice(2);
@@ -16,7 +18,7 @@ const bad = (m) => { fail++; console.log('  실패:', m); };
 
 (async () => {
   const { CAVE } = await import(path.join(process.cwd(), 'src/balance.js'));
-  const { genFloor, caveMesh, caveSeed } = await import(path.join(process.cwd(), 'src/cavegen.js'));
+  const { genFloor, caveMesh, caveSeed, caveK } = await import(path.join(process.cwd(), 'src/cavegen.js'));
   const day0 = Date.now();
   console.log(`# 오늘의 동굴 ${DAYS}일치 (층 ${CAVE.floors}, 방 층마다 ${CAVE.rooms.join('~')})`);
   for (let d = 0; d < DAYS; d++) {
@@ -42,6 +44,7 @@ const bad = (m) => { fail++; console.log('  실패:', m); };
     if (rooms < lo || rooms > hi) bad(`${day}: 방 ${rooms} (${lo}~${hi})`);
     console.log(`${day}: 방 ${rooms} 갈림길 ${branch} 곧장 걸으면 ${Math.round(walkM)}m (~${Math.round(walkM / 5 / 60 * 10) / 10}분)\n  ` + lines.join('\n  '));
   }
+  modeCheck(CAVE, genFloor, caveMesh, caveSeed, caveK, day0);
   await estimate(CAVE, genFloor, caveSeed, day0);
   if (live) await liveRun();
   console.log(fail ? `실패 ${fail}` : '통과');
@@ -89,6 +92,7 @@ async function liveRun() {
   await playRun(p, S);
   await playRun3(p, S);
   await playRun4(p, S);
+  await modeRun(p, S);
   if (errs.length) bad('페이지 오류 ' + errs.join(' | '));
   await b.close();
 }
@@ -286,4 +290,68 @@ async function playRun4(p, S) {
   const mut = await C(() => window.__oreum.mutter.lines.includes('cave'));
   console.log(`  감독 문 cave 열림 ${!!door} · 혼잣말 줄 cave ${mut}`);
   if (!door) bad('감독 문 cave 가 없음'); if (!mut) bad('혼잣말 줄 cave 가 없음');
+}
+
+// #214 카메라 안마다 층 모양: 걸어서 닿는지·삼각형 (a 는 천장 대신 자른 윗면, b 는 같은 칸 수)
+function modeCheck(CAVE, genFloor, caveMesh, caveSeed, caveK, day0) {
+  const k = new Date(day0 + 9 * 3600000), day = k.toISOString().slice(0, 10), out = [];
+  for (const m of ['c', 'a', 'b']) {
+    const K = caveK(CAVE, m); let tris = 0, cap = 0, span = 0, xs = [];
+    for (let f = 0; f < CAVE.floors; f++) {
+      const F = genFloor(K, f, caveSeed(day, f)), M = caveMesh(F, K); tris += M.tris; cap += M.cap ? M.cap.length / 9 : 0; span = F.span; xs.push(F.ox, F.ox + F.span);
+      if (!F.far) bad(`${m} ${f + 1}층: 구멍·주인 방 없음`);
+      else { const s = F.start; let ok = false; const N = F.N, C = F.C, seen = new Uint8Array(N * N), q = [], id = (x, z) => Math.floor((z - F.oz) / C) * N + Math.floor((x - F.ox) / C);
+        const s0 = id(s.x, s.z), g = id(F.far.x, F.far.z); seen[s0] = 1; q.push(s0);
+        for (let h = 0; h < q.length && !ok; h++) { const c = q[h]; if (c === g) ok = true; const i = c % N, j = (c - i) / N; for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = (j + b) * N + i + a; if (!seen[n] && F.walk(F.ox + (i + a + 0.5) * C, F.oz + (j + b + 0.5) * C)) { seen[n] = 1; q.push(n); } } }
+        if (!ok) bad(`${m} ${f + 1}층: 줄에서 ${F.far.kind} 까지 못 감`); }
+    }
+    if (tris > 900000) bad(`${m}: 세 층 삼각형 ${tris}`);
+    const lo = Math.min(...xs), hi = Math.max(...xs); if (lo < 2400 || hi > 4000) bad(`${m}: 층 자리 x ${Math.round(lo)}~${Math.round(hi)} (오름 밖·서버 한도 안이어야)`);
+    for (let f = 1; f < CAVE.floors; f++) if (K.floorGap < span) bad(`${m}: 층이 겹침 (간격 ${K.floorGap} < 폭 ${span})`);
+    out.push(`${m}: 세 층 삼각형 ${tris}${cap ? ` (자른 윗면 ${cap})` : ''} · 층 폭 ${Math.round(span)}m · x ${Math.round(lo)}~${Math.round(hi)}`);
+  }
+  console.log('# 카메라 안 (#214) ' + day + '\n  ' + out.join('\n  '));
+}
+
+// #214 세 안으로 같은 3장면 그림·수치
+async function modeRun(p, S) {
+  const fs = require('fs'), si = args.indexOf('--shots'), dir = si >= 0 ? args[si + 1] : path.join(process.cwd(), 'notes/shots/214');
+  fs.mkdirSync(dir, { recursive: true });
+  const frameMs = () => p.evaluate(() => new Promise((res) => { const ts = []; const f = (t) => { ts.push(t); if (ts.length < 31) requestAnimationFrame(f); else res((ts[30] - ts[0]) / 30); }; requestAnimationFrame(f); }));
+  const rows = [], clean = () => S(() => { document.querySelectorAll('.lp-x').forEach((b) => b.click()); window.__oreum.hp.set(1e6); });
+  for (const m of ['a', 'b', 'c']) {
+    await S((m) => { const o = window.__oreum; if (o.cave.state()) o.cave.exit(); o.cave.cam(m); o.hp.set(1e6); }, m); await p.waitForTimeout(500);
+    await S(() => window.__oreum.cave.enter()); await p.waitForTimeout(1200);
+    const info = await S(() => window.__oreum.cave.camInfo());
+    if (info.K !== (m === 'c' ? 'c' : m)) bad(`${m}: 층 모양 안이 ${info.K}`);
+    const key = await S(() => window.__oreum.cave.share?.()?.key ?? null);
+    const r = { m, shots: [] };
+    // 1) 통로 걷기
+    if (!(await S(() => window.__oreum.cave.pose('corr')))) bad(`${m}: 통로 자리 못 찾음`);
+    await p.waitForTimeout(1400); r.corr = { ...(await S(() => window.__oreum.cave.draw())), ms: await frameMs() };
+    await clean(); await p.waitForTimeout(150); await p.screenshot({ path: path.join(dir, `${m}-1-corr.png`) });
+    const piles = (await S(() => window.__oreum.cave.junk())).piles.length; if (!piles) bad(`${m}: 1층 더미 없음`);
+    // 2) 적 무리와 싸움 (다치지 않게 기운을 채우며)
+    await S(() => window.__oreum.cave.wakeAll()); await p.waitForTimeout(600);
+    if (!(await S(() => window.__oreum.cave.pose('mob')))) bad(`${m}: 적 곁 자리 못 찾음`);
+    await p.waitForTimeout(1500); await S(() => window.__oreum.hp.set(1e6));
+    const mobs = await S(() => window.__oreum.cave.mobs()); if (mobs.some((e) => e.walk === false)) bad(`${m}: 벽 속 적`);
+    r.mob = { ...(await S(() => window.__oreum.cave.draw())), ms: await frameMs(), n: mobs.length };
+    await clean(); await p.waitForTimeout(150); await p.screenshot({ path: path.join(dir, `${m}-2-fight.png`) });
+    const g = await S(() => window.__oreum.cave.guard()); if (!g.e || !g.blocks) bad(`${m}: 지킴이가 구멍을 막지 않음`);
+    // 3) 주인 방
+    await S(() => { window.__oreum.cave.down(); }); await p.waitForTimeout(700); await S(() => { window.__oreum.cave.down(); }); await p.waitForTimeout(900);
+    await S(() => { window.__oreum.cave.goOwner(); window.__oreum.hp.set(1e6); }); await p.waitForTimeout(2200);
+    const ow = await S(() => window.__oreum.cave.owner()); if (!ow.room || !ow.e) bad(`${m}: 주인 방·주인 없음 ${JSON.stringify(ow)}`);
+    await S(() => window.__oreum.hp.set(1e6));
+    r.boss = { ...(await S(() => window.__oreum.cave.draw())), ms: await frameMs() };
+    await clean(); await p.waitForTimeout(150); await p.screenshot({ path: path.join(dir, `${m}-3-owner.png`) });
+    r.key = key; r.dist = info.dist; rows.push(r);
+    await S(() => window.__oreum.cave.exit()); await p.waitForTimeout(800);
+  }
+  await S(() => window.__oreum.cave.cam('a'));
+  console.log('# 카메라 세 안 (#214, swiftshader 640×400, 그림 ' + path.relative(process.cwd(), dir) + ')');
+  for (const r of rows) console.log(`  ${r.m}: 카메라 거리 ${r.dist}m · 통로 calls ${r.corr.calls} 삼각형 ${r.corr.tris} ${r.corr.ms.toFixed(0)}ms · 싸움(적 ${r.mob.n}) ${r.mob.calls} / ${r.mob.tris} ${r.mob.ms.toFixed(0)}ms · 주인 방 ${r.boss.calls} / ${r.boss.tris} ${r.boss.ms.toFixed(0)}ms`);
+  /* 동굴 draw call 기준(120 아래)은 위 liveRun 이 봄. 이 비교는 맞으며 싸우는 장면이라 흩어진 귤·드론·낙석 수에 따라 크게 흔들림 → 넘으면 '주의' 로 적음 (#218) */
+  for (const r of rows) for (const k of ['corr', 'mob', 'boss']) if (r[k].calls >= 120) console.log(`  주의: ${r.m} ${k} draw call ${r[k].calls} (120 넘음, 싸움 중 흩어진 귤 등)`);
 }

@@ -83,6 +83,12 @@ function updatePlayer(dt) {
       p.joyMag = jm;
       if (!p.riding && !aiming) { let dh = wrapA(Math.atan2(dir.x, dir.z) - p.heading); p.heading += dh * Math.min(1, dt * 10); }
       if (ptrs.size === 0 && state.camHold <= 0) { const dy = wrapA((p.heading + Math.PI) - cam.yaw); cam.yaw += dy * Math.min(1, dt * 0.8); }
+    } else if ((fx || fz) && late.camScreenMove?.()) {
+      /* 내려다보는 동굴 (#214 a, game/cavecam.js): 키도 조이스틱처럼 화면 기준 (위 = 화면 위) */
+      p.target = null; p.onArrive = null; marker.visible = false; p.joyMag = 1;
+      const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
+      dir = new THREE.Vector3(fx * c + fz * s, 0, -fx * s + fz * c).normalize();
+      if (!aiming) { const dh = wrapA(Math.atan2(dir.x, dir.z) - p.heading); p.heading += dh * Math.min(1, dt * 10); }
     } else if (fx || fz) {
       p.target = null; p.onArrive = null; marker.visible = false; p.joyMag = 1;
       if (fx) { if (p.riding) p.riding.heading -= fx * dt * 2.6; else if (!aiming) p.heading -= fx * dt * 2.6; }

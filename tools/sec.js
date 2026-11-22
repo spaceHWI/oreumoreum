@@ -460,6 +460,13 @@ async function startServers() {
       ok(hx.length === 1 && hx[0].h[0][1] <= N3.bossHitMax && hx[0].from === bq.id && !ms.c.some((m) => m.t === 'cx'), `동굴 적 피해는 칸 주인에게만, 잘려서 (${hx[0]?.h[0][1]})`);
       T0 += 200; core.message(cq, JSON.stringify({ t: 'cx', h: [[1, 5]] })); ok(ms.a.filter((m) => m.t === 'cx').length === 1, '다른 칸 사람의 피해는 안 감');
       core.leave(a); ok(ms.b.some((m) => m.t === 'ch' && m.id === bq.id), '칸 주인이 나가면 다음 사람이 칸 주인');
+      { /* #214 넓은 굴(b): cd 끝 'b' 는 넓은 층 자리만 받고, 보통 칸과 따로 */
+        const W = CV.view.b, md = [], me = [], dq = core.join((x) => md.push(JSON.parse(x))), eq = core.join((x) => me.push(JSON.parse(x)));
+        const at = (p, cd, cx) => core.message(p, JSON.stringify({ t: 'p', d: { x: 0, z: 0, cv: 2, cd, cx, cz: CV.z0 } })), wx = W.x0 + W.floorGap + CV.grid * CV.cell * W.k * 0.45;
+        T0 += 200; at(dq, day + 'b', wx); T0 += 200; at(eq, day, wx);
+        ok(md.some((m) => m.t === 'ch' && m.id === dq.id && m.k === '2:' + day + 'b'), '넓은 굴(b) 자리는 넓은 굴 칸으로');
+        ok(!me.some((m) => m.t === 'ch' && m.k === '2:' + day) && !md.some((m) => m.t === 'ch' && m.id === eq.id), '보통 칸 이름에 넓은 굴 자리는 거절·넓은 굴 칸과 섞이지 않음');
+      }
     }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
