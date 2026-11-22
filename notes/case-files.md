@@ -36,6 +36,7 @@
 - 지금 있는 크롭서클(MYST.crop)을 쓴다.
 
 ### 사건 2. 흰 옷 귀신
+- 만든 것(#233, `src/cases/c2.js`): 레벨 6 · 의뢰 남쪽 사면 표지판 · 목격 돌담 조각(-480, 60) · 증거 줄어든 더미 사진(-530, 128)·돌담 흰 천(-420, 150)·표지판 뒤 빨랫줄 메모(-458, 104) · 대면 남쪽 사면 서바이벌 터(-364, 5)를 버틴 뒤 흰 옷을 다섯 자리 따라감 → 더미 곁(-432.5, 85.5)에서 돌아봄 · 증거 사진 '흰 옷과 집게' · 보상 조사관 코트·칭호 '밤 근무 동기'·멧돼지 엄니 3·귤 30+80. 오두막이 없어 빨랫줄은 표지판 뒤 들판에 둠
 - 목격: 밤에 돌담 너머로 흰 것이 스윽 지나간다.
 - 증거: ① 흰 것이 지나간 자리에 더미가 하나 줄어 있다(사진) ② 돌담에 걸린 흰 천 조각 ③ 빨랫줄의 흰 작업복(오름지기 집 곁)
 - 대면: 남쪽 사면 서바이벌 터를 버틴 밤, 흰 옷을 끝까지 따라가면 돌아본다.
@@ -83,6 +84,7 @@
   - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
   - `doc` 서류 쪽지 id(대면을 끝내면 받음) · `notes` 증거·서류 쪽지(NOTES 모양: id·paper·t 14자·from·b 4줄) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄))
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
+  - (#233) `face.follow { path [[x,z]…], near, end, speed, len }`: arena·boss 를 끝낸 뒤(저장 a 1) 흰 옷이 path 를 앞서 가고 끝자리 장면(`face.lines` 자막)까지 봐야 대면 끝 (game/casechase.js). `see.ghost` 목격 때 흰 옷이 스침·실제 밤엔 목격 자리 너머를 오감. `hello { <NPC id>: [말] }` 종결 뒤 그 NPC 인사에 더함. 퀘스트 보상에 `mats { m<구역>: n }` (장비 재료) 를 쓸 수 있음
 - 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
 - 사건의 마지막 퀘스트 보상을 받으면 종결(도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
 - 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 목격 → 증거 → 대면 → 서류 → 종결 → 창 → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`
