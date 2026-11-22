@@ -4,6 +4,8 @@
 import { onestore } from './onestore.js';
 import { loadCore } from './assets.js';
 import { listenCrashes, reportCrash } from './crash.js';
+import { mframeTop, frameSafe } from './mview.js';
 listenCrashes(); // #108: 처리 못 한 오류를 의견함으로 (보낼 곳은 panels.js 가 붙임)
 onestore.progress(10);
-loadCore().then(() => { onestore.progress(60); return import('./modules.js'); }).then(() => onestore.progress(85)).catch((e) => reportCrash(e, 'load'));
+/* 모바일 화면으로 보기 (#220): 켜져 있으면 바깥 창은 폰 틀만 그리고 게임은 틀 안에서 돈다 */
+if (!mframeTop()) { frameSafe(); loadCore().then(() => { onestore.progress(60); return import('./modules.js'); }).then(() => onestore.progress(85)).catch((e) => reportCrash(e, 'load')); }
