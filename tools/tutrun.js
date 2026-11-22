@@ -136,6 +136,13 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   ok(await until(() => window.__oreum.save.equip.bag >= 1, 10000), '배낭 삼');
   await stepIs(10); await p.click('#shoppop-close').catch(() => {}); await W(1500); await shot('11-gate');
   ok(await p.evaluate(() => window.__oreum.tut.cells()[3].open), '마지막 정낭 열림');
+  if (await p.evaluate(() => !!window.__oreum.tut.shopGate())) { /* #240 탭 이동은 거치는 점 0.8m 앞에서 멈춤: 줄에서 0.85m 넘어 서 있어도 목적지를 가리켜야 함 (안 그러면 그 자리에 갇힘) */
+    const back = await p.evaluate(() => { const o = window.__oreum, g = o.tut.shopGate(), b = o.spots.tut.beyond, l = Math.hypot(g.ux, g.uz), nx = -g.uz / l, nz = g.ux / l, k = Math.sign((b.x - g.x) * nx + (b.z - g.z) * nz) || 1, P = o.player.pos, was = [P.x, P.z];
+      o.player.pos.set(g.x + nx * k * 0.85, o.groundAt(g.x + nx * k * 0.85, g.z + nz * k * 0.85), g.z + nz * k * 0.85); o.player.target = null; o.snap(); return was; });
+    await W(900); const tg = await p.evaluate(() => window.__oreum.tut.target());
+    ok(tg && tg.r === 2.4, `가게 쪽 정낭 막 넘은 자리에서 목적지를 가리킴 (${tg && tg.r})`);
+    await go(back[0], back[1]); await W(600);
+  }
   const wk2 = await follow(() => window.__oreum.save.tut.done, 90000);
   ok(!!wk2, `정낭 지나 오름까지 걸어감 ${wk2 ? wk2.s.toFixed(1) + 's, 정낭 거치기 ' + wk2.vias : ''}`);
   await W(1500); await shot('12-done');
