@@ -470,6 +470,7 @@ late.questDebug = {
   api: quests, givers, state: () => JSON.parse(JSON.stringify(quests.state())),
   get next() { return late.nextDebug; }, // #142 다음 할 일 (game/nexthint.js)
   where: () => Object.fromEntries([...givers.values()].map((g) => [g.id, { x: +g.pos.x.toFixed(1), z: +g.pos.z.toFixed(1), mark: g.cur }])),
+  info: () => { const i = trackInfo(); return i && { text: i.text, prog: i.prog, k: i.k || null }; }, /* 창이 열려 있어도 지금 추적 줄에 올 것 (tools/trackgap.js #256) */
   track: () => trCur && { text: trCur.text, prog: trCur.prog, ready: trCur.ready, go: trCur.go, k: trCur.k || null, mark: trCur.mark, target: trTarget && [+trTarget.x.toFixed(1), +trTarget.z.toFixed(1)], shown: !TR.hidden },
   give: (id) => quests.accept(id), cap: (k) => questCan(k), stuck: (id) => quests.stuck(id), done: (id) => { const r = quests.complete(id); if (r) give(r, quests.BY.get(id)); trackDirty(); return r; },
   count: (k, n = 1) => { count(k, n); trackDirty(); }, open: (gid) => openGiver(gid), log: () => openLog(), go: () => trackGo(), win: () => !win.el.hidden && { who: win.giver?.id, id: win.item?.q.id, st: win.item?.st, page: talk.i, pages: talk.pages?.length || 1 },

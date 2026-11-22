@@ -3,12 +3,13 @@
 // 흰 옷(오름지기 모델에 흰 작업복·밀짚모자·집게)은 밤에만: 실제 밤(해가 진 뒤)이나 사건 장면 동안 화면이 밤빛일 때. 자리(at)는 남송이오름 좌표 [x, z]
 export default {
   id: 'c2', n: 2, zone: 2, lv: 6, name: '흰 옷 귀신', giver: 'b:slope',
+  rumor: '밤마다 돌담 사이로 흰 옷이 떠다닌대요', /* 앞 구역을 끝냈을 때 구역 완료 창의 실마리 한 줄 (#256) */
   // 목격: 돌담 조각 너머로 흰 것이 스윽 지나감 (ghost: 그 자리에서 잠깐 밤빛 + 흰 옷이 미끄러져 사라짐. 실제 밤이면 사건이 열린 동안 그 돌담을 오감)
-  see: { at: [-480, 60], r: 14, prop: 'wall', ghost: true, say: '방금… 돌담 너머로 흰 게?' },
+  see: { at: [-480, 60], r: 18, prop: 'wall', ghost: true, say: '방금… 돌담 너머로 흰 게?' },
   ev: [
-    { id: 'k2a', kind: 'photo', at: [-530, 128], prop: 'gone', label: '사진 찍기', note: 'k2a' },
+    { id: 'k2a', kind: 'photo', at: [-522, 157], prop: 'gone', label: '사진 찍기', note: 'k2a' },
     { id: 'k2b', kind: 'trace', at: [-420, 150], prop: 'rag', label: '살펴보기', note: 'k2b' },
-    { id: 'k2c', kind: 'note', at: [-458, 104], prop: 'line', label: '메모 보기', note: 'k2c' },
+    { id: 'k2c', kind: 'note', at: [-456, 133], prop: 'line', label: '메모 보기', note: 'k2c' },
   ],
   // 대면: 그 구역 서바이벌 터를 버팀(arena) → 그 밤 터 가장자리에 흰 옷이 나옴 → follow.path 를 따라 앞서 가다(near m 안에 들면 다음 자리로)
   // 끝자리 더미 곁에서 쪼그려 줍고 있음 → end m 안에 들면 장면(len 초): 일어나 돌아봄·사진 한 장. 끝나면 doc (증거 사진)

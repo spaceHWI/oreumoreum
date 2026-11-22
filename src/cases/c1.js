@@ -12,7 +12,7 @@ export default {
   ev: [
     { id: 'c1a', kind: 'photo', at: [-482.4, -78.3], prop: 'rock', label: '위에서 찍기', note: 'c1a', view: true },
     { id: 'c1b', kind: 'trace', at: [-510, -90], prop: 'dent', label: '살펴보기', note: 'c1b' },
-    { id: 'c1c', kind: 'note', at: [-604, 141], prop: 'paper', label: '쪽지 줍기', note: 'c1c' },
+    { id: 'c1c', kind: 'note', at: [-623, 119], prop: 'paper', label: '쪽지 줍기', note: 'c1c' },
   ],
   // 대면: hide 숨어 보기. drop: 장면 중 무늬 가운데로 떨어지는 모양. dawn: 새벽빛(실제 시각은 기다리지 않음). 끝나면 doc 증거 사진
   face: { kind: 'hide', at: [-502, -97], prop: 'bush', label: '숨어 보기', len: 9, drop: 'heap', dawn: true,
