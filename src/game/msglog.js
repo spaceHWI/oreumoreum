@@ -126,6 +126,7 @@ export const msgBusy = () => live().some((l) => !l.own && l.kind !== 'get');
 export const msgLog = {
   state: () => ({ held: held(), pin: pin ? { key: pin.key, text: pin.sp.textContent } : null, lines: live().map((l) => ({ kind: l.kind, text: l.sp.textContent + (l.n > 1 && !l.el.querySelector('b').hidden ? ' ×' + l.n : ''), t: +l.t.toFixed(2), own: l.own })) }),
   clear() { lines.slice().forEach(drop); unpin(); },
+  unpin, /* 고정 한 줄 걷기 (swarm.js 터 밖 → 돌아옴, #266) */
   last: () => live().slice(-1)[0]?.sp.textContent || '',
   count: () => live().length,
   drop: (sp) => drop(lines.find((l) => l.sp === sp)), /* 줄 하나 지우기 (msg 가 돌려준 span) */
