@@ -162,7 +162,7 @@ export class Accounts extends DurableObject {
     const gain = S.trash.total - (prev ? (r.cleaned || 0) : 0);
     if (gain > 0) this.rankAdd(sub, 'battle', gain, t, migrate && !prev);
     const fix = {};
-    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } if (fixed.includes('gift')) { fix.coins = S.coins; fix.gift = S.gift; } if (fixed.includes('lvxp')) fix.lv = { cut: lvCut || 0 }; }
+    if (fixed.length) { if (fixed.includes('coins') || fixed.includes('items')) fix.coins = S.coins; if (fixed.includes('items')) fix.reload = 1; if (fixed.includes('picked')) fix.total = S.trash.total; if (fixed.includes('mealFree')) fix.mealFree = 1; if (fixed.includes('season')) fix.season = S.season || null; if (fixed.includes('nick')) { fix.nick = S.nick; fix.nickRen = out.nickRen; } if (fixed.includes('gift')) { fix.coins = S.coins; fix.gift = S.gift; } if (fixed.includes('lvxp')) fix.lv = { cut: lvCut || 0 }; if (fixed.includes('tok') || fixed.includes('tokItems')) fix.tok = S.tok; if (fixed.includes('tokItems')) fix.reload = 1; }
     if (clamp && clamp.amt > 0) fix.cut = { n: clamp.amt, why: clamp.why }; // 클라이언트가 '귤 ○개를 맞췄어요' 와 의견 보내기에 붙임
     return { rev, fixed, fix, keepUntil: t + NET.keepDays * 864e5, gifts: this.giftsOf(sub).filter((g) => !got.has(g.id)) };
   }

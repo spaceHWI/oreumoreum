@@ -2173,3 +2173,37 @@ export const CAVE = {
   lines2: { full: '배낭이 가득 찼어요 · 들고 밖으로 나가요', none: '주울 것이 보이지 않아요', guard: '지킴이가 구멍을 막고 있어요', guardGone: '지킴이가 물러났어요 · 아래로 가는 길이 열렸어요', lost: '쓰러져 동굴 쓰레기 절반을 잃었어요', carry: '동굴 쓰레기를 들고 나왔어요 · 클린하우스에 버려요', lostLoad: '동굴에서 길을 잃고 나왔어요 · 동굴 쓰레기 절반을 잃었어요' },
 };
 { const z = ZONES[4], g = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].gyul, 0), v = z.mix.reduce((s, m, j) => s + m * TRASH_TYPES[j].vol, 0); CAVE.junk.perVol = Math.round(2 * z.gv * g / v); } /* Z5V: 구역 5 부피 1 귤 × 2 */
+
+// 징표 (#255, src/token.js · src/game/token.js · 서버 server/src/token.js): 서바이벌 터에서만 얻는 재화. 귤과 따로 셈, 귤로 못 사고 남에게 못 줌
+// earn: 버팀 = 구역 × win, 떼 대장 쫓아냄 + leader, 한 번도 안 쓰러짐 + clean. 버티지 못하고 끝나면(쓰러짐·터 밖) 버틴 물결 수 × part (내림, partMax 까지)
+// 서버: 판 하나 runMax(구역) 까지, 통(burst, 초당 perSec 씩 참)을 넘지 않게. 버틴 판은 구역마다 쉬는 시간(SWARM.run.rest × restK) 안에 두 번 인정하지 않음
+// 무기 3종(arms: 바탕 무기 id 의 쏘는 방식을 빌림, lv 단계마다 값): 같은 레벨대 귤 무기보다 싸움에서 15~25% 위(임의). 줍기·벌이엔 도움 없음
+// 옷 6칸(cloth: 겉모습 옷 + 싸움 능력. 입은 칸은 그 칸 능력이 줍기·벌이 대신 싸움 값으로 바뀜). z: 그 구역(이상) 좌판에 나옴. price 징표
+// suit: 여섯 칸을 다 입으면 판 중 쓰러질 때 한 번 일어남(hp 비율), 쉬는 시간(SWARM.run.rest 초) 뒤 다시 참
+// stall: 좌판 자리(터 문 기준 옆 side m·바깥 out m), npc 이름. 값과 속도 어림: 첫 무기 = 구역 판 3~4번, 한 벌 = 10~15번 (결과 코멘트·tools/tokenrun.js)
+export const TOKEN = {
+  name: '징표', icon: 'gong',
+  earn: { win: 3, leader: 2, clean: 1, part: 0.5, partMax: 2 },
+  server: { perSec: 0.06, burst: 40, restK: 0.9, migrateMax: 40 },
+  arms: [
+    { id: 'rapid', name: '연발 귤총', base: 'mg', desc: '빠르게 여러 발 · 한 발은 약함',
+      lv: [{ z: 1, price: 16, dmg: 9, rate: 8, spread: 0.06, perGyul: 40, range: 32 }, { z: 2, price: 30, dmg: 20, rate: 8, spread: 0.055, perGyul: 40, range: 34 }, { z: 4, price: 50, dmg: 48, rate: 9, spread: 0.05, perGyul: 45, range: 36 }] },
+    { id: 'pierce', name: '관통 귤창', base: 'gun', desc: '한 줄로 여럿을 뚫음',
+      lv: [{ z: 2, price: 24, dmg: 9, cd: 0.7, pierce: 3, perGyul: 8, range: 42, speed: 85 }, { z: 3, price: 40, dmg: 20, cd: 0.62, pierce: 4, perGyul: 9, range: 44, speed: 90 }, { z: 5, price: 70, dmg: 46, cd: 0.55, pierce: 5, perGyul: 10, range: 46, speed: 95 }] },
+    { id: 'blast', name: '폭발 귤포', base: 'bomb', desc: '느리지만 둘레가 다 터짐',
+      lv: [{ z: 3, price: 36, dmg: 40, r: 4.5, cd: 2.2, cost: 1, range: 30 }, { z: 4, price: 55, dmg: 70, r: 5.5, cd: 2.1, cost: 1, range: 30 }, { z: 5, price: 90, dmg: 108, r: 6.5, cd: 2, cost: 2, range: 32 }] },
+  ],
+  cloth: [
+    { id: 'top:t-gong', slot: 'top', z: 1, price: 16, name: '징 지기 저고리', tok: { hp: 1.6 }, look: { kind: 'tee', long: true, main: '#3e3f45', acc: '#f08a24', panel: true } },
+    { id: 'socks:t-gong', slot: 'socks', z: 1, price: 16, name: '징 지기 각반', tok: { regen: 1.8 }, look: { kind: 'socks', main: '#3e3f45', acc: '#f08a24', h: 0.19, thick: true } },
+    { id: 'jacket:t-gong', slot: 'jacket', z: 2, price: 20, name: '현무암 조끼 갑옷', tok: { guard: 0.3 }, look: { kind: 'jacket', main: '#45464b', acc: '#f08a24', cuffs: true } },
+    { id: 'hat:t-gong', slot: 'hat', z: 3, price: 22, name: '귤띠 두건', tok: { dmg: 0.06 }, look: { kind: 'bucket', main: '#3e3f45', acc: '#f08a24' } },
+    { id: 'bottom:t-gong', slot: 'bottom', z: 4, price: 26, name: '터 바지', tok: { dmg: 0.06 }, look: { kind: 'long', main: '#3a3b40', acc: '#f08a24', knee: true } },
+    { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '징표 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
+  ],
+  suit: { hp: 0.5 },
+  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6 },
+  quest: { n: 10, gyul: 20 },
+};
+CLOTHES.push(...TOKEN.cloth.map(({ z, tok, ...c }) => ({ tier: 0, style: true, tok: true, tokZ: z, tokStat: tok, ...c, price: 0, tokPrice: c.price })));
+QUESTS.side.push({ id: 'x-token', giver: 'jigi', door: 'field', name: '징 값', say: ['터마다 징 옆에 좌판이 하나씩 있어요. 주인은 터지기 씨.', '버티면 징표를 줘요. 귤은 안 받아요. 징표만 받아요. 까닭은 터지기 씨도 몰라요.'], task: `징표 ${TOKEN.quest.n}개 모으기`, ask: { k: 'token', n: TOKEN.quest.n }, fin: ['징표가 모였네요. 귤로 바꿔 줄 순 없어요. 대신 이걸 받아요.'], reward: { gyul: TOKEN.quest.gyul } }); /* 징표 (#255) */

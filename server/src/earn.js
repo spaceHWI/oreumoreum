@@ -20,6 +20,7 @@ import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM, CAVE, MYST } from '../../sr
 import { sellValue, GEAR_SLOTS, curItem, clothId, WEAR_K } from '../../src/loot.js';
 import { slotTier } from '../../src/gearscore.js';
 import { kstDay } from '../../src/rankday.js';
+import { normTkCred } from './token.js';
 import { todaysTasks, taskGyul, allGyul, runGyul, RUN_DAYS, dateOfDay, runStep } from '../../src/daily.js';
 
 const E = NET.earnRec;
@@ -44,6 +45,7 @@ export function normCred(c) {
     cd: isObj(o.cd) ? { d: num(o.cd.d), g: num(o.cd.g) } : { d: 0, g: 0 }, // 동굴 오늘 인정한 쓰레기 몫 (3번 조각)
     cc: isObj(o.cc) && Array.isArray(o.cc.got) ? { d: num(o.cc.d), got: o.cc.got.filter((x) => typeof x === 'string').slice(0, CAVE.floors) } : { d: 0, got: [] }, // 동굴 오늘 연 상자
     cb: typeof o.cb === 'string' ? o.cb.slice(0, 10) : '', // 동굴 주인 큰 보상을 준 날
+    ...normTkCred(o), // 징표 통·구역별 버틴 판 (#255, server/src/token.js)
     run: isObj(o.run) ? { n: num(o.run.n), last: num(o.run.last), paid: Array.isArray(o.run.paid) ? o.run.paid.filter((x) => RUN_DAYS.includes(x)) : [] } : { n: 0, last: 0, paid: [] },
   };
 }

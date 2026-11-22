@@ -6,13 +6,15 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM, TOKEN } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds, calFull, CAL_ALL_CLOTHES } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 import { checkLv } from '../../src/augments.js';
 import { TITLES, NOTES } from '../../src/punktext.js';
 import { recognize, cleanSold, normCred } from './earn.js';
 import { WEEKLY_IDS, weeklyBuyable } from '../../src/weekly.js';
+import { normTok, TOK_CLOTHES } from '../../src/token.js';
+import { tokenCheck } from './token.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const BACK = Object.fromEntries(BACK_LOOKS.map((b) => [b.id, b]));
@@ -76,6 +78,7 @@ function norm(s) {
     s.punk = { title: Number.isInteger(k.title) && k.title >= 0 && k.title < TITLES.length ? k.title : -1, notes, unread: Array.isArray(k.unread) ? k.unread.filter((id) => notes[id] !== undefined).slice(0, NOTES.length) : [], radio: k.radio === 0 ? 0 : 1,
       day: isObj(k.day) ? { d: typeof k.day.d === 'string' ? k.day.d.slice(0, 10) : '', n: int(k.day.n, 0, 1e6, 0) } : { d: '', n: 0 }, ev: isObj(k.ev) ? Object.fromEntries(Object.keys(k.ev).filter((e) => /^[a-z0-9-]{1,24}$/.test(e)).slice(0, 32).map((e) => [e, 1])) : {} };
   }
+  normTok(s); // 징표 (#255, server/src/token.js)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
 }
@@ -84,7 +87,7 @@ function norm(s) {
 
 // 철 이벤트 (#180): 달력·선물 옷은 값을 안 셈
 // 달력을 다 연 옷(#222)은 seasonCheck 가 확인한 all 일 때만 (seasonCheck 가 spentOf 보다 먼저 돎)
-const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift, ...(S.season.xmas.all ? CAL_ALL_CLOTHES : [])] : []);
+const freeCloths = (S) => new Set([...(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift, ...(S.season.xmas.all ? CAL_ALL_CLOTHES : [])] : []), ...TOK_CLOTHES.map((c) => c.id)]); /* 징표 옷(#255)은 귤 값이 아님: tokenCheck 가 봄 */
 // 새로 산 것들의 값
 function spentOf(P, S) {
   const free = freeCloths(S);
@@ -194,6 +197,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   if (migrate && !prev) {
     // 기기 기록 옮기기: 지난 기록을 확인할 길이 없어 목록 확인과 귤 상한만
     if (S.coins > NET.migrateCoinsMax) { S.coins = NET.migrateCoinsMax; fixed.push('coins'); }
+    if (S.tok.n > TOKEN.server.migrateMax) { S.tok.n = TOKEN.server.migrateMax; fixed.push('tok'); } // 징표 (#255)
     return done({ save: S, fixed, acc: keep(), rec: null, clamp: null, nickBad: nickBadNow });
   }
   if (P.cave && (!S.cave || S.cave.out < P.cave.out)) { S.cave = { ...(S.cave || {}), out: P.cave.out }; } // 동굴 누적은 줄지 않음 (#195: 줄였다 다시 올려 두 번 받기 막음)
@@ -208,6 +212,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
     for (const id of Object.keys(S.clothes.own)) if (WEEKLY_IDS.has(id) && !P.clothes.own[id] && !wk.has(id)) { delete S.clothes.own[id]; if (!fixed.includes('items')) fixed.push('items'); }
     for (const [k, id] of Object.entries(S.clothes.wear)) if (id && WEEKLY_IDS.has(id) && !S.clothes.own[id]) delete S.clothes.wear[k];
   }
+  { const tk = tokenCheck(P, S, cred, t, dt); cred = tk.cred; for (const f of tk.fixed) fixed.push(f); } // 징표 (#255): 귤과 따로
   let spent = spentOf(P, S) + sx.spent;
   if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
   const gain = S.coins + spent - P.coins;

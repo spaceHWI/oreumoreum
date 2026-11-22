@@ -16,7 +16,7 @@ import { marker } from './input.js';
 // 자동 조준: 사거리 안 가장 가까운 대상(적·하르방)을 겨눠 몸을 돌려 던지고, 대상 발밑에 표시. 없으면 보는 방향으로
 state.throwPending = false, state.throwAim = null;
 // 무기 (#38): 귤 활 이상을 골라 쓰면 F 로 그 무기를 씀. 말·탈것·마차 위에서는 손 던지기. 3~6단계는 game/arms.js (#123)
-export const weaponNow = () => WEAPONS[save.weaponUse - 1] || WEAPONS[0]; late.weaponNow = weaponNow;
+export const weaponNow = () => late.tokArm?.() || WEAPONS[save.weaponUse - 1] || WEAPONS[0]; /* 징표 무기(#255, game/token.js)를 들었으면 그 값 */ late.weaponNow = weaponNow;
 export const bowReady = () => weaponNow().id !== 'hand' && !player.riding && !player.ride && !player.cart; // 무기를 쓸 수 있음 (이름은 #38 그대로)
 // 남은 탄이 있거나 귤로 채울 수 있음. 귤이 0이고 남은 탄도 없으면 손 던지기
 export const armedFor = (w) => w.id === 'bow' ? save.bowAmmo > 0 || save.coins > 0 : w.id === 'bomb' ? save.coins >= w.cost : w.id === 'hand' ? false : (save.ammo?.[w.id] || 0) > 0 || save.coins > 0;

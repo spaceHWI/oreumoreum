@@ -89,7 +89,7 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   const off = late.questOff?.('gear', next.price) || 0, pay = next.price - off; // 퀘스트 할인권 (#158)
   if (save.coins < pay) { toast(`귤이 ${pay - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; if (k === 'shoes' && save.equip.boots === 2) save.equip.boots = 1; /* 새 신발을 사면 장화를 벗음 (#167) */ late.lootTidy?.(); if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
+  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; if (k === 'shoes' && save.equip.boots === 2) save.equip.boots = 1; /* 새 신발을 사면 장화를 벗음 (#167) */ late.lootTidy?.(); if (k === 'weapon') { save.weaponUse = i + 1; if (save.tok) save.tok.arm = null; } /* 새로 산 무기를 바로 씀 (#123), 징표 무기는 내려놓음 (#255) */
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }
