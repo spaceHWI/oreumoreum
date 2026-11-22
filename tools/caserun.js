@@ -1,8 +1,10 @@
 // 사건 파일 (#232): 새 저장으로 사건 하나를 처음부터 끝까지 따라가 본다. node tools/caserun.js [c1] [d|m] [shots]   (먼저 node build.mjs)
 // d = 데스크톱, m = 폰 세로(창 모양은 가로도 봄). shots 를 주면 dist/case-<mode>-<n>.jpg 로 작게 찍음
 // 확인: 레벨이 모자라면 목격 자리에 가도 열리지 않음 → 레벨 lv 에 목격 자리에 들면 열림(혼잣말·메뉴 [사건 파일]) → 의뢰 NPC 에게 증거 퀘스트
-//       증거마다 그 자리에서 상호작용(F) → 쪽지 창에 그 쪽지 → 다 모으면 돌려주기·보상 → 대면 퀘스트 → (hide) 수풀에서 F → 장면 → 서류 쪽지
-//       → 돌려주기·보상(귤·옷) → 종결 도장·칭호 열림 → 사건 파일 창(서류 칸·증거 칸·도장, 칸을 누르면 쪽지) → 다시 읽어도 그대로 · 증거·숨는 곳이 막힌 곳이 아님
+//       증거마다 그 자리에서 상호작용(F) → (view 증거는 위에서 내려다보는 짧은 장면 뒤) 쪽지 창에 그 쪽지 → 다 모으면 돌려주기·보상 → 대면 퀘스트
+//       → (hide) 수풀에서 F → 장면(drop 모양이 가운데로 떨어짐) → 증거 사진 쪽지 → 돌려주기·보상(귤·옷) → 종결 도장·칭호 열림
+//       → 수사 보드(#246: 사진 자리 5·종결 사진·핀·빨간 실, 사진을 누르면 증거 칸, 칸을 누르면 쪽지) → 다시 읽어도 그대로 · 증거·숨는 곳이 막힌 곳이 아님
+//       옛 판으로 진행한 저장(save.cases 의 v 가 다름)은 처음으로 돌고 옛 쪽지(drop)가 빠짐
 const { chromium, devices } = require('playwright');
 const CID = process.argv[2] && /^c\d$/.test(process.argv[2]) ? process.argv[2] : 'c1';
 const rest = process.argv.slice(2).filter((a) => a !== CID), mode = rest[0] || 'd', SHOTS = !!rest[1];
@@ -34,6 +36,13 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   const blk = await ev(([sp, z]) => { const o = window.__oreum, c = o.col, t = o.trash.api; const all = [['see', sp.see], ['face', sp.face], ...Object.entries(sp.ev)].filter(([, v]) => v);
     return all.map(([k, [x, zz]]) => ({ k, blocked: !!c?.blocked(x, zz, 0.3), zone: t.zoneAt(x, zz) || 0, want: z })); }, [sp, C.zone]);
   for (const r of blk) ok(!r.blocked && r.zone === r.want, `${r.k} 자리: 막힘 ${r.blocked} · 구역 ${r.zone}`);
+  // ----- 옛 판 저장 (#246): 진행을 처음으로·옛 쪽지 뺌 -----
+  if (C.v) {
+    const mig = await ev(([id, drop]) => { const o = window.__oreum; o.save.cases = { ...(o.save.cases || {}), [id]: { w: 1763800000000, ev: ['x'], f: 1 } }; o.save.punk.notes = { ...(o.save.punk.notes || {}), ...Object.fromEntries(drop.map((d) => [d, 1])) }; o.save.punk.unread = [...(o.save.punk.unread || []), ...drop];
+      const s = o.cases.state(id); return { open: s.open, f: s.f, v: s.v, left: drop.filter((d) => o.save.punk.notes[d] || o.save.punk.unread.includes(d)).length }; }, [CID, C.drop || []]);
+    ok(!mig.open && !mig.f && mig.v === C.v && mig.left === 0, `옛 판 저장은 처음으로 ${JSON.stringify(mig)}`);
+    await ev((id) => window.__oreum.cases.reset(id), CID);
+  }
   // ----- 레벨이 모자라면 열리지 않음 -----
   let s = await CS(); ok(!s.open && s.lv < C.lv, `처음엔 사건이 닫혀 있음 (레벨 ${s.lv} < ${C.lv})`);
   await go(sp.see[0] + 2, sp.see[1] + 2); await W(1500);
@@ -63,6 +72,13 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
     const at = sp.ev[e.id]; await go(at[0] + 0.9, at[1] + 0.6); await W(700);
     ok(await until((id) => window.__oreum.cases.objs().find((o) => o.ev === id)?.vis, 6000, e.id), `${e.id} 모양 보임`);
     await p.keyboard.press('f'); await W(700);
+    if (e.view) {
+      ok(await ev(() => window.__oreum.cases.view() === 'view' && window.__oreum.cam.mode === 'cine'), `${e.id} 위에서 찍기 장면`);
+      if (e === C.ev[0]) await shot('view');
+      await ev(() => window.__oreum.cases.jump(99)); /* 느린 화면에선 장면 시간이 늦게 감 */
+      ok(await until(() => !window.__oreum.cases.view(), 8000), `${e.id} 장면 끝`); await W(800);
+      ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
+    }
     const shown = await ev(() => window.__oreum.punkWorld.note.shown());
     ok(await ev((id) => window.__oreum.punkWorld.note.got().includes(id), e.note), `${e.id} (${e.kind}) 찾음 · 쪽지 창 '${shown}'`);
     if (e === C.ev[0]) await shot('note');
@@ -92,7 +108,11 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
     if (!s.run) console.log('  까닭', JSON.stringify(await ev(() => { const o = window.__oreum; return { toast: document.getElementById('toast').textContent, ctx: o.aim.ctx(), cine: !!o.cam && o.cam.mode, swarm: !!o.swarm.state(), tension: o.pace?.threat?.() }; })));
     ok(await ev(() => window.__oreum.cam.mode === 'cine' && document.body.classList.contains('case-cine')), '장면 동안 카메라·화면');
     await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.5); await W(600); await shot('hide');
-    ok(await ev(() => window.__oreum.scene.children.filter((o) => o.visible && o.children?.length === 3 && o.children.some((c) => c.material?.side === 2)).length >= 1), '까마귀가 날아옴');
+    if (C.face.drop) {
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.62 - 0.4); await W(500);
+      ok(await ev(() => window.__oreum.cases.objs().find((o) => o.kind === 'drop')?.vis), '가운데로 더미가 떨어짐');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.62 + 0.6); await W(600); await shot('drop');
+    }
     await ev((t) => window.__oreum.cases.jump(t), C.face.len - 0.1); await W(1200);
     s = await CS(); ok(!s.run && s.f === 1 && s.face, '장면 끝 · 대면 끝냄');
     ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
@@ -122,7 +142,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
     s = await CS(); ok(s.f === 1 && s.face && !(await ev(() => window.__oreum.cases.chase()))?.cine, '장면 끝 · 대면 끝냄');
     ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
   } else await ev((z) => { const o = window.__oreum; o.save.boss.done[z] = (o.save.boss.done[z] || 0) + 1; }, C.zone);
-  ok(await until((d) => window.__oreum.punkWorld.note.got().includes(d), 3000, C.doc), `서류 '${C.doc}' 받음 · 쪽지 창 '${await ev(() => window.__oreum.punkWorld.note.shown())}'`);
+  ok(await until((d) => window.__oreum.punkWorld.note.got().includes(d), 3000, C.doc), `증거 사진 '${C.doc}' 받음 · 쪽지 창 '${await ev(() => window.__oreum.punkWorld.note.shown())}'`);
   await shot('doc'); await closeNote();
   ok(await until((id) => window.__oreum.quest.api.ready(id), 3000, q2.id), `${q2.id} 조건 채움`);
   coins = await ev(() => window.__oreum.save.coins);
@@ -139,14 +159,16 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await ev(() => document.getElementById('menu-case').click()); await W(500);
   ok(await ev(() => window.__oreum.cases.fileOpen()), '메뉴 → 사건 파일 창');
   const html = await ev(() => window.__oreum.cases.html());
-  ok(/종결/.test(html) && html.includes(C.name), '사건 칸에 제목·종결 도장');
-  const cells = await ev(() => ({ docs: document.querySelectorAll('#case-file .cf-docs .cf-slot').length, row: document.querySelectorAll('#case-file .cf-case:not(.lock) .cf-row .cf-slot').length, got: document.querySelectorAll('#case-file .cf-case:not(.lock) .cf-slot.got').length }));
-  ok(cells.docs === 5 && cells.row === C.ev.length + 2 && cells.got === C.ev.length + 2, `서류 칸 ${cells.docs} · 사건 칸 ${cells.row} (다 채움 ${cells.got})`);
+  ok(/종결/.test(html) && html.includes(C.name) && !html.includes('서류'), '수사 보드에 제목·종결 도장 (서류 말 없음)');
+  const bd = await ev(() => window.__oreum.cases.board());
+  ok(bd.pics === 5 && bd.done >= 1 && bd.img >= (C.photo ? 1 : 0) && bd.pins >= 1 && bd.thread >= 1, `수사 보드: 사진 자리 ${bd.pics} · 종결 ${bd.done} · 사진 ${bd.img} · 핀 ${bd.pins} · 실 ${bd.thread}`);
+  const cells = await ev(() => ({ row: document.querySelectorAll('#case-file .cf-case .cf-row .cf-slot').length, got: document.querySelectorAll('#case-file .cf-case .cf-slot.got').length }));
+  ok(cells.row === C.ev.length + 2 && cells.got === C.ev.length + 2, `사건 칸 ${cells.row} (다 채움 ${cells.got})`);
   const fit = await ev(() => { const r = document.querySelector('#case-file .pop').getBoundingClientRect(); return { l: r.left >= -1, r: r.right <= innerWidth + 1, t: r.top >= -1, b: r.bottom <= innerHeight + 1, w: Math.round(r.width) }; });
   ok(fit.l && fit.r && fit.t && fit.b, `창이 화면 안 (${fit.w}px)`);
   await shot('file');
   await p.click(`#case-file [data-note="${C.doc}"]`); await W(500);
-  ok(await ev(() => !!window.__oreum.punkWorld.note.shown()), '서류 칸을 누르면 쪽지 창');
+  ok(await ev(() => !!window.__oreum.punkWorld.note.shown()), '사진 칸을 누르면 쪽지 창');
   ok(await ev(() => { const b = document.querySelector('#punk-note .pn-case'); return !!b && !b.hidden; }), '쪽지 창에 [사건 파일] 단추');
   await p.click('#punk-note .pn-case'); await W(400);
   ok(await ev(() => window.__oreum.cases.fileOpen() && !window.__oreum.punkWorld.note.shown()), '쪽지 창 → 사건 파일 창');

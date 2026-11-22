@@ -15,6 +15,11 @@ export default {
   face: { kind: 'arena', follow: { path: [[-378, 20], [-392, 36], [-410, 44], [-428, 62], [-432.5, 85.5]], near: 12, end: 5, speed: 4.2, len: 9 },
     lines: ['흰 옷이 멈췄다. 집게 소리.', '"…들켰네."', '"낮에 치우면 밤에 또 쌓여서."'] },
   doc: 'k2d',
+  // 증거 사진 (#246 수사 보드): 밤, 돌아본 흰 옷(밀짚모자)·집게·봉지
+  photo: '<rect width="100" height="75" fill="#1d2640"/><rect y="56" width="100" height="19" fill="#2c3a2a"/><circle cx="80" cy="14" r="5" fill="#e8e4cf"/>'
+    + '<rect x="42" y="30" width="16" height="26" rx="4" fill="#f4f3ee"/><rect x="43" y="54" width="5" height="12" fill="#f4f3ee"/><rect x="52" y="54" width="5" height="12" fill="#f4f3ee"/>'
+    + '<circle cx="50" cy="25" r="6" fill="#f0d6b8"/><ellipse cx="50" cy="20" rx="11" ry="3" fill="#d9b85c"/><rect x="45" y="14" width="10" height="6" rx="2" fill="#d9b85c"/>'
+    + '<path d="M58 36 L70 62 M60 35 L72 61" stroke="#8a8f96" stroke-width="1.6"/><ellipse cx="34" cy="56" rx="7" ry="8" fill="#9db4c6"/>',
   notes: [
     { id: 'k2a', paper: 'photo', t: '줄어든 더미', from: '남쪽 사면 들판', b: '어제 사진엔 더미가 넷.\n오늘은 셋. 빈자리가 반듯하다.\n귀신이 쓰레기를 가져가나?' },
     { id: 'k2b', paper: 'notebook', t: '돌담의 흰 천', from: '돌담 틈', b: '돌담에 걸린 흰 천 조각.\n무명이다. 땀 냄새가 난다.\n귀신도 땀을 흘리나?' },
