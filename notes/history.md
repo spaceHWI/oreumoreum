@@ -1790,3 +1790,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 새 모델 없음: 흰 옷은 오름지기와 같은 runner 에 흰 작업복·밀짚모자·집게, 소품 넷(돌담 조각·흰 천 걸린 돌담·빈 더미 자리·빨랫줄)은 caseprops.js 로우폴리
 - 확인: `node tools/caserun.js c2 [d|m] [shots]` (arena + follow 갈래를 더함: 버티기 전엔 안 나옴 → 화살표가 흰 옷 → 따라감 → 장면 → 사진), `tools/oldsave.js caseChase`, `tools/storytext.mjs`(종결 뒤 인사도 봄)
 
+
+## #252 메시지 한 줄 로그
+- 새 `src/game/msglog.js`: 모든 화면 글을 `msg(kind, text, opt)` 한 길로. 옛 `toast()` 는 이것을 부름(세 번째 인자로 kind). `#toast`·`#pickmsg`·`#tip`·`#banner`·`#zone-title`·`#bloom-banner`·`#swarm-win` 칸은 더 안 띄움(HTML 은 남김)
+- 로그: 위쪽 줄·퀘스트 추적 줄 아래 왼쪽, 같은 높이(30px) 한 줄 칸, 최대 3줄, 글 길이에 맞춰 2.5~5초, 오래된 것부터 흐려지며 사라짐, 같은 글은 ×N(줍기는 '빈 캔 ×3')
+- 고정: 퀘스트 추적 줄 그대로 + 그 아래 한 자리(튜토리얼 안내 우선, 없으면 `opt.pin` 한 줄: 서바이벌 터 밖 카운트다운)
+- 강조 효과는 레벨 업·사건 종결(감독 id 'case-done:')만. 구역 이름·꽃 핌·업적·떼 버팀은 보통 한 줄
+- 감독 busy: 감독 글·얻음 줄이 아닌 알림이 떠 있으면 기다림 (`msgBusy`)
+- 멀티(room.js·give.js 받은 선물)는 kind 'multi'
+- 확인: `node tools/msgshot.js` (360×640·390×844·1280×720, 그림 tools/out/msg-*.png)

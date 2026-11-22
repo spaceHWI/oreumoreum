@@ -96,9 +96,9 @@ state.shopHintUntil = 0; // 버린 직후 살 수 있는 장비가 있으면 이
 const edgeAt = new Map();
 // 표시 크기(반폭·반높이). 클린하우스 표시는 아래 거리 글자까지 (#90)
 const markBox = (el) => { let b = el._box; if (!b) { const w = el.offsetWidth || 40, h = el.offsetHeight || 40; b = el._box = [w / 2 + 3, h / 2 + 3, el.querySelector('small') ? 16 : 0]; } return b; };
-const topEls = ['toast', 'tip', 'banner'].map((id) => $(id)), topAt = [-1, 0];
+const TOP_IDS = ['msg-log', 'msg-pin', 'tut-toast'], topAt = [-1, 0]; /* #252 메시지 줄 */
 // 위쪽 줄 + 그 아래 토스트·팁·배너 (보일 때) 아래로 (#90: 다시 들어올 때 긴 토스트가 가장자리 표시를 가림). 프레임마다 한 번만 잼
-const topLimit = (fr) => { if (topAt[0] !== fr) { let b = topFit.bottom + 72; for (const e of topEls) if (e && !e.hidden) b = Math.max(b, e.getBoundingClientRect().bottom + 30); topAt[0] = fr; topAt[1] = b; } return topAt[1]; };
+const topLimit = (fr) => { if (topAt[0] !== fr) { let b = topFit.bottom + 72; for (const id of TOP_IDS) { const e = document.getElementById(id); if (e && !e.hidden && e.childElementCount + (id === 'tut-toast' ? 1 : 0)) b = Math.max(b, e.getBoundingClientRect().bottom + 30); } topAt[0] = fr; topAt[1] = b; } return topAt[1]; };
 export function placeArrow(el, wp, lift) {
   // 표시끼리 겹치면 비켜 놓음 (#16: 클린하우스·가판대·마차 표시가 한 자리에 겹침).
   // #90: 이번 프레임에 이미 놓인 표시만 비교하고(지난 프레임 자리와 비교하면 순간 이동·카메라가 돌 때 겹침), 크기(거리 글자 포함)로 겹침을 잼

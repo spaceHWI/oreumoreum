@@ -375,7 +375,7 @@ function tickHud() {
   bar.hidden = !!late.bossFight?.() || !!late.raidFight?.();
 }
 const winEl = document.createElement('div'); winEl.id = 'swarm-win'; winEl.textContent = SWARM_TEXT.win; document.body.appendChild(winEl);
-function banner() { winEl.classList.remove('on'); void winEl.offsetWidth; winEl.classList.add('on'); setTimeout(() => winEl.classList.remove('on'), 2200); }
+function banner() { toast(SWARM_TEXT.win, 3, 'get'); } /* #252: 큰 글 대신 메시지 줄 한 줄 (#swarm-win 칸은 안 씀) */
 /* 쉬는 시간 표시 (#202): 위쪽 '지금 있는 곳' 칸 옆과 큰 지도 구역 줄 */
 const mmss = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const restEl = document.createElement('span'); restEl.id = 'where-sw'; restEl.hidden = true; restEl.title = SWARM_TEXT.rest; restEl.innerHTML = icon('field') + '<i></i>';
@@ -427,10 +427,10 @@ late.tickSwarm = (dt) => {
 };
 /* 터 밖 (#231): 나가면 남은 초를 한 줄로 세고, arena.leave 초가 지나면 끝 */
 function tickLeave(dt) {
-  if (arenaD(run.zone) <= A.r + 0.5) { if (leaveT > 0) { leaveT = 0; leaveS = -1; toast(SWARM_TEXT.inside, 1.2); } return; }
+  if (arenaD(run.zone) <= A.r + 0.5) { if (leaveT > 0) { leaveT = 0; leaveS = -1; late.msgLog?.unpin('leave'); toast(SWARM_TEXT.inside, 1.2); } return; }
   leaveT += dt; const left = Math.ceil(A.leave - leaveT);
   if (left <= 0) { endRun('leave'); return; }
-  if (left !== leaveS) { leaveS = left; toast(SWARM_TEXT.leave.replace('{s}', left), 1.1); }
+  if (left !== leaveS) { leaveS = left; late.msg?.('warn', SWARM_TEXT.leave.replace('{s}', left), { pin: true, key: 'leave', sec: 1.3 }); } /* #252: 위 고정 한 줄 */
 }
 /* 징·터 안내 (game/arena.js) 가 부름 */
 late.swarmArena = {

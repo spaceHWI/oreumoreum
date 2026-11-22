@@ -24,10 +24,8 @@ if (zoneLook && bloom) bloom.on((ev) => { if (ev === 'zone-bloom' || ev === 'zon
 let curZ = 0, shownZ = -1, shownAt = -1e9, leftZ = -1, leftAt = -1e9, zoneT = 0;
 const warned = new Set();
 const now = () => performance.now() / 1000;
-function showTitle(z) {
-  const el = $('zone-title'); el.querySelector('b').textContent = zoneShort(z); el.querySelector('small').textContent = `${tierName(z)} 구역`;
-  el.style.setProperty('--tier', tierColor(z)); el.style.setProperty('--zt', ZL.banner.sec + 's');
-  el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); zoneT = ZL.banner.sec;
+function showTitle(z) { /* #252: 큰 구역 이름 대신 메시지 줄 한 줄 (왼쪽 점이 구역 등급 색) */
+  toast(`${zoneShort(z)} · ${tierName(z)} 구역`, ZL.banner.sec, 'info', { icon: `<b style="width:12px;height:12px;border-radius:50%;background:${tierColor(z)};box-shadow:0 0 0 2px rgba(255,255,255,.5)"></b>` });
   shownZ = z; shownAt = now();
 }
 // 구역 소리·안개 목표 (다 핀 구역은 안개가 걷힘)
