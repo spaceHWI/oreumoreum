@@ -1068,6 +1068,13 @@ export const CAVE_CLOTHES = [
   { id: 'top:c-suit', slot: 'top', name: '동굴 탐험복', desc: '동굴의 주인을 쫓아낸 사람만 입는 옷', look: { kind: 'tee', long: true, main: '#6f6446', acc: '#e4ec5a', stripes: 2, collar: '#e4ec5a' } },
 ].map((c) => ({ tier: 0, style: true, cave: true, price: 0, ...c }));
 CLOTHES.push(...CAVE_CLOTHES);
+// 달력 다 연 옷 (#222 오름 산타 세트): 가게에 없음(weekly.js onShelf 가 prize 로 뺌). 겉모습(tier 0). 서버는 달력 25칸을 다 연 계정(save.season.xmas.all)만 값 없이, 아니면 price 로 셈
+export const PRIZE_CLOTHES = [
+  { id: 'hat:p-santa', slot: 'hat', name: '오름 산타 모자', desc: '달력을 하루도 빠짐없이 연 사람의 모자', look: { kind: 'santa', main: '#9e1f2a', acc: '#fff4d6' } },
+  { id: 'jacket:p-santa', slot: 'jacket', name: '오름 산타 외투', desc: '주머니에 귤이 한가득 들어가요', look: { kind: 'jacket', main: '#c8333a', acc: '#f6f2ea', cuffs: true, puff: true, bands: true } },
+  { id: 'bottom:p-santa', slot: 'bottom', name: '오름 산타 바지', desc: '굴뚝 대신 오름을 오르는 바지', look: { kind: 'long', main: '#b5333a', acc: '#2b2f3a', belt: true } },
+].map((c) => ({ tier: 0, style: true, prize: 'xmasAll', price: 5000, ...c }));
+CLOTHES.push(...PRIZE_CLOTHES);
 // 주간 옷장 (#126): LEAP '이번 주' 칸에 매주 월요일 00:00(KST) 바뀌는 한정 옷. 주 번호로 정해져 모두 같음 (src/weekly.js)
 // 지금 옷의 색·무늬 변형(새 kind 없음). 능력은 그 칸 tier 단계(4단계를 넘지 않음, 겉모습 위주), 값은 그 칸 4단계 값 × priceK. 산 옷은 계속 가짐
 // week: 몇째 주 차례(0 ~ weeks-1)에 나오는지. epoch = 0번 주가 시작한 월요일 00:00 KST
@@ -1108,6 +1115,7 @@ export const OUTFIT_SETS = [
   { id: 'tourist', name: '관광객', title: '혼저옵서예', fx: '#5ad0e0', items: ['hat:s-shades', 'top:s-aloha', 'bottom:s-check'] },
   { id: 'alien', name: '외계인', title: '지구 견학 중', fx: '#9af06a', items: ['hat:s-antenna', 'bottom:s-leggings', 'jacket:s-glow'] },
   { id: 'farmer', name: '귤 농부', title: '귤밭 주인', fx: '#ffb347', items: ['hat:s-beanie', 'bottom:s-mombbe', 'vest:s-basket'] },
+  { id: 'santa', name: '오름 산타', title: '개근 산타', fx: '#ff6a6a', items: ['hat:p-santa', 'jacket:p-santa', 'bottom:p-santa'] }, // 크리스마스 달력을 다 열면 (#222, SEASON.xmas.calAll)
 ];
 export const SET_FX = { n: 8, lowN: 5, r: 0.75, y: 0.8, spin: 0.9, bob: 0.12, size: 0.16, step: 0.6 }; // 둘레 효과: 점 수(저사양), 반지름·높이(m), 도는 빠르기(rad/s), 위아래, 점 크기, 번갈아 높이
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
@@ -1867,6 +1875,17 @@ export const SEASON = {
     tree: { step: 3000, stages: 10, gift: 300, poll: 120, at: [-9, 12] }, // 트리: 모두가 주운 쓰레기 step 개마다 한 단계, 마지막 단계는 꼭대기 귤 별. 다 채우면 선물 귤, 서버 다시 묻기(초). at = 들머리 출발점에서 [옆(오른쪽 +), 앞] m
     cal: { days: 25, miss: 50, coins: [30, 100], every: 5 }, // 접속 달력 12월 1~25일: 귤 30~100, every 일마다 겨울 옷(25일은 눈덩이), 놓친 날은 귤 miss 로 열기
     calCloth: { 5: 'hat:x-santa', 10: 'vest:x-scarf', 15: 'hat:x-rudolph', 20: 'socks:x-boots' }, // 달력 옷 (25일 = 눈덩이)
+    // 다 열면 (#222): 25칸을 모두 열면 한 번. 한 벌 맞춤 set(OUTFIT_SETS, 옷은 PRIZE_CLOTHES) + 그 칭호 + 귤 coins. 서버는 save.season.xmas.all 로 한 번만 인정 (validate.js seasonCheck)
+    calAll: { coins: 500, set: 'santa' },
+    // 달력 판 모습 (#222 어드벤트 캘린더, game/calview.js). 다음 철(설·한가위)은 SEASON.<철>.calLook 만 새로 쓰면 같은 판
+    // order: 5×5 칸에 놓는 날짜 차례(왼쪽 위부터, big 은 가운데). ribbon: 리본 단 큰 문. big: 가장 큰 문과 모양(tree·moon·lantern). jit: 문 크기·자리 흔들림(0~1, 날짜로 정해짐)
+    // c: 판 바탕·테두리 두 색·글씨·문 색들(차례로 돌려 씀)·문 테·잠긴 문·리본·눈. roof: 위 테두리 모양(snow 눈 지붕). flakes: 내리는 눈송이 수(저사양 0). icon: 입구 아이콘(icons.js)
+    calLook: {
+      title: '크리스마스 달력', roof: 'snow', flakes: 14, icon: 'xmas',
+      order: [3, 17, 8, 21, 12, 19, 5, 14, 1, 10, 9, 23, 25, 16, 6, 15, 2, 11, 20, 24, 22, 13, 18, 4, 7],
+      ribbon: [5, 10, 15, 20], big: { 25: 'tree' }, jit: 0.5,
+      c: { board: '#f6ecd6', frame: '#b8282f', frame2: '#2f7a4a', ink: '#3a2418', doors: ['#c8333a', '#2f7a4a', '#e8b84a', '#8a2a33', '#3f8f6a'], rim: '#f6ecd6', lock: '#a89a86', ribbon: '#e8b84a', snow: '#ffffff' },
+    },
     santa: { p: 1 / 3, gift: 0.1, coins: [20, 60], dayMax: 4, giftMax: 2 }, // 투기꾼 3명 중 1명이 산타. 쫓으면 선물 상자: 귤 또는 (gift 확률) 겨울 옷. 하루 dayMax 개까지, 옷은 모두 giftMax 벌까지
     snowball: { slow: 0.2, slowT: 1.5, color: '#f4f8ff' }, // 눈덩이: 피해는 손과 같고 맞은 적이 slowT 초 동안 slow 만큼 느려짐. 귤을 쓰지 않음
     music: { gain: 0.5, bell: [2, 5] }, // 겨울 판 배경음: 종·방울 한 겹 (크기, 방울 사이 초)
