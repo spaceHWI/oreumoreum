@@ -303,6 +303,21 @@ async function startServers() {
         k2 = checkSave(k2.save, { ...k2.save, coins: k2.save.coins + g, myst: { safe: 1 } }, { ...k2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
         ok(k2.rec.why.safe === 0 && k2.fixed.includes('coins'), '금고를 지웠다 다시 열어 두 번 받기 거절');
       }
+      { // 징표 (#255): 판 기록(save.tok.rec)만큼 상한까지 인정, 쉬는 시간 안 두 번째 버팀 거절, 귤로 못 삼, 기록 지웠다 다시 받기 거절, 남에게 줄 길 없음(귤 몫과 따로)
+        const { runMax, armPrice } = await import('../src/token.js'), R0 = (await import('../src/balance.js')).SWARM.run, T0 = { n: 0, got: 0, own: {}, rec: {} };
+        const P0 = { ...P, tok: T0 }, a0 = { ...acc, credit: 0, bank: 0 };
+        let k = checkSave(P0, { ...P0, tok: { ...T0, n: runMax(3), got: runMax(3), rec: { 3: { at: t, n: runMax(3), win: 1 } } } }, a0, t);
+        ok(!k.fixed.includes('tok') && k.save.tok.n === runMax(3) && k.save.coins === P0.coins, `징표 한 판(구역 3, ${runMax(3)})은 인정, 귤은 그대로`);
+        let k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, n: runMax(3) * 2, rec: { 3: { at: t + 60000, n: runMax(3), win: 1 } } } }, { ...k.acc, savedAt: t + 60000 }, t + 60000);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '쉬는 시간 안에 같은 구역 징표 두 번 받기 거절');
+        k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, n: 999, rec: { 4: { at: t + 1000, n: 999, win: 0 } } } }, { ...k.acc, savedAt: t + 1000 }, t + 1000);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n <= runMax(3) + runMax(4), `한 판 상한을 넘는 징표는 깎음 (${k2.save.tok.n})`);
+        k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, rec: {} } }, { ...k.acc, savedAt: t + 2000 }, t + 2000);
+        k2 = checkSave(k2.save, { ...k2.save, tok: { ...k2.save.tok, n: k2.save.tok.n + runMax(3), rec: { 3: { at: t, n: runMax(3), win: 1 } } } }, { ...k2.acc, savedAt: t + R0.rest * 2000 }, t + R0.rest * 2000);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '기록을 지웠다 옛 기록으로 다시 받기 거절');
+        k2 = checkSave({ ...P0, coins: 99999 }, { ...P0, coins: 99999, tok: { ...T0, own: { blast: 3 }, arm: 'blast' } }, a0, t);
+        ok(k2.fixed.includes('tokItems') && !k2.save.tok.own.blast && k2.save.coins === 99999, `귤(99999)로는 징표 무기 못 삼 (값 ${armPrice('blast', 1)}+…)`);
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };

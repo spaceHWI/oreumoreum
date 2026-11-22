@@ -81,6 +81,18 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   const kit2 = await p.evaluate(() => { const o = window.__oreum; o.tok.answer(true); const s = o.tok.state(); return { run: !!o.swarm.state(), arm: s.arming, top: o.save.clothes.wear.top }; });
   ok(kit2.run && kit2.arm === 'rapid' && kit2.top === 'top:t-gong', `'갈아입기' → 싸움 차림(${kit2.top}·${kit2.arm}) 입고 판 시작`);
   await p.evaluate(() => window.__oreum.swarm.stop());
+  // 관통·폭발 쏘기
+  const arms = await p.evaluate(async () => { const o = window.__oreum, out = {}; o.tok.give(400, 5, false); o.save.coins = 500;
+    for (const id of ['pierce', 'blast']) { o.tok.buyArm(id, 5); const s = o.tok.state(); o.player.knock = null; o.weapon.fire(); await new Promise((r) => setTimeout(r, 700)); out[id] = { lv: s.own[id], w: s.weapon, dmg: s.dmg }; }
+    return out; });
+  ok(arms.pierce.lv === 1 && arms.pierce.w === 'gun' && arms.blast.w === 'bomb' && !errs.length, `관통(${arms.pierce.w}, ${arms.pierce.dmg})·폭발(${arms.blast.w}, ${arms.blast.dmg}) 쏘기 오류 없음`);
+  // 한 벌 덤: 여섯 칸 입고 판 중 쓰러질 피해 → 한 번 일어남, 두 번째는 쓰러짐
+  const rv = await p.evaluate(async () => { const o = window.__oreum; for (const id of ['top:t-gong', 'socks:t-gong', 'jacket:t-gong', 'hat:t-gong', 'bottom:t-gong', 'vest:t-gong']) { o.tok.buyCloth(id, 5); o.tok.wear(id); }
+    o.swarm.clearRest(); o.save.tok.rv = 0; o.swarm.start(1); await new Promise((r) => setTimeout(r, 600));
+    const s0 = o.tok.state(), a = o.hp.hit(99999), hp1 = o.hp.hp, run1 = !!o.swarm.state(), s1 = o.tok.state(); const b = o.hp.hit(99999);
+    await new Promise((r) => setTimeout(r, 600)); return { suit: s0.suit, ready: s0.revive, a, hp1, run1, after: s1.revive, b, run2: !!o.swarm.state(), dmg: s0.suitDmg }; });
+  ok(rv.suit && rv.ready && rv.a === false && rv.hp1 > 0 && rv.run1 && !rv.after, `한 벌(피해 +${Math.round(rv.dmg * 100)}%) 덤: 쓰러질 피해에 한 번 일어남 (기운 ${Math.round(rv.hp1)})`);
+  ok(rv.b === true && !rv.run2, '두 번째는 쓰러지고 판이 끝남 (덤은 쉬는 시간 뒤 다시)');
   await b.close();
   console.log(errs.length ? `페이지 오류 ${errs.length}` : '페이지 오류 없음', fail ? `· 실패 ${fail}` : '· ALL OK');
   process.exit(fail || errs.length ? 1 : 0);
