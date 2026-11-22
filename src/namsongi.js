@@ -7,7 +7,7 @@ import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
 import { TIER } from './quality.js';
 import { COLLIDE, BOUND, HALLA, PATHCLEAR } from './balance.js';
-import { createPathIndex, keepOffPath } from './pathclear.js';
+import { createPathIndex, keepOffPath, keepOffArena, inArena } from './pathclear.js';
 import { buildHalla } from './halla.js';
 import { STREAM_GLSL } from './streamshape.js';
 import { buildTrails } from './trailshape.js';
@@ -386,7 +386,7 @@ vec3 groundColor(vec2 p){
       list.forEach((s, i) => tint.setXYZ(i, s.c.r, s.c.g, s.c.b));
       const mk = (geo, hi) => { const im = new T.InstancedMesh(share(geo, tint), treeMat, list.length); im.position.set(cx, cy, cz);
         list.forEach((s, i) => { dummy.position.set(s.x - cx, s.y - cy, s.z - cz); dummy.rotation.set(0, s.r, 0); dummy.scale.set(s.s, s.s * s.t, s.s); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); });
-        im.castShadow = hi; im.receiveShadow = hi; im.visible = !hi; scene.add(im); return im; };
+        im.name = 'tree'; im.castShadow = hi; im.receiveShadow = hi; im.visible = !hi; scene.add(im); return im; };
       chunks.push({ cx, cz, hi: mk(geoHi, true), lo: mk(geoLo, false) });
     });
   }
@@ -431,13 +431,14 @@ vec3 groundColor(vec2 p){
     for (let i = items.length - 1; i >= 0; i--) if (ib(items[i].x, items[i].z) < 3 || cleared(items[i].x, items[i].z)) items.splice(i, 1); // 돌담 밖·돌담 자리 바위는 뺌 (#25)
     items.forEach((s) => { s.r = s.s * PATHCLEAR.rockR; });
     const kept = keepOffPath(items, pathIdx, (x, z) => ib(x, z) >= 3 && !cleared(x, z)); items.length = 0; items.push(...kept.items); rockStat = { ...kept.stat, kept: items.length, bad: items.filter((q) => pathIdx.onPath(q.x, q.z, q.r)).length }; /* 길 둘레 비우기 (#227) */
+    const off = keepOffArena(items, (x, z) => ib(x, z) >= 3 && !cleared(x, z) && !pathIdx.onPath(x, z, 0)); items.length = 0; items.push(...off.items); rockStat.arena = off.stat; rockStat.inArena = items.filter((q) => inArena(q.x, q.z, q.r)).length; /* 서바이벌 터 비우기 (#253) */
     const im = new T.InstancedMesh(g, mat, items.length), c = new T.Color();
     items.forEach((s, i) => {
       dummy.position.set(s.x, H(s.x, s.z), s.z); dummy.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3);
       dummy.scale.set(s.s * rr(0.9, 1.25), s.s * rr(0.75, 1), s.s * rr(0.9, 1.25)); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix);
       const v = rr(0.27, 0.4); im.setColorAt(i, c.setRGB(v, v, v * 1.1));
     });
-    im.castShadow = true; im.receiveShadow = true; scene.add(im);
+    im.name = 'path-rock'; im.castShadow = true; im.receiveShadow = true; scene.add(im);
     items.forEach((s) => { if (s.s * COLLIDE.rock >= 0.45) solids.push([s.x, s.z, s.s * COLLIDE.rock]); });
   }
 
@@ -449,11 +450,11 @@ vec3 groundColor(vec2 p){
       if (rnd() > 0.3) return;
       const a = rnd() * 6.28, d = rr(3.5, 16) * K, cx = q[0] + Math.cos(a) * d, cz = q[1] + Math.sin(a) * d, c = C(cols[Math.floor(rnd() * cols.length)]);
       const n = 5 + Math.floor(rnd() * 9);
-      for (let i = 0; i < n; i++) { const x = cx + rr(-1.6, 1.6) * K, z = cz + rr(-1.6, 1.6) * K; if (nearTrail(x, z, 2.8 * K) || ib(x, z) < 1) continue; items.push({ x, z, c }); }
+      for (let i = 0; i < n; i++) { const x = cx + rr(-1.6, 1.6) * K, z = cz + rr(-1.6, 1.6) * K; if (nearTrail(x, z, 2.8 * K) || ib(x, z) < 1 || inArena(x, z, 0.3)) continue; items.push({ x, z, c }); } /* 서바이벌 터 안엔 두지 않음 (#253) */
     });
     const im = new T.InstancedMesh(g, new T.MeshToonMaterial({ color: 0xffffff, gradientMap: gradSoft }), items.length);
     items.forEach((s, i) => { dummy.position.set(s.x, H(s.x, s.z) + rr(0.3, 0.5) * K, s.z); dummy.rotation.set(0, 0, 0); dummy.scale.setScalar(rr(0.8, 1.4)); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); im.setColorAt(i, s.c); });
-    im.receiveShadow = true; scene.add(im);
+    im.name = 'path-flower'; im.receiveShadow = true; scene.add(im);
   }
 
   /* 하늘, 바다, 구름 */
