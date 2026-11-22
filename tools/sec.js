@@ -141,6 +141,18 @@ async function startServers() {
     ok(fakeItem.status === 200 && !me3.save.rides.own.length && !me3.save.clothes.own['gold-crown'], '목록에 없는 물건 지움');
     const tr = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, trash: { total: 100000 } } } });
     ok(tr.j.fixed.includes('picked'), '치운 양(랭킹) 부풀리기 바로잡힘');
+    { // #261: 손님 기록을 옮길 때 '오늘 치운 수' 부풀리기는 줍기 몫(pickBurst) 안으로 깎임, 날이 다르면 0
+      const { kstDay, weekStart } = await import('../src/rankday.js'); const d = kstDay();
+      const M = await login('dev', 'mig-day-' + Date.now()), M2 = await login('dev', 'mig-old-' + Date.now());
+      const mig = (X, rk) => req('dev', '/save', { method: 'PUT', token: X.token, body: { migrate: true, save: { ...S0, trash: { total: 500000, rk } } } });
+      await mig(M, { d, w: weekStart(d), day: { battle: 500000 }, week: { battle: 500000 }, all: { battle: 500000 } });
+      await mig(M2, { d: d - 1, w: weekStart(d - 1), day: { battle: 300 }, week: { battle: 300 }, all: { battle: 300 } });
+      const rm = (await req('dev', '/rank/me', { token: M.token })).j, rm2 = (await req('dev', '/rank/me', { token: M2.token })).j;
+      ok(rm?.day?.n > 0 && rm.day.n <= NET.pickBurst && rm.week.n === rm.day.n, `옮긴 기록의 부풀린 오늘 값은 깎임 (오늘 ${rm?.day?.n} ≤ ${NET.pickBurst})`);
+      ok(rm2?.day?.n === 0 && rm2.all.n > 0, `어제 날짜의 오늘 값은 오늘 표에 안 들어감 (${JSON.stringify(rm2?.day)})`);
+      const nx = await req('dev', '/save', { method: 'PUT', token: M.token, body: { save: { ...S0, trash: { total: 500000 + NET.pickBurst } } } });
+      ok(nx.j.fixed.includes('picked'), '옮긴 오늘 몫은 줍기 몫에서 빠져 바로 뒤 저장에서 또 받지 못함');
+    }
     // #140 전리품: 강화 +6·없는 등급·재료 음수·없는 재료·없는 칸은 바로잡음
     const lt = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, gearUp: { tool: { g: 7, e: 6 }, crown: { g: 1, e: 1 } }, mats: { m1: -5, m2: 3, gold: 9 }, loot: [{ s: 'tool', t: 9, g: 1, e: 0 }, { s: 'hat', t: 2, g: 4, e: 0 }, { s: 'bag', t: 2, g: 1, e: 2 }], clothes: { own: {}, wear: {}, up: { 'hat:w-cap': { g: 2, e: 9 }, nope: { g: 1 } } } } } });
     const me4 = (await req('dev', '/me', { token: A.token })).j.save;
