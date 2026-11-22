@@ -114,6 +114,7 @@ import './game/ufoseen.js'; // UFO 드러남 단계 (#207): 흔적 → 실루엣
 import './game/swarm.js'; // 들판 떼 (#173)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
+import './game/fightcam.js'; // 전투 때 카메라 멀어지기 (#216, camera.js followCam 이 부름)
 import './game/rec.js'; // 게임 안 촬영 모드 (#185): UI 없는 세로 영상
 import './game/simple.js'; // 화면 단순하게·전체 화면 안내 (#189)
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
@@ -125,6 +126,7 @@ import './game/cave.js'; // 동굴 탐험 (#195): 굼부리 용암 동굴, 별�
 import './game/cavelife.js'; // 동굴 2번 조각 (#195): 쓰레기 더미·들고 나오기·적·지킴이
 import './game/cavedeep.js'; // 동굴 3번 조각 (#195): 하루 판 수·함정·화살표·상자·동굴의 주인
 import './game/caveextra.js'; // 동굴 4번 조각 (#195): 벽 쪽지·동굴 옷·감독 문 cave·퀘스트 고리
+import './game/cavecam.js'; // 동굴 카메라 두 안 (#214): 내려다보기·넓은 굴·지금 바꾸기 (어드민)
 import './game/caveshare.js'; // 동굴 적 같이 보기 (#205): 같은 칸 사람끼리 적을 한 사람이 굴림
 import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/wish.js'; // 돌탑 소원 글·함께 기도 (#127)

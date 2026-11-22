@@ -25,8 +25,10 @@ export function followCam(dt, snap) {
   upK = snap ? up : upK + (up - upK) * Math.min(1, dt * 10);
   const look = player.pos.clone(); look.y = player.visY + 1.6 + rideLookH() + upK * CAM.rideUpLift;
   const rk = camRiding() ? CAM.rideDist * (1 - upK * (1 - CAM.rideUpDist)) : 1; rideK = snap ? rk : rideK + (rk - rideK) * Math.min(1, dt * CAM.rideDistK);
-  const pk = camPullK(), pitch = Math.max(pMin, Math.min(pMax, cam.pitch + pk * BLOOM_FX.zone.camPitch)), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
-  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * rideK * (1 + pk * BLOOM_FX.zone.camDist) * (1 - PACE.camIn * (state.tension || 0))); // 긴장 때 조금 가까이 (#89)
+  const fc = late.fightCam ? late.fightCam(snap ? 1 : dt, cam.dist * rideK) : null, fk = fc ? fc.k : 1, fp = fc ? fc.pitch : 0; /* 전투 때 멀어지기 (#216, game/fightcam.js) */
+  const pk = camPullK(), pitch = Math.max(pMin, Math.min(pMax, cam.pitch + pk * BLOOM_FX.zone.camPitch + fp)), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
+  const tense = fk > 1 ? 0 : PACE.camIn * (state.tension || 0); /* 긴장 때 조금 가까이 (#89). 전투로 멀어진 동안은 빼고 */
+  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * rideK * fk * (1 + pk * BLOOM_FX.zone.camDist) * (1 - tense));
   const p = look.clone().add(off);
   const gh = height(p.x, p.z) + 1.2;
   if (p.y < gh) { look.y += (gh - p.y) * 0.8; p.y = gh; }

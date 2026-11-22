@@ -5,6 +5,8 @@ import { isMaxKey } from './metrics.js';
 import { xmasDay, treeGoal, treeStage } from '../../src/seasoncal.js';
 import { cleanText, nickOk, nickBad, nickPrice } from '../../src/safetext.js';
 import { checkSave } from './validate.js';
+import { fgInit, fgRun, fgList } from './filegrants.js';
+import GRANTS from '../grants.json';
 import { kstDay, weekStart, lookOf } from '../../src/rankday.js';
 import { wishInit, wishList, wishPut, wishPray, wishNews, wishReport, wishReported, wishAdmin, wishPurge } from './wishes.js';
 
@@ -39,6 +41,7 @@ export class Accounts extends DurableObject {
     this.sql.exec('CREATE INDEX IF NOT EXISTS clamp_at ON clamp (at)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS gift (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER, sub TEXT, n INTEGER, why TEXT, by TEXT, got INTEGER DEFAULT 0, got_at INTEGER)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS gift_sub ON gift (sub, got)');
+    fgInit(this.sql); this.fgAt = 0; /* 귤 보내기 목록 (#215, filegrants.js) */
 
     if (!hadRank) this.sql.exec("INSERT OR IGNORE INTO rka (sub, srv, n) SELECT sub, 'battle', cleaned FROM acc WHERE cleaned > 0"); // 랭킹 전 치운 양은 전체로
     // #98: 깨끗한 오름 기록을 전투 오름 기록에 더하고 지움 (한 번 옮기면 clean 줄이 없어 다음엔 아무 일 없음)
@@ -132,10 +135,11 @@ export class Accounts extends DurableObject {
     return !this.sql.exec('SELECT 1 AS x FROM rv WHERE j = ?', jti).toArray().length;
   }
   revoke(jti, exp) { this.sql.exec('INSERT OR REPLACE INTO rv (j, exp) VALUES (?, ?)', jti, exp); return { ok: true }; }
-  get(sub) { const r = this.row(sub); return r ? this.view(r, r.last_seen) : null; }
+  get(sub) { this.fileGrants(); const r = this.row(sub); return r ? this.view(r, r.last_seen) : null; }
   put(sub, save, { migrate = false, free = false, ver = '' } = {}) {
     const raw = JSON.stringify(save);
     if (raw.length > NET.saveMax) return { error: 'too big' };
+    this.fileGrants();
     const t = Date.now();
     let r = this.row(sub); if (!r) { this.touch(sub); r = this.row(sub); }
     const prev = r.save ? JSON.parse(r.save) : null;
@@ -180,6 +184,18 @@ export class Accounts extends DurableObject {
     this.sql.exec('INSERT INTO gift (at, sub, n, why, by) VALUES (?, ?, ?, ?, ?)', Date.now(), sub, n, why, by);
     return { ok: true, id: this.sql.exec('SELECT MAX(id) AS id FROM gift').one().id };
   }
+  // 귤 보내기 목록 (#215): 배포 뒤 처음 접속·저장 때, 그 뒤로는 grantFileRetryMs 마다 못 보낸 줄을 다시 봄. 로컬 검사(FAKE_AUTH)는 GRANTS_TEST(base64 JSON)로 목록을 바꿈
+  grantFileList() {
+    if (this.env?.FAKE_AUTH === '1' && this.env.GRANTS_TEST) { try { return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(this.env.GRANTS_TEST), (c) => c.charCodeAt(0)))); } catch (e) { return []; } }
+    return GRANTS;
+  }
+  fileGrants(t = Date.now()) {
+    const gap = this.env?.FAKE_AUTH === '1' ? 0 : NET.grantFileRetryMs;
+    if (this.fgAt && t - this.fgAt < gap) return;
+    this.fgAt = t;
+    try { fgRun(this.sql, this.grantFileList(), (sub, n, why, by) => this.grant(sub, n, why, by), t); } catch (e) { /* 목록이 깨져도 저장·접속은 그대로 */ }
+  }
+  fileGrantList() { this.fileGrants(); return fgList(this.sql); }
   grantList(k = 100) { return this.sql.exec('SELECT gift.id AS id, gift.at AS at, gift.sub AS sub, acc.nick AS nick, n, why, got, got_at FROM gift LEFT JOIN acc ON acc.sub = gift.sub ORDER BY gift.id DESC LIMIT ?', k).toArray(); }
   // 귤 주기 (#175, roomcore 'give'): from 이 to 에게 n 개. 서버 저장의 귤 + 아직 저장에 안 들어간 받은·준 귤로 가진 것을 셈 (클라이언트가 보낸 값은 안 믿음)
   // → { got, why?, out: from 의 준 누적, in: to 의 받은 누적, nick }. why: self|none|new|off|coins|day|full (got 이 n 보다 적을 때)

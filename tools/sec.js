@@ -9,9 +9,17 @@ const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const KEEP = process.argv.includes('--keep');
 const SERVER_DIR = path.join(__dirname, '..', 'server');
+// 귤 보내기 목록 (#215): plain 서버는 server/grants.json 대신 이 목록 (GRANTS_TEST, FAKE_AUTH 일 때만 읽음)
+const FG = [
+  { id: 'fg-1', to: { nick: '외동이' }, n: 10000, why: '선물' }, { id: 'fg-1', to: { nick: '외동이' }, n: 99999, why: '같은 id 두 번' },
+  { id: 'fg-sub', to: { sub: 'fake-fgsub' }, n: 30, why: 'x' }, { id: 'fg-max', to: { nick: '외동이' }, n: 100001, why: 'x' },
+  { id: 'fg-zero', to: { nick: '외동이' }, n: 0, why: 'x' }, { id: 'fg-neg', to: { nick: '외동이' }, n: -5, why: 'x' },
+  { id: 'fg-guest', to: { nick: '손님뿐' }, n: 40, why: 'x' },
+  ...[1, 2, 3, 4, 5].map((i) => ({ id: 'fg-day' + i, to: { nick: '외동이' }, n: 100000, why: 'x' })),
+];
 const CFG = {
   dev: { port: 8797, vars: ['FAKE_AUTH:1', 'STATS_OPEN:1', 'GIFT_NEW_SEC:0'] }, // GIFT_NEW_SEC: 귤 주기(#175) 새 계정 기다림을 끔 (plain 은 기본값으로 막히는지 봄)
-  plain: { port: 8798, vars: ['FAKE_AUTH:1', 'ADMIN_SUBS:fake-boss'] },
+  plain: { port: 8798, vars: ['FAKE_AUTH:1', 'ADMIN_SUBS:fake-boss', 'GRANTS_TEST:' + Buffer.from(JSON.stringify(FG)).toString('base64')] },
   prod: { port: 8799, vars: ['SESSION_SECRET:prod-like-secret-0123456789abcdef0123'] },
   nokey: { port: 8800, vars: [] },
 };
@@ -444,6 +452,13 @@ async function startServers() {
       ok(hx.length === 1 && hx[0].h[0][1] <= N3.bossHitMax && hx[0].from === bq.id && !ms.c.some((m) => m.t === 'cx'), `동굴 적 피해는 칸 주인에게만, 잘려서 (${hx[0]?.h[0][1]})`);
       T0 += 200; core.message(cq, JSON.stringify({ t: 'cx', h: [[1, 5]] })); ok(ms.a.filter((m) => m.t === 'cx').length === 1, '다른 칸 사람의 피해는 안 감');
       core.leave(a); ok(ms.b.some((m) => m.t === 'ch' && m.id === bq.id), '칸 주인이 나가면 다음 사람이 칸 주인');
+      { /* #214 넓은 굴(b): cd 끝 'b' 는 넓은 층 자리만 받고, 보통 칸과 따로 */
+        const W = CV.view.b, md = [], me = [], dq = core.join((x) => md.push(JSON.parse(x))), eq = core.join((x) => me.push(JSON.parse(x)));
+        const at = (p, cd, cx) => core.message(p, JSON.stringify({ t: 'p', d: { x: 0, z: 0, cv: 2, cd, cx, cz: CV.z0 } })), wx = W.x0 + W.floorGap + CV.grid * CV.cell * W.k * 0.45;
+        T0 += 200; at(dq, day + 'b', wx); T0 += 200; at(eq, day, wx);
+        ok(md.some((m) => m.t === 'ch' && m.id === dq.id && m.k === '2:' + day + 'b'), '넓은 굴(b) 자리는 넓은 굴 칸으로');
+        ok(!me.some((m) => m.t === 'ch' && m.k === '2:' + day) && !md.some((m) => m.t === 'ch' && m.id === eq.id), '보통 칸 이름에 넓은 굴 자리는 거절·넓은 굴 칸과 섞이지 않음');
+      }
     }
     // 폭주
     const F = await sock('dev', 'oreum-namsongi-battle', { ch: 6 });
@@ -488,6 +503,42 @@ async function startServers() {
       const gl = (await req('plain', '/admin/grants', { token: Bs.token })).j || [];
       ok(!take.j.fixed.includes('coins') && !(take.j.gifts || []).length && again.j.fixed.includes('coins') && gl.some((x) => x.id === gift.id && x.got), '보낸 귤은 한 번만 받아 주고 받은 기록이 남음');
     }
+    await sleep(61000); /* 위 검사들이 쓴 주소별 요청 수(1분 NET.reqPerMin)를 비움 (#215 목록 검사 앞) */
+    { // 귤 보내기 목록 (#215, server/grants.json → 위 FG): id 마다 한 번·한 줄/하루 상한·같은 닉네임 둘이면 보류·손님 제외
+      const { LEVEL } = await import('../src/balance.js'), { xpAt } = await import('../src/augments.js');
+      const mk = async (name, nick, extra = {}) => { const L = await login('plain', name); const r = await req('plain', '/save', { method: 'PUT', token: L.token, body: { save: { ...S0, nick, ...extra } } }); return { ...L, r }; };
+      const one = await mk('fgone', '외동이');
+      const sb = await mk('fgsub', '번호로');
+      const meOne = (await req('plain', '/me', { token: one.token })).j, gOne = (meOne.gifts || []).filter((g) => g.why === '선물' || g.n === 100000);
+      const sum = gOne.reduce((a, g) => a + g.n, 0);
+      ok(gOne.filter((g) => g.n === 10000).length === 1 && !gOne.some((g) => g.n === 99999), '목록 줄은 id 마다 한 번 (같은 id 두 줄이면 앞 줄만)');
+      ok(sum <= NET.grantFileDay && sum === 10000 + 100000 * 4, `목록 전체 하루 상한 (${sum} ≤ ${NET.grantFileDay}, 넘는 줄은 기다림)`);
+      const fl = (await req('plain', '/admin/filegrants', { token: Bs.token })).j || [], st = (id) => fl.find((x) => x.id === id) || {};
+      ok(((await req('plain', '/me', { token: sb.token })).j.gifts || []).some((g) => g.n === 30) && st('fg-sub').st === 'sent', '계정 번호(sub)로 보낸 줄');
+      ok(st('fg-max').st === 'wait' && st('fg-max').note === 'bad:max' && st('fg-zero').note === 'bad:n' && st('fg-neg').note === 'bad:n', '한 줄 상한 넘음·0·음수 거절');
+      ok(st('fg-guest').st === 'wait' && st('fg-guest').note === 'none' && st('fg-day5').st === 'wait' && st('fg-day5').note === 'day', '계정 없는 이름(손님)은 기다림, 하루 상한 넘은 줄도 기다림');
+      for (let i = 0; i < 3; i++) await req('plain', '/me', { token: one.token });
+      const gl2 = (await req('plain', '/admin/grants', { token: Bs.token })).j || [];
+      ok(gl2.filter((x) => x.nick === '외동이').length === 5, '여러 번 돌아도 다시 보내지 않음 (보낸 기록 5줄)');
+      ok((await req('plain', '/admin/filegrants', { token: U.token })).status === 403 && (await req('plain', '/admin/filegrants')).status === 403, '목록 파일 상태는 어드민만');
+      const take2 = await req('plain', '/save', { method: 'PUT', token: one.token, body: { save: { ...meOne.save, coins: meOne.save.coins + sum, giftGot: gOne.map((g) => g.id) } } });
+      ok(!take2.j.fixed.includes('coins'), '목록으로 보낸 귤은 서버가 받아 줌 (#188 과 같은 길)');
+      /* 같은 닉네임 여럿: 서버에서는 계정이 하나씩 생겨 앞사람이 먼저 받으므로, 같은 셈(filegrants.js)을 node:sqlite 위에서 */
+      const { DatabaseSync } = require('node:sqlite'), db = new DatabaseSync(':memory:');
+      const sql = { exec: (q, ...a) => { const p = db.prepare(q); const rows = /^\s*(SELECT|PRAGMA)/i.test(q) ? p.all(...a) : (p.run(...a), []); return { toArray: () => rows, one: () => rows[0] }; } };
+      sql.exec('CREATE TABLE acc (sub TEXT PRIMARY KEY, nick TEXT, save TEXT)'); sql.exec('CREATE TABLE gift (id INTEGER PRIMARY KEY AUTOINCREMENT, sub TEXT, n INTEGER, why TEXT, by TEXT, got INTEGER DEFAULT 0)');
+      const { fgInit, fgRun, fgList } = await import('../server/src/filegrants.js'); fgInit(sql);
+      const sv = (lv) => JSON.stringify({ lv: { xp: xpAt(lv), v: LEVEL.v } });
+      for (const [sub, nick, save] of [['t1', '쌍둥이', sv(1)], ['t2', '쌍둥이', sv(1)], ['l1', '셋째', sv(7)], ['l2', '셋째', sv(3)], ['h1', '넷째', sv(9)], ['h2', '넷째', sv(3)], ['g1', '손님', null]]) sql.exec('INSERT INTO acc (sub, nick, save) VALUES (?, ?, ?)', sub, nick, save);
+      const gr = (sub, n, why, by) => { sql.exec('INSERT INTO gift (sub, n, why, by) VALUES (?, ?, ?, ?)', sub, n, why, by); return { ok: true, id: sql.exec('SELECT MAX(id) AS id FROM gift').one().id }; };
+      const L2 = [{ id: 'a', to: { nick: '쌍둥이' }, n: 5 }, { id: 'b', to: { nick: '쌍둥이', lv: 1 }, n: 5 }, { id: 'c', to: { nick: '셋째', lv: 7 }, n: 7 }, { id: 'd', to: { nick: '넷째', lv: 7 }, n: 9 }, { id: 'e', to: { nick: '손님' }, n: 4 }];
+      fgRun(sql, L2, gr); fgRun(sql, L2, gr);
+      const s2 = (id) => fgList(sql).find((x) => x.id === id) || {}, gifts2 = sql.exec('SELECT sub, n FROM gift').toArray();
+      ok(s2('a').st === 'hold' && s2('a').note === 'many' && s2('b').st === 'hold' && !gifts2.some((g) => g.sub[0] === 't'), '같은 닉네임이 둘이면(레벨도 같으면) 보내지 않고 보류');
+      ok(s2('c').st === 'sent' && s2('c').sub === 'l1' && s2('d').st === 'sent' && s2('d').sub === 'h1', '같은 닉네임이 여럿이면 lv 가 같은(없으면 그 이상인) 사람 하나에게만');
+      ok(s2('e').st === 'wait' && !gifts2.some((g) => g.sub === 'g1') && gifts2.length === 2, '저장 없는 계정은 대상 아님, 두 번 돌아도 2줄');
+    }
+    await sleep(61000); /* #215 목록 검사가 쓴 요청 수를 비움 (뒤 검사 몫) */
 
     { // 이용 통계 (#121): 로그인 없이 POST /m (text/plain 묶음), 날짜별 합계만. 보기는 어드민만
       const mpost = (body, origin = LOCAL) => fetch(url('plain', '/m'), { method: 'POST', headers: { 'content-type': 'text/plain', ...(origin ? { Origin: origin } : {}) }, body: typeof body === 'string' ? body : JSON.stringify(body) }).then((r) => r.status);

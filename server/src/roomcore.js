@@ -145,12 +145,14 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
 
   // 동굴 칸 (#195 4번 조각): presence 의 cv 층(1~CAVE.floors)·cd 오늘의 동굴 날짜·cx·cz 동굴 안 자리(그 층 칸 안). 틀리면 동굴 칸을 지움
   //   x·z 는 동굴 안이어도 입구 자리(이동 판정 그대로). 칸(ck)이 다른 사람에게는 칸이 바뀔 때 한 번만 보냄 (step). 내 칸이 바뀌면 같은 칸 사람의 마지막 상태를 다시 받음
-  const CAVE_SPAN = CAVE.grid * CAVE.cell / 2 + 2;
+  // 넓은 굴 (#214 b, 어드민 카메라 시험): cd 끝에 'b'. 층 자리·크기가 CAVE.view.b 대로, 같은 'b' 끼리만 같은 칸
+  const CAVE_SPAN = CAVE.grid * CAVE.cell / 2 + 2, CAVE_B = CAVE.view?.b, CAVE_SPAN_B = CAVE_B ? CAVE.grid * CAVE.cell * CAVE_B.k / 2 + 2 : 0;
   function caveCell(p, d) {
     let ck = '';
     if ('cv' in d) {
-      const f = d.cv, okF = Number.isInteger(f) && f >= 1 && f <= CAVE.floors, okD = typeof d.cd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.cd);
-      const okP = okF && isNum(d.cx) && isNum(d.cz) && Math.abs(d.cx - (CAVE.x0 + (f - 1) * CAVE.floorGap)) <= CAVE_SPAN && Math.abs(d.cz - CAVE.z0) <= CAVE_SPAN;
+      const f = d.cv, okF = Number.isInteger(f) && f >= 1 && f <= CAVE.floors, okD = typeof d.cd === 'string' && /^\d{4}-\d{2}-\d{2}b?$/.test(d.cd), wide = okD && !!CAVE_B && d.cd.endsWith('b');
+      const X0 = wide ? CAVE_B.x0 : CAVE.x0, G = wide ? CAVE_B.floorGap : CAVE.floorGap, SP = wide ? CAVE_SPAN_B : CAVE_SPAN;
+      const okP = okF && isNum(d.cx) && isNum(d.cz) && Math.abs(d.cx - (X0 + (f - 1) * G)) <= SP && Math.abs(d.cz - CAVE.z0) <= SP;
       if (okF && okD && okP) ck = f + ':' + d.cd; else { delete d.cv; delete d.cd; delete d.cx; delete d.cz; ck = okF ? 'old' : ''; } // 옛 클라이언트(cv 만)는 아무와도 같은 칸이 아님
     } else { delete d.cd; delete d.cx; delete d.cz; }
     if (ck !== p.ck) { const was = p.ck; p.ck = ck; p.ckAt = now() + (+p.id.slice(1)) * 1e-6; p.sent.clear(); caveHostFix(was); caveHostFix(ck, p); }
