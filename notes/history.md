@@ -1592,7 +1592,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인: `node tools/summit.js [d|m] [shots]` (새 사용자·옛 저장 둘 다)
 
 
-## #209 게임 로고 새 모양(A: Black Han Sans)
+## #209 게임 로고 새 모양(A: Black Han Sans) (2026-11-22)
 - `src/logo.js`: 선으로 그리던 '오름오름'(글자 칸 100×120) → Black Han Sans '오'·'름' 윤곽을 path 로 박음(글꼴 파일은 싣지 않음). 윤곽은 `tools/logoglyph.py <글꼴>` 로 뽑음(npm @fontsource/black-han-sans 의 korean .woff 로 뽑았다). 고지: `notes/licenses.md`
 - '오' 의 ㅇ 고리는 빼고 그 자리(원래 ㅇ 바깥 높이)에 귤/외계인 얼굴, 가로는 높이의 1.2배 타원. 전체 비율 약 3.65:1 (전 2.9:1)
 - `LOGO_WEIGHTS`·`LOGO_WEIGHT`·`weight` 옵션 지움(새 윤곽엔 뜻 없음). 내보내는 이름(logoSvg·logoMark·logoIcon·svgUrl·LOGO_COLORS)·halo 는 그대로
