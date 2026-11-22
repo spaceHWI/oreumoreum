@@ -1,13 +1,14 @@
-// 들판 떼 (#173, notes/growth-loop.md '들판 떼' 절): 길 = 안전하고 느긋한 청소, 들판 = 떼가 몰려오는 사냥터 (뱀서류). 수치는 balance.js SWARM
-// - 탐방로에서 SWARM.offD m 넘게 벗어나면 '들판'. 그 구역 떼(보통 적의 작고 약한 판)가 플레이어 둘레 화면 밖(ring)에서 나옴
+// 들판 떼 (#173, notes/growth-loop.md '들판 떼' 절): 길 = 안전하고 느긋한 청소, 서바이벌 터 = 떼가 몰려오는 사냥터 (뱀서류). 수치는 balance.js SWARM
+// - 서바이벌 터 (#231, SWARM.arena · 터 모양·징·안내는 game/arena.js): 구역마다 한 곳. 징을 울려야(late.swarmArena.start) 한 판이 시작됨. 들판에 들어가기만 해서는 시작하지 않고, 판 밖 떼도 없음
+//   떼(보통 적의 작고 약한 판)는 터 테두리 밖(arena.spawn)에서 나옴. 터 밖에 arena.leave 초 넘게 있으면 끝(덤 없음, 쉬는 시간 × leaveRest)
 // - 한 판짜리 (#202, SWARM.run): t[구역] 초 동안 물결 waves 번, 물결마다 수가 늘고 간격이 줄어듦. 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결(쫓아내면 보물 상자)
 //   시간이 다 되면 '버텼다!' + 그 판 귤의 bonus 덤 (save.swarm.won, 서버 earn.js 가 쉬는 시간 안에 두 번 인정하지 않음). 그 구역 들판은 rest 초 조용함 (save.swarm.rest, 벽시계 ms)
-//   중간에 길로 돌아오거나(backD 안에서 backT 초) 쓰러지면 그 자리에서 끝(덤·쉬는 시간 없음, 주운 귤은 그대로)
+//   쓰러지면 그 자리에서 끝(덤·쉬는 시간 없음, 주운 귤은 그대로). 멀티: 터에 같이 있는 사람이 징을 울리면(presence sw) 나도 같은 때 판에 듦 — 떼는 사람마다 따로
 // - 자동 던지기는 없음 (#194): 들판에서도 길에서처럼 직접 던짐(버튼·F, 이어 던지기·모아 쏘기 #129·타겟 고정 #148 그대로)
 // - 쫓겨난 떼 적은 귤(보통 보상 × mob.gyul, 땅에 흩어짐) + 귤 조각(구역별 shard 개). 조각은 magnet 안이면 빨려 오고 shardN 개가 귤 1 (#202: 레벨은 번 귤로, level.js)
 // - 증강은 레벨업 때만 (#194, game/level.js 창). 판 동안 '들판에서만' 증강(balance.js AUGMENTS field: 1)이 작동: 던질 때 덤 귤(두 갈래·뒤로·관통, late.onShot 을 throw.js·arms.js 가 부름)
 //   귤비·도는 귤·밀쳐 내기·귤즙(물결이 세질 때)·단단한 귤(life.hooks.dmgIn). 덤 탄은 여기서 그림(귤 공 InstancedMesh)
-// - 숨 돌릴 틈: 더미를 다 치우면 그 자리 quiet.r m 가 quiet.t 초 동안 떼가 안 나옴(가까운 떼는 떠남). 소굴 den.r 안이면 떼 × more, 닫힌 소굴이면 × closed
+// - 숨 돌릴 틈: 더미를 다 치우면 그 자리 quiet.r m 가 quiet.t 초 동안 떼가 안 나옴(가까운 떼는 떠남, 터 안엔 더미가 없어 거의 안 씀). 소굴 den.r 안이면 떼 × more, 닫힌 소굴이면 × closed
 // - 초보 보호: 장비 점수 < 구역 권장이면 물결 시간이 slowNew 배로. 기운 lowHp 아래면 enemies.hesitate (#148). 우두머리(#139)·이야기 이벤트(#168, late.story.busy)·엔딩(state.cine)이면 멈춤
 // - 문(#176): JOURNEY 'field' (퀘스트 '들판 탐사' 뒤 = FACTS.fieldQuest). 열리기 전엔 물결 1단계까지
 // - 멀티: 떼는 사람마다 따로(지금 보통 적과 같은 길: 적은 방으로 보내지 않음). 남의 떼는 보이지 않고, 그 사람이 던지는 귤만 보임 — 적 수가 많아 보내는 양이 늘지 않게
@@ -26,7 +27,7 @@ import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
 import { $, save, persist, isTouch } from './save.js';
 import { scene, spots, camera } from './scene.js';
-import { trash, life, player, hp, bloom, buff } from './place.js';
+import { trash, life, player, hp, buff } from './place.js';
 import { toast, updateStats } from './hud.js';
 import { director } from './director.js';
 import { weaponNow, bowReady } from './throw.js';
@@ -46,27 +47,34 @@ const live = (e) => e.state !== 'flee' && e.state !== 'leave';
 /* ---------- 판 상태 ---------- */
 // run: 들판에 있는 동안 하나. null 이면 길
 const r0 = { scT: 0, newbie: false }; // 장비 점수는 1초에 한 번
-let run = null, offT = 0, backT = 0, chkT = 0, onField = false;
+let run = null, leaveT = 0, leaveS = -1;
 const quiet = []; // { x, z, until(초, 게임 시간) }
 let clock = 0;
 const an = (id) => (run ? augN(save, id) : 0); // '들판에서만' 증강 (#194): 겹친 수·값, 판 밖이면 0
 const aval = (id) => (run ? augV(save, id) : 0);
-const multi = () => !!late.net && !late.net.solo && (late.net.peersById?.size || 0) > 0;
 const doorOpen = () => director.isOpen('field');
 const zoneOf = (x, z) => (trash ? trash.zoneAt(x, z) || 0 : 0);
-const distTrail = (x, z) => trash.trail.dist(x, z, S.offD + 4);
+const A = S.arena, AT = (z) => A.at[z] || null;
+const arenaD = (z, x = player.pos.x, zz = player.pos.z) => { const c = AT(z); return c ? Math.hypot(x - c[0], zz - c[1]) : 1e9; }; // 터 가운데에서 거리
 
 let whyNot = '', testOff = false; // testOff: 확인 도구(tools/fight.js 등)가 떼 없이 잴 때
 function canField() {
   whyNot = !trash || !state.sessionOn || testOff ? 'off' : late.tut?.active ? 'tut' : hp.isDown || hp.pending ? 'down' : player.cart ? 'cart' : late.bossFight?.() || late.raidFight?.() ? 'boss' : late.story?.busy || state.cine ? 'story' : '';
-  if (whyNot) return false;
-  const z = zoneOf(player.pos.x, player.pos.z);
-  whyNot = !z ? 'zone0' : bloom?.isBloomed(z) ? 'bloomed' : restLeft(z) > 0 ? 'rest' : '';
   return !whyNot;
 }
+/* 징을 울려 시작할 수 있나 (#231): '' 이면 됨, 아니면 까닭 ('rest' 쉬는 시간·'run' 판 중·'far' 터 밖 등) */
+function canStart(z) {
+  if (!AT(z)) return 'none';
+  if (run) return 'run';
+  if (!canField()) return whyNot;
+  if (restLeft(z) > 0) return 'rest';
+  return arenaD(z) > A.r ? 'far' : '';
+}
 function startRun(zone) {
+  leaveT = 0; leaveS = -1;
   run = { zone, T: runT(zone), t: 0, wall: 0, kills: 0, gyul: 0, shards: 0, stage: 0, maxStage: 0, eliteW: -1, leader: null, leaderDone: false, spawnT: S.firstT, pk: -Math.floor(Math.random() * 1e6) - 10, rainT: 0, slow: 0, waves: [0], best0: SV.best[zone] ? { ...SV.best[zone] } : null };
   hud(true);
+  late.sound?.gong?.();
   if (!SV.seen) { SV.seen = 1; persist(); toast(SWARM_TEXT.first, 4); } // 처음 한 번 (문이 열리기 전에도)
   else toast(`${SWARM_TEXT.come} ${zone !== lastZone || clock - lastEnd > 120 ? SWARM_TEXT.zone[zone]?.come || '' : ''}`.trim(), 2.6);
   lastZone = zone;
@@ -83,14 +91,14 @@ function endRun(why) {
     const at = Date.now(); SV.rest[r.zone] = at + R.rest * 1000; SV.won[r.zone] = { at, b: bonus };
     if (bonus > 0) { save.coins += bonus; late.gyulShower?.(bonus); updateStats(); }
     late.sound?.fanfare?.(); persist();
-  }
+  } else if (why === 'leave') { SV.rest[r.zone] = Date.now() + R.rest * A.leaveRest * 1000; persist(); } /* 터를 벗어나 끝 (#231): 덤 없음, 쉬는 시간 절반 */
   if (late.swarm) late.swarm.last = { why, wall: Math.round(r.wall), kills: r.kills, gyul: Math.round(r.gyul), bonus, waves: r.waves.slice() };
   if (r.t < 4 && !r.kills && !win) return;
   const b = SV.best[r.zone] || {}, nb = { k: Math.max(b.k || 0, r.kills), t: Math.max(b.t || 0, Math.round(r.wall)), w: Math.max(b.w || 0, r.maxStage + 1) };
   const rec = r.kills > (b.k || 0) && (b.k || 0) > 0;
   SV.best[r.zone] = nb; persist();
   const line = `${r.kills}마리, 귤 +${Math.round(r.gyul)}, 최고 물결 ${r.maxStage + 1}` + (rec ? ' · 새 기록!' : ` · 이 구역 최고 ${nb.k}마리`);
-  toast(win ? `${SWARM_TEXT.win} ${line} · 덤 귤 +${bonus}` : why === 'down' ? `쓰러졌어요. ${line}` : line, win ? 5 : 4.2);
+  toast(win ? `${SWARM_TEXT.win} ${line} · 덤 귤 +${bonus}` : why === 'down' ? `쓰러졌어요. ${line}` : why === 'leave' ? `${SWARM_TEXT.left} ${line}` : line, win ? 5 : 4.2);
   if (win) banner();
   late.swarmEnd?.(r);
 }
@@ -108,16 +116,16 @@ function pickKind(zone) {
   for (const [k, w] of L) { x -= w; if (x <= 0) return k; } return L[0][0];
 }
 const _f = new THREE.Vector3();
-function spawnSpot(zone) {
-  camera.getWorldDirection(_f); const back = Math.atan2(-_f.x, -_f.z); // 카메라 뒤쪽(화면 밖) 중심
-  for (let k = 0; k < 20; k++) { // 앞 8번은 카메라 뒤쪽 ring 안, 그다음은 사방, 마지막 6번은 ring 을 넓혀 (좁은 들판)
-    const wide = k >= 14, r0 = wide ? S.ring[0] * 0.7 : S.ring[0], r1 = wide ? S.ring[1] * 1.3 : S.ring[1];
-    const a = back + (Math.random() - 0.5) * (k < 8 ? 3.6 : 6.28), r = r0 + Math.random() * (r1 - r0);
-    const x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r;
+function spawnSpot(zone) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
+  const c = AT(zone); if (!c) return null;
+  camera.getWorldDirection(_f); const back = Math.atan2(-_f.x, -_f.z);
+  for (let k = 0; k < 24; k++) {
+    const a = k < 8 ? back + (Math.random() - 0.5) * 3.6 : Math.random() * 6.283, r = A.r + A.spawn[0] + Math.random() * (A.spawn[1] - A.spawn[0]);
+    const x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r;
+    if (Math.hypot(x - player.pos.x, z - player.pos.z) < 7) continue; // 바로 옆에서 튀어나오지 않게
     if (spots.enemyOk && !spots.enemyOk(x, z)) continue;
-    if (life.hooks.spawnBlock?.(x, z) || zoneOf(x, z) !== zone || inQuiet(x, z)) continue;
+    if (life.hooks.spawnBlock?.(x, z) || (k < 18 && zoneOf(x, z) !== zone)) continue;
     if (life.hooks.enemyPass && !life.hooks.enemyPass(x, z, 0.7)) continue;
-    if (distTrail(x, z) < S.backD) continue; // 떼는 들판에서 나옴
     return [x, z];
   }
   return null;
@@ -401,23 +409,11 @@ let hesT = 0, saveT = 0;
 late.tickSwarm = (dt) => {
   if (!trash) return;
   clock += dt;
-  if ((chkT -= dt) <= 0) { chkT = 0.2; const d = distTrail(player.pos.x, player.pos.z); onField = run ? d >= S.backD : d > S.offD; }
-  const ok = canField();
-  if (!run) {
-    offT = onField && ok ? offT + dt : 0;
-    if (offT > 0.3) { offT = 0; backT = 0; startRun(zoneOf(player.pos.x, player.pos.z)); }
-  } else {
+  if (run) {
     if (hp.isDown || hp.pending) endRun('down');
-    else if (!ok) endRun('stop:' + whyNot);
-    else {
-      const z = zoneOf(player.pos.x, player.pos.z);
-      if (z !== run.zone && z > 0) { const r = run; endRun('zone'); if (onField) startRun(z); else void r; }
-    }
-    if (run) {
-      if (!onField) { backT += dt; if (backT >= S.backT) { toast(SWARM_TEXT.back, 2); endRun('back'); } }
-      else backT = 0;
-    }
-    if (run && onField) tickWaves(dt);
+    else if (!canField()) endRun('stop:' + whyNot);
+    if (run) tickLeave(dt);
+    if (run) tickWaves(dt);
     if (run) {
       tickOrbit(dt); tickRain(dt); tickHud();
       if ((hesT -= dt) <= 0) { hesT = 0.5; if (hp.hp < hp.max * S.lowHp) E.hesitate(); }
@@ -429,27 +425,38 @@ late.tickSwarm = (dt) => {
   for (const e of E.list) if (e.def.swarm && ((e.state === 'flee' && e.st > 1.2) || (e.state === 'leave' && e.st > 3.5))) { E.remove(e); break; } // 쫓겨난·떠나는 떼 적은 곧 사라짐 (그리기 수)
   if (!run && !shots.length && orbMesh.count) orbitHide();
 };
+/* 터 밖 (#231): 나가면 남은 초를 한 줄로 세고, arena.leave 초가 지나면 끝 */
+function tickLeave(dt) {
+  if (arenaD(run.zone) <= A.r + 0.5) { if (leaveT > 0) { leaveT = 0; leaveS = -1; toast(SWARM_TEXT.inside, 1.2); } return; }
+  leaveT += dt; const left = Math.ceil(A.leave - leaveT);
+  if (left <= 0) { endRun('leave'); return; }
+  if (left !== leaveS) { leaveS = left; toast(SWARM_TEXT.leave.replace('{s}', left), 1.1); }
+}
+/* 징·터 안내 (game/arena.js) 가 부름 */
+late.swarmArena = {
+  can: canStart, rest: restLeft, runT, zone: () => run?.zone || 0, inside: (z) => arenaD(z) <= A.r,
+  start(z) { const w = canStart(z); if (w) return w; startRun(z); return ''; },
+};
+late.swarmExtra = () => (run ? { sw: run.zone } : {}); /* 멀티 presence: 지금 판 중인 터 (room.js extra) */
 
 /* ---------- 확인용 (window.__oreum.swarm) ---------- */
 // start(zone): 그 구역 들판 빈 곳으로 옮겨 바로 판을 시작, stop(): 길로 돌아온 것처럼 끝, t(초): 물결 시간 바꾸기, aug(id): 레벨 증강 하나 더하기, state(): 지금 판
 // picking()·pick(i): 레벨업 증강 창(level.js)이 떠 있으면 카드 id 들·고르기 (tools/swarm.js)
 late.swarm = {
-  start(zone = 1) {
-    const T = trash; if (!T) return null;
-    const hs = T.heaps.filter((h) => h.zone === zone && h.field); let spot = null;
-    for (const h of hs) { for (let k = 0; k < 20 && !spot; k++) { const a = Math.random() * 6.28, r = h.r + 4 + Math.random() * 8, x = h.x + Math.sin(a) * r, z = h.z + Math.cos(a) * r; if (zoneOf(x, z) === zone && distTrail(x, z) > S.offD + 2 && (!life.hooks.enemyPass || life.hooks.enemyPass(x, z, 0.7)) && (!spots.clamp || !spots.clamp(x, z))) spot = [x, z]; } if (spot) break; }
-    if (!spot) return null;
-    player.pos.set(spot[0], height(spot[0], spot[1]), spot[1]); player.target = null;
-    if (run) endRun('stop'); onField = true; chkT = 0.2; startRun(zone); return { x: +spot[0].toFixed(1), z: +spot[1].toFixed(1) };
+  start(zone = 1) { /* 그 구역 터 가운데 옆으로 옮겨 바로 판을 시작 (쉬는 시간은 무시) */
+    const c = AT(zone); if (!c) return null;
+    const x = c[0] + 3, z = c[1] + 3; player.pos.set(x, height(x, z), z); player.target = null;
+    if (run) endRun('stop'); startRun(zone); return { x, z };
   },
   stop() { if (run) endRun('back'); },
-  why: () => (canField(), whyNot), /* 판이 안 열리는 까닭 ('rest' 쉬는 시간 등) */
+  why: (z) => canStart(z || zoneOf(player.pos.x, player.pos.z)), /* 징을 울려도 판이 안 열리는 까닭 ('rest' 쉬는 시간·'far' 터 밖 등, '' 이면 열림) */
+  gong: (z) => late.swarmArena.start(z || zoneOf(player.pos.x, player.pos.z)), /* 징 울리기 (#231): '' 이면 시작 */ at: (z) => AT(z),
   disable(v = true) { testOff = !!v; if (v && run) endRun('stop:test'); },
   t(v) { if (run) run.t = v; },
   aug(id) { if (!AUG_BY[id] || !late.level) return 0; const n = Math.min(AUGMENTS.max, augN(save, id) + 1); late.level.set({ ...save.lv.aug, [id]: n }); return n; },
   pick: (i) => late.level?.pick(i), picking: () => { const L = late.level?.state(); return L?.open ? L.draw : null; }, shards: () => shards.length, shardsAt: () => shards.map((q) => [q.p.x, q.p.z]),
   shots: () => shots.length,
-  state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, T: run.T, waves: run.waves.slice(), n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, lv: levelOf(save.lv?.xp || 0).lv, aug: Object.fromEntries(AUGMENTS.list.filter((a) => a.field && augN(save, a.id)).map((a) => [a.id, augN(save, a.id)])), leader: !!run.leader, onField },
+  state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, T: run.T, waves: run.waves.slice(), n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, lv: levelOf(save.lv?.xp || 0).lv, aug: Object.fromEntries(AUGMENTS.list.filter((a) => a.field && augN(save, a.id)).map((a) => [a.id, augN(save, a.id)])), leader: !!run.leader, inside: arenaD(run.zone) <= A.r, leaveT: +leaveT.toFixed(1) },
   best: () => ({ ...SV.best }), rest: (z) => (z ? restLeft(z) : Object.fromEntries(Object.keys(SV.rest).map((k) => [k, +restLeft(+k).toFixed(1)]))), won: () => JSON.parse(JSON.stringify(SV.won)),
   clearRest(z) { if (z) delete SV.rest[z]; else SV.rest = {}; restT = 0; }, /* 쉬는 시간 지우기 (확인용) */
   ageRest(sec) { for (const k of Object.keys(SV.rest)) SV.rest[k] -= sec * 1000; restT = 0; }, /* 쉬는 시간을 sec 초 앞당김 */ get cap() { return CAP; }, setCap(n) { CAP = n; }, // tools/swarm.js: 헤드리스는 저사양이라 PC 상한으로 바꿔 잼
