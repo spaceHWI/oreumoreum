@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | emote: 동작(#242)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -94,6 +94,20 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   for (const X of [A, B]) { await X.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */; await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
+  if (ONLY === 'emote') { // 동작 8개 (#242): 목록 안 동작은 B 에게 말풍선, 목록에서 빠진 동작(옛 클라이언트)·모르는 동작을 보내도 B 에 오류 없음
+    const errs = []; B.p.on('pageerror', (e) => errs.push(e.message.slice(0, 200)));
+    const bub = () => B.p.evaluate(() => window.__oreum.emo.test.bubbles.length);
+    await A.p.evaluate(() => window.__oreum.doEmote('wave'));
+    ok(await until(B, () => window.__oreum.emo.test.bubbles.length > 0, null, 10000), 'A 의 안녕(목록 안) → B 에 말풍선');
+    await wait(A.p, 3000);
+    await A.p.evaluate(() => window.__oreum.emo.perform('clap'));
+    ok(await until(B, () => [...window.__oreum.emo.test.seen.values()].some((s) => s.id === 'clap'), null, 10000), `A 가 목록에서 빠진 박수를 보내도 B 가 받음 (말풍선 ${await bub()})`);
+    await wait(A.p, 3000);
+    await A.p.evaluate(() => { const o = window.__oreum; const m = o.emo.mine; o.emo.perform('thumb'); if (o.emo.mine) { o.emo.mine.id = 'zzz-old'; o.net.send(true); } });
+    await wait(B.p, 3000);
+    ok(!errs.length && await B.p.evaluate(() => window.__oreum.net.count === 1), `모르는 동작(zzz-old)을 받아도 B 에 오류 없음${errs.length ? ' — ' + errs.join(' | ') : ''}`);
+    await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return;
+  }
   if (ONLY === 'cart') { // 지나가는 마차 (#120): A 가 달리는 마차에 타면 B 화면에도 앉은 모습, B 는 A 가 앉은 자리를 피해 앉음
     const run = (X) => X.p.evaluate(() => { const o = window.__oreum, c = o.rides.cart.api; for (let t = 0; t < 240; t += 0.5) { o.rides.cart.shift(t); c.update(0, Date.now() / 1000 + t); if (c.state.moving && c.state.speed > 2 && c.state.left > 20) return t; } return null; });
     const t = await run(A); await B.p.evaluate((t) => window.__oreum.rides.cart.shift(t), t);

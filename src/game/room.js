@@ -16,7 +16,7 @@ import { $, save, ab, persist, MAP_ID } from './save.js';
 import { scene, camera, spots } from './scene.js';
 import { P, summitOut, summitTan, photoSpot, cairns, layoutCairn, col, trash, runner, player, hp, NS_TUT } from './place.js';
 import { toast, nearestHeapPos, ach } from './hud.js';
-import { emoRiding, emoCan, doEmote } from './menu.js';
+import { emoRiding, emoCan, doEmote, setActions } from './menu.js';
 import { rideCode, peerRide } from './ride.js';
 
 // ---------- 함께 (room) ----------
@@ -59,7 +59,8 @@ state.emo = createEmotes({
 });
 state.emo.onChoose = (id) => doEmote(id);
 function emoteMeet() { const ps = [...net.peersById.values()]; return !ps.length || ps.some((e) => e.pos.distanceTo(player.pos) <= DAILY.meetR); }
-state.emo.bindWheel($('emo-wheel'));
+state.emo.bindWheel($('emo-wheel'), $('act-chat'));
+state.emo.bindButton($('btn-actions'), () => !$('actions').hidden, setActions);
 social.listeners.stones.push(() => cairns.forEach(layoutCairn));
 social.start();
 // 사진사 NPC (#70): 표지석 근처, 삼각대 옆

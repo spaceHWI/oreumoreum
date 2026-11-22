@@ -14,7 +14,8 @@ import { setAdm, dropAdm } from '../mview.js';
 import { initAdmWin } from './admwin.js';
 
 // ---------- 동작 ----------
-$('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });
+/* 동작 버튼 (#242): 누르면 버튼 곁에 8칸 부채꼴, 누른 채 밀어 떼면 고름 (emotes.js bindButton). state.emo 는 room.js 에서 만듦 */
+export function setActions(open) { closePanels(); $('actions').hidden = !open; if (open) state.emo?.opened($('btn-actions')); }
 $('btn-menu').addEventListener('click', () => { inboxCheck(); const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('m-wx').innerHTML = wxIcon(wx.kind) + WX[wx.kind].name; $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
 $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'));
 // 처음부터 다시(#33): 2초 꾹 누르면 이 기기의 저장을 지움. 닉네임·그래픽·소리 설정은 남김 (돌탑의 돌은 서버에 있어 그대로)
