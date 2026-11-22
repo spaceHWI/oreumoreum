@@ -161,8 +161,9 @@ late.augSpeed = () => augV(save, 'light') + (state.flowerT > 0 ? augV(save, 'flo
 state.flowerT = 0;
 
 // ---------- 고르기 창 ----------
-const sheet = $('aug-pick'), cards = $('ap-cards'), rrBtn = $('ap-reroll');
-let open = false, safeT = 0;
+const sheet = $('aug-pick'), cards = $('ap-cards'), rrBtn = $('ap-reroll'), timeBar = $('ap-time');
+let open = false, safeT = 0, autoT = 0, busy = false, hideT = 0, lastT = 0;
+sheet.classList.toggle('low', LOW); /* #225 저사양은 딤 흐림 없이 */
 const multi = () => (late.net?.peersById?.size || 0) > 0;
 function safe() {
   return state.sessionOn && !late.tut?.active && !player.riding && !player.ride && !player.cart && !player.knock && !hp.isDown && !hp.pending
@@ -191,11 +192,14 @@ function render() {
     cards.append(b);
   });
   $('ap-rr-n').textContent = String(LEVEL.reroll);
+  autoT = LEVEL.autoPick; lastT = 0; busy = false; paintTime();
   rrBtn.disabled = !!L.rr || save.coins < LEVEL.reroll;
 }
+function paintTime() { if (timeBar) timeBar.style.transform = `scaleX(${Math.max(0, autoT / LEVEL.autoPick).toFixed(3)})`; }
 const augCountNow = () => Object.values(L.aug).reduce((s, n) => s + n, 0);
 function show() {
   if (!pendingPicks(save)) return;
+  clearTimeout(hideT); sheet.classList.remove('out');
   open = true; sheet.hidden = false; sheet.classList.remove('gift'); void sheet.offsetWidth; sheet.classList.add('gift'); render(); // 선물 상자가 열리듯 (#194, page.html .gift)
   if (multi()) player.iframe = Math.max(player.iframe || 0, LEVEL.guard); else state.augPause = true;
   player.target = null; player.onArrive = null;
@@ -207,20 +211,39 @@ function openPick(byHand = false) {
   const ok = director.ask('level', 'augPick', show, { sec: Infinity, ttl: 30, queue: false }); if (ok) auto = false; // 안 되면 조금 뒤 다시
   return ok;
 }
-function close() {
-  if (!open) return; open = false; sheet.hidden = true; state.augPause = false; director.end('augPick'); paintHud();
+function close(fade = true) {
+  if (!open) return; open = false; busy = false; state.augPause = false; director.end('augPick'); paintHud();
+  clearTimeout(hideT);
+  if (!fade) { sheet.hidden = true; sheet.classList.remove('out'); return; }
+  sheet.classList.add('out'); hideT = setTimeout(() => { sheet.hidden = true; sheet.classList.remove('out'); }, 300); /* 딤이 0.3초에 걷힘 (#225) */
+}
+/* 고른 카드만 커졌다가 캐릭터(화면 가운데 조금 아래) 쪽으로 빨려 들어감 (#225). 다른 카드는 옅어짐 */
+function suck(i) {
+  const el = cards.children[i]; if (!el?.animate) return;
+  for (const c of cards.children) if (c !== el) c.classList.add('gone');
+  const r = el.getBoundingClientRect(), dx = innerWidth / 2 - (r.left + r.width / 2), dy = innerHeight * 0.56 - (r.top + r.height / 2);
+  el.style.animation = 'none'; el.style.zIndex = '3';
+  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.14)', offset: 0.35 }, { transform: `translate(${dx}px, ${dy}px) scale(.08)`, opacity: 0.2 }], { duration: 320, easing: 'ease-in', fill: 'forwards' });
 }
 function pick(i) {
-  const id = L.draw?.[i]; if (!open || !id || augN(save, id) >= AUGMENTS.max || !pendingPicks(save)) return;
+  const id = L.draw?.[i]; if (!open || busy || !id || augN(save, id) >= AUGMENTS.max || !pendingPicks(save)) return;
+  suck(i);
   L.aug[id] = augN(save, id) + 1; L.draw = null; L.rr = 0; persist();
   late.sound?.coin?.(); ach.emit('augment-pick'); late.onJourney?.('augment-pick', { id }); late.bagRefresh?.();
   toast(`${AUG_BY[id].name} ${'★'.repeat(L.aug[id])}`);
-  if (pendingPicks(save) > 0) render(); else close(); // 밀린 것은 같은 창에서 하나씩 차례로
+  if (pendingPicks(save) > 0) { busy = true; setTimeout(() => { if (!open) return; render(); sheet.classList.remove('gift'); void sheet.offsetWidth; sheet.classList.add('gift'); }, 330); } /* 밀린 것은 같은 창에서 하나씩 차례로 */
+  else close();
   paintHud();
 }
 function reroll() {
-  if (!open || L.rr || save.coins < LEVEL.reroll) return;
+  if (!open || busy || L.rr || save.coins < LEVEL.reroll) return;
   save.coins -= LEVEL.reroll; updateStats(); L.draw = rollDraw(save, Math.random, L.draw || []); L.rr = 1; persist(); render();
+}
+/* 남은 시간이 다 되면 (#225) 아직 더 겹칠 수 있는 카드 가운데 하나를 아무거나 고름 */
+function autoPick() {
+  const ok = (L.draw || []).map((id, i) => [id, i]).filter(([id]) => AUG_BY[id] && augN(save, id) < AUGMENTS.max);
+  if (!ok.length) { close(); return; }
+  pick(ok[Math.floor(Math.random() * ok.length)][1]);
 }
 rrBtn.addEventListener('click', reroll);
 $('ap-later').addEventListener('click', () => { close(); toast('위 레벨 칸을 누르면 다시 골라요'); });
@@ -238,7 +261,13 @@ export function tickLevel(dt) {
   if (state.flowerT > 0) state.flowerT -= dt;
   watchCoins(); tickShown(dt);
   tickGlow(dt);
-  if (open) { if (!pendingPicks(save) || hp.isDown || sheet.hidden) { sheet.hidden = false; close(); } else if (multi()) { state.augPause = false; player.iframe = Math.max(player.iframe || 0, 0.2); } return; }
+  if (open) {
+    if (!pendingPicks(save) || hp.isDown || sheet.hidden) { close(!sheet.hidden); return; }
+    if (multi()) { state.augPause = false; player.iframe = Math.max(player.iframe || 0, 0.2); }
+    const now = performance.now(), step = Math.min(0.5, Math.max(0, (now - (lastT || now)) / 1000)); lastT = now; /* 프레임이 느려도 실제 시간으로 셈 (dt 는 0.05 에서 잘림), 탭을 떠난 동안은 셈하지 않음 */
+    if (!busy) { autoT -= step; paintTime(); if (autoT <= 0) autoPick(); } /* #225 20초 뒤 저절로 고름 */
+    return;
+  }
   if (auto && doorOpen() && pendingPicks(save)) {
     const ok = safe(); safeT = ok || late.swarmOn?.() ? safeT + dt : 0; /* 들판 판(#194)은 받혀 넘어져도 세던 시간을 지우지 않음: 빛이 지난 뒤 처음 안전한 때 엶 */
     if (ok && safeT >= LEVEL.safe) { safeT = 0; openPick(!!late.swarmOn?.()); } /* 들판은 싸움이 이어져 감독 줄(싸우는 중엔 앞 몇 개만)을 기다리지 않고 바로 엶 */
@@ -279,7 +308,7 @@ late.augTab = (el) => {
   el.append(box);
 };
 late.level = {
-  state: () => ({ xp: L.xp, ...levelOf(L.xp), aug: { ...L.aug }, pend: pendingPicks(save), draw: L.draw && [...L.draw], rr: L.rr, open, auto, paused: !!state.augPause, door: doorOpen(), shown: lvShown, need: needXp(levelOf(L.xp).lv) }),
+  state: () => ({ xp: L.xp, ...levelOf(L.xp), aug: { ...L.aug }, pend: pendingPicks(save), draw: L.draw && [...L.draw], rr: L.rr, open, auto, autoT: +autoT.toFixed(2), busy, paused: !!state.augPause, door: doorOpen(), shown: lvShown, need: needXp(levelOf(L.xp).lv) }),
   gain: (n) => { save.coins += Math.max(0, n | 0); updateStats(); watchCoins(); return n; }, /* 귤 n 을 번 것처럼 */
   shown: () => shown, notEarned: (n) => late.notEarned(n),
   set: (aug) => { L.aug = {}; for (const [k, n] of Object.entries(aug || {})) if (AUG_BY[k]) L.aug[k] = Math.max(0, Math.min(AUGMENTS.max, n | 0)); persist(); paintHud(); late.bagRefresh?.(); },
