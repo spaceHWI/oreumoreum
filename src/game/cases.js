@@ -423,6 +423,7 @@ late.tickCases = tickCases;
 /* ---------- 확인용 (window.__oreum.cases) ---------- */
 late.cases = {
   list: CASES.map((c) => c.id), on: ON,
+  def: (id) => { const c = CASE_BY[id]; return c ? { zone: c.zone, lv: c.lv, face: c.face?.kind || '' } : null; }, /* tools/journeymap.js (#256) */
   state: (id = 'c1') => { const c = CASE_BY[id]; if (!c) return null; const s = S(id); return { ...JSON.parse(JSON.stringify(s)), open: !!s.w, ev: evN(c), all: evAll(c), face: faceDone(c), closed: closed(c), lv: lv(), need: c.lv, run: run && { mode: run.mode, u: +run.u.toFixed(1) }, btn: !menuBtn.hidden }; },
   board: () => ({ pics: win.querySelectorAll('.cf-pic').length, done: win.querySelectorAll('.cf-pic.done').length, img: win.querySelectorAll('.cf-pic.done img').length, pins: win.querySelectorAll('.cf-pin').length, thread: win.querySelectorAll('.cf-thread path').length, sel }),
   spots: (id = 'c1') => { const sp = spots[id]; if (!sp) return null; const r = (p) => p && [+p.x.toFixed(1), +p.z.toFixed(1)]; return { see: r(sp.see), face: r(sp.face), ev: Object.fromEntries(Object.entries(sp.ev).map(([k, p]) => [k, r(p)])) }; },

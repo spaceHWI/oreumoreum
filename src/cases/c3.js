@@ -3,16 +3,17 @@
 // 반전(입막음이 아니라 사과하러 온 쪽, 말이 서툴러 그 말밖에 못 함)은 글이 아니라 대면 장면으로: 깊이 숙인 인사·맨발. 사과 문장은 끝까지 말하지 않는다(엔딩 사과의 복선)
 // 자리(at)는 남송이오름 좌표 [x, z] (임의): 목격·발자국 능선 서쪽 · 수첩 능선 동쪽 · 귤 상자 능선 북쪽 · 대면 능선 우두머리 터 곁
 export default {
-  id: 'c3', n: 3, zone: 3, lv: 10, name: '맨 인 블랙', giver: 'b:rest',
+  id: 'c3', n: 3, zone: 3, lv: 8, name: '맨 인 블랙', giver: 'b:rest',
+  rumor: '능선에 검은 양복이 서 있었대요', /* 앞 구역을 끝냈을 때 구역 완료 창의 실마리 한 줄 (#256) */
   // 목격: 능선 서쪽에 검은 양복 둘. 다가가면 혼잣말, 사건이 열린 뒤 화면에서 눈을 떼면 사라짐 (blink: 뒤돌아보면 없다)
   see: { at: [-251, 52], r: 16, prop: 'suits', blink: true, say: '"아무것도 못 봤습니다." …뭘요?' },
   ev: [
     { id: 'k3a', kind: 'trace', at: [-249.5, 53.5], prop: 'prints', label: '살펴보기', note: 'k3a' },
-    { id: 'k3b', kind: 'note', at: [80, -160], prop: 'notebook', label: '수첩 줍기', note: 'k3b' },
-    { id: 'k3c', kind: 'photo', at: [-140, -350], prop: 'gyulbox', label: '사진 찍기', note: 'k3c' },
+    { id: 'k3b', kind: 'note', at: [52, -160], prop: 'notebook', label: '수첩 줍기', note: 'k3b' },
+    { id: 'k3c', kind: 'photo', at: [-152, -334], prop: 'gyulbox', label: '사진 찍기', note: 'k3c' },
   ],
   // 대면: 능선 우두머리를 쫓아낸 뒤 at 에 검은 양복이 서 있음 → 다가가면 장면 (actor 'suit', game/casesuit.js). len 초, lines 자막(28자, 따옴표 둘이 대사)
-  face: { kind: 'boss', at: [-95, 47], prop: 'suit', label: '다가가기', actor: 'suit', len: 11,
+  face: { kind: 'boss', at: [-66, 67], prop: 'suit', label: '다가가기', actor: 'suit', len: 11,
     lines: ['"아무것도 못 봤습니다."', '"…불편… 불편을…"', '고개를 깊이 숙인다. 맨발이다.', '눈을 떼자, 아무도 없다.'] },
   doc: 'k3d',
   // 증거 사진 (수사 보드·쪽지 창 위, 100×75 SVG 안쪽): 검은 바지 끝과 맨발, 발가락 넷

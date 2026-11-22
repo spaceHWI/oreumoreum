@@ -1,10 +1,12 @@
 // 다음 할 일 (#142, notes/growth-loop.md 7절): 퀘스트 추적 줄(game/quest.js #quest-track)에 얹는 안내. 파일 순서는 quest 뒤 (src/modules.js)
 // (나) 잠깐 바뀌는 안내 (퀘스트보다 먼저, 주황 !): HP 가 낮으면 '스톤에서 식사' → 배낭이 차면 '클린하우스로' → 귤이 새로 다음 장비 값에 닿으면 '장비점으로'(그 전엔 권하지 않음)
-// (가) 줄기 퀘스트가 끝난 사람(또는 받을 퀘스트가 없을 때)에게 이어 줄 것 (흰 ›): 강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑. 할 일이 없다는 줄은 없다
+// (가) 줄기 퀘스트가 끝난 사람(또는 받을 퀘스트가 없을 때)에게 이어 줄 것 (흰 ›): 그 구역의 사건 → 터 → 우두머리(#256, 여정 2-1절) → 강화 → 전설 우두머리 → 제보 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑. 할 일이 없다는 줄은 없다
 // 안내 하나 = { k, text, prog, mark: 'tmp'|'next', pos() 갈 곳, arrive() 도착하면, tap() 누르면 (갈 곳 없이 창만), near }. 누르면 dump.js startAutoGo 로 걸어감 (quest.js trackGo)
 // 수치는 balance.js NEXT_HINT. dev: __oreum.quest.next (why()·after()·reset())
 import * as THREE from 'three';
-import { NEXT_HINT as N, LOOT, ZONES } from '../balance.js';
+import { NEXT_HINT as N, LOOT, ZONES, SWARM } from '../balance.js';
+import { CASES } from '../cases/index.js';
+import { levelOf } from '../augments.js';
 import { height } from '../world.js';
 import { state, late } from './state.js';
 import { $, save } from './save.js';
@@ -49,7 +51,30 @@ function gearAfford() {
 { const base = late.shopOpened; late.shopOpened = (key, ...r) => { if (key === 'gear') shopUntil = 0; return base?.(key, ...r); }; } // 장비점 창을 열면 끝 (stores.js openShopPop 이 부름)
 
 /* ---------- (가) 퀘스트가 끝난 사람에게 이어 줄 것 ---------- */
+const lvNow = () => { try { return levelOf(save.lv?.xp || 0).lv; } catch { return 1; } };
+const maxZ = () => Math.max(1, Math.min(5, +save.journey?.maxZ || 1));
+const zoneTodo = () => { const d = save.boss?.done || {}; for (let z = 1; z <= maxZ(); z++) if (!(d[z] > 0)) return z; return 0; }; /* 아직 안 끝낸 가장 앞 구역 (가 본 데까지) */
 const AFTER = {
+  case() { /* #256 레벨이 됐는데 아직 못 본 사건: 목격 자리로 (사건 1 크롭서클은 길 없는 들판이라 이것이 길잡이) */
+    const C = late.cases; if (!C?.on) return null; const L = lvNow();
+    for (const c of CASES) {
+      if (c.zone > maxZ() || L < c.lv || late.caseOpen?.(c.id) || C.isClosed?.(c.id)) continue;
+      const sp = C.spots?.(c.id)?.see; if (!sp) continue;
+      return { text: `수상한 소문 · ${zname(c.zone)}`, prog: '', pos: () => v3({ x: sp[0], z: sp[1] }), near: Math.max(3, (c.see?.r || 6) * 0.7) };
+    }
+    return null;
+  },
+  arena() { /* #256 그 구역 서바이벌 터를 아직 못 버텼으면 */
+    const z = zoneTodo(), a = z && SWARM.arena?.at?.[z]; if (!a || save.swarm?.won?.[z]?.at) return null;
+    return { text: `서바이벌 터 버티기 · ${zname(z)}`, prog: '', pos: () => v3({ x: a[0], z: a[1] }), near: 6 };
+  },
+  boss() { /* #256 그 구역 우두머리: 나올 수 있으면 빈터로, 아직이면 그 구역 더미부터 */
+    const z = zoneTodo(), B = late.boss; if (!z || !B) return null;
+    if (B.can?.(z)) { const a = B.arena?.(z); if (a) return { text: `${zname(z)} 우두머리 쫓기`, prog: '', pos: () => v3(a) }; }
+    if (!trash) return null; const hs = []; trash.heaps.forEach((h, i) => { if ((h.zone || trash.zoneAt(h.x, h.z)) === z && trash.store.left(i) > 0) hs.push(h); });
+    const h = nearest(hs); if (!h) return null;
+    return { text: `${zname(z)} 치우기 · 우두머리를 불러요`, prog: hs.length > 1 ? `${hs.length}곳` : '', pos: () => v3(h) };
+  },
   forge() {
     const n = late.forgeApi?.ready?.().length || 0; if (!n || !GEARB) return null;
     return { text: '장비 강화하기', prog: n > 1 ? `${n}칸` : '', pos: () => GEARB.door.clone(), near: Math.max(1.5, GEARB.r * 0.6), arrive: openGear(true) };
@@ -80,7 +105,8 @@ const AFTER = {
     return { text: '오름 한 바퀴 둘러보기', prog: '', tap: () => late.openMap?.() };
   },
 };
-function after() { for (const k of N.after) { const h = AFTER[k]?.(); if (h) return { k: 'after:' + k, mark: 'next', ...h }; } return null; }
+let skip = new Set(); /* 확인용: 뺄 AFTER 키 (tools/nexthint.js) */
+function after() { for (const k of N.after) { if (skip.has(k)) continue; const h = AFTER[k]?.(); if (h) return { k: 'after:' + k, mark: 'next', ...h }; } return null; }
 
 /* ---------- 추적 줄에 얹기 (game/quest.js trackInfo 가 0.5초마다 부름) ---------- */
 // base = 퀘스트 줄(없으면 null). ctx.open 감독 문 quest(정낭을 나섬)
@@ -93,5 +119,5 @@ late.nextHint = (base, ctx = {}) => {
   const a = after(); why = a ? a.k : 'none'; return a;
 };
 
-late.nextDebug = { why: () => why, off(v = true) { off = !!v; }, // off: 잠깐 바뀌는 안내 끄기 (tools/questrun.js 가 퀘스트 줄만 볼 때)
+late.nextDebug = { why: () => why, off(v = true) { off = !!v; }, skip(ks = []) { skip = new Set(ks); }, // off: 잠깐 바뀌는 안내 끄기 (tools/questrun.js 가 퀘스트 줄만 볼 때)
   after: () => after(), reset() { hpUntil = 0; shopUntil = 0; shopSig = ''; }, shopUntil: () => shopUntil, hpUntil: () => hpUntil };

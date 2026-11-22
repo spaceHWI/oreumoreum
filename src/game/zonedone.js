@@ -8,6 +8,7 @@
 // (파일 순서는 src/modules.js: pace 뒤, boss 앞. 적 후크(hooks.js)를 감쌈)
 import * as THREE from 'three';
 import { ZONE_BOSS as B, ZONES, CART } from '../balance.js';
+import { CASES } from '../cases/index.js';
 import { parkedFastCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import { gradHard } from '../toon.js';
@@ -65,9 +66,10 @@ export function openSummary(z, got) {
   const open = []; if (got.first) { if (fastSpot(z)) open.push('빠른 마차 열림'); if (cutSpot(z)) open.push('지름길 열림'); }
   $('zdone-open').innerHTML = open.map((t) => `<span>${t}</span>`).join(''); $('zdone-open').hidden = !open.length;
   const nz = z + 1, Z = ZONES.find((q) => q.id === nz);
-  $('zdone-next').innerHTML = Z ? `<span class="tone" style="background:${TONE_C[zoneToneLv(save, nz)] || '#fff'}"></span>다음은 ${zoneShort(nz)} · 권장 Lv ${zoneRecLv(nz)}` : '정상까지 다 지켰어요! 다른 구역도 다시 둘러봐요';
+  $('zdone-next').innerHTML = Z ? `<span class="tone" style="background:${TONE_C[zoneToneLv(save, nz)] || '#fff'}"></span>다음은 ${zoneShort(nz)} · 권장 Lv ${zoneRecLv(nz)}${rumor(nz)}` : '정상까지 다 지켰어요! 다른 구역도 다시 둘러봐요';
   closePanels(); el.hidden = false;
 }
+function rumor(z) { const c = CASES.find((q) => q.zone === z && q.rumor); return c ? `<br><small style="opacity:.8">소문: ${c.rumor}</small>` : ''; } /* 다음 구역 실마리 한 줄 (#256) */
 for (const id of ['zdone-close', 'zdone-ok']) $(id).addEventListener('click', () => { $('zdone').hidden = true; });
 
 /* ---------- 깨어나는 곳·다시 들어올 때 ---------- */

@@ -3,17 +3,18 @@
 // 자리(at)는 남송이오름 좌표 [x, z]. 정상 더미는 (0, 0) 둘레 30 m 안, 우두머리 빈터는 (60, -12)
 export default {
   id: 'c5', n: 5, zone: 5, lv: 15, name: '설인', giver: 'jigi',
+  rumor: '정상에 커다란 발자국이 났대요', /* 앞 구역을 끝냈을 때 구역 완료 창의 실마리 한 줄 (#256) */
   // 목격: 큰 발자국. trail 은 발자국 한 줄의 꺾이는 점 (MYST.foot 모양을 크게, game/traces.js late.caseFoot). 더미 곁 → 더미 곁 → 대면 자리
   see: { at: [-16, -3], r: 14, prop: 'print', say: '발자국이… 내 발 세 개만 하다.' },
   trail: { pts: [[-16, -3], [-10.5, -11], [0.5, -23], [-5, -36], [-12, -48]], size: 1.3, step: 1.6 },
   // 증거 셋 (서로 다른 세 쪽): 남쪽 발자국 한가운데 · 북쪽 돌 틈 털 · 동쪽 묶어 둔 봉지
   ev: [
     { id: 'k5a', kind: 'photo', at: [0, -21.5], prop: 'print', label: '사진 찍기', note: 'k5a' },
-    { id: 'k5b', kind: 'trace', at: [2, 24], prop: 'fur', label: '살펴보기', note: 'k5b' },
-    { id: 'k5c', kind: 'trace', at: [35, 1], prop: 'knots', label: '살펴보기', note: 'k5c' },
+    { id: 'k5b', kind: 'trace', at: [19, 29], prop: 'fur', label: '살펴보기', note: 'k5b' },
+    { id: 'k5c', kind: 'trace', at: [43, 9], prop: 'knots', label: '살펴보기', note: 'k5c' },
   ],
   // 대면: 정상 우두머리를 쫓아낸 뒤(boss) 발자국 끝에 설인이 앉아 있음 → 다가가 보기(watch 장면, len 초). 끝나면 doc 증거 사진
-  face: { kind: 'boss', at: [-12.5, -50], prop: 'yeti', label: '다가가 보기', len: 10, watch: true,
+  face: { kind: 'boss', at: [-13.5, -48], prop: 'yeti', label: '다가가 보기', len: 10, watch: true,
     lines: ['발자국 끝. 더미 앞에 흰 등이 앉아 있다.', '부스럭. 꽉. 또 부스럭.', '…'] },
   doc: 'k5d',
   // 증거 사진 (#246 수사 보드): 눈밭, 봉지를 든 설인의 흰 등과 묶은 봉지 무더기

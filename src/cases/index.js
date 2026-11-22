@@ -1,7 +1,7 @@
 // 사건 파일 (#232, 기획 notes/case-files.md): 사건 데이터 모음. 데이터만 (three·DOM 없음: balance.js·punktext.js·achievements.js·서버가 읽음)
 // 사건 하나 = 파일 하나 (src/cases/c<번호>.js, export default). 뒤 사건(#233~#236)은 그 파일만 채우고 아래 LIST 에 이미 있는 줄은 그대로 둔다
 // 사건 모양 (#246 에서 '서류' → '증거 사진', 사건 파일 창 → 수사 보드):
-//   id 'c<번호>' · n 번호(수사 보드 사진 자리, 1~5) · zone 구역 · lv 열림 레벨 · name 제목 · giver 의뢰 NPC (balance.js QUESTS.givers id)
+//   id 'c<번호>' · n 번호(수사 보드 사진 자리, 1~5) · zone 구역 · lv 열림 레벨 · name 제목 · giver 의뢰 NPC (balance.js QUESTS.givers id) · rumor 앞 구역 완료 창의 소문 한 줄 (#256)
 //   v? 내용 판 (저장의 판과 다르면 그 사건 진행을 처음으로) · drop? [옛 판 쪽지 id] (주운 쪽지에서 뺌)
 //   see { at [x,z], r, prop, say } 목격: 레벨 lv 이상으로 at 의 r m 안에 들면 혼잣말 say → 사건 파일 '미해결'
 //   ev [{ id, kind 'photo'|'trace'|'note'|'act', at, prop, label, note, view?, k?, n? }] 증거 (셋). view: 찍을 때 목격 자리를 위에서 보는 짧은 장면
