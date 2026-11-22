@@ -1263,6 +1263,23 @@ export const CLUE = {
   scope: { out: 0.7, tan: -2.8, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
 };
 
+// 미스터리 장치 (#212, game/mystery.js·game/traces.js). 단계는 UFO.reveal 의 드러남 단계(#207). 값은 임의
+export const MYST = {
+  // 1. 되풀이되는 숫자 4:04. 본 곳(방송·쪽지·시계·가로등·시간표·그 시각)이 say 곳 이상이면 혼잣말 한 번. near: 시계·번호판·시간표에 이 m 안이면 본 것
+  //   시계: 가게 거리 골목 좌표 clock [s, 쪽] · 번호판: 가로등 lamp 번째 · 시간표: 마차 정류장 stop 번째. 그 시각 1분 동안 dustR m 안 더미에서 dustEvery 초마다 먼지, 단계 humStage 부터 먼 웅웅
+  num: { h: 4, m: 4, say: 4, near: 6, dustR: 70, dustEvery: [4, 7], humStage: 1, lamp: 0, clock: [12, -1], stop: 0 },
+  // 금고: 굼부리 관리 초소(표지석 기준 out·tan m). 답 code, 열면 귤 gyul(서버 earn.js 가 계정마다 한 번) + 전리품(lootZ 구역 'treasure') + 쪽지 note + 칭호
+  safe: { out: -7.5, tan: 6.5, r: 2.6, code: '0404', gyul: 300, lootZ: 4, note: 'n404' },
+  // 3. 발자국: 밤(18~6시)에 생겨 아침(6~12시)에 지워짐. 구역마다 한 줄(더미 → 더미 → 다음 쪽으로 가다 cut 비율에서 끊김), 걸음 step m(저사양 stepLow)
+  foot: { from: 18, fadeFrom: 6, fadeTo: 12, step: 1.1, stepLow: 1.8, size: 0.5, cut: [0.55, 0.75], max: 3, maxLow: 2, seen: 3 },
+  // 크롭서클: 단계 stage 부터, 구역 zones 의 평평한 풀밭. days 일마다 자리가 바뀜. 지름 r·2 m. 땅에선 흐리게(op[0]), 카메라가 high m 넘게 높으면 또렷이(op[1])
+  crop: { stage: 1, zones: [2, 3], days: 3, r: 11, op: [0.22, 0.62], high: 18, mid: 2.2, flat: 1.6, trail: 9 },
+  // 4. 뒤돌아보면: turn 초 안에 deg 도 넘게 돌리면 p 확률(단계 3 뒤 pLate)로 dist m 밖 실루엣 show 초. 한 번 뒤 cool 초 쉼. 단계 stage 부터
+  back: { stage: 1, turn: 0.4, deg: 90, p: 0.35, pLate: 0.08, dist: [45, 80], show: 0.5, cool: 600, h: 2.3 },
+  // 멈춰서 stare 초 넘게 한곳을 보면(돌린 각 still 도 안) 그 방향 dist m 안 먼 더미 하나에서 먼지. 한 번 뒤 cool 초
+  stare: { stage: 1, sec: 3, still: 6, cone: 14, dist: [25, 90], cool: 90 },
+};
+
 // 탈것 (#69): 귤로 사고 버튼 하나로 타고 내림. 속도 = base(달리기) × 배율 (신발·식사 버프는 곱하지 않음). 값은 임의
 // up 0 = 오르막은 못 탐 (옆구리에 들고 걷기 carry 속도). glide = 관성(손을 떼도 미끄러짐, 천천히 붙고 천천히 멎음)
 export const RIDES = {

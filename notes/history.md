@@ -1608,3 +1608,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 파비콘·앱 아이콘 귤도 같은 납작한 타원. `src/og.png`·`src/icons/*.png` 다시 구움
 - 첫 화면 로고 폭: 데스크톱 min(860px, 64vw), 폰 세로 90vw, 폰 가로 min(420px, 칸 폭). 사진 틀 로고는 폭 280 고정(높이 92 칸 가운데)
 - 앞뒤 그림: `notes/shots/209/`
+
+## #212 미스터리 장치: 4:04 금고·방송·흔적·뒤돌아보면 (2026-11-22)
+- 새 파일 `src/game/mystery.js`(숫자·금고)·`src/game/traces.js`(발자국·크롭서클·뒤돌아보면·도감 '흔적'). 값 `balance.js MYST`, 글 `punktext.js MYST_TEXT`. 루프 셈 `myst`·`traces`(smoke LOOP)
+- 4:04: 방송 관리 안내(RADIO `st`/`end`, punkworld pickLine 이 단계·엔딩으로 거르고 새로 풀린 줄을 한 번 먼저, 들은 것 `save.myst.rad`), 쪽지 n1c·nc1 에 04:04 한 줄, 시계·번호판·시간표, 실제 시각 04:04. 넷 이상 보면 혼잣말 num404 한 번
+- 금고: 동굴은 아직 어드민만이라 표지석 곁 '굼부리 관리 초소'에 둠. 0404 → 귤 300 + dropLoot('treasure', 구역 4) + 쪽지 n404(z 'top') + 칭호 '눈썰미'(업적 b-eye). 서버 `earn.js` 6-2) `save.myst.safe === 1` 이 새로우면 계정마다 한 번(cred.safe). `tools/sec.js` 두 줄
+- 크롭서클 자리는 3일마다 씨앗으로(평평함·길·더미 피함), 발자국은 밤마다. 크롭서클이 있으면 그 구역 발자국 끝이 그쪽으로
+- 확인: `node tools/myst.js [d|m] [shots]`, `tools/oldsave.js` 에 myst·myst2
+

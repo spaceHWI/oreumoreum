@@ -9,7 +9,7 @@
 //    새 사건: boar-stare(멧돼지 앞 10초)·trash-day-500(하루 500개)·quest-boss1(퀘스트 '구역의 주인')·note-all. 까마귀·하르방(#163)은 그 기능이 ach.emit 으로 냄
 // 저장 save.punk = { title, notes {id: 주운 때}, unread [id], radio 1|0, day {d, n}, ev {한 번만 낸 사건} }
 // dev: __oreum.punkWorld (__oreum.punk 은 #164 아이템)
-import { veiled } from '../ufoveil.js';
+import { veiled, revealStage } from '../ufoveil.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
@@ -129,7 +129,11 @@ function pickLine() {
   const now = performance.now() / 1000;
   for (let i = situ.length - 1; i >= 0; i--) if (now - situ[i].t > R.situTtl) situ.splice(i, 1);
   while (situ.length) { const t = situ.shift().text; if (!veiled(t)) return t; }
-  const fit = RADIO.map((l, i) => i).filter((i) => !(RADIO[i].z > maxZ()) && !veiled(RADIO[i].t)); /* #207 */
+  const st = revealStage(), ended = !!save.story?.seen;
+  const fit = RADIO.map((l, i) => i).filter((i) => !(RADIO[i].z > maxZ()) && !veiled(RADIO[i].t) && !(RADIO[i].st > st) && !(RADIO[i].end && !ended)); /* #207, 어긋나는 안내 #212 */
+  const M = (save.myst ||= {}), heard = Array.isArray(M.rad) ? M.rad : (M.rad = []);
+  const fresh = fit.filter((i) => (RADIO[i].st != null || RADIO[i].end) && !heard.includes(i)); /* 새로 풀린 관리 안내는 한 번 먼저 (#212) */
+  if (fresh.length) { const i = fresh[0]; heard.push(i); persist(); recent.push(i); if (recent.length > 6) recent.shift(); return RADIO[i].t; }
   const ok = fit.filter((i) => !recent.includes(i));
   const i = ok.length ? ok[Math.floor(Math.random() * ok.length)] : fit.length ? fit[Math.floor(Math.random() * fit.length)] : 0;
   recent.push(i); if (recent.length > 6) recent.shift();

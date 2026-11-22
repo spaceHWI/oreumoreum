@@ -69,6 +69,7 @@ BADGES.push(
   { id: 'b-fish-rain', ev: 'fish-rain', goal: 1, name: '비 오는 날의 낚시', desc: '비 오는 날 낚시를 했어요', color: '#5bb0d6', reward: 10 },
   { id: 'b-fish-night', ev: 'fish-night', goal: 1, name: '밤낚시', desc: '밤에 낚시를 했어요', color: '#3d4a7a', reward: 10 },
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
+  { id: 'b-eye', ev: 'myst-safe', goal: 1, name: '눈썰미', desc: '관리 초소 금고를 열었어요', color: '#5a5f3a', reward: 20 }, // #212 금고
 );
 
 // cond(kind): 지금 'rain'(비)·'night'(해 진 뒤)인가 · zone(): 가 본 가장 깊은 구역(보상) · active(): 오늘의 할 일을 셀 때인가(튜토리얼 중엔 아님)

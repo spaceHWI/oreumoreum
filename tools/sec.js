@@ -260,6 +260,14 @@ async function startServers() {
         c1 = checkSave(P, { ...P, coins: 100, cave: { out: 0, boss: DL.dateOfDay(dayN - 5) } }, acc, t);
         ok(c1.rec.why.cave === 0, '지난 날짜 주인 보상은 거절');
       }
+      { // 금고 (#212): save.myst.safe 가 처음 1 이 되면 MYST.safe.gyul 인정, 지웠다 다시 열어도 두 번째는 거절
+        const { MYST } = await import('../src/balance.js'), g = MYST.safe.gyul;
+        const k1 = checkSave(P, { ...P, coins: 100 + g, myst: { safe: 1 } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!k1.fixed.length && k1.save.coins === 100 + g && k1.rec?.why?.safe === g, `금고 보상(귤 ${g})은 몫으로 인정`);
+        let k2 = checkSave(k1.save, { ...k1.save, myst: {} }, { ...k1.acc, savedAt: t + 1000 }, t + 2000);
+        k2 = checkSave(k2.save, { ...k2.save, coins: k2.save.coins + g, myst: { safe: 1 } }, { ...k2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
+        ok(k2.rec.why.safe === 0 && k2.fixed.includes('coins'), '금고를 지웠다 다시 열어 두 번 받기 거절');
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };
