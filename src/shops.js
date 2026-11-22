@@ -76,7 +76,7 @@ export function buildShop(id, args) {
 // 지붕 위 큰 아이콘 간판 (#128·#182): 가게마다 늘 카메라를 보는 둥근 판(현무암 바탕·귤색 테·흰 아이콘), 살 수 있는 새 물건이 있으면 오른쪽 위 귤색 점
 // 자리·높이는 가게 모델 경계 상자에서 자동 (건물 가운데 위, 꼭대기 + 반지름 + roofGap). Tripo 모델이 늦게 오면 다시 잼. 가는 현무암 기둥이 받침
 // 둘레 눈높이에서 그래도 가려지는 간판만 맨 위에 그림(가까이선 살짝 투명). 멀면 화면 최소 크기만큼 키움, 밤엔 뒤에 따뜻한 빛
-// shops = place.js shopsBuilt (objs 포함). 반환 { signs, dot(id, on), update(dt, night, camera, viewH), fit(), seen(from) }
+// shops = place.js shopsBuilt (objs 포함). 반환 { signs, dot(id, on), off(id, on), update(dt, night, camera, viewH), fit(), seen(from) }
 export function createRoofSigns({ scene, height, street, shops }) {
   const S = SHOP_ST, signs = {};
   const dotMat = new THREE.SpriteMaterial({ map: canvasTex(64, 64, (g) => { g.fillStyle = '#fff'; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ff8a1f'; g.beginPath(); g.arc(32, 32, 23, 0, Math.PI * 2); g.fill(); }), depthWrite: false, transparent: true });
@@ -162,11 +162,13 @@ export function createRoofSigns({ scene, height, street, shops }) {
       const dh = dh0, top = s.onTop && dh > S.roofTopNear && d < S.roofTopFar, m = s.sp.material;
       if (m.depthTest === top) { m.depthTest = !top; s.dot.material.depthTest = !top; s.glow.material.depthTest = !top; s.sp.renderOrder = top ? 999 : 3; s.dot.renderOrder = top ? 1000 : 4; }
       m.opacity = top && d < S.roofNear ? S.roofFade : 1;
-      s.glow.material.opacity = night * S.roofGlow;
+      s.glow.material.opacity = s.off ? 0 : night * S.roofGlow; /* 닫힌 가게는 간판이 꺼짐 (#206) */
     }
   }
   const seen = (from) => Object.fromEntries(Object.entries(signs).map(([k, s]) => [k, !blocked(s, from)]));
-  return { signs, dot: (id, on) => { const s = signs[id]; if (s && s.dot.visible !== on) s.dot.visible = on; }, update, fit, seen, nearN: () => near.length };
+  // 닫힌 가게 (#206): 간판을 어둡게, 밤빛 없이
+  const off = (id, on) => { const s = signs[id]; if (!s || !!s.off === !!on) return; s.off = !!on; s.sp.material.color.set(on ? 0x55585a : 0xffffff); };
+  return { signs, dot: (id, on) => { const s = signs[id]; if (s && s.dot.visible !== on) s.dot.visible = on; }, off, update, fit, seen, nearN: () => near.length };
 }
 
 function piece(g, color, jit = 0, seed = 1) {

@@ -60,7 +60,7 @@ export const quests = createQuests({
   save, persist, defs: Q,
   hooks: {
     val, oldDone,
-    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
+    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) && late.shopOpen?.(need.slice(5)) !== false : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
     door: (id) => director.isOpen(id),
     open: () => director.isOpen('quest'),
     ready: (q) => onReady(q),
@@ -100,7 +100,7 @@ function addGiver(id, pos, root, h, runner = null, face = 0) {
   const d = Q.givers[id]; const sp = new THREE.Sprite(MARK['!']); sp.scale.set(0.9, 0.9, 1); sp.position.y = h; sp.visible = false; root.add(sp);
   const g = { id, name: d.name, def: d, pos, root, mark: sp, h, runner, face, heading: face, t: Math.random() * 6, greet: 0, cur: null };
   givers.set(id, g);
-  interactables.push({ label: '이야기', ic: 'quest', pos, r: Q.r, when: () => !late.tut?.active && !!g.cur, act: () => openGiver(id) });
+  interactables.push({ label: '이야기', ic: 'quest', pos, r: Q.r, when: () => !late.tut?.active && !!g.cur && (!d.shop || late.shopOpen?.(d.shop) !== false), act: () => openGiver(id) });
   return g;
 }
 function person(id, pos, face) {
@@ -382,6 +382,7 @@ late.questUse = (shop) => quests.useCoupon(shop);
 
 /* ---------- 말 걸기·손 흔들기 ---------- */
 function wave(g) { if (g.runner) { g.pose = 'wave'; g.poseT = 0; } }
+late.questWave = (shop) => { for (const g of givers.values()) if (g.def.shop === shop) { g.root.visible = true; greet(g, true); } }; // 가게가 문을 열면 주인이 나와 손 흔듦 (#206)
 function greet(g, force = false) {
   const h = g.def.hello; if (!h?.length || !social) return;
   if (!force && g.greet > 0) return; g.greet = 14 + Math.random() * 10;
@@ -405,7 +406,7 @@ late.tickQuest = (dt) => {
     if (near && browseAt !== near.id) { browseAt = near.id; count('browse'); } else if (!near) browseAt = null;
   }
   for (const g of givers.values()) {
-    const d = Math.hypot(g.pos.x - player.pos.x, g.pos.z - player.pos.z), vis = d < 160;
+    const d = Math.hypot(g.pos.x - player.pos.x, g.pos.z - player.pos.z), vis = d < 160 && (!g.def.shop || late.shopOpen?.(g.def.shop) !== false); /* 닫힌 가게엔 주인이 아직 없음 (#206) */
     if (g.root.visible !== vis) g.root.visible = vis;
     if (!vis) continue;
     g.t += dt; if (g.mark.visible) g.mark.position.y = g.h + Math.sin(g.t * 2.4) * 0.08;
