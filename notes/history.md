@@ -1769,3 +1769,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - PC: 숫자 1~8 은 열려 있든 닫혀 있든 8칸, G = 열고 닫기(임의)
 - 동작을 조건으로 하는 퀘스트(s-hi)·오늘의 할 일(t-hello-3)·업적(dance-top)은 '아무 동작'·춤이라 그대로 됨
 - 검사: `node tools/emoshot.js [--shot]` (폰 세로·가로·PC: 8칸·44px 넘음·화면 안·겹침 없음·버튼 곁·눌러/밀어 고르기·숫자 키·옛 저장·남의 목록 밖 동작), `node tools/online.js <서버> emote`
+
+## #245 검사 도구: online.js 판 것 인정·레이드 줄 안정화
+- `online.js` 판 것 인정 줄: `push()` 뒤 1.2초 고정 대신 `save.sold` 가 비워질 때까지(서버 응답) `until`
+- 레이드: `raid.start(force)` 더함 (`src/raidcore.js`·`game/raid.js`, 서버 `{t:'rgo', f:1}`). force 는 싸움 중·부서짐 레이드도 지우고 5초 뒤 새로. 서버는 STATS_OPEN 방만 받음(실서버 어드민도 못 함). `online.js raid` 는 시작할 때 force 로 열어 앞 실행이 남긴 레이드(이어받기 줄이 싸움 중으로 남김)와 상관없음. 이어받기 앞 16초 고정 대신 쉼(단계 0)이 될 때까지
+- `online.js <서버> core` (동굴·레이드·귤 주기 뺀 나머지). 나눠 돌리는 법은 `notes/auto.md` 확인 절. 통째는 소프트웨어 GL 에서 약 11분
+- `sec.js` 2줄: 실서버 어드민의 rgo f:1 은 무시, STATS_OPEN 방의 rgo f:1 은 새 레이드

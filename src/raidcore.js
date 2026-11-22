@@ -1,6 +1,6 @@
 // 오름 레이드 규칙 (#181): 시각·시작·끝·기운·더미·기여·보상. 수치는 balance.js RAID
 // 서버 방(server/src/roomcore.js)이 쓰고, 서버가 없으면(혼자·손님·서버 꺼짐) 내 화면(game/raid.js)이 같은 코드를 씀 → 셈이 한곳
-// 받는 것: join(id) 레이드 자리에 왔음 · hit(id, d) 피해 · pick(id, i) 더미 i 에서 하나 · start() 확인용 바로 열기
+// 받는 것: join(id) 레이드 자리에 왔음 · hit(id, d) 피해 · pick(id, i) 더미 i 에서 하나 · start(force) 확인용 바로 열기
 // 보내는 것(send 가 받음): rv 상태 [번호, 단계, 시작 ms, 끝 ms, 기운, 최대, 참가 수, 부서짐 끝 ms] + h(부서진 동안 더미 남은 수) · rw 보상(참가자마다)
 // 단계: 0 없음 · 1 곧(lead 초 전부터) · 2 싸움 · 3 부서짐(더미 줍기) · 4 성공 · 5 실패
 import { RAID as R } from './balance.js';
@@ -83,7 +83,7 @@ export function createRaid({ now = () => Date.now(), send, who = () => ({}) } = 
       if (heaps.every((v) => v <= 0)) finish(t, true); else push(false);
       return true;
     },
-    start() { const t = now(); if (ph >= P.soon && ph <= P.broke) return false; at = t + 5000; ph = P.idle; doneAt = 0; return true; }, // 확인용: 5초 뒤 시작 (다음 틱에 '곧')
+    start(force) { const t = now(); if (!force && ph >= P.soon && ph <= P.broke) return false; at = t + 5000; ph = P.idle; doneAt = 0; reset(); return true; }, // 확인용: 5초 뒤 시작 (다음 틱에 '곧'). force: 앞 확인이 남긴 레이드(싸움 중·부서짐)도 지우고 새로 (#245, STATS_OPEN 방만)
     takePaid() { return pay.splice(0); }, // 성공 보상 [{pid, acct, g}]: 방이 번 몫(#144 bank)에 넣음
     state, get ph() { return ph; }, get hp() { return hp; }, get max() { return max; }, get id() { return id; },
     contrib: (pid) => ({ ...(C.get(pid) || { d: 0, p: 0 }) }),

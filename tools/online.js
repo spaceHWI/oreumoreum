@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | emote: 동작(#242)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | emote: 동작(#242)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만 | core: 동굴·레이드·귤 주기(give.js) 빼고 나머지 (#245)]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -36,7 +36,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await A.p.evaluate(() => { const o = window.__oreum; o.player.pose = 'throw'; o.player.poseT = 0; o.player.pos.x += 0.3; });
     ok(await until(B, () => window.__oreum.peerFight().some((p) => p.on), null, 10000), "A 가 던지면 B 화면 A 머리 위에 '전투 중'");
     for (const X of [A, B]) await X.p.evaluate(() => { window.__oreum.raid.go(12 + Math.random() * 4); });
-    await A.p.evaluate(() => window.__oreum.raid.start());
+    await A.p.evaluate(() => window.__oreum.raid.start(true)); // 앞 실행이 방에 남긴 레이드(싸움 중·부서짐)도 지우고 새로 (#245, 로컬 STATS_OPEN 방만)
     ok(await until(A, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 40000) && await until(B, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 20000), '레이드: 둘 다 같은 대왕을 봄');
     const rs = await Promise.all([A, B].map((X) => X.p.evaluate(() => window.__oreum.raid.state())));
     ok(rs[0].host !== rs[1].host && rs.some((r) => r.puppet), `한 사람이 굴리고 다른 사람은 받아서 그림 (방장 ${rs.map((r) => r.host)}, 받음 ${rs.map((r) => r.puppet)})`);
@@ -51,7 +51,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const c1 = await Promise.all([A, B].map((X) => X.p.evaluate(() => window.__oreum.save.coins)));
     ok(c1[0] - c0[0] >= 3000 && c1[1] - c0[1] >= 3000, `둘 다 보상 (A +${c1[0] - c0[0]}, B +${c1[1] - c0[1]})`);
     // 이어받기: 다시 열고 싸움 중에 방장(A)이 나감
-    await wait(A.p, 16000); await A.p.evaluate(() => { window.__oreum.raid.go(14); window.__oreum.raid.start(); }); await B.p.evaluate(() => window.__oreum.raid.go(14));
+    ok(await until(A, () => window.__oreum.raid.state().ph === 0, null, 30000), '성공 15초 뒤 레이드가 쉼으로 돌아감'); /* 16초 고정 대신 (#245) */
+    await A.p.evaluate(() => { window.__oreum.raid.go(14); window.__oreum.raid.start(); }); await B.p.evaluate(() => window.__oreum.raid.go(14)); // 여기는 force 없이: 쉬는 레이드는 그냥 열림
     await until(B, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 30000);
     await B.p.evaluate(() => window.__oreum.raid.hit(300)); await wait(B.p, 1500);
     const hb = await B.p.evaluate(() => window.__oreum.raid.state().hp);
@@ -353,7 +354,8 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const it = { s: 'weapon', t: 6, g: 3, e: 5 };
     await A.p.evaluate((it) => { const o = window.__oreum; o.save.lootAuto = 0; o.save.loot.push(it); return o.online.account().push(); }, it); await wait(A.p, 800);
     const s0 = await A.p.evaluate(() => window.__oreum.save.coins);
-    const v = await A.p.evaluate(() => { const o = window.__oreum, i = o.save.loot.findIndex((x) => x.t === 6 && x.g === 3 && x.e === 5); const v = o.loot.sell(i); o.online.account().push(); return v; }); await wait(A.p, 1200);
+    const v = await A.p.evaluate(() => { const o = window.__oreum, i = o.save.loot.findIndex((x) => x.t === 6 && x.g === 3 && x.e === 5); const v = o.loot.sell(i); o.online.account().push(); return v; });
+    await until(A, () => !window.__oreum.save.sold, null, 20000); /* 1.2초 고정 대신 서버가 판 것 목록을 비울 때까지 (#245: 느린 환경에서 응답 전에 셈하던 것) */ await wait(A.p, 300);
     const s1 = await A.p.evaluate(() => ({ c: window.__oreum.save.coins, sold: window.__oreum.save.sold }));
     ok(v > NET.earnBurst && s1.c === s0 + v && !s1.sold, `가진 전설 무기를 팔면 서버가 그 귤을 인정 (+${v}, 몫 ${NET.earnBurst} 넘음)·판 것 목록 비움`);
   }
@@ -385,8 +387,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.screenshot({ path: 'dist/rank-online.png' });
   await B.p.evaluate(() => window.__oreum.rank.open()); await wait(B.p, 500);
   ok(await B.p.evaluate(() => document.querySelectorAll('#rank-list .rk-mine').length === 3 && /로그인하면/.test(document.getElementById('rank-note').textContent)), '손님: 이 기기 기록 셋과 로그인 안내');
-  await caveCheck(); // 동굴 칸 (#195): 앞 검사(가만히 있던 사람·엔딩)에 걸리지 않게 끝에서
-  await raidCheck();
+  if (ONLY !== 'core') { await caveCheck(); /* 동굴 칸 (#195): 앞 검사(가만히 있던 사람·엔딩)에 걸리지 않게 끝에서 */ await raidCheck(); } // core: 동굴·레이드·귤 주기 빼고 (#245, 나눠 돌리기)
   if (!A.closed) await A.ctx.close(); await B.ctx.close(); await b.close(); web.close();
   // 귤 주기 (#175): 둘 다 로그인한 깨끗한 브라우저로 따로 (A 가 B 옆에서 누르고 있으면 B 귤이 늘고 A 는 준 만큼 줄어듦) — tools/give.js
   if (!ONLY) { try { require('child_process').execFileSync('node', [path.join(__dirname, 'give.js'), SRV], { stdio: 'inherit' }); } catch (e) { process.exitCode = 1; } }
