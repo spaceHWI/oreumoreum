@@ -5,6 +5,7 @@
 //   비껴가면 stagger(비틀거림, 이때 맞으면 급소). 한 번에 덤비는 적은 COMBAT.attackers, 나머지는 ringR 둘레를 돎. 맞으면 멈칫하며 뒤로 밀림(fl)
 //   #149 back·stagger 가 끝나면 rest(ENEMIES.*.rest 초) 동안 쉬며 ringR 둘레를 돎 (덤비는 자리는 지킴)
 // 구역 번호는 hooks.zoneAt(x, z) 로 받음 (없으면 구역 없는 맵: ENEMY_SPAWN.kinds)
+// #254 표 값 덮기(def = ENEMIES + over): windD·windT·dashK·dashT 가 있으면 COMBAT 대신 (들판 떼 돌진 몹), ctl(e, dt, time, d, to) 이 0 이상을 돌려주면 그 빠르기로(쫓는 동안)
 // #146 무리: 같이 나온 적은 e.pack 이 같고, 적끼리 겹치지 않게 밀어내며 플레이어 둘레 자기 자리(e.slotA)로 벌려 에워쌈 → src/enemypack.js
 import * as THREE from 'three';
 import { height } from './world.js';
@@ -207,6 +208,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       const R = d0.ranged; if (R && e.state === 'charge' && !(e.fl > 0) && (e.shotT -= dt) <= 0 && d < R.range && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
     } else if (e.state === 'boss' && e.ctl) { // 구역 우두머리 (#139): 패턴은 boss.js
       want = e.ctl(e, dt, time, d, to);
+    } else if (e.state === 'charge' && d0.ctl && !(e.hold > 0) && (want = d0.ctl(e, dt, time, d, to)) >= 0) { /* 들판 떼 몹 패턴 (#254, game/swarmpat.js): 맴돌기·던지기. 음수면 아래 보통 쫓기 */
     } else if (e.state === 'flee' || e.state === 'leave') {
       want = e.state === 'flee' ? d0.flee : d0.walk * 1.6;
       turnTo(e, Math.atan2(-to.x, -to.z) + Math.sin(time * 2 + e.phase) * 0.3, Math.min(1, dt * 3));
@@ -224,7 +226,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       e.hold -= dt; want = d < COMBAT.ringR ? d0.walk : 0; turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 3)); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; }
     } else if (e.state === 'charge') { // 쫓음 (#148): 자리가 있으면 windD 안에서 조짐, 없으면 ringR 둘레를 돎
       const face = Math.atan2(to.x, to.z), resting = e.rest > 0, slot = !resting && (e.slotA == null || e.close) && atkN() < COMBAT.attackers; // 공격 뒤 쉬는 동안은 둘레를 돎 (#149). 무리에선 붙는 적(e.close)만 덤빔 (#146)
-      if (slot && d < COMBAT.windD && e.hitCd <= 0 && !pDown) { e.state = 'wind'; e.st = 0; want = 0; }
+      if (slot && d < (d0.windD ?? COMBAT.windD) && e.hitCd <= 0 && !pDown) { e.state = 'wind'; e.st = 0; want = 0; }
       else if (e.slotA != null) { // #146 무리: 플레이어 둘레 제 자리로 돌아 다가감. 붙는 적은 windD 안, 나머지는 한 걸음 뒤에서 맴돎
         const Rg = slot ? ENEMY_PACK.closeR : e.close && !resting ? COMBAT.ringR : COMBAT.ringR + ENEMY_PACK.backR;
         const g = slotGoal(e, player, Rg, e.slotA + (Rg > COMBAT.ringR ? Math.sin(time * ENEMY_PACK.driftW + e.seed) * ENEMY_PACK.drift : 0));
@@ -237,11 +239,11 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       if (d > d0.lose && e.st > 2) { e.state = 'wander'; e.st = 0; }
     } else if (e.state === 'wind') { // 멈춰 몸을 낮춤
       want = 0; e.speed *= Math.max(0, 1 - dt * 12); turnTo(e, Math.atan2(to.x, to.z), Math.min(1, dt * 8));
-      if (e.st >= COMBAT.windT) { e.state = 'dash'; e.st = 0; e.speed = Math.max(COMBAT.dashMin, (d0.rush ?? d0.chase) * COMBAT.dashK); }
+      if (e.st >= (d0.windT ?? COMBAT.windT)) { e.state = 'dash'; e.st = 0; e.speed = Math.max(COMBAT.dashMin, (d0.rush ?? d0.chase) * (d0.dashK ?? COMBAT.dashK)); }
     } else if (e.state === 'dash') { // 곧게 돌진: 방향은 그대로
-      want = Math.max(COMBAT.dashMin, (d0.rush ?? d0.chase) * COMBAT.dashK); e.speed = want; // 돌진은 예전 빠르기 (#149)
+      want = Math.max(COMBAT.dashMin, (d0.rush ?? d0.chase) * (d0.dashK ?? COMBAT.dashK)); e.speed = want; // 돌진은 예전 빠르기 (#149)
       const ahead = to.x * Math.sin(e.heading) + to.z * Math.cos(e.heading);
-      if (e.st > COMBAT.dashT || ahead < -1.2) { e.state = 'stagger'; e.st = 0; e.speed = 0; want = 0; }
+      if (e.st > (d0.dashT ?? COMBAT.dashT) || ahead < -1.2) { e.state = 'stagger'; e.st = 0; e.speed = 0; want = 0; }
     } else if (e.state === 'stagger') { // 비껴가 비틀거림
       want = 0; e.speed = 0; if (e.st >= COMBAT.staggerT) { e.state = 'charge'; e.st = 0; e.rest = d0.rest || 0; }
     } else if (e.state === 'back') { // 받은 뒤 한 걸음 물러남
@@ -304,7 +306,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
       if (!e.warn) { e.warn = new THREE.Mesh(warnGeo.clone(), warnMat); e.warn.renderOrder = 3; group.add(e.warn); e.warnAt = drape(e.warn, height); } // 땅을 따라 휨 (#151)
       e.warn.visible = e.state === 'wind';
-      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / COMBAT.windT)); e.warnAt(e.pos.x, e.pos.z, Math.round(k * 25) / 25, 0, 0.02); }
+      if (e.warn.visible) { const k = d0.size * BOAR.bodyR * (1.6 - 0.5 * Math.min(1, e.st / (d0.windT ?? COMBAT.windT))); e.warnAt(e.pos.x, e.pos.z, Math.round(k * 25) / 25, 0, 0.02); }
     }
     legs4(e, e.speed > 0.3 ? 0.7 : 0);
     const charge = (e.state === 'charge' && e.speed > 4) || e.state === 'wind' || e.state === 'dash' ? 1 : 0; e.chg += (charge - e.chg) * Math.min(1, dt * 4);
