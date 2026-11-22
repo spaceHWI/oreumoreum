@@ -29,6 +29,9 @@ const SAVES = {
   // #98: 깨끗한 오름 기록 → 전투 오름으로 (장비·귤·치운 양 그대로, 랭킹 기록은 battle 에 더함)
   clean: { nick: '깨끗한 사람', coins: 4321, equip: { tool: 3, bag: 2, shoes: 1, weapon: 2 }, nsV1: 1, nsV2: 1, nsV3: 1, entered: 1, look: { sex: 'f', skin: 1 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, server: 'clean', srvSwitch: 1,
     trash: { total: 900, srv: { clean: { sig: 'old', heaps: [0, 0] } }, bag: { can: 2 }, rk: { d: 0, w: 0, day: { clean: 5, battle: 1 }, week: { clean: 50, battle: 10 }, all: { clean: 800, battle: 100 } } } },
+  // #206: 가게 열림 기록이 깨진 저장 · 가게를 쓴 적 있는 옛 저장(구역 1 끝·미장원·LEAP 써 봄 → 그 가게들은 처음부터 열림)
+  shopBad: { nick: '가게 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, shopGate: { open: { stone: 'x', nope: 1, gear: 1 }, init: 'q', full: 'z' } },
+  shopVet: { nick: '단골', coins: 500, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 3, bag: 2, shoes: 1, weapon: 1 }, boss: { done: { 1: 1 } }, ach: { life: { haircut: 1, 'clothes-buy': 2, meal: 1 } } },
   // #140: 깨진 재료·등급·강화·안 쓰는 장비 · 예전 우두머리 귀한 재료(이름)는 재료 주머니로
   loot: { nick: '전리품 사람', coins: 90, entered: 1, tut: { step: 99, done: true, v: 3 }, equip: { tool: 2, bag: 1, shoes: 1, weapon: 2 }, mats: { m1: -3, zz: 5, m2: 'x', m3: 4 }, gearUp: { tool: { g: 9, e: 7 }, foo: 1, bag: 'x' }, clothes: { own: {}, wear: {}, up: 'x' }, loot: [{ s: 'tool', t: 99 }, 5, { s: 'hat', t: 2, g: 1, e: 2 }, { s: 'weapon', t: 2, g: 2, e: 0 }], lootAuto: 'q', boss: { mats: { '대장 들개 이빨': 2 }, done: {}, beat: {}, log: {} } },
   // #125: 예전 '오늘의 업적 5개' 기록 · 깨진 이어 오기
@@ -60,6 +63,9 @@ const SAVES = {
     if (name.startsWith('lvOld')) { const L = await p.evaluate(() => { const o = window.__oreum; return { ...o.level.state(), v: o.save.lv.v }; }).catch(() => ({}));
       const want = name === 'lvOld13' ? (L.lv >= 13 && L.aug.recycle === 3 && L.aug.burst === 3 && Object.keys(L.aug).length === 4) : (L.lv >= 12 && L.aug.recycle === 1); /* 부자: 번 귤 15만 → 레벨 12 이상 (#202 곡선) */
       if (!(want && L.v === 2)) { bad++; console.log(name, '옛 레벨 바꾸기 실패', JSON.stringify({ lv: L.lv, xp: L.xp, aug: L.aug, v: L.v })); } else console.log(name, `레벨 ${L.lv} · 경험치(번 귤) ${L.xp} · 증강 ${JSON.stringify(L.aug)}`); }
+    if (name === 'shopVet' || name === 'shopBad') { const g = await p.evaluate(() => { const o = window.__oreum.shopGate; return Object.fromEntries(['gear', 'manjok', 'stone', 'salon', 'leap', 'ride'].map((id) => [id, o.isOpen(id)])); }).catch(() => ({}));
+      const want = name === 'shopVet' ? g.gear && g.stone && g.salon && g.leap && !g.ride : g.gear && !g.ride; /* #206 */
+      if (!want) { bad++; console.log(name, '옛 저장 가게 열기 실패', JSON.stringify(g)); } else console.log(name, '가게', JSON.stringify(g)); }
     if (name === 'questVet' && st.qnext !== 'heap3') { bad++; console.log(name, '옛 저장 퀘스트 건너뛰기 실패', st.qnext); } // #158
     if (name === 'clean' && !(st.coins === 4321 && st.equip.tool === 3 && st.equip.weapon === 2 && st.total === 900 && st.slots.join() === 'battle' && st.rkAll?.battle === 900 && !('clean' in st.rkAll))) { bad++; console.log(name, '옮기기 실패'); }
     if (name === 'loot' && !(st.mats?.r2 === 2 && st.mats?.m3 === 4 && !('m1' in st.mats) && !('zz' in st.mats) && st.up?.tool?.g === 3 && st.up.tool.e === 5 && st.nloot <= 2)) { bad++; console.log(name, '전리품 저장 바로잡기 실패'); }

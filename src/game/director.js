@@ -48,9 +48,9 @@ export const director = createDirector({
 });
 late.director = director;
 
-// 토스트 한 줄을 감독을 거쳐
+// 토스트 한 줄을 감독을 거쳐 (opt: ttl·queue·then)
 export function say(kind, id, text, sec = JOURNEY.sec, opt = {}) {
-  return director.ask(kind, id, () => { mine = text; toast(text, sec); }, { sec, ...opt });
+  return director.ask(kind, id, () => { mine = text; toast(text, sec); opt.then?.(); }, { sec, ...opt }); /* opt.then: 나갈 때 같이 할 일 (#206 가게 셔터) */
 }
 
 // ---------- 지금 있는 것 등록 ----------

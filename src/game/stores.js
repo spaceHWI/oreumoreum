@@ -53,10 +53,13 @@ const SHOP_POP = {
   // 가게 안내 (#128): 무엇을 어디서 사는지 (메뉴의 상점·귤 칸·가게 거리 안내도)
   dir: { head: { logo: DIR_LOGO, name: '가게 안내', tag: '무엇을 어디서 사나요', cls: 'dir' }, fill: (grid) => late.fillShopDir(grid), can: () => !mealS.on && !cutS.on },
 };
+// 가게를 퀘스트 순서대로 열기 (#206, game/shopgate.js): 닫힌 가게는 상호작용·가장자리 표시·가게 안내에서 빠짐
+for (const [k, P] of Object.entries(SHOP_POP)) if (P.when) { const w = P.when; P.when = () => w() && late.shopOpen?.(k) !== false; }
 export { SHOP_POP };
 export let shopPopNow = null;
 export function openShopPop(key) {
   const P = SHOP_POP[key]; if (!P || (P.can && !P.can())) return;
+  if (late.shopOpen?.(key) === false && !late.tut?.active) { toast(`준비 중 — ${late.shopWhy(key)} 열려요`); return; } /* 닫힌 가게 (#206). 튜토리얼 좌판은 그대로 */
   closePanels(); shopPopNow = key;
   const h = P.head, root = $('shoppop');
   $('shoppop-logo').src = h.logo || ''; $('shoppop-logo').alt = h.name; $('shoppop-logo').parentElement.hidden = !h.logo;
