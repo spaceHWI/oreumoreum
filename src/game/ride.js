@@ -224,7 +224,7 @@ export const cartMark = $('cart-mark');
 export function tickCartMark() {
   if (!cart) return;
   const d = player.pos.distanceTo(cart.pos);
-  const on = !player.cart && (!NS_TUT || !!save.jeong) && late.shopOpen?.('ride') !== false && d > CART.markNear && d < CART.markFar && !panelOpen() && cam.mode === 'follow' && !late.mealS.on && !late.cutS.on && (!late.pace || late.pace.canMark()) && !late.guideBusy?.(); /* 다른 길 안내가 있으면 쉼(#201). 긴장 때는 적 표시만 (#89). 탈것 가게가 닫혀 있으면 마차도 (#206) */
+  const on = !player.cart && (!NS_TUT || !!save.jeong) && d > CART.markNear && d < CART.markFar && !panelOpen() && cam.mode === 'follow' && !late.mealS.on && !late.cutS.on && (!late.pace || late.pace.canMark()) && !late.guideBusy?.(); /* 다른 길 안내가 있으면 쉼(#201). 긴장 때는 적 표시만 (#89). 탈것 가게가 닫혀 있어도 마차는 다님 (#244) */
   if (!on) { if (!cartMark.hidden) cartMark.hidden = true; return; }
   cartMark.hidden = false; late.placeArrow(cartMark, cart.pos, 3.2);
 }

@@ -10,6 +10,8 @@ const SAVES = {
   // #138: 들판 기록이 깨진 저장 · 예전 더미 서명(h1)
   field: { nick: '들판 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, field: { den: 'x', tr: { d: 'q', got: 5 }, sight: 'a', fog: '!!!' }, trash: { srv: { battle: { sig: 'h1:1s10', heaps: [3, 4] } } } },
   field2: { nick: '들판 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, field: { den: { 'd2-0': -5, x: 'y' }, tr: { d: 1, got: ['t1-0'] }, sight: ['sight:0', 7], fog: 'AAAA' } },
+  swarm: { nick: '떼 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, swarm: { seen: 1, auto: 1, earn: 120, best: { 1: { k: 30, t: 180, w: 6 } }, rest: { 1: Date.now() + 300000, 2: 'x', 9: 5 }, won: { 1: { at: Date.now() - 1000, b: 4 }, 3: 7 } } }, // #202 한 판 쉬는 시간·덤 기록이 있는 저장 (#231 터 방식에서도)
+  swarm2: { nick: '떼 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, swarm: { rest: [1, 2], won: 'q', best: 3, hint: 'x' } }, // #231 깨진 떼 저장·hint
   // #176: 감독 기록이 깨진 저장
   journey: { nick: '감독 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, journey: { step: 'x', seen: 7, day: 3, n: 'q' }, pace: { first: 1, bloomed: 1, hint: { w: 3, t: 1 } } },
   // #155: 기본 옷 색 번호가 깨진 저장

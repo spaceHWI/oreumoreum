@@ -125,8 +125,8 @@ export const FIELD = {
   fog: { n: 128, r: 42 },
   chD: 80, // 권장 배낭으로 길가 더미를 반쯤 치우면 가득 차는 곳에서 구역 클린하우스까지 (7-1절, tools/field.js 가 잼)
 };
-// 들판 떼 (#173, src/game/swarm.js, notes/growth-loop.md '들판 떼' 절): 길에서 offD m 넘게 벗어나면 그 구역 떼가 몰려옴(뱀서류). 모두 임의값
-// offD 들판으로 치는 길에서 거리(m), backD 이보다 가까우면 길로 돌아온 것, backT 길로 돌아온 뒤 떼가 흩어지기까지(초), firstT 들판에 들어선 뒤 첫 적이 보이기까지
+// 들판 떼 (#173, src/game/swarm.js, notes/growth-loop.md '들판 떼' 절): 서바이벌 터(#231, 아래 arena) 징을 울리면 그 구역 떼가 몰려옴(뱀서류). 모두 임의값
+// firstT 판이 시작된 뒤 첫 적이 보이기까지(초). (#231 전의 offD·backD·backT '길에서 벗어나면 시작·길로 돌아오면 끝' 은 없앰)
 // ring 플레이어 둘레 이 거리(화면 밖 쪽)에서 나옴, gap 한 마리씩 나오는 가장 짧은 간격(초), run 한 판(#202, 아래 주석). 물결 3·5 첫머리에 정예 하나
 // cap 동시에 화면에 있는 떼 적 상한(PC·폰·저사양, 성능)
 // mob 떼 적 = 그 구역 보통 적 × (기운·피해(#194 0.4 → 0.3)·귤 보상(구역별)·크기), life 스스로 떠나기까지. elite 정예 = 보통 적 크기에 기운 × hp. leader 떼 대장 = 크기 × k, 기운 × hp, chest 쫓아내면 보물 상자 귤(구역별)
@@ -138,9 +138,9 @@ export const FIELD = {
 // sack 구역 4 '썩은 귤 자루': 쫓아낸 광견병 들개가 p 확률로 떨굼 → fuse 초 뒤 터져 r m 안 플레이어를 t 초 동안 slow 배로 느리게
 // econ tools/econ.js: 들판 10분 귤이 길가 10분의 max 배를 넘지 않게, 하루 놀이 중 share 만큼 들판에 있다고 셈
 export const SWARM = {
-  offD: 12, backD: 9, backT: 6, firstT: 1.2,
+  firstT: 1.2,
   ring: [18, 26], gap: 0.25,
-  /* 한 판 (#202): 들판에 들어가면 시작, t[구역] 초 동안 물결 waves 번(물결마다 n[0] → n[1] 마리, 구역이 하나 깊을수록 × (1 + deep)). 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결
+  /* 한 판 (#202): 서바이벌 터 징으로 시작(#231, 아래 arena), t[구역] 초 동안 물결 waves 번(물결마다 n[0] → n[1] 마리, 구역이 하나 깊을수록 × (1 + deep)). 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결
      시간이 다 되면 '버텼다!' + 그 판에서 번 귤의 bonus 덤(서버는 bonusMax[구역]까지, 쉬는 시간 안에 두 번 인정하지 않음 earn.js). 끝나면 그 구역 들판은 rest 초 조용함(사람마다·구역마다, save.swarm.rest) */
   run: { t: [0, 180, 195, 210, 225, 240], waves: 6, n: [6, 30], deep: 0.12, bigT: 30, bonus: 0.2, bonusMax: [0, 60, 200, 700, 1500, 3000], rest: 480 },
   cap: { pc: 24, phone: 16, low: 10 },
@@ -156,6 +156,12 @@ export const SWARM = {
   slowNew: 0.6, lowHp: 0.3,
   sack: { p: 0.2, fuse: 1.2, r: 3, slow: 0.6, t: 3 },
   econ: { max: 1.5, share: 0.1 },
+  /* 서바이벌 터 (#231, game/arena.js): 구역마다 한 곳. 터 가운데 징을 울려야(상호작용) 한 판이 시작됨. 들판에 들어가기만 해서는 시작하지 않음
+     at[구역] 터 가운데 [x, z] (길에서 가깝고 덜 기운 곳, 안에 더미·소굴·보물·NPC 없음: node tools/arena.js 가 확인), r 반지름(m, 임의값)
+     leave 판 동안 터 밖에 이 초 넘게 있으면 끝(덤 없음, 쉬는 시간 × leaveRest), gongR 징 상호작용 거리, spawn 떼가 나오는 곳 = 터 테두리 밖 [안, 밖] m
+     hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리 */
+  arena: { r: 22, leave: 8, leaveRest: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
+    at: [null, [14, -523], [-364, 5], [-118, -310], [113, -415], [68, -58]] },
 };
 
 // 구역 지킴이 돌하르방 (#119, src/game/guard.js · 서버 server/src/roomcore.js): 구역 더미를 모두 치운 순간 그 구역 자리에 서고 holdSec 뒤 가라앉음
@@ -883,14 +889,14 @@ export const SHOP_ST = {
   // 가게를 퀘스트 순서대로 하나씩 열기 (#206, src/shopgate.js·game/shopgate.js). 값·순서는 임의
   // need = [{사실: 최소값}, …] 중 하나라도 맞으면 열림 (사실: jeong 정낭을 나섬, fullDump 첫 배낭을 가득 채워 버림, zd1·zd2 그 구역 우두머리를 쫓음, zone 가 본 가장 높은 구역, lv 레벨, dumps 버린 수)
   // old = 처음 볼 때(옛 저장)만 보는 조건 (그 가게를 쓴 적이 있어도 열림, 알림 없이). how = 닫힌 가게 앞 '준비 중 — ○○ 열려요', say = 열릴 때 알림, quiet = 알림 없이
-  // ride 는 탈것 가게와 마차 타기를 같이 엶
+  // ride 는 탈것 가게만 엶. 마차 타기는 가게와 상관없이 늘 됨 (#244)
   unlock: [
     { id: 'gear', need: [{ jeong: 1 }], how: '정낭을 나서면', quiet: true },
     { id: 'manjok', need: [{ fullDump: 1 }], old: [{ dumps: 2 }], how: '배낭을 가득 채워 클린하우스에 비우면', say: '골목 끝 만족한상회가 문을 열었어요' },
     { id: 'stone', need: [{ zd1: 1 }], how: '숲길 우두머리를 쫓아내면', say: '장비점 옆 스톤이 문을 열었어요' },
     { id: 'salon', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '골목 어귀 루이네 미장원이 문을 열었어요' },
     { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
-    { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요 · 마차도 다녀요' },
+    { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요' },
   ],
   gate: {
     fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)

@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { FIELD, ENEMY_SPAWN, CLEANHOUSE } from './balance.js';
+import { FIELD, ENEMY_SPAWN, CLEANHOUSE, SWARM } from './balance.js';
 import { mulberry } from './trash.js';
 import { placeSide } from './fieldplan.js';
 
@@ -88,7 +88,7 @@ const SIGHT_COL = { view: [[0, 0, 2.6], [2.4, 1.6, 1.1]], spring: [], sandam: [[
 // chs: 클린하우스 앞 [{x, z}…] (둘레 CLEANHOUSE.keep 엔 몹이 안 나오므로 소굴 등은 그 밖에)
 export function createField({ scene, height, trash, low = false, col = null, chs = [] }) {
   const loops = trash.loops || {}, rnd = mulberry(FIELD.seed + 1);
-  const taken = [...trash.heaps.map((h) => ({ x: h.x, z: h.z, r: h.r })), ...chs.map((c) => ({ x: c.x, z: c.z, r: CLEANHOUSE.keep + 2 }))];
+  const taken = [...trash.heaps.map((h) => ({ x: h.x, z: h.z, r: h.r })), ...chs.map((c) => ({ x: c.x, z: c.z, r: CLEANHOUSE.keep + 2 })), ...SWARM.arena.at.filter(Boolean).map(([x, z]) => ({ x, z, r: SWARM.arena.r + 2 }))]; /* 서바이벌 터(#231) 안엔 소굴·보물·볼거리·빈터를 두지 않음 */
   const put = (pool, side, d, R, zone, flat = 0.45) => {
     const q = placeSide({ pool, side, d, R, rnd, zone, zoneAt: trash.zoneAt, ok: trash.ok, height, trailDist: trash.trail.dist, taken, gap: FIELD.gap, flat })
       || placeSide({ pool: loops[zone].all, side: 0, d, R, rnd, zone, zoneAt: trash.zoneAt, ok: trash.ok, height, trailDist: trash.trail.dist, taken, gap: FIELD.gap * 0.4, flat: flat * 1.8 });
