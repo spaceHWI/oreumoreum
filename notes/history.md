@@ -1874,3 +1874,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 못 탐: 적 `TUBE.fightR` 안·우두머리·떼 판 중·튜토리얼·탈것/마차/노루. 쿨타임 없음, 귤 0개여도 탐
 - 멀티: presence `tb` = i(빨려 들어감)·p(관 속, 옮긴 자리)·o(튀어나옴). 서버는 p·o 가 붙은 순간 이동을 `NET.tubeGap`(3초)에 한 번 받아 줌(warpGap 과 따로), 그 밖의 tb 값은 지움
 - 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
+## #259 sec.js 실패 줄 (2026-11-22)
+- 원인: 검사 코드가 아니라 **남은 서버**. `sec.js` 는 wrangler 를 detached 로 띄우는데, `timeout` 으로 끊긴 실행이 서버를 남겨 같은 포트(8797~8800)를 계속 잡음 → 새 서버는 못 뜨고 /health 를 옛 서버가 받아, 옛 코드·쌓인 저장(지난 날짜의 이용 통계, 지운 계정 토큰, 이미 받은 귤 보내기 목록)으로 검사가 돌았음. 남은 서버를 끄고 돌리면 249/249 통과
+- `tools/localsrv.js`: `clearPorts`(포트가 이미 답하면 그 포트·`--persist-to` 이름으로 띄운 남은 wrangler·workerd 만 끄고 비워질 때까지 기다림) · `killOnExit`(SIGINT·SIGTERM·SIGHUP 에도 띄운 서버를 끔). `sec.js`·`rankrun.js` 가 씀
+- `notes/auto.md` 확인 절에 한 줄
