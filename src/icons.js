@@ -127,7 +127,7 @@ export const ICONS = {
   "cairn":"<ellipse cx=\"12\" cy=\"18.6\" rx=\"6.6\" ry=\"2.4\"/><ellipse cx=\"12\" cy=\"13.4\" rx=\"4.7\" ry=\"2.1\"/><ellipse cx=\"12\" cy=\"8.8\" rx=\"3.3\" ry=\"1.8\"/><ellipse cx=\"12\" cy=\"5\" rx=\"1.9\" ry=\"1.3\"/>",
   "zone":"<path d=\"M3 20l6.5-11 4 6 2.5-3.5L21 20z\"/><path d=\"M9.5 9V3.5l4 1.6-4 1.6\"/>",
   "pocket":"<path d=\"M5 5h14v7a7 7 0 0 1-14 0z\"/><path d=\"M5 9h14\"/>",
-  "cart":"<path d=\"M3 9h11v6H3z\"/><path d=\"M2 9h13M14 12l3-1\"/><circle cx=\"7\" cy=\"18\" r=\"2.5\"/><path d=\"M16.5 10.5a2.5 1.8 0 1 0 5 0a2.5 1.8 0 1 0-5 0M18 12.5v5M21 12v5\"/>",
+  "cart":"<path d=\"M4 10a6 6 0 0 1 6 -6h0a6 6 0 0 1 6 6\"/><path d=\"M3 10h14v5h-14z\"/><circle cx=\"7\" cy=\"18\" r=\"2\"/><circle cx=\"13\" cy=\"18\" r=\"2\"/><path d=\"M17 13h4\"/>",
   "reel":"<circle cx=\"9\" cy=\"15\" r=\"5.5\"/><circle cx=\"9\" cy=\"15\" r=\"1.3\"/><path d=\"M14.5 15H18v3M18 2v8M15 5l3-3 3 3\"/>",
   "gun":"<path d=\"M3 9h13l2 2v3H9l-1 5H5l1-5H3z\"/><path d=\"M18 11.5h3\"/><circle cx=\"20.5\" cy=\"8.5\" r=\"1.5\"/>",
   "mg":"<path d=\"M2 9h15l2 2v3H9l-1 5H5l1-5H2z\"/><path d=\"M19 10h3M19 12.5h3M8 9V6h5v3\"/>",
