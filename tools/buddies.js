@@ -42,6 +42,7 @@ const shot = process.argv.includes('--shot');
   await pg.reload(); await pg.waitForTimeout(6000);
   await pg.click('#enter').catch(() => {}); await pg.waitForTimeout(4000);
   await pg.evaluate(() => { const o = window.__oreum; if (o.tut?.active) o.tut.skipAll(); o.cam.mode = 'follow'; document.body.classList.remove('tut'); for (const id of ['tut-toast', 'intro-help', 'intro']) { const e = document.getElementById(id); if (e) e.hidden = true; } });
+  if (!(await pg.evaluate(() => !!window.__oreum.buddies))) { console.log('동료가 꺼져 있음 (#190 BUDDIES.on): 화면 검사 건너뜀'); await b.close(); return; }
   const r0 = await pg.evaluate(async () => { const o = window.__oreum, W = (ms) => new Promise((r) => setTimeout(r, ms)); await W(1500); return { list: o.buddies.list(), st: o.buddies.state(), open: o.director.state().open }; });
   console.table(r0.list);
   ok(r0.list.find((x) => x.id === 'sunja').on && !r0.list.find((x) => x.id === 'minsu').on, `문: 정낭을 나섰으면 순자 삼춘만 (${r0.st.allowed})`);

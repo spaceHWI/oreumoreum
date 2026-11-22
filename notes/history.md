@@ -1608,3 +1608,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 파비콘·앱 아이콘 귤도 같은 납작한 타원. `src/og.png`·`src/icons/*.png` 다시 구움
 - 첫 화면 로고 폭: 데스크톱 min(860px, 64vw), 폰 세로 90vw, 폰 가로 min(420px, 칸 폭). 사진 틀 로고는 폭 280 고정(높이 92 칸 가운데)
 - 앞뒤 그림: `notes/shots/209/`
+
+## #213 탈것 위쪽 보기·오름지기 자리
+- 탈 때(노루·탈것·마차) 올려다보는 끝 `CAM.ridePitchMin` -0.85(걸을 때 -0.6 그대로). 위로 볼수록 거리 `CAM.rideUpDist`(끝 0.6배)로 당기고 바라보는 점을 `rideUpLift` 만큼 올림, 탈것 높이 `CAM.rideLook`(노루·말 0.9, 스케이트 0.2, 스쿠터 0.25, 마차 0.3). 평지 실제 올려다보는 각 29도 → 45도, 카메라는 땅 위 1.2m 를 지킴. 끌기 범위는 `camPitchMin()`·`camPitchMax()` (input.js), 내리면 걷기 범위로 돌아옴
+- 오름지기: 안내판 옆 조금 뒤(`QUESTS.givers.jigi` side -2.8·fwd -1.2), 입구 하르방에서 5.1m → 8.3m. 하르방과 `hbGap` 6.5m 안이거나 막혀 있으면 `alt` 순서. 선 자리는 `spots.sign.npc`, 동료가 피하는 둘레(buddies NPCS)도 그 자리 기준. 말 걸기 범위·길 안내는 giver pos 를 따름
+- 확인: `node tools/ridecam.js`(걷기·노루·말·스케이트·마차, 끝까지 위·아래). `tools/buddies.js` 는 동료가 꺼져 있으면(#190) 화면 검사를 건너뜀

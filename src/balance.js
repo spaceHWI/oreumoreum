@@ -1178,10 +1178,14 @@ export const TRAIL = {
 };
 
 // 첫 화면 (#72): 정상 표지석을 가운데 두고 천천히 도는 카메라
-// 카메라 위아래 범위 (#170). 걸을 때와 탈 때(노루·탈것·마차) 같은 범위로 올려다보고, 탈 때만 조금 더 내려다봄
+// 카메라 위아래 범위 (#170 #213). 탈 때(노루·탈것·마차)는 걸을 때보다 더 올려다보고(위로 볼수록 카메라를 당기고 바라보는 점을 올림) 더 내려다봄
 export const CAM = {
   pitchMin: -0.6, pitchMax: 1.25, // 끌어서 돌리는 위아래 각도(라디안). -0.6 이면 평지에서 화면 위 대부분이 하늘
   ridePitchMax: 1.4, // 탈 때만 더 내려다봄
+  ridePitchMin: -0.85, // 탈 때 올려다보는 끝 (#213, 전에는 걸을 때와 같은 -0.6). 실제 올려다보는 각 약 29도 → 약 45도
+  rideUpDist: 0.6, // 탈 때 끝까지 올려다보면 카메라 거리 배율 (땅에 덜 박히고 캐릭터가 화면 아래로 비킴). 0 각도부터 끝까지 서서히
+  rideUpLift: 1.2, // 탈 때 끝까지 올려다보면 바라보는 점을 이만큼 더 올림(m)
+  rideLook: { deer: 0.9, horse: 0.9, skate: 0.2, scoot: 0.25, cart: 0.3 }, // 탈것 높이만큼 바라보는 점을 올림(m). 마차는 자리 높이가 이미 들어가 있어 조금만
   rideDist: 1.15, // 탈 때 카메라 거리 배율 (노루가 화면을 덜 가림). 내리면 1 로 서서히
   rideDistK: 3, // 거리 배율이 바뀌는 빠르기 (1/초)
 };
@@ -1718,7 +1722,7 @@ export const QUESTS = {
   coupon: { gear: 0.1, leap: 0.1, salon: 0.5 },
   shopNpc: { side: 1.5, in: 0.6, gap: 3 }, // #190 가게 주인 자리: 문 오른쪽 side m · 터 앞 선에서 안쪽 in m · 다른 NPC·다른 가게 문과 gap m 넘게 (game/quest.js)
   givers: {
-    jigi: { name: '오름지기', at: 'sign', side: 2.6, fwd: 0.9, look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
+    jigi: { name: '오름지기', at: 'sign', side: -2.8, fwd: -1.2, alt: [[-4, -1.2], [-2.8, 0.9], [2.6, -2]], hbGap: 6.5, /* #213: 안내판 옆 조금 뒤, 입구 하르방에서 약 8m(전에는 side 2.6·fwd 0.9 로 5.1m). 하르방과 hbGap m 안이면 alt [side, fwd] 순서로 */ look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
     'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
     'b:rest': { name: '능선 쉼터 표지판', board: 'rest' },
     'b:crater': { name: '굼부리 표지판', board: 'crater' },
