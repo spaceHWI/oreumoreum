@@ -10,7 +10,7 @@ import { icon } from '../icons.js';
 const GROUPS = [
   ['sound', '소리', ['menu-sound', 'menu-music', 'music-vol', 'menu-radio']],
   ['screen', '화면', ['menu-gfx', 'menu-perf', 'menu-simple', 'menu-fs', 'menu-rainfx', 'menu-calmfx', 'menu-boxview']],
-  ['ctl', '조작', ['menu-tips', 'menu-vib', 'menu-help']],
+  ['ctl', '조작', ['menu-tips', 'menu-vib', 'menu-stick', 'menu-help']],
   ['with', '함께', ['menu-mates', 'menu-gift', 'menu-mutter']],
   ['rec', '촬영', ['menu-rec', 'rec-shape', 'rec-snd', 'rec-wm', 'rec-buf']],
   ['acct', '계정·정보', ['menu-nick', 'm-guest', 'm-acct', 'menu-fshow', 'menu-notes', 'menu-dev']],
@@ -19,7 +19,7 @@ const OTHER = 'ctl'; // 표에 없는 새 버튼이 들어갈 묶음
 const ICON = {
   'menu-sound': 'sound', 'menu-music': 'music', 'menu-radio': 'radio',
   'menu-gfx': 'sunrise', 'menu-perf': 'speed', 'menu-simple': 'minimize', 'menu-fs': 'maximize', 'menu-rainfx': 'rain', 'menu-calmfx': 'wind', 'menu-boxview': 'eye',
-  'menu-tips': 'tips', 'menu-vib': 'hand', 'menu-help': 'walk',
+  'menu-tips': 'tips', 'menu-vib': 'hand', 'menu-stick': 'walk', 'menu-help': 'walk',
   'menu-mates': 'together', 'menu-gift': 'gift', 'menu-mutter': 'chat',
   'menu-rec': 'photo', 'rec-shape': 'maximize', 'rec-snd': 'sound', 'rec-wm': 'star', 'rec-buf': 'reel',
   'menu-nick': 'emote', 'menu-fshow': 'maximize', 'menu-notes': 'notes', 'menu-dev': 'tools',

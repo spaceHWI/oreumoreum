@@ -29,7 +29,7 @@ const IC = {
 };
 // 할 일 한 줄: [보통, 더 쉬운 말]. PC 는 키 이름, 폰은 화면 버튼. 함수면 지금 상태로 고름
 const SAY = {
-  walk: { pc: ['WASD 키로 걸어 봐요', 'W 키를 꾹 눌러요'], touch: ['화면을 눌러 걸어 봐요', '빛나는 동그라미를 눌러요'], ic: 'walk' },
+  walk: { pc: ['WASD 키로 걸어 봐요', 'W 키를 꾹 눌러요'], touch: () => (document.body.classList.contains('stick-float') ? ['왼쪽 아래 아무 데나 누른 채 끌어 보세요', '왼쪽 아래를 누른 채 끌어요'] : ['화면을 눌러 걸어 봐요', '빛나는 동그라미를 눌러요']), ic: 'walk' }, /* 떠다니는 스틱 (#211) */
   run: { pc: (r) => (r ? ['빛나는 곳까지 달려요', '빛나는 곳으로 가요'] : ['Shift 키로 달려 봐요', 'Shift 키를 한 번 눌러요']),
     touch: (r) => (r ? ['빛나는 곳까지 달려요', '빛나는 곳으로 가요'] : ['달리기 버튼을 눌러요', '빛나는 버튼을 눌러요']), ic: 'run' },
   zoom: { pc: ['마우스 휠을 굴려 화면을 당겨 봐요', '휠을 위아래로 굴려요'], touch: ['두 손가락을 벌리거나 오므려 봐요', '두 손가락으로 화면을 벌려요'], ic: 'zoom' }, // #151
@@ -313,6 +313,7 @@ export function createTutorial({ save, persist, player, isTouch, camDist, gyulR,
   let focused = null;
   function setFocus(el) {
     if (el !== focused) { focused?.classList.remove('tut-focus'); focused = el; el?.classList.add('tut-focus'); document.body.classList.toggle('tut-dim', !!el); }
+    focusEl.classList.toggle('drag', el?.id === 'joy' && document.body.classList.contains('stick-float')); /* 누른 채 끄는 손가락 (#211) */
     if (!el) { focusEl.hidden = true; return; }
     const r = el.getBoundingClientRect(), round = Math.abs(r.width - r.height) < 6, w = (round ? Math.max(r.width, r.height) : r.width) + 12, h = (round ? w - 12 : r.height) + 12; // 둥근 버튼은 원, 넓은 칸은 둥근 사각
     focusEl.hidden = false; focusEl.style.left = (r.left + r.width / 2) + 'px'; focusEl.style.top = (r.top + r.height / 2) + 'px'; focusEl.style.setProperty('--w', w + 'px'); focusEl.style.setProperty('--h', h + 'px');
