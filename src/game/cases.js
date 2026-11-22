@@ -4,14 +4,15 @@
 //    추적 줄의 갈 곳: late.casePos('case:<id>') 아직 못 찾은 가장 가까운 증거 · 'case:<id>:face' 대면 자리
 // 3. 증거: 사건이 열리면 자리에 모양. 다가가 상호작용하면 그 쪽지(punktext.js NOTES, z 'case')를 얻음(쪽지 창이 열림). act 증거는 퀘스트 셈이 사건을 연 뒤 n 번 오르면
 // 4. 대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(해 질 녘 빛·까마귀가 날아와 빈자리에 귤·종이) → 서류 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
-//    arena·boss 는 사건을 연 뒤 그 구역 서바이벌 한 판(save.swarm.won[구역].at)·우두머리(save.boss.done[구역])가 늘면 끝 (뒤 사건 몫)
+//    arena·boss 는 사건을 연 뒤 그 구역 서바이벌 한 판(save.swarm.won[구역].at)·우두머리(save.boss.done[구역])가 늘면 끝
+//    face.follow 가 있으면 그 뒤 흰 옷을 끝까지 따라가 장면을 봐야 끝 (#233 사건 2, game/casechase.js. 터를 버티면 a 1)
 // 5. 종결: 사건의 마지막 퀘스트 보상을 받으면(game/quest.js late.questGave) '종결' 도장 + 칭호(late.titles.give) + 업적
 // 창 #case-file: 맨 위 서류 CASE_DOCS 칸, 사건마다 목격·증거·서류 칸과 미해결/종결 도장. 칸을 누르면 그 쪽지를 읽음
-// 저장 save.cases = { <id>: { w 연 때(ms, 0 = 아직), ev [찾은 증거 id], f 대면을 끝냄 1, base { 셈: 연 때 값 }, b 연 때 우두머리 수, s 연 때 서바이벌 시각 } }
+// 저장 save.cases = { <id>: { w 연 때(ms, 0 = 아직), ev [찾은 증거 id], f 대면을 끝냄 1, a 터·우두머리를 끝내고 따라가는 중 1 (follow), base { 셈: 연 때 값 }, b 연 때 우두머리 수, s 연 때 서바이벌 시각 } }
 // 멀티: 모두 내 화면에서만 (쪽지는 사람마다). 파일 순서는 traces 뒤 (src/modules.js: 퀘스트·쪽지·혼잣말·칭호가 다 있음). dev: __oreum.cases
 import * as THREE from 'three';
-import { CASE } from '../balance.js';
-import { CASES, CASE_BY, CASE_DOCS, caseLastQuest } from '../cases/index.js';
+import { CASE, SWARM } from '../balance.js';
+import { CASES, CASE_BY, CASE_DOCS, caseLastQuest, caseHello } from '../cases/index.js';
 import { NOTES } from '../punktext.js';
 import { levelOf } from '../augments.js';
 import { zoneName } from '../zonelook.js';
@@ -28,6 +29,7 @@ import { director, say } from './director.js';
 import { interactables } from './stores.js';
 import { quests } from './quest.js';
 import { buildProp } from './caseprops.js';
+import { makeChase } from './casechase.js';
 
 const ON = MAP_ID === 'namsongi';
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -42,7 +44,7 @@ function S(id) {
   s.w = Number.isFinite(+s.w) && +s.w > 0 ? +s.w : 0;
   const c = CASE_BY[id], ids = new Set((c?.ev || []).map((e) => e.id));
   s.ev = Array.isArray(s.ev) ? s.ev.filter((e, i, a) => ids.has(e) && a.indexOf(e) === i) : [];
-  s.f = s.f ? 1 : 0;
+  s.f = s.f ? 1 : 0; s.a = s.a ? 1 : 0;
   if (!isObj(s.base)) s.base = {};
   return s;
 }
@@ -62,7 +64,10 @@ function faceDone(c) {
   const s = S(c.id); if (s.f) return true; if (!s.w) return false;
   const k = c.face?.kind, z = c.zone;
   const hit = k === 'none' ? evAll(c) : k === 'boss' ? (+save.boss?.done?.[z] || 0) > (+s.b || 0) : k === 'arena' ? (+save.swarm?.won?.[z]?.at || 0) > (+s.s || 0) : false;
-  if (hit && evAll(c)) { s.f = 1; persist(); gotDoc(c); return true; }
+  if (hit && evAll(c)) {
+    if (c.face.follow) { if (!s.a) { s.a = 1; persist(); chase?.start(c); } return false; } /* 따라가기 장면이 끝나면 chaseDone */
+    s.f = 1; persist(); gotDoc(c); return true;
+  }
   return false;
 }
 // 셈 (game/quest.js val): 'case:<id>:ev' · 'case:<id>:face'
@@ -109,11 +114,23 @@ if (ON) for (const c of CASES) {
 // 추적 줄 갈 곳 (game/quest.js goPos)
 late.casePos = (go) => {
   const [, id, what] = go.split(':'), c = CASE_BY[id], sp = spots[id]; if (!c || !sp) return null;
-  if (what === 'face') return sp.face ? sp.face.clone() : sp.see.clone();
+  if (what === 'face') { /* 따라가기 (#233): 흰 옷 → 없으면 그 구역 서바이벌 터 */
+    if (c.face?.follow) { const g = chase?.pos(c); if (g) return g; const a = c.face.kind === 'arena' && SWARM.arena?.at?.[c.zone]; if (a) return v3(a[0], a[1]); }
+    return sp.face ? sp.face.clone() : sp.see.clone();
+  }
   let b = null, bd = Infinity;
   for (const e of c.ev) { const p = sp.ev[e.id]; if (!p || evGot(c, e)) continue; const d = (p.x - player.pos.x) ** 2 + (p.z - player.pos.z) ** 2; if (d < bd) { bd = d; b = p; } }
   return b ? b.clone() : sp.see.clone();
 };
+
+/* ---------- 흰 옷 따라가기 (#233, game/casechase.js) ---------- */
+const chase = ON ? makeChase({
+  S, closed, lv, fightNow: () => fightNow(),
+  spot: (id) => ({ see: spots[id].see, free: (at) => free(at) }),
+  done: (c) => { const s = S(c.id); if (s.f) return; s.f = 1; persist(); if (!haveNote(c.doc)) setTimeout(() => gotDoc(c), 400); late.questTrackDirty?.(true); syncBtns(); },
+}) : null;
+// 종결한 사건의 NPC 인사 (game/quest.js greet)
+late.caseHello = (gid) => CASES.filter((c) => closed(c)).flatMap((c) => caseHello(c, gid));
 
 /* ---------- 목격 ---------- */
 function openCase(c, quiet = false) {
@@ -122,6 +139,7 @@ function openCase(c, quiet = false) {
   s.b = +save.boss?.done?.[c.zone] || 0; s.s = +save.swarm?.won?.[c.zone]?.at || 0; persist();
   syncBtns(); late.questTrackDirty?.(true);
   if (quiet) return true;
+  chase?.glimpse(c); /* #233 흰 옷이 스침 */
   if (!late.mutterApi?.line?.('case:' + c.id, c.see.say)) toast(c.see.say, 3);
   setTimeout(() => say('quest', 'case-open:' + c.id, `사건 파일에 한 줄 · '${c.name}' 미해결`, 3.6, { ttl: 60 }), 3200);
   return true;
@@ -131,11 +149,11 @@ function takeEv(c, e) {
   s.ev.push(e.id); persist(); late.sound?.snip?.();
   if (e.note) late.punkWorld?.note?.give(e.note); // 쪽지 창이 열림 (싸우는 중이면 표시만)
   const n = evN(c);
-  say('quest', 'case-ev:' + e.id, n >= c.ev.length ? `증거 ${n}/${c.ev.length} · 다 모았어요. ${CASE_GIVER(c)}에게 가 봐요` : `증거 ${n}/${c.ev.length} · 사건 파일에 붙였어요`, 3, { ttl: 40 });
+  say('quest', 'case-ev:' + e.id, n >= c.ev.length ? `증거 ${n}/${c.ev.length} · 다 모았어요. ${CASE_GIVER(c)} 가 봐요` : `증거 ${n}/${c.ev.length} · 사건 파일에 붙였어요`, 3, { ttl: 40 });
   late.questTrackDirty?.(true); syncBtns();
 }
 const fightNow = () => !!player.down || !!late.bossFight?.() || !!late.swarm?.state?.() || !!life?.enemies?.near?.(player.pos, 18); /* 숨어 보기는 가까이 적이 없을 때만 */
-const CASE_GIVER = (c) => late.questDebug?.givers?.get?.(c.giver)?.name || '의뢰한 사람';
+const CASE_GIVER = (c) => (late.questDebug?.givers?.get?.(c.giver)?.name || '의뢰한 사람') + (String(c.giver).startsWith('b:') ? '으로' : '에게'); /* 표지판으로 · 오름지기에게 */
 function gotDoc(c) { if (c.doc) late.punkWorld?.note?.give(c.doc); late.questTrackDirty?.(true); }
 
 /* ---------- 대면: 숨어 보기 ---------- */
@@ -296,6 +314,7 @@ let chkT = 0;
 function tickCases(dt) {
   state.ticks.cases++;
   if (run) tickHide(dt);
+  if (chase) chase.tick(dt, CASES);
   if (!ON || (chkT -= dt) > 0) return; chkT = CASE.seeT;
   const px = player.pos.x, pz = player.pos.z, far2 = CASE.far * CASE.far;
   for (const o of objs) { const vis = (o.pos.x - px) ** 2 + (o.pos.z - pz) ** 2 < far2 && !state.cave && !!o.show(); if (o.root.visible !== vis) o.root.visible = vis; }
@@ -315,7 +334,7 @@ late.cases = {
   spots: (id = 'c1') => { const sp = spots[id]; if (!sp) return null; const r = (p) => p && [+p.x.toFixed(1), +p.z.toFixed(1)]; return { see: r(sp.see), face: r(sp.face), ev: Object.fromEntries(Object.entries(sp.ev).map(([k, p]) => [k, r(p)])) }; },
   objs: () => objs.map((o) => ({ id: o.c.id, kind: o.kind, ev: o.e?.id || null, vis: o.root.visible })),
   open: (id = 'c1') => openCase(CASE_BY[id]), take: (id, eid) => { const c = CASE_BY[id], e = c?.ev.find((x) => x.id === eid); if (e) takeEv(c, e); return evN(c); },
-  busy: () => fightNow(),
+  busy: () => fightNow(), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
   hide: (id = 'c1') => beginHide(CASE_BY[id]), stop: stopHide, jump: (u) => { if (run) run.u = u; },
   file: openFile, fileOpen: () => !win.hidden, build, html: () => $('case-file-body').innerHTML,
   reset: (id = 'c1') => { if (isObj(save.cases)) delete save.cases[id]; persist(); syncBtns(); },

@@ -37,6 +37,7 @@ for (const c of CASES) {
   add(`case.${c.id}.see`, '사건 목격 혼잣말', c.see?.say, { pre, max: 22 });
   (c.face?.lines || []).forEach((s, i) => add(`case.${c.id}.face.${i}`, '사건 대면 장면 자막', s, { pre, max: 28 }));
   add(`case.${c.id}.title`, '사건 칭호', c.title, { pre, max: 14 });
+  for (const [g, L] of Object.entries(c.hello || {})) L.forEach((s, i) => add(`case.${c.id}.hello.${g}.${i}`, '사건 종결 뒤 인사 (#233)', s, { pre, max: 28 }));
 }
 const zoneOf = (q) => q.z || 0;
 for (const [kind, list] of [['main', QUESTS.main], ['side', QUESTS.side]]) for (const q of list) {
