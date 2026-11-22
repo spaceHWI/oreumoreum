@@ -1842,3 +1842,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 감독 busy: 감독 글·얻음 줄이 아닌 알림이 떠 있으면 기다림 (`msgBusy`)
 - 멀티(room.js·give.js 받은 선물)는 kind 'multi'
 - 확인: `node tools/msgshot.js` (360×640·390×844·1280×720, 그림 tools/out/msg-*.png)
+
+## #248 수거 관: 클린하우스 사이 바로 이동
+- 클린하우스 5곳(들머리 `gate`·숲길 `skirt`·남쪽 사면 `slope`·능선 `rest`·굼부리 `crater`) 옆에 투입구(`src/tubemodel.js`). 상호작용 '수거 관' → '어디로 보낼까요?' (이름·거리·떨어질 귤) → 2.35초 연출 → 도착 배출구
+- 굼부리 들머리 클린하우스는 숲길(구역 1) 땅에 있지만 굼부리 더미를 맡아 이름·값은 굼부리 (`TUBE.zone`)
+- 열림: 그 클린하우스에 한 번이라도 버린 곳만 (`save.tube`). 옛 저장은 버린 적이 있으면 `journey.maxZ` 안의 클린하우스로 채움
+- 값: `TUBE.drop`(30) × 구역 거리 × 높은 쪽 구역 gv. 처음 임의값(3 × 도착 구역 gv)은 들머리 ↔ 굼부리 오가기 10분 벌이가 1.14배라 바꿈. `node tools/econ.js --tube` (지금: 구역 3 위는 조랑말로 오르고 빠른 마차로 내려옴. 관 10분 ≤ 1.1배)
+- 못 탐: 적 `TUBE.fightR` 안·우두머리·떼 판 중·튜토리얼·탈것/마차/노루. 쿨타임 없음, 귤 0개여도 탐
+- 멀티: presence `tb` = i(빨려 들어감)·p(관 속, 옮긴 자리)·o(튀어나옴). 서버는 p·o 가 붙은 순간 이동을 `NET.tubeGap`(3초)에 한 번 받아 줌(warpGap 과 따로), 그 밖의 tb 값은 지움
+- 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
