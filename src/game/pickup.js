@@ -1,5 +1,5 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
+import { zoneToneLv, zoneRecLv } from '../gearscore.js';
 import { upMul, legendOn } from '../loot.js';
 import { LOOT } from '../balance.js';
 import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, FEEL, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
@@ -201,11 +201,11 @@ export function updateTrashUI(bump) {
   // 화면의 깨끗함은 지금 구역 값으로, 있는 곳 이름 옆에 (#196). 구역 밖(마을·가게 거리·길)은 감춤. 오름 전체 값은 오름 지도
   const wk = zoneNow ? String(zc) : '';
   if (wk !== whereCK) { whereCK = wk; const w = $('where-c'); w.hidden = !zoneNow; $('where-cn').textContent = wk; $('where-ring').setAttribute('stroke-dasharray', `${(zc / 100 * 37.7).toFixed(1)} 37.7`); w.classList.toggle('done', zc >= 100); topFit.dirty(); }
-  const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneTone(gearScore(save).total, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
+  const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneToneLv(save, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
   if (zk !== state.lastZoneUI) { state.lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc;
-    // 권장 장비 점수와 견준 색 (#137): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
+    // 권장 레벨과 견준 색 (#137 → #251 레벨 차이): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
     for (const el of [$('zone-pill'), $('xy-pill')]) { if (tone) el.dataset.tone = tone; else delete el.dataset.tone; }
-    $('zone-pill').dataset.rec = zoneNow ? zoneRec(zoneNow) : ''; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
+    $('zone-pill').dataset.rec = zoneNow ? zoneRecLv(zoneNow) : ''; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
     // 꽃 아이콘 (#46): 지금 구역이 다 피었으면 꽃 모양(귤색), 깨끗한 정도 옆엔 다 핀 구역마다 작은 점. 색은 흰색·귤색만 (#75)
     const bl = !!(bloom && zoneNow && bloom.isBloomed(zoneNow)); $('zone-pill').classList.toggle('bloom', bl);
     const row = $('bloom-row'); row.hidden = !zb; row.innerHTML = [...zb].map((z) => `<i title="${z}구역 ${BLOOM.zones[z].name}"></i>`).join(''); topFit.dirty(); }

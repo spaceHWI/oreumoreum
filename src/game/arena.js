@@ -1,6 +1,6 @@
 // 서바이벌 터 (#231): 구역마다 한 곳(balance.js SWARM.arena.at). 낮은 현무암 돌 고리 + 가운데 징. 징을 울려야(상호작용) 떼 한 판이 시작됨 (판 자체는 game/swarm.js)
 // - 그리기: 터마다 메시 하나(돌 고리·징을 정점 색으로 합침, toon 재질). 멀면 안 그림 → 화면에 1~2개, 터마다 그리기 1번
-// - 징 위 글(#arena-tag): 가까우면 '서바이벌 시작 · 권장 장비 점수 · 버티는 시간', 쉬는 시간엔 남은 시간. 상호작용 버튼 글도 같음
+// - 징 위 글(#arena-tag): 가까우면 '서바이벌 시작 · 권장 레벨 · 버티는 시간', 쉬는 시간엔 남은 시간. 상호작용 버튼 글도 같음
 // - 알림: 그 구역에 처음 들어가면 한 번 터 쪽(카메라 기준 앞·오른쪽·뒤·왼쪽)과 거리 한 줄 (save.swarm.hint). 가장자리 표시(#arena-arrow)는 near~hintR m 일 때만, 다른 길 안내가 있으면 쉼 (#201)
 // - 지도: 큰 지도·미니맵에 터 아이콘(귤색 고리) (field.js drawIcons 가 late.arenaIcons 를 부름)
 // - 멀티: 같은 터 안에 있는 사람이 판 중(presence sw)이면 나도 판에 듦 (떼는 사람마다 따로, swarm.js)
@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SWARM, ZONES } from '../balance.js';
 import { SWARM_TEXT } from '../punktext.js';
-import { gearScore, zoneRec } from '../gearscore.js';
+import { zoneRecLv, myLv } from '../gearscore.js';
 import { gradHard } from '../toon.js';
 import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
@@ -122,12 +122,12 @@ function showTag(a, d) {
   if (d > A.tagR || SW()?.zone() || panelOpen() || cam.mode !== 'follow' || state.cine) { if (!tag.hidden) tag.hidden = true; return; }
   pv.copy(a.gong); pv.y += 3.1; pv.project(camera);
   if (pv.z > 1 || Math.abs(pv.x) > 1.05 || Math.abs(pv.y) > 1.05) { if (!tag.hidden) tag.hidden = true; return; }
-  const l = restOf(a.zone), key = l > 0 ? 'r' + Math.ceil(l) : 'g' + a.zone + ':' + gearScore(save).total;
+  const l = restOf(a.zone), key = l > 0 ? 'r' + Math.ceil(l) : 'g' + a.zone + ':' + myLv(save);
   if (key !== tagKey) {
     tagKey = key; tag.classList.toggle('rest', l > 0);
     tag.firstChild.textContent = l > 0 ? `${T.restTag} ${mmss(l)}` : T.gong;
-    const rec = zoneRec(a.zone), my = gearScore(save).total, tt = SW()?.runT(a.zone) || 0;
-    tag.lastChild.innerHTML = l > 0 ? '' : `<span title="권장 장비 점수">권장 ${rec}${my < rec ? ` (지금 ${my})` : ''}</span><span title="버티는 시간">${mmss(tt)} 버티기</span>`;
+    const rec = zoneRecLv(a.zone), my = myLv(save), tt = SW()?.runT(a.zone) || 0;
+    tag.lastChild.innerHTML = l > 0 ? '' : `<span title="권장 레벨">권장 Lv ${rec}${my < rec ? ` (지금 Lv ${my})` : ''}</span><span title="버티는 시간">${mmss(tt)} 버티기</span>`;
   }
   tag.hidden = false; tag.style.transform = `translate(${((pv.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-pv.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px) translate(-50%, -100%)`;
 }
