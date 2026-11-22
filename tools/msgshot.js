@@ -4,7 +4,7 @@
 // 오래된 것부터 사라짐, 같은 글은 ×N 으로 합침, 고정 한 줄(터 밖)은 로그 위, 증강 창이 뜨면 감추고 닫히면 최근 3개
 const path = require('path'), fs = require('fs');
 const ok = (c, m) => { console.log((c ? '통과 ' : '실패 ') + m); if (!c) process.exitCode = 1; };
-const SIZES = [[360, 640, true], [390, 844, true], [1280, 720, false]];
+const SIZES = [[360, 640, true], [390, 844, true], [1280, 720, false]].filter((z) => !process.argv[2] || String(z[0]) === process.argv[2]);
 (async () => {
   const { chromium } = require('playwright');
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -35,7 +35,7 @@ const SIZES = [[360, 640, true], [390, 844, true], [1280, 720, false]];
     ok(r.rects.every((a, i) => r.rects.every((c, j) => i === j || !hit(a, c))), `${tag}: 줄끼리 안 겹침`);
     ok(new Set(r.rects.map((a) => Math.round(a[3] - a[1]))).size === 1, `${tag}: 같은 높이 ${r.rects.map((a) => Math.round(a[3] - a[1]))}`);
     const bad = r.others.filter((o) => r.rects.some((a) => hit(a, o.slice(1)))).map((o) => o[0]);
-    ok(!bad.length, `${tag}: 버튼·위쪽 줄과 안 겹침 ${bad.join(',')}`);
+    ok(!bad.length, `${tag}: 버튼·위쪽 줄과 안 겹침 ${bad.length ? JSON.stringify({ bad: r.others.filter((o) => bad.includes(o[0])), lines: r.rects }) : ''}`);
     ok(r.seen[5][0] !== '귤 +3' && r.seen[5].slice(-1)[0].startsWith('조금 긴'), `${tag}: 새 것은 아래, 넘치면 오래된 것부터 빠짐`);
     const r2 = await pg.evaluate(async () => {
       const o = window.__oreum, W = (ms) => new Promise((res) => setTimeout(res, ms)); o.msglog.clear(); await W(500);

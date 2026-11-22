@@ -96,13 +96,17 @@ function layout() {
   const below = (el) => { if (!el || el.hidden) return; const b = el.getBoundingClientRect(); if (!b.height || b.right < L || b.left > R || b.top > y + 120) return; y = Math.max(y, b.bottom + MSG.gap + 2); };
   below(document.getElementById('quest-track'));
   const tt = document.getElementById('tut-toast'), tutOn = !!tt && !tt.hidden;
-  if (tutOn) { tt.style.top = y + 'px'; y += tt.offsetHeight + MSG.gap + 2; }
+  if (tutOn) { setTop(tt, y); y += tt.offsetHeight + MSG.gap + 2; }
   pinEl.hidden = !pin || tutOn; /* 둘이면 튜토리얼 우선 */
-  if (!pinEl.hidden) { pinEl.style.top = y + 'px'; y += MSG.h + MSG.gap + 2; }
+  if (!pinEl.hidden) { setTop(pinEl, y); y += MSG.h + MSG.gap + 2; }
   for (const id of STACK.slice(1)) below(document.getElementById(id));
-  logEl.style.top = y + 'px';
+  setTop(logEl, y);
 }
+function setTop(el, y) { const t = Math.round(y) + 'px'; if (el.style.top !== t) el.style.top = t; } /* 같은 값이면 안 씀 (지켜보기가 다시 부르지 않게) */
 
+/* 위 칸이 나타나거나 바뀌면 바로 자리 다시 (느린 기기에서 프레임을 기다리지 않게) */
+const mo = new MutationObserver(() => layout()); let moSeen = '';
+function watch() { const ids = ['topbar', 'tut-toast', ...STACK].filter((id) => document.getElementById(id)); const k = ids.join(); if (k === moSeen) return; moSeen = k; mo.disconnect(); for (const id of ids) mo.observe(document.getElementById(id), { attributes: true, attributeFilter: ['hidden', 'style', 'class'] }); }
 export function tickMsg(dt) {
   state.ticks.msg = (state.ticks.msg || 0) + 1;
   const h = held();
@@ -114,7 +118,7 @@ export function tickMsg(dt) {
     const first = live()[0]; if (first && first.t <= 0) drop(first);
   }
   if (pin && (pin.t -= dt) <= 0) unpin();
-  if ((layT -= dt) <= 0) { layT = 0.1; layout(); }
+  if ((layT -= dt) <= 0) { layT = 0.1; watch(); layout(); }
 }
 
 /* 감독(director.js)이 '다른 글이 떠 있나' 볼 때: 줍기·얻음 줄은 셈하지 않음 */
