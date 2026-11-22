@@ -53,8 +53,16 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await ev((L) => { const o = window.__oreum; for (let x = 0; o.level.state().lv < L; x += 50) o.level.setXp(x); }, C.lv);
   s = await CS(); ok(s.lv >= C.lv, `레벨 ${s.lv}`);
   await until(() => { const L = window.__oreum.level.state(); if (L.open) window.__oreum.level.close(); return !L.open && !document.querySelector('.overlay:not([hidden])'); }, 4000); /* 레벨업 증강 고르기 창은 닫음 (창이 열린 동안은 목격하지 않음) */
-  await go(sp.see[0] + 3, sp.see[1] + 3); await W(400);
+  await go(sp.see[0] + 3, sp.see[1] + 3); await ev((sp) => { const o = window.__oreum, p = o.player.pos; o.cam.yaw = Math.atan2(p.x - sp[0], p.z - sp[1]); o.snap(); }, sp.see); await W(400); /* 목격 모양 쪽을 봄 */
   ok(await until((id) => window.__oreum.cases.state(id).open, 10000, CID), '목격 자리에 들면 사건이 열림');
+  if (C.see.blink) { // 뒤돌아보면 없다 (#234): 열린 뒤 화면 밖으로 나가면 목격 모양이 사라짐
+    ok(await ev((id) => window.__oreum.cases.objs().find((o) => o.kind === 'see' && o.id === id).vis, CID), '열린 직후엔 목격 모양이 보임'); await shot('suits');
+    const yaw = (away) => ev(([sp, away]) => { const o = window.__oreum, p = o.player.pos; o.cam.yaw = away ? Math.atan2(sp[0] - p.x, sp[1] - p.z) : Math.atan2(p.x - sp[0], p.z - sp[1]); o.snap(); }, [sp.see, away]);
+    await go(sp.see[0] + 18, sp.see[1] + 18); await yaw(true); /* 따라가는 카메라는 내 뒤 13m 라, 떨어져서 등을 돌림 */
+    ok(await until((id) => !window.__oreum.cases.objs().find((x) => x.kind === 'see' && x.id === id).vis, 9000, CID), '등을 돌리면 목격 모양이 사라짐');
+    await yaw(false); await W(1200);
+    ok(await ev((id) => !window.__oreum.cases.objs().find((x) => x.kind === 'see' && x.id === id).vis, CID), '다시 돌아봐도 없음');
+  }
   if (!(await CS()).open) console.log('  까닭', JSON.stringify(await ev(() => ({ panels: [...document.querySelectorAll('.overlay')].filter((e) => !e.hidden).map((e) => e.id), cave: window.__oreum.cave?.state?.()?.in, sess: true, tut: window.__oreum.tut?.active, pos: [window.__oreum.player.pos.x, window.__oreum.player.pos.z], lv: window.__oreum.level.state().lv }))));
   ok(await until((t) => window.__oreum.mutter?.bubble?.()?.text === t || document.getElementById('toast')?.textContent.includes(t), 3000, C.see.say), `혼잣말 '${C.see.say}'`);
   ok(await ev(() => !document.getElementById('menu-case').hidden), '메뉴에 [사건 파일]');
@@ -147,6 +155,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
       const bp = await ev((id) => { const p = window.__oreum.quest.goPos('case:' + id + ':face'); return p && [p.x, p.z]; }, CID);
       ok(!!bp && Math.hypot(bp[0] - sp.face[0], bp[1] - sp.face[1]) > 5, `대면 전 추적 줄은 ${C.face.kind} 자리로 ${bp && bp.map((v) => v.toFixed(0))}`);
     }
+    const key = C.face.kind === 'arena' ? 'arena' : 'boss';
     if (C.face.kind === 'arena') { /* 서바이벌 터 한 판을 버틴 것으로 (판 자체는 tools/swarmrun.js) */
       const ar = await ev((z) => window.__oreum.cases.arena(z), C.zone);
       const tg0 = await ev((id) => window.__oreum.quest.goPos('case:' + id + ':face'), CID);
@@ -189,6 +198,25 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
       await ev((t) => window.__oreum.cases.jump(t), C.face.len - 0.1); await W(1200);
       s = await CS(); ok(!s.run && s.f === 1 && s.face, '장면 끝 · 대면 끝냄');
       ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
+    }
+    if (C.face.actor) { // 싸움 뒤 장면 (#234): 그 자리에 모양이 서고, 다가가 F → 장면 → 대면 끝
+      ok(await until((id) => window.__oreum.cases.state(id).h === 1, 4000, CID), `${key} 뒤 대면 장면을 볼 수 있음 (h)`);
+      ok(!(await CS()).f, '장면을 보기 전엔 대면이 끝나지 않음');
+      await go(sp.face[0] + 3, sp.face[1] + 3); await W(900);
+      ok(await until((id) => window.__oreum.cases.objs().find((o) => o.kind === 'face' && o.id === id)?.vis, 4000, CID), '대면 자리에 모양이 섬');
+      await go(sp.face[0] + 1.2, sp.face[1] + 1.2); await W(700);
+      await p.keyboard.press('f'); await W(800);
+      s = await CS(); ok(!!s.run, `'${C.face.label}' F → 장면`);
+      if (!s.run) console.log('  까닭', JSON.stringify(await ev(() => { const o = window.__oreum; return { ctx: o.aim.ctx(), busy: o.cases.busy() }; })));
+      ok(await ev(() => window.__oreum.cam.mode === 'cine' && document.body.classList.contains('case-cine')), '장면 동안 카메라·화면');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.3); await W(700); await shot('talk');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.6); await W(700); await shot('meet');
+      ok(await ev(() => { const o = window.__oreum, c = o.camObj.position, pl = o.player.pos; return c.y - o.groundAt(c.x, c.z) < 1.6 && Math.hypot(c.x - pl.x, c.z - pl.z) < 6 && o.camObj.getWorldDirection(c.clone()).y < -0.4; }), '절할 때 카메라가 발치를 내려다봄');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.9); await W(700); await shot('gone');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len - 0.1); await W(1200);
+      s = await CS(); ok(!s.run && s.f === 1 && s.face, '장면 끝 · 대면 끝냄');
+      ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
+      ok(await ev((id) => !window.__oreum.cases.objs().find((o) => o.kind === 'face' && o.id === id)?.vis, CID), '대면 모양은 사라짐');
     }
   }
   ok(await until((d) => window.__oreum.punkWorld.note.got().includes(d), 3000, C.doc), `증거 사진 '${C.doc}' 받음 · 쪽지 창 '${await ev(() => window.__oreum.punkWorld.note.shown())}'`);

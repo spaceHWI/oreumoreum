@@ -25,6 +25,11 @@ export const ASSET_SRC = [
   ['hair-bob', 'gear/head-bob.js', 'default', FLOAT],
   ['hair-bun', 'gear/head-bun.js', 'default', FLOAT],
   ['steps', 'stepsamples.js', 'STEP_SAMPLES', null],
+  // 사건 파일 Tripo 모델 (#262): 가까이 갔을 때만 받음(meta.lazy → 한가할 때 받는 차례에 넣지 않음). -lo 는 멀리용(1,500 삼각형·텍스처 128)
+  ...['yeti', 'mib', 'ghost-keeper', 'arena-keeper', 'photographer', 'hose'].flatMap((n) => {
+    const N = n.toUpperCase().replace(/-/g, '_');
+    return [['case-' + n, 'model-case-' + n + '.js', N + '_M', PROP, true], ['case-' + n + '-lo', 'model-case-' + n + '-lo.js', N + '_LO', PROP, true]];
+  }),
 ];
 
 function vchunk(buf, [eb, comps]) {
@@ -52,7 +57,7 @@ function bbox(M, shape) {
 export async function packAssets(srcDir) {
   await MeshoptEncoder.ready;
   const out = [];
-  for (const [name, file, exp, shape] of ASSET_SRC) {
+  for (const [name, file, exp, shape, lazy] of ASSET_SRC) {
     const mod = await import(srcDir + '/' + file);
     const M = mod[exp];
     const chunks = [], meta = {};
@@ -75,6 +80,7 @@ export async function packAssets(srcDir) {
       }
       if (meta.n != null) meta.n = unique;
       Object.assign(meta, bbox(M, shape));
+      if (lazy) meta.lazy = true;
     }
     let o = 0; const head = { meta, chunks: chunks.map(({ data, ...c }) => { const r = { ...c, o, l: data.length }; o += data.length; return r; }) };
     const hj = Buffer.from(JSON.stringify(head)), hl = Buffer.alloc(4); hl.writeUInt32LE(hj.length);

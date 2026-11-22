@@ -77,6 +77,17 @@ for (const r of rows) {
   if (r.max && [...r.t].length > r.max) bad(`길이 ${[...r.t].length} > ${r.max}: ${r.id} · ${r.t}`);
   if (r.lines && r.t.split('\n').filter((l) => l.trim()).length > r.lines) bad(`쪽지 ${r.t.split('\n').filter((l) => l.trim()).length}줄 > ${r.lines}: ${r.id}`);
 }
+/* 구체적으로 (#257): 퀘스트마다 받을 때 글 + 할 일 줄에 '몇 개'(숫자·하나/둘/셋/한/두/세)와 '어디서'(화면에서 찾을 수 있는 장소 이름)가 있는지.
+   예외: 셈이 늘 하나인 것(구역 들어서기·이야기 보고·대면·전망 자리)은 수를, 어디서나 되는 것(동작 인사·버프 중 적)은 곳을 안 봄 */
+const PLACE = /숲길|남쪽 사면|사면|능선|굼부리|정상|들머리|들판|개울|클린하우스|가게 거리|장비점|스톤|LEAP|미장원|만족한상회|돌탑|표지판|안내판|표지석|정낭|돌담|쉼터|터|동굴|소굴|초소|정류장|전망/;
+const NUM = /\d|하나|둘|셋|한 |두 |세 /;
+const NO_NUM = (q) => ['zone', 'rimLook'].includes(q.ask.k) || /^story:|^case:.*:face$/.test(q.ask.k);
+const NO_PLACE = (q) => ['emote', 'repelBuff'].includes(q.ask.k);
+for (const q of [...QUESTS.main, ...QUESTS.side]) {
+  const all = [...(q.say || []), q.task].join(' ');
+  if (!NO_NUM(q) && !(NUM.test(q.task) && NUM.test(all))) bad(`구체성 (몇 개): quest.${q.id} · ${q.task}`);
+  if (!NO_PLACE(q) && !(PLACE.test(q.task) && PLACE.test(all))) bad(`구체성 (어디서): quest.${q.id} · ${q.task}`);
+}
 if (!QUESTS.main.find((q) => q.id === 'boss5' && q.ending === '불편을 줘서 죄송합니다.') || STORY_TEXT.end.big !== '불편을 줘서 죄송합니다.') bad('엔딩 사과 한 줄이 바뀜');
 console.log(`${fail ? '실패' : '통과'} 이야기 글 ${rows.length}줄 · 단계 3 전 ${rows.filter((r) => r.pre).length}줄 · 금지 낱말·길이 검사`);
 if (process.argv.includes('--md')) {

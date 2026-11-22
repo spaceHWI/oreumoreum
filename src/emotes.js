@@ -208,6 +208,8 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
   // 버튼을 누르면 버튼을 중심으로 8칸이 펼쳐짐. 누른 채 밀어서 떼면 그 칸, 그냥 누르고 떼면 열린 채로 두고 눌러 고름. 고르면 닫힘
   // 버튼이 화면 왼쪽이면 위→오른쪽, 오른쪽이면 위→왼쪽, 가운데면 위 반원. 위 공간이 모자라면 반지름을 줄임
   let wheel = null, chatEl = null, anchor = null, hot = null;
+  let extra = null; /* 맨 끝 한 칸 (#247 휘파람): () => { id, name, svg, act } 또는 null */
+  const cellN = () => SHOWN.length + (extra?.() ? 1 : 0);
   const F = EMOTE.fan;
   function anchorAt(btn) {
     const r = btn?.getBoundingClientRect();
@@ -222,7 +224,7 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
     const cl = (p) => ({ ...p, x: Math.max(half, Math.min(W - half, p.x)), y: Math.max(half, Math.min(H - half, p.y)) });
     /* 폰 가로처럼 위가 낮으면: 버튼 옆으로 한 줄 (조이스틱 위, 엄지로 옆으로 밀기) */
     if (hx && H < F.rowH) {
-      const cells = SHOWN.map((_, i) => ({ i, x: a.x + hx * (F.cell / 2 + 30 + i * (F.cell + 8)), y: a.y }));
+      const cells = Array.from({ length: cellN() }, (_, i) => ({ i, x: a.x + hx * (F.cell / 2 + 30 + i * (F.cell + 8)), y: a.y }));
       return { cells: cells.map(cl), chat: cl({ x: a.x, y: a.y + (up ? -1 : 1) * (F.cell + 8) }) };
     }
     let [a0, a1] = hx ? F.side : F.mid;
@@ -234,7 +236,7 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
       const t = ((a0 + (a1 - a0) * (st ? (n > 1 ? 0.125 + (i * 0.75) / (n - 1) : 0.5) : n > 1 ? i / (n - 1) : 0.5)) * Math.PI) / 180;
       return { i: off + i, x: a.x + Math.cos(t) * r * k, y: a.y + Math.sin(t) * r * k };
     });
-    const out = [...ring(F.inner, F.r[0], 0, 1), ...ring(SHOWN.length - F.inner, F.r[1], F.inner, 0)];
+    const out = [...ring(F.inner, F.r[0], 0, 1), ...ring(cellN() - F.inner, F.r[1], F.inner, 0)];
     const mt = (((a0 + a1) / 2) * Math.PI) / 180, cr = (F.r[1] + F.cell) * k;
     return { cells: out.map(cl), chat: cl({ x: a.x + Math.cos(mt) * cr, y: a.y + Math.sin(mt) * cr }) };
   }
@@ -244,7 +246,7 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
     wheel.innerHTML = SHOWN.map((id, i) => {
       const e = EMOTE_BY[id], p = L.cells[i];
       return `<button type="button" class="emo-c${ride && !e.hand ? ' off' : ''}" data-id="${id}" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px;--d:${i * 18}ms" aria-label="${e.name}">${svg(e)}<span>${e.name}</span><kbd>${i + 1}</kbd></button>`;
-    }).join('');
+    }).join('') + extraCell(ride, L.cells[SHOWN.length]);
     if (chatEl) { chatEl.style.left = L.chat.x.toFixed(1) + 'px'; chatEl.style.top = L.chat.y.toFixed(1) + 'px'; }
     hot = null;
   }
@@ -281,7 +283,8 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
     btn.addEventListener('click', () => { if (skip) { skip = false; return; } setOpen(!isOpen()); });
   }
   let onChoose = null;
-  function pick(id) { toast(EMOTE_BY[id].name, tipSec); onChoose?.(id); }
+  function extraCell(ride, p) { const x = extra?.(); if (!x || !p) return ''; return `<button type="button" class="emo-c emo-x${ride ? ' off' : ''}" data-id="${x.id}" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px;--d:${SHOWN.length * 18}ms" aria-label="${x.name}">${x.svg}<span>${x.name}</span></button>`; }
+  function pick(id) { const x = extra?.(); if (x && id === x.id) { x.act(); return; } toast(EMOTE_BY[id].name, tipSec); onChoose?.(id); }
   function opened(btn) { anchor = anchorAt(btn); render(); }
   // 숫자 키 1~8: 열려 있든 닫혀 있든 같은 8개
   function key(n) {
@@ -293,6 +296,7 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
   return {
     perform, stop, tick, overlay, overlayPeer, presence, bindWheel, bindButton, render, opened, key, shown: SHOWN,
     set onChoose(f) { onChoose = f; },
+    set extra(f) { extra = f; }, get extra() { return extra; },
     get mine() { return mine; }, get over() { return over; },
     test: { marks, bubbles, edges, seen, layout: () => layout(anchor || anchorAt(null)) },
   };

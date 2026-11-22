@@ -109,6 +109,7 @@ import './game/season.js'; // 철 이벤트 (#180 크리스마스)
 import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
 import './game/buddies.js'; // 동료 캐릭터 3명 (#172)
 import './game/give.js'; // 귤 주기 (#175): 다른 사람·동료에게
+import './game/deerpal.js'; // 노루 친구 (#247): 귤로 사귀기·따라다니기·타기·휘파람
 import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: 적·우두머리 후크를 감쌈)
 import './game/feel.js'; // 손맛 (#141): 콤보·피해 숫자·연속·진동 (level 뒤: 적 후크를 감쌈)
 import './game/ending.js'; // 엔딩 시네마틱 (#168)
@@ -139,6 +140,8 @@ import './game/summit.js'; // 정상 첫 실마리 (#208): 첫 장면·표지석
 import './game/mystery.js'; // 미스터리 장치 (#212): 되풀이되는 숫자 4:04·관리 초소 금고
 import './game/traces.js'; // 미스터리 장치 (#212): 발자국·크롭서클·뒤돌아보면·도감 '흔적'
 import './game/cases.js'; // 사건 파일 (#232): 사건 틀·사건 1 '정리하는 자'·사건 파일 창 (데이터 src/cases/)
+import './game/casesuit.js'; // 사건 3 대면 장면의 검은 양복 (#234)
+import './game/casefinale.js'; // 사건 파일 끝 '버리는 자' (#237): 다 종결 → 빨간 실이 하늘로 → 엔딩
 import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
 import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림

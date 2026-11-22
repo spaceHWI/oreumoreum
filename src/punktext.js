@@ -111,7 +111,9 @@ export const MUTTER_TEXT = {
   num404: '또 4시 4분이네.', // #212 4:04 를 여러 곳에서 본 뒤 한 번 (game/mystery.js)
   cropMid: '풀이 누웠네. 바람이 둥글게 불었나?', // #212 크롭서클 가운데 (game/traces.js)
   bigHeap: '다 치우면 뭐가 나올까. 바닥이라도.',
-  cave: '굼부리 한가운데서 찬바람. 한낮인데.', // #195 동굴 문이 열린 뒤 굼부리에서
+  cave: '굼부리 한가운데서 찬바람. 한낮인데.',
+  caseFin: '다섯 장 다… 하늘을 가리켜.', // #237 사건 파일 끝: 빨간 실이 다 이어진 뒤 (game/casefinale.js)
+  caseShort: '사진이 아직 모자라. 보드가 비었어.', // #237 정상 우두머리를 쫓았는데 사건이 덜 끝남 // #195 동굴 문이 열린 뒤 굼부리에서
   zoneTwo: '두 더미 남았다. 뭔가 솟는다던데.',
   bossQuiet: '너무 조용하다. 큰 놈이 나올 차례다.',
   bagHeavy: '어깨가 묵직하다. 클린하우스가 어디더라.',
@@ -278,8 +280,10 @@ export const TITLES = [
   // 사건 파일 (#232): 사건을 종결하면 (src/cases/c*.js title 과 같은 글, badge 'b-case-<id>')
   { t: '표지판 해독가', badge: 'b-case-c1' }, // #246 사건 1 '크롭서클' (옛 '까마귀와 같은 급' 자리)
   { t: '밤 근무 동기', badge: 'b-case-c2' },
+  { t: '못 본 걸로 한 사람', badge: 'b-case-c3' },
   { t: '설인의 후배', badge: 'b-case-c5' },
   { t: '호스를 본 사람', badge: 'b-case-c4' }, // #235 (멀티 번호가 바뀌지 않게 뒤에)
+  { t: '수석 조사관', badge: 'b-case-all' }, // #237 다섯 사건 종결 ('조사관' 한 벌, game/casefinale.js)
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');

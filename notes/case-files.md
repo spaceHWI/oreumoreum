@@ -64,6 +64,7 @@
 ### 끝. 버리는 자
 - 증거 사진 다섯 장이 수사 보드에 모이면 빨간 실이 저절로 이어지고, 다섯 장 모두 위쪽(하늘)을 가리킨다.
 - 정상에서 지금의 엔딩으로 이어진다. 엔딩 본문은 바꾸지 않는다.
+- 만든 것 (#237, `game/casefinale.js`): 사건을 다 종결 → 보드가 열리고 실이 이어진 뒤 핀마다 위쪽 밤하늘 띠로 한 줄 → 혼잣말 → 칭호 '수석 조사관' → 엔딩. 엔딩은 이 연출 뒤에만(이미 엔딩을 본 저장은 그대로). 한 벌 OUTFIT_SETS 'inv'. 검사 `node tools/casefin.js`
 
 ## 4. 성장·동선
 - 열림 레벨은 구역 진입 조건(ZONES.min)·권장 장비 점수와 맞춘다. 사건의 대면은 그 구역 권장 점수에서 깰 수 있어야 한다.
@@ -96,8 +97,14 @@
   - `notes` 증거·사진 쪽지(NOTES 모양: id·paper·t 14자·from·b 3줄 이내) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄). 대사 한 번에 두 줄 이내)
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
   - (#233) `face.follow { path [[x,z]…], near, end, speed, len }`: arena·boss 를 끝낸 뒤(저장 a 1) 흰 옷이 path 를 앞서 가고 끝자리 장면(`face.lines` 자막)까지 봐야 대면 끝 (game/casechase.js). `see.ghost` 목격 때 흰 옷이 스침·실제 밤엔 목격 자리 너머를 오감. `hello { <NPC id>: [말] }` 종결 뒤 그 NPC 인사에 더함. 퀘스트 보상에 `mats { m<구역>: n }` (장비 재료) 를 쓸 수 있음
+  - (#234) `see.blink: true` 면 사건이 열린 뒤(CASE.goneAfter 초) 목격 모양이 화면 밖으로 나가면 사라짐. arena·boss 대면에 `face { at, prop, label, actor, len, lines }` 를 주면 싸움 뒤 at 에 모양이 서고(save h 1) 다가가 F → 장면(배우 `late.caseActors[actor]` = { begin, tick, cam, end }, 본보기 `src/game/casesuit.js`) → 대면 끝.
 - 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게. 땅을 따라 휘는 판은 `userData.place(x, z)`, crop 처럼)
 - (#235 에서 더함) 싸움 뒤 장면: `face { kind: 'arena'|'boss', scene: '<이름>', tint: 'mist', at, prop, label, len, lines }` 면 싸움을 끝낸 뒤 face.at 에서 상호작용해 장면을 봐야 대면이 끝남. 장면은 `caseprops.js` SCENES(begin·tick·cam·end). `see.gone: true` 면 대면 뒤 목격 모양을 치움. 증거 `z` 는 일부러 다른 구역에 둔 것(검사 구역). 퀘스트 보상 `mats: { m5: 3 }` 다음 구역 재료. 사건 4 `c4.js` 가 본보기
 - 사건의 마지막 퀘스트 보상을 받으면 종결(수사 보드에 사진·핀·빨간 실, 도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
 - 수사 보드(`#case-file`): 코르크판에 사진 자리 다섯. 종결 → 사진에 핀, 핀끼리 빨간 실(마지막 핀에서 다음 빈 자리로 점선). 진행 중 → '?' 사진·미해결. 사진을 누르면 아래에 목격·증거 셋·사진 칸, 칸을 누르면 쪽지. 메뉴 ☰ → 사건 파일, 쪽지 창 아래 사건 파일 단추
+- Tripo 모델 (#262, `src/casemodels.js`): `caseModel(이름)` → `{ root, play(모션, { once }), update(dt), lookAt(위치|null), near(on), attach(뼈, 물체, 모델 좌표), bones, done, flash }`. root 에 크기(`CASE_MODELS.scale`)가 들어 있으니 이름표 같은 건 바깥 묶음에 붙인다. 받기·멀리용 바꾸기는 그려질 때 저절로(처음 화면에 들면 멀리용 1,500 삼각형, 카메라 `CASE_MODELS.near` 안이면 큰 모델). 장면처럼 곧 가까이 볼 땐 `near(true)` 로 미리 받음
+  - 이름·모션: `yeti` idle·breathe·tie·sit·lookback·walk(무거운 걸음)·wave (겹치기 `'sit+tie'`) · `mib` idle·stand·talk(아주 조금 끄덕)·walk(종종걸음) + `lookAt(플레이어)` 고개만 · `ghost-keeper` idle·walk/glide(위아래 흔들림 없이)·pinch(집게질)·lookback · `arena-keeper` idle·wave(망고 든 손)·gong(징 채)·offer(망고 내밀기) · `photographer` idle(카메라를 눈에)·shoot(번쩍: `flash` 0~1)·beckon · `hose` idle/wriggle·spew(부르르)·rise·sink(`{ once: true }`, 끝나면 `done`)
+  - 쓰는 곳: 사건 5 설인(caseprops.js yeti) · 사건 2 흰 옷(casechase.js) · 사건 4 안개 속 긴 목(caseprops.js neck, 호스를 26배로) · 서바이벌 터 좌판 터지기(game/token.js, 다가오면 손 흔들고 좌판 앞이면 망고 내밂) · 정상 사진사(photographer.js). 사건 3 검은 양복(#234)은 그 이슈에서 `caseModel('mib')` 로 쓴다(사건 데이터 prop 이면 caseprops.js B 에 `mib() { const m = caseModel('mib'); … return m.root; }` 처럼, 움직이면 그 모양의 userData.tick 에서 `m.update(dt)`)
+  - 한 덩어리 모델이라 팔을 크게(1.5 라디안 넘게) 들면 옆구리·앞치마가 늘어난다. 모션은 작게. 검사 `node build.mjs && node tools/casemodels.js` (한 줄에 세워 받기·그리는 수·모션, 찍은 것 notes/shots/262)
+  - 새 모델 더하기: `python3 model/bake-case.py <원본.glb> <삼각형> <텍스처> <LOD 삼각형> <LOD 텍스처> <출력.glb> <LOD.glb>` → `node model/extract-prop.js <출력.glb> src/model-case-<이름>.js <이름 대문자>_M "<설명>" 78` (LOD 는 `_LO`, 75) → `tools/packassets.mjs` 의 사건 목록에 이름 → `casemodels.js` RIG(뼈 자리·손에 든 것)·MOVES. 뼈 자리는 정점 분포를 앞·옆으로 찍어 보며 정함. 뒤에 올 `mango-stall`(좌판 400~1,500)·`gong`(맞으면 흔들림)·`chute`(뚜껑 열림·닫힘)·`mango`(200)도 같은 길(소품은 뼈 없이 propMesh 로도 됨)
 - 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 옛 판 저장, 목격 → 증거(위에서 찍기) → 대면(떨어지는 모양) → 증거 사진 → 종결 → 수사 보드(사진·핀·실) → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`

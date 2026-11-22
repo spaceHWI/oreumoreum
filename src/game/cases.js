@@ -8,6 +8,8 @@
 //    대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(dawn 새벽빛, drop 모양이 목격 자리 가운데로 '툭') → 증거 사진 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
 //    arena·boss 는 사건을 연 뒤 그 구역 서바이벌 한 판(save.swarm.won[구역].at)·우두머리(save.boss.done[구역])가 늘면 끝
 //    face.follow 가 있으면 그 뒤 흰 옷을 끝까지 따라가 장면을 봐야 끝 (#233 사건 2, game/casechase.js. 터를 버티면 a 1)
+//    face.actor·lines 가 있으면(#234 사건 3) 늘어난 뒤 face.at 에 모양이 서고(save h 1), 다가가 상호작용하면 장면(같은 cine 틀, 배우는 late.caseActors[actor]) → 끝나면 대면 끝
+//    see.blink: 사건이 열린 뒤 목격 모양이 화면 밖으로 나가면 사라짐(뒤돌아보면 없다, #234)
 //    face.scene 이 있으면(#235) arena·boss 를 끝낸 뒤 face.at 에서 상호작용 → 그 장면(caseprops.js SCENES, 숨어 보기 틀을 빌려 씀)을 봐야 끝. face.tint 장면 빛('dusk' 기본·'mist')
 //    see.gone 이 있으면 대면을 끝낸 뒤 목격 모양을 치움
 // 5. 종결: 사건의 마지막 퀘스트 보상을 받으면(game/quest.js late.questGave) '종결' 도장 + 칭호(late.titles.give) + 업적
@@ -52,7 +54,7 @@ function S(id) {
   s.w = Number.isFinite(+s.w) && +s.w > 0 ? +s.w : 0;
   const ids = new Set((c?.ev || []).map((e) => e.id));
   s.ev = Array.isArray(s.ev) ? s.ev.filter((e, i, a) => ids.has(e) && a.indexOf(e) === i) : [];
-  s.f = s.f ? 1 : 0; s.a = s.a ? 1 : 0; s.r = s.r || s.f ? 1 : 0; /* r: 대면 조건을 채움 (watch 사건은 그 뒤 다가가 보기 장면, #236) */
+  s.f = s.f ? 1 : 0; s.a = s.a ? 1 : 0; s.h = s.h || s.f ? 1 : 0; s.r = s.r || s.f ? 1 : 0; /* r: 대면 조건을 채움 (watch 사건은 그 뒤 다가가 보기 장면, #236) */
   if (!isObj(s.base)) s.base = {};
   return s;
 }
@@ -63,6 +65,7 @@ function dropOld(c) { /* 옛 판 쪽지를 주운 쪽지·안 읽음에서 뺌 *
   persist();
 }
 const lv = () => { try { return levelOf(save.lv?.xp || 0).lv; } catch { return 1; } };
+const sceneFace = (c) => c.face?.kind !== 'hide' && !!c.face?.actor && !!c.face?.at; /* 싸움 뒤 장면 (#234) */
 const isOpen = (id) => !!CASE_BY[id] && !!S(id).w;
 const anyOpen = () => CASES.some((c) => isOpen(c.id));
 const closed = (c) => !!caseLastQuest(c) && quests.isDone(caseLastQuest(c));
@@ -81,6 +84,7 @@ function faceDone(c) {
   if (hit && evAll(c)) {
     if (c.face.watch) { if (!s.r) { s.r = 1; persist(); late.questTrackDirty?.(true); } return false; } /* 다가가 보기 장면이 끝나면 (#236) */
     if (c.face.follow) { if (!s.a) { s.a = 1; persist(); chase?.start(c); } return false; } /* 따라가기 장면이 끝나면 chaseDone */
+    if (sceneFace(c)) { if (!s.h) { s.h = 1; persist(); late.questTrackDirty?.(true); } return false; } /* 다가가 장면을 봐야 끝 (#234) */
     if (c.face.scene) { if (!s.r) { s.r = 1; persist(); late.questTrackDirty?.(true); say('quest', 'case-scene:' + c.id, `${c.name} · ${c.face.label || '살펴보기'} 자리로`, 3, { ttl: 40 }); } return false; } /* #235 장면 자리에서 상호작용 */
     s.f = 1; persist(); gotDoc(c); return true;
   }
@@ -108,7 +112,7 @@ function place(c, kind, at, prop, e = null, show) {
 const spots = {}; // id → { see, ev: { id: pos }, face, drop: obj }
 if (ON) for (const c of CASES) {
   const sp = spots[c.id] = { ev: {} };
-  const see = place(c, 'see', c.see.at, c.see.prop, null, () => (lv() >= c.lv || isOpen(c.id)) && !(c.see.gone && S(c.id).f)); sp.seeRoot = see?.root || null; sp.see = see?.pos || v3(...c.see.at);
+  const see = place(c, 'see', c.see.at, c.see.prop, null, () => (lv() >= c.lv || isOpen(c.id)) && !(c.see.gone && S(c.id).f) && !(c.see.blink && see?.left)); sp.seeRoot = see?.root || null; sp.see = see?.pos || v3(...c.see.at);
   if (c.trail?.pts && late.caseFoot) { const im = late.caseFoot(c.trail.pts, c.trail.size, c.trail.step); objs.push({ c, kind: 'trail', root: im, pos: v3(...c.trail.pts[Math.floor(c.trail.pts.length / 2)]), show: () => lv() >= c.lv || isOpen(c.id) }); } /* 발자국 한 줄 (#236) */
   for (const e of c.ev) {
     if (e.kind === 'act' || !e.at) continue;
@@ -117,7 +121,9 @@ if (ON) for (const c of CASES) {
       when: () => isOpen(c.id) && !evGot(c, e) && !run && !state.cine && !late.tut?.active, act: () => takeEv(c, e) });
   }
   if (c.face?.at) {
-    const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id) && (!c.face.watch || !!S(c.id).r)); sp.face = o?.pos || v3(...c.face.at); sp.faceObj = o;
+    const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, sceneFace(c) ? () => isOpen(c.id) && !!S(c.id).h && !S(c.id).f && !run : () => isOpen(c.id) && (!c.face.watch || !!S(c.id).r)); sp.face = o?.pos || v3(...c.face.at); sp.faceObj = o;
+    if (sceneFace(c)) interactables.push({ label: c.face.label || '다가가기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6,
+      when: () => isOpen(c.id) && !!S(c.id).h && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginActor(c) });
     if (c.face.watch) interactables.push({ label: c.face.label || '다가가 보기', ic: 'eye', pos: sp.face, r: CASE.r + 3, /* 대면 조건 뒤 장면 (#236) */
       when: () => isOpen(c.id) && S(c.id).r && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginWatch(c) });
     if (c.face.scene) interactables.push({ label: c.face.label || '살펴보기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6, /* 싸움 뒤 장면 (#235) */
@@ -218,6 +224,15 @@ function beginHide(c) {
   const tint = run.tint; if (tint === 'mist') requestAnimationFrame(() => cine.classList.add('mist')); else if (tint) setTimeout(() => { if (run?.mode === 'hide') cine.classList.add(tint); }, 300);
   return true;
 }
+/* 대면 장면의 배우 (#234 사건 3): late.caseActors[c.face.actor] = { begin(run, sp, c), tick(run, dt), cam(run, dt, { camTarget, ease, height }), end(run) } */
+const actorOf = (c) => (c.face?.actor && late.caseActors?.[c.face.actor]) || null;
+function beginActor(c) {
+  const A = actorOf(c); if (!A || state.cine || run) return false;
+  if (fightNow()) { toast('지금은 다가갈 때가 아니에요 · 싸움부터', 2.4); return false; }
+  startRun({ mode: 'actor', c, A, len: c.face.len || 9 }); A.begin(run, spots[c.id], c);
+  return true;
+}
+const endActor = (r) => { if (r.mode === 'actor') try { r.A.end?.(r); } catch { /* 배우 정리 실패는 넘어감 */ } };
 // 대면 watch (#236 사건 5): 대면 조건(우두머리 등)을 채운 뒤 face 자리에서 상호작용 → 뒤에서 조용히 다가가 봄. 모양(prop)의 userData.anim(u) 이 장면을 움직임
 function beginWatch(c) {
   if (state.cine || run) return false;
@@ -234,6 +249,7 @@ function stopRun() {
   if (!run) return;
   const r = run; run = null; if (state.cine === r) state.cine = null;
   if (r.sc) r.sc.end(r.st, r.ctx);
+  endActor(r);
   camera.fov = r.fov; camera.updateProjectionMatrix();
   cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine');
   if (player.pose === 'crouch') player.pose = 'move';
@@ -247,6 +263,7 @@ function stopRun() {
 }
 { const prev = late.cineCam; late.cineCam = (dt) => { if (run && state.cine === run) runCam(dt); else prev?.(dt); }; }
 function runCam(dt) {
+  if (run.mode === 'actor') { run.A.cam(run, dt, { camTarget, ease, height }); return; } /* #234 */
   if (run.sc?.cam) { const v = run.sc.cam(run.st, run.u, run.len, run.ctx); camTarget.pos.copy(v.pos); camTarget.look.copy(v.look); ease(dt, run.snap && !(run.snap = false), 2.4); return; } /* #235 */
   const sp = spots[run.c.id], mid = sp.see;
   if (run.mode === 'watch') { /* 쪼그린 나의 어깨 뒤에서 흰 등을 봄 (#236) */
@@ -267,13 +284,14 @@ function runCam(dt) {
 }
 function tickRun(dt) {
   const r = run; if (!r) return;
-  if (state.cine !== r) { run = null; if (r.sc) r.sc.end(r.st, r.ctx); cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine'); director.end('case:' + r.c.id); return; }
+  if (state.cine !== r) { run = null; if (r.sc) r.sc.end(r.st, r.ctx); endActor(r); cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine'); director.end('case:' + r.c.id); return; }
   r.u += dt; const u = r.u, T = r.len;
   if (r.mode === 'view') { if (u >= T) stopRun(); return; }
   const L = r.c.face.lines || [];
   skBtn.hidden = u < CASE.face.skipAfter;
   const li = Math.min(L.length - 1, Math.floor(u / (T / Math.max(1, L.length))));
   if (li !== r.li && L[li]) { r.li = li; lineEl.classList.remove('on'); void lineEl.offsetWidth; lineEl.textContent = L[li]; lineEl.classList.add('on'); }
+  if (r.mode === 'actor') { r.A.tick?.(r, dt); if (u >= T) stopRun(); return; } /* #234 */
   if (r.sc) { r.sc.tick(r.st, u, T, r.ctx); if (r.tint === 'mist' && u > T * 0.18) cine.classList.add('clear'); if (u >= T) stopRun(); return; } /* #235 */
   if (r.mode === 'watch') spots[r.c.id].faceObj?.root.userData.anim?.(Math.min(1, u / T), u);
   // 떨어지는 모양: fall0 부터 0.8초 동안 위에서 가운데로 (떨어뜨린 것은 보이지 않음), 닿으면 '툭'
@@ -321,7 +339,8 @@ function board() { // 코르크판: 사건마다 사진 자리 하나. 종결 �
     pics.push(`<button type="button" class="cf-pic${done ? ' done' : ''}${sel === c.id ? ' sel' : ''}" style="${r}" data-n="${n}" data-case="${c.id}" aria-label="${esc(c.name)}">${done ? '<i class="cf-pin"></i>' : ''}`
       + `${ph ? `<img src="${ph}" alt="" draggable="false">` : '<span class="cf-ph">?</span>'}<span>${esc(c.name)}</span><span class="cf-st ${done ? 'done' : 'open'}">${done ? '종결' : '미해결'}</span></button>`);
   }
-  return `<div class="cf-board"><div class="cf-pics">${pics.join('')}</div><svg class="cf-thread" aria-hidden="true"></svg></div>`;
+  const up = !!late.caseFin?.up?.(); /* #237 사건을 다 끝냄: 실이 위(하늘)를 가리킴 (game/casefinale.js) */
+  return `<div class="cf-board${up ? ' up' : ''}">${up ? '<i class="cf-sky"></i>' : ''}<div class="cf-pics">${pics.join('')}</div><svg class="cf-thread" aria-hidden="true"></svg></div>`;
 }
 function detail(c) { // 펼친 사건: 목격·증거 셋·사진 칸 (칸을 누르면 쪽지)
   const done = closed(c);
@@ -351,7 +370,11 @@ function thread() { // 빨간 실: 종결된 사진의 핀을 차례로 잇고, 
     const last = +done[done.length - 1].dataset.n, empty = [...bd.querySelectorAll('.cf-pic:not(.done)')], nx = empty.find((e) => +e.dataset.n > last) || empty[0];
     if (nx) loose = sag(pins[pins.length - 1], at(nx));
   }
-  svg.innerHTML = (d ? `<path d="${d.trim()}"/>` : '') + (loose ? `<path class="loose" d="${loose}"/>` : '');
+  const A = late.caseFin?.anim?.(), cut = (k) => (A ? ` pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="${(1 - k).toFixed(3)}"` : ''); /* #237 실이 이어지는 연출 */
+  let ups = '';
+  if (bd.classList.contains('up') || A) { const top = [B.width / 2, 12]; /* 위쪽 하늘 띠 (.cf-sky) */ ups = pins.map((p) => `<path class="up" d="M${p[0].toFixed(1)} ${p[1].toFixed(1)} L${top[0].toFixed(1)} ${top[1]}"${cut(A ? A.up : 1)}/>`).join(''); }
+  svg.innerHTML = (d ? `<path d="${d.trim()}"${cut(A ? A.thread : 1)}/>` : '') + (loose && !ups ? `<path class="loose" d="${loose}"/>` : '') + ups;
+  if (A) requestAnimationFrame(thread);
 }
 addEventListener('resize', () => { if (!win.hidden) requestAnimationFrame(thread); });
 $('case-file-body').addEventListener('click', (e) => {
@@ -371,15 +394,23 @@ syncBtns();
 
 /* ---------- 매 프레임 ---------- */
 let chkT = 0, animT = 0;
+const fwd = new THREE.Vector3();
+function seeGone(o, px, pz) { // 목격 모양이 나를 봄 · 사건이 열린 뒤 화면 밖(시야 반각 55도 밖)이면 사라짐
+  o.root.rotation.y = Math.atan2(px - o.pos.x, pz - o.pos.z);
+  if (!isOpen(o.c.id) || state.cine || Date.now() - S(o.c.id).w < CASE.goneAfter * 1000) return; /* 혼잣말을 할 동안은 서 있음 */
+  camera.getWorldDirection(fwd); const dx = o.pos.x - camera.position.x, dz = o.pos.z - camera.position.z, L = Math.hypot(dx, dz) || 1;
+  if ((fwd.x * dx + fwd.z * dz) / (L * (Math.hypot(fwd.x, fwd.z) || 1)) < Math.cos(55 * Math.PI / 180)) { o.left = true; o.root.visible = false; }
+}
 const animObjs = objs.filter((o) => o.root.userData.tick);
 function tickCases(dt) {
   state.ticks.cases++;
+  late.caseFin?.tick(dt); /* 사건 파일 끝 (#237, game/casefinale.js) */
   if (run) tickRun(dt);
   if (chase) chase.tick(dt, CASES);
   animT += dt; for (const o of animObjs) if (o.root.visible && !o.root.userData.hold) o.root.userData.tick(animT, dt); /* 움직이는 모양 (neck 등) */
   if (!ON || (chkT -= dt) > 0) return; chkT = CASE.seeT;
   const px = player.pos.x, pz = player.pos.z, far2 = CASE.far * CASE.far;
-  for (const o of objs) { const vis = (o.pos.x - px) ** 2 + (o.pos.z - pz) ** 2 < far2 && !state.cave && !!o.show(); if (o.root.visible !== vis && !o.root.userData.hold) o.root.visible = vis; }
+  for (const o of objs) { const vis = (o.pos.x - px) ** 2 + (o.pos.z - pz) ** 2 < far2 && !state.cave && !!o.show(); if (o.root.visible !== vis && !o.root.userData.hold) o.root.visible = vis; if (vis && o.kind === 'see' && o.c.see.blink) seeGone(o, px, pz); }
   if (!state.sessionOn || late.tut?.active || state.cave || state.cine || panelOpen()) return;
   for (const c of CASES) {
     const s = S(c.id);
@@ -398,7 +429,7 @@ late.cases = {
   objs: () => objs.map((o) => ({ id: o.c.id, kind: o.kind, ev: o.e?.id || null, vis: o.root.visible })),
   open: (id = 'c1') => openCase(CASE_BY[id]), take: (id, eid) => { const c = CASE_BY[id], e = c?.ev.find((x) => x.id === eid); if (e) takeEv(c, e); return evN(c); },
   arena: (z) => SWARM.arena?.at?.[z] || null, scene: () => run?.sc && { name: run.c.face.scene, shown: !!run.st?.h?.visible, u: +run.u.toFixed(1) },
-  busy: () => fightNow(), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
+  busy: () => fightNow(), still: () => fightNow() || !!run || !!chase?.state?.()?.chase, isClosed: (id) => !!CASE_BY[id] && closed(CASE_BY[id]), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
   hide: (id = 'c1') => beginHide(CASE_BY[id]), watch: (id = 'c5') => beginWatch(CASE_BY[id]), stop: stopRun, view: () => run?.mode || null, jump: (u) => { if (run) run.u = u; },
   file: openFile, fileOpen: () => !win.hidden, build, html: () => $('case-file-body').innerHTML,
   reset: (id = 'c1') => { if (isObj(save.cases)) delete save.cases[id]; persist(); syncBtns(); },

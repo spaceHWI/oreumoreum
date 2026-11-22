@@ -3,17 +3,19 @@
 // - crop: 풀이 둥글게 누운 무늬(#212 크롭서클 그림, 땅을 따라 휨. userData.place(x, z) 로 놓음) · dent: 무늬 가운데 눌린 자국 · rock: 올라서서 찍는 바위
 // - paper: 돌에 눌린 쪽지 · bush: 숨을 수풀 · heap: 떨어지는 더미(자루·캔)
 // 사건 2 (#233): wall 돌담 조각 · rag 흰 천이 걸린 낮은 돌담 · gone 더미가 있던 반듯한 빈자리 · line 빨랫줄의 흰 작업복과 메모
-// - 사건 5: print 큰 발자국 · fur 흰 털 뭉치 · knots 묶인 봉지 셋 · yeti 앉아 봉지를 묶는 설인(userData.anim)
-// - (사건 4, #235) neck: 안개 속 긴 목 그림자(원통 몇 개, 솟았다 내려감) · rings: 같은 크기 둥근 자국들 · post: 둘레의 관찰 말뚝 · log: 초소 일지(받침에 얹은 공책)
+// 사건 3 (#234): suits 능선에 선 검은 양복 둘(MYST.back 실루엣) · suit 하나(대면 자리) · prints 맨발 자국 두 쌍(발가락 넷) · notebook 떨어진 검은 수첩 · gyulbox 두고 간 귤 상자와 쪽지
+// - 사건 5: print 큰 발자국 · fur 흰 털 뭉치 · knots 묶인 봉지 셋 · yeti 앉아 봉지를 묶는 설인(userData.anim, Tripo 모델 #262)
+// - (사건 4, #235) neck: 안개 속 긴 목 그림자(Tripo 호스 모델 #262, 솟았다 내려감·꿈틀) · rings: 같은 크기 둥근 자국들 · post: 둘레의 관찰 말뚝 · log: 초소 일지(받침에 얹은 공책)
 // 모양의 root.userData.tick(t, dt) 가 있으면 보이는 동안 game/cases.js 가 매 프레임 부름. 대면 장면은 아래 SCENES (game/cases.js 가 face.scene 이름으로 씀)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
 import { LOW } from '../gfx2.js';
-import { CASE } from '../balance.js';
+import { CASE, MYST } from '../balance.js';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
 import { cropTex } from '../croptex.js';
+import { caseModel } from '../casemodels.js';
 
 const MATS = {};
 const tm = (c) => (MATS[c] ||= new THREE.MeshToonMaterial({ color: c, gradientMap: gradHard }));
@@ -26,6 +28,16 @@ function lump(parts, color) {
   const mesh = new THREE.Mesh(mergeGeometries(gs), tm(color)); gs.forEach((g) => g.dispose());
   mesh.castShadow = !LOW; mesh.receiveShadow = true; return mesh;
 }
+// 검은 양복 실루엣 (뒤돌아보면 figure 와 같은 모양·색, 칼라만 흰 V)
+function silh(x) {
+  const H = MYST.back.h, g = new THREE.Group(), mat = (SIL ||= new THREE.MeshBasicMaterial({ color: '#1a1d20' }));
+  const gs = [[new THREE.CylinderGeometry(0.16, 0.3, H * 0.62, 7), 0, H * 0.31, 0], [new THREE.SphereGeometry(0.34, 10, 8), 0, H * 0.62 + 0.36, 0, 0, 0, 0, 1, 1.25, 0.9],
+    [new THREE.CylinderGeometry(0.05, 0.04, H * 0.5, 5), -0.26, H * 0.38, 0, 0, 0, -0.12], [new THREE.CylinderGeometry(0.05, 0.04, H * 0.5, 5), 0.26, H * 0.38, 0, 0, 0, 0.12]];
+  const body = lump(gs, '#1a1d20'); body.material = mat; body.castShadow = false; g.add(body);
+  g.add(lump([[new THREE.ConeGeometry(0.07, 0.2, 3), 0, H * 0.56, 0.2, Math.PI, 0, 0]], '#f2efe6'));
+  g.position.x = x; return g;
+}
+let SIL = null;
 const B = {
   crop() { // 무늬: 지름 2 판을 CASE.crop.r 로 키워 땅을 따라 휨 (흐린 풀빛, 그림자 없음)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, LOW ? 10 : 16, LOW ? 10 : 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: cropTex(), transparent: true, opacity: CASE.crop.op, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
@@ -80,6 +92,33 @@ const B = {
     g.add(lump([[new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), 1.05, 0.45, 0.15, 0, 0, 0.25], [new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), 1.11, 0.45, 0.15, 0, 0, 0.18]], '#8a8f96'));
     return g;
   },
+  suits() { // 검은 양복 둘 (뒤돌아보면의 실루엣 모양 그대로, game/traces.js figure). 1.4m 떨어져 나란히
+    const g = new THREE.Group(); g.add(silh(-0.7), silh(0.7)); return g;
+  },
+  suit() { return silh(0); },
+  prints() { // 두 사람이 꼭 같은 자리에 선 맨발 자국 두 쌍 (구두 자국이 아님, 발가락 넷)
+    const parts = [];
+    for (const px of [-0.7, 0.7]) for (const k of [-1, 1]) {
+      const x = px + k * 0.13;
+      parts.push([new THREE.CircleGeometry(0.1, 9), x, 0.03, 0, -Math.PI / 2, 0, 0, 0.8, 1.45, 1]);
+      for (let t = 0; t < 4; t++) parts.push([new THREE.CircleGeometry(0.03, 6), x + (t - 1.5) * 0.045, 0.031, -0.19 - Math.abs(t - 1.5) * -0.012, -Math.PI / 2, 0, 0]);
+    }
+    return lump(parts, '#3b3328');
+  },
+  notebook() { // 떨어진 검은 수첩 (펼쳐짐)
+    const g = new THREE.Group();
+    g.add(lump([[new THREE.BoxGeometry(0.34, 0.025, 0.22), 0, 0.02, 0, 0, 0.5, 0]], '#1c1e22'));
+    g.add(lump([[new THREE.PlaneGeometry(0.15, 0.2), -0.07 * Math.cos(0.5), 0.035, 0.07 * Math.sin(0.5), -Math.PI / 2, 0, 0.5], [new THREE.PlaneGeometry(0.15, 0.2), 0.07 * Math.cos(0.5), 0.035, -0.07 * Math.sin(0.5), -Math.PI / 2, 0, 0.5]], '#efe6cf'));
+    return g;
+  },
+  gyulbox() { // 바위 곁에 두고 간 귤 상자 (위에 귤, 앞에 쪽지)
+    const g = new THREE.Group();
+    g.add(lump([[new THREE.BoxGeometry(0.6, 0.32, 0.42), 0, 0.16, 0]], '#c89a5e'));
+    g.add(lump([0, 1, 2, 3, 4, 5].map((i) => [new THREE.IcosahedronGeometry(0.075, 1), -0.2 + (i % 3) * 0.2, 0.36, (i < 3 ? -0.09 : 0.09)]), '#f29a2e'));
+    g.add(lump([[new THREE.PlaneGeometry(0.2, 0.13), 0, 0.17, 0.215, 0, 0, 0.06]], '#f4ecd8'));
+    g.add(lump([[new THREE.DodecahedronGeometry(0.42, 0), -0.62, 0.25, -0.1, 0, 0, 0, 1, 0.8, 1]], '#4a4744'));
+    return g;
+  },
   heap() { // 더미: 흰 자루 셋·푸른 자루 하나·빨간 캔 둘
     const g = new THREE.Group();
     g.add(lump([[0, 0, 0.42], [0.5, 0.2, 0.34], [-0.4, 0.3, 0.32]].map(([x, z, r]) => [new THREE.IcosahedronGeometry(r, 0), x, r * 0.8, z, 0, x, 0, 1, 0.85, 1]), '#eceff1'));
@@ -102,12 +141,9 @@ const B = {
     return lump(at.flatMap(([x, s, z]) => [[new THREE.IcosahedronGeometry(s, 1), x, s * 0.85, z, 0, x, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.13, 0), x, s * 1.75, z], [new THREE.ConeGeometry(0.08, 0.22, 5), x + 0.1, s * 1.92, z, 0, 0, -0.9], [new THREE.ConeGeometry(0.08, 0.22, 5), x - 0.1, s * 1.92, z, 0, 0, 0.9]]), '#9fabb3');
   },
   yeti() { // 사건 5 대면: 더미 앞에 앉아 봉지를 묶는 흰 털 덩어리. 등(+z)이 다가오는 쪽, 앞(-z)에 작은 더미·묶는 봉지, 옆(-x)에 묶은 봉지 무더기
-    // userData.anim(u): 0~1 장면 진행 (팔이 묶고, 더미 조각이 하나씩 없어지고, 봉지가 하나씩 쌓이고, 끝에 한 손을 듦). 장면 밖에서는 anim(1) 로 끝 모습
-    const g = new THREE.Group(), W = '#f1efe8';
-    g.add(lump([[new THREE.SphereGeometry(0.95, 10, 8), 0, 0.95, 0, 0, 0, 0, 1.05, 1.0, 0.9], [new THREE.SphereGeometry(0.55, 9, 7), 0, 2.05, -0.12, 0, 0, 0, 1, 1.05, 0.95], [new THREE.SphereGeometry(0.4, 8, 6), -0.5, 0.32, -0.6, 0, 0, 0, 1, 0.7, 1.4], [new THREE.SphereGeometry(0.4, 8, 6), 0.5, 0.32, -0.6, 0, 0, 0, 1, 0.7, 1.4],
-      ...[[-0.45, 1.55, 0.72], [0.4, 1.6, 0.72], [0, 1.2, 0.86], [-0.2, 2.35, 0.32], [0.22, 2.3, 0.33]].map(([x, y, z]) => [new THREE.ConeGeometry(0.13, 0.3, 5), x, y, z, 1.2, 0, x * 0.5])], W)); /* 몸·머리·무릎, 등 쪽으로 누운 털끝 (얼굴은 없음: 늘 뒷모습) */
-    const arm = (k) => { const a = new THREE.Group(); a.position.set(k * 0.82, 1.45, -0.2); a.add(lump([[new THREE.CapsuleGeometry(0.2, 0.8, 3, 7), 0, -0.45, 0], [new THREE.SphereGeometry(0.24, 7, 5), 0, -0.95, 0]], W)); g.add(a); return a; };
-    const arms = [arm(-1), arm(1)];
+    // userData.anim(u): 0~1 장면 진행 (설인 모델이 앉아 묶고(sit+tie), 더미 조각이 하나씩 없어지고, 봉지가 하나씩 쌓이고, 끝에 한 손을 듦). 장면 밖에서는 anim(1) 로 끝 모습
+    const g = new THREE.Group();
+    const Y = caseModel('yeti'); Y.root.rotation.y = Math.PI; Y.play('sit+breathe'); Y.update(0); g.add(Y.root); /* Tripo 설인 (#262, casemodels.js). 모델 앞(+z)이 더미 쪽(-z)을 보게 */
     const tying = lump([[new THREE.IcosahedronGeometry(0.42, 1), 0, 0.42, -1.25, 0, 0, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.12, 0), 0, 0.92, -1.25]], '#9fabb3'); g.add(tying);
     const junk = [[-0.5, -1.9, '#b9c0c6', 0], [0.1, -2.05, '#4f9a6a', 1], [0.55, -1.75, '#c89a5e', 2], [-0.15, -1.6, '#d0453a', 0], [0.35, -2.25, '#b9c0c6', 1], [-0.6, -2.3, '#3a78c0', 2]].map(([x, z, c, k]) => {
       const geo = k === 0 ? new THREE.CylinderGeometry(0.09, 0.09, 0.24, 7) : k === 1 ? new THREE.CylinderGeometry(0.08, 0.1, 0.34, 7) : new THREE.BoxGeometry(0.3, 0.2, 0.24);
@@ -116,13 +152,14 @@ const B = {
     const pile = lump([[0, 0], [0.75, 0.1], [0.35, 0.7], [1.1, 0.75]].flatMap(([dx, dz], i) => [[new THREE.IcosahedronGeometry(0.42, 1), -1.9 - dx, 0.38 + (i === 3 ? 0.62 : 0), -0.4 + dz, 0, i, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.12, 0), -1.9 - dx, 0.85 + (i === 3 ? 0.62 : 0), -0.4 + dz]]), '#9fabb3'); g.add(pile);
     const bags = [[-1.55, 0.95, 0.6], [-2.3, 1.0, 0.55], [-1.95, 1.62, 0.15]].map(([x, y, z]) => { const m = lump([[new THREE.IcosahedronGeometry(0.4, 1), 0, 0, 0, 0, x, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.12, 0), 0, 0.44, 0]], '#9fabb3'); m.position.set(x, y - 0.6, z - 0.4); g.add(m); return m; });
     const sm = (a, b, u) => { const t = Math.max(0, Math.min(1, (u - a) / (b - a))); return t * t * (3 - 2 * t); };
+    let lastT = 0;
     g.userData.anim = (u, t = 0) => {
-      const tie = sm(0.08, 0.14, u) * (1 - sm(0.78, 0.84, u)), wob = Math.sin(t * 11) * 0.22 * tie;
-      arms[0].rotation.set(-1.15 * tie - 0.1 + wob, 0, 0.35 * tie + 0.08); arms[1].rotation.set(-1.15 * tie - 0.1 - wob, 0, -0.35 * tie - 0.08);
-      const wave = sm(0.86, 0.92, u) * (u < 1 ? 1 : 0); arms[1].rotation.x -= wave * 1.9; arms[1].rotation.z -= wave * (0.5 - Math.sin(t * 6) * 0.25); /* 끝에 뒤돌아보지 않고 한 손만 듦 */
+      const tie = sm(0.08, 0.14, u) * (1 - sm(0.78, 0.84, u)), wave = sm(0.86, 0.92, u) * (u < 1 ? 1 : 0); /* 끝에 뒤돌아보지 않고 한 손만 듦 */
+      Y.near(u < 1); Y.play(wave > 0.5 ? 'sit+wave' : tie > 0.5 ? 'sit+tie' : 'sit+breathe');
+      const dt = Math.min(0.1, Math.max(0, t - lastT)); lastT = t; Y.update(u < 1 ? dt : 1);
       junk.forEach((m, i) => { m.visible = u < 0.2 + i * 0.09; });
       bags.forEach((m, i) => { const k = sm(0.3 + i * 0.16, 0.38 + i * 0.16, u); m.visible = k > 0; m.position.y = [0.95, 1.0, 1.62][i] - 0.6 + (1 - k) * 0.5; });
-      tying.visible = u < 0.8; g.rotation.z = Math.sin(t * 2.2) * 0.012;
+      tying.visible = u < 0.8;
     };
     g.userData.anim(1);
     return g;
@@ -130,23 +167,19 @@ const B = {
 };
 /* ---------- 사건 4 '굼부리 괴물' (#235) ---------- */
 const fogMat = () => (MATS.fog ||= new THREE.MeshBasicMaterial({ color: '#e9ecef', transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide }));
-// 목: 아래가 굵고 위로 가늘어지는 원통 마디(조금씩 휨) + 끝에 비스듬한 '머리'(실은 호스 주둥이). 한 덩어리, 색은 안개에 묻히는 짙은 회색
-function neckParts(n, seg, r0, r1, bend) {
-  const parts = []; let x = 0, y = 0, a = 0;
-  for (let i = 0; i < n; i++) { const r = r0 + (r1 - r0) * (i / n), da = bend * (i / n); a = da; parts.push([new THREE.CylinderGeometry(r * 0.94, r, seg, 8, 1, true), x, y + seg / 2, 0, 0, 0, -a]); x += Math.sin(a) * seg; y += Math.cos(a) * seg; }
-  return { parts, top: [x, y, a] };
-}
+const NECK_S = 26; // 호스 모델(높이 0.86) → 약 22m
 B.neck = () => {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const { parts, top } = neckParts(9, 2.6, 1.15, 0.9, 0.5);
-  parts.push([new THREE.CylinderGeometry(1.5, 1.0, 2.2, 8), top[0] + 0.9, top[1] + 0.2, 0, 0, 0, -top[2] - 1.0]);
-  const m = lump(parts, '#3d4247'); m.castShadow = false; body.add(m);
+  /* #262: 긴 목 = Tripo 호스(casemodels.js 'hose', 아치 끝 나팔 입이 '머리'). 크게 키워 약 22m, 꿈틀거림. 그림자는 안 드리움(안개 속 실루엣) */
+  const H = caseModel('hose', { shadow: false }); H.root.scale.setScalar(NECK_S); H.play('wriggle'); body.add(H.root);
   // 안개: 낮게 깔린 얇은 원판 셋 (투명 한 덩어리). 사건 장면에서 걷힘 (userData.fog)
   const fog = new THREE.Mesh(mergeGeometries([[16, 1.2], [12, 3.4], [9, 6.2]].map(([r, y]) => { const c = new THREE.CircleGeometry(r, 28); c.rotateX(-Math.PI / 2); c.translate(0, y, 0); return c; })), fogMat());
   fog.renderOrder = 2; g.add(fog);
-  g.userData.body = body; g.userData.fog = fog;
-  // 솟았다 내려감: 주기 14초 중 6초는 위(목이 안개 위로), 나머지는 안개 아래로 가라앉음
-  g.userData.tick = (t) => { const k = (t % 14) / 14, up = k < 0.43 ? Math.sin(Math.min(1, k / 0.43) * Math.PI) : 0; body.position.y = -22 + 22 * Math.min(1, up * 1.6); };
+  g.userData.body = body; g.userData.fog = fog; g.userData.model = H;
+  // 솟았다 내려감: 주기 14초 중 6초는 위(목이 안개 위로), 나머지는 안개 아래로 가라앉음. 위에 있는 동안 꿈틀
+  let last = 0;
+  g.userData.tick = (t) => { const k = (t % 14) / 14, up = k < 0.43 ? Math.sin(Math.min(1, k / 0.43) * Math.PI) : 0; body.position.y = -22 + 22 * Math.min(1, up * 1.6);
+    const dt = Math.min(0.1, Math.max(0, t - last)); last = t; if (body.position.y > -21.5) H.update(dt); };
   return g;
 };
 B.rings = () => { // 굼부리 바닥의 같은 크기 둥근 자국 다섯 (눌린 흙빛 고리 + 가운데 조금 짙음)

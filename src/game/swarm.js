@@ -32,6 +32,7 @@ import { toast, updateStats } from './hud.js';
 import { director } from './director.js';
 import { weaponNow, bowReady } from './throw.js';
 import { icon } from '../icons.js';
+import { pickPat, patOver, patLook, patDmg, tickPat, clearPat, patState } from './swarmpat.js';
 
 const S = SWARM, E = life.enemies;
 /* ---------- 저장 ---------- */
@@ -83,7 +84,7 @@ let lastZone = 0, lastEnd = -1e9;
 function endRun(why) {
   const r = run; if (!r) return; run = null; lastEnd = clock; hud(false);
   for (const e of E.list) if (e.def.swarm && live(e)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 남은 떼는 흩어져 달아남
-  orbitHide(); state.swarmSlow = 0;
+  orbitHide(); clearPat(); state.swarmSlow = 0;
   const win = why === 'win';
   let bonus = 0;
   if (win) { /* 버텼다 (#202): 덤 귤 · 쉬는 시간. 덤은 서버가 아는 귤(earn.js swarm, save.swarm.won)이라 earn(③)에 넣지 않음 */
@@ -116,11 +117,11 @@ function pickKind(zone) {
   for (const [k, w] of L) { x -= w; if (x <= 0) return k; } return L[0][0];
 }
 const _f = new THREE.Vector3();
-function spawnSpot(zone) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
+function spawnSpot(zone, all = false) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
   const c = AT(zone); if (!c) return null;
   camera.getWorldDirection(_f); const back = Math.atan2(-_f.x, -_f.z);
   for (let k = 0; k < 24; k++) {
-    const a = k < 8 ? back + (Math.random() - 0.5) * 3.6 : Math.random() * 6.283, r = A.r + A.spawn[0] + Math.random() * (A.spawn[1] - A.spawn[0]);
+    const a = k < 8 && !all ? back + (Math.random() - 0.5) * 3.6 : Math.random() * 6.283, r = A.r + A.spawn[0] + Math.random() * (A.spawn[1] - A.spawn[0]);
     const x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r;
     if (Math.hypot(x - player.pos.x, z - player.pos.z) < 7) continue; // 바로 옆에서 튀어나오지 않게
     if (spots.enemyOk && !spots.enemyOk(x, z)) continue;
@@ -131,21 +132,29 @@ function spawnSpot(zone) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 
   return null;
 }
 // type: 'mob' | 'elite' | 'leader'
-function spawn(type) {
-  const r = run, kind = pickKind(r.zone), B = ENEMIES[kind], at = spawnSpot(r.zone); if (!at || !B) return null;
-  const M = S.mob, T = SWARM_TEXT;
+function spawn(type, all = false) { /* 떼 몹(mob)은 패턴(#254 swarmpat.js)에 따라. 무리(pack)는 여러 마리 → 나온 수를 돌려줌 */
+  const r = run, kind = pickKind(r.zone), B = ENEMIES[kind], at = spawnSpot(r.zone, all); if (!at || !B) return null;
+  const M = S.mob, T = SWARM_TEXT, hk = LOW ? S.cap.lowHp : 1, md = M.dmg[r.zone] ?? M.dmg[1];
   const gk = M.gyul[r.zone] ?? 0.25, rg = (g) => Math.floor(g) + (Math.random() < g % 1 ? 1 : 0); // 귤 보상 (소수 몫은 확률로)
   let over, k;
   if (type === 'leader') { k = S.leader.k; over = { name: `${T.leader} ${B.name}`, hp: B.hp * S.leader.hp, dmg: B.dmg, size: B.size * k, reward: { gyul: 0, rare: 0 }, life: Infinity }; }
-  else if (type === 'elite') { k = 1; over = { name: `${T.elite} ${B.name}`, hp: B.hp * S.elite.hp, dmg: B.dmg * M.dmg * 1.5, size: B.size, reward: { gyul: 0, rare: 0 }, sg: rg(B.reward.gyul * gk * 2), life: M.life * 1.5 }; }
-  else { k = M.size; over = { hp: B.hp * M.hp, dmg: B.dmg * M.dmg, size: B.size * k, reward: { gyul: 0, rare: 0 }, sg: rg(B.reward.gyul * gk), life: M.life }; }
+  else if (type === 'elite') { k = S.elite.k; over = { name: `${T.elite} ${B.name}`, hp: B.hp * S.elite.hp * hk, dmg: B.dmg * md * 1.5, size: B.size * k, reward: { gyul: 0, rare: 0 }, sg: rg(B.reward.gyul * gk * 2), life: M.life * 1.5 }; }
+  else { k = M.size; over = { hp: B.hp * M.hp * hk, dmg: B.dmg * md, size: B.size * k, reward: { gyul: 0, rare: 0 }, sg: rg(B.reward.gyul * gk), life: M.life }; }
   Object.assign(over, { swarm: type, zone: r.zone, sight: 80, lose: 90, rootEvery: [1e9, 1e9] });
   if (B.ranged) over.ranged = { ...B.ranged, every: B.ranged.every * (type === 'mob' ? 1.4 : 1) };
-  const straight = S.straight.includes(r.zone) && type === 'mob';
-  const e = E.spawnSwarm(kind, at[0], at[1], over, straight ? null : r.pk, k);
+  const pat = type === 'mob' ? pickPat(r.zone, doorOpen() ? r.stage : 0) : 'base', pk2 = patOver(pat, B, over);
+  if (pk2) { k = pk2; over.size = B.size * k; }
+  const straight = S.straight.includes(r.zone) && type === 'mob' && pat !== 'pack', pk = pat === 'pack' ? r.pk - 1 - (++packN % 1e5) * 2 : straight ? null : r.pk;
+  const N = pat === 'pack' ? S.pat.pack.n : 1; let e = null;
+  for (let i = 0; i < N; i++) {
+    const a = i / N * 6.283, x = at[0] + (N > 1 ? Math.sin(a) * 1.3 : 0), z = at[1] + (N > 1 ? Math.cos(a) * 1.3 : 0);
+    e = E.spawnSwarm(kind, x, z, i ? { ...over } : over, pk, k); if (pat !== 'base') patLook(e, pat);
+  }
   if (type === 'leader') { r.leader = e; toast(T.leaderCome, 3); late.sound?.boar?.(); }
-  return e;
+  return e && N;
 }
+let packN = 0;
+const patCount = () => { const o = {}; for (const e of E.list) if (e.def.swarm === 'mob' && live(e)) o[e.pat || 'base'] = (o[e.pat || 'base'] || 0) + 1; return o; };
 const swarmN = () => { let n = 0; for (const e of E.list) if (e.def.swarm && live(e)) n++; return n; };
 
 function tickWaves(dt) {
@@ -156,13 +165,15 @@ function tickWaves(dt) {
   const wi = waveOf(r.t, T), si = doorOpen() ? wi : 0; r.stage = wi; // 문이 열리기 전엔 첫 물결 세기로
   if (wi > r.maxStage) { r.maxStage = wi; r.waves[wi] = 0; const h = aval('heal'); if (h && !hp.isDown) { hp.set(hp.hp + h); toast(`${AUG_BY.heal.name} · 기운 +${h}`, 1.4); } } // 귤즙 (#194): 물결이 세질 때마다
   if (inQuiet(player.pos.x, player.pos.z)) return;
-  const big = doorOpen() && r.t >= T - R.bigT;
-  if (big && !r.leaderDone) { r.leaderDone = true; spawn('leader'); } // 마지막 큰 물결: 떼 대장 하나
+  const big = doorOpen() && r.t >= T - R.bigT, into = r.t - wi * T / R.waves;
+  if (big && !r.leaderDone) { r.leaderDone = true; spawn('leader', true); } // 마지막 큰 물결: 떼 대장 하나
+  if (wi > 0 && !big && into < R.breath) { r.spawnT = Math.min(r.spawnT, 0.3); return; } // 물결 사이 숨 고르기 (#254)
   if (r.leader && !live(r.leader)) { if (r.leader.state === 'flee') chest(r.leader.pos.clone()); r.leader = null; }
   if (si >= 2 && si % 2 === 0 && r.eliteW !== si) { r.eliteW = si; spawn('elite'); } // 물결 3·5 첫머리에 정예 하나
   if ((r.spawnT -= dt) > 0) return;
-  const n = waveN(r.zone, si) * denMod() * (big ? 1.5 : 1), every = T / R.waves / Math.max(1, n) / slow;
-  if (swarmN() < CAP && spawn('mob')) { r.waves[wi] = (r.waves[wi] || 0) + 1; r.spawnT = Math.max(S.gap, every); } else r.spawnT = 0.2; // 자리를 못 찾았거나 꽉 찼으면 곧 다시
+  const n = waveN(r.zone, si) * denMod() * (big ? 1.5 : 1), every = (T / R.waves - (wi > 0 ? R.breath : 0)) / Math.max(1, n) / slow;
+  const got = swarmN() < CAP ? spawn('mob', big) : 0;
+  if (got) { r.waves[wi] = (r.waves[wi] || 0) + got; r.spawnT = Math.max(S.gap, every * got); } else r.spawnT = 0.2; /* 마지막 큰 물결은 사방에서 (#254) */ // 자리를 못 찾았거나 꽉 찼으면 곧 다시
 }
 function chest(p) {
   const g = S.leader.chest[run.zone] || 0;
@@ -338,7 +349,7 @@ function tickRain(dt) {
   };
 }
 late.swarmSpeed = () => (state.swarmSlow > 0 ? S.sack.slow : 1); // 썩은 귤즙 (이동 증강은 level.js 가벼운 발)
-life.hooks.dmgIn = (e) => (run && e.def.swarm ? 1 + aval('power') : 1); // 단단한 귤 (#194, enemies.js hurt)
+life.hooks.dmgIn = (e) => (run && e.def.swarm ? (1 + aval('power')) * patDmg(e) : 1); // 단단한 귤 (#194, enemies.js hurt) · 방패 몹 앞은 덜 (#254)
 late.swarmOn = () => !!run; // 판 중 (level.js: 레벨업 창을 싸움 중에도 엶)
 
 /* ---------- 화면 위 한 줄 ---------- */
@@ -421,7 +432,7 @@ late.tickSwarm = (dt) => {
   }
   if (saveT > 0 && (saveT -= dt) <= 0) persist();
   tickRest(dt);
-  tickShots(dt); tickShards(dt); tickSacks(dt);
+  tickShots(dt); tickShards(dt); tickSacks(dt); tickPat(dt, E.list, !!run);
   for (const e of E.list) if (e.def.swarm && ((e.state === 'flee' && e.st > 1.2) || (e.state === 'leave' && e.st > 3.5))) { E.remove(e); break; } // 쫓겨난·떠나는 떼 적은 곧 사라짐 (그리기 수)
   if (!run && !shots.length && orbMesh.count) orbitHide();
 };
@@ -456,7 +467,7 @@ late.swarm = {
   aug(id) { if (!AUG_BY[id] || !late.level) return 0; const n = Math.min(AUGMENTS.max, augN(save, id) + 1); late.level.set({ ...save.lv.aug, [id]: n }); return n; },
   pick: (i) => late.level?.pick(i), picking: () => { const L = late.level?.state(); return L?.open ? L.draw : null; }, shards: () => shards.length, shardsAt: () => shards.map((q) => [q.p.x, q.p.z]),
   shots: () => shots.length,
-  state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, T: run.T, waves: run.waves.slice(), n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, lv: levelOf(save.lv?.xp || 0).lv, aug: Object.fromEntries(AUGMENTS.list.filter((a) => a.field && augN(save, a.id)).map((a) => [a.id, augN(save, a.id)])), leader: !!run.leader, inside: arenaD(run.zone) <= A.r, leaveT: +leaveT.toFixed(1) },
+  state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, T: run.T, waves: run.waves.slice(), n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, lv: levelOf(save.lv?.xp || 0).lv, aug: Object.fromEntries(AUGMENTS.list.filter((a) => a.field && augN(save, a.id)).map((a) => [a.id, augN(save, a.id)])), leader: !!run.leader, pats: patCount(), ...patState(), inside: arenaD(run.zone) <= A.r, leaveT: +leaveT.toFixed(1) },
   best: () => ({ ...SV.best }), rest: (z) => (z ? restLeft(z) : Object.fromEntries(Object.keys(SV.rest).map((k) => [k, +restLeft(+k).toFixed(1)]))), won: () => JSON.parse(JSON.stringify(SV.won)),
   clearRest(z) { if (z) delete SV.rest[z]; else SV.rest = {}; restT = 0; }, /* 쉬는 시간 지우기 (확인용) */
   ageRest(sec) { for (const k of Object.keys(SV.rest)) SV.rest[k] -= sec * 1000; restT = 0; }, /* 쉬는 시간을 sec 초 앞당김 */ get cap() { return CAP; }, setCap(n) { CAP = n; }, // tools/swarm.js: 헤드리스는 저사양이라 PC 상한으로 바꿔 잼
