@@ -64,7 +64,7 @@ export function openShopPop(key) {
   const h = P.head, root = $('shoppop');
   $('shoppop-logo').src = h.logo || ''; $('shoppop-logo').alt = h.name; $('shoppop-logo').parentElement.hidden = !h.logo;
   $('shoppop-name').textContent = h.name; $('shoppop-tag').textContent = h.tag || ''; root.classList.toggle('serif', !!h.serif); root.classList.toggle('wide', !!h.wide); root.querySelector('.pop').setAttribute('aria-label', h.name);
-  for (const c of ['leap', 'gearshop', 'dir']) root.classList.toggle(c, h.cls === c);
+  for (const c of ['leap', 'gearshop', 'dir', 'tok']) root.classList.toggle(c, h.cls === c); /* tok: 징표 좌판 (#255) */
   P.onOpen?.(); refreshShopPop(); root.hidden = false; late.shopOpened?.(key); // 살 수 있는 새 물건 점 지우기 (#128)
 }
 export function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop-coins').textContent = String(save.coins); const tabs = $('shoppop-tabs'); tabs.hidden = !P.tabs; tabs.innerHTML = ''; if (P.tabs) P.tabs(tabs); const grid = $('shoppop-cards'); grid.innerHTML = ''; grid.className = 'menu-grid'; grid.style.removeProperty('--n'); P.fill(grid); }
