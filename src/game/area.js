@@ -1,11 +1,11 @@
 // 구역 구분 (#136): 초보(1~2)·중수(3)·고수(4~5). 문턱·분위기 소품은 src/zonelook.js, 여기는 게임 연결
-// - 구역이 바뀌면(pickup.js tickZone → late.zoneEnter): 화면 가운데 구역 이름 배너, 권장 장비 점수보다 낮으면 한 번 경고 토스트,
+// - 구역이 바뀌면(pickup.js tickZone → late.zoneEnter): 화면 가운데 구역 이름 배너(권장 Lv), 권장 레벨보다 2 낮으면 한 번 경고 토스트·레벨은 됐는데 장비가 많이 모자라면 '장비점에 들러요',
 //   튜토리얼 뒤 처음 초보→중수(정낭)를 지나면 팁 '위로 갈수록 어려워져요', 구역 소리(바람·억새·음악)·안개
 // - 오름 지도: 위 구역 칸을 누르면 구역을 세 묶음 색으로 칠한 지도와 구역별 적·권장 점수
 // (파일 순서는 src/modules.js: pickup 뒤. 규칙은 notes/prototype-v1.md 코드 구조)
 import { ZONE_LOOK as ZL, ZONES } from '../balance.js';
 import { createZoneLook, tierOf, tierName, tierColor, zoneShort, zoneEnemy, enemyName, enemySvg, josaIGa } from '../zonelook.js';
-import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
+import { gearScore, zoneRecLv, myLv, zoneToneLv, gearShort } from '../gearscore.js';
 import { ZONE_BOX } from '../zones.js';
 import { nsPaths } from '../namsongi.js';
 import { height, surfaceAt } from '../world.js';
@@ -25,7 +25,7 @@ let curZ = 0, shownZ = -1, shownAt = -1e9, leftZ = -1, leftAt = -1e9, zoneT = 0;
 const warned = new Set();
 const now = () => performance.now() / 1000;
 function showTitle(z) {
-  const el = $('zone-title'); el.querySelector('b').textContent = zoneShort(z); el.querySelector('small').textContent = `${tierName(z)} 구역`;
+  const el = $('zone-title'); el.querySelector('b').textContent = zoneShort(z); const rl = zoneRecLv(z), ml = myLv(save); el.querySelector('small').textContent = `${tierName(z)} 구역 · 권장 Lv ${rl}${ml < rl ? ` (지금 Lv ${ml})` : ''}`; /* #251 */
   el.style.setProperty('--tier', tierColor(z)); el.style.setProperty('--zt', ZL.banner.sec + 's');
   el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); zoneT = ZL.banner.sec;
   shownZ = z; shownAt = now();
@@ -44,10 +44,15 @@ late.zoneEnter = (z, prev) => {
   const t = now();
   if (z && z !== shownZ && t - shownAt > ZL.banner.cool && !(z === leftZ && t - leftAt < ZL.banner.back)) showTitle(z);
   else if (z && z !== shownZ && z !== leftZ) shownZ = -1; // 너무 빨리 바뀌면 이번엔 건너뜀
-  // 위 묶음으로 올라섰는데 장비 점수가 권장보다 낮음 (빨강): 구역마다 한 번
-  if (z && tierOf(z) >= 2 && tierOf(z) > tierOf(prev) && !warned.has(z) && zoneTone(gearScore(save).total, z) === 'r') {
+  // 위 묶음으로 올라섰는데 레벨이 권장보다 낮음 (빨강, #251): 구역마다 한 번
+  if (z && tierOf(z) >= 2 && tierOf(z) > tierOf(prev) && !warned.has(z) && zoneToneLv(save, z) === 'r') {
     warned.add(z); const en = enemyName(zoneEnemy(z));
-    setTimeout(() => say('danger', 'zoneWarn:' + z, `이 위는 ${en}${josaIGa(en)} 나와요. 장비 점수를 ${zoneRec(z)}까지 올리면 좋아요`, 4, { ttl: 10 }), 900);
+    setTimeout(() => say('danger', 'zoneWarn:' + z, `이 위는 ${en}${josaIGa(en)} 나와요. 권장 Lv ${zoneRecLv(z)} (지금 Lv ${myLv(save)})`, 4, { ttl: 10 }), 900);
+  }
+  /* 레벨은 됐는데 장비가 많이 모자람 (#251, GROWTH.gearLow): 구역마다 한 번 */
+  if (z && z > 1 && !warned.has('g' + z) && gearShort(save, z, gearScore(save).total)) {
+    warned.add('g' + z);
+    setTimeout(() => say('tip', 'gearLow:' + z, '장비가 모자라요. 장비점에 들러요', 4, { ttl: 10 }), 1400);
   }
   if (tierOf(prev) === 1 && tierOf(z) === 2) late.tips?.event('zoneUp'); // 튜토리얼 뒤 처음 정낭을 지날 때 (#66 팁은 한 번)
   leftZ = prev; leftAt = t;
@@ -102,12 +107,12 @@ function drawMap() {
 }
 const TONE = { r: '버거워요', y: '알맞아요', g: '넉넉해요' }, TONE_C = { r: '#ff5a4a', y: '#ffd23f', g: '#5fd36a' };
 function fillMapText() {
-  const sc = gearScore(save).total, z = curZ;
-  const zc = z ? Math.floor(trash.zoneClean(z) * 100) : 0, tn = z ? zoneTone(sc, z) : '';
+  const lv = myLv(save), z = curZ;
+  const zc = z ? Math.floor(trash.zoneClean(z) * 100) : 0, tn = z ? zoneToneLv(save, z) : '';
   const all = Math.floor(trash.clean() * 100); // 오름 전체 깨끗한 정도 (#196: 위쪽 줄은 지금 구역 값만)
-  $('omap-now').innerHTML = (z ? `<b style="color:${tierColor(z)}">${z} ${zoneShort(z)}</b><i>${tierName(z)} 구역</i><i>깨끗한 정도 ${zc}%</i><i><span class="tone" style="background:${TONE_C[tn] || '#fff'}"></span> 권장 점수 ${zoneRec(z)} ${TONE[tn] || ''}</i><i>좌표 ${Math.round(player.pos.x)}, ${Math.round(player.pos.z)}</i>`
-    : `<b>들머리</b><i>내 장비 점수 ${sc}</i>`) + `<i>오름 전체 깨끗함 ${all}%</i>`;
-  $('omap-rows').innerHTML = ZONES.map((Z) => { const c = Math.floor(trash.zoneClean(Z.id) * 100); return `<div class="${Z.id === z ? 'now' : ''}"><span class="sw" style="background:${tierColor(Z.id)}"></span><b>${Z.id}</b><span>${zoneShort(Z.id)} · ${tierName(Z.id)}${late.swarmRestTxt?.(Z.id) || ''}</span>${enemySvg(zoneEnemy(Z.id))}<span class="pc${c >= 100 ? ' done' : ''}" title="깨끗한 정도">${c}%</span><span class="rec" data-tone="${zoneTone(sc, Z.id)}" title="권장 장비 점수">${Z.rec}</span></div>`; }).join('');
+  $('omap-now').innerHTML = (z ? `<b style="color:${tierColor(z)}">${z} ${zoneShort(z)}</b><i>${tierName(z)} 구역</i><i>깨끗한 정도 ${zc}%</i><i><span class="tone" style="background:${TONE_C[tn] || '#fff'}"></span> 권장 Lv ${zoneRecLv(z)} (지금 Lv ${lv}) ${TONE[tn] || ''}</i><i>좌표 ${Math.round(player.pos.x)}, ${Math.round(player.pos.z)}</i>`
+    : `<b>들머리</b><i>지금 Lv ${lv}</i>`) + `<i>오름 전체 깨끗함 ${all}%</i>`;
+  $('omap-rows').innerHTML = ZONES.map((Z) => { const c = Math.floor(trash.zoneClean(Z.id) * 100); return `<div class="${Z.id === z ? 'now' : ''}"><span class="sw" style="background:${tierColor(Z.id)}"></span><b>${Z.id}</b><span>${zoneShort(Z.id)} · ${tierName(Z.id)}${late.swarmRestTxt?.(Z.id) || ''}</span>${enemySvg(zoneEnemy(Z.id))}<span class="pc${c >= 100 ? ' done' : ''}" title="깨끗한 정도">${c}%</span><span class="rec" data-tone="${zoneToneLv(save, Z.id)}" title="권장 레벨">Lv ${zoneRecLv(Z.id)}</span></div>`; }).join('');
 }
 let mapT = 0;
 function openMap() { if (!zoneLook) return; closePanels(); fillMapText(); drawMap(); $('omap').hidden = false; mapT = 0.25; }

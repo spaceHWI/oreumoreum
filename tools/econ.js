@@ -232,7 +232,9 @@ async function main() {
       const k = ks.find((k) => { const c = LT.enhCost(cur(k), EN(e, k)); return st.coins >= c.gyul && (st.mats[c.mat] || 0) >= c.n && (!c.rn || (st.mats[c.rare] || 0) >= c.rn); }); if (!k) return;
       const c = LT.enhCost(cur(k), EN(e, k)); st.coins -= c.gyul; st.mats[c.mat] -= c.n; if (c.rn) st.mats[c.rare] -= c.rn; e.enh[k] = EN(e, k) + 1; st.enhN++;
       if (enhAll() && !st.enhDay) st.enhDay = Math.min(st.tAll, dayEnd); } };
-    const shop = () => { for (;;) { const ks = kinds.filter((k) => next(k) && st.coins >= next(k).price && ok(k)); if (!ks.length) break; buy(ks.sort((a, b) => gain(b) - gain(a))[0]); } enhShop(); };
+    const shop = () => { for (;;) { const ks = kinds.filter((k) => next(k) && st.coins >= next(k).price && ok(k)); if (!ks.length) break; buy(ks.sort((a, b) => gain(b) - gain(a))[0]); } enhShop(); markRec(); };
+    /* #251 권장 레벨: 장비 점수가 구역 권장(rec)에 처음 닿은 때의 레벨 */
+    const markRec = () => { const sc = scoreOf(e, st.weapon); st.recLv = st.recLv || {}; zones.forEach((z) => { if (st.recLv[z.id] == null && sc >= z.rec) st.recLv[z.id] = st.lv; }); };
     // 경험치 (#159): 레벨업마다 3개 중 벌이에 드는 것을 고름
     const syncXp = (extra = 0) => {
       st.xpX = (st.xpX || 0) + extra; const x = earned + st.xpX - st.xp; if (!(x > 0)) return; st.xp += x;
@@ -241,6 +243,7 @@ async function main() {
         const d = AG.rollDraw(st.lvSave); if (!d) continue;
         const id = d.slice().sort((a, b) => AUG_PRI.indexOf(a) - AUG_PRI.indexOf(b))[0]; e.aug[id] = (e.aug[id] || 0) + 1;
       }
+      markRec();
     };
     const cleared = new Set(); let idleT = 0, dumpT = 0, mobT = 0, cleanSeen, dayEnd = 3600, earned = 0;
     const zoneClean = (i) => 1 - st.left[i] / zones[i].n;
@@ -401,6 +404,8 @@ async function main() {
   }
   // 오늘의 할 일 (#125): 하루 보상(셋 다 + 그날 이어 오기)이 그날 벌이의 15% 안, 5일 목표(마지막 칸, 여유 25%)가 하루 넘게 당겨지지 않음
   {
+    { const rs = [1, 7, 42, 99, 123].map((sd) => seedRun('battle', 0.25, sd).st.recLv || {}), md = (z) => rs.map((r) => r[z] ?? 99).sort((a, b) => a - b)[2];
+      verdict.push(`권장 레벨 (#251, 여유 25%, 장비 점수가 권장에 닿는 레벨 가운데 값): ${ZONES.map((Z) => `${Z.id}:${md(Z.id)}`).join(' ')} · 지금 recLv ${ZONES.map((Z) => `${Z.id}:${Z.recLv ?? '-'}`).join(' ')}`); }
     const r = seedRun('battle', 0, 42), rows = r.days.slice(0, 7).map((x) => ({ 일: x.day, 벌이: x.earned, 할일: x.dly, '%': +(x.dly / Math.max(1, x.earned) * 100).toFixed(1) }));
     console.log('\n오늘의 할 일 (#125): 하루 끝 보상 (할 일 셋 + 셋 다 + 이어 오기 3·7일째)'); console.table(rows);
     const worst = Math.max(...rows.map((x) => x['%']));

@@ -63,7 +63,7 @@ function signFace(z) {
   x.textAlign = 'right'; x.font = '800 30px "Gothic A1", sans-serif'; x.fillText(`${z}구역 ▲`, 478, 46);
   x.textAlign = 'left'; x.fillStyle = '#2a2f22'; x.font = '800 62px "Gothic A1", sans-serif'; x.fillText(zoneShort(z), 34, 126);
   x.fillStyle = '#5d6a4f'; x.font = '700 28px "Gothic A1", sans-serif'; x.fillText(`${enemyName(ek)}${josaIGa(enemyName(ek))} 나와요`, 150, 210);
-  x.fillStyle = '#9c4a33'; x.font = '800 30px "Gothic A1", sans-serif'; x.fillText(`권장 장비 점수 ${Z?.rec ?? '-'}`, 34, 290);
+  x.fillStyle = '#9c4a33'; x.font = '800 30px "Gothic A1", sans-serif'; x.fillText(`권장 Lv ${Z?.recLv ?? '-'}`, 34, 290);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = TEXCS; tex.anisotropy = 4;
   if (ek && typeof Image !== 'undefined') { const im = new Image(); im.onload = () => { x.fillStyle = '#efe7d0'; x.beginPath(); x.arc(84, 210, 52, 0, 7); x.fill(); x.drawImage(im, 40, 166, 88, 88); tex.needsUpdate = true; }; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="96" height="96">${ENEMY_ICON[ek]}</svg>`); }
   return tex;

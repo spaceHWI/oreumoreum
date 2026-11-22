@@ -728,7 +728,7 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .tier-stats svg { width: 16px; height: 16px; opacity: .75; }
 .tier-stats em { font-style: normal; color: var(--acc); }
 .tier-stats s { color: var(--ink-soft); text-decoration: none; font-weight: 500; font-size: 13px; }
-/* 장비 점수 (#137): 지금 것 대비 ▲ 초록 · ▼ 붉은색. 칸 왼쪽 위 작은 표시 */
+/* 장비 힘 (#137·#251): 지금 것 대비 ▲ 초록 · ▼ 붉은색. 칸 왼쪽 위 작은 표시 */
 .gd { font-style: normal; font-family: var(--display); font-weight: 800; font-size: 11px; line-height: 1; white-space: nowrap; }
 .gd.up { color: #5fd36a; } .gd.down { color: #ff8a7a; }
 .tier > .gd, .wear-item > .gd, .leap-card .food > .gd { position: absolute; top: 4px; left: 5px; padding: 2px 4px; border-radius: 6px; background: rgba(0,0,0,.42); }
@@ -1126,8 +1126,7 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 #zone-pill .zf { display: none; }
 #zone-pill.bloom .zm { display: none; } #zone-pill.bloom .zf { display: block; }
 #zone-pill.done { color: var(--acc); }
-/* 장비 점수 (#137): 바뀌면 튀고 '+n'. 구역 번호는 권장 점수와 견줘 빨강·노랑·초록 (점 하나) */
-#score-pill svg { color: var(--gyul); }
+/* 구역 번호는 권장 레벨과 견줘 빨강·노랑·초록 (점 하나, #251). 위 줄 장비 칸은 없앰 */
 .fx-score { position: fixed; z-index: 20; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 800; font-size: 18px; color: #fff; text-shadow: 0 2px 0 var(--ink), 0 0 6px rgba(0,0,0,.4); pointer-events: none; animation: fxUp .9s ease-out forwards; }
 .fx-score.down { color: #ffb3a8; }
 #zone-pill[data-tone]::before { content: ""; width: 7px; height: 7px; border-radius: 50%; flex: none; margin-right: -1px; background: var(--tone); box-shadow: 0 0 0 1.5px rgba(0,0,0,.25); }
@@ -1478,7 +1477,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   .photo-card img { width: auto; max-width: calc(100vw - var(--gut-l) - var(--gut-r) - 150px); max-height: calc(var(--ll-h) - 28px); }
   .photo-acts { flex-direction: column; align-items: stretch; } .photo-acts #photo-save { margin: 0 0 auto; }
 }
-/* 내 가방 (#166): 예전 옷장 자리. 위 탭 5개(44px 넘게), 가운데 카드, 아래 장비 점수·능력 4줄. 데스크톱은 오른쪽(캐릭터는 왼쪽에 보임), 폰은 아래 60% */
+/* 내 가방 (#166): 예전 옷장 자리. 위 탭 5개(44px 넘게), 가운데 카드, 아래 장비 힘·능력 4줄. 데스크톱은 오른쪽(캐릭터는 왼쪽에 보임), 폰은 아래 60% */
 #wardrobe { width: min(400px, calc(100vw - 32px)); }
 #wardrobe .pop-body { flex: 1; min-height: 0; overflow-y: auto; }
 .bag-tabs { padding: 8px 12px 6px; gap: 4px; }
@@ -1507,6 +1506,7 @@ button.bag-card { cursor: pointer; }
 .bag-foot:empty { display: none; }
 .bag-score { display: flex; align-items: center; gap: 8px; font-size: 12px; } .bag-score small { opacity: .7; }
 .bag-score .gs { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-weight: 800; font-size: 15px; } .bag-score .gs svg { width: 16px; height: 16px; }
+.bag-score .bs-k { font-style: normal; font-weight: 700; opacity: .8; }
 .bag-card .sc .gs { display: inline-flex; align-items: center; gap: 2px; } .bag-card .sc .gs svg { width: 12px; height: 12px; }
 .bag-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .bag-stats .bs { display: grid; justify-items: center; gap: 1px; padding: 4px 2px; border-radius: 10px; background: rgba(255,255,255,.06); font-size: 11px; }
@@ -1596,9 +1596,9 @@ img.ic-art { width: 1em; height: 1em; object-fit: contain; }
 /* 아이콘 아래 글자 라벨(#184 처음 며칠)은 없앰 (#196) */
 
 /* ===== 화면 단순하게 (#189, game/simple.js · 메뉴 '화면 단순하게', 폰 기본 켬): 늘 보이는 것은 조이스틱·줍기·던지기·상황 버튼 하나·귤+HP·메뉴 ===== */
-/* 그 밖의 것은 필요할 때만: .flash 바뀐 순간 2초(레벨·장비 점수·구역), .half 배낭 60% 넘음. 튜토리얼(body.tut) 동안은 예전 그대로 */
+/* 레벨은 늘 보임(#251). 그 밖의 것은 필요할 때만: .flash 바뀐 순간 2초(구역), .half 배낭 60% 넘음. 튜토리얼(body.tut) 동안은 예전 그대로 */
 body.simple:not(.tut) { --tb-end: calc(var(--tb-h) + 8px); }
-body.simple:not(.tut) :is(#lv-pill, #score-pill, #clean-pill, #zone-pill, #xy-pill, #ach-chip, #fs-chip, #fb-chip):not(.flash),
+body.simple:not(.tut) :is(#clean-pill, #zone-pill, #xy-pill, #ach-chip, #fs-chip, #fb-chip):not(.flash),
 body.simple:not(.tut) #bag-pill:not(.half):not(.flash),
 body.simple:not(.tut) :is(#btn-speed, #arm-more, #ride-more, #btn-actions, #btn-chat, #btn-ach),
 body.simple.has-ride:not(.tut) #btn-jump { display: none !important; }
@@ -1678,7 +1678,6 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="tb-g tb-l">
     <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="lv-pill" role="button" tabindex="0" title="레벨 · 경험치 · 누르면 증강" hidden><small class="lvl">Lv</small><b id="lv-n">1</b><i class="xp" aria-hidden="true"><i id="lv-xp"></i></i><s id="lv-pend" class="lv-pend" hidden aria-label="고를 증강"></s></div>
-    <div class="panel tpill" id="score-pill" title="장비 점수 · 줍는 힘 · 싸우는 힘" role="button" tabindex="0"><svg data-i="score"></svg><b id="gscore">0</b></div>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg data-i="pocket" class="pk"></svg><svg data-i="bag" class="bg"></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
   </div>

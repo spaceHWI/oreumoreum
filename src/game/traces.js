@@ -108,9 +108,9 @@ function cropMid() {
 }
 
 /* ---------- 발자국 ---------- */
-function footTex() {
+function footTex(col = 'rgba(150,140,118,1)') {
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-  g.fillStyle = 'rgba(150,140,118,1)'; /* 밤에도 보이게 흐린 흙빛 */
+  g.fillStyle = col; /* 밤에도 보이게 흐린 흙빛 */
   g.beginPath(); g.ellipse(32, 44, 9, 11, 0, 0, Math.PI * 2); g.fill(); /* 뒤꿈치 */
   for (const a of [-0.55, 0, 0.55]) { g.save(); g.translate(32, 38); g.rotate(a); g.beginPath(); g.ellipse(0, -18, 4, 11, 0, 0, Math.PI * 2); g.fill(); g.restore(); }
   return new THREE.CanvasTexture(c);
@@ -154,6 +154,17 @@ function tickFoot() {
   const op = footOp(); fp.mat.opacity = 0.85 * op; fp.im.visible = op > 0.01 && !state.cave;
   if (op > 0.3 && fp.pts.some(([x, z]) => Math.hypot(x - player.pos.x, z - player.pos.z) < F.seen)) mark('fp');
 }
+
+/* 사건용 발자국 한 줄 (#236 사건 5 '설인'): 위 발자국 모양을 size 배로, pts 꺾은선을 따라 step m 마다. 밤낮 없이 늘 보임(보일지는 부른 쪽이 visible 로 정함) */
+late.caseFoot = (pts, size = 1, step = F.step) => {
+  const L = []; for (let i = 1; i < pts.length; i++) { const [ax, az] = pts[i - 1], [bx, bz] = pts[i], d = Math.hypot(bx - ax, bz - az); for (let s = i === 1 ? 0 : step * 0.5; s < d; s += step) L.push([ax + (bx - ax) * s / d, az + (bz - az) * s / d, Math.atan2(bx - ax, bz - az)]); }
+  const n = Math.min(L.length, 120), mat = new THREE.MeshBasicMaterial({ map: footTex('rgba(84,78,66,1)'), transparent: true, opacity: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat, Math.max(1, n)); im.frustumCulled = false; im.renderOrder = 2; im.name = 'casefoot';
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(F.size * size, 1, F.size * size * 1.3), p = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < n; i++) { const [x, z, a] = L[i], sd = (i % 2 ? 0.22 : -0.22) * size; p.set(x + Math.cos(a) * sd, height(x, z) + 0.04, z - Math.sin(a) * sd); q.setFromAxisAngle(Y, a); m4.compose(p, q, sc); im.setMatrixAt(i, m4); }
+  im.count = n; im.instanceMatrix.needsUpdate = true; im.visible = false; G.add(im);
+  return im;
+};
 
 /* ---------- 뒤돌아보면 ---------- */
 const fwd = new THREE.Vector3();
