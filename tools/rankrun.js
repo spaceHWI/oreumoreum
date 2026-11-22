@@ -1,7 +1,7 @@
 // 랭킹만 빠르게 (#250): node tools/rankrun.js [--no-spawn 서버주소]
 // 로컬 서버(wrangler dev, FAKE_AUTH·STATS_OPEN)를 하나 띄워 브라우저 없이 HTTP 로만 본다. 3분 안
 //   계정 둘이 치움 → 저장 → 오늘·이번 주·전체 순위와 내 순위가 늘어남 / 일요일 밤 → 월요일 0시(날·주 경계, 시각을 넣어 줌)
-//   이름 바꾼 뒤 순위표 이름 / 서버가 깎은 저장(치운 수가 한 번에 너무 많음) 뒤에도 순위가 멈추지 않음 / 버린 직후 내 줄 / 손님 401 / 어드민 랭킹 상태
+//   이름 바꾼 뒤 순위표 이름 / 손님으로 치우고 로그인한 새 계정이 오늘 표에 (#261) / 서버가 깎은 저장(치운 수가 한 번에 너무 많음) 뒤에도 순위가 멈추지 않음 / 버린 직후 내 줄 / 손님 401 / 어드민 랭킹 상태
 const { spawn } = require('child_process');
 const path = require('path'), os = require('os');
 const SERVER_DIR = path.join(__dirname, '..', 'server');
@@ -91,6 +91,18 @@ const T = { sun: kst('2026-11-29T12:00:00'), sunLate: kst('2026-11-29T23:59:00')
     await put(A, base(nA, 4), T.mon3 + 80e3);
     const r4 = await me(A, T.mon3 + 81e3);
     ok(r0?.all?.n === before && r4?.all?.n === before + 4, `줄어든 저장은 빼지 않고 다시 치우면 늚 (${before} → ${r0?.all?.n} → ${r4?.all?.n})`);
+    // 5b) 손님으로 치우다 로그인한 새 계정 (#261): 기기 기록을 옮기면 오늘 치운 만큼 오늘·이번 주 표에도 오름. 표 캐시를 기다리지 않음
+    {
+      const { kstDay, weekStart } = await import('../src/rankday.js');
+      const at = T.mon3 + 90e3, d = kstDay(at), nG = '손님에서온';
+      const pre2 = await rank(A, 'day', at - 1000);
+      const G = await login('g');
+      const mig = await req('/save', { method: 'PUT', token: G.token, body: { migrate: true, at, save: { ...base(nG, 40), trash: { total: 40, rk: { d, w: weekStart(d), day: { battle: 12 }, week: { battle: 25 }, all: { battle: 40 } } } } } });
+      const gd = await rank(G, 'day', at + 1000), gw = await rank(G, 'week', at + 1000), ga = await rank(G, 'all', at + 1000);
+      const inD = gd?.top?.find((x) => x.nick === nG);
+      ok(mig.status === 200 && inD?.n === 12 && gd.me.n === 12 && gd.total === (pre2?.total || 0) + 1, `손님으로 치우고 로그인한 새 계정이 오늘 표에 오름 (오늘 ${inD?.n}, ${pre2?.total} → ${gd?.total}명, 캐시 안 기다림)`);
+      ok(gw?.me?.n === 12 && ga?.me?.n === 40, `이번 주는 오늘 몫 12, 전체는 40 (${gw?.me?.n} · ${ga?.me?.n})`);
+    }
     // 6) 손님·어드민
     ok((await req('/rank')).status === 401 && (await req('/rank/me')).status === 401, '손님은 서버 순위 401 (게임은 이 기기 기록 + 로그인 안내)');
     const on = (await req('/admin/online')).j, rk = on?.rank;

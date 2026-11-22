@@ -25,7 +25,7 @@ export function createLamps({ scene, positions, height }) {
   // 귤 등 둘레의 은은한 빛 (가산 혼합 공, 밤에만)
   const haloGeo = new THREE.SphereGeometry(bulbR * 1.7, 12, 8); haloGeo.translate(0, bulbY, off);
   const haloMat = new THREE.MeshBasicMaterial({ color: '#ff9a3c', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
-  const mk = (geo, mat, shadow = false) => { const im = new THREE.InstancedMesh(geo, mat, n); im.castShadow = shadow; scene.add(im); return im; };
+  const mk = (geo, mat, shadow = false) => { const im = new THREE.InstancedMesh(geo, mat, n); im.name = 'lamp'; im.castShadow = shadow; scene.add(im); return im; };
   const tmp = [mk(post, dark, !LOW), mk(arm, dark), mk(ball, ballMat)];
   const pools = mk(poolGeo, poolMat), halos = mk(haloGeo, haloMat);
   pools.renderOrder = 2; halos.renderOrder = 3; halos.visible = false;

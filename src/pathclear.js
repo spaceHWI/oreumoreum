@@ -1,7 +1,7 @@
 // 길 둘레 비우기 (#227): 길 중심선에서 '반폭 + PATHCLEAR.pad' 안에는 돌·걸림돌을 두지 않는다.
 // 한 번 지우는 것이 아니라 배치 규칙: 놓을 때 길과의 거리를 보고, 길 밖으로 밀 수 있으면 밀고(풍경 유지) 아니면 뺀다.
 // lines: [{ pts: [[x, z], ...], w: 반폭, floor: 건물 바닥이라 걷는 길이 아님 }]. 칸(격자)에 선분을 넣어 가까운 것만 본다.
-import { PATHCLEAR } from './balance.js';
+import { PATHCLEAR, SWARM } from './balance.js';
 
 export function createPathIndex(lines, cell = 16) {
   const segs = [], cells = new Map(), key = (i, j) => i * 92821 + j;
@@ -39,6 +39,20 @@ export function keepOffPath(items, idx, ok = () => true) {
     if (d < 1e-3) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
     const k = n.w + need + 0.05, x = n.x + dx * k, z = n.z + dz * k;
     if (it.r <= PATHCLEAR.maxR && ok(x, z) && !idx.onPath(x, z, it.r)) { it.x = x; it.z = z; out.push(it); stat.moved++; } else stat.removed++;
+  }
+  return { items: out, stat };
+}
+
+// 서바이벌 터 비우기 (#253): 터 원(반지름 + PATHCLEAR.arena) 안의 작은 장식(바위·꽃)은 터 밖으로 밀고, 크거나 밀 곳이 없으면 뺌
+export const inArena = (x, z, r = 0) => SWARM.arena.at.some((c) => c && Math.hypot(x - c[0], z - c[1]) < SWARM.arena.r + PATHCLEAR.arena + r);
+export function keepOffArena(items, ok = () => true) {
+  const out = [], stat = { moved: 0, removed: 0 };
+  for (const it of items) {
+    const r = it.r || 0, c = SWARM.arena.at.find((q) => q && Math.hypot(it.x - q[0], it.z - q[1]) < SWARM.arena.r + PATHCLEAR.arena + r);
+    if (!c) { out.push(it); continue; }
+    let dx = it.x - c[0], dz = it.z - c[1]; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+    const k = SWARM.arena.r + PATHCLEAR.arena + r + 0.05, x = c[0] + dx * k, z = c[1] + dz * k;
+    if (r <= PATHCLEAR.maxR && ok(x, z) && !inArena(x, z, r)) { it.x = x; it.z = z; out.push(it); stat.moved++; } else stat.removed++;
   }
   return { items: out, stat };
 }
