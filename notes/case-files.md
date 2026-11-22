@@ -83,6 +83,7 @@
   - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
   - `doc` 서류 쪽지 id(대면을 끝내면 받음) · `notes` 증거·서류 쪽지(NOTES 모양: id·paper·t 14자·from·b 4줄) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄))
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
+- (#234) `see.gone: true` 면 사건이 열린 뒤(CASE.goneAfter 초) 목격 모양이 화면 밖으로 나가면 사라짐. arena·boss 대면에 `face { at, prop, label, actor, len, lines }` 를 주면 싸움 뒤 at 에 모양이 서고(save h 1) 다가가 F → 장면(배우 `late.caseActors[actor]` = { begin, tick, cam, end }, 본보기 `src/game/casesuit.js`) → 대면 끝. `mat: [LOOT.mats id, 개수]` 종결 때 장비 재료. 쪽지 `img` 에 data: 주소(SVG)를 주면 사진 칸에 그림
 - 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
 - 사건의 마지막 퀘스트 보상을 받으면 종결(도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
 - 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 목격 → 증거 → 대면 → 서류 → 종결 → 창 → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`

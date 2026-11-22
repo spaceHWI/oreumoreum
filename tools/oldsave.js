@@ -19,6 +19,7 @@ const SAVES = {
   // #232: 사건 파일 기록이 깨진 저장 · 사건을 연 저장(증거 하나)
   caseBad: { nick: '사건 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 'x', ev: 5, f: 'q', base: 3 }, zz: 7 } },
   caseMid: { nick: '조사 중', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 1763800000000, ev: ['k1a', 'nope', 'k1a'], f: 0 } }, punk: { notes: { k1a: 1763800000000 }, unread: [] } },
+  caseC3: { nick: '맨발 조사', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c3: { w: 1763800000000, ev: ['k3a', 'k3a', 'zz'], f: 0, h: 'yes', b: 'q' } }, mats: { m4: 'x' } }, // #234 사건 3: 대면 장면 준비(h) 깨짐
   // #158: 퀘스트 기록이 깨진 저장 · 구역 1·2 를 끝낸 옛 저장(퀘스트 없음 → 구역 3 줄부터)
   questBad: { nick: '퀘스트 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, quest: { cur: 'nope', done: 5, side: [1], cp: 'x', c: null } },
   questVet: { nick: '고참', coins: 900, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 4, bag: 4, shoes: 3, weapon: 3 }, boss: { done: { 1: 1, 2: 2 } }, journey: { step: 9, seen: { quest: '2026-11-20' }, day: '2026-11-20', n: 0, days: 3, maxZ: 3 }, ach: { life: { trash: 900, 'heap-clear': 30, recycle: 20 } } },
