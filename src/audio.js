@@ -409,6 +409,16 @@ export class Sound {
       o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 0.75);
     });
   }
+  // 서바이벌 터 징 (#231): 낮게 울리는 쇳소리 (어긋난 배음 셋이 길게 잦아듦)
+  gong() {
+    if (!this.on || !this.sfxOn) return;
+    const c = this.ctx, t = c.currentTime;
+    [[98, 0.12], [161.7, 0.07], [237.3, 0.045]].forEach(([fr, v]) => {
+      const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(fr * 1.02, t); o.frequency.exponentialRampToValueAtTime(fr, t + 0.4);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0008, t + 2.2);
+      o.connect(g); g.connect(this.sfx); o.start(t); o.stop(t + 2.3);
+    });
+  }
   // 구역에 꽃이 만발 (#46): 밝게 올라가는 종소리 + 반짝임
   bloom() {
     if (!this.on || !this.sfxOn) return;

@@ -40,7 +40,7 @@ import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
-state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0 };
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0 };
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -301,6 +301,7 @@ function step(now) {
     late.tickLoot?.(dt);
     late.tickRare?.(dt);
     if (late.tickSwarm) { late.tickSwarm(dt); tk.swarm++; }
+    if (late.tickArena) { late.tickArena(dt); tk.arena++; } /* 서바이벌 터 (#231) */
   }
   late.tickGive?.(dt); /* 가까운 사람에게 귤 주기 (#175) */
   if (bloom) bloom.update(dt, player.pos, now / 1000);

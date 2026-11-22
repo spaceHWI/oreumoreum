@@ -1,7 +1,7 @@
 // 들판 떼 한 판 (#202): node tools/swarmrun.js [zone...] [--speed 3] [--mortal]
 // dist/test.html 남송이 전투 오름에서 구역마다 권장 장비로 들판에 서서 __oreum.swarm.start(구역) → 0.6초(게임 시간)마다 던지며 한 판을 끝까지
 // 기본은 기운을 늘 채우고 제자리에 둠(판의 모양을 보려고, 받혀 밀려도 되돌림). --mortal 이면 기운을 채우지 않음
-// 적는 것: 물결별 나온 수 · 걸린 시간 · 쫓아낸 수 · 판에서 번 귤 · 덤 · 끝난 뒤 조용한지(쉬는 시간 · 5초 동안 새 판 없음) · 쉬는 시간을 지우면 다시 시작하는지
+// 적는 것: 물결별 나온 수 · 걸린 시간 · 쫓아낸 수 · 판에서 번 귤 · 덤 · 끝난 뒤 조용한지(쉬는 시간 · 5초 동안 새 판 없음) · 쉬는 시간을 지워도 저절로 시작하지 않고 징(#231)으로 다시 시작하는지
 const { chromium } = require('playwright');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : +args[i + 1]; };
 const ZONES = args.filter((a, i) => /^\d$/.test(a) && !/^--/.test(args[i - 1] || '')).map(Number); if (!ZONES.length) ZONES.push(1, 2);
@@ -43,14 +43,15 @@ const wait = (p, fn, arg0, ms = 400, max = 600) => (async () => { for (let i = 0
     await p.waitForTimeout(5000 / SPEED + 1500);
     const quiet = await p.evaluate(() => { const o = window.__oreum; return { run: !!o.swarm.state(), why: o.swarm.why(), swarmLive: o.enemies.list.filter((e) => e.def.swarm && e.state !== 'leave' && e.state !== 'flee').length }; });
     await p.evaluate(() => window.__oreum.swarm.ageRest(1e4));
-    const again = await wait(p, () => !!window.__oreum.swarm.state(), null, 300, 30);
+    const selfStart = await wait(p, () => !!window.__oreum.swarm.state(), null, 300, 15); /* #231: 쉬는 시간이 끝나도 징을 울리기 전엔 시작하지 않아야 함 */
+    const again = !selfStart && (await p.evaluate((z) => window.__oreum.swarm.gong(z) === '', zn)) && (await wait(p, () => !!window.__oreum.swarm.state(), null, 300, 30));
     await p.evaluate(() => { const o = window.__oreum; window.__c.stop = 1; o.swarm.stop(); o.swarm.speed(1); o.enemies.test.clear(); o.swarm.clearRest(); });
-    const row = { 구역: zn, 끝: done?.why, '판(초)': done?.wall, 게임초: end.gt, 물결별: (done?.waves || []).join('/'), 쫓아냄: done?.kills, '번 귤(판)': done?.gyul, 덤: done?.bonus, '귤 차이': end.coins, '쉬는 시간(초)': Math.round(restZ), '끝난 뒤 판': quiet.run, 까닭: quiet.why, '남은 떼': quiet.swarmLive, '다시 시작': !!again, 레벨업: end.lvUp };
+    const row = { 구역: zn, 끝: done?.why, '판(초)': done?.wall, 게임초: end.gt, 물결별: (done?.waves || []).join('/'), 쫓아냄: done?.kills, '번 귤(판)': done?.gyul, 덤: done?.bonus, '귤 차이': end.coins, '쉬는 시간(초)': Math.round(restZ), '끝난 뒤 판': quiet.run, 까닭: quiet.why, '남은 떼': quiet.swarmLive, '저절로 시작': !!selfStart, '징으로 다시 시작': !!again, 레벨업: end.lvUp };
     console.log(JSON.stringify(row)); res.push(row);
     await p.waitForTimeout(800);
   }
   console.table(res);
-  const bad = res.filter((r) => r.끝 !== 'win' || r['끝난 뒤 판'] || r.까닭 !== 'rest' || !r['다시 시작'] || !(r.덤 > 0));
+  const bad = res.filter((r) => r.끝 !== 'win' || r['끝난 뒤 판'] || r.까닭 !== 'rest' || r['저절로 시작'] || !r['징으로 다시 시작'] || !(r.덤 > 0));
   console.log(errs.length ? `페이지 오류 ${errs.length}` : '페이지 오류 없음', bad.length ? `· 실패 ${bad.map((r) => r.구역).join(',')}` : '· ALL OK');
   await b.close();
   process.exit(bad.length || errs.length ? 1 : 0);
