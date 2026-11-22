@@ -1573,3 +1573,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 보상: 받는 쪽은 내가 맞힌 적이 쫓겨나면 내 보상(`repelNet`), 칸 주인은 제가 맞힌 적만(`hurtNet`, 남의 피해엔 증강·밀림을 안 얹음). 주인 큰 보상·상자는 지금처럼 사람마다 하루 한 번
 - 이어받기: 받던 적을 같은 번호로 그대로(주인 드론 부르기는 지난 단계만큼 건너뜀). 칸 주인 알림·적 상태가 `NET.caveWaitSec`(4초) 안 오면(옛 서버·옛 클라이언트) 내 화면에서 굴림
 - 수치 `NET.cavePerSec·caveMax·caveEnemyMax·caveSendMs·caveWaitSec`. 확인: `node tools/online.js <서버> cave` 칸 주인·같은 번호·B 가 맞히면 A 기운 줆·이어받기 줄, `tools/sec.js` #205 줄
+
+## #207 UFO·외계인 초반 노출 줄이기 (2026-11-22)
+- 단계 0~3 을 끝낸 구역 수로 (`balance.js UFO.reveal.byDone`), 옛 저장도 바로 그 단계. 표는 `notes/journey.md` 0절 'UFO·외계인 드러남'
+- `src/ufoveil.js`: 단계 셈을 받는 곳. 단계 3 전 alien·drone 적(우두머리·레이드·남의 적 포함)은 `veilModel` 빛 덩이 + 이름 '수상한 불빛'(enemies.js spawnOne, boss.js name). `veiled(text)` 로 방송(punkworld pickLine·성탄 방송)·쪽지(dropNote)·이야기 알림(story line) 거름
+- `src/game/ufoseen.js`: 하늘에 스치는 것 far·ridge·close·clear, 아침의 흔적(하루 한 곳) → mutter `oddTrash`(새 `late.mutterEv`). 저장 `save.ufo`. 루프 셈 `ufoseen`(smoke LOOP)
+- 이야기 '수상한 불빛'(night) UFO 는 단계 3 전엔 빛 덩이(`makeUfo(k, parent, glow)`), '불법 주차 단속'(ufo)은 단계 3 부터. 글: night.done '처음 보는 캔을 주웠어요', 쪽지 n3a 보낸 이 '누군가', n3f '(사람 아님)'
+- dev `__oreum.ufoSeen.set(n)`·`play('far'|'ridge'|'close'|'clear')`·`trace()`·`state()`. `tools/oldsave.js` 에 ufo·ufo2 저장

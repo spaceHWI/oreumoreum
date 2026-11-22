@@ -3,6 +3,7 @@
 // - 꺼지면 꾸밈은 모두 숨고 예전 모습 그대로. 얻은 옷은 남음, 눈덩이는 기간에만
 // - 저장 save.season.xmas (seasoncal.js cleanXmas). 서버가 달력 날짜·트리 선물·선물 옷을 확인 (server/src/validate.js)
 // - late.season: isOn(kind) · dress(d) 투기꾼 · repel(d, pos) · snowThrow(tg) · tick(dt, t) · fixed() 서버가 바로잡음 · test
+import { veiled } from '../ufoveil.js';
 import * as THREE from 'three';
 import { SEASON, CLOTHES } from '../balance.js';
 import { xmasDay, kst, calReward, calCost, calOpenable, treeStage, cleanXmas, XMAS_CLOTHES } from '../seasoncal.js';
@@ -195,7 +196,8 @@ function tickRadio(dt) {
   if (!state.sessionOn || !save.tut?.done) return;
   if ((radioT -= dt) > 0) return;
   const [a, b] = X.radio.every; radioT = a + Math.random() * (b - a);
-  say('radio', 'xmasRadio', '오름 방송 · ' + X.lines[lineI++ % X.lines.length], 4.2, { queue: false });
+  let t = X.lines[lineI++ % X.lines.length]; if (veiled(t)) t = X.lines[lineI++ % X.lines.length]; /* #207 단계 3 전엔 UFO 줄 건너뜀 */
+  say('radio', 'xmasRadio', '오름 방송 · ' + t, 4.2, { queue: false });
 }
 
 /* ---------- 매 프레임 ---------- */

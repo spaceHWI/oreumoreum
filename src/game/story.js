@@ -26,6 +26,7 @@ import { interactables } from './stores.js';
 import { field } from './field.js';
 import { isDone } from './zonedone.js';
 import { startEnding, makeUfo as makeUfo0 } from './ending.js';
+import { veilOn, veiled } from '../ufoveil.js';
 
 const DEF = Object.fromEntries(STORY.list.map((d) => [d.id, d]));
 const IDS = STORY.list.map((d) => d.id);
@@ -64,14 +65,14 @@ function spotNear([r0, r1], { zone = null, ok = okAt, ahead = 0.6 } = {}) {
   }
   return null;
 }
-const makeUfo = (k) => makeUfo0(k, fxG);
+const makeUfo = (k) => makeUfo0(k, fxG, veilOn()); /* #207 단계 3 전엔 빛 덩이 */
 const glance = (x, z, T0 = STORY.look) => { state.glance = { x, z, t: 0, T: T0 }; };
 // 예고: 감독의 'story' 차례로 한 줄 (지금 안 되면 줄에 섬). 카메라가 잠깐 그쪽
 function omen(id, text, at, sec = STORY.omen) {
   say('story', 'story:' + id, text, sec, { ttl: 12 });
   if (at) glance(at.x, at.z);
 }
-const line = (id, text, sec = 3) => say('story', 'story:' + id + ':' + text.length, text, sec, { ttl: 10 });
+const line = (id, text, sec = 3) => !veiled(text) && say('story', 'story:' + id + ':' + text.length, text, sec, { ttl: 10 });
 // 머리 위 말풍선 (캔버스 글자 스프라이트). 다 쓰면 지움
 const bubbles = [];
 function bubble(root, text, y, sec = 3) {
@@ -376,7 +377,7 @@ if (ON) {
     if (e?.story) return; // 이야기 적은 조건을 다시 세지 않음
     if (kind === 'piglet' && life0('enemy-repel-piglet') >= DEF.mom.need.n) fire('mom');
     if (kind === 'boar' && life0('enemy-repel-boar') >= DEF.meet.need.n) fire('meet');
-    if (kind === 'alien' && life0('enemy-repel-alien') >= DEF.ufo.need.n) fire('ufo');
+    if (kind === 'alien' && life0('enemy-repel-alien') >= DEF.ufo.need.n && !veilOn()) fire('ufo'); /* #207 불법 주차 단속은 단계 3 부터 */
     if (kind === 'dog' && e && e.pack > 0 && !life.enemies.list.some((o) => o !== e && o.pack === e.pack && o.state !== 'flee' && o.state !== 'leave')) fire('howl'); // 들개 무리 하나를 다 쫓음
   };
   if (dumpers) {

@@ -20,6 +20,8 @@ const SAVES = {
   // #180: 철 이벤트 기록이 깨진 저장
   season: { nick: '산타 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, season: { xmas: { days: [3, 'x', 99, 3], gift: ['hat:nope', 7], tree: 'q', snow: 1, gd: -1, seen: 77 } }, buff: { id: 'vin', left: 30 }, clothes: { own: { 'hat:x-santa': 1 }, wear: { hat: 'hat:x-santa' } } },
   season2: { nick: '산타 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, season: 'abc' },
+  ufo: { nick: '불빛 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, boss: { done: { 1: 1, 2: 1, 3: 1 } }, story: { done: ['night'] }, ufo: { close: 'x', clear: 7, trace: { d: 3, x: 'a' } } }, // #207 UFO 드러남 단계
+  ufo2: { nick: '불빛 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, ufo: 'abc' },
   // #164: 배낭 겉모습·박스 헬멧이 깨진 저장
   punk: { nick: '펑크 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 2, bag: 1, shoes: 1, weapon: 1 }, backs: { own: { tewak: 1, nope: 1 }, cur: 'tewak' }, boxView: 'x', clothes: { own: { 'hat:p-box': 1 }, wear: { hat: 'hat:p-box' } } },
   punk2: { nick: '펑크 사람2', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, backs: 'abc' },

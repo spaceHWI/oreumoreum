@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { height } from './world.js';
 import { drape } from './drape.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
+import { veilKind, veilOn, veilModel, veilName } from './ufoveil.js';
 import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS } from './balance.js';
 import { createPack, slotGoal, bodyR } from './enemypack.js';
 import { reportCrash, crashNote } from './crash.js';
@@ -57,7 +58,9 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   let packN = 0; // 무리 묶음 id (#146): spawnPlan 한 번 = 무리 하나. 확인용 test.spawn 은 -1 로 한 무리
 
   function spawnOne(kind, x, z, over = null, pk = null) {
-    const def = over ? { ...ENEMIES[kind], ...over } : ENEMIES[kind], m = buildEnemyModel(kind);
+    let def = over ? { ...ENEMIES[kind], ...over } : ENEMIES[kind];
+    const m = buildEnemyModel(kind);
+    if (veilKind(kind) && veilOn()) { veilModel(m); def = { ...def, name: veilName(def.name, kind) }; } /* #207 단계 3 전: 흐린 빛 덩이 */
     const pos = new THREE.Vector3(x, height(x, z), z);
     m.root.position.copy(pos); group.add(m.root);
     const bar = makeBar(); bar.g.position.set(0, m.h + 0.45, 0); m.root.add(bar.g);
