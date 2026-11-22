@@ -11,7 +11,7 @@ import { ZONE_BOSS as B, ZONES, CART } from '../balance.js';
 import { parkedFastCart } from '../rides.js';
 import { STREET } from '../streetlayout.js';
 import { gradHard } from '../toon.js';
-import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
+import { gearScore, myLv, zoneToneLv, zoneRecLv } from '../gearscore.js';
 import { tierColor, zoneShort, josaEulReul } from '../zonelook.js';
 import { height } from '../world.js';
 import { state, late } from './state.js';
@@ -36,36 +36,36 @@ export const S = (() => {
   for (const k of ['done', 'beat', 'log', 'mats']) if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) o[k] = {};
   for (const k in o.done) if (!(o.done[k] > 0) || !B.list[k]) delete o.done[k];
   for (const k in o.beat) if (!(Number(o.beat[k]) > 0) || !B.list[k]) delete o.beat[k];
-  for (const k in o.log) { const l = o.log[k]; if (!B.list[k] || !l || typeof l !== 'object') delete o.log[k]; else { l.pick = l.pick | 0; l.repel = l.repel | 0; l.s0 = Number(l.s0) || 0; } }
+  for (const k in o.log) { const l = o.log[k]; if (!B.list[k] || !l || typeof l !== 'object') delete o.log[k]; else { l.pick = l.pick | 0; l.repel = l.repel | 0; l.s0 = Number(l.s0) || 0; l.l0 = Number(l.l0) || 0; } }
   for (const k in o.mats) if (!(o.mats[k] > 0)) delete o.mats[k];
   if (!(o.wake >= 1 && o.wake <= 5 && LOOP(o.wake)?.ch)) o.wake = 0;
   return o;
 })();
 export const isDone = (z) => (S.done[z] || 0) > 0;
-export function logOf(z) { return S.log[z] || (S.log[z] = { pick: 0, repel: 0, s0: gearScore(save).total }); }
+export function logOf(z) { return S.log[z] || (S.log[z] = { pick: 0, repel: 0, s0: gearScore(save).total, l0: myLv(save) }); /* l0 시작 레벨 (#251, 옛 기록엔 없음) */ }
 
 /* ---------- 구역 완료 요약 ---------- */
 const IC = {
   pick: icon('bag'),
   repel: icon('gyul-throw'),
   got: icon('chest'),
-  score: icon('score'),
+  score: icon('stand'),
 };
 const TONE_C = { r: '#ff5a4a', y: '#ffd23f', g: '#8fe36a' };
 export function openSummary(z, got) {
-  const el = $('zdone'), D = B.list[z], sc = gearScore(save).total, d = sc - (got.s0 || sc);
+  const el = $('zdone'), D = B.list[z], lv = myLv(save), l0 = got.l0 || got.log?.l0 || lv, d = lv - l0;
   el.style.setProperty('--tier', tierColor(z));
   $('zdone-t').textContent = `${zoneShort(z)} 구역 완료`;
   $('zdone-rows').innerHTML = [
     [IC.pick, '치운 쓰레기', `${got.log.pick}개`],
     [IC.repel, '쫓아낸 적', `${got.log.repel}마리`],
     [IC.got, '얻은 것', `귤 ${got.gyul} · ${D.mat}`],
-    [IC.score, '장비 점수', `${got.s0 || sc} → ${sc}${d > 0 ? ` <b class="up">▲${d}</b>` : ''}`],
+    [IC.score, '레벨', d > 0 ? `Lv ${l0} → ${lv} <b class="up">▲${d}</b>` : `Lv ${lv}`],
   ].map(([ic, k, v]) => `<div>${ic}<span>${k}</span><b>${v}</b></div>`).join('');
   const open = []; if (got.first) { if (fastSpot(z)) open.push('빠른 마차 열림'); if (cutSpot(z)) open.push('지름길 열림'); }
   $('zdone-open').innerHTML = open.map((t) => `<span>${t}</span>`).join(''); $('zdone-open').hidden = !open.length;
   const nz = z + 1, Z = ZONES.find((q) => q.id === nz);
-  $('zdone-next').innerHTML = Z ? `<span class="tone" style="background:${TONE_C[zoneTone(sc, nz)] || '#fff'}"></span>다음은 ${zoneShort(nz)} · 권장 점수 ${zoneRec(nz)}` : '정상까지 다 지켰어요! 다른 구역도 다시 둘러봐요';
+  $('zdone-next').innerHTML = Z ? `<span class="tone" style="background:${TONE_C[zoneToneLv(save, nz)] || '#fff'}"></span>다음은 ${zoneShort(nz)} · 권장 Lv ${zoneRecLv(nz)}` : '정상까지 다 지켰어요! 다른 구역도 다시 둘러봐요';
   closePanels(); el.hidden = false;
 }
 for (const id of ['zdone-close', 'zdone-ok']) $(id).addEventListener('click', () => { $('zdone').hidden = true; });

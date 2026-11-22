@@ -6,7 +6,6 @@ export const LONG_MS = 500; // 길게 누르기 (#196)
 export function initUiTips({ $, toast, get }) {
   const TABLE = [
     ['#bag-pill', () => ''], // #166 누르면 내 가방이 열림: 토스트 없음
-    ['#score-pill', () => { const g = get.score(); return `장비 점수 ${g.total} · 줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}`; }], // #137
     ['#zone-pill', () => ''], // #136 누르면 오름 지도(area.js)가 열림: 토스트 없음
     ['#buff-pill', () => { const b = $('buff-pill'); return `${b.title || '식사 버프'} · ${b.querySelector('b').textContent} 남음`; }],
     ['#hp-bar', () => `HP ${Math.ceil(get.hp())}/${Math.round(get.hpMax())}`],

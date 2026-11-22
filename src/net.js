@@ -50,7 +50,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
   }
   const safeNick = (n) => { const s = cleanText(n, NET.nickMax); return s && !nickBad(s) ? s : '러너'; }; // 남이 보낸 이름은 다듬어서 캔버스 글자로만 (#84). 걸리는 이름은 '러너' (#162, 옛 서버·P2P 대비)
 
-  // 이름표: (작은 레벨 #159, lv 가 있을 때만) 닉네임 + 옆에 작은 장비 점수 (#137, gs 가 있을 때만)
+  // 이름표: (작은 레벨 #159, lv 가 있을 때만) 닉네임. 장비 점수(gs)는 #251 부터 안 그림
   // 칭호 (#165): 있으면 이름표 위에 작은 글 한 줄 (목록에 있는 글만, punktext.js TITLES)
   function makeLabel(text, gs, gg = 0, lv = 0, title = '') {
     const TH = title ? 30 : 0, c = document.createElement('canvas'); c.width = 256; c.height = 64 + TH;
@@ -59,7 +59,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     g.font = '700 28px "Noto Sans KR", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = 'rgba(36,37,31,.55)'; g.fillRect(0, 0, 256, 64);
     if (gg > 0) { g.fillStyle = gradeColor(gg); g.fillRect(0, 58, 256, 6); g.strokeStyle = gradeColor(gg); g.lineWidth = 3; g.strokeRect(1.5, 1.5, 253, 61); } // 등급 색 테두리 (#140)
-    const sc = gs > 0 ? String(gs) : '';
+    const sc = ''; void gs; /* #251 장비 점수는 이름표에 안 보임 (레벨만). gs 는 등급 테두리 등 다른 쓰임을 위해 그대로 받음 */
     const lt = lv > 0 ? 'Lv' + lv : '';
     g.font = '800 19px "Noto Sans KR", sans-serif'; const sw = sc ? g.measureText(sc).width + 10 : 0, lw = lt ? g.measureText(lt).width + 8 : 0;
     g.font = '700 28px "Noto Sans KR", sans-serif'; const nw = Math.min(236 - sw - lw, g.measureText(text).width), x0 = 128 - (nw + sw + lw) / 2 + lw;
