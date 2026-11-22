@@ -11,6 +11,7 @@ import { STORY } from '../balance.js';
 import { STORY_TEXT } from '../punktext.js';
 import { height } from '../world.js';
 import { buildEnemyModel } from '../enemymodels.js';
+import { veilModel } from '../ufoveil.js';
 import { nsPaths, nsSummit } from '../namsongi.js';
 import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
@@ -28,8 +29,8 @@ const G = new THREE.Group(); scene.add(G);
 // UFO (#71 외계인 비행접시를 k 배로) + 아래 빛기둥. 이야기 이벤트(story.js)도 씀
 const beamMat = new THREE.MeshBasicMaterial({ color: '#c9ffb8', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
 const beamGeo = new THREE.ConeGeometry(1, 1, 14, 1, true).translate(0, -0.5, 0);
-export function makeUfo(k, parent = G) {
-  const m = buildEnemyModel('alien'); m.root.scale.setScalar(k);
+export function makeUfo(k, parent = G, glow = false) { /* glow: 단계 3 전(#207) 모양 대신 흐린 빛 덩이 */
+  const m = buildEnemyModel('alien'); m.root.scale.setScalar(k); if (glow) veilModel(m);
   const beam = new THREE.Mesh(beamGeo, beamMat.clone()); beam.visible = false; m.root.add(beam);
   parent.add(m.root);
   return {

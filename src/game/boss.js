@@ -12,6 +12,7 @@
 //   쫓아내면 방장이 {t:'bs', done, f: 싸움에 낀 사람} 과 {t:'bd'}(방이 돌하르방을 세워 zg 로 알림). 보상은 낀 사람 모두에게. 부하 적은 각자 화면(적은 지금도 각자)
 // 구역 완료 요약·깨어나는 곳·다시 들어올 때·빠른 마차·지름길·저장(save.boss)은 zonedone.js
 // (파일 순서는 src/modules.js: zonedone 뒤)
+import { veilName } from '../ufoveil.js';
 import * as THREE from 'three';
 import { ZONE_BOSS as B, ZONE_GUARD, ENEMIES, ENEMY_SPAWN, BOAR, COLLIDE } from '../balance.js';
 import { gradHard } from '../toon.js';
@@ -31,7 +32,7 @@ import { field } from './field.js';
 import { S, ON, isDone, logOf, openSummary, chSpot, fastSpot, cutSpot, warp, tickZoneDone, zoneDoneTest } from './zonedone.js';
 
 const ARENA = new Map(); for (const b of field?.bosses || []) ARENA.set(b.zone, b);
-const name = (z) => B.list[z]?.name || '우두머리';
+const name = (z) => veilName(B.list[z]?.name || '우두머리', B.list[z]?.kind); /* #207 단계 3 전엔 '수상한 불빛' */
 const r1 = (v) => Math.round(v * 10) / 10, r2 = (v) => Math.round(v * 100) / 100;
 const lite = () => quality.level === 0;
 const nowS = () => performance.now() / 1000;

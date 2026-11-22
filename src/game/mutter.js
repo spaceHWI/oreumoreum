@@ -23,6 +23,7 @@ import { chargeState } from './charge.js';
 import { bagCap } from './pickup.js';
 import { field } from './field.js';
 import { STREET } from '../streetlayout.js';
+import { veilOn } from '../ufoveil.js';
 
 const S = (() => {
   let s = save.mutter;
@@ -74,6 +75,7 @@ const LINES = [
   { id: 'hungry', when: () => !save.buff && hp.hp / hp.max < M.hpLow && !hp.isDown, solved: () => life0('meal') > 0 },
   { id: 'legs', when: () => !(save.rides?.own?.length) && walked >= M.walk, solved: () => (save.rides?.own?.length || 0) > 0 },
   { id: 'summit', ev: true },
+  { id: 'oddTrash', ev: true, need: () => veilOn() }, /* #207 아침의 흔적 곁 (ufoseen.js 가 late.mutterEv) */
   { id: 'cave', need: () => !!late.caveApi, when: () => !state.cave && zoneNow() === 4 && late.caveApi.can()[0], solved: () => !!save.cave?.runs?.d }, /* #195 바람 새는 굴 (들어가 보면 끝) */
 ];
 for (let i = 1; T['idle' + i]; i++) LINES.push({ id: 'idle' + i, idle: true });
@@ -129,6 +131,7 @@ const ready = () => state.sessionOn && !isOff() && !!save.tut?.done && !late.tut
 
 // ---------- 일 (ev) ----------
 // 투기꾼이 버리고 감 (hooks.js dumpers dumped 가 부름)
+late.mutterEv = (id) => { if (BY[id]) evAt[id] = clock; }; // #207 다른 파일이 일 줄을 부름
 late.mutterDumped = (d, n) => { if (n && d?.pos && dist(d.pos.x, d.pos.z) < 60) evAt.dumped = clock; };
 
 function watch(dt) {

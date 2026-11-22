@@ -110,6 +110,7 @@ import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: �
 import './game/feel.js'; // 손맛 (#141): 콤보·피해 숫자·연속·진동 (level 뒤: 적 후크를 감쌈)
 import './game/ending.js'; // 엔딩 시네마틱 (#168)
 import './game/story.js'; // 이야기 이벤트 (#168)
+import './game/ufoseen.js'; // UFO 드러남 단계 (#207): 흔적 → 실루엣 → 또렷이
 import './game/swarm.js'; // 들판 떼 (#173)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
