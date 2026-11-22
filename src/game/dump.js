@@ -204,7 +204,7 @@ export function updateContext() {
     for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
     const d = life.nearestDeer(player.pos, 2.6);
     if (d) { if (!state.deerAct || state.deerAct.deer !== d) state.deerAct = { deer: d, label: '노루 타기', act: () => mountDeer(d) }; best = state.deerAct; }
-    if (cart && !best && cartNear() && late.shopOpen?.('ride') !== false) best = cartOnAct; // 정류장에 마차가 서 있거나 (#69) 달리는 마차 가까이면 (#120) 타기
+    if (cart && !best && cartNear()) best = cartOnAct; // 정류장에 마차가 서 있거나 (#69) 달리는 마차 가까이면 (#120) 타기. 탈것 가게가 닫혀 있어도 마차는 탐 (#244)
     if (state.fishing && !player.ride && (state.fishing.active || (!best && state.fishing.canFish()))) best = fishAct; // 개울 물가면 낚시 (#44)
     if (!best) best = player.ride ? rideOffAct : throwAct; // 할 일이 없으면 귤 던지기 (탈것 위에선 내리기)
   }
