@@ -18,6 +18,8 @@ const SAVES = {
   lookc: { nick: '색 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, look: { sex: 'f', skin: 2, colors: { hat: 99, top: 'x', bottom: -3, shoes: 2.5 } } },
   // #232: 사건 파일 기록이 깨진 저장 · 사건을 연 저장(증거 하나)
   caseBad: { nick: '사건 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 'x', ev: 5, f: 'q', base: 3 }, zz: 7 } },
+  reportBad: { nick: '제보 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: 404, id: 'zz', got: 'yes', said: [] } }, // 미확인 제보 (#238): 이상한 값
+  reportOld: { nick: '어제 제보', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: '2026-01-01', id: 'u01', got: 1, said: 1 } },
   caseMid: { nick: '조사 중', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 1763800000000, ev: ['k1a', 'nope', 'k1a'], f: 0 } }, punk: { notes: { k1a: 1763800000000 }, unread: [] } },
   // #158: 퀘스트 기록이 깨진 저장 · 구역 1·2 를 끝낸 옛 저장(퀘스트 없음 → 구역 3 줄부터)
   questBad: { nick: '퀘스트 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, quest: { cur: 'nope', done: 5, side: [1], cp: 'x', c: null } },

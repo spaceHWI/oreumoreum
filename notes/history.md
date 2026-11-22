@@ -1782,3 +1782,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 레이드: `raid.start(force)` 더함 (`src/raidcore.js`·`game/raid.js`, 서버 `{t:'rgo', f:1}`). force 는 싸움 중·부서짐 레이드도 지우고 5초 뒤 새로. 서버는 STATS_OPEN 방만 받음(실서버 어드민도 못 함). `online.js raid` 는 시작할 때 force 로 열어 앞 실행이 남긴 레이드(이어받기 줄이 싸움 중으로 남김)와 상관없음. 이어받기 앞 16초 고정 대신 쉼(단계 0)이 될 때까지
 - `online.js <서버> core` (동굴·레이드·귤 주기 뺀 나머지). 나눠 돌리는 법은 `notes/auto.md` 확인 절. 통째는 소프트웨어 GL 에서 약 11분
 - `sec.js` 2줄: 실서버 어드민의 rgo f:1 은 무시, STATS_OPEN 방의 rgo f:1 은 새 레이드
+
+## #238 매일 미확인 제보
+- 데이터 `src/cases/reports.js` 34개(헛소문 9, 큰 사건 실마리 c1~c5 각 하나: 아직 없는 사건 것은 아무에게도 안 나옴). `reportOf(날짜, ok)` 가 날짜 난수로 고름(REPORT.hoax 30% 헛소문)
+- 게임 `src/game/reports.js`: 레벨 REPORT.lv(2)부터 하루 하나, 구역은 journey.maxZ 까지. 길가 더미 곁에 흔적 모양 + 바닥 표시, '살펴보기'(헛소문은 '둘러보기') → find 한 줄 + 귤 REPORT.gyul(30). 쪽지 창 `#report-note`
+- 붙인 곳: 오늘의 할 일 창 줄(hud.js `late.reportRow`), 사건 파일 창 '제보' 칸(cases.js `late.reportBoard`, 사건이 열려야 창 버튼이 보임), 다음 할 일 AFTER.report(daily 앞), 루프 `state.ticks.reports`
+- 서버 `earn.js` 6-3: save.report = { d, id, got } 이 오늘·어제면 하루 한 번(cred.rp). `sec.js` 3줄, `oldsave.js` reportBad·reportOld
+- 검사 `node tools/reportrun.js [d|m] [shots]` (60일 헛소문 비율·구역·사건 실마리 · 날짜 셋 다른 제보 끝까지 · 옛 저장). 확인용 날짜: 주소 `?rdate=YYYY-MM-DD` 또는 `__oreum.reports.date()`

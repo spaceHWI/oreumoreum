@@ -1871,6 +1871,10 @@ export const QUESTS = {
 QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·대면 퀘스트 (src/cases/c*.js quests, 셈 'case:<id>:ev'·'case:<id>:face' 는 game/cases.js)
 // 사건 파일 (#232, game/cases.js). 사건마다 자리·글은 src/cases/c*.js
 // free: 자리가 막혀 있으면 둘레 몇 m 까지 빈 자리를 찾음 · far: 이 거리 밖이면 모양을 숨김 · r: 증거·숨는 곳 상호작용 거리 · face: 대면 장면(숨어 보기) 까마귀 수·카메라
+// 매일 미확인 제보 (#238, 데이터 src/cases/reports.js, 게임 src/game/reports.js). 값은 임의
+// lv 이 레벨부터 · hoax 헛소문 확률 · caseK 열린 사건 실마리를 고를 확률(진짜 제보일 때) · gyul 끝내면 귤(서버 earn.js 가 하루 한 번 인정)
+// r 상호작용 거리 · off 길가 더미에서 떨어진 거리 [최소, 최대] m · far 흔적·표시가 보이는 거리 · ring 바닥 표시 반지름
+export const REPORT = { lv: 2, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14 };
 export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 3.4 } };
 
 // 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
@@ -1878,7 +1882,7 @@ export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, sk
 // shopT 귤이 새로 다음 장비 값에 닿으면 이만큼 '장비점으로' (장비점 창을 열거나 문 shopR m 안에 오면 끝, 같은 장비로 다시 권하지 않음)
 // bagRoom 배낭 남은 칸이 이보다 작으면 '클린하우스로'
 // after: 줄기 퀘스트가 끝난 뒤 차례 (강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑). 모두 임의값
-export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'daily', 'heap', 'den', 'cairn'] };
+export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'report', 'daily', 'heap', 'den', 'cairn'] };
 
 // 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
 // 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐
