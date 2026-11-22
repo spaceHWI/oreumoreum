@@ -36,8 +36,10 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await A.p.evaluate(() => { const o = window.__oreum; o.player.pose = 'throw'; o.player.poseT = 0; o.player.pos.x += 0.3; });
     ok(await until(B, () => window.__oreum.peerFight().some((p) => p.on), null, 10000), "A 가 던지면 B 화면 A 머리 위에 '전투 중'");
     for (const X of [A, B]) await X.p.evaluate(() => { window.__oreum.raid.go(12 + Math.random() * 4); });
+    const id0 = await A.p.evaluate(() => window.__oreum.raid.state().id);
     await A.p.evaluate(() => window.__oreum.raid.start(true)); // 앞 실행이 방에 남긴 레이드(싸움 중·부서짐)도 지우고 새로 (#245, 로컬 STATS_OPEN 방만)
-    ok(await until(A, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 40000) && await until(B, () => window.__oreum.raid.state().ph === 2 && window.__oreum.raid.state().body, null, 20000), '레이드: 둘 다 같은 대왕을 봄');
+    const fresh = (id0) => { const s = window.__oreum.raid.state(); return s.id > id0 && s.ph === 2 && s.body && (s.host || s.puppet); }; // 남은 레이드가 아닌 새 번호의 대왕을 기다림 (#245: 남은 싸움을 보고 바로 넘어가 지워지는 사이에 읽던 것)
+    ok(await until(A, fresh, id0, 40000) && await until(B, fresh, id0, 20000), '레이드: 둘 다 같은 대왕을 봄');
     const rs = await Promise.all([A, B].map((X) => X.p.evaluate(() => window.__oreum.raid.state())));
     ok(rs[0].host !== rs[1].host && rs.some((r) => r.puppet), `한 사람이 굴리고 다른 사람은 받아서 그림 (방장 ${rs.map((r) => r.host)}, 받음 ${rs.map((r) => r.puppet)})`);
     const hp0 = rs[0].hp; await B.p.evaluate(() => window.__oreum.raid.hit(200));
