@@ -546,12 +546,11 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   // 내가 던져 다른 화면의 노루가 먹은 귤을 지움 (#92)
   function eatTangerine(tg) { if (tg.eaten) return; tg.eaten = true; group.remove(tg.mesh); }
   // 귤로 맞힐 대상 (#34 자동 조준). 새 적은 여기에 더한다. pos: 발 위치(살아 있는 Vector3), h: 겨눌 높이, size: 발밑 표시 크기, vel: 움직임
-  const aimHbs = new Map();
   function aimTargets() {
     const out = [];
     enemies.aimTargets(out);
     for (const t of extra) t.aimTargets(out);
-    for (const hb of hareubangs) { let a = aimHbs.get(hb); if (!a) { a = { kind: 'hareubang', pos: hb.pos, h: 1.9, size: 1.0, vel: null }; aimHbs.set(hb, a); } out.push(a); }
+    /* 하르방은 자동 겨누기 대상이 아님 (#249). 직접 던진 귤의 맞힘(hitTest)은 따로라 그대로 */
     return out;
   }
   // 다 핀 구역에 다시 나타나는 노루 (#46): (x, z) 둘레에 n 마리. 돌려받은 목록으로 removeDeer

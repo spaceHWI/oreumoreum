@@ -27,7 +27,7 @@ export function setHoldBow(v) {
 }
 const aimFwd = new THREE.Vector3();
 // 타겟 고정 (#148): 감지 거리 안에서 가장 위험한 것 하나를 잡아 두고, 쫓아내거나(목록에서 빠짐) 멀어질 때까지 바꾸지 않음
-// 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 잡아 두지 않고 사거리 안에서만 (예전처럼). 화면에서 누르거나 Tab 으로 바꿈
+// 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 겨누지 않음 (#249). 화면에서 누르거나 Tab 으로 바꿈
 // state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요'. 누르면 다가가서 쏨 (#132, game/approach.js)
 state.lock = null; state.lockPick = false;
 export const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
@@ -50,21 +50,18 @@ function pickTarget() {
   if (L && (!list.includes(L) || (L.ok && !L.ok()) || flat(L) > R + COMBAT.losePad)) { L = null; state.lockPick = false; }
   camera.getWorldDirection(aimFwd); const fl = Math.hypot(aimFwd.x, aimFwd.z) || 1;
   let best = null, bs = Infinity;
-  for (const t of list) { if (t.kind === 'hareubang' || flat(t) >= R) continue; const sc = aimScore(t, fl); if (sc < bs) { bs = sc; best = t; } }
+  for (const t of list) { if (flat(t) >= R) continue; const sc = aimScore(t, fl); if (sc < bs) { bs = sc; best = t; } }
   if (!L || (!state.lockPick && !L.chase && best?.chase)) L = best; // 쫓아오는 적이 생기면 그쪽으로 (직접 고른 것은 그대로)
   state.lock = L;
   if (L) return L;
-  // 하르방: 사거리 안 가장 알맞은 것 (잡아 두지 않음)
-  let hb = null; bs = Infinity;
-  for (const t of list) { if (t.kind !== 'hareubang' || flat(t) >= fireR()) continue; const sc = aimScore(t, fl); if (sc < bs) { bs = sc; hb = t; } }
-  return hb;
+  return null; // 하르방은 겨누지 않음 (#249)
 }
 export function aimTarget() { const t = refreshLock(); return t && flat(t) < fireR() ? t : null; }
 export const lockFar = () => !!state.lock && flat(state.lock) >= fireR();
 // 다음 타겟 (Tab): 감지 거리 안 것들을 가까운 순으로 돌아가며
 export function cycleLock() {
   refreshLock(true);
-  const R = detectR(), list = life.aimTargets().filter((t) => t.kind !== 'hareubang' && flat(t) < R).sort((a, b) => flat(a) - flat(b));
+  const R = detectR(), list = life.aimTargets().filter((t) => flat(t) < R).sort((a, b) => flat(a) - flat(b));
   if (list.length < 2 && list[0] === state.lock) return !!list.length;
   if (!list.length) return false;
   state.lock = list[(list.indexOf(state.lock) + 1) % list.length]; state.lockPick = true; lockAt = -1; return true;
@@ -74,7 +71,7 @@ const pv = new THREE.Vector3();
 export function pickLock(x, y) {
   let best = null, bd = COMBAT.pickPx;
   for (const t of life.aimTargets()) {
-    if (t.kind === 'hareubang' || flat(t) > detectR()) continue;
+    if (flat(t) > detectR()) continue;
     pv.set(t.pos.x, t.pos.y + t.h, t.pos.z).project(camera); if (pv.z > 1) continue;
     const d = Math.hypot((pv.x * 0.5 + 0.5) * innerWidth - x, (-pv.y * 0.5 + 0.5) * innerHeight - y);
     if (d < bd) { bd = d; best = t; }
