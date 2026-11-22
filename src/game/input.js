@@ -3,10 +3,12 @@ import * as THREE from 'three';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
 import { state, late } from './state.js';
-import { $, clamp } from './save.js';
+import { $, clamp, save, persist, isTouch } from './save.js';
 import { canvas, scene, camera, terrain } from './scene.js';
 import { player } from './place.js';
 import { cam, camPitchMax, camPitchMin } from './camera.js';
+import { STICK } from '../balance.js';
+import { optSeg } from './optui.js';
 import { busy, cancelAll } from './hud.js';
 
 // ---------- 입력 ----------
@@ -45,18 +47,61 @@ canvas.addEventListener('pointercancel', endPtr);
 canvas.addEventListener('wheel', (e) => { e.preventDefault(); userZoom(cam.dist * (1 + Math.sign(e.deltaY) * 0.1)); }, { passive: false });
 state.camHold = 0;
 
-// 조이스틱 (터치)
-export const joy = { active: false, id: null, x: 0, y: 0, cx: 0, cy: 0 };
+// 조이스틱 (터치). 떠다님(#211, 기본): 왼쪽 아래 구역 어디든 누른 자리에 바탕이 생기고, 반지름 밖으로 끌면 바탕이 따라옴. 고정: 예전처럼 제자리 스틱
+// 이동은 처음 구역에 닿은 손가락(joy.id) 하나에만 묶음. 떼기 전까지는 구역 밖으로 나가도 이동. 버튼 위에서 시작한 터치는 버튼이 받으므로 이동이 안 됨
+export const joy = { active: false, id: null, x: 0, y: 0, cx: 0, cy: 0, float: false };
+export const stickFloat = () => isTouch && save.stick !== 'fixed';
 {
   const el = $('joy'), knob = $('joy-knob');
-  const R = 46;
-  const setKnob = () => { knob.style.transform = `translate(${joy.x * R}px, ${joy.y * R}px)`; };
-  el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); const r = el.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; joy.active = true; joy.id = e.pointerId; move(e); closePanelsSoft(); });
-  const move = (e) => { if (!joy.active || e.pointerId !== joy.id) return; let dx = (e.clientX - joy.cx) / R, dy = (e.clientY - joy.cy) / R; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } joy.x = dx; joy.y = dy; setKnob(); };
-  el.addEventListener('pointermove', move);
-  const end = (e) => { if (e.pointerId !== joy.id) return; joy.active = false; joy.id = null; joy.x = joy.y = 0; setKnob(); };
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+  let R = 46, t0 = 0, sx = 0, sy = 0, far = false, from = null;
+  const probe = document.createElement('i'); probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-left:var(--safe-l);padding-bottom:var(--safe-b)'; document.body.append(probe);
+  const inZone = (x, y) => {
+    const cs = getComputedStyle(probe), sl = parseFloat(cs.paddingLeft) || 0, sb = parseFloat(cs.paddingBottom) || 0;
+    return x >= sl + STICK.edge && x <= innerWidth * STICK.zoneW && y >= innerHeight * (1 - STICK.zoneH) && y <= innerHeight - sb;
+  };
+  const setKnob = () => { const k = joy.float ? Math.min(R, el.offsetWidth * 0.4) : R; knob.style.transform = `translate(${joy.x * k}px, ${joy.y * k}px)`; };
+  const place = () => { if (joy.float) { el.style.left = joy.cx + 'px'; el.style.top = joy.cy + 'px'; } };
+  const guide = () => {
+    const f = stickFloat(); document.body.classList.toggle('stick-float', f);
+    el.classList.toggle('faint', f && (save.joyN || 0) >= STICK.faintAfter);
+  };
+  const start = (e, src) => {
+    joy.float = stickFloat(); joy.active = true; joy.id = e.pointerId; t0 = performance.now(); sx = e.clientX; sy = e.clientY; far = false; from = src;
+    if (joy.float) { R = clamp(Math.min(innerWidth, innerHeight) * STICK.rK, STICK.rMin, STICK.rMax); joy.cx = e.clientX; joy.cy = e.clientY; el.classList.add('float', 'on'); place(); }
+    else { R = 46; const r = el.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; el.classList.add('on'); }
+    move(e); closePanelsSoft();
+  };
+  const move = (e) => {
+    if (!joy.active || e.pointerId !== joy.id) return;
+    if (Math.hypot(e.clientX - sx, e.clientY - sy) > STICK.tapPx) far = true;
+    let dx = (e.clientX - joy.cx) / R, dy = (e.clientY - joy.cy) / R; const m = Math.hypot(dx, dy);
+    if (m > 1) { dx /= m; dy /= m; if (joy.float) { joy.cx = e.clientX - dx * R; joy.cy = e.clientY - dy * R; place(); } } /* 끌려오는 바탕 */
+    joy.x = dx; joy.y = dy; setKnob();
+  };
+  const end = (e) => {
+    if (!joy.active || e.pointerId !== joy.id) return;
+    const tap = joy.float && from === 'view' && !far && performance.now() - t0 < STICK.tapT * 1000 && e.type === 'pointerup';
+    if (joy.float && far) { save.joyN = Math.min(99, (save.joyN || 0) + 1); if (save.joyN === STICK.faintAfter) persist(); }
+    joy.active = false; joy.id = null; joy.x = joy.y = 0; joy.float = false; setKnob();
+    el.classList.remove('float', 'on'); el.style.left = el.style.top = ''; guide();
+    if (tap) tapGround(e.clientX, e.clientY); /* 구역 안을 톡 친 건 예전처럼 그 땅으로 걸어가기 */
+  };
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); if (joy.active) return; el.setPointerCapture(e.pointerId); start(e, 'joy'); });
+  addEventListener('pointerdown', (e) => {
+    if (e.target !== canvas || joy.active || e.pointerType === 'mouse' || !stickFloat() || !inZone(e.clientX, e.clientY)) return;
+    e.stopImmediatePropagation(); canvas.setPointerCapture(e.pointerId); if (document.activeElement && document.activeElement !== document.body && document.activeElement !== canvas) document.activeElement.blur(); start(e, 'view');
+  }, true);
+  addEventListener('pointermove', move, true);
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, end, true);
+  el.addEventListener('lostpointercapture', end); canvas.addEventListener('lostpointercapture', end);
   el.addEventListener('contextmenu', (e) => e.preventDefault());
+  addEventListener('blur', () => { if (joy.active) end({ pointerId: joy.id, type: 'pointercancel' }); });
+  guide();
+  // 설정 '이동 스틱: 떠다님 / 고정' (조작 묶음, #201 칸 묶음)
+  const seg = $('menu-stick');
+  const drawSeg = () => { if (!seg) return; seg.hidden = !isTouch; optSeg(seg, [['float', '떠다님'], ['fixed', '고정']], save.stick === 'fixed' ? 'fixed' : 'float', (v) => { save.stick = v === 'fixed' ? 'fixed' : undefined; persist(); drawSeg(); guide(); }); };
+  drawSeg();
+  late.stickApi = { STICK, guide, drawSeg };
 }
 
 // 멀티터치 (#42): 화면의 손가락은 pointerId 로 따로 추적한다 — 조이스틱(joy.id), 시점·핀치(ptrs: 캔버스에 닿은 손가락만), 버튼(각 버튼이 자기 손가락만 캡처).
