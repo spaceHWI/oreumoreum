@@ -179,8 +179,9 @@ export const SWARM = {
   /* 서바이벌 터 (#231, game/arena.js): 구역마다 한 곳. 터 가운데 징을 울려야(상호작용) 한 판이 시작됨. 들판에 들어가기만 해서는 시작하지 않음
      at[구역] 터 가운데 [x, z] (길에서 가깝고 덜 기운 곳, 안에 더미·소굴·보물·NPC 없음: node tools/arena.js 가 확인), r 반지름(m, 임의값)
      leave 판 동안 터 밖에 이 초 넘게 있으면 끝(덤 없음, 쉬는 시간 × leaveRest), gongR 징 상호작용 거리, spawn 떼가 나오는 곳 = 터 테두리 밖 [안, 밖] m
+     edge 판 동안 테두리에서 이 m 안이면 받혀 밀리는 방향의 바깥쪽 몫을 지우고 edgeIn 만큼 안쪽으로 꺾음 (#265: 비탈 터에서 밀려 나가 돌아오지 못함)
      hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리 */
-  arena: { r: 22, leave: 8, leaveRest: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
+  arena: { r: 22, leave: 8, leaveRest: 0.5, edge: 4, edgeIn: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
     at: [null, [-16, -540], [-312, 84], [-116, 28], [84, -440], [64, -12]] }, /* #253 자리 다시 잡음: node tools/arenacheck.js 겹침 0 */
 };
 

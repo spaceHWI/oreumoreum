@@ -47,7 +47,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   ok(seen, `B 가 가까우면 받을 사람으로 (${JSON.stringify(why)})`);
   await until(A, () => /귤 주기/.test(document.querySelector('#btn-ctx span').textContent), null, 3000);
   ok(await A.p.evaluate(() => /귤 주기/.test(document.querySelector('#btn-ctx span').textContent)), `버튼이 '귤 주기' (${await A.p.evaluate(() => document.querySelector('#btn-ctx span').textContent)})`);
-  const snap = (X) => X.p.evaluate(() => ({ c: window.__oreum.save.coins, g: { ...window.__oreum.save.gift }, t: document.getElementById('toast').textContent }));
+  const snap = (X) => X.p.evaluate(() => ({ c: window.__oreum.save.coins, g: { ...window.__oreum.save.gift }, t: document.getElementById('msg-log').textContent }));
   // 한 번 누르면 1개
   const a0 = await snap(A), b0 = await snap(B);
   await A.p.evaluate(() => { const o = window.__oreum; o.give.press(); }); await wait(A.p, 1200);

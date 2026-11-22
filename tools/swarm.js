@@ -57,9 +57,9 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
             let sc = 0; for (const e of o.enemies.list) { if (e.state === 'flee' || e.state === 'leave') continue; const d = Math.hypot(e.pos.x - x, e.pos.z - z); sc -= 30 / Math.max(1.5, d); }
             sc -= Math.abs(Math.atan2(Math.sin(a - P.heading), Math.cos(a - P.heading))) * 0.4; for (const [qx, qz] of o.swarm.shardsAt()) sc += 4 / Math.max(2, Math.hypot(qx - x, qz - z)); if (sc > bs) { bs = sc; best = a; } }
           P.heading = best;
-          { const c = o.swarm.at(z0), R = o.arena.list()[0].r, dc = Math.hypot(P.pos.x - c[0], P.pos.z - c[1]); if (dc > R - 4) P.heading = Math.atan2(c[0] - P.pos.x, c[1] - P.pos.z); o.cam.yaw = P.heading + Math.PI; } /* W 는 카메라 앞으로 가므로 카메라도 같은 쪽 */ /* 터 가장자리면 가운데로 (#254: 밀려 나가 '터 밖' 으로 끝나지 않게) */
+          { const c = o.swarm.at(z0), R = o.arena.list()[0].r, dc = Math.hypot(P.pos.x - c[0], P.pos.z - c[1]); if (dc > R - 4) P.heading = Math.atan2(c[0] - P.pos.x, c[1] - P.pos.z); P.moveH = P.heading; o.cam.yaw = P.heading + Math.PI; } /* W 는 카메라 앞으로 가므로 카메라도 같은 쪽 */ /* 터 가장자리면 가운데로 (#254: 밀려 나가 '터 밖' 으로 끝나지 않게) */
         }
-        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n };
+        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n, kn: !!P.knock, aim: P.pose === 'aim' };
       }, { STILL });
       if (TRACE && (i % 25 === 0 || r.out)) console.log('  trace', JSON.stringify({ t: +r.t.toFixed(1), dc: r.dc, y: r.y, out: r.out, n: r.n })); /* --trace: 터 가운데에서 거리 (#243) */
       if (r.out && !STILL) await p.keyboard.press(' '); /* 터 밖으로 밀렸으면 떼를 뛰어넘어 돌아옴 (#254) */
