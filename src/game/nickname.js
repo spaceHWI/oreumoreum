@@ -5,7 +5,7 @@ import { NICK } from '../balance.js';
 import { cleanText, nickOk, randomNick, nickPrice } from '../safetext.js';
 import { kstDay } from '../rankday.js';
 import { state, late } from './state.js';
-import { $, save, persist } from './save.js';
+import { $, save, persist, isTouch } from './save.js';
 import { toast, updateStats, closePanels } from './hud.js';
 import { net } from './room.js';
 
@@ -34,7 +34,7 @@ export function openNick() {
   closePanels();
   $('nick-new').value = save.nick; busyNow = false; refresh();
   $('nickwin').hidden = false;
-  if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => { $('nick-new').focus(); $('nick-new').select(); }, 30);
+  if (!isTouch) setTimeout(() => { $('nick-new').focus(); $('nick-new').select(); }, 30);
 }
 export const closeNick = () => { $('nickwin').hidden = true; };
 

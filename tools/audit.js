@@ -99,7 +99,7 @@ const HUD = ['topbar', 'toast', 'tip', 'banner', 'tut-toast', 'ch-arrow', 'shop-
       await W(400); await closeAll();
     }
   });
-  await S('admin', async () => { await O(() => { document.getElementById('menu').hidden = false; const t = document.getElementById('adm-toggle'); if (t && document.getElementById('adm-body').hidden) t.click(); }); await W(600); await shot('admin'); await O(() => document.querySelector('#adm-body [data-h]')?.click()); await W(600); await closeAll(); });
+  await S('admin', async () => { await O(() => { document.getElementById('menu').hidden = false; const t = document.getElementById('adm-toggle'); if (t && document.getElementById('admwin').hidden) t.click(); }); await W(600); await shot('admin'); await O(() => document.querySelector('#adm-body [data-h]')?.click()); await W(600); await closeAll(); });
   // 9. 새로 고침 뒤 이어 하기, 예전 저장
   await S('reload', async () => {
     const before = await O(() => ({ coins: window.__oreum.save.coins, tut: window.__oreum.save.tut.done }));

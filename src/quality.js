@@ -1,6 +1,7 @@
 // 기기 성능 단계 (#79): 0 낮음 · 1 보통 · 2 높음. 저장 save.perf = 'auto'(기본) | 0 | 1 | 2
 // 맨 처음(다른 모듈보다 먼저) 정해져야 해서 저장소를 직접 읽는다. 주소 ?tier=0|1|2 는 확인용 강제, ?hi 는 높음
 import { PERF } from './balance.js';
+import { isMobile } from './mview.js';
 
 const KEY = __DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1';
 function storedPref() { try { const v = JSON.parse(localStorage.getItem(KEY) || '{}').perf; return v === 0 || v === 1 || v === 2 ? v : 'auto'; } catch { return 'auto'; } }
@@ -13,7 +14,7 @@ function gpuName() {
 }
 export function autoTier() {
   if (typeof navigator === 'undefined') return 2;
-  const ua = navigator.userAgent, mobile = /Android|iPhone|iPad/.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+  const ua = navigator.userAgent, mobile = isMobile() || /Android|iPhone|iPad/.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua)); /* 모바일 화면으로 보기 틀 안도 폰 단계 (#220) */
   const cores = navigator.hardwareConcurrency || 8, mem = navigator.deviceMemory || 8;
   if (cores <= 2 || mem <= 2 || PERF.weakGpu.test(gpuName())) return 0;
   return mobile || cores <= 4 ? 1 : 2;
