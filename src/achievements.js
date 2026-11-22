@@ -58,7 +58,7 @@ BADGES.push(
   { id: 'b-hare-five', ev: 'hareubang-five', goal: 10, name: '하르방 단짝', desc: '하르방과 하이파이브 열 번', color: '#6f6a62', reward: 30 }, // #163 하르방 하이파이브가 사건을 냄
   { id: 'b-dumper', ev: 'dumper-repel', goal: 30, name: '투기꾼의 악몽', desc: '무단 투기꾼을 서른 번 쫓아냈어요', color: '#8a4a3a', reward: 60 },
   { id: 'b-guard-1', ev: 'quest-boss1', goal: 1, name: '숲길 지킴이', desc: '오름지기 퀘스트 \'구역의 주인\' 을 끝냈어요', color: '#4f7a36', reward: 20 },
-  { id: 'b-notes', ev: 'note-all', goal: 1, name: '쪽지 수집가', desc: '주운 쪽지 30장을 다 모았어요', color: '#c9a86a', reward: 80 },
+  { id: 'b-notes', ev: 'note-all', goal: 1, name: '쪽지 수집가', desc: '쪽지를 모두 모았어요', color: '#c9a86a', reward: 80 },
   { id: 'b-rare-gyul', ev: 'gyul-kind', goal: 4, name: '귀한 귤 감별사', desc: '한라봉·천혜향·레드향·황금향을 다 모았어요', color: '#ff9a1a', reward: 60 }, // #130 game/raregyul.js 가 처음 주운 종류마다 사건을 냄
   // 낚시 전용 (#124). 사건은 game/debug.js 낚시 reward 가 냄: fish(낚아 올린 것 하나)·fish-jackpot·fish-all·fish-rain·fish-night. 예전 저장의 life.fish 에서 이어 센다
   { id: 'b-fish-1', ev: 'fish', goal: 1, name: '첫 낚시', desc: '개울에서 처음 낚아 올렸어요', color: '#3c7fc9', reward: 5 },

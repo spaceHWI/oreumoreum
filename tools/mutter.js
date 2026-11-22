@@ -46,7 +46,7 @@ const ok = (c, m) => { console.log((c ? '통과 ' : '실패 ') + m); if (!c) pro
   });
   console.log(JSON.stringify(r, null, 0).slice(0, 1500));
   ok(r.lines >= 30, `줄 ${r.lines}개`);
-  ok(r.say && r.b1 && r.b1.onMe && /큰 쓰레기 더미/.test(r.b1.text), 'say(bigHeap): 내 머리 위 말풍선');
+  ok(r.say && r.b1 && r.b1.onMe && r.b1.text === MUTTER_TEXT.bigHeap, 'say(bigHeap): 내 머리 위 말풍선');
   ok(!r.b2, `${MUTTER.sec}초(게임 시간) 뒤 사라짐`);
   ok(r.now.includes('rain') && r.auto && /비 오는 날/.test(r.auto.text), `비 조건 → 저절로 (${r.auto?.text})`);
   ok(r.after3.seen.rain === 3 && !r.now3.includes('rain') && !r.after3.alive.includes('rain'), `같은 줄 최대 ${MUTTER.max}번 (${r.after3.seen.rain})`);
