@@ -1188,6 +1188,10 @@ export const CAM = {
   rideLook: { deer: 0.9, horse: 0.9, skate: 0.2, scoot: 0.25, cart: 0.3 }, // 탈것 높이만큼 바라보는 점을 올림(m). 마차는 자리 높이가 이미 들어가 있어 조금만
   rideDist: 1.15, // 탈 때 카메라 거리 배율 (노루가 화면을 덜 가림). 내리면 1 로 서서히
   rideDistK: 3, // 거리 배율이 바뀌는 빠르기 (1/초)
+  /* 전투 때 멀어지기 (#216, game/fightcam.js): 나를 노리는 적이 r 안에 있으면 전투. 거리 배율 one(적 1)·many(2 이상)·swarm(들판 떼·n 이상)·boss(우두머리)
+     가장 먼 적이 화면에 들어오게 그 거리 × fit 까지 늘리되 max 배·maxDist(m) 상한. 위로 pitch(라디안, 6도) 더 내려다봄
+     inT 초에 걸쳐 멀어지고, 전투가 끝나고 hold 초 뒤 outT 초에 걸쳐 돌아옴. 사용자가 전투 중 확대·축소하면 그 전투 동안 멈춤 */
+  fight: { r: 32, one: 1.35, many: 1.5, swarm: 1.6, boss: 1.7, swarmN: 3, fit: 1.25, max: 1.7, maxDist: 34, pitch: 0.105, inT: 0.6, hold: 3, outT: 2.5 },
 };
 // 폰 이동 스틱 (#211): 왼쪽 아래 구역 어디든 누른 자리에 스틱 바탕이 생기는 떠다니는 조이스틱
 export const STICK = {
