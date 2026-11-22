@@ -133,7 +133,8 @@ async function main() {
   function trip(z, left, e) {
     const tool = toolOf(e), m = Math.min(left, Math.max(1, Math.floor(capOf(e) / z.v))), sp = spdOf(e);
     const t = travel(e, z.avgD) + m * z.step / sp + m * tool.time / tool.per / (1 + ag(e, 'bighand')) + CLEANHOUSE.dumpTime; // 큰손: 한 번에 더 주움
-    return { t, gy: m * (gOf(z, e) + z.g * (1 + wv(e, 'vest') + ag(e, 'recycle')) * comboOf(z, e, m)), m, xp: 0 };
+    const fb = m * z.g * (1 + wv(e, 'vest') + ag(e, 'recycle')) * comboOf(z, e, m); /* fb: 그중 콤보 보너스 (#203) */
+    return { t, gy: m * gOf(z, e) + fb, m, xp: 0, fb };
   }
   const clearT = (z, e) => { let t = 0, left = z.n; while (left >= 1) { const r = trip(z, left, e); t += r.t; left -= r.m; } return t; };
   // 장비 점수 (#137, src/gearscore.js 와 같은 셈. 등급·강화는 아직 없음)
@@ -165,7 +166,8 @@ async function main() {
   };
   function mobFight(kind, st, cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2) {
     const E = ENEMIES[kind], w = weaponOf(st), k = killOf(E.hp, w);
-    return { t: 3 + k.t, gy: E.reward.gyul * (1 + streakAvg(cnt)) + rgEV(kind, E.reward.gyul, B.ENEMY_DROP.max) + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) }; // 이어 쫓아내기 보너스 (#141)
+    const fb = E.reward.gyul * streakAvg(cnt); /* fb: 그중 이어 쫓아내기 보너스 (#203) */
+    return { t: 3 + k.t, fb, gy: E.reward.gyul + fb + rgEV(kind, E.reward.gyul, B.ENEMY_DROP.max) + E.reward.rare * DEX.rareGyul - Math.ceil(k.gy) }; // 이어 쫓아내기 보너스 (#141)
   }
 
   // 들판 떼 (#173): 구역 z(번호)·무기 단계 wt 로 들판에 있는 1초의 귤 (조각 포함, 탄 값 뺌)
@@ -256,7 +258,7 @@ async function main() {
         if (SPLIT > 1 && t >= nextSplit) { nextSplit += 3600 / SPLIT; st.left = zones.map((z, i) => Math.min(z.n, st.left[i] + (z.n - st.left[i]) * RF.emptyFill(GAP * 60, z.id))); cleanSeen = new Set(); st.cur = null; } // #131 나갔다 옴
         let b = best(st, e, cleanSeen) || (st.cur = null, best(st, e, new Set()));
         if (!b) { const sc = scoreOf(e, st.weapon); let j = 0; zones.forEach((z, k) => { if (sc >= z.rec * GROWTH.red) j = k; }); b = { i: j, r: { t: 30, gy: 0, m: 0 }, idle: true }; idleT += 30 * S; }
-        const { r } = b; add(r.t); st.left[b.i] -= r.m; st.coins += r.gy; earned += r.gy;
+        const { r } = b; add(r.t); st.left[b.i] -= r.m; st.coins += r.gy; earned += r.gy; st.feelG = (st.feelG || 0) + (r.fb || 0);
         if (!b.idle && st.left[b.i] < 1) { cleanSeen.add(zones[b.i].id); cleared.add(zones[b.i].id); }
         // 투기꾼
         dumpT += r.t * S;
@@ -268,7 +270,7 @@ async function main() {
         // 몹
         if (battle) {
           mobT += r.t * S * MOB_IN; const kind = ENEMY_SPAWN.byZone[zones[b.i].id];
-          while (mobT >= ENEMY_SPAWN.every) { mobT -= ENEMY_SPAWN.every; const cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, f = mobFight(kind, st); add(f.t * cnt); st.coins += f.gy * cnt; earned += f.gy * cnt; gotMat(zones[b.i].id, cnt * LOOT.enemy.mat); }
+          while (mobT >= ENEMY_SPAWN.every) { mobT -= ENEMY_SPAWN.every; const cnt = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, f = mobFight(kind, st); add(f.t * cnt); st.coins += f.gy * cnt; earned += f.gy * cnt; st.feelG = (st.feelG || 0) + f.fb * cnt; gotMat(zones[b.i].id, cnt * LOOT.enemy.mat); }
         }
         // 들판 떼 (#173): 이 나가기 시간에 견준 share 몫만큼 들판에서
         if (battle && SW_ON && !b.idle) { const sh = SWARM.econ.share, ft = r.t * sh / (1 - sh), g = ft * swarmRate(zones[b.i].id, st.weapon); add(ft); st.coins += g; earned += g; }
@@ -276,7 +278,7 @@ async function main() {
         if (!NOFIELD && !has('--nospots') && battle) {
           const z = zones[b.i].id, DN = FIELD.den.n[z] || 0;
           for (let k = 0; k < DN; k++) { const id = z + '-' + k; if (st.tAll - (st.denAt[id] ?? -1e9) < FIELD.den.reopen) continue; st.denAt[id] = st.tAll;
-            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st, cnt); add(20 + f.t * cnt); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; gotMat(z, LOOT.den.mats[z] + cnt * LOOT.enemy.mat); break; }
+            const cnt = (FIELD.den.group[0] + FIELD.den.group[1]) / 2, f = mobFight(ENEMY_SPAWN.byZone[z], st, cnt); add(20 + f.t * cnt); const g = f.gy * cnt + FIELD.den.gyul[z]; st.coins += g; earned += g; st.feelG = (st.feelG || 0) + f.fb * cnt; gotMat(z, LOOT.den.mats[z] + cnt * LOOT.enemy.mat); break; }
           if (st.trDay !== d) { st.trDay = d; st.trGot = new Set(); }
           for (let k = 0; k < (FIELD.treasure.n[z] || 0); k++) { const id = z + '-' + k; if (st.trGot.has(id)) continue; st.trGot.add(id); add(25); const g = FIELD.treasure.gyul[z] + FIELD.treasure.rare * DEX.rareGyul; st.coins += g; earned += g; gotMat(z, LOOT.treasure.mats[z]); }
           FIELD.sight.list.forEach((x, k) => { if (x[0] !== z || st.sights.has(k)) return; st.sights.add(k); add(20); st.coins += FIELD.sight.gyul[z]; earned += FIELD.sight.gyul[z]; });
@@ -293,7 +295,7 @@ async function main() {
       if (battle) { st.coins += SMOKE_H; earned += SMOKE_H; } // 흡연자 (#156)
       st.tAll = t0 + 3600; // 하루 1시간에서 넘친 부분은 버림
       let dly = 0; if (DAILY_ON) { const sc = scoreOf(e, st.weapon), z = Math.max(1, ZONES.filter((Z) => sc >= Z.rec * GROWTH.red).length); dly = DLY.dayMax(z, d + 1); st.coins += dly; syncXp(dly); }
-      days.push({ dly, day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0, enh: [...GEAR, ...WK, 'weapon'].reduce((s, k) => s + EN(e, k), 0), m5: Math.floor(st.mats.m5 || 0), r5: Math.floor(st.mats.r5 || 0), lv: st.lv, aug: { ...e.aug } });
+      days.push({ dly, feel: st.feelG || 0, day: d + 1, coins: Math.round(st.coins), e: { ...e }, weapon: st.weapon, zones: [...cleanSeen].sort().join(','), cleared: new Set(cleared), idle: Math.round(idleT / 60), score: scoreOf(e, st.weapon), rate: Math.round(rateOf(e) * 3600), earned: Math.round(earned - earned0), n: buys.filter((b) => b.at >= t0 && b.at < t0 + 3600).length, boss: st.bosses || 0, enh: [...GEAR, ...WK, 'weapon'].reduce((s, k) => s + EN(e, k), 0), m5: Math.floor(st.mats.m5 || 0), r5: Math.floor(st.mats.r5 || 0), lv: st.lv, aug: { ...e.aug } });
       if (kinds.every((k) => !next(k)) && d >= 4 && (NOENH || !battle || enhAll())) break;
     }
     const last = buys.length && kinds.every((k) => !next(k)) ? buys[buys.length - 1].at : Infinity;
@@ -373,9 +375,10 @@ async function main() {
   // 손맛 보너스 (#141): 줍기 콤보·이어 쫓아내기로 벌이가 15% 넘게 늘지 않음. 구역마다 권장 장비로 한 번 나가기 귤, 5일(여유 25%) 벌이 (5번 가운데)
   if (FEEL_ON && !FLOW_ONLY) {
     const tripG = (i) => { const t = ZONES[i].id, e = { ...e0, tool: Math.min(t, TOOLS.length), bag: Math.min(t, BAGS.length), shoes: Math.min(t, SHOES.length) }; return trip(zones[i], zones[i].n, e).gy; };
-    const five = () => { const v = [1, 7, 42, 99, 123].map((sd) => seedRun('battle', 0.25, sd).days.slice(0, 5).reduce((a, d) => a + d.earned, 0)).sort((a, b) => a - b); return v[2]; };
-    const on = ZONES.map((_, i) => tripG(i)), on5 = five(); FEEL_ON = false; const off = ZONES.map((_, i) => tripG(i)), off5 = five(); FEEL_ON = true;
-    const ks = on.map((g, i) => g / off[i]), k5 = on5 / off5, ok = Math.max(...ks, k5) <= 1.15;
+    /* 5일은 같은 흐름 안에서 보너스 몫만 뺀 벌이와 비교 (#203). 켜기/끄기 두 번 돌리면 장비·레벨 문턱(동굴·높은 구역)을 넘는 날이 씨앗마다 갈려 +40% 처럼 부풀었음 */
+    const five = () => { const v = [1, 7, 42, 99, 123].map((sd) => { const ds = seedRun('battle', 0.25, sd).days.slice(0, 5), all = ds.reduce((a, d) => a + d.earned, 0), fb = ds[ds.length - 1].feel; return { on: all, off: all - fb, k: all / (all - fb) }; }).sort((a, b) => a.k - b.k); return v[2]; };
+    const on = ZONES.map((_, i) => tripG(i)), f5 = five(), on5 = Math.round(f5.on), off5 = Math.round(f5.off); FEEL_ON = false; const off = ZONES.map((_, i) => tripG(i)); FEEL_ON = true;
+    const ks = on.map((g, i) => g / off[i]), k5 = f5.k, ok = Math.max(...ks, k5) <= 1.15;
     verdict.push(`손맛 보너스(콤보 ${FEEL.combo.step}개마다 +${FEEL.combo.bonus * 100}%·최대 ${FEEL.combo.max * 100}%, 연속 +${FEEL.streak.bonus * 100}%·최대 ${FEEL.streak.max * 100}%${COMBO_TRIP ? ', 더미 사이 안 끊김' : ''}): 한 번 나가기 귤 ${ks.map((k, i) => `${i + 1}:+${((k - 1) * 100).toFixed(1)}%`).join(' ')} · 5일 벌이 ${off5.toLocaleString()} → ${on5.toLocaleString()} (+${((k5 - 1) * 100).toFixed(1)}%) → 15% 아래 ${ok ? '통과' : '넘음'}`);
   }
   // 이야기 이벤트 보상 (#168): 끝 보상 합이 5일(효율) 전체 벌이의 5% 아래

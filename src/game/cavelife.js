@@ -125,13 +125,16 @@ function wake(room) {
   const nc = pocket ? 1 : irange(R, MB.crabs); if (nc) spawnIn(room, 'crab', nc);
 }
 function tickMobs(dt) {
-  for (const r of CL.rooms) if (!r.woke && Math.hypot(player.pos.x - r.w.x, player.pos.z - r.w.z) < r.o.r + MB.wake) wake(r);
+  if (late.caveHost?.() ?? true) { /* 동굴 적 같이 보기 (#205): 칸 주인만 깨움(같은 칸 사람이 다가가도). 받는 쪽은 칸 주인이 알려 준 깬 방 */
+    const near = (r, x, z) => Math.hypot(x - r.w.x, z - r.w.z) < r.o.r + MB.wake, ps = late.cavePeers?.() || [];
+    for (const r of CL.rooms) if (!r.woke && (near(r, player.pos.x, player.pos.z) || ps.some((p) => near(r, p.x, p.z)))) wake(r);
+  }
   CL.mobs = CL.mobs.filter((e) => life.enemies.list.includes(e));
   const g = CL.guard;
   if (g && !CL.guardDone) {
     const gone = !life.enemies.list.includes(g) || g.state === 'flee';
     if (gone) { CL.guardDone = true; if (!(hp.isDown || hp.pending)) toast(L2.guardGone, 3.2); late.ach?.emit?.('cave-guard'); }
-    else {
+    else if (!g.net) {
       if (AGGRO.has(g.state)) g.calmT = 0; else restRegen(g, dt, g.def.hp); // #183: 싸움이 풀리면 쉬며 기운이 참
       if (g.state === 'wander' && Math.hypot(g.pos.x - g.home.x, g.pos.z - g.home.z) > 7) g.heading = Math.atan2(g.home.x - g.pos.x, g.home.z - g.pos.z); // 구멍 둘레를 지킴
     }

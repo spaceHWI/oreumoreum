@@ -33,6 +33,9 @@
 // 오름 레이드 (#181, src/raidcore.js): 방이 시각·시작·끝·기운·더미·기여·보상을 셈. 따로 셈(NET.raidPerSec·raidMax)
 //   {t:'rj'} 레이드 자리에 옴(참가 수) · {t:'rh', d} 피해(사람마다 초당 RAID.dps 까지만) · {t:'rp', i} 부서진 더미 i 에서 하나 · {t:'rs', s, a?} 방장만: 몸 자리·패턴 → 다른 사람 모두에게
 //   {t:'rgo'} 바로 열기 (STATS_OPEN 방·어드민만) → 방 전체에 {t:'rv', s, h?} (hi 의 raid 에도), 성공하면 보탠 사람마다 {t:'rw', g, box, xp, top} 이고 로그인한 사람은 g 를 번 몫(#144)에 넣음
+// 동굴 적 같이 보기 (#205): 같은 동굴 칸(ck)에서 먼저 들어온 사람이 칸 주인. 바뀌면(들어옴·나감·칸 옮김) 그 칸 사람 모두에게 {t:'ch', id, k}, 새로 온 사람에게도 한 번
+//   {t:'cs', k, e, w?, g?} 칸 주인만(k 는 지금 칸과 같아야 함) → 같은 칸 다른 사람에게 (적 [번호, 종류, x, z, 방향, 상태, 기운, 최대, 역할]…, 깬 방 w, 지킴이·주인 g). 칸이 다른 사람에게는 안 감
+//   {t:'cx', h:[[번호, 피해]…]} 칸 주인 아닌 사람 → 칸 주인에게만 {t:'cx', h(피해 ≤ bossHitMax), from}. 따로 셈(NET.cavePerSec·caveMax)
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg, np, fill} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP, GIVE, CAVE } from '../../src/balance.js';
 import { offlineAdds, crowdMul } from '../../src/refill.js';
@@ -99,7 +102,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
 
   const out = (p, s) => { st.bytesOut += s.length; st.msgsOut++; try { p.send(s); } catch (e) { /* 끊긴 소켓 */ } };
   const all = (s, except) => { for (const p of peers.values()) if (p !== except) out(p, s); };
-  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); p.giveTok = Math.min(GIVE.perSec, p.giveTok + dt * GIVE.perSec); p.raidTok = Math.min(NET.raidPerSec, p.raidTok + dt * NET.raidPerSec); };
+  const refill = (p, t) => { const dt = (t - p.tT) / 1000; p.tT = t; p.tok = Math.min(NET.msgPerSec, p.tok + dt * NET.msgPerSec); p.putTok = Math.min(NET.putBurst, p.putTok + dt * NET.putPerMin / 60); p.hitTok = Math.min(NET.hitPerSec, p.hitTok + dt * NET.hitPerSec); p.takeTok = Math.min(NET.takePerSec, p.takeTok + dt * NET.takePerSec); p.deerTok = Math.min(NET.deerPerSec, p.deerTok + dt * NET.deerPerSec); p.bossTok = Math.min(NET.bossPerSec, p.bossTok + dt * NET.bossPerSec); p.giveTok = Math.min(GIVE.perSec, p.giveTok + dt * GIVE.perSec); p.raidTok = Math.min(NET.raidPerSec, p.raidTok + dt * NET.raidPerSec); p.caveTok = Math.min(NET.cavePerSec, p.caveTok + dt * NET.cavePerSec); };
   // 최근 strikeWin 초 안의 횟수 세기
   const count = (arr, t) => { while (arr.length && t - arr[0] > NET.strikeWin * 1000) arr.shift(); return arr.length; };
   function kick(p, why) {
@@ -120,8 +123,8 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const t = now();
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
-    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sentCk: new Map(), ck: '', sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
+    const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sentCk: new Map(), ck: '', ckAt: 0, sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
+      key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, caveTok: NET.cavePerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
     const fill = peers.size ? 0 : fillEmpty(t); // 첫 사람이면 빈 동안 몫부터 (#131)
     if (!peers.size) { crowd = 1; crowdT = t; npSent = 1; }
     peers.set(p.id, p); roomSeen = t;
@@ -136,6 +139,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     raid.leave(p.id);
     if (unride(p)) all(ridesMsg()); // 타는 중 끊기면 노루가 풀림 (#92)
     if (host === p.id) pickHost();
+    caveHostFix(p.ck); // 동굴 칸 주인 (#205)
     if (!peers.size) roomSeen = now();
   }
 
@@ -149,8 +153,21 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       const okP = okF && isNum(d.cx) && isNum(d.cz) && Math.abs(d.cx - (CAVE.x0 + (f - 1) * CAVE.floorGap)) <= CAVE_SPAN && Math.abs(d.cz - CAVE.z0) <= CAVE_SPAN;
       if (okF && okD && okP) ck = f + ':' + d.cd; else { delete d.cv; delete d.cd; delete d.cx; delete d.cz; ck = okF ? 'old' : ''; } // 옛 클라이언트(cv 만)는 아무와도 같은 칸이 아님
     } else { delete d.cd; delete d.cx; delete d.cz; }
-    if (ck !== p.ck) { p.ck = ck; p.sent.clear(); }
+    if (ck !== p.ck) { const was = p.ck; p.ck = ck; p.ckAt = now() + (+p.id.slice(1)) * 1e-6; p.sent.clear(); caveHostFix(was); caveHostFix(ck, p); }
   }
+  // 동굴 칸 주인 (#205): 칸마다 먼저 들어온 사람. 옛 클라이언트 칸('old')·오름('')은 없음
+  const caveHosts = new Map(); // 칸 → 칸 주인 id
+  const realCk = (ck) => !!ck && ck !== 'old';
+  function caveHostFix(ck, comer = null) {
+    if (!realCk(ck)) return;
+    let h = null; for (const q of peers.values()) if (q.ck === ck && (!h || q.ckAt < h.ckAt)) h = q;
+    if (!h) { caveHosts.delete(ck); return; }
+    const s = JSON.stringify({ t: 'ch', id: h.id, k: ck });
+    if (caveHosts.get(ck) !== h.id) { caveHosts.set(ck, h.id); for (const q of peers.values()) if (q.ck === ck) out(q, s); }
+    else if (comer && comer.ck === ck) out(comer, s);
+  }
+  const caveHostOf = (p) => (realCk(p.ck) ? caveHosts.get(p.ck) : null);
+  const caveRow = (r) => Array.isArray(r) && r.length >= 9 && r.length <= 10 && r.every(isNum);
 
   function presence(p, d) {
     if (!d || typeof d !== 'object' || Array.isArray(d) || !isNum(d.x) || !isNum(d.z)) return;
@@ -204,11 +221,13 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const t = now(); refill(p, t);
     if (typeof raw !== 'string') { drop(p); return; }
     const herd = p.id === host && raw.startsWith('{"t":"deer"'); // 방장의 노루 무리 (#92): 크기 상한이 따로
-    if (raw.length > (herd ? NET.deerMax : NET.presenceMax) + 64) { drop(p); return; }
+    const caveS = raw.startsWith('{"t":"cs"'); // 동굴 칸 주인의 적 상태 (#205): 크기 상한이 따로
+    if (raw.length > (herd ? NET.deerMax : caveS ? NET.caveMax : NET.presenceMax) + 64) { drop(p); return; }
     // 노루 메시지는 따로 셈 (#92): 방장이 자리·노루를 함께 보내도 초당 msgPerSec 안
     if (/^\{"t":"(deer|dv|mount|unmount)"/.test(raw)) { if (p.deerTok < 1) { drop(p); return; } p.deerTok--; }
     else if (/^\{"t":"b[shd]"/.test(raw)) { if (raw.length > NET.bossMax || p.bossTok < 1) { drop(p); return; } p.bossTok--; } // 구역 우두머리 (#139): 따로 셈
     else if (/^\{"t":"r(h|p|j|s|go)"/.test(raw)) { if (raw.length > NET.raidMax || p.raidTok < 1) { drop(p); return; } p.raidTok--; } // 레이드 (#181): 따로 셈
+    else if (/^\{"t":"c[sx]"/.test(raw)) { if (raw.length > NET.caveMax || p.caveTok < 1) { drop(p); return; } p.caveTok--; } // 동굴 적 (#205): 따로 셈
     else { if (p.tok < 1) { drop(p); return; } p.tok--; }
     let m; try { m = JSON.parse(raw); } catch (e) { drop(p); return; }
     if (!m || typeof m !== 'object') return;
@@ -268,6 +287,19 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         all(JSON.stringify(o), p); break;
       }
       case 'rgo': if (stats || p.adm) raid.start(); break;
+      case 'cs': { // 동굴 적 상태 (#205): 칸 주인만 → 같은 칸 다른 사람에게
+        if (caveHostOf(p) !== p.id || m.k !== p.ck || !Array.isArray(m.e) || m.e.length > NET.caveEnemyMax || !m.e.every(caveRow)) return;
+        const o = { t: 'cs', k: p.ck, e: m.e }; if (Number.isInteger(m.w) && m.w >= 0) o.w = m.w; if (Number.isInteger(m.g) && m.g >= 0 && m.g < 4) o.g = m.g;
+        const s = JSON.stringify(o); for (const q of peers.values()) if (q !== p && q.ck === p.ck) out(q, s);
+        break;
+      }
+      case 'cx': { // 동굴 적을 맞힌 피해 → 칸 주인에게만 (#205)
+        const hid = caveHostOf(p), hq = hid && peers.get(hid);
+        if (!hq || hq === p || !Array.isArray(m.h) || !m.h.length || m.h.length > 8) return;
+        const h = m.h.filter((r) => Array.isArray(r) && r.length === 2 && Number.isInteger(r[0]) && isNum(r[1]) && r[1] > 0).map(([i, d]) => [i, Math.min(NET.bossHitMax, d)]);
+        if (h.length) out(hq, JSON.stringify({ t: 'cx', h, from: p.id }));
+        break;
+      }
       case 'p': presence(p, m.d); break;
       case 'give': { // 귤 주기 (#175)
         const q = typeof m.to === 'string' ? peers.get(m.to) : null, n = Number.isInteger(m.n) ? m.n : 0;
@@ -358,7 +390,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     takeEarned() { if (!earned.size) return null; const a = [...earned]; earned.clear(); return a; },
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },
     guards: () => guardList(now()), guardsDirty() { const d = guardsDirty; guardsDirty = false; return d; },
-    get seen() { return roomSeen; }, raid, stats: () => ({ n: peers.size, ...st }),
+    get seen() { return roomSeen; }, raid, caveHost: (ck) => caveHosts.get(ck) || null, stats: () => ({ n: peers.size, ...st }),
     counts() { let login = 0; for (const p of peers.values()) if (p.acct) login++; return { n: peers.size, login }; }, // 지금 접속 (#186): 사람 수·로그인 수만
     get crowd() { return crowd; }, active: () => activeN(now()),
   };

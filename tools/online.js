@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)만]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -66,8 +66,25 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await B.p.evaluate(() => window.__oreum.cave.enter());
     const at = await A.p.evaluate(() => { const o = window.__oreum; o.cave.goPile(0); return [o.player.pos.x, o.player.pos.z]; });
     const see = await until(B, ([x, z]) => [...window.__oreum.net.peersById.values()].some((e) => e.runner.root.visible && e.runner.root.parent?.name === 'cave' && Math.hypot(e.tpos.x - x, e.tpos.z - z) < 1.5), at, 15000);
+    let shIds = [];
+    { // 동굴 적 같이 보기 (#205): 먼저 들어온 A 가 칸 주인. A 가 깨운 적을 B 도 같은 번호로 봄 → B 가 맞히면 A 화면에서도 기운이 줆
+      ok(await until(A, () => window.__oreum.cave.share().host && window.__oreum.cave.share().hostKey === window.__oreum.cave.share().key, null, 10000) && await until(B, () => { const s = window.__oreum.cave.share(); return !s.host && s.hostKey === s.key && s.hostId; }, null, 10000), '동굴 칸 주인: 먼저 들어온 A, B 는 받는 쪽');
+      const nA = await A.p.evaluate(() => window.__oreum.cave.wakeAll());
+      await until(A, () => { const l = window.__oreum.cave.netMobs(); return l.length > 0 && l.every((e) => e.nid != null); }, null, 10000); // 번호는 같은 칸 사람이 있을 때 보내면서 붙음
+      const ids = await A.p.evaluate(() => window.__oreum.cave.netMobs().filter((e) => e.state !== 'flee' && e.state !== 'leave').map((e) => e.nid));
+      shIds = ids;
+      const same = await until(B, (ids) => { const l = window.__oreum.cave.netMobs(); return ids.length > 0 && l.length > 0 && l.every((e) => e.net) && ids.filter((i) => l.some((e) => e.nid === i)).length >= ids.length - 1; }, ids, 15000);
+      const bl = await B.p.evaluate(() => window.__oreum.cave.netMobs());
+      ok(nA > 0 && same, `동굴 적: A 가 깨운 ${nA}마리를 B 도 같은 번호로 봄 (B ${bl.length}마리, 모두 받은 것 ${bl.every((e) => e.net)})`);
+      const tg = bl.find((e) => e.state !== 'flee' && e.hp > 25) || bl[0];
+      const h0 = await A.p.evaluate((n) => window.__oreum.cave.netMobs().find((e) => e.nid === n)?.hp, tg?.nid);
+      if (tg) await B.p.evaluate((n) => window.__oreum.cave.hitNet(n, 20), tg.nid);
+      ok(tg && await until(A, ([n, h]) => { const e = window.__oreum.cave.netMobs().find((o) => o.nid === n); return !!e && (e.hp <= h - 15 || e.state === 'flee'); }, [tg.nid, h0], 10000), `B 가 맞히면 A 화면에서도 기운이 줆 (${tg?.kind} ${h0} → ${await A.p.evaluate((n) => window.__oreum.cave.netMobs().find((e) => e.nid === n)?.hp, tg?.nid)})`);
+      ok(await until(B, ([n, h]) => { const e = window.__oreum.cave.netMobs().find((o) => o.nid === n); return !!e && (e.hp <= h - 15 || e.state === 'flee'); }, [tg?.nid, h0], 10000), 'B 화면에서도 칸 주인이 셈한 기운');
+    }
     await A.p.evaluate(() => window.__oreum.cave.down());
     const hid2 = await until(B, () => [...window.__oreum.net.peersById.values()].every((e) => !e.runner.root.visible), null, 15000);
+    ok(await until(B, (ids) => { const s = window.__oreum.cave.share(), l = window.__oreum.cave.netMobs(); return s.host && s.mode === 'host' && l.length > 0 && l.every((e) => !e.net) && l.some((e) => ids.includes(e.nid)); }, shIds, 15000), '동굴 칸 주인 A 가 아래층으로 가면 B 가 받던 적을 같은 번호로 이어 굴림 (#205)');
     await A.p.evaluate(() => window.__oreum.cave.exit()); await B.p.evaluate(() => window.__oreum.cave.exit());
     const back = await until(B, () => [...window.__oreum.net.peersById.values()].some((e) => e.runner.root.visible && e.runner.root.parent?.type === 'Scene' && e.runner.root.parent?.name !== 'cave' && !e.ck), null, 15000);
     ok(hid && see && hid2 && back, `동굴 칸: 오름 B 에겐 동굴 A 가 안 보임 ${hid} · 같이 들어가면 보임 ${see} · A 가 아래층이면 안 보임 ${hid2} · 둘 다 나오면 다시 보임 ${back}`);

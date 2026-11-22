@@ -137,6 +137,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hurt(e, dmg, quiet, ch = 0) {
     if (e.state === 'calm') { scatter(e); return; } // #168 모여 있던 적은 맞으면 흩어짐
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
+    if (!e.remoteHurt) e.mine = true; // 내가 맞힘 (#205 동굴 칸 주인 보상)
     if (e.remoteHurt) { e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
     if (hooks.dmgIn) dmg *= hooks.dmgIn(e); /* 받는 피해 배수: 단단한 귤 증강 #194 (game/swarm.js) */
@@ -176,6 +177,15 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     hooks.enemyRepel?.(e.kind, e.pos.clone(), e.def, e);
   }
 
+  // 동굴 칸 주인 (#205): 다른 사람이 맞힌 피해. 내 증강·밀림은 안 얹음. 내가 한 번도 안 맞힌 적이면 쫓겨나도 내 보상 없음
+  function hurtNet(e, dmg) {
+    if (!live(e)) return;
+    e.calmT = 0; e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.bar.t = BAR_SHOW;
+    if (e.hp > 0) { if (!AGGRO.has(e.state) && !e.boss) { e.state = 'charge'; e.st = 0; } return; }
+    if (e.mine) repel(e); else { e.state = 'flee'; e.st = 0; e.bar.g.visible = false; sound?.boar?.(); }
+  }
+  // 동굴 적 받는 쪽 (#205): 칸 주인 화면에서 쫓겨남 → 내가 맞힌 적이면 내 보상(혼자일 때 쫓아낸 것과 같은 후크)
+  function repelNet(e) { e.bar.g.visible = false; sound?.boar?.(); onToast(`${iga(e.def.name)} 놀라 도망가요`); hooks.enemyRepel?.(e.kind, e.pos.clone(), e.def, e); }
   function scatter(e) { e.state = 'flee'; e.st = 0; e.bar.g.visible = false; sound?.boar?.(); hooks.calmScatter?.(e); }
   const turnTo = (o, h, k) => { o.heading += wrapA(h - o.heading) * k; };
   let blocked = false, stuckT = 0, held = false;
@@ -184,10 +194,14 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function hesitate() { if (held) return false; let n = 0; for (const e of list) if (!e.boss && AGGRO.has(e.state)) { e.hold = COMBAT.holdT; n++; } if (n) held = true; return n > 0; }
   function tick(e, dt, time) {
     const d0 = e.def; e.st += dt; e.hitCd -= dt; e.life -= dt; if (e.rest > 0) e.rest -= dt;
-    const to = _to.set(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z), d = to.length();
-    if ((e.state === 'wander' || e.state === 'root' || AGGRO.has(e.state)) && (player.down || e.life <= 0)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 쓰러뜨렸거나 시간이 다 됨
+    const ap = e.cave && !e.net ? hooks.aimOf?.(e) : null, tp = ap || player.pos, pDown = ap ? false : player.down; /* 동굴 칸 주인 (#205): 더 가까운 같은 칸 사람을 쫓음 */
+    const to = _to.set(tp.x - e.pos.x, 0, tp.z - e.pos.z); let d = to.length();
+    if (!e.net && (e.state === 'wander' || e.state === 'root' || AGGRO.has(e.state)) && (pDown || e.life <= 0)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 쓰러뜨렸거나 시간이 다 됨
     let want = 0;
-    if (e.state === 'boss' && e.ctl) { // 구역 우두머리 (#139): 패턴은 boss.js
+    if (e.net) { // 동굴 적 받는 쪽 (#205, game/caveshare.js): 자리·상태·기운은 칸 주인 값. 쏘는 적은 내 화면에서 나를 쏨
+      want = e.net(e, dt);
+      const R = d0.ranged; if (R && e.state === 'charge' && !(e.fl > 0) && (e.shotT -= dt) <= 0 && d < R.range && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
+    } else if (e.state === 'boss' && e.ctl) { // 구역 우두머리 (#139): 패턴은 boss.js
       want = e.ctl(e, dt, time, d, to);
     } else if (e.state === 'flee' || e.state === 'leave') {
       want = e.state === 'flee' ? d0.flee : d0.walk * 1.6;
@@ -200,13 +214,13 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       else if (ta != null) { const g = slotGoal(e, player, R.keep, ta); if (g[1] > 1.5) { want = d0.walk; turnTo(e, g[0], Math.min(1, dt * 3)); } else { want = d0.walk * ENEMY_PACK.orbit; turnTo(e, face - Math.PI / 2, Math.min(1, dt * 2)); } } // 제 자리로 옮겨 가고, 자리에선 무리가 함께 한쪽으로 천천히 돎
       else { want = d0.walk * 0.6; turnTo(e, face + Math.PI / 2 * (e.phase % 2 < 1 ? 1 : -1), Math.min(1, dt * 2)); }
       if (!(e.fl > 0)) e.shotT -= dt; // 맞아 멈칫하는 동안은 못 쏨 (#148)
-      if (e.shotT <= 0 && d < R.range && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
+      if (e.shotT <= 0 && d < R.range && !ap && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
       if (d > d0.lose && e.st > 2) { e.state = 'wander'; e.st = 0; }
     } else if (e.hold > 0 && AGGRO.has(e.state)) { // 기운이 낮을 때 머뭇거림 (#148)
       e.hold -= dt; want = d < COMBAT.ringR ? d0.walk : 0; turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 3)); if (e.state !== 'charge') { e.state = 'charge'; e.st = 0; }
     } else if (e.state === 'charge') { // 쫓음 (#148): 자리가 있으면 windD 안에서 조짐, 없으면 ringR 둘레를 돎
       const face = Math.atan2(to.x, to.z), resting = e.rest > 0, slot = !resting && (e.slotA == null || e.close) && atkN() < COMBAT.attackers; // 공격 뒤 쉬는 동안은 둘레를 돎 (#149). 무리에선 붙는 적(e.close)만 덤빔 (#146)
-      if (slot && d < COMBAT.windD && e.hitCd <= 0 && !player.down) { e.state = 'wind'; e.st = 0; want = 0; }
+      if (slot && d < COMBAT.windD && e.hitCd <= 0 && !pDown) { e.state = 'wind'; e.st = 0; want = 0; }
       else if (e.slotA != null) { // #146 무리: 플레이어 둘레 제 자리로 돌아 다가감. 붙는 적은 windD 안, 나머지는 한 걸음 뒤에서 맴돎
         const Rg = slot ? ENEMY_PACK.closeR : e.close && !resting ? COMBAT.ringR : COMBAT.ringR + ENEMY_PACK.backR;
         const g = slotGoal(e, player, Rg, e.slotA + (Rg > COMBAT.ringR ? Math.sin(time * ENEMY_PACK.driftW + e.seed) * ENEMY_PACK.drift : 0));
@@ -233,14 +247,14 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       want = 0;
       if (!e.dropped && e.st > d0.rootT * 0.5) { e.dropped = true; hooks.enemyRoot?.(e.kind, e.pos.clone(), irange(rnd, d0.rootTrash)); }
       if (e.st >= d0.rootT) { e.state = 'wander'; e.st = 0; e.rootT = range(rnd, d0.rootEvery); }
-      if (d < d0.sight && !player.down) { e.state = 'charge'; e.st = 0; }
+      if (d < d0.sight && !pDown) { e.state = 'charge'; e.st = 0; }
     } else if (e.state === 'calm') { // #168 모여 있음: 제자리에서 두리번, 가까이 오면 흩어짐
       want = 0; turnTo(e, e.heading + Math.sin(time * 0.7 + e.seed) * 0.6, Math.min(1, dt));
       if (d < e.calmR) scatter(e);
     } else { // wander
       want = d0.walk; if (rnd() < dt * 0.3) e.heading += (rnd() - 0.5) * 1.5;
       e.rootT -= dt; if (e.rootT <= 0) { e.state = 'root'; e.st = 0; e.dropped = false; }
-      if (d < d0.sight && !player.down) { e.state = 'charge'; e.st = 0; }
+      if (d < d0.sight && !pDown) { e.state = 'charge'; e.st = 0; }
     }
     if (e.state === 'charge' || e.state === 'wander') { // #146 저마다 빠르기를 조금씩 다르게, 앞에 붙은 적이 있으면 뒤에서 기다림
       want *= 1 + ENEMY_PACK.vary * Math.sin(e.phase * 0.23 + e.seed);
@@ -251,12 +265,13 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (e.sour > 0) { e.sour -= dt; want *= e.sourK ?? 1; if (e.speed > want) e.speed = want; } // 신 귤 (#159): 맞은 뒤 잠깐 느려짐
     if (e.snap) e.speed = want; else e.speed += (want - e.speed) * Math.min(1, dt * 3); // 우두머리 돌진은 바로 (snap)
     e.phase += dt * e.speed * 1.6;
-    if (!e.puppet || e.state !== 'boss') {
+    if (!e.net && (!e.puppet || e.state !== 'boss')) {
       const nx = e.pos.x + Math.sin(e.heading) * e.speed * dt, nz = e.pos.z + Math.cos(e.heading) * e.speed * dt;
       if (spots.inBounds(nx, nz)) e.pos.set(nx, height(nx, nz), nz); else e.heading += 2.5;
     }
     // 몸 충돌 (#32): 원 둘이 겹치지 않게 적을 뒤로 물림 (뛰어 넘으면 통과)
     // #148 플레이어는 밀리지 않음: 적이 물러날 자리가 없으면 멈추고 옆으로 돎. 플레이어가 그쪽으로 걸으면 막히지만, stuckT 넘게 막히면 지나감
+    if (ap) { to.set(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z); d = to.length(); } // 몸 충돌·받기는 내 캐릭터와만
     const minD = BOAR.bodyR * d0.size + COLLIDE.player;
     if (d < minD && player.jumpY < BOAR.jumpClear && !player.air && !player.down) {
       const ux = d > 1e-3 ? to.x / d : -Math.sin(e.heading), uz = d > 1e-3 ? to.z / d : -Math.cos(e.heading), push = minD - d;
@@ -356,8 +371,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     update, hitTest, hitArea, aimTargets, list, bolts,
     active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
     activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
-    planWave, spawnPlan, spawnBoss, spawnStory, spawnSwarm, remove, hurt, hesitate, get stuck() { return stuckT; },
-    leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave' && !e.boss) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
+    planWave, spawnPlan, spawnBoss, spawnStory, spawnSwarm, remove, hurt, hurtNet, repelNet, hesitate, get stuck() { return stuckT; },
+    leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave' && !e.boss && !e.net) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),
     // 확인용
     test: {
