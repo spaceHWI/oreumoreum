@@ -27,8 +27,8 @@ export default {
     { id: 'k2d', paper: 'photo', t: '흰 옷과 집게', from: '남쪽 사면, 밤', b: '흰 옷이 돌아본 순간.\n밀짚모자, 집게, 봉지 하나.\n귀신 아님. 야간 근무.' },
   ],
   quests: [
-    { id: 'k2-ev', z: 2, giver: 'b:slope', need: 'case:c2', name: '흰 옷 귀신', say: ['[표지판] 밤마다 돌담 사이로 흰 옷이 떠다닌다는 제보 있음.', '귀신인지 확인할 것. 증거 셋. 무서우면 낮에 찾을 것.'], task: '흰 옷의 흔적 셋 찾기', ask: { k: 'case:c2:ev', n: 3, ever: true }, go: 'case:c2', fin: ['[표지판] 줄어든 더미, 흰 천, 빨랫줄. 귀신치고 살림이 있음.', '서바이벌 터를 버틴 밤에 또 나온다 함. 끝까지 따라갈 것.'], reward: { gyul: 30 } },
-    { id: 'k2-face', z: 2, giver: 'b:slope', need: 'case:c2', after: 'k2-ev', name: '돌아보는 귀신', say: ['[표지판] 서바이벌 터 징을 울리고 끝까지 버틸 것.', '그 밤 흰 옷이 나오면 놓치지 말 것. 귀신은 대개 느림.'], task: '터를 버티고 흰 옷 따라가기', ask: { k: 'case:c2:face', n: 1, ever: true }, go: 'case:c2:face', fin: ['[표지판] 귀신 소동, 본인이 자수함.', '흰 옷은 밤 근무복임. 마주치면 인사할 것. — 오름지기'], reward: { gyul: 80, item: 'jacket:i-coat', mats: { m3: 3 } } },
+    { id: 'k2-ev', z: 2, giver: 'b:slope', need: 'case:c2', name: '흰 옷 귀신', say: ['[표지판] 밤마다 돌담 사이로 흰 옷이 떠다닌다는 제보 있음.', '[표지판] 증거 셋: 사면 들판, 돌담 틈, 표지판 뒤. 무서우면 낮에 찾을 것.'], task: '사면 흰 옷 흔적 3개 찾기', ask: { k: 'case:c2:ev', n: 3, ever: true }, go: 'case:c2', fin: ['[표지판] 줄어든 더미, 흰 천, 빨랫줄. 귀신치고 살림이 있음.', '서바이벌 터를 버틴 밤에 또 나온다 함. 끝까지 따라갈 것.'], reward: { gyul: 30 } },
+    { id: 'k2-face', z: 2, giver: 'b:slope', need: 'case:c2', after: 'k2-ev', name: '돌아보는 귀신', say: ['[표지판] 서바이벌 터 징을 울리고 끝까지 버틸 것.', '그 밤 흰 옷이 나오면 놓치지 말 것. 귀신은 대개 느림.'], task: '사면 터 버티고 흰 옷 쫓기', ask: { k: 'case:c2:face', n: 1, ever: true }, go: 'case:c2:face', fin: ['[표지판] 귀신 소동, 본인이 자수함.', '흰 옷은 밤 근무복임. 마주치면 인사할 것. — 오름지기'], reward: { gyul: 80, item: 'jacket:i-coat', mats: { m3: 3 } } },
   ],
   // 종결 뒤 오름지기 인사에 더하는 말 (game/quest.js greet, #210 오름지기 과거와 이음)
   hello: { jigi: ['밤에 본 건 비밀이에요. 귀신 소문이 편했거든요', '젊을 땐 굴까지, 요즘은 밤 돌담까지만 가요'] },
