@@ -1230,6 +1230,20 @@ export const PHOTOG = {
   lines: ['사진 찍어 드릴까요?', '여기 빛이 제일 좋아요!', '오늘 오름 진짜 예쁘다', '웃어요~ 김치!'],
 };
 
+// 정상 첫 실마리 (#208, src/game/summit.js · 글은 src/punktext.js CLUE_TEXT): 표지석에 처음 닿으면 짧은 장면 → 표지석 뒤 첫 쪽지 → 퀘스트 '굼부리를 내려다보기'. 값은 모두 임의
+// touch 표지석에서 이 m 안이면 닿음 · near 미룬 장면은 이 안에 있을 때 보여 줌 · len 장면 길이(초) · skipAfter 이만큼 뒤 건너뛰기 단추
+// turn 카메라가 표지석에서 굼부리로 도는 [시작, 끝] 초 · flash 굼부리 안쪽 빛이 깜빡이는 때(초)·길이(초)·크기(m) · up 장면 카메라 높이(표지석 위 m) · fov 장면 끝 쪽 시야각
+// note 쪽지 자리: 표지석에서 바깥쪽(out, - 는 뒤)·옆(tan) m, r 읽는 거리 · rim 굼부리 둘레 길 위 전망 자리(표지석에서 가장 가까운 점에서 둘레 안쪽으로 in m), r 닿는 거리
+// scope 망원경: 표지석에서 out·tan m, r 쓰는 거리, len 보는 초, fov, sweep 좌우로 훑는 각(rad), far 먼 능선까지 m
+//   light 먼 불빛: 밤(해 높이 night 도 밑)이고 UFO 드러남 단계(#207 UFO.reveal, src/ufoveil.js revealStage)가 stage 이상일 때만. 단계 0 의 밤하늘 먼 불빛(far)과 맞춤
+export const CLUE = {
+  touch: 3.6, near: 30, len: 10, skipAfter: 1.2,
+  turn: [1.5, 6.5], flash: { at: 6.8, dur: 0.6, size: 26 }, up: 30, fov: 32,
+  note: { out: -1.5, tan: 0.5, r: 2.6 },
+  rim: { in: 4, r: 9 },
+  scope: { out: 0.7, tan: -2.8, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
+};
+
 // 탈것 (#69): 귤로 사고 버튼 하나로 타고 내림. 속도 = base(달리기) × 배율 (신발·식사 버프는 곱하지 않음). 값은 임의
 // up 0 = 오르막은 못 탐 (옆구리에 들고 걷기 carry 속도). glide = 관성(손을 떼도 미끄러짐, 천천히 붙고 천천히 멎음)
 export const RIDES = {
@@ -1693,6 +1707,7 @@ export const QUESTS = {
     'shop:leap': { name: 'LEAP 점원', shop: 'leap', look: { shirt: '#f2f2f2', pants: '#24262c', shoes: '#f2f2f2' }, hello: ['오늘 핏 좋네요', '오름도 패션이에요'] },
     'shop:salon': { name: '루이네 원장', shop: 'salon', look: { shirt: '#c9879b', pants: '#3a2f3a', shoes: '#2a222a' }, hello: ['바람에 머리가 다 날렸네', '앞머리 다듬어 줄까요?'] },
     'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요'] },
+    'note:top': { name: '정상 쪽지' }, // #208 주는 사람 없이 쪽지를 읽으면 받는 퀘스트 (game/summit.js)
     'shop:satis': { name: '만족한상회 사장', shop: 'satis', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b' }, hello: ['갈치 드실래요?'] },
   },
   main: [
@@ -1737,6 +1752,8 @@ export const QUESTS = {
     { id: 'x-meal', giver: 'jigi', after: 'dump2', name: '밥은 먹고 다녀요', say: ['가게 거리 스톤에서 한 끼 먹고 와요. 든든해야 오래 줍죠.'], task: '스톤에서 식사 한 번', ask: { k: 'meal', n: 1 }, go: 'shop:stone', fin: ['얼굴이 폈네요.'], reward: { gyul: 10 }, need: 'shop:stone' },
     { id: 'x-browse', giver: 'jigi', after: 'dump2', name: '마을 구경', say: ['가게 거리에 미장원이랑 옷 가게도 있어요.', '사지 않아도 구경은 공짜.'], task: '루이네미장원이나 LEAP 구경', ask: { k: 'browse', n: 1 }, go: 'shop:salon', fin: ['구경 잘 했어요? 다음엔 지갑도 데려가요.'], reward: { gyul: 5 }, need: 'shop:salon' },
     // 굼부리 표지판 곁가지 (#195 감독 문 cave, 구역 4 우두머리 뒤)
+    // 정상 첫 쪽지 (#208, game/summit.js): 쪽지를 읽으면 저절로 받음(주는 사람 없음 auto), 전망 자리에 닿으면 바로 끝·보상. 옛 저장은 지난 것으로
+    { id: 'x-rim', giver: 'note:top', auto: true, name: '굼부리를 내려다보기', say: [], task: '굼부리 가장자리 전망 자리까지', ask: { k: 'rimLook', n: 1 }, go: 'rimLook', fin: ['굼부리 안쪽은 깊고 조용해요.'], reward: { gyul: 15 } },
     { id: 'x-cave', giver: 'b:crater', door: 'cave', after: 'boss4', name: '바람 새는 굴', say: ['[표지판] 굼부리 바닥 굴에서 찬바람이 새어 나옴.', '안에는 클린하우스가 없음. 들고 나온 것만 귤로 침.'], task: '용암 동굴에서 쓰레기 들고 나오기', ask: { k: 'caveOut', n: 1 }, go: 'cave', fin: ['[표지판] 동굴 벽에도 그들의 글씨가 있다고 함.'], reward: { gyul: 600 } },
     // 장비점 주인 (첫 버리기 뒤, 감독 문 shopQuest)
     { id: 'g-tool', giver: 'shop:gear', door: 'shopQuest', name: '손에 맞는 집게', say: ['그 집게, 손에 안 맞지? 딱 보면 알아.', '한 단계 위 걸로 바꿔 봐. 줍는 게 달라져.'], task: '도구 한 단계 올리기', ask: { k: 'tool', n: 1 }, go: 'shop:gear', fin: ['거봐, 손목이 안 아프지?'], reward: { coupon: ['gear', 1] } },

@@ -1580,3 +1580,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `src/game/ufoseen.js`: 하늘에 스치는 것 far·ridge·close·clear, 아침의 흔적(하루 한 곳) → mutter `oddTrash`(새 `late.mutterEv`). 저장 `save.ufo`. 루프 셈 `ufoseen`(smoke LOOP)
 - 이야기 '수상한 불빛'(night) UFO 는 단계 3 전엔 빛 덩이(`makeUfo(k, parent, glow)`), '불법 주차 단속'(ufo)은 단계 3 부터. 글: night.done '처음 보는 캔을 주웠어요', 쪽지 n3a 보낸 이 '누군가', n3f '(사람 아님)'
 - dev `__oreum.ufoSeen.set(n)`·`play('far'|'ridge'|'close'|'clear')`·`trace()`·`state()`. `tools/oldsave.js` 에 ufo·ufo2 저장
+
+## #208 정상 첫 실마리 (2026-11-22)
+- 정상 표지석에 처음 닿으면(CLUE.touch m) 10초 장면: 카메라가 표지석에서 굼부리 쪽으로 돌며 높아지고 시야가 좁아짐 → 굼부리 바닥에서 빛 한 번(깊이 무시 스프라이트) → 끝나면 혼잣말 '방금… 저 아래에서 뭔가 빛났는데?'(혼잣말을 끈 사람은 토스트). 1.2초 뒤 건너뛰기. 싸우는 중·창·다른 안내 중이면 미뤘다가 표지석 30m 안에서 조용해지면
+- 장면은 엔딩(#168)의 cam 'cine' 자리를 같이 씀: `late.cineCam` 을 감싸 내 장면일 때만 내 카메라, 조작 잠금·적 멈춤도 그대로. 화면 UI 는 body.clue-cine 로 숨김
+- 첫 쪽지 NOTES 'n0'(z 'top', 도감엔 '정상'): 표지석 뒤 풀숲(종이·돌·풀 로우폴리). 읽으면(어디서 읽었든 안 읽음 목록에서 빠지면) 퀘스트 x-rim '굼부리를 내려다보기' 를 저절로 받음. 쪽지 수가 31장 → 업적 '쪽지 수집가' 는 n0 까지 모아야 함
+- 주는 사람 없는 퀘스트: QUESTS.side 의 `auto: true`(giver 'note:top' 은 이름만). 추적 줄에서 줄기 '받으러 가기' 보다 먼저, 채우면 game/quest.js onReady 가 바로 끝내고 보상(귤 15)·`late.questAutoDone`. 전망 자리 = 굼부리 둘레 길에서 표지석에 가장 가까운 점에서 안쪽 4m
+- 끝나면 카메라가 굼부리를 잠깐 보고, 감독 say('story') 로 아직 안 끝낸 가장 앞 구역 쪽 한 줄(CLUE_TEXT.door)
+- 망원경(표지석 옆): 9초 좁은 시야(fov 14)·둥근 테두리로 굼부리 바닥 → 먼 능선을 훑음. 낮엔 아무것도 없고, 밤이면 먼 불빛 하나(#207 UFO 드러남 단계 `revealStage()` ≥ CLUE.scope.light.stage 0, 단계 0 의 밤하늘 far 와 맞춤)
+- 옛 저장(mutter.summit·업적 view-·사진 기록이 있음): 장면 없이 쪽지만, 읽으면 퀘스트는 끝낸 것(skip, 보상 없음). 저장 save.clue = { s, old, q }
+- 확인: `node tools/summit.js [d|m] [shots]` (새 사용자·옛 저장 둘 다)
+
