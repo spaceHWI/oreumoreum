@@ -17,7 +17,7 @@ import { normTok, runTokens, TOK_ARMS, TOK_ARM, TOK_CLOTHES, TOK_CLOTH, armDef, 
 import { gradHard } from '../toon.js';
 import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
-import { buildRunner, DEFAULT_OUTFIT } from '../runner.js';
+import { caseModel } from '../casemodels.js';
 import { state, late } from './state.js';
 import { $, save, persist, CL, WSLOT, syncEquipGear, wearV } from './save.js';
 import { scene } from './scene.js';
@@ -189,8 +189,7 @@ placeStalls();
 let keeper = null;
 function npc() {
   if (keeper) return keeper;
-  keeper = buildRunner();
-  keeper.apply({ ...DEFAULT_OUTFIT, shirt: { type: 'tee', color: '#3e3f45' }, pants: { type: 'long', color: '#33343a' }, gear: { hat: 'hat:straw', hair: 'hair:base', back: 'back:none', top: 'top:base', bottom: 'bottom:long', shoes: 'shoes:slip' } });
+  keeper = caseModel('arena-keeper'); /* Tripo 망고 좌판 주인 (#262): 손 흔들기·징 채·망고 내밀기 */
   keeper.root.visible = false; scene.add(keeper.root); return keeper;
 }
 
@@ -262,6 +261,7 @@ $('xy-pill')?.appendChild(pill);
 let tagT = 0, lastN = -1, shown = false, nearS = null;
 function tick(dt) {
   if (window.__oreum && !window.__oreum.tok) window.__oreum.tok = api;
+  if (keeper?.root.visible) { const d = Math.hypot(keeper.root.position.x - player.pos.x, keeper.root.position.z - player.pos.z); keeper.play(d < T.stall.r + 1.5 ? 'offer' : d < 14 ? 'wave' : 'idle'); keeper.lookAt(d < 14 ? player.pos : null); keeper.update(dt); } /* 다가오면 손 흔들고, 좌판 앞이면 망고를 내밂 */
   const run = late.swarm?.state?.();
   if (run && !curRun) { curRun = run.zone; leaderOut = false; wasDown = false; reviveUsed = false; }
   if (!run && curRun) curRun = null;

@@ -24,8 +24,8 @@ export default {
     { id: 'k3d', paper: 'photo', t: '증거 사진 3', from: '능선 우두머리 터 곁, 검은 양복의 발', b: '양복은 반듯했다. 구두는 없었다.\n아주 깊이 숙인 인사.' },
   ],
   quests: [
-    { id: 'k3-ev', z: 3, giver: 'b:rest', need: 'case:c3', name: '검은 양복', say: ['능선에 검은 양복 둘. 다들 같은 말을 들었대요. "아무것도 못 봤습니다."', '본 건 우리 쪽인데요. 흔적이 셋쯤 남았을 거예요.'], task: '검은 양복의 흔적 셋', ask: { k: 'case:c3:ev', n: 3, ever: true }, go: 'case:c3', fin: ['맨발 자국, 연습한 수첩, 귤 한 상자라…', '입막음치고는 너무 공손해요. 큰 멧돼지를 쫓아내면 또 올 거예요.'], reward: { gyul: 40 } },
-    { id: 'k3-face', z: 3, giver: 'b:rest', need: 'case:c3', after: 'k3-ev', name: '불편을…', say: ['능선 큰 멧돼지를 쫓아내 봐요. 시끄러운 일 뒤엔 꼭 와요.', '이번엔 끝까지 들어 봐요. 무슨 말을 하려는지.'], task: '우두머리 뒤 검은 양복 만나기', ask: { k: 'case:c3:face', n: 1, ever: true }, go: 'case:c3:face', fin: ['또 "불편을…" 에서 끊겼다고요?', '입막음이 아니었네요. 무언가 말하러 왔는데, 아직 그 말을 못 배운 거예요.'], reward: { gyul: 150, item: 'jacket:i-trench', mats: { m4: 4 } } },
+    { id: 'k3-ev', z: 3, giver: 'b:rest', need: 'case:c3', name: '검은 양복', say: ['능선에 검은 양복 둘. 다들 같은 말을 들었대요. "아무것도 못 봤습니다."', '본 건 우리 쪽인데요. 흔적이 셋쯤 남았을 거예요.'], task: '능선 검은 양복 흔적 3개 찾기', ask: { k: 'case:c3:ev', n: 3, ever: true }, go: 'case:c3', fin: ['맨발 자국, 연습한 수첩, 귤 한 상자라…', '입막음치고는 너무 공손해요. 큰 멧돼지를 쫓아내면 또 올 거예요.'], reward: { gyul: 40 } },
+    { id: 'k3-face', z: 3, giver: 'b:rest', need: 'case:c3', after: 'k3-ev', name: '불편을…', say: ['능선 큰 멧돼지를 쫓아내 봐요. 시끄러운 일 뒤엔 꼭 와요.', '이번엔 끝까지 들어 봐요. 무슨 말을 하려는지.'], task: '능선 우두머리 뒤 양복 만나기', ask: { k: 'case:c3:face', n: 1, ever: true }, go: 'case:c3:face', fin: ['또 "불편을…" 에서 끊겼다고요?', '입막음이 아니었네요. 무언가 말하러 왔는데, 아직 그 말을 못 배운 거예요.'], reward: { gyul: 150, item: 'jacket:i-trench', mats: { m4: 4 } } },
   ],
   cloth: { id: 'jacket:i-trench', slot: 'jacket', name: '조사관 외투', desc: '깃을 세우면 아무도 못 알아봐요', look: { kind: 'jacket', main: '#9a8660', acc: '#5a4a32', hem: true, cuffs: true } },
   title: '못 본 걸로 한 사람',

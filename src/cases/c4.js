@@ -25,8 +25,8 @@ export default {
     { id: 'k4d', paper: 'photo', t: '안개 위의 호스', from: '굼부리 둘레', b: '안개 위로, 구름 위로, 끝까지.\n목이 아니었다.\n바닥엔 새 더미 하나.' },
   ],
   quests: [
-    { id: 'k4-ev', z: 4, giver: 'b:crater', need: 'case:c4', name: '굼부리 괴물', say: ['[표지판] 안개 낀 날 굼부리 출입 자제. 목이 긴 것이 나옴.', '[표지판] 본 사람은 증거를 남길 것. 사진·자국·초소 일지.'], task: '괴물 증거 셋 찾기', ask: { k: 'case:c4:ev', n: 3, ever: true }, go: 'case:c4', fin: ['[표지판] 증거 접수. 괴물 맞음(아마도).', '[표지판] 안개를 걷으려면 굼부리 터에서 한 판 버틸 것.'], reward: { gyul: 150 } },
-    { id: 'k4-face', z: 4, giver: 'b:crater', need: 'case:c4', after: 'k4-ev', name: '안개가 걷히면', say: ['[표지판] 굼부리 터에서 끝까지 버틸 것.', '[표지판] 끝나면 둘레 말뚝에서 안개를 지켜볼 것. 눈 깜빡이지 말 것.'], task: '터 버티고 안개 지켜보기', ask: { k: 'case:c4:face', n: 1, ever: true }, go: 'case:c4:face', fin: ['[표지판] 정정: 괴물 아님. 호스임.', '[표지판] 빨아 가는 게 아니라 쏟아 놓는 중. 이건 정정 안 됨.'], reward: { gyul: 500, item: 'hat:i-brim', mats: { m5: 3 } } },
+    { id: 'k4-ev', z: 4, giver: 'b:crater', need: 'case:c4', name: '굼부리 괴물', say: ['[표지판] 안개 낀 날 굼부리 출입 자제. 목이 긴 것이 나옴.', '[표지판] 증거 셋: 서쪽 둘레 그림자, 바닥 자국, 관리 초소 일지.'], task: '굼부리 괴물 증거 3개 찾기', ask: { k: 'case:c4:ev', n: 3, ever: true }, go: 'case:c4', fin: ['[표지판] 증거 접수. 괴물 맞음(아마도).', '[표지판] 안개를 걷으려면 굼부리 터에서 한 판 버틸 것.'], reward: { gyul: 150 } },
+    { id: 'k4-face', z: 4, giver: 'b:crater', need: 'case:c4', after: 'k4-ev', name: '안개가 걷히면', say: ['[표지판] 굼부리 터에서 끝까지 버틸 것.', '[표지판] 끝나면 둘레 말뚝에서 안개를 지켜볼 것. 눈 깜빡이지 말 것.'], task: '굼부리 터 버티고 안개 보기', ask: { k: 'case:c4:face', n: 1, ever: true }, go: 'case:c4:face', fin: ['[표지판] 정정: 괴물 아님. 호스임.', '[표지판] 빨아 가는 게 아니라 쏟아 놓는 중. 이건 정정 안 됨.'], reward: { gyul: 500, item: 'hat:i-brim', mats: { m5: 3 } } },
   ],
   cloth: { id: 'hat:i-brim', slot: 'hat', name: '조사관 모자', desc: '챙이 비를 막아요. 안개는 못 막아요', look: { kind: 'bucket', main: '#6b5a40', acc: '#e8dcc0' } },
   title: '호스를 본 사람',
