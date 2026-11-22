@@ -45,7 +45,8 @@ function makeBar() {
 const warnGeo = new THREE.RingGeometry(0.7, 1.05, 24).rotateX(-Math.PI / 2);
 const warnMat = new THREE.MeshBasicMaterial({ color: '#ff3b2f', transparent: true, opacity: 0.8, depthWrite: false });
 const BAR_SHOW = 3; // 맞힌 뒤 기운 막대가 보이는 초 (#201)
-const ATK = new Set(['wind', 'dash', 'back']), AGGRO = new Set(['charge', 'wind', 'dash', 'back', 'stagger']);
+const ATK = new Set(['wind', 'dash', 'back']);
+export const AGGRO = new Set(['charge', 'wind', 'dash', 'back', 'stagger']); /* game/fightcam.js 도 씀 (#216) */
 const _to = new THREE.Vector3(); // tick 안에서 새로 만들지 않음 (#146)
 
 export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {

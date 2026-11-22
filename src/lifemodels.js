@@ -98,4 +98,6 @@ export function shakeHareubang(hb) {
   const k = hb.hitT;
   hb.head.rotation.z = Math.sin(k * 20) * 0.05 * k;
   hb.head.position.y = Math.abs(Math.sin(k * 14)) * 0.08 * k;
+  /* 얹은 모자·장식(userData.wob): 몸보다 한 박자 늦게, 조금 더 크게 (#216) */
+  for (const c of hb.head.children) if (c.userData.wob) { c.rotation.z = Math.sin(k * 20 - 1.1) * 0.09 * k; c.rotation.x = Math.sin(k * 16 - 1.4) * 0.05 * k; }
 }

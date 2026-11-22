@@ -9,7 +9,7 @@ import { icon } from '../icons.js';
 
 const GROUPS = [
   ['sound', '소리', ['menu-sound', 'menu-music', 'music-vol', 'menu-radio']],
-  ['screen', '화면', ['menu-gfx', 'menu-perf', 'menu-simple', 'menu-fs', 'menu-rainfx', 'menu-calmfx', 'menu-boxview']],
+  ['screen', '화면', ['menu-gfx', 'menu-perf', 'menu-simple', 'menu-fs', 'menu-rainfx', 'menu-calmfx', 'menu-boxview', 'menu-fightcam']],
   ['ctl', '조작', ['menu-tips', 'menu-vib', 'menu-stick', 'menu-help']],
   ['with', '함께', ['menu-mates', 'menu-gift', 'menu-mutter']],
   ['rec', '촬영', ['menu-rec', 'rec-shape', 'rec-snd', 'rec-wm', 'rec-buf']],
@@ -18,14 +18,14 @@ const GROUPS = [
 const OTHER = 'ctl'; // 표에 없는 새 버튼이 들어갈 묶음
 const ICON = {
   'menu-sound': 'sound', 'menu-music': 'music', 'menu-radio': 'radio',
-  'menu-gfx': 'sunrise', 'menu-perf': 'speed', 'menu-simple': 'minimize', 'menu-fs': 'maximize', 'menu-rainfx': 'rain', 'menu-calmfx': 'wind', 'menu-boxview': 'eye',
+  'menu-gfx': 'sunrise', 'menu-perf': 'speed', 'menu-simple': 'minimize', 'menu-fs': 'maximize', 'menu-rainfx': 'rain', 'menu-calmfx': 'wind', 'menu-boxview': 'eye', 'menu-fightcam': 'maximize',
   'menu-tips': 'tips', 'menu-vib': 'hand', 'menu-stick': 'walk', 'menu-help': 'walk',
   'menu-mates': 'together', 'menu-gift': 'gift', 'menu-mutter': 'chat',
   'menu-rec': 'photo', 'rec-shape': 'maximize', 'rec-snd': 'sound', 'rec-wm': 'star', 'rec-buf': 'reel',
   'menu-nick': 'emote', 'menu-fshow': 'maximize', 'menu-notes': 'notes', 'menu-dev': 'tools',
 };
 // 글자에서 이름을 따오지 않는 것 (켬·끔이 이름에 없거나 뜻이 뒤집힌 것)
-const LABEL = { 'menu-sound': '소리', 'menu-music': '배경 음악', 'menu-tips': '팁 보기', 'menu-fs': '전체 화면', 'menu-calmfx': '화면 효과 줄이기', 'menu-gift': '귤 선물 받기', 'menu-rec': '촬영 모드', 'menu-simple': '화면 단순하게', 'menu-fshow': '전체 화면으로 하는 법' };
+const LABEL = { 'menu-sound': '소리', 'menu-music': '배경 음악', 'menu-tips': '팁 보기', 'menu-fs': '전체 화면', 'menu-calmfx': '화면 효과 줄이기', 'menu-gift': '귤 선물 받기', 'menu-rec': '촬영 모드', 'menu-fightcam': '전투 때 멀어지기', 'menu-simple': '화면 단순하게', 'menu-fshow': '전체 화면으로 하는 법' };
 const GO = new Set(['menu-nick', 'menu-help', 'menu-fshow', 'menu-notes', 'menu-dev']);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
