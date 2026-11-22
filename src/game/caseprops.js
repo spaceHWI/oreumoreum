@@ -3,6 +3,7 @@
 // - crop: 풀이 둥글게 누운 무늬(#212 크롭서클 그림, 땅을 따라 휨. userData.place(x, z) 로 놓음) · dent: 무늬 가운데 눌린 자국 · rock: 올라서서 찍는 바위
 // - paper: 돌에 눌린 쪽지 · bush: 숨을 수풀 · heap: 떨어지는 더미(자루·캔)
 // 사건 2 (#233): wall 돌담 조각 · rag 흰 천이 걸린 낮은 돌담 · gone 더미가 있던 반듯한 빈자리 · line 빨랫줄의 흰 작업복과 메모
+// - 사건 5: print 큰 발자국 · fur 흰 털 뭉치 · knots 묶인 봉지 셋 · yeti 앉아 봉지를 묶는 설인(userData.anim)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
@@ -82,6 +83,46 @@ const B = {
     g.add(lump([[0, 0, 0.42], [0.5, 0.2, 0.34], [-0.4, 0.3, 0.32]].map(([x, z, r]) => [new THREE.IcosahedronGeometry(r, 0), x, r * 0.8, z, 0, x, 0, 1, 0.85, 1]), '#eceff1'));
     g.add(lump([[new THREE.IcosahedronGeometry(0.33, 0), 0.05, 0.55, -0.4, 0, 0, 0, 1, 0.9, 1]], '#8fa9bd'));
     g.add(lump([[new THREE.CylinderGeometry(0.07, 0.07, 0.2, 7), -0.7, 0.07, -0.1, Math.PI / 2, 0, 0.4], [new THREE.CylinderGeometry(0.07, 0.07, 0.2, 7), 0.75, 0.1, -0.2, 0, 0, 0]], '#c0453a'));
+    return g;
+  },
+  print() { // 사건 5: 땅에 눌린 큰 발자국 하나 (뒤꿈치 + 발가락 셋, traces.js 발자국 모양을 크게). 앞(+z)이 발끝
+    return lump([[new THREE.SphereGeometry(0.34, 8, 3), 0, 0.01, -0.12, 0, 0, 0, 1, 0.12, 1.25], ...[-0.5, 0, 0.5].map((a) => [new THREE.SphereGeometry(0.12, 6, 3), Math.sin(a) * 0.48, 0.01, 0.3 + Math.cos(a) * 0.12, 0, a, 0, 1, 0.12, 1.9])], '#8c8678');
+  },
+  fur() { // 사건 5: 돌 틈에 걸린 흰 털 한 줌 (+ 붙은 귤 껍질 한 조각)
+    const g = new THREE.Group();
+    g.add(lump([[new THREE.DodecahedronGeometry(0.42, 0), -0.35, 0.28, 0, 0, 0.4, 0, 1, 0.7, 1], [new THREE.DodecahedronGeometry(0.34, 0), 0.38, 0.22, 0.05, 0, 1.1, 0, 1, 0.65, 1]], '#4a4744'));
+    g.add(lump([[0, 0.5, 0.18], [0.12, 0.6, 0.1], [-0.1, 0.56, 0.13], [0.03, 0.42, 0.22]].map(([x, y, r]) => [new THREE.IcosahedronGeometry(r, 0), x, y, 0.05, x * 4, y * 3, 0, 1.3, 0.8, 1]), '#f3f1ea'));
+    g.add(lump([[new THREE.SphereGeometry(0.07, 6, 3, 0, Math.PI * 1.2, 0, Math.PI / 2), 0.1, 0.66, 0.16, 0.5, 0.3, 0, 1, 0.35, 1]], '#f29a2e'));
+    return g;
+  },
+  knots() { // 사건 5: 꽁꽁 묶인 봉지 셋 (매듭이 주먹만 함)
+    const at = [[-0.45, 0.42, 0], [0.4, 0.4, -0.1], [-0.02, 0.36, 0.45]];
+    return lump(at.flatMap(([x, s, z]) => [[new THREE.IcosahedronGeometry(s, 1), x, s * 0.85, z, 0, x, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.13, 0), x, s * 1.75, z], [new THREE.ConeGeometry(0.08, 0.22, 5), x + 0.1, s * 1.92, z, 0, 0, -0.9], [new THREE.ConeGeometry(0.08, 0.22, 5), x - 0.1, s * 1.92, z, 0, 0, 0.9]]), '#9fabb3');
+  },
+  yeti() { // 사건 5 대면: 더미 앞에 앉아 봉지를 묶는 흰 털 덩어리. 등(+z)이 다가오는 쪽, 앞(-z)에 작은 더미·묶는 봉지, 옆(-x)에 묶은 봉지 무더기
+    // userData.anim(u): 0~1 장면 진행 (팔이 묶고, 더미 조각이 하나씩 없어지고, 봉지가 하나씩 쌓이고, 끝에 한 손을 듦). 장면 밖에서는 anim(1) 로 끝 모습
+    const g = new THREE.Group(), W = '#f1efe8';
+    g.add(lump([[new THREE.SphereGeometry(0.95, 10, 8), 0, 0.95, 0, 0, 0, 0, 1.05, 1.0, 0.9], [new THREE.SphereGeometry(0.55, 9, 7), 0, 2.05, -0.12, 0, 0, 0, 1, 1.05, 0.95], [new THREE.SphereGeometry(0.4, 8, 6), -0.5, 0.32, -0.6, 0, 0, 0, 1, 0.7, 1.4], [new THREE.SphereGeometry(0.4, 8, 6), 0.5, 0.32, -0.6, 0, 0, 0, 1, 0.7, 1.4],
+      ...[[-0.45, 1.55, 0.72], [0.4, 1.6, 0.72], [0, 1.2, 0.86], [-0.2, 2.35, 0.32], [0.22, 2.3, 0.33]].map(([x, y, z]) => [new THREE.ConeGeometry(0.13, 0.3, 5), x, y, z, 1.2, 0, x * 0.5])], W)); /* 몸·머리·무릎, 등 쪽으로 누운 털끝 (얼굴은 없음: 늘 뒷모습) */
+    const arm = (k) => { const a = new THREE.Group(); a.position.set(k * 0.82, 1.45, -0.2); a.add(lump([[new THREE.CapsuleGeometry(0.2, 0.8, 3, 7), 0, -0.45, 0], [new THREE.SphereGeometry(0.24, 7, 5), 0, -0.95, 0]], W)); g.add(a); return a; };
+    const arms = [arm(-1), arm(1)];
+    const tying = lump([[new THREE.IcosahedronGeometry(0.42, 1), 0, 0.42, -1.25, 0, 0, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.12, 0), 0, 0.92, -1.25]], '#9fabb3'); g.add(tying);
+    const junk = [[-0.5, -1.9, '#b9c0c6', 0], [0.1, -2.05, '#4f9a6a', 1], [0.55, -1.75, '#c89a5e', 2], [-0.15, -1.6, '#d0453a', 0], [0.35, -2.25, '#b9c0c6', 1], [-0.6, -2.3, '#3a78c0', 2]].map(([x, z, c, k]) => {
+      const geo = k === 0 ? new THREE.CylinderGeometry(0.09, 0.09, 0.24, 7) : k === 1 ? new THREE.CylinderGeometry(0.08, 0.1, 0.34, 7) : new THREE.BoxGeometry(0.3, 0.2, 0.24);
+      const m = lump([[geo, x, 0.12, z, k === 1 ? Math.PI / 2 : 0, x * 3, 0]], c); g.add(m); return m;
+    });
+    const pile = lump([[0, 0], [0.75, 0.1], [0.35, 0.7], [1.1, 0.75]].flatMap(([dx, dz], i) => [[new THREE.IcosahedronGeometry(0.42, 1), -1.9 - dx, 0.38 + (i === 3 ? 0.62 : 0), -0.4 + dz, 0, i, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.12, 0), -1.9 - dx, 0.85 + (i === 3 ? 0.62 : 0), -0.4 + dz]]), '#9fabb3'); g.add(pile);
+    const bags = [[-1.55, 0.95, 0.6], [-2.3, 1.0, 0.55], [-1.95, 1.62, 0.15]].map(([x, y, z]) => { const m = lump([[new THREE.IcosahedronGeometry(0.4, 1), 0, 0, 0, 0, x, 0, 1, 0.9, 1], [new THREE.IcosahedronGeometry(0.12, 0), 0, 0.44, 0]], '#9fabb3'); m.position.set(x, y - 0.6, z - 0.4); g.add(m); return m; });
+    const sm = (a, b, u) => { const t = Math.max(0, Math.min(1, (u - a) / (b - a))); return t * t * (3 - 2 * t); };
+    g.userData.anim = (u, t = 0) => {
+      const tie = sm(0.08, 0.14, u) * (1 - sm(0.78, 0.84, u)), wob = Math.sin(t * 11) * 0.22 * tie;
+      arms[0].rotation.set(-1.15 * tie - 0.1 + wob, 0, 0.35 * tie + 0.08); arms[1].rotation.set(-1.15 * tie - 0.1 - wob, 0, -0.35 * tie - 0.08);
+      const wave = sm(0.86, 0.92, u) * (u < 1 ? 1 : 0); arms[1].rotation.x -= wave * 1.9; arms[1].rotation.z -= wave * (0.5 - Math.sin(t * 6) * 0.25); /* 끝에 뒤돌아보지 않고 한 손만 듦 */
+      junk.forEach((m, i) => { m.visible = u < 0.2 + i * 0.09; });
+      bags.forEach((m, i) => { const k = sm(0.3 + i * 0.16, 0.38 + i * 0.16, u); m.visible = k > 0; m.position.y = [0.95, 1.0, 1.62][i] - 0.6 + (1 - k) * 0.5; });
+      tying.visible = u < 0.8; g.rotation.z = Math.sin(t * 2.2) * 0.012;
+    };
+    g.userData.anim(1);
     return g;
   },
 };

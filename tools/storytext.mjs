@@ -62,6 +62,10 @@ SEASON.xmas.lines.forEach((s, i) => add(`xmas.${i}`, '성탄 방송 (단계 3 �
 const sign = fs.readFileSync(new URL('../src/namsongi.js', import.meta.url), 'utf8').match(/NS_SIGN_TEXT = `([\s\S]*?)`/)[1];
 [...sign.matchAll(/<(p|li|h2)[^>]*>([\s\S]*?)<\/\1>/g)].forEach((m, i) => add(`sign.${i}`, '들머리 탐방 안내판', m[2].replace(/<[^>]+>/g, '').trim()));
 
+/* 매일 미확인 제보 (#238, src/cases/reports.js): 쪽지 3줄 이내·찾은 한 줄 28자. 구역 4·5 제보도 날짜로 나올 수 있어 단계 3 전 글로 봄 */
+const { REPORTS } = await import('../src/cases/reports.js');
+for (const r of REPORTS) { add(`report.${r.id}.t`, '미확인 제보 제목', r.t, { max: 14 }); add(`report.${r.id}.b`, `미확인 제보 쪽지 (${r.from})`, r.b, { lines: 3 }); add(`report.${r.id}.find`, '미확인 제보 가서 본 한 줄', r.find, { max: 28 }); add(`report.${r.id}.from`, '미확인 제보 보낸 이', r.from, { max: 10 }); }
+
 // ---------- 검사 ----------
 let fail = 0;
 const bad = (m) => { console.log('실패 ' + m); fail++; };

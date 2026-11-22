@@ -11,8 +11,14 @@ const RANGE_LABEL = { day: '오늘', week: '이번 주', all: '전체' };
 // account: online.js createAccount (없으면 null), store: 쓰레기 저장소(없으면 null),
 // face(look): 머리 아이콘 svg 문자열, el: { box, list, note, range }
 const SRV = 'battle';
-export function createRank({ account, store, face, toast, ach, save, persist, el, onOpen }) {
+// guests(): 지금 같은 방의 손님(로그인 안 한 사람) 수 (#261, 닉네임은 내보내지 않음)
+export function createRank({ account, store, face, toast, ach, save, persist, el, onOpen, guests }) {
   const st = { srv: SRV, range: 'day', seq: 0, last: {}, lastCheck: 0, open: false };
+  const gl = document.createElement('p'); gl.className = 'muted rk-note rk-guest'; gl.hidden = true; el.note.after(gl);
+  function guestLine() { /* #261: 같이 노는 손님은 순위표에 없으니 한 줄로 알려 줌. 0명이면 줄 없음 */
+    const n = online() ? Math.max(0, Math.floor(Number(guests?.()) || 0)) : 0;
+    gl.hidden = !n; gl.textContent = n ? `손님 ${n}명은 로그인하면 여기에 올라와요` : '';
+  }
   const online = () => !!account?.loggedIn;
   if (!save.rankAch || typeof save.rankAch !== 'object') save.rankAch = {};
 
@@ -38,7 +44,7 @@ export function createRank({ account, store, face, toast, ach, save, persist, el
   const myNick = () => save.nick || '나';
   const myLook = () => { const h = save.outfit?.gear?.hair; return h ? `${h}|${save.look?.skin || 0}` : ''; };
   async function render() {
-    tabs();
+    tabs(); guestLine();
     const seq = ++st.seq; el.list.innerHTML = '';
     if (!online()) {
       const r = store ? store.localRank(st.srv) : { day: 0, week: 0, all: 0 };

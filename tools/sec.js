@@ -141,6 +141,18 @@ async function startServers() {
     ok(fakeItem.status === 200 && !me3.save.rides.own.length && !me3.save.clothes.own['gold-crown'], '목록에 없는 물건 지움');
     const tr = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, trash: { total: 100000 } } } });
     ok(tr.j.fixed.includes('picked'), '치운 양(랭킹) 부풀리기 바로잡힘');
+    { // #261: 손님 기록을 옮길 때 '오늘 치운 수' 부풀리기는 줍기 몫(pickBurst) 안으로 깎임, 날이 다르면 0
+      const { kstDay, weekStart } = await import('../src/rankday.js'); const d = kstDay();
+      const M = await login('dev', 'mig-day-' + Date.now()), M2 = await login('dev', 'mig-old-' + Date.now());
+      const mig = (X, rk) => req('dev', '/save', { method: 'PUT', token: X.token, body: { migrate: true, save: { ...S0, trash: { total: 500000, rk } } } });
+      await mig(M, { d, w: weekStart(d), day: { battle: 500000 }, week: { battle: 500000 }, all: { battle: 500000 } });
+      await mig(M2, { d: d - 1, w: weekStart(d - 1), day: { battle: 300 }, week: { battle: 300 }, all: { battle: 300 } });
+      const rm = (await req('dev', '/rank/me', { token: M.token })).j, rm2 = (await req('dev', '/rank/me', { token: M2.token })).j;
+      ok(rm?.day?.n > 0 && rm.day.n <= NET.pickBurst && rm.week.n === rm.day.n, `옮긴 기록의 부풀린 오늘 값은 깎임 (오늘 ${rm?.day?.n} ≤ ${NET.pickBurst})`);
+      ok(rm2?.day?.n === 0 && rm2.all.n > 0, `어제 날짜의 오늘 값은 오늘 표에 안 들어감 (${JSON.stringify(rm2?.day)})`);
+      const nx = await req('dev', '/save', { method: 'PUT', token: M.token, body: { save: { ...S0, trash: { total: 500000 + NET.pickBurst } } } });
+      ok(nx.j.fixed.includes('picked'), '옮긴 오늘 몫은 줍기 몫에서 빠져 바로 뒤 저장에서 또 받지 못함');
+    }
     // #140 전리품: 강화 +6·없는 등급·재료 음수·없는 재료·없는 칸은 바로잡음
     const lt = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, gearUp: { tool: { g: 7, e: 6 }, crown: { g: 1, e: 1 } }, mats: { m1: -5, m2: 3, gold: 9 }, loot: [{ s: 'tool', t: 9, g: 1, e: 0 }, { s: 'hat', t: 2, g: 4, e: 0 }, { s: 'bag', t: 2, g: 1, e: 2 }], clothes: { own: {}, wear: {}, up: { 'hat:w-cap': { g: 2, e: 9 }, nope: { g: 1 } } } } } });
     const me4 = (await req('dev', '/me', { token: A.token })).j.save;
@@ -303,6 +315,16 @@ async function startServers() {
         k2 = checkSave(k2.save, { ...k2.save, coins: k2.save.coins + g, myst: { safe: 1 } }, { ...k2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
         ok(k2.rec.why.safe === 0 && k2.fixed.includes('coins'), '금고를 지웠다 다시 열어 두 번 받기 거절');
       }
+      { // 미확인 제보 (#238): save.report.got 이 오늘이면 REPORT.gyul 인정, 같은 날 지웠다 다시 끝내도·지난 날짜·없는 제보는 거절
+        const { REPORT } = await import('../src/balance.js'), DL = await import('../src/daily.js'), g = REPORT.gyul, date = DL.kstDate(t);
+        const r1 = checkSave(P, { ...P, coins: 100 + g, report: { d: date, id: 'u01', got: 1 } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!r1.fixed.length && r1.rec?.why?.report === g, `오늘 끝낸 제보는 귤 ${g} 인정 (${r1.rec?.why?.report})`);
+        let r2 = checkSave(r1.save, { ...r1.save, report: { d: date, id: 'u01', got: 0 } }, { ...r1.acc, savedAt: t + 1000 }, t + 2000);
+        r2 = checkSave(r2.save, { ...r2.save, report: { d: date, id: 'u02', got: 1 } }, { ...r2.acc, savedAt: t + 2000 }, t + 3000);
+        ok(r2.rec.why.report === 0, '같은 날 제보를 지웠다 다시 끝내 두 번 받기 거절');
+        const r3 = checkSave(P, { ...P, report: { d: DL.dateOfDay(DL.kstDayN(t) - 4), id: 'u01', got: 1 } }, acc, t), r4 = checkSave(P, { ...P, report: { d: date, id: 'zz9', got: 1 } }, acc, t);
+        ok(r3.rec.why.report === 0 && r4.rec.why.report === 0, '지난 날짜·없는 제보는 인정 안 함');
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };
@@ -421,6 +443,16 @@ async function startServers() {
     P.send(presence(300, 0)); await sleep(300);
     const back = P.last('pos');
     ok(back && Math.abs(back.x - -300) < 1, `잦은 순간 이동 되돌림 (pos ${back && back.x})`);
+    { // 수거 관 (#248): 관 속(tb 'p')·도착(tb 'o') 표시가 붙은 순간 이동은 warpGap 과 따로 tubeGap 에 한 번. 바로 또 하면 되돌림. tb 는 i·p·o 만 남에게
+      const posN = () => P.msgs.filter((m) => m.t === 'pos').length, seenTb = () => Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1]?.tb;
+      const n0 = posN(); P.send(presence(300, 0, { tb: 'p' })); await sleep(700);
+      ok(posN() === n0 && seenTb() === 'p', `수거 관 순간 이동은 받아 줌·남에게 tb 감 (${posN() - n0}, ${seenTb()})`);
+      P.send(presence(-300, 0, { tb: 'o' })); await sleep(400);
+      const b2 = P.last('pos');
+      ok(posN() === n0 + 1 && b2 && Math.abs(b2.x - 300) < 1, `수거 관도 tubeGap 안에 또 하면 되돌림 (pos ${b2 && b2.x})`);
+      P.send(presence(300.4, 0, { tb: '<b>x</b>' })); await sleep(700);
+      ok(seenTb() === undefined, `모르는 tb 는 지움 (${seenTb()})`);
+    }
     // 속도 조작: 0.1초마다 20m (200m/s) 를 계속 → 되돌리다 끊음
     let x = -300; for (let i = 0; i < 20; i++) { x += 20; P.send(presence(x, 0)); await sleep(100); }
     await sleep(300);

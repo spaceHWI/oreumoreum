@@ -94,6 +94,7 @@ import './game/nickname.js'; // 이름 바꾸기 (#162)
 import './game/hooks.js';
 import './game/guide.js';
 import './game/pace.js';
+
 import './game/zonedone.js'; // 구역 완료 요약·깨어나는 곳·빠른 마차·지름길 (#139, hooks 뒤: 적 후크를 감쌈)
 import './game/boss.js'; // 구역 우두머리 (#139)
 import './game/raid.js'; // 오름 레이드 (#181)
@@ -102,6 +103,7 @@ import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
 import './game/raregyul.js'; // 귀한 귤 (#130): 한라봉·천혜향·레드향·황금향
 import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
+import './game/dumperq.js'; // 투기꾼 퀘스트 보장 (#260)
 import './game/nexthint.js'; // 다음 할 일 (#142): 추적 줄에 잠깐 바뀌는 안내·퀘스트 뒤 이어 줄 것
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
 import './game/punk.js'; // 오름펑크 아이템 (#164): 박스 헬멧·테왁 배낭
@@ -136,6 +138,8 @@ import './game/summit.js'; // 정상 첫 실마리 (#208): 첫 장면·표지석
 import './game/mystery.js'; // 미스터리 장치 (#212): 되풀이되는 숫자 4:04·관리 초소 금고
 import './game/traces.js'; // 미스터리 장치 (#212): 발자국·크롭서클·뒤돌아보면·도감 '흔적'
 import './game/cases.js'; // 사건 파일 (#232): 사건 틀·사건 1 '정리하는 자'·사건 파일 창 (데이터 src/cases/)
+import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
+import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)

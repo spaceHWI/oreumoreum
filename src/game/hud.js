@@ -137,18 +137,12 @@ export function updateStats() {
   gyulTick();
   updateScore();
 }
-// 장비 점수 (#137): 위 줄 귤 옆. 바뀌면 숫자가 튀고 '+n' (처음 그릴 때는 조용히)
+// 장비 점수 (#137): 셈만 (state.gearScore). 위 줄 칸은 없앰 (#251: 위 줄은 레벨, 장비 점수는 내 가방 안 '장비 힘')
 let lastScore = -1;
 export function updateScore() {
   const g = gearScore(save); if (g.total === lastScore) return;
   const d = lastScore < 0 ? 0 : g.total - lastScore; lastScore = g.total; state.gearScore = g.total;
-  const pill = $('score-pill'); $('gscore').textContent = String(g.total); topFit.dirty();
-  if (!d) return;
-  pill.classList.remove('bump'); void pill.offsetWidth; pill.classList.add('bump');
-  const r = pill.getBoundingClientRect(); if (!r.width) return;
-  const el = document.createElement('div'); el.className = 'fx-score' + (d < 0 ? ' down' : ''); el.textContent = `${d > 0 ? '+' : ''}${d}`;
-  el.style.left = (r.left + r.width / 2) + 'px'; el.style.top = (r.bottom + 14) + 'px'; document.body.append(el); setTimeout(() => el.remove(), 1000);
-  late.scoreChanged?.(g.total, d);
+  if (d) late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
 export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin', 'fs-tip', 'admwin'];
@@ -223,6 +217,7 @@ function claimBtn(cls, reward, take) {
   });
   return b;
 }
+late.buildAch = () => buildAch(); // 미확인 제보 (#238) 를 끝내면 다시 그림
 function buildAch() {
   const d = ach.ensureDaily();
   const [yy, mm, dd] = d.date.split('-');
@@ -255,6 +250,7 @@ function buildAch() {
     else { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = `귤 ${ach.allGyul()}`; }
     row.append(t, right); list.append(row);
   }
+  late.reportRow?.(list); // 매일 미확인 제보 (#238, game/reports.js)
   { // 이어 오기 (#125): 연속 날 수 · 다음 보상 날
     const R = ach.state.run, nx = RUN_DAYS.find((n) => n > R.n);
     $('ach-run').textContent = R.n ? `이어 오기 ${R.n}일째${nx ? ` · ${nx}일째 보상` : ''}` : '';

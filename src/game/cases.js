@@ -4,7 +4,8 @@
 //    추적 줄의 갈 곳: late.casePos('case:<id>') 아직 못 찾은 가장 가까운 증거 · 'case:<id>:face' 대면 자리
 // 3. 증거: 사건이 열리면 자리에 모양. 다가가 상호작용하면 그 쪽지(punktext.js NOTES, z 'case')를 얻음(쪽지 창이 열림). act 증거는 퀘스트 셈이 사건을 연 뒤 n 번 오르면
 //    view 증거(#246)는 찍을 때 목격 자리를 위에서 내려다보는 짧은 장면(찰칵) 뒤에 쪽지
-// 4. 대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(dawn 새벽빛, drop 모양이 목격 자리 가운데로 '툭') → 증거 사진 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
+// 4. 대면 watch(#236): 대면 조건 뒤 face 자리에서 다가가 보기 장면(모양의 userData.anim)
+//    대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(dawn 새벽빛, drop 모양이 목격 자리 가운데로 '툭') → 증거 사진 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
 //    arena·boss 는 사건을 연 뒤 그 구역 서바이벌 한 판(save.swarm.won[구역].at)·우두머리(save.boss.done[구역])가 늘면 끝
 //    face.follow 가 있으면 그 뒤 흰 옷을 끝까지 따라가 장면을 봐야 끝 (#233 사건 2, game/casechase.js. 터를 버티면 a 1)
 // 5. 종결: 사건의 마지막 퀘스트 보상을 받으면(game/quest.js late.questGave) '종결' 도장 + 칭호(late.titles.give) + 업적
@@ -48,7 +49,7 @@ function S(id) {
   s.w = Number.isFinite(+s.w) && +s.w > 0 ? +s.w : 0;
   const ids = new Set((c?.ev || []).map((e) => e.id));
   s.ev = Array.isArray(s.ev) ? s.ev.filter((e, i, a) => ids.has(e) && a.indexOf(e) === i) : [];
-  s.f = s.f ? 1 : 0; s.a = s.a ? 1 : 0;
+  s.f = s.f ? 1 : 0; s.a = s.a ? 1 : 0; s.r = s.r || s.f ? 1 : 0; /* r: 대면 조건을 채움 (watch 사건은 그 뒤 다가가 보기 장면, #236) */
   if (!isObj(s.base)) s.base = {};
   return s;
 }
@@ -75,6 +76,7 @@ function faceDone(c) {
   const k = c.face?.kind, z = c.zone;
   const hit = k === 'none' ? evAll(c) : k === 'boss' ? (+save.boss?.done?.[z] || 0) > (+s.b || 0) : k === 'arena' ? (+save.swarm?.won?.[z]?.at || 0) > (+s.s || 0) : false;
   if (hit && evAll(c)) {
+    if (c.face.watch) { if (!s.r) { s.r = 1; persist(); late.questTrackDirty?.(true); } return false; } /* 다가가 보기 장면이 끝나면 (#236) */
     if (c.face.follow) { if (!s.a) { s.a = 1; persist(); chase?.start(c); } return false; } /* 따라가기 장면이 끝나면 chaseDone */
     s.f = 1; persist(); gotDoc(c); return true;
   }
@@ -103,6 +105,7 @@ const spots = {}; // id → { see, ev: { id: pos }, face, drop: obj }
 if (ON) for (const c of CASES) {
   const sp = spots[c.id] = { ev: {} };
   const see = place(c, 'see', c.see.at, c.see.prop, null, () => lv() >= c.lv || isOpen(c.id)); sp.see = see?.pos || v3(...c.see.at);
+  if (c.trail?.pts && late.caseFoot) { const im = late.caseFoot(c.trail.pts, c.trail.size, c.trail.step); objs.push({ c, kind: 'trail', root: im, pos: v3(...c.trail.pts[Math.floor(c.trail.pts.length / 2)]), show: () => lv() >= c.lv || isOpen(c.id) }); } /* 발자국 한 줄 (#236) */
   for (const e of c.ev) {
     if (e.kind === 'act' || !e.at) continue;
     const o = place(c, 'ev', e.at, e.prop, e, () => isOpen(c.id) && (!!e.view || !evGot(c, e))); /* 찍는 바위(view)는 남음 */ sp.ev[e.id] = o?.pos || v3(...e.at);
@@ -110,7 +113,9 @@ if (ON) for (const c of CASES) {
       when: () => isOpen(c.id) && !evGot(c, e) && !run && !state.cine && !late.tut?.active, act: () => takeEv(c, e) });
   }
   if (c.face?.at) {
-    const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id)); sp.face = o?.pos || v3(...c.face.at);
+    const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id) && (!c.face.watch || !!S(c.id).r)); sp.face = o?.pos || v3(...c.face.at); sp.faceObj = o;
+    if (c.face.watch) interactables.push({ label: c.face.label || '다가가 보기', ic: 'eye', pos: sp.face, r: CASE.r + 3, /* 대면 조건 뒤 장면 (#236) */
+      when: () => isOpen(c.id) && S(c.id).r && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginWatch(c) });
     if (c.face.kind === 'hide') interactables.push({ label: c.face.label || '숨어 보기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6,
       when: () => isOpen(c.id) && evAll(c) && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginHide(c) });
     /* 장면에서 목격 자리 가운데로 떨어지는 모양: 대면 뒤 종결 전까지 그 자리에 */
@@ -122,6 +127,7 @@ late.casePos = (go) => {
   const [, id, what] = go.split(':'), c = CASE_BY[id], sp = spots[id]; if (!c || !sp) return null;
   if (what === 'face') { /* 따라가기 (#233): 흰 옷 → 없으면 그 구역 서바이벌 터 */
     if (c.face?.follow) { const g = chase?.pos(c); if (g) return g; const a = c.face.kind === 'arena' && SWARM.arena?.at?.[c.zone]; if (a) return v3(a[0], a[1]); }
+    if (c.face?.kind === 'boss' && c.face.watch && !S(id).r) { const b = late.field?.api?.bosses?.find((q) => q.zone === c.zone); if (b) return v3(b.x, b.z); } /* 다가가 보기 (#236): 우두머리 전엔 빈터로 */
     return sp.face ? sp.face.clone() : sp.see.clone();
   }
   let b = null, bd = Infinity;
@@ -173,6 +179,7 @@ css.textContent = `
 body.case-cine>*:not(#view):not(#case-cine){visibility:hidden!important}
 #case-cine { position: fixed; inset: 0; z-index: 12; pointer-events: auto; background: transparent; transition: background 2.4s; }
 #case-cine.dawn { background: linear-gradient(180deg, rgba(8,12,34,.86), rgba(20,30,70,.6) 45%, rgba(60,70,120,.28) 75%, rgba(120,110,150,.18)); }
+#case-cine.snow { background: linear-gradient(180deg, rgba(200,215,235,.38), rgba(240,244,250,.18) 60%, rgba(255,255,255,.05)); }
 #case-cine.flash { background: rgba(255,255,255,.85); transition: background .08s; }
 #case-cine.shot { background: transparent; transition: background .6s; box-shadow: inset 0 0 0 10px rgba(255,255,255,.75); }
 #case-cine::before, #case-cine::after { content: ''; position: absolute; left: 0; right: 0; height: 9vh; background: #000; transition: transform .5s; }
@@ -210,6 +217,7 @@ body.case-cine>*:not(#view):not(#case-cine){visibility:hidden!important}
 #case-file .cf-slot.got { border-style: solid; border-color: transparent; background: #efe6cf; color: #33302a; }
 #case-file .cf-slot.got svg { opacity: .8; }
 #case-file .cf-slot.doc.got { background: #f4ecd8; box-shadow: inset 0 0 0 2px #c9a86a; }
+#case-file .cf-h { margin: 4px 0 6px; font: 800 13px var(--display); color: var(--ink-soft); }
 #case-file .cf-empty { color: var(--ink-soft); margin: 4px 0 4px; }
 @media (max-width: 600px) and (orientation: portrait) { #case-file .cf-pics { grid-template-columns: repeat(6, minmax(0, 1fr)); } #case-file .cf-pic { grid-column: span 2; } #case-file .cf-pic:nth-child(4) { grid-column: 2 / span 2; } }
 @media (max-height: 480px) { #case-file .cf-slot { min-height: 46px; padding: 4px; } #case-file .cf-slot svg { display: none; } #case-file .cf-board { padding: 10px 8px 8px; margin-bottom: 8px; } #case-file .cf-pic { font-size: 10px; } }
@@ -250,6 +258,18 @@ function beginHide(c) {
   if (c.face.dawn) setTimeout(() => { if (run?.mode === 'hide') cine.classList.add('dawn'); }, 300);
   return true;
 }
+// 대면 watch (#236 사건 5): 대면 조건(우두머리 등)을 채운 뒤 face 자리에서 상호작용 → 뒤에서 조용히 다가가 봄. 모양(prop)의 userData.anim(u) 이 장면을 움직임
+function beginWatch(c) {
+  if (state.cine || run) return false;
+  if (fightNow()) { toast('지금은 다가갈 때가 아니에요 · 싸움부터', 2.4); return false; }
+  const sp = spots[c.id], f = sp.face, yaw = sp.faceObj?.root.rotation.y || 0, bx = Math.sin(yaw), bz = Math.cos(yaw); /* 모양의 등 쪽(+z) */
+  const W = CASE.watch, clear = (k) => [1, 0.6, 0.3].every((t) => !col?.blocked(f.x + (bx * W.camBack + bz * W.camSide * k) * t, f.z + (bz * W.camBack - bx * W.camSide * k) * t, 1.4));
+  startRun({ mode: 'watch', c, len: c.face.len || 10, bx, bz, side: [-1, 1, -0.3, 0.3].find(clear) ?? 0 }); /* 바위·나무가 가리지 않는 쪽 */
+  { const px = f.x + bx * W.back + bz * 1.1, pz = f.z + bz * W.back - bx * 1.1; /* 등 뒤, 봉지 무더기 반대쪽으로 조금 */ player.pos.set(px, height(px, pz), pz); player.visY = player.pos.y; }
+  player.heading = Math.atan2(f.x - player.pos.x, f.z - player.pos.z); player.pose = 'crouch'; player.poseT = 0;
+  setTimeout(() => { if (run?.mode === 'watch') cine.classList.add('snow'); }, 300);
+  return true;
+}
 function stopRun() {
   if (!run) return;
   const r = run; run = null; if (state.cine === r) state.cine = null;
@@ -259,6 +279,7 @@ function stopRun() {
   cam.mode = r.prev && r.prev !== 'cine' && r.prev !== 'title' ? r.prev : 'follow'; if (cam.mode === 'follow') followCam(0, true);
   director.end('case:' + r.c.id);
   const d = spots[r.c.id]?.drop; if (d) d.root.position.copy(d.pos);
+  if (r.mode === 'watch') spots[r.c.id].faceObj?.root.userData.anim?.(1);
   if (r.mode === 'view') { setTimeout(() => evSaid(r.c, r.e), 250); return; }
   const s = S(r.c.id); s.f = 1; persist(); if (!haveNote(r.c.doc)) setTimeout(() => gotDoc(r.c), 400); /* 건너뛰어도 끝난 것으로 */
   late.questTrackDirty?.(true); syncBtns();
@@ -266,6 +287,10 @@ function stopRun() {
 { const prev = late.cineCam; late.cineCam = (dt) => { if (run && state.cine === run) runCam(dt); else prev?.(dt); }; }
 function runCam(dt) {
   const sp = spots[run.c.id], mid = sp.see;
+  if (run.mode === 'watch') { /* 쪼그린 나의 어깨 뒤에서 흰 등을 봄 (#236) */
+    const f = sp.face, W = CASE.watch, sd = W.camSide * run.side, cx = f.x + run.bx * W.camBack + run.bz * sd, cz = f.z + run.bz * W.camBack - run.bx * sd;
+    camTarget.pos.set(cx, Math.max(height(cx, cz), f.y) + W.camUp, cz); camTarget.look.set(f.x - run.bz * 0.8, f.y + 1.1, f.z + run.bx * 0.8); /* 흰 등과 옆 봉지 무더기 사이 */ ease(dt, run.snap && !(run.snap = false), 2.4); return;
+  }
   if (run.mode === 'view') { // 찍는 자리 쪽 하늘에서 무늬 가운데를 내려다봄
     const at = sp.ev[run.e.id] || mid, dx = at.x - mid.x, dz = at.z - mid.z, L = Math.hypot(dx, dz) || 1, V = CASE.view;
     camTarget.pos.set(mid.x + dx / L * V.side, mid.y + V.up, mid.z + dz / L * V.side); camTarget.look.copy(mid);
@@ -287,6 +312,7 @@ function tickRun(dt) {
   skBtn.hidden = u < CASE.face.skipAfter;
   const li = Math.min(L.length - 1, Math.floor(u / (T / Math.max(1, L.length))));
   if (li !== r.li && L[li]) { r.li = li; lineEl.classList.remove('on'); void lineEl.offsetWidth; lineEl.textContent = L[li]; lineEl.classList.add('on'); }
+  if (r.mode === 'watch') spots[r.c.id].faceObj?.root.userData.anim?.(Math.min(1, u / T), u);
   // 떨어지는 모양: fall0 부터 0.8초 동안 위에서 가운데로 (떨어뜨린 것은 보이지 않음), 닿으면 '툭'
   const d = spots[r.c.id]?.drop;
   if (d && u >= r.fall0) {
@@ -347,17 +373,21 @@ function build() {
   if (!anyOpen()) h += '<p class="cf-empty">아직 열린 사건이 없어요. 오름은 평화로워 보여요(겉으로는)</p>';
   else if (CASE_BY[sel]) h += detail(CASE_BY[sel]);
   $('case-file-body').innerHTML = h;
+  late.reportBoard?.($('case-file-body')); // 오늘의 미확인 제보 칸 (#238, game/reports.js)
   requestAnimationFrame(thread);
 }
 function thread() { // 빨간 실: 종결된 사진의 핀을 차례로 잇고, 끝은 다음 빈 자리 위로 늘어뜨림
   const bd = win.querySelector('.cf-board'), svg = bd?.querySelector('.cf-thread'); if (!svg || win.hidden) return;
   const B = bd.getBoundingClientRect(); svg.setAttribute('viewBox', `0 0 ${B.width} ${B.height}`);
   const at = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2 - B.left, r.top - B.top]; };
-  const pins = [...bd.querySelectorAll('.cf-pic.done .cf-pin')].map((p) => { const r = p.getBoundingClientRect(); return [r.left + r.width / 2 - B.left, r.top + r.height / 2 - B.top]; });
+  const done = [...bd.querySelectorAll('.cf-pic.done')], pins = done.map((e) => { const r = e.querySelector('.cf-pin').getBoundingClientRect(); return [r.left + r.width / 2 - B.left, r.top + r.height / 2 - B.top]; });
   const sag = (p, q) => { const mx = (p[0] + q[0]) / 2, my = Math.max(p[1], q[1]) + Math.min(28, Math.hypot(q[0] - p[0], q[1] - p[1]) * 0.18); return `M${p[0].toFixed(1)} ${p[1].toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`; };
   let d = ''; for (let i = 1; i < pins.length; i++) d += sag(pins[i - 1], pins[i]) + ' ';
   let loose = '';
-  if (pins.length && pins.length < CASE_SLOTS) { const nx = bd.querySelector(`.cf-pic[data-n="${pins.length + 1}"]`); if (nx) loose = sag(pins[pins.length - 1], at(nx)); }
+  if (pins.length && pins.length < CASE_SLOTS) { /* 마지막 핀 → 그 뒤 첫 빈 자리 (없으면 앞쪽 첫 빈 자리) */
+    const last = +done[done.length - 1].dataset.n, empty = [...bd.querySelectorAll('.cf-pic:not(.done)')], nx = empty.find((e) => +e.dataset.n > last) || empty[0];
+    if (nx) loose = sag(pins[pins.length - 1], at(nx));
+  }
   svg.innerHTML = (d ? `<path d="${d.trim()}"/>` : '') + (loose ? `<path class="loose" d="${loose}"/>` : '');
 }
 addEventListener('resize', () => { if (!win.hidden) requestAnimationFrame(thread); });
@@ -403,7 +433,7 @@ late.cases = {
   objs: () => objs.map((o) => ({ id: o.c.id, kind: o.kind, ev: o.e?.id || null, vis: o.root.visible })),
   open: (id = 'c1') => openCase(CASE_BY[id]), take: (id, eid) => { const c = CASE_BY[id], e = c?.ev.find((x) => x.id === eid); if (e) takeEv(c, e); return evN(c); },
   busy: () => fightNow(), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
-  hide: (id = 'c1') => beginHide(CASE_BY[id]), stop: stopRun, view: () => run?.mode || null, jump: (u) => { if (run) run.u = u; },
+  hide: (id = 'c1') => beginHide(CASE_BY[id]), watch: (id = 'c5') => beginWatch(CASE_BY[id]), stop: stopRun, view: () => run?.mode || null, jump: (u) => { if (run) run.u = u; },
   file: openFile, fileOpen: () => !win.hidden, build, html: () => $('case-file-body').innerHTML,
   reset: (id = 'c1') => { if (isObj(save.cases)) delete save.cases[id]; persist(); syncBtns(); },
 };

@@ -1,7 +1,7 @@
 // 화면 단순하게 (#189) · 전체 화면 안내. 파일 순서는 rec 뒤 (src/modules.js)
 // - body.simple (save.simple, 없으면 터치 기기 켬·PC 끔. 메뉴 '화면 단순하게'): 늘 보이는 것은 조이스틱·줍기·던지기·상황 버튼 하나(탈것이 있으면 탈것, 아니면 점프)·귤+HP·메뉴
 //   나머지는 CSS(page.html '화면 단순하게')로 숨기고, 필요할 때만 .flash(2초)·.half(배낭 60% 넘음) 로 꺼냄. 튜토리얼(body.tut) 동안은 그대로
-//   레벨·장비 점수·구역 이름은 바뀔 때 2초, 미니맵은 접힌 점(누르면 펼침, 한 번 더 누르면 큰 지도), 퀘스트 줄은 3초 뒤 화살표만(누르면 펼침)
+//   레벨은 늘 보임(#251, 장비 점수 칸은 없앰), 구역 이름은 바뀔 때 2초, 미니맵은 접힌 점(누르면 펼침, 한 번 더 누르면 큰 지도), 퀘스트 줄은 3초 뒤 화살표만(누르면 펼침)
 //   싸우는 중(body.fight): 퀘스트 줄·미니맵 숨김. 창이 열리면(body.win): 패드·조이스틱·퀘스트 줄·미니맵 숨김. 들판 떼 줄과 퀘스트 줄은 번갈아(body.qalt)
 //   달리기 버튼 대신 조이스틱을 끝까지 밀면 달림. 무기 바꾸기(▾ 없음)는 던지기 버튼을 위로 밀기. 탈것 바꾸기는 탈것 버튼 길게 (예전 그대로)
 // - 전체 화면 안내 (#fs-tip): 안드로이드 등 Fullscreen API 가 되는 곳은 '전체 화면으로 하기' 버튼, 아이폰 사파리는 '홈 화면에 추가' 3단계 그림,
@@ -33,7 +33,7 @@ $('menu-act')?.addEventListener('click', () => { $('btn-actions').click(); }); /
 apply();
 
 // 필요할 때만: 값이 바뀌면 2초 (처음 본 값은 안 띄움)
-const FLASH = [['lv-pill', () => $('lv-n')?.textContent], ['score-pill', () => $('gscore')?.textContent], ['zone-pill', () => $('zone-pill')?.textContent]];
+const FLASH = [['zone-pill', () => $('zone-pill')?.textContent]];
 const seen = new Map(), flashT = new Map();
 function flash(id) { const el = $(id); if (!el) return; el.classList.add('flash'); flashT.set(id, 2); topFit.dirty(); }
 
