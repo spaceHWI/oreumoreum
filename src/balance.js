@@ -2267,7 +2267,7 @@ export const MSG = { max: 3, min: 2.5, maxSec: 5, perChar: 0.08, h: 30, gap: 5 }
 // suit: 여섯 칸을 다 입으면 판 중 쓰러질 때 한 번 일어남(hp 비율), 쉬는 시간(SWARM.run.rest 초) 뒤 다시 참
 // stall: 좌판 자리(터 문 기준 옆 side m·바깥 out m), npc 이름. 값과 속도 어림: 첫 무기 = 구역 판 3~4번, 한 벌 = 10~15번 (결과 코멘트·tools/tokenrun.js)
 export const TOKEN = {
-  name: '징표', icon: 'gong',
+  name: '망고', icon: 'gong',
   earn: { win: 3, leader: 2, clean: 1, part: 0.5, partMax: 2 },
   server: { perSec: 0.06, burst: 40, restK: 0.9, migrateMax: 40 },
   arms: [
@@ -2284,11 +2284,11 @@ export const TOKEN = {
     { id: 'jacket:t-gong', slot: 'jacket', z: 2, price: 20, name: '현무암 조끼 갑옷', tok: { guard: 0.3 }, look: { kind: 'jacket', main: '#45464b', acc: '#f08a24', cuffs: true } },
     { id: 'hat:t-gong', slot: 'hat', z: 3, price: 22, name: '귤띠 두건', tok: { dmg: 0.06 }, look: { kind: 'bucket', main: '#3e3f45', acc: '#f08a24' } },
     { id: 'bottom:t-gong', slot: 'bottom', z: 4, price: 26, name: '터 바지', tok: { dmg: 0.06 }, look: { kind: 'long', main: '#3a3b40', acc: '#f08a24', knee: true } },
-    { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '징표 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
+    { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '망고 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
   ],
   suit: { hp: 0.5 },
   stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6 },
   quest: { n: 10, gyul: 20 },
 };
 CLOTHES.push(...TOKEN.cloth.map(({ z, tok, ...c }) => ({ tier: 0, style: true, tok: true, tokZ: z, tokStat: tok, ...c, price: 0, tokPrice: c.price })));
-QUESTS.side.push({ id: 'x-token', giver: 'jigi', door: 'field', name: '징 값', say: ['구역마다 서바이벌 터가 하나씩, 징 옆엔 좌판이 하나씩 있어요. 주인은 터지기 씨.', '버티면 징표를 줘요. 귤은 안 받아요. 징표만 받아요. 까닭은 터지기 씨도 몰라요.'], task: `터에서 징표 ${TOKEN.quest.n}개 모으기`, ask: { k: 'token', n: TOKEN.quest.n }, fin: ['징표가 모였네요. 귤로 바꿔 줄 순 없어요. 대신 이걸 받아요.'], reward: { gyul: TOKEN.quest.gyul } }); /* 징표 (#255) */
+QUESTS.side.push({ id: 'x-token', giver: 'jigi', door: 'field', name: '징 값', say: ['구역마다 서바이벌 터가 하나씩, 징 옆엔 좌판이 하나씩 있어요. 주인은 터지기 씨.', '버티면 망고를 줘요. 귤은 안 받아요. 망고만 받아요. 까닭은 터지기 씨도 몰라요.'], task: `터에서 망고 ${TOKEN.quest.n}개 모으기`, ask: { k: 'token', n: TOKEN.quest.n }, fin: ['망고가 모였네요. 귤로 바꿔 줄 순 없어요. 대신 이걸 받아요.'], reward: { gyul: TOKEN.quest.gyul } }); /* 징표 (#255) */

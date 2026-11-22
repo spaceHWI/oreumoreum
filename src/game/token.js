@@ -29,8 +29,8 @@ const T = TOKEN, A = SWARM.arena;
 normTok(save);
 const TK = () => save.tok;
 
-/* ---------- 그림: 징표 (둥근 징) ---------- */
-const GONG = '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.2"/><path d="M12 1.5v2"/>';
+/* ---------- 그림: 망고 ---------- */
+const GONG = '<path d="M12 5c5.5-.5 9 3.6 8 9-1 4.6-5 6.5-9 5.8C6.7 19 3.5 15.5 4.5 10.8 5.3 7.3 8.3 5.2 12 5z"/><path d="M12 5c0-1.800 1-3 3-3.300"/>';
 const gsvg = (cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${GONG}</svg>`;
 const LOGO = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 56"><rect x="6" y="4" width="4" height="48" rx="2" fill="#5a4126"/><rect x="54" y="4" width="4" height="48" rx="2" fill="#5a4126"/><rect x="4" y="6" width="56" height="5" rx="2" fill="#5a4126"/><circle cx="32" cy="30" r="17" fill="#d8a63c" stroke="#8a6420" stroke-width="3"/><circle cx="32" cy="30" r="7" fill="none" stroke="#8a6420" stroke-width="2.5"/><rect x="14" y="48" width="36" height="5" rx="2" fill="#f08a24"/></svg>`);
 
