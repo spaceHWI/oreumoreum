@@ -1,5 +1,6 @@
 // 사진사 NPC (#70): 정상 표지석 근처 전망 좋은 곳에 삼각대를 세워 두고 서 있음
-// - 차림(본인 동의, 이슈 코멘트): 뒤로 묶은 긴 머리, 흰 선바이저, 파란 바람막이 위 검은 러닝 조끼(등에 작은 배낭), 검은 레깅스, 러닝화,
+// - #262 부터 모습은 Tripo 사진사 모델(casemodels.js 'photographer': 카메라 들어 찍기·손짓). 아래 z- 장비는 예전 차림(남겨 둠, 목록엔 안 나옴)
+// - 예전 차림(본인 동의, 이슈 코멘트): 뒤로 묶은 긴 머리, 흰 선바이저, 파란 바람막이 위 검은 러닝 조끼(등에 작은 배낭), 검은 레깅스, 러닝화,
 //   한 손에 짐벌 카메라, 목에도 카메라. 비 오는 날에는 노란 우비. 얼굴·몸은 우리 캐릭터 그대로(옷만 입힘)
 // - 사진은 삼각대 카메라 자리에서 찍음 (main.js 가 camPos·camLook 으로 카메라를 옮김)
 // - 수치는 balance.js PHOTOG
@@ -10,6 +11,7 @@ import { gradHard } from './toon.js';
 import { ACCESSORIES } from './gear.js';
 import { CLOTH_BUILD } from './clothes.js';
 import { PHOTOG } from './balance.js';
+import { caseModel } from './casemodels.js';
 
 // ---- 사진사 전용 장비 (npc: true → 옷장·상점 목록에 안 나옴). 좌표는 모델 기본 자세(키 0.98) 기준 ----
 const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
@@ -51,7 +53,6 @@ Object.assign(ACCESSORIES, {
       const inner = G(handle, yoke, cam); inner.rotation.x = 0.25;
       const outer = G(inner); outer.rotation.z = -Math.PI / 2; outer.position.set(...HAND); return outer; } },
 });
-const GEAR = (rain) => ({ hair: 'hat:short', hat: 'hat:z-visor', face: 'face:none', back: 'back:empty', top: 'top:z-tee', bottom: 'bottom:z-tights', vest: rain ? 'vest:none' : 'vest:z-run', jacket: rain ? 'jacket:z-rain' : 'jacket:z-wind', socks: 'socks:none', shoes: 'shoes:s2', hand: 'hand:z-gimbal' });
 
 export function createPhotographer({ scene, social, P, out, tan, spot, height, buildRunner, outfit, col, low, rnd = Math.random }) {
   const mid = P.stone.clone().lerp(spot, 0.5); mid.y = height(mid.x, mid.z);
@@ -75,10 +76,12 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     tripod.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = true; } }); }
   // 사진사: 삼각대 옆, 사진 자리를 봄
   const pos = tp.clone().addScaledVector(tan, PHOTOG.stand); pos.y = height(pos.x, pos.z);
-  const run = buildRunner();
+  // #262: Tripo 사진사 모델(올리브 벙거지·조끼·카메라·삼각대 배낭, casemodels.js). 모델 root 는 크기가 들어 있어서 이름표는 바깥 묶음에 붙임
+  const model = caseModel('photographer'), holder = new THREE.Group(); holder.add(model.root);
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#fffbe8', transparent: true, opacity: 0, depthWrite: false })); flash.scale.setScalar(0.22); model.attach('armR', flash, [0, 0.63, 0.32]); /* 찍을 때 번쩍 */
+  const run = { root: holder, animate: (dt, o) => { model.play(o.pose === 'shoot' ? 'shoot' : o.pose === 'wave' ? 'beckon' : 'idle'); model.update(dt); flash.material.opacity = model.flash; flash.visible = model.flash > 0.02; } };
   let rain = false;
-  const dress = () => run.apply({ ...outfit, shoes: { ...outfit.shoes, color: '#f2f2f2' }, gear: GEAR(rain) });
-  dress(); run.root.position.copy(pos); scene.add(run.root);
+  run.root.position.copy(pos); scene.add(run.root);
   const faceTo = (p) => Math.atan2(p.x - pos.x, p.z - pos.z);
   let heading = faceTo(spot); run.root.rotation.y = heading;
   if (col) { col.add(pos.x, pos.z, 0.6); col.add(tp.x, tp.z, 0.5); }
@@ -90,7 +93,7 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
   const st = { pose: 'move', t: 0, greetCd: 6, beckon: 0 };
   const say = (text) => social?.showBubble('npc-photog', run.root, text, 3.5);
   function beckon() { st.beckon = PHOTOG.beckon; st.pose = 'wave'; st.t = 0; say('여기 서 보세요!'); }
-  function setRain(on) { on = !!on; if (on === rain) return; rain = on; dress(); }
+  function setRain(on) { rain = !!on; } /* 모델 하나라 우비는 없음 (#262) */
   function update(dt, player, { shooting = false, hide = false } = {}) {
     const d = player.pos.distanceTo(pos);
     run.root.visible = !hide; label.visible = !hide && d < 18;
@@ -102,7 +105,7 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     // 찍는 동안엔 사진 자리를, 아니면 가까이 온 사람을 봄
     const want = shooting ? faceTo(spot) : d < PHOTOG.greetR ? faceTo(player.pos) : faceTo(spot);
     let dh = want - heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); heading += dh * Math.min(1, dt * 5); run.root.rotation.y = heading;
-    run.animate(dt, { speed: 0, running: false, pose: st.pose, t: st.t });
+    run.animate(dt, { pose: shooting ? 'shoot' : st.pose });
   }
   return { pos, camPos, camLook: look, tripod, runner: run, beckon, setRain, update, get rain() { return rain; }, state: st };
 }

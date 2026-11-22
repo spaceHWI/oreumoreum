@@ -16,7 +16,7 @@ let go = false; // 첫 화면이 그려지기 전에는 받지 않음
 const queue = []; // 받을 차례 (앞이 먼저)
 const ORDER = ['steps', 'boar', 'stone', 'leap', 'salon', 'hair-short', 'hair-bob', 'hair-bun', 'dog', 'alien', 'hareubang', 'lamp', 'deer']; // 한가할 때 받는 순서
 export const CORE = ['runner']; // 첫 화면 전에 받아야 하는 것 (main.js 가 기다림)
-export const assetInfo = { done: 0, total: Object.keys(ASSETS).length, bytes: 0, ms: 0 };
+export const assetInfo = { done: 0, total: Object.keys(ASSETS).filter((n) => !ASSETS[n]?.meta?.lazy).length, bytes: 0, ms: 0 };
 
 export const assetMeta = (name) => ASSETS[name]?.meta || {};
 export const getAsset = (name) => cache.get(name) || null;
@@ -58,7 +58,7 @@ function load(name) {
   if (cache.has(name)) return Promise.resolve(cache.get(name));
   if (!loading.has(name)) {
     loading.set(name, unpack(name).then((d) => {
-      cache.set(name, d); assetInfo.done++; crashNote('모델 받음 ' + name);
+      cache.set(name, d); if (!ASSETS[name]?.meta?.lazy) assetInfo.done++; crashNote('모델 받음 ' + name);
       const cbs = waiting.get(name) || []; waiting.delete(name);
       for (const cb of cbs) { try { cb(d); } catch (e) { console.error(e); } }
       for (const cb of anyCbs) cb(name);
@@ -85,7 +85,7 @@ export function want(name, now = false) {
 // (받기·풀기는 가볍다. 텍스처 올리기·셰이더 준비는 그릴 때 하나씩 일어남)
 export function startAssets() {
   if (go) return; go = true;
-  for (const n of [...ORDER, ...Object.keys(ASSETS)]) if (!queue.includes(n)) queue.push(n);
+  for (const n of [...ORDER, ...Object.keys(ASSETS)]) if (!queue.includes(n) && !ASSETS[n]?.meta?.lazy) queue.push(n); /* lazy: 가까이 가야 받음 (#262) */
   const next = () => {
     while (queue.length && (cache.has(queue[0]) || loading.has(queue[0]))) queue.shift();
     const n = queue.shift(); if (!n) return;

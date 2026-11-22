@@ -1905,3 +1905,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `notes/case-files.md` 6절(사건 더하는 법)을 새 모양으로. `tools/caserun.js` 는 옛 판 저장·위에서 찍기·떨어지는 더미·수사 보드(사진·핀·실)를 봄
 - 합칠 때 #233(follow)·#235(scene)·#236(watch)·#238(제보 칸)을 장면 틀(startRun/stopRun, mode hide·view·watch)과 수사 보드에 맞춤. c2·c4·c5 에도 `photo` 그림을 넣음. CSS 는 `game/casecss.js` 로 뗌(40KB)
 
+## #262 사건 파일 Tripo 모델 여섯: 줄이기·뼈대·모션
+- 원본(`assets` 브랜치 `case/*.glb`, 22~33만 삼각형) → `model/bake-case.py`(bake-prop.py 방식 + 같은 텍스처를 작게 줄인 멀리용 LOD 하나 더) → `model/extract-prop.js` → `src/model-case-<이름>[-lo].js`. 캐릭터 7,500 삼각형·텍스처 512 / 멀리용 1,500·128, 호스 1,500 / 380. 얼굴은 512 에서도 뭉개지지 않아 1024 는 안 씀
+- 받기: `tools/packassets.mjs` 에 `case-<이름>`·`case-<이름>-lo` (meta.lazy) → `assets.js` 가 한가할 때 받는 차례에서 뺌(assetInfo.total 에도 안 셈). 모델 합계 1,793KB → 2,645KB(+852KB, 한도 1.5MB 안). 첫 화면 받는 양은 그대로
+- `src/casemodels.js` `caseModel(이름)`: 뼈 7개(호스 8마디) 가중치는 정점과 뼈 선분 거리(1/d^6) + 큰 머리 통째 + 손에 든 것 상자 + 몸통 옆면 안쪽은 팔에서 뺌(gate). 듀얼 쿼터니언. 큰 모델·멀리용이 같은 뼈 → 캐릭터마다 그리는 것 1(+그림자). 받기·LOD 는 onBeforeRender(카메라 거리)로 저절로. 모션 섞기 0.25초
+- 바꾼 곳: 사건 5 설인(caseprops.js yeti: 앉아 묶기·한 손 들기), 사건 2 흰 옷(casechase.js: 미끄러지듯·집게질), 사건 4 긴 목(caseprops.js neck: 원통 마디 → 호스 모델 26배·꿈틀, 그림자 없음), 좌판 터지기(token.js: 러너 → 모델, 손 흔들기·망고 내밀기), 정상 사진사(photographer.js: 카메라 눈에·찍을 때 번쩍·손짓. 우비 차림은 없어짐, 예전 z- 장비는 남김). 검은 양복은 #234 가 `caseModel('mib')` 로 씀(notes/case-files.md 6절)
+- 한 덩어리 모델이라 팔을 크게 들면 옆구리가 늘어남 → 모션은 작게(터지기 손 흔들기는 망고 든 손, 사진사는 카메라를 눈에 댄 채)
+- 검사 `node tools/casemodels.js` (첫 화면에 안 받음·여섯 받음·그리는 수 +6·모션마다 뼈가 움직임·찍기 notes/shots/262)

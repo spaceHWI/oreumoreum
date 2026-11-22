@@ -1,5 +1,5 @@
 // 사건 파일: 흰 옷 따라가기 (#233 사건 2 '흰 옷 귀신'). game/cases.js 가 makeChase 로 만들어 씀 (이 파일만 읽어서는 아무것도 하지 않음)
-// - 흰 옷 = 오름지기 모델(runner)에 흰 작업복·밀짚모자·집게. 새 모델 없음. 밤에만 보임: 실제 밤(해 고도 < -4°)이거나 사건 장면 동안 화면이 밤빛(#case-night)일 때
+// - 흰 옷 = Tripo 흰 후드 작업복 모델(casemodels.js 'ghost-keeper', #262: 미끄러지듯 걷기·집게질·돌아보기). 밤에만 보임: 실제 밤(해 고도 < -4°)이거나 사건 장면 동안 화면이 밤빛(#case-night)일 때
 // - 목격 스침(glimpse): see.ghost 사건이 열리는 순간 돌담 너머로 흰 옷이 미끄러져 사라지고 그동안 화면이 잠깐 밤빛
 // - 실제 밤: 레벨이 되고 종결 전이면 목격 돌담 너머를 오감. 가까이 가면(CASE.chase.vanish m) 사라짐
 // - 따라가기(follow): 그 구역 서바이벌 터를 버틴 뒤(cases.js 가 save.cases[id].a = 1) 터 가장자리 path[0] 에 나옴 → near m 안에 들면 다음 자리로 미끄러짐
@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { CASE } from '../balance.js';
 import { height } from '../world.js';
-import { buildRunner, DEFAULT_OUTFIT } from '../runner.js';
+import { caseModel } from '../casemodels.js';
 import { state, late } from './state.js';
 import { scene, camera, sunState } from './scene.js';
 import { player } from './place.js';
@@ -26,9 +26,8 @@ export function makeChase({ S, closed, lv, spot, done, fightNow }) {
   let G = null; // { r, pos, heading, pose, t, speed }
   function ghost() {
     if (G) return G;
-    const r = buildRunner(), o = DEFAULT_OUTFIT;
-    r.apply({ ...o, shirt: { ...o.shirt, type: 'long', color: K.white }, pants: { ...o.pants, color: K.white }, shoes: { ...o.shoes, color: '#5a5650' }, gear: { hat: 'hat:straw', back: 'back:none', hand: 'hand:tongs' } });
-    r.root.traverse((m) => { if (m.isMesh && m.material?.emissive) { m.material = m.material.clone(); m.material.emissive.copy(m.material.color).multiplyScalar(K.glow); } }); /* 밤빛 위에서도 흰 옷이 뜸 */
+    const m = caseModel('ghost-keeper', { glow: K.glow }); /* Tripo 흰 후드 작업복 (#262). glow: 밤빛 위에서도 흰 옷이 뜸 */
+    const r = { root: m.root, model: m, animate: (dt, o) => { m.play(o.pose === 'crouch' ? 'pinch' : o.pose === 'look' ? 'lookback' : o.speed > 0.05 ? 'glide' : 'idle'); m.update(dt); } };
     r.root.visible = false; scene.add(r.root);
     G = { r, pos: new THREE.Vector3(), heading: 0, pose: 'move', t: 0, speed: 0 };
     return G;
