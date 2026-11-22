@@ -9,7 +9,8 @@
 // - 할인권: late.questOff(가게, 값) → 깎을 귤, late.questUse(가게) 한 장 씀 (shop.js 장비·옷, stores.js 머리·에이드)
 // dev: __oreum.quest (state·give(id)·done(id)·count(k, n)·go()·open(giver)·where())
 import * as THREE from 'three';
-import { QUESTS, CLOTHES, TALK } from '../balance.js';
+import { QUESTS, CLOTHES, TALK, TOOLS, BAGS, WEAPONS, GROWTH, LEAP } from '../balance.js';
+import { GEAR_SLOTS, enhOk, curItem } from '../loot.js';
 import { createQuests } from '../quest.js';
 import { STREET } from '../streetlayout.js';
 import { buildRunner, DEFAULT_OUTFIT } from '../runner.js';
@@ -24,7 +25,7 @@ import { player, trash, CHS, shopsBuilt, col, buff, cairns } from './place.js';
 import { toast, panelOpen, closePanels, ach, tipMark } from './hud.js';
 import { director, say } from './director.js';
 import { social } from './room.js';
-import { interactables } from './stores.js';
+import { interactables, leapItems } from './stores.js';
 import { startAutoGo, stopAutoGo, autoGo } from './dump.js';
 import { cam } from './camera.js';
 import { gyulShower } from './hooks.js';
@@ -43,6 +44,16 @@ const VAL = {
   tool: () => save.equip.tool | 0, bag: () => save.equip.bag | 0, weapon: () => Math.max(0, (save.equip.weapon | 0) - 1),
   zone: () => save.journey?.maxZ || 0,
 };
+// 더 채울 수 없는 셈 (#219): 지금 오를 수 있는 끝. 없으면 끝없음(다시 쌓이는 더미·다시 열리는 소굴·늘 할 수 있는 식사·낚시 등)
+//   단계: 도구·배낭·무기는 가장 높은 단계까지 · upgrade(강화 한 번): 입은 장비가 모두 +GROWTH.enhMax 면 지금 셈이 끝 · clothes(옷 사기): LEAP 에 안 가진 옷이 없으면 지금 셈이 끝
+const upLeft = () => GEAR_SLOTS.some((k) => enhOk(save, k) && curItem(save, k).e < GROWTH.enhMax);
+const CAP = {
+  tool: () => TOOLS.length, bag: () => BAGS.length, weapon: () => WEAPONS.length - 1,
+  gearTB: () => TOOLS.length + BAGS.length, gearAll: () => TOOLS.length + BAGS.length + WEAPONS.length,
+  upgrade: () => (upLeft() ? Infinity : quests.state().c.upgrade || 0),
+  clothes: () => ((LEAP.slots || []).some((k) => { try { return leapItems(k).some((it) => !it.own); } catch { return true; } }) ? Infinity : quests.state().c.clothes || 0),
+};
+export const questCan = (k) => { const c = CAP[k]?.(); return c == null || !Number.isFinite(c) ? Infinity : c; };
 const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; return quests.state().c[k] || 0; };
 const life = () => save.ach?.life || {};
 // 옛 저장에서 이미 한 것 (catchUp): 그 구역을 끝냈으면 그 구역 퀘스트는 모두, 아니면 평생 기록으로 어림
@@ -59,13 +70,19 @@ function oldDone(q) {
 export const quests = createQuests({
   save, persist, defs: Q,
   hooks: {
-    val, oldDone,
+    val, oldDone, cap: (k) => questCan(k), stuck: (q) => stuckDone(q),
     has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) && late.shopOpen?.(need.slice(5)) !== false : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
     door: (id) => director.isOpen(id),
     open: () => director.isOpen('quest'),
     ready: (q) => onReady(q),
   },
 });
+// #219 옛 저장: 전에는 강화를 세지 않았음 → 처음 한 번 지금까지 올린 강화 수로 채우고, 걸려 있던 '강화' 퀘스트는 받기 전 것도 셈 (보상은 할인권 한 장이라 너그럽게)
+{ const qs = quests.state(); if (qs.c.upgrade == null) {
+  qs.c.upgrade = GEAR_SLOTS.reduce((a, k) => a + (enhOk(save, k) ? curItem(save, k).e : 0), 0);
+  for (const e of [qs.cur, ...Object.values(qs.side)]) if (e?.base && 'upgrade' in e.base) e.base.upgrade = 0;
+  persist();
+} }
 // 옛 저장: 튜토리얼을 마친 저장에 퀘스트가 처음 생김 → 이미 한 것은 건너뜀 (감독 문이 열린 뒤)
 let needCatch = quests.wasFresh && !!(save.tut?.done || save.jeong);
 const count = (k, n = 1) => { quests.count(k, n); };
@@ -226,7 +243,9 @@ $('quest-close').addEventListener('click', closeWin);
 win.el.addEventListener('click', (e) => { if (e.target === win.el) closeWin(); });
 $('quest-go').addEventListener('click', () => {
   const it = win.item, g = win.giver; if (!it || !g) return;
-  if (it.st === 'offer') { if (quests.accept(it.q.id)) { late.sound?.beep?.(true); toast(`${Q.took || '퀘스트 받음'} · ${it.q.task}`, 2.6); trackDirty(true); } closeWin(); return; }
+  if (it.st === 'offer') { if (quests.accept(it.q.id)) { if (quests.stuck(it.q.id)) { closeWin(); quests.tick(); return; } late.sound?.beep?.(true); toast(`${Q.took || '퀘스트 받음'} · ${it.q.task}`, 2.6); trackDirty(true);
+      const now = quests.at(g.id).find((x) => x.q === it.q && x.st === 'ready'); if (now) { show(g, now); return; } } /* 이미 채운 것(#219 단계 도달)은 바로 돌려주기 창 */
+    closeWin(); return; }
   if (it.st === 'ready') {
     const r = quests.complete(it.q.id); if (!r) { closeWin(); return; }
     give(r, it.q); trackDirty(true);
@@ -244,6 +263,14 @@ function give(r, q) {
 }
 // 끝 장면: 하늘에 큰 글씨 한 줄
 function ending(text) { const el = $('quest-end'); el.textContent = text; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 7000); }
+
+/* ---------- 더 채울 수 없음 (#219): 받자마자·불러올 때 바로 끝 (보상은 한 번) ---------- */
+function stuckDone(q) {
+  const r = quests.complete(q.id); if (!r) return;
+  give(r, q); say('quest', 'qstuck:' + q.id, `${q.name} 완료 · 이미 다 했어요`, 3.4, { ttl: 60 });
+  if (win.item?.q === q) closeWin();
+  trackDirty(true);
+}
 
 /* ---------- 조건을 채움 ---------- */
 function onReady(q) {
@@ -431,7 +458,7 @@ late.questDebug = {
   get next() { return late.nextDebug; }, // #142 다음 할 일 (game/nexthint.js)
   where: () => Object.fromEntries([...givers.values()].map((g) => [g.id, { x: +g.pos.x.toFixed(1), z: +g.pos.z.toFixed(1), mark: g.cur }])),
   track: () => trCur && { text: trCur.text, prog: trCur.prog, ready: trCur.ready, go: trCur.go, k: trCur.k || null, mark: trCur.mark, target: trTarget && [+trTarget.x.toFixed(1), +trTarget.z.toFixed(1)], shown: !TR.hidden },
-  give: (id) => quests.accept(id), done: (id) => { const r = quests.complete(id); if (r) give(r, quests.BY.get(id)); trackDirty(); return r; },
+  give: (id) => quests.accept(id), cap: (k) => questCan(k), stuck: (id) => quests.stuck(id), done: (id) => { const r = quests.complete(id); if (r) give(r, quests.BY.get(id)); trackDirty(); return r; },
   count: (k, n = 1) => { count(k, n); trackDirty(); }, open: (gid) => openGiver(gid), log: () => openLog(), go: () => trackGo(), win: () => !win.el.hidden && { who: win.giver?.id, id: win.item?.q.id, st: win.item?.st, page: talk.i, pages: talk.pages?.length || 1 },
   nextPage: () => $('quest-next').click(),
   showQ: (id, st = 'offer') => { const q = quests.BY.get(id), g = q && givers.get(q.giver); if (!g) return false; closePanels(); show(g, { q, st, main: QUESTS.main.includes(q) }); return true; }, // 창 그림 확인용 (#190)

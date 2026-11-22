@@ -53,6 +53,7 @@ function doEnhance(k) {
   if (!canPay(save, c)) { toast('재료가 모자라요'); return; }
   const from = save.coins;
   if (!enhance(save, k)) return;
+  late.questEv?.('upgrade'); /* 퀘스트 '강화 한 번' 셈 (#219: 전에는 아무도 세지 않아 끝낼 수 없었음) */
   persist(); updateStats(); updateTrashUI(true); net.send(true); late.shopCoinsChanged?.(); late.bagRefresh?.();
   late.sound?.coin?.(); if (cur.e + 1 >= GROWTH.enhMax) late.sound?.fanfare?.();
   toast(`${itemName(curItem(save, k))} · 강화했어요`, 2);

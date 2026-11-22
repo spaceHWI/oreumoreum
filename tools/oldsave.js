@@ -36,6 +36,13 @@ const SAVES = {
   shopVet: { nick: '단골', coins: 500, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 3, bag: 2, shoes: 1, weapon: 1 }, boss: { done: { 1: 1 } }, ach: { life: { haircut: 1, 'clothes-buy': 2, meal: 1 } } },
   // #140: 깨진 재료·등급·강화·안 쓰는 장비 · 예전 우두머리 귀한 재료(이름)는 재료 주머니로
   loot: { nick: '전리품 사람', coins: 90, entered: 1, tut: { step: 99, done: true, v: 3 }, equip: { tool: 2, bag: 1, shoes: 1, weapon: 2 }, mats: { m1: -3, zz: 5, m2: 'x', m3: 4 }, gearUp: { tool: { g: 9, e: 7 }, foo: 1, bag: 'x' }, clothes: { own: {}, wear: {}, up: 'x' }, loot: [{ s: 'tool', t: 99 }, 5, { s: 'hat', t: 2, g: 1, e: 2 }, { s: 'weapon', t: 2, g: 2, e: 0 }], lootAuto: 'q', boss: { mats: { '대장 들개 이빨': 2 }, done: {}, beat: {}, log: {} } },
+  // #219: 장비를 다 강화한 뒤 '강화 한 번' 이 걸린 저장 · 도구·배낭이 끝 단계인데 '집게나 배낭 한 칸 올리기' 가 걸린 저장 → 불러오면 끝나고 보상 한 번
+  upMax: { nick: '강화 끝', coins: 100, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 2, bag: 1, shoes: 1, weapon: 2 }, gearUp: { tool: { g: 0, e: 5 }, bag: { g: 0, e: 5 }, shoes: { g: 0, e: 5 }, weapon: { g: 0, e: 5 } },
+    clothes: { own: {}, wear: {}, up: { 'hat:w-cap': { g: 0, e: 5 }, 'top:w-tee': { g: 0, e: 5 }, 'bottom:w-shorts': { g: 0, e: 5 } } },
+    boss: { done: { 1: 1, 2: 1, 3: 1 } }, quest: { v: 1, cur: null, done: ['g-tool', 'g-bag', 'g-arm'], side: { 'g-up': { base: { upgrade: 35 }, r: 0 } }, cp: {}, c: { upgrade: 35 } } },
+  upOld: { nick: '강화 셈 없음', coins: 100, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 2, bag: 1, shoes: 1, weapon: 2 }, gearUp: { tool: { g: 0, e: 5 }, weapon: { g: 0, e: 2 } },
+    quest: { v: 1, cur: null, done: ['g-tool', 'g-bag', 'g-arm'], side: { 'g-up': { base: {}, r: 0 } }, cp: {}, c: {} } },
+  gearMax: { nick: '장비 끝', coins: 100, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 99, bag: 99, shoes: 1, weapon: 1 }, quest: { v: 1, cur: { id: 'gear1', base: { gearTB: 99 }, r: 0 }, done: ['can', 'heap1', 'dump2', 'piglet3'], side: {}, cp: {}, c: {} } },
   // #125: 예전 '오늘의 업적 5개' 기록 · 깨진 이어 오기
   dailyOld: { nick: '예전 업적', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, ach: { daily: { date: '2026-11-21', items: [{ id: 'd-trash-50', prog: 9, done: false, claimed: false }, { id: 'd-sit', prog: 1, done: true, claimed: false }] }, life: { trash: 5 }, badges: {}, allDays: 2, lastAll: '2026-11-19' } },
   dailyBad: { nick: '깨진 할 일', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, ach: { daily: { date: 7, items: [null, 3, { id: 't-photo', prog: 'x' }] }, run: { n: 'q', last: [], got: 'x' }, life: {}, badges: {} } },
@@ -68,6 +75,11 @@ const SAVES = {
     if (name === 'shopVet' || name === 'shopBad') { const g = await p.evaluate(() => { const o = window.__oreum.shopGate; return Object.fromEntries(['gear', 'manjok', 'stone', 'salon', 'leap', 'ride'].map((id) => [id, o.isOpen(id)])); }).catch(() => ({}));
       const want = name === 'shopVet' ? g.gear && g.stone && g.salon && g.leap && !g.ride : g.gear && !g.ride; /* #206 */
       if (!want) { bad++; console.log(name, '옛 저장 가게 열기 실패', JSON.stringify(g)); } else console.log(name, '가게', JSON.stringify(g)); }
+    if (name === 'upOld') { const q = await p.evaluate(() => { const o = window.__oreum; return { ready: o.quest.api.ready('g-up'), c: o.save.quest.c.upgrade }; }).catch(() => ({}));
+      if (!(q.ready && q.c === 7)) { bad++; console.log(name, '옛 강화 셈 채우기 실패', JSON.stringify(q)); } else console.log(name, '옛 강화 셈', JSON.stringify(q)); }
+    if (name === 'upMax' || name === 'gearMax') { await p.waitForTimeout(1500); const q = await p.evaluate(() => { const o = window.__oreum, s = o.save.quest; return { done: s.done, side: Object.keys(s.side), cur: s.cur?.id || null, cp: s.cp, coins: o.save.coins, cap: o.quest.cap('upgrade'), tb: o.quest.cap('gearTB'), eq: o.save.equip }; }).catch((e) => ({ e: String(e) }));
+      const want = name === 'upMax' ? q.done?.includes('g-up') && !q.side?.includes('g-up') && q.cp?.gear === 1 : q.done?.includes('gear1') && q.cur !== 'gear1'; /* #219 받은 퀘스트가 끝나고 다음 줄이 열림 */
+      if (!want) { bad++; console.log(name, '더 채울 수 없는 퀘스트 풀기 실패', JSON.stringify(q)); } else console.log(name, '퀘스트 풀림', JSON.stringify({ done: q.done.slice(-2), cur: q.cur, cp: q.cp, coins: q.coins })); }
     if (name === 'questVet' && st.qnext !== 'heap3') { bad++; console.log(name, '옛 저장 퀘스트 건너뛰기 실패', st.qnext); } // #158
     if (name === 'clean' && !(st.coins === 4321 && st.equip.tool === 3 && st.equip.weapon === 2 && st.total === 900 && st.slots.join() === 'battle' && st.rkAll?.battle === 900 && !('clean' in st.rkAll))) { bad++; console.log(name, '옮기기 실패'); }
     if (name === 'loot' && !(st.mats?.r2 === 2 && st.mats?.m3 === 4 && !('m1' in st.mats) && !('zz' in st.mats) && st.up?.tool?.g === 3 && st.up.tool.e === 5 && st.nloot <= 2)) { bad++; console.log(name, '전리품 저장 바로잡기 실패'); }
