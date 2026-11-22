@@ -27,8 +27,8 @@ export default {
     { id: 'k5d', paper: 'photo', t: '봉지를 든 뒷모습', from: '발자국 끝', b: '흰 등, 큰 봉지 하나, 묶은 봉지 한 무더기.\n(사진 뒤에 연필로) 선배' },
   ],
   quests: [
-    { id: 'k5-ev', z: 5, giver: 'jigi', need: 'case:c5', name: '설인', say: ['정상에 큰 발자국이요? 설인이 쓰레기를 버린다는 소문이 있죠.', '소문은 소문이고요. 흔적 세 가지만 모아 와요.'], task: '설인의 흔적 셋 찾기', ask: { k: 'case:c5:ev', n: 3, ever: true }, go: 'case:c5', fin: ['발자국, 털, 봉지라…', '정상 우두머리부터 쫓아내요. 그다음 발자국 끝까지 따라가 봐요.'], reward: { gyul: 120 } },
-    { id: 'k5-face', z: 5, giver: 'jigi', need: 'case:c5', after: 'k5-ev', name: '발자국 끝', say: ['우두머리가 정상에 버티는 동안은 그쪽도 안 나와요.', '쫓아낸 다음, 발자국 끝에 가서 조용히 다가가 봐요.'], task: '발자국 끝까지 가 보기', ask: { k: 'case:c5:face', n: 1, ever: true }, go: 'case:c5:face', fin: ['그 매듭, 알아요. 제가 처음 왔을 때도 묶여 있었거든요.', '버리는 걸 본 사람은 없어요. 본 건 늘 치우는 쪽이었죠.'], reward: { gyul: 400, item: 'hat:i-hat', mats: { m5: 6 } } },
+    { id: 'k5-ev', z: 5, giver: 'jigi', need: 'case:c5', name: '설인', say: ['정상에 큰 발자국이요? 설인이 쓰레기를 버린다는 소문이 있죠.', '소문은 소문이고요. 정상 더미 사이·북쪽 돌 틈·동쪽에서 흔적 셋만 모아 와요.'], task: '정상 설인 흔적 3개 찾기', ask: { k: 'case:c5:ev', n: 3, ever: true }, go: 'case:c5', fin: ['발자국, 털, 봉지라…', '정상 우두머리부터 쫓아내요. 그다음 발자국 끝까지 따라가 봐요.'], reward: { gyul: 120 } },
+    { id: 'k5-face', z: 5, giver: 'jigi', need: 'case:c5', after: 'k5-ev', name: '발자국 끝', say: ['우두머리가 정상에 버티는 동안은 그쪽도 안 나와요.', '쫓아낸 다음, 발자국 끝에 가서 조용히 다가가 봐요.'], task: '정상 발자국 끝까지 가기', ask: { k: 'case:c5:face', n: 1, ever: true }, go: 'case:c5:face', fin: ['그 매듭, 알아요. 제가 처음 왔을 때도 묶여 있었거든요.', '버리는 걸 본 사람은 없어요. 본 건 늘 치우는 쪽이었죠.'], reward: { gyul: 400, item: 'hat:i-hat', mats: { m5: 6 } } },
   ],
   // 보상 재료는 마지막 퀘스트 reward.mats (정상이 마지막 구역이라 정상 재료 m5) · 옷은 '조사관' 한 벌의 모자 칸 (조끼 c1·코트 c2)
   cloth: { id: 'hat:i-hat', slot: 'hat', name: '조사관 모자', desc: '챙을 내리면 눈보라도 의심도 가려져요', look: { kind: 'boonie', main: '#8a7550', acc: '#5e4e34', cord: '#3a3024' } },

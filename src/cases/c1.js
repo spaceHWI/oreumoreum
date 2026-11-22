@@ -31,8 +31,8 @@ export default {
   ],
   // 진행은 퀘스트 엔진 (balance.js QUESTS.side 뒤에 붙음). 셈 'case:c1:ev' 증거 수 · 'case:c1:face' 대면을 끝냄 (ever: 받기 전 것도 셈)
   quests: [
-    { id: 'c1-ev', z: 1, giver: 'jigi', need: 'case:c1', name: '크롭서클', say: ['풀밭에 커다란 무늬가요? 누가 보낸 메시지라던데요.', '해독하려면 증거가 있어야죠. 세 가지쯤.'], task: '무늬의 증거 셋 찾기', ask: { k: 'case:c1:ev', n: 3, ever: true }, go: 'case:c1', fin: ['화살표 셋, 눌린 자국, 다음 날 쓰레기라…', '새벽에 무늬 곁에 숨어 봐요. 메시지는 새벽에 온대요.'], reward: { gyul: 20 } },
-    { id: 'c1-face', z: 1, giver: 'jigi', need: 'case:c1', after: 'c1-ev', name: '새벽 네 시', say: ['무늬 옆 수풀에 숨어 있어 봐요.', '뭐가 와도 소리 내지 말고요.'], task: '무늬 곁에 숨어 보기', ask: { k: 'case:c1:face', n: 1, ever: true }, go: 'case:c1:face', fin: ['툭, 이요? 한가운데에?', '해독 끝이네요. 그거 메시지 아니에요. 그냥 \'여기 놓으세요\' 예요.'], reward: { gyul: 60, item: 'vest:i-pocket' } },
+    { id: 'c1-ev', z: 1, giver: 'jigi', need: 'case:c1', name: '크롭서클', say: ['숲길 들판에 커다란 무늬가요? 누가 보낸 메시지라던데요.', '해독하려면 증거가 셋은 있어야죠. 무늬 한가운데, 바위 위, 숲길 끝 돌 밑부터 봐요.'], task: '숲길 무늬 증거 3개 찾기', ask: { k: 'case:c1:ev', n: 3, ever: true }, go: 'case:c1', fin: ['화살표 셋, 눌린 자국, 다음 날 쓰레기라…', '새벽에 무늬 곁에 숨어 봐요. 메시지는 새벽에 온대요.'], reward: { gyul: 20 } },
+    { id: 'c1-face', z: 1, giver: 'jigi', need: 'case:c1', after: 'c1-ev', name: '새벽 네 시', say: ['숲길 무늬 옆 수풀에 숨어 있어 봐요.', '뭐가 와도 소리 내지 말고요.'], task: '숲길 무늬 곁에 숨어 보기', ask: { k: 'case:c1:face', n: 1, ever: true }, go: 'case:c1:face', fin: ['툭, 이요? 한가운데에?', '해독 끝이네요. 그거 메시지 아니에요. 그냥 \'여기 놓으세요\' 예요.'], reward: { gyul: 60, item: 'vest:i-pocket' } },
   ],
   // 보상: 옷(겉모습, 값 0: 가게에 없음) · 칭호(punktext.js TITLES 에 같은 글로 한 줄) · 업적(achievements.js 에 붙음)
   cloth: { id: 'vest:i-pocket', slot: 'vest', name: '조사관 조끼', desc: '주머니가 많아요. 증거가 들어가요', look: { kind: 'vest', main: '#6b5a40', acc: '#e8dcc0', pockets: 3 } },

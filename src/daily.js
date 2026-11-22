@@ -31,10 +31,10 @@ export const TASKS = [
   // 만남·나눔
   { id: 't-hello-3', cat: 'meet', ev: 'emote-meet', goal: 3, name: '다른 사람에게 인사 3번 (동작)', q: '받아 주지 않아도 셈해요' },
   { id: 't-photo', cat: 'meet', ev: 'photo', goal: 1, name: '정상 표지석 인증샷', q: '표지석은 늘 웃어요. 돌이라서' },
-  { id: 't-meal', cat: 'meet', ev: 'meal', goal: 1, name: '식당에서 한 끼', q: '빈속은 장비가 아니에요' },
-  { id: 't-feed', cat: 'meet', ev: 'feed', goal: 1, name: '노루에게 귤 주기', q: '노루는 고맙다고 안 해요. 원래 그래요' },
-  { id: 't-stone', cat: 'meet', ev: 'stone', goal: 1, name: '돌탑에 돌 올리기', q: '소원은 접수만 해요' },
-  { id: 't-cart', cat: 'meet', ev: 'cart', goal: 1, name: '마차 타기', q: '요금은 없어요. 멀미는 별도' },
+  { id: 't-meal', cat: 'meet', ev: 'meal', goal: 1, name: '가게 거리 식당에서 한 끼', q: '빈속은 장비가 아니에요' },
+  { id: 't-feed', cat: 'meet', ev: 'feed', goal: 1, name: '노루에게 귤 하나 주기', q: '노루는 고맙다고 안 해요. 원래 그래요' },
+  { id: 't-stone', cat: 'meet', ev: 'stone', goal: 1, name: '돌탑에 돌 하나 올리기', q: '소원은 접수만 해요' },
+  { id: 't-cart', cat: 'meet', ev: 'cart', goal: 1, name: '정류장에서 마차 한 번 타기', q: '요금은 없어요. 멀미는 별도' },
   { id: 't-chat', cat: 'meet', ev: 'chat', goal: 1, name: '말풍선으로 인사', q: '말풍선은 재활용돼요' },
 ];
 export const TASK_BY = Object.fromEntries(TASKS.map((t) => [t.id, t]));
