@@ -9,8 +9,8 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await p.waitForTimeout(6000);
   await p.click('#enter').catch(() => {}); await p.waitForTimeout(5000);
   ok(await p.evaluate(() => !document.getElementById('look').hidden && !document.getElementById('look-nickrow').hidden), '처음: 캐릭터 고르기에 이름 칸');
-  const first = await p.inputValue('#look-nick');
-  ok(first.length >= 2, `무작위 이름이 들어 있음 (${first})`);
+  const first = await p.getAttribute('#look-nick', 'placeholder'), firstV = await p.inputValue('#look-nick'); /* #230: 칸은 비우고 기본 이름은 흐린 글씨 */
+  ok(first.length >= 2 && firstV === '', `무작위 기본 이름이 흐린 글씨로 (${first}), 칸은 비움`);
   await p.fill('#look-nick', '시1발'); await p.waitForTimeout(100);
   ok(await p.evaluate(() => document.getElementById('look-ok').disabled && !document.getElementById('look-nick-err').hidden), '걸리는 이름: 시작 버튼 안 눌림·한 줄 안내');
   await p.fill('#look-nick', '운영자'); ok(await p.evaluate(() => document.getElementById('look-ok').disabled), '사칭 이름 막힘');
