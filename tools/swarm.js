@@ -8,7 +8,7 @@
 const { chromium } = require('playwright');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : +args[i + 1]; };
 const ZONES = args.filter((a, i) => /^\d$/.test(a) && !/^--/.test(args[i - 1] || '')).map(Number); if (!ZONES.length) ZONES.push(1, 2, 3, 4, 5);
-const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes('--still'), CAP = arg('--cap', 36), RUNS = arg('--runs', 1), DOWN = arg('--down', 0), FAST = args.includes('--fast'), LV = arg('--lv', 6), TAP = arg('--tap', 1), T0 = arg('--t0', 0); /* --cap: 동시 마릿수 (기본 PC 24, 헤드리스는 저사양이라 바꿔 둠). --tap: 누르는 간격(게임 초), 기본 1초는 움직이며 누르니 fight.js(0.65초)보다 느리게 */
+const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes('--still'), CAP = arg('--cap', 36), RUNS = arg('--runs', 1), DOWN = arg('--down', 0), FAST = args.includes('--fast'), LV = arg('--lv', 6), TAP = arg('--tap', 1), T0 = arg('--t0', 0), TRACE = args.includes('--trace'), MIX = arg('--mix', 0); /* --cap: 동시 마릿수 (기본 PC 24, 헤드리스는 저사양이라 바꿔 둠). --tap: 누르는 간격(게임 초), 기본 1초는 움직이며 누르니 fight.js(0.65초)보다 느리게 */
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
@@ -22,7 +22,9 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
   const wearIds = require('fs').readFileSync('src/balance.js', 'utf8').match(/id: '(top|jacket|socks|hat|bottom|vest):[^']+', slot: '\w+', tier: \d/g).map((s) => { const m = s.match(/id: '([^']+)', slot: '(\w+)', tier: (\d)/); return { id: m[1], slot: m[2], tier: +m[3] }; });
   const res = [];
   for (const zn of ZONES) for (let run = 0; run < RUNS; run++) {
-    const gt = Math.max(1, zn - DOWN), wear = wearIds.filter((w) => w.tier === gt);
+    const gt = Math.max(1, zn - DOWN), wear0 = wearIds.filter((w) => w.tier === gt), slots = [...new Set(wear0.map((w) => w.slot))];
+    /* --mix N (#243): 옷 N 칸만 한 단계 낮게 (장비 점수 80% 쯤 = 옷 3칸) */
+    const wear = slots.map((sl, i) => (i < MIX && gt > 1 && wearIds.find((w) => w.slot === sl && w.tier === gt - 1)) || wear0.find((w) => w.slot === sl));
     const ok = await p.evaluate(({ zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST }) => {
       const o = window.__oreum; o.enemies.test.clear(); document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
       o.pace.pacing.test.soon(1e6);
@@ -57,18 +59,19 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
           P.heading = best;
           { const c = o.swarm.at(z0), R = o.arena.list()[0].r, dc = Math.hypot(P.pos.x - c[0], P.pos.z - c[1]); if (dc > R - 4) P.heading = Math.atan2(c[0] - P.pos.x, c[1] - P.pos.z); o.cam.yaw = P.heading + Math.PI; } /* W 는 카메라 앞으로 가므로 카메라도 같은 쪽 */ /* 터 가장자리면 가운데로 (#254: 밀려 나가 '터 밖' 으로 끝나지 않게) */
         }
-        const st = o.swarm.state(); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside };
+        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n };
       }, { STILL });
+      if (TRACE && (i % 25 === 0 || r.out)) console.log('  trace', JSON.stringify({ t: +r.t.toFixed(1), dc: r.dc, y: r.y, out: r.out, n: r.n })); /* --trace: 터 가운데에서 거리 (#243) */
       if (r.out && !STILL) await p.keyboard.press(' '); /* 터 밖으로 밀렸으면 떼를 뛰어넘어 돌아옴 (#254) */
       t = r.t; if (t >= SEC || !r.on || r.down) break;
       await p.waitForTimeout(120);
     }
     if (!STILL) await p.keyboard.up('w');
     if (ok === 'hold') await p.keyboard.up('f');
-    const c = await p.evaluate(() => { const o = window.__oreum, C = window.__c; o.swarm.speed(1); return { ...C, coins: o.save.coins - C.coins0, lvUp: o.level.state().lv - C.lv0 }; });
+    const c = await p.evaluate(() => { const o = window.__oreum, C = window.__c; o.swarm.speed(1); return { ...C, coins: o.save.coins - C.coins0, lvUp: o.level.state().lv - C.lv0, sc: o.gearScore?.()?.total ?? null }; });
     const s = c.s || {};
     const why = await p.evaluate(() => window.__oreum.swarm.last?.why || (window.__oreum.swarm.state() ? '시간' : '-'));
-    const row = { 구역: zn, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader };
+    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader };
     console.log(JSON.stringify(row)); res.push(row);
     await p.evaluate(() => { const o = window.__oreum; o.swarm.stop(); o.enemies.test.clear(); });
     await p.waitForFunction(() => { const h = window.__oreum.hp; return !h.isDown && !h.pending && h.hp > 0; }, null, { timeout: 120000, polling: 500 }).catch(() => {});
