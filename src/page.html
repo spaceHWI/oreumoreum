@@ -519,30 +519,25 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 @media (prefers-reduced-motion: reduce) { .fx-dmg.crit, .fx-dmg.streak, #combo.hit b, #combo.up { animation: none; } }
 
 #btn-ctx, #btn-pick { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-/* 동작 바퀴 (#76): 바깥 8칸(쪽 넘김) + 안쪽 고정 4칸 + 가운데 쪽 표시. 그림만, 누르면 이름 토스트 */
-#actions { position: fixed; z-index: 7; left: 50%; bottom: calc(var(--safe-b) + 84px); transform: translateX(-50%); --S: min(300px, 86vw, calc(100vh - 150px)); width: var(--S); height: var(--S); }
-#emo-wheel { position: absolute; inset: 0; border-radius: 50%; background: var(--glass-2); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 14px 40px rgba(0,0,0,.3); animation: emoIn .16s ease-out; touch-action: none; -webkit-touch-callout: none; }
-#emo-wheel::before { content: ''; position: absolute; inset: 29%; border-radius: 50%; background: rgba(255,138,31,.07); border: 1px dashed rgba(255,255,255,.14); }
-@keyframes emoIn { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
-.emo-c { position: absolute; width: 18%; height: 18%; transform: translate(-50%, -50%); padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); color: #fff; display: grid; place-items: center; touch-action: none; -webkit-touch-callout: none; transition: background .1s, transform .1s; }
-.emo-c svg { width: 56%; height: 56%; pointer-events: none; }
-.emo-c:hover, .emo-c:active { background: rgba(255,255,255,.2); transform: translate(-50%, -50%) scale(1.08); }
-.emo-c.fav { width: 15%; height: 15%; background: rgba(255,138,31,.2); color: #ffd2a8; }
+/* 동작 부채꼴 (#242): 동작 버튼 곁에 8칸(안쪽 3 · 바깥 5). 자리는 emotes.js 가 px 로. 창 전체는 눌림을 통과시키고 칸만 받음 */
+#btn-actions { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#actions { position: fixed; inset: 0; z-index: 7; pointer-events: none; }
+#emo-wheel { position: absolute; inset: 0; }
+@keyframes emoIn { from { transform: translate(-50%, -50%) scale(.5); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+.emo-c { position: absolute; width: 50px; height: 50px; transform: translate(-50%, -50%); padding: 3px 0 0; border: 1px solid var(--hair); border-radius: 16px; background: var(--glass-2); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 6px 18px rgba(0,0,0,.28); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; pointer-events: auto; touch-action: none; -webkit-touch-callout: none; animation: emoIn .16s ease-out both; animation-delay: var(--d, 0ms); transition: background .1s; }
+.emo-c svg { width: 22px; height: 22px; flex: none; pointer-events: none; }
+.emo-c span { font: 800 10px/1.1 var(--display); white-space: nowrap; pointer-events: none; }
+.emo-c:hover, .emo-c.hot { background: var(--acc); color: var(--acc-fg); border-color: transparent; }
 .emo-c.off { opacity: .3; }
-.emo-c.pick { background: var(--acc); color: var(--acc-fg); }
-#emo-wheel.edit .emo-c.fav { outline: 2px dashed var(--acc); outline-offset: 2px; animation: hintPulse .9s ease-in-out infinite; }
-.emo-c kbd { position: absolute; right: -2px; top: -2px; min-width: 15px; height: 15px; border-radius: 8px; font: 800 10px/15px var(--display); text-align: center; background: rgba(0,0,0,.45); color: var(--ink-soft); pointer-events: none; }
+.emo-c kbd { position: absolute; right: -3px; top: -3px; min-width: 15px; height: 15px; border-radius: 8px; font: 800 10px/15px var(--display); text-align: center; background: rgba(0,0,0,.55); color: var(--ink-soft); pointer-events: none; }
 .touch .emo-c kbd { display: none; }
-.emo-pg { position: absolute; left: 50%; top: 50%; width: 15%; height: 15%; transform: translate(-50%, -50%); border: 0; padding: 0; border-radius: 50%; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; gap: 3px; }
-.emo-pg i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.35); pointer-events: none; }
-.emo-pg i.on { background: var(--acc); }
-#act-chat { position: absolute; right: -2%; bottom: -2%; width: 16%; height: 16%; min-width: 40px; min-height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass-2); border: 1px solid var(--hair); }
-#act-chat svg { width: 52%; height: 52%; }
+#act-chat { position: absolute; width: 44px; height: 44px; transform: translate(-50%, -50%); padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--glass-2); border: 1px solid var(--hair); pointer-events: auto; }
+#act-chat svg { width: 22px; height: 22px; }
 /* 도와줘: 다른 사람 쪽 화면 가장자리 표시 (5초) */
 .emo-edge { position: fixed; left: 0; top: 0; z-index: 15; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; display: grid; place-items: center; background: var(--acc); color: var(--acc-fg); pointer-events: none; animation: hintPulse .9s ease-in-out infinite; }
 .emo-edge svg { width: 22px; height: 22px; }
 .emo-edge .tip { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 10px solid var(--acc); transform: translate(-50%, -50%) rotate(var(--a, 0rad)) translateX(28px); }
-@media (prefers-reduced-motion: reduce) { #emo-wheel, .emo-edge, #emo-wheel.edit .emo-c.fav { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .emo-c, .emo-edge { animation: none; } }
 @media (min-width: 601px) { .ph { display: none !important; } }
 
 /* ===== 폰(세로): 쉬는 화면에 7개만. 걸음·소리·옷장 등은 메뉴 시트로, 체력은 달리기 버튼 테두리로 ===== */
@@ -1733,7 +1728,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 </div>
 
 <nav class="dock panel" data-tut="hud" aria-label="메뉴">
-  <button type="button" id="btn-actions" title="동작">
+  <button type="button" id="btn-actions" title="동작 (G)">
     <svg data-i="emote"></svg><span>동작</span>
   </button>
   <button type="button" id="btn-chat" title="말하기 (Enter)">

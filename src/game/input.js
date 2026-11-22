@@ -140,7 +140,7 @@ export function setTarget(p, onArrive) {
   player.target = p.clone(); player.onArrive = onArrive;
   placeMarker(p.x, p.z, 1, 0, 0.06); marker.visible = !onArrive;
 }
-const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8', KeyT: 't', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
+const CODE2KEY = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright', Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Digit7: '7', Digit8: '8', KeyT: 't', KeyG: 'g', KeyF: 'f', Enter: 'enter', KeyR: 'r', ShiftLeft: 'shift', ShiftRight: 'shift', KeyE: 'e', Space: ' ', Escape: 'escape', KeyQ: 'q' };
 const keyOf = (e) => CODE2KEY[e.code] || e.key.toLowerCase();
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -148,7 +148,8 @@ addEventListener('keydown', (e) => {
   keys.add(k);
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { if (k.startsWith('arrow')) e.preventDefault(); }
   if (e.repeat) return;
-  if (/^[1-8]$/.test(k)) state.emo.key(+k, !$('actions').hidden); // 동작 (#76): 바퀴가 열려 있으면 그 쪽 1~8, 닫혀 있으면 1~4 고정 칸
+  if (/^[1-8]$/.test(k)) state.emo.key(+k); // 동작 (#242): 1~8 = 부채꼴 8칸 (열려 있든 닫혀 있든)
+  if (k === 'g') $('btn-actions').click(); // G: 동작 부채꼴 열고 닫기 (임의, #242)
   if (k === 'enter') { e.preventDefault(); late.openChat(); }
   if (k === 'r' || k === 'shift') cycleSpeed();
   if (k === 'f') late.doInteract(); // 상호작용 (#34). 줍기(E)는 tickPick 이 누르고 있는 동안 처리
