@@ -1875,6 +1875,7 @@ export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, sk
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
 CASE.chase = { white: '#f4f3ee', glow: 0.35, behind: 2.4, glide: 3.2, glimT: 2.6, nightR: 45, afterT: 8, camBack: 3.6, camSide: 1.1, camUp: 1.9, faceD: 1.3, faceSide: 2.1, faceUp: 1.45, ambR: 70, ambW: 0.35, vanish: 7 };
+CASE.watch = { back: 5.5, camBack: 8.5, camSide: 1.8, camUp: 2.1 }; /* 다가가 보기 장면(#236 사건 5, face.watch). 나는 모양 등 뒤 back m, 카메라는 등 뒤 camBack m·옆 camSide m·위 camUp m */
 
 // 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
 // hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
