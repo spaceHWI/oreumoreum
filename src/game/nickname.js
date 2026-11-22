@@ -16,7 +16,7 @@ const online = () => !!state.account?.loggedIn;
 const val = () => cleanText($('nick-new').value, NICK.max + 4);
 let busyNow = false;
 
-function showNick() { $('nick-mirror').textContent = save.nick; late.bagRefresh?.(); }
+function showNick() { $('nick-mirror').textContent = save.nick; $('menu-nick-now').textContent = save.nick; late.bagRefresh?.(); }
 // 서버가 되돌리거나 바꾼 이름 (start.js onFix) — 걸린 이름이면 알려 줌
 late.nickChanged = (was) => { showNick(); net.send(true); if (was && save.nickRen?.free) toast('쓸 수 없는 이름이라 새 이름을 붙였어요. 다음 한 번은 무료로 바꿀 수 있어요', 4); };
 
@@ -73,4 +73,7 @@ $('nickwin-close').addEventListener('click', closeNick);
 $('nickwin').addEventListener('click', (e) => { if (e.target === $('nickwin')) closeNick(); });
 $('nick-reroll').addEventListener('click', openNick);
 $('menu-nick').addEventListener('click', openNick);
+$('menu-nickline').addEventListener('click', openNick); /* #230 메뉴 맨 위 '이름: … 바꾸기 ›' */
+$('btn-menu').addEventListener('click', () => { $('menu-nick-now').textContent = save.nick; });
+$('menu-nick-now').textContent = save.nick;
 Object.assign(late, { openNick, closeNick });
