@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { G, softMat, fluffyGeo, cedarGeo, seaMat, roundNormals, cloudShadow, LOW } from './gfx2.js';
 import { vnoise, hash, smooth, PAL, EXTENT, setMapImpl, addWalkable, contactShadows } from './world.js';
+import { PATHCLEAR } from './balance.js';
 
 // 한라산 돈내코 탐방로 (게임용으로 짧게) — 남쪽 탐방안내소에서 숲길을 지나 평궤대피소, 남벽분기점까지
 // 좌표: 남쪽 +z(바다), 북쪽 -z(백록담 남벽). 1 unit ≈ 2m 느낌, 고도는 연출용
@@ -176,7 +177,7 @@ export function buildDonnaekoDecor(scene, height) {
     if (z > DN.limitZ - 6) continue;
     rocks.push([x, z, 3 + rnd() * 7, rnd() * 6.28]);
   }
-  for (let i = 0; i < 160; i++) { const x = (rnd() - 0.5) * 600, z = DN.limitZ + 6 + rnd() * 220; if (nearTrail(x, z, 3)) continue; rocks.push([x, z, 0.8 + rnd() * 2, rnd() * 6.28]); }
+  for (let i = 0; i < 160; i++) { const x = (rnd() - 0.5) * 600, z = DN.limitZ + 6 + rnd() * 220, r = 0.8 + rnd() * 2; if (nearTrail(x, z, 3 + PATHCLEAR.pad + r)) continue; rocks.push([x, z, r, rnd() * 6.28]); } /* 길 둘레 비우기 (#227) */
   const put = (list, geo, mat, opts = {}) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     const col = new THREE.Color();

@@ -32,6 +32,12 @@ export function createCollide() {
     for (let j = 0; j < l.length; j++) { const i = l[j], d = R[i] + pr; if (!OFF[i] && (x - X[i]) ** 2 + (z - Z[i]) ** 2 < d * d) return true; }
     return false;
   }
+  /* 겹친 사물 하나 [x, z, r] (검사 도구 tools/pathclear.js #227) */
+  function which(x, z, pr = 0) {
+    const l = cells.get(key(Math.floor(x / C), Math.floor(z / C))); if (!l) return null;
+    for (let j = 0; j < l.length; j++) { const i = l[j], d = R[i] + pr; if (!OFF[i] && (x - X[i]) ** 2 + (z - Z[i]) ** 2 < d * d) return [X[i], Z[i], R[i], i]; }
+    return null;
+  }
   const out = { x: 0, z: 0, hit: false };
   // 움직이는 것에서 밀어냄. 겹친 쪽 바깥으로만 (위·아래로는 안 밈)
   function pushDyn(pr) {
@@ -73,5 +79,5 @@ export function createCollide() {
     if (!pushDyn(pr)) return null;
     push(pr, true); return out;
   }
-  return { add, addBox, setOff, blocked, move, nudge, setDyn, count: () => X.length };
+  return { add, addBox, setOff, blocked, which, move, nudge, setDyn, count: () => X.length };
 }

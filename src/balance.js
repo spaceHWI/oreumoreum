@@ -423,6 +423,13 @@ export const CAIRN = {
   farD: 90, // 이 거리보다 멀면 돌을 건너뛰어 단순하게 그림
 };
 
+// 길 둘레 비우기 (#227): 길 중심선에서 반폭 + pad 안에는 돌·걸림돌을 두지 않음 (pathclear.js)
+export const PATHCLEAR = {
+  pad: 1.2, // 길 가장자리 밖으로 비울 폭(m). 돌은 보이는 반지름까지 이 밖에
+  maxR: 2.5, // 이보다 큰 것은 밀지 않고 뺌
+  rockR: 1.5, // 길가 바위: 크기 s 에 곱해 보이는 반지름(울퉁불퉁·늘린 것까지)
+};
+
 // 사물 충돌 (#15)
 export const COLLIDE = {
   cell: 8, // 격자 칸 크기(m)
