@@ -40,7 +40,7 @@ import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
-state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0 };
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0 };
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -425,6 +425,7 @@ function step(now) {
   enemyWarn.update(dt); dumpWarn.update(dt);
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
+  late.tickTalk?.(); /* 화자 프로필 굽기 (#224, game/talkfx.js): 그리기 바로 앞 (굽은 구석을 이어 그리는 화면이 덮음) */
   if (state.cave) late.caveFrame(dt); /* 동굴 (#195, game/cave.js): 동굴 장면만 그림 */
   else if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }
   else if (save.gfx === 'smooth' && post.ok) post.render(scene, camera); else retro.render(scene, camera);

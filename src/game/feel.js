@@ -6,14 +6,14 @@ import * as THREE from 'three';
 import { FEEL, ENEMY_DROP } from '../balance.js';
 import { LOW } from '../gfx2.js';
 import { state, late } from './state.js';
-import { $, save, persist } from './save.js';
+import { $, save, persist, isTouch } from './save.js';
 import { scene, camera } from './scene.js';
 import { life, trash, player, hp } from './place.js';
 import { toast } from './hud.js';
 import { comboBonus } from './pickup.js';
 
 const sound = () => late.sound;
-const canVib = 'vibrate' in navigator && matchMedia('(pointer: coarse)').matches;
+const canVib = 'vibrate' in navigator && isTouch;
 const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 const calmNow = () => (save.calmFx === 0 || save.calmFx === 1 ? save.calmFx === 1 : reduced());
 const vibAt = {};

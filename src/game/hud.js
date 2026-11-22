@@ -151,7 +151,7 @@ export function updateScore() {
   late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin', 'fs-tip'];
+export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin', 'fs-tip', 'admwin'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }
@@ -186,7 +186,7 @@ let bannerQueue = [], bannerT = 0;
 const bIcon = (b) => BADGE_ICONS[b.id] || BADGE_ICONS[b.fam] || '';
 function onAchievement(r) {
   late.sound.fanfare?.();
-  if (r.kind === 'daily') bannerQueue.push({ icon: DAILY_ICON, color: '#4f7a36', title: `오늘의 할 일 · ${r.def.name.split(' · ')[0]}`, sub: `보상 귤 ${r.def.reward}` });
+  if (r.kind === 'daily') bannerQueue.push({ icon: DAILY_ICON, color: '#4f7a36', title: `오늘의 할 일 · ${r.def.name.split(' · ')[0]}`, sub: `보상 귤 ${r.def.reward}${r.def.q ? ' · ' + r.def.q : ''}` });
   else if (r.kind === 'badge') bannerQueue.push({ icon: bIcon(r.def), color: r.def.color, title: `뱃지 · ${r.def.name}${r.def.fam ? ` ${r.def.tier}단계` : ''}`, sub: r.def.desc });
   else if (r.kind === 'allday') bannerQueue.push({ icon: ALLDAY_ICON, color: '#8f7bd6', title: '오늘의 할 일을 모두 마쳤어요', sub: `셋 다 보상 귤 ${ach.allGyul()} · 업적 창에서 받기` });
   refreshAchUI();
@@ -238,6 +238,7 @@ function buildAch() {
     const x2 = def.x2 && !it.done && dailyCond(def.x2); // 지금 두 배로 세는 중
     const sm = document.createElement('small'); sm.textContent = ` ${it.prog.toLocaleString('ko-KR')} / ${def.goal.toLocaleString('ko-KR')}${x2 ? ' · 지금 두 배' : ''}`;
     t.append(tag, nm, sm);
+    if (def.q) { const qp = document.createElement('em'); qp.className = 'ach-quip'; qp.textContent = def.q; t.append(qp); } /* #223 안내서 톤 한 마디 */
     const right = document.createElement('div');
     if (it.claimed) { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = '받음'; }
     else if (it.done) right.append(claimBtn('btn small', def.reward, () => { const got = ach.claim('daily', it.id); if (got) addCoins(got.reward, got.name); return got; }));

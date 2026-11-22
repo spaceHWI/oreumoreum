@@ -194,6 +194,21 @@ async function startServers() {
       ok(!r.fixed.length && r.save.season.xmas.tree === 1 && r.save.coins === 300, '트리가 찼으면 선물 귤 300 받아 줌');
       r = checkSave(P, { ...P, season: { xmas: { days: [], gift: ['hat:x-santa', 'vest:x-scarf', 'top:x-ugly'] } }, clothes: { own: { 'hat:x-santa': 1, 'vest:x-scarf': 1, 'top:x-ugly': 1 }, wear: {} } }, acc, t, { xday: 12 });
       ok(Object.keys(r.save.clothes.own).length <= 2, `선물 옷은 ${2}벌까지만 값 없이 (${Object.keys(r.save.clothes.own).join(',')})`);
+      /* 다 열면 (#222): 25칸을 다 연 저장에서 한 번만 귤 calAll·세트 옷 값 없이. 덜 열었는데 all, 날짜 속여 앞날로 채우기, 두 번 받기는 거절 */
+      const { SEASON: SN } = await import('../src/balance.js'), { CAL_ALL_CLOTHES: AC } = await import('../src/seasoncal.js'), AG = SN.xmas.calAll.coins;
+      const d24 = Array.from({ length: 24 }, (_, i) => i + 1), d25 = [...d24, 25], own3 = Object.fromEntries(AC.map((id) => [id, 1]));
+      const P24 = { ...S0, coins: 0, season: { xmas: { days: d24 } } }, r25 = calReward(25).coins || 0;
+      r = checkSave(P24, { ...P24, coins: AG + r25, season: { xmas: { days: d25, all: 1 } }, clothes: { own: own3, wear: {} } }, acc, t, { xday: 25 });
+      ok(!r.fixed.length && r.save.season.xmas.all === 1 && r.save.coins === AG + r25 && AC.every((id) => r.save.clothes.own[id]), `다 열면 귤 ${AG}·세트 옷 ${AC.length}벌 받아 줌`);
+      const P25 = r.save;
+      r = checkSave(P25, { ...P25, coins: P25.coins + AG, season: { xmas: { days: d25, all: 1 } } }, acc, t, { xday: 25 });
+      ok(r.fixed.includes('coins') && r.save.coins === P25.coins, '다 연 보상 두 번 받기 거절');
+      r = checkSave(P25, { ...P25, coins: P25.coins + AG, season: { xmas: { days: [], all: 0 } } }, acc, t, { xday: 25 });
+      ok(r.save.season.xmas.all === 1 && r.save.season.xmas.days.length === 25 && r.save.coins === P25.coins, '달력을 비워 보내도 다 연 기록은 남고 귤은 안 늘어남');
+      r = checkSave(P24, { ...P24, coins: AG, season: { xmas: { days: d24, all: 1 } }, clothes: { own: own3, wear: {} } }, acc, t, { xday: 25 });
+      ok(r.fixed.length && !r.save.season.xmas.all && r.save.coins === 0 && !AC.some((id) => r.save.clothes.own[id]), `24칸만 열고 다 연 보상 거절 (${r.fixed.join(',')})`);
+      r = checkSave(P24, { ...P24, coins: AG + r25, season: { xmas: { days: d25, all: 1 } }, clothes: { own: own3, wear: {} } }, acc, t, { xday: 13 });
+      ok(r.fixed.includes('season') && !r.save.season.xmas.all && !r.save.season.xmas.days.includes(25) && r.save.coins === 0, '날짜 속이기(13일에 25일 칸) 거절');
     }
     /* ---------- 주간 옷장 (#126): 이번 주 한정 옷만 살 수 있고 값을 셈, 지난주·다음 주 옷은 되돌림 ---------- */
     {
@@ -770,6 +785,8 @@ async function startServers() {
     /* ---------- 빌드 결과 ---------- */
     const html = fs.existsSync('dist/index.html') ? fs.readFileSync('dist/index.html', 'utf8') : '';
     ok(/http-equiv="Content-Security-Policy"[^>]*script-src 'self' /.test(html) && !/<script>/.test(html) && /object-src 'none'/.test(html), '페이지 CSP (같은 곳 스크립트만, 인라인 없음 #85)');
+    { const fs1 = /frame-src ([^;"]*)/.exec(html)?.[1].trim() || ''; ok(fs1 === "'self' https://accounts.google.com/gsi/", `틀은 같은 곳(어드민 모바일 화면으로 보기 #220)·구글 로그인만 (${fs1})`); }
+    { const js = fs.readdirSync(path.join(__dirname, '..', 'dist')).filter((f) => /^main-.*\.js$/.test(f)).map((f) => fs.readFileSync(path.join(__dirname, '..', 'dist', f), 'utf8')).join(''); ok(/oreumoreum\.adm/.test(js) && /mframe/.test(js), '모바일 화면으로 보기는 어드민 표시가 있을 때만 (#220, 브라우저 확인은 tools/mview.js: 손님·보통 계정에 ?m=1·스위치가 먹지 않음)'); }
     { // 인라인 스크립트 (#97·#118): 원스토어 SDK 로더 한 줄과 인앱 브라우저 안내(src/inapp.js) 둘뿐이고, 둘 다 CSP 해시가 있어야 함
       const inl = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
       const hashOk = inl.every((c) => html.includes(`'sha256-${crypto.createHash('sha256').update(c, 'utf8').digest('base64')}'`));

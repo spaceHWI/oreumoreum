@@ -23,6 +23,7 @@ export function serverUrl() {
 }
 const SRV = serverUrl();
 export const ONLINE = !!SRV;
+export const serverHost = () => { try { return SRV ? new URL(SRV).host : ''; } catch (e) { return ''; } };
 
 // 세션: { t: 토큰, exp, srv, sub }
 let sess = null;
@@ -83,7 +84,7 @@ function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save
 // getSave: 지금 저장 객체, writeLocal: 이 기기에 바로 씀, onFix({coins,total}): 서버가 바로잡은 값, toast, entered(): 이미 입장했는지
 // ver: 게임 버전(귤 맞춤 기록용, #188), onGift(g): 운영자가 보낸 귤 { id, n, why } (#188)
 export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver = '', onGift = () => {} }) {
-  let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '', admin = false;
+  let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '', admin = false, checked = false;
   // 서버가 새 토큰을 주면 바꿔 끼움 (#84: 세션 수명 NET.sessionDays, 남은 날이 적으면 /me 가 새로 줌)
   const renew = (r) => { if (sess && r && typeof r.token === 'string' && r.exp > Date.now()) { sess = { ...sess, t: r.token, exp: r.exp }; ls.set(SK, JSON.stringify(sess)); } };
   const listeners = [];
@@ -92,7 +93,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     if (!ONLINE || !sess) return;
     try {
       const me = await api('/me');
-      keepUntil = me.keepUntil; admin = !!me.admin; renew(me); changed();
+      keepUntil = me.keepUntil; admin = !!me.admin; checked = true; renew(me); changed();
       const s = getSave();
       if (me.nickRen) s.nickRen = me.nickRen; // 이름 바꾼 횟수·날은 서버 값 (#162)
       if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { writeCache(me.save, me.rev, sess.sub); location.reload(); return; } // 다른 기기에서 더 해 둔 기록
@@ -175,7 +176,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
   const rank = (range, srv) => api(`/rank?range=${encodeURIComponent(range)}&srv=${encodeURIComponent(srv)}`);
   const rankMe = (srv) => api(`/rank/me?srv=${encodeURIComponent(srv)}`);
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get admin() { return !!sess && admin; } };
+  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
 }
 
 /* ---------- 로그인 화면 ---------- */
@@ -197,7 +198,7 @@ function askMigrate() {
 export function mountLogin({ box, enterBtn, account, localSave, hasProgress, toast }) {
   if (!ONLINE || !box) return;
   box.hidden = false;
-  const note = '<p class="acct-beta">베타 서비스예요. 7일 안에 다시 접속하지 않으면 기록이 사라져요.</p>';
+  const note = '<p class="acct-beta">7일 안에 다시 오지 않으면 기록이 사라져요.</p>';
   if (account.loggedIn) { box.innerHTML = note + '<p class="acct-who">구글 계정으로 저장 중</p>'; return; }
   box.innerHTML = note + (NET.googleClientId ? '<div class="acct-gis" id="acct-gis"><div class="btn gbtn" aria-hidden="true"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span class="gtxt">Google 계정으로 로그인</span></div><div class="gov" id="acct-gov"></div></div>' : '');
   enterBtn.textContent = '손님으로 하기';

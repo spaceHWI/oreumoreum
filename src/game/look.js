@@ -3,7 +3,7 @@ import { HAIR } from '../balance.js';
 import { SKIN_TONES } from '../runner.js';
 import { MAPS } from '../maps.js';
 import { late } from './state.js';
-import { $, save, CL, clothGear, syncEquipGear, lookS, persist, MAP_ID } from './save.js';
+import { $, save, CL, clothGear, syncEquipGear, lookS, persist, MAP_ID, isTouch } from './save.js';
 import { spots } from './scene.js';
 import { runner, player } from './place.js';
 import { cam, followCam } from './camera.js';
@@ -42,13 +42,17 @@ export function openLook() {
   cancelAll(); player.target = null; marker.visible = false;
   lookS.open = true; lookS.t = 0; lookS.sex = save.look?.sex || 'm'; lookS.skin = save.look?.skin || 0; lookS.colors = lcClean(save.look?.colors);
   cam.mode = 'look'; $('look').hidden = false; document.body.classList.add('looking'); lookPreview();
-  $('look-nickrow').hidden = !!save.nickSet; $('look-nick').value = save.nick; checkLookNick(); // 처음 한 번만 이름을 지음. 정한 뒤 바꾸기는 이름 바꾸기 창 (#162)
+  /* 처음 한 번만 이름을 지음(#162). #230: 칸은 비워 두고 기본 이름은 흐린 글씨로, 비우면 그 이름으로 시작. 정한 뒤 바꾸기는 메뉴 맨 위 이름 줄 → 이름 바꾸기 창 */
+  if (!save.nickSet && !nickOk(save.nick)) save.nick = randomNick();
+  $('look-nickrow').hidden = !!save.nickSet; $('look-nick').value = ''; $('look-nick').placeholder = save.nick; checkLookNick();
+  if (!save.nickSet && !isTouch) setTimeout(() => $('look-nick').focus(), 60);
 }
 // 이름 칸 (#162): 걸리면 칸 아래 한 줄만 보이고(어느 낱말인지는 말하지 않음) 시작 버튼이 눌리지 않음
-const lookNick = () => cleanText($('look-nick').value, NICK.max + 4);
+const lookNick = () => cleanText($('look-nick').value, NICK.max + 4) || save.nick; /* 비우면 기본 이름 (#230) */
 function checkLookNick() {
-  const ok = !!save.nickSet || nickOk(lookNick()), typed = $('look-nick').value.trim() !== '';
+  const typed = $('look-nick').value.trim() !== '', ok = !!save.nickSet || nickOk(lookNick());
   $('look-nick-err').hidden = ok || !typed; $('look-nick').setAttribute('aria-invalid', String(!ok)); $('look-ok').disabled = !ok;
+  $('look-nick-hint').textContent = typed ? '이름은 설정에서 바꿀 수 있어요' : '비우면 흐린 이름으로 · 이름은 설정에서 바꿀 수 있어요';
   return ok;
 }
 export function closeLook() {

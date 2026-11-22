@@ -6,7 +6,8 @@ import { setMapImpl } from './world.js';
 import { gradHard, gradSoft } from './toon.js';
 import { LOW } from './gfx2.js';
 import { TIER } from './quality.js';
-import { COLLIDE, BOUND, HALLA } from './balance.js';
+import { COLLIDE, BOUND, HALLA, PATHCLEAR } from './balance.js';
+import { createPathIndex, keepOffPath } from './pathclear.js';
 import { buildHalla } from './halla.js';
 import { STREAM_GLSL } from './streamshape.js';
 import { buildTrails } from './trailshape.js';
@@ -419,6 +420,7 @@ vec3 groundColor(vec2 p){
 
   /* 현무암: 길가 바위 */
   const allPts = []; SEGS.forEach((s) => s.forEach((p) => allPts.push(p)));
+  const pathIdx = createPathIndex([...SEGS.map((pts) => ({ pts, w: PATH_W })), ...lanes]); let rockStat = null; /* #227 */
   {
     const g = new T.IcosahedronGeometry(1, 1); const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + 0.2 * Math.sin(x * 5.3 + y * 3.7 + z * 4.1); p.setXYZ(i, x * k, y * k * 0.8, z * k); }
@@ -427,6 +429,8 @@ vec3 groundColor(vec2 p){
     const items = [];
     allPts.forEach((q) => { if (rnd() < 0.22) { const a = rnd() * 6.28, d = rr(4.6, 11) * K; items.push({ x: q[0] + Math.cos(a) * d, z: q[1] + Math.sin(a) * d, s: rr(0.3, 1.1) * K }); } });
     for (let i = items.length - 1; i >= 0; i--) if (ib(items[i].x, items[i].z) < 3 || cleared(items[i].x, items[i].z)) items.splice(i, 1); // 돌담 밖·돌담 자리 바위는 뺌 (#25)
+    items.forEach((s) => { s.r = s.s * PATHCLEAR.rockR; });
+    const kept = keepOffPath(items, pathIdx, (x, z) => ib(x, z) >= 3 && !cleared(x, z)); items.length = 0; items.push(...kept.items); rockStat = { ...kept.stat, kept: items.length, bad: items.filter((q) => pathIdx.onPath(q.x, q.z, q.r)).length }; /* 길 둘레 비우기 (#227) */
     const im = new T.InstancedMesh(g, mat, items.length), c = new T.Color();
     items.forEach((s, i) => {
       dummy.position.set(s.x, H(s.x, s.z), s.z); dummy.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3);
@@ -521,7 +525,7 @@ vec3 groundColor(vec2 p){
   function setZoneGrid(fn, x0, z0, cell) { for (let j = 0; j < ZN; j++) for (let i = 0; i < ZN; i++) zoneData[j * ZN + i] = fn(x0 + (i + 0.5) * cell, z0 + (j + 0.5) * cell); zoneTex.needsUpdate = true; U.uZoneB.value.set(x0, z0, cell, 0); return ZN; }
   const zoneDry = U.uDry.value; // [0..5] 구역별 마른 정도. 바꾸면 바로 반영
   const zoneMood = U.uMood.value; // [구역] = Vector3 (#136)
-  return { halla, setZoneGrid, zoneDry, zoneMood, zoneSnow: U.uSnow.value, solids, terrain, grass, sky, skyU, wind: U.uWind, wet: U.uWet.value, look: cur, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
+  return { pathIdx, rockStat, halla, setZoneGrid, zoneDry, zoneMood, zoneSnow: U.uSnow.value, solids, terrain, grass, sky, skyU, wind: U.uWind, wet: U.uWet.value, look: cur, setupShadow, applyLight, followLight, update, fogNear: 260 * K, fogFar: 30000 * K, camFar: 130000 };
 }
 
 /* ---------- 길 위의 점 구하기 (배치용) ---------- */

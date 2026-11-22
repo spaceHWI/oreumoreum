@@ -8,6 +8,7 @@ import { canvas, scene, camera, terrain } from './scene.js';
 import { player } from './place.js';
 import { cam, camPitchMax, camPitchMin } from './camera.js';
 import { STICK } from '../balance.js';
+import { IN_FRAME } from '../mview.js';
 import { optSeg } from './optui.js';
 import { busy, cancelAll } from './hud.js';
 
@@ -88,7 +89,7 @@ export const stickFloat = () => isTouch && save.stick !== 'fixed';
   };
   el.addEventListener('pointerdown', (e) => { e.preventDefault(); if (joy.active) return; el.setPointerCapture(e.pointerId); start(e, 'joy'); });
   addEventListener('pointerdown', (e) => {
-    if (e.target !== canvas || joy.active || e.pointerType === 'mouse' || !stickFloat() || !inZone(e.clientX, e.clientY)) return;
+    if (e.target !== canvas || joy.active || (e.pointerType === 'mouse' && !IN_FRAME) || !stickFloat() || !inZone(e.clientX, e.clientY)) return;
     e.stopImmediatePropagation(); canvas.setPointerCapture(e.pointerId); if (document.activeElement && document.activeElement !== document.body && document.activeElement !== canvas) document.activeElement.blur(); start(e, 'view');
   }, true);
   addEventListener('pointermove', move, true);

@@ -6,6 +6,7 @@
 import fs from 'fs';
 const { STORY_TEXT, MUTTER_TEXT, RADIO, RADIO_SITU, NOTES, CLUE_TEXT } = await import('../src/punktext.js');
 const { QUESTS, MEET, CAVE, SEASON } = await import('../src/balance.js');
+const { TASKS } = await import('../src/daily.js');
 
 const rows = []; /* { id, where, t, pre: 단계 3 전에도 나올 수 있음, max: 글자 수 한도, lines: 줄 수 한도 } */
 const add = (id, where, t, o = {}) => { if (typeof t === 'string' && t) rows.push({ id, where, t, pre: true, ...o }); };
@@ -40,6 +41,9 @@ for (const [kind, list] of [['main', QUESTS.main], ['side', QUESTS.side]]) for (
   add(`quest.${q.id}.got`, where + ' 얻음 알림', q.got, { pre });
   add(`quest.${q.id}.ending`, '엔딩 하늘 글', q.ending, { pre: false });
 }
+(QUESTS.quip || []).forEach((s, i) => add(`quest.quip.${i}`, '퀘스트 보상 줄 한 마디 (#223)', s, { max: 18 }));
+add('quest.took', '퀘스트 받을 때 알림 앞말 (#223)', QUESTS.took, { max: 8 });
+for (const t of TASKS) { add(`daily.${t.id}.name`, '오늘의 할 일', t.name, { max: 28 }); add(`daily.${t.id}.q`, '오늘의 할 일 한 마디 (#223)', t.q, { max: 22 }); }
 for (const [id, g] of Object.entries(QUESTS.givers)) (g.hello || []).forEach((s, i) => add(`npc.${id}.hello.${i}`, `${g.name} 인사 말풍선`, s, { max: 28 }));
 MEET.hb.lines.forEach((s, i) => add(`hareubang.${i}`, '하르방 하이파이브 말풍선', s, { max: 28 }));
 for (const k of ['lines', 'thanks', 'sorry']) MEET.tourist[k].forEach((s, i) => add(`tourist.${k}.${i}`, '관광객 말풍선', s, { max: 28 }));

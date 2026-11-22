@@ -43,12 +43,15 @@ async function pump() {
   busy = false;
 }
 // 오류 하나를 알림. where: 'frame'·'enemy'·'gl' 등 어디서 났는지
+const recent = [];
+export const crashLog = () => recent.slice(); /* 이번 실행에서 난 오류 (어드민 창 '상태' 탭, #220) */
 export function reportCrash(err, where = '') {
   try {
     const { key, text } = crashText(err, where);
     if (seenRun.has(key)) return; seenRun.add(key);
     if (/^\[오류[^\]]*\] (Script error\.?|ResizeObserver loop)/.test(text)) return; // 다른 곳 스크립트(정보 없음)·무해한 경고
     mt('crash'); // 이용 통계 (#121): 이번에 처음 난 오류 수
+    recent.push({ at: Date.now(), text: text.slice(0, 200) }); if (recent.length > 8) recent.shift();
     console.error('[오름오름 오류]', where, err);
     if (sent >= CRASH.perRun || !allow(key)) return;
     sent++;

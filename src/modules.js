@@ -66,6 +66,7 @@ import './game/place.js';
 import './game/camera.js';
 import './game/hud.js';
 import './game/director.js'; // 감독 (#176): 말을 거는 것을 한 번에 하나씩
+import './game/talkfx.js'; // 대사 타자 효과·화자 프로필 (#224)
 import './game/input.js';
 import './game/menu.js';
 import './game/throw.js';

@@ -315,6 +315,7 @@ function modeCheck(CAVE, genFloor, caveMesh, caveSeed, caveK, day0) {
 
 // #214 세 안으로 같은 3장면 그림·수치
 async function modeRun(p, S) {
+  const { CAVE } = await import(path.join(process.cwd(), 'src/balance.js'));
   const fs = require('fs'), si = args.indexOf('--shots'), dir = si >= 0 ? args[si + 1] : path.join(process.cwd(), 'notes/shots/214');
   fs.mkdirSync(dir, { recursive: true });
   const frameMs = () => p.evaluate(() => new Promise((res) => { const ts = []; const f = (t) => { ts.push(t); if (ts.length < 31) requestAnimationFrame(f); else res((ts[30] - ts[0]) / 30); }; requestAnimationFrame(f); }));
@@ -345,6 +346,14 @@ async function modeRun(p, S) {
     const ow = await S(() => window.__oreum.cave.owner()); if (!ow.room || !ow.e) bad(`${m}: 주인 방·주인 없음 ${JSON.stringify(ow)}`);
     await S(() => window.__oreum.hp.set(1e6));
     r.boss = { ...(await S(() => window.__oreum.cave.draw())), ms: await frameMs() };
+    if (m === 'c') { /* #218 일부러 귤 크게 흩뿌리기·낙석 비 겹치기 */
+      const st = await S(() => { const o = window.__oreum, L = o.life, n0 = L.tangerines.filter((t) => t.drop).length; for (let k = 0; k < 4; k++) L.scatterTangerines(o.player.pos, 200, 60); for (let k = 0; k < 8; k++) o.cave.rockHere(); const ds = L.tangerines.filter((t) => t.drop); return { n0, n: ds.length, v: ds.reduce((a, t) => a + t.v, 0), trail: ds.some((t) => t.trail), rocks: o.cave.deep().rocks }; });
+      await p.waitForTimeout(400); const dc = await S(() => window.__oreum.cave.draw());
+      console.log(`  흩뿌림·낙석 겹침 (#218): 알갱이 ${st.n0} → ${st.n} · 꼬리 ${st.trail} · 낙석 ${st.rocks} · draw call ${dc.calls}`);
+      if (st.n > CAVE.drop.live || st.trail) bad(`동굴 흩어진 귤 알갱이 ${st.n} (상한 ${CAVE.drop.live}) 꼬리 ${st.trail}`);
+      if (dc.calls >= 120) bad(`흩뿌림·낙석 겹침 draw call ${dc.calls}`);
+      await S(() => window.__oreum.hp.set(1e6));
+    }
     await clean(); await p.waitForTimeout(150); await p.screenshot({ path: path.join(dir, `${m}-3-owner.png`) });
     r.key = key; r.dist = info.dist; rows.push(r);
     await S(() => window.__oreum.cave.exit()); await p.waitForTimeout(800);
@@ -352,6 +361,6 @@ async function modeRun(p, S) {
   await S(() => window.__oreum.cave.cam('a'));
   console.log('# 카메라 세 안 (#214, swiftshader 640×400, 그림 ' + path.relative(process.cwd(), dir) + ')');
   for (const r of rows) console.log(`  ${r.m}: 카메라 거리 ${r.dist}m · 통로 calls ${r.corr.calls} 삼각형 ${r.corr.tris} ${r.corr.ms.toFixed(0)}ms · 싸움(적 ${r.mob.n}) ${r.mob.calls} / ${r.mob.tris} ${r.mob.ms.toFixed(0)}ms · 주인 방 ${r.boss.calls} / ${r.boss.tris} ${r.boss.ms.toFixed(0)}ms`);
-  /* 동굴 draw call 기준(120 아래)은 위 liveRun 이 봄. 이 비교는 맞으며 싸우는 장면이라 흩어진 귤·드론·낙석 수에 따라 크게 흔들림 → 넘으면 '주의' 로 적음 (#218) */
-  for (const r of rows) for (const k of ['corr', 'mob', 'boss']) if (r[k].calls >= 120) console.log(`  주의: ${r.m} ${k} draw call ${r[k].calls} (120 넘음, 싸움 중 흩어진 귤 등)`);
+  /* 맞으며 싸우는 장면도 120 아래 (#218: 동굴 안 흩어진 귤 알갱이 수 상한·꼬리 없음 CAVE.drop, 낙석은 묶어 그림) */
+  for (const r of rows) for (const k of ['corr', 'mob', 'boss']) if (r[k].calls >= 120) bad(`${r.m} ${k} draw call ${r[k].calls} (120 넘음)`);
 }

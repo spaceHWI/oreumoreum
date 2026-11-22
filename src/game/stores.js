@@ -48,8 +48,8 @@ const SHOP_POP = {
   salon: { head: { logo: salonLogo(), name: '루이네 미장원', wide: true }, fill: (grid) => buildSalonMenu(grid), when: stoneOpen, can: () => !!SAL && !!save.look && !cutS.on && !mealS.on },
   ride: { head: { logo: RIDE_LOGO, name: '탈것 가게' }, fill: (grid) => buildRideMenu(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on }, // #69
   leap: { head: { logo: leapLogo(), name: 'LEAP', wide: true, cls: 'leap' }, tabs: (el) => buildLeapTabs(el), fill: (grid) => buildLeapCards(grid), onOpen: () => startLeap(), when: stoneOpen, can: () => !!LEAPB && !cutS.on && !mealS.on },
-  // 장비점 (#128): 도구·배낭·무기 (game/shop.js 가 채움). 튜토리얼 동안은 클린하우스 옆 좌판에서도 열림
-  gear: { head: { logo: GEAR_LOGO, name: GEAR_SHOP.name, tag: '집게 · 배낭 · 무기', cls: 'gearshop' }, tabs: (el) => late.gearTabs(el), fill: (grid) => late.fillGearShop(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on },
+  // 장비점 (#128): 도구·배낭·무기 (game/shop.js 가 채움). #221 튜토리얼 집게·배낭 단계부터 가게 거리 장비점이 먼저 열림 (shopgate 가 셔터를 올림)
+  gear: { head: { logo: GEAR_LOGO, name: GEAR_SHOP.name, tag: '집게 · 배낭 · 무기', cls: 'gearshop' }, tabs: (el) => late.gearTabs(el), fill: (grid) => late.fillGearShop(grid), when: () => stoneOpen() || !!late.tut?.active, can: () => !mealS.on && !cutS.on },
   // 가게 안내 (#128): 무엇을 어디서 사는지 (메뉴의 상점·귤 칸·가게 거리 안내도)
   dir: { head: { logo: DIR_LOGO, name: '가게 안내', tag: '무엇을 어디서 사나요', cls: 'dir' }, fill: (grid) => late.fillShopDir(grid), can: () => !mealS.on && !cutS.on },
 };
@@ -59,7 +59,7 @@ export { SHOP_POP };
 export let shopPopNow = null;
 export function openShopPop(key) {
   const P = SHOP_POP[key]; if (!P || (P.can && !P.can())) return;
-  if (late.shopOpen?.(key) === false && !late.tut?.active) { toast(`준비 중 — ${late.shopWhy(key)} 열려요`); return; } /* 닫힌 가게 (#206). 튜토리얼 좌판은 그대로 */
+  if (late.shopOpen?.(key) === false) { toast(late.tut?.active ? '준비 중 — 튜토리얼을 마치면 열려요' : `준비 중 — ${late.shopWhy(key)} 열려요`); return; } /* 닫힌 가게 (#206). #221 튜토리얼 좌판 없음 */
   closePanels(); shopPopNow = key;
   const h = P.head, root = $('shoppop');
   $('shoppop-logo').src = h.logo || ''; $('shoppop-logo').alt = h.name; $('shoppop-logo').parentElement.hidden = !h.logo;

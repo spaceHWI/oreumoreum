@@ -152,7 +152,13 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   }
   // 받혀서 귤이 흩어짐 (#32): 중심 둘레 반경 SCATTER.rMin~rMax 안 무작위 자리로 포물선을 그리며 떨어지고, SCATTER.life 초 동안 다시 주울 수 있음
   // n 귤을 흩뿌림. maxN 개보다 많으면 알갱이는 maxN 개로 두고 하나에 귤 여러 개를 나눠 담음 (#137 적 귤이 커짐)
+  // L.dropCap (동굴 #218): { max 한 번에 알갱이, live 떠 있는 알갱이 모두, trail 꼬리 } 이 있으면 알갱이 수를 더 줄임 (귤 합은 같음)
   function scatterTangerines(center, n, maxN = Infinity) {
+    const C = L.dropCap, live = C ? tangerines.reduce((s, t) => s + (t.drop ? 1 : 0), 0) : 0;
+    if (C && n > 0) { /* 자리가 모자라면 가장 오래된 알갱이를 거둬 새로 흩어지는 귤에 더함 (귤 합은 같음) */
+      maxN = Math.max(1, Math.min(maxN, C.max, n));
+      for (let k = live + maxN - C.live, i = 0; k > 0 && i < tangerines.length;) { const t = tangerines[i]; if (!t.drop) { i++; continue; } n += t.v || 1; dropTrail(t); group.remove(t.mesh); tangerines.splice(i, 1); k--; }
+    }
     const T = SCATTER.air, cnt = Math.min(n, maxN), each = Math.floor(n / cnt), rest = n - each * cnt;
     for (let i = 0; i < cnt; i++) {
       let x = center.x, z = center.z;
@@ -166,7 +172,7 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
       const y0 = center.y + 1; m.position.set(center.x, y0, center.z); group.add(m);
       const gy = height(x, z) + TR, tt = T * (0.8 + rnd() * 0.4);
       const v = new THREE.Vector3((x - center.x) / tt, (gy - y0) / tt + 11 * tt, (z - center.z) / tt);
-      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true, v: each + (i < rest ? 1 : 0), trail: makeTrail(), trailT: 0, hist: [] });
+      tangerines.push({ mesh: m, vel: v, t: 0, landed: false, rest: 0, peersFn: null, hitDone: true, hbHit: true, claimedBy: null, drop: true, v: each + (i < rest ? 1 : 0), trail: C && !C.trail ? null : makeTrail(), trailT: 0, hist: [] });
     }
   }
   // ---------- 귤 활 화살 (#38) ----------
@@ -564,6 +570,6 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   }
   // 타고 있는 노루는 남김. 남은(못 지운) 목록을 돌려줌
   function removeDeer(list) { return list.filter((a) => { if (a.state === 'ridden') return true; const i = deer.indexOf(a); if (i >= 0) deer.splice(i, 1); group.remove(a.root); return false; }); }
-  L = { group, remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, hitAt, hitArea, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
+  L = { dropCap: null, group, remote: false, others: null, leader: null, deerById, feedAt, eatTangerine, bind, hooks, addTargets, nearestDeer, addDeer, removeDeer, aimTargets, mount, dismount, followers, update: (dt, time) => { update(dt, time); if (player) { enemies.update(dt, time); updatePicks(dt, time); } updateArrows(dt); updateJuice(dt); }, throwTangerine, shootArrow, juiceSplash, hitAt, hitArea, arrows, scatterTangerines, addHareubang, hareubangs, deer, horses, tangerines, enemies };
   return L;
 }
