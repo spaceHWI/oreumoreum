@@ -14,6 +14,10 @@ export default {
   face: { kind: 'arena', scene: 'hose', tint: 'mist', at: [14, -398], prop: 'post', label: '안개 지켜보기', len: 12,
     lines: ['안개가 걷힌다.', '목이… 끝나지 않는다.', '…뱉고 있다.'] },
   doc: 'k4d',
+  // 증거 사진 (#246 수사 보드): 안개 위로, 구름 위로 끝까지 이어진 호스
+  photo: '<rect width="100" height="75" fill="#aebccb"/><rect y="0" width="100" height="22" fill="#8fa0b4"/><ellipse cx="30" cy="20" rx="26" ry="7" fill="#d9e0e8"/><ellipse cx="74" cy="16" rx="22" ry="6" fill="#d9e0e8"/>'
+    + '<path d="M50 -2 C46 20 58 34 52 48 C48 58 50 64 50 70" fill="none" stroke="#5c6470" stroke-width="7" stroke-linecap="round"/><path d="M50 -2 C46 20 58 34 52 48 C48 58 50 64 50 70" fill="none" stroke="#7d8794" stroke-width="2" stroke-dasharray="2 5"/>'
+    + '<rect y="48" width="100" height="27" fill="#e6eaee" opacity=".85"/><ellipse cx="50" cy="70" rx="30" ry="5" fill="#6f7d5a"/>',
   notes: [
     { id: 'k4a', paper: 'photo', t: '안개 속 그림자', from: '굼부리 서쪽 둘레', b: '안개 위로 목 같은 것이 솟았다.\n셔터를 누르자 내려갔다.\n사진엔 흐린 줄 하나.' },
     { id: 'k4b', paper: 'notebook', t: '둥근 자국들', from: '굼부리 바닥', b: '바닥에 둥근 자국이 다섯.\n크기가 다 똑같다.\n발자국치고는 너무 둥글다.' },

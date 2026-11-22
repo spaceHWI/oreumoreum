@@ -66,6 +66,9 @@ const SAVES = {
   tubeBad: { nick: '깨진 관', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, recycle: { visits: 2 }, tube: [3, 'nope', 'gate', 'gate', null] }, // #248 깨진 수거 관 목록
   tubeOld: { nick: '옛 관', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, recycle: { visits: 5 }, journey: { step: 3, maxZ: 3, seen: {} } }, // #248 save.tube 없는 옛 저장
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
+  // #247: 깨진 노루 친구 기록 · 이름만 있는 내 노루 (사귄 무리 노루 이름이 없는 맵)
+  deerBad: { nick: '노루 깨짐', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, deerPal: { n: 5, id: 7, fed: 'x', hg: 'q', sd: 'y', f: [1, 2] } },
+  deerName: { nick: '노루 이름', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, deerPal: { n: '보리', id: 'h999', fed: 40, hg: 2, sd: 1, open: 1, f: { h1: 2 } } },
 };
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

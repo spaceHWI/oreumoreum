@@ -82,21 +82,23 @@
   - 서버 `earn.js`: save.report.got 이 오늘(또는 어제)이면 하루 한 번 인정. 검사 `node tools/reportrun.js [d|m]`.
   - 제보 더하기: `REPORTS` 끝에 한 줄(제목 14자·쪽지 3줄·find 28자, `node tools/storytext.mjs`). 새 사건의 실마리는 `case` 에 그 사건 id.
 
-## 6. 사건 더하는 법 (#232 에서 만든 틀)
+## 6. 사건 더하는 법 (#232 에서 만든 틀, #246 에서 증거 사진·수사 보드로)
 - 파일: `src/cases/c<번호>.js` 하나에 `export default { … }`. 데이터만 쓴다(three·DOM·다른 src 파일 import 없음: balance.js·punktext.js·achievements.js·서버가 읽음). `src/cases/index.js` 의 `LIST` 에 한 줄(import 와 함께) 더한다. 칭호는 `src/punktext.js` TITLES 끝에 `{ t: '<title 과 같은 글>', badge: 'b-case-<id>' }` 한 줄(멀티로 번호가 오가므로 뒤에만)
-- 모양(사건 1 `c1.js` 를 본보기로):
-  - `id` 'c<번호>' · `n` 서류 칸 자리(1~5) · `zone` 구역 · `lv` 열림 레벨 · `name` 제목 · `giver` 의뢰 NPC(balance.js QUESTS.givers id: jigi·b:slope·b:rest·b:crater·shop:…)
+- 모양(사건 1 `c1.js` 크롭서클을 본보기로):
+  - `id` 'c<번호>' · `n` 수사 보드 사진 자리(1~5) · `zone` 구역 · `lv` 열림 레벨 · `name` 제목 · `giver` 의뢰 NPC(balance.js QUESTS.givers id: jigi·b:slope·b:rest·b:crater·shop:…)
+  - `v`·`drop`(선택): 내용을 바꿔 다시 낼 때 판 번호를 올리면 그 판이 아닌 저장의 진행이 처음으로 돌고, `drop` 의 옛 쪽지 id 가 주운 쪽지에서 빠진다(받은 귤·옷은 그대로). 새 사건은 적지 않아도 된다
   - `see { at: [x, z], r, prop, say }` 목격: 레벨이 lv 이상이면 at 에 prop 모양이 보이고, r m 안에 들면 혼잣말 say(22자) → '미해결'
-  - `ev [{ id, kind, at, prop, label, note }]` 증거 셋. kind: `photo` 사진 · `trace` 흔적 · `note` 쪽지 (자리에서 상호작용 → note 쪽지) · `act` 행동 n번 (`{ kind: 'act', k: '<퀘스트 셈 이름>', n }`, at 없음: 사건을 연 뒤 그 셈이 n 오르면. 예 'heap@2'·'dumper@2'·'repel:dog')
-  - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
+  - `ev [{ id, kind, at, prop, label, note, view? }]` 증거 셋. kind: `photo` 사진 · `trace` 흔적 · `note` 쪽지 (자리에서 상호작용 → note 쪽지) · `act` 행동 n번 (`{ kind: 'act', k: '<퀘스트 셈 이름>', n }`, at 없음: 사건을 연 뒤 그 셈이 n 오르면. 예 'heap@2'·'dumper@2'·'repel:dog'). `view: true` 면 찍을 때 목격 자리를 위에서 내려다보는 짧은 장면(CASE.view) 뒤에 쪽지
+  - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자, `drop` 장면 중 목격 자리 가운데로 떨어지는 모양, `dawn` 새벽빛) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
     - arena·boss 에 `watch: true`·`at`·`prop`·`label`·`len`·`lines` 를 주면 조건을 채운 뒤 at 에 모양이 나타나고 [label] → 등 뒤에서 보는 장면(#236 사건 5). 모양의 `userData.anim(u)`(0~1)가 장면을 움직인다(`caseprops.js` yeti 본보기). 조건 전엔 추적 줄이 우두머리 빈터로
   - `trail { pts: [[x, z], …], size, step }` (있으면) 목격 모양과 같이 보이는 발자국 한 줄 (MYST.foot 모양을 크게, `traces.js late.caseFoot`, #236)
-  - `doc` 서류 쪽지 id(대면을 끝내면 받음) · `notes` 증거·서류 쪽지(NOTES 모양: id·paper·t 14자·from·b 4줄) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄))
+  - `doc` **증거 사진** 쪽지 id(대면을 끝내면 받음, notes 에서 `paper: 'photo'`, 제목 '증거 사진 <번호>') · `photo` 수사 보드에 꽂히고 쪽지 창 위쪽에 붙는 사진 그림(100×75 SVG 안쪽 글. index.js `casePhoto` 가 주소로 바꿈)
+  - `notes` 증거·사진 쪽지(NOTES 모양: id·paper·t 14자·from·b 3줄 이내) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄). 대사 한 번에 두 줄 이내)
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
   - (#233) `face.follow { path [[x,z]…], near, end, speed, len }`: arena·boss 를 끝낸 뒤(저장 a 1) 흰 옷이 path 를 앞서 가고 끝자리 장면(`face.lines` 자막)까지 봐야 대면 끝 (game/casechase.js). `see.ghost` 목격 때 흰 옷이 스침·실제 밤엔 목격 자리 너머를 오감. `hello { <NPC id>: [말] }` 종결 뒤 그 NPC 인사에 더함. 퀘스트 보상에 `mats { m<구역>: n }` (장비 재료) 를 쓸 수 있음
   - (#234) `see.blink: true` 면 사건이 열린 뒤(CASE.goneAfter 초) 목격 모양이 화면 밖으로 나가면 사라짐. arena·boss 대면에 `face { at, prop, label, actor, len, lines }` 를 주면 싸움 뒤 at 에 모양이 서고(save h 1) 다가가 F → 장면(배우 `late.caseActors[actor]` = { begin, tick, cam, end }, 본보기 `src/game/casesuit.js`) → 대면 끝. 쪽지 `img` 에 data: 주소(SVG)를 주면 사진 칸에 그림
-- 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
+- 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게. 땅을 따라 휘는 판은 `userData.place(x, z)`, crop 처럼)
 - (#235 에서 더함) 싸움 뒤 장면: `face { kind: 'arena'|'boss', scene: '<이름>', tint: 'mist', at, prop, label, len, lines }` 면 싸움을 끝낸 뒤 face.at 에서 상호작용해 장면을 봐야 대면이 끝남. 장면은 `caseprops.js` SCENES(begin·tick·cam·end). `see.gone: true` 면 대면 뒤 목격 모양을 치움. 증거 `z` 는 일부러 다른 구역에 둔 것(검사 구역). 퀘스트 보상 `mats: { m5: 3 }` 다음 구역 재료. 사건 4 `c4.js` 가 본보기
-- 사건의 마지막 퀘스트 보상을 받으면 종결(도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
-- 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 목격 → 증거 → 대면 → 서류 → 종결 → 창 → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`
-
+- 사건의 마지막 퀘스트 보상을 받으면 종결(수사 보드에 사진·핀·빨간 실, 도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
+- 수사 보드(`#case-file`): 코르크판에 사진 자리 다섯. 종결 → 사진에 핀, 핀끼리 빨간 실(마지막 핀에서 다음 빈 자리로 점선). 진행 중 → '?' 사진·미해결. 사진을 누르면 아래에 목격·증거 셋·사진 칸, 칸을 누르면 쪽지. 메뉴 ☰ → 사건 파일, 쪽지 창 아래 사건 파일 단추
+- 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 옛 판 저장, 목격 → 증거(위에서 찍기) → 대면(떨어지는 모양) → 증거 사진 → 종결 → 수사 보드(사진·핀·실) → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`

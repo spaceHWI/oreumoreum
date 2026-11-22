@@ -1461,6 +1461,35 @@ export const DEER = {
   feedRetry: 8,      // 부탁한 노루가 이 초 안에 안 오면 다시 부탁할 수 있음
 };
 
+// 노루 친구 (#247, game/deerpal.js): 들판 노루를 귤로 사귀면 따라다니고 언제든 탐. 수치는 모두 임의
+export const DEERPAL = {
+  feed: 3,           // 같은 노루에게 귤을 이만큼 주면 내 노루
+  zone: 2,           // 이 구역(번호) 에 들어선 뒤에 사귈 수 있음. 그 전에는 귤만 먹고 달아남
+  feedR: 2.6,        // 들판 노루 '귤 주기' 거리
+  rideR: 3,          // 내 노루 '타기' 거리
+  back: [3.4, 4.6],  // 따라올 때 플레이어 뒤 거리 (가까움·멂)
+  crumb: 0.6,        // 발자취를 이 m 마다 남김 (따라오는 길)
+  tp: 40,            // 이보다 멀어지거나 막히면 순간 이동으로 따라잡음
+  stuckT: 3,         // 이 초 동안 다가오지 못하면 막힌 것으로 봄
+  wait: 14,          // 싸움·서바이벌 판 중에는 이만큼 물러나 기다림
+  run: 12,           // 따라잡을 때·부를 때 달리는 빠르기 (m/s)
+  hungerT: 240,      // 가득 → 0: 달리기로 약 4분 (걷기는 그 비율만큼 덜 줆)
+  regenT: 900,       // 내려 있으면 이 초에 0 → 가득 (풀 뜯기)
+  meal: 0.25,        // 귤 1개에 배고픔 이만큼 참
+  askBelow: 0.3,     // 배고픔이 이 아래면 가까이 갔을 때 행동 버튼이 '귤 주기'
+  bare: 0.85,        // 안장 없이 탄 내 노루 빠르기 (DEER.rideWalk·rideRun 배)
+  saddle: { price: 6000, hunger: 0.7 }, // 노루 안장 (탈것 가게): 빠르기 DEER 그대로, 배고픔 -30%
+  bond: [0, 30, 100], // 친해짐 단계: 먹인 귤 합계
+  bondSpeed: 0.03,   // 단계마다 빠르기 +3%
+  turn: [3, 4.5, 6], // 단계별 따라오는 반응 (돌아서는 빠르기)
+  whistle: [60, 100, 160], // 단계별 휘파람이 닿는 거리 m
+  odd: 15,           // 이상한 것(크롭서클·밤 발자국·사건 증거) 이 거리 안이면 멈춰 서서 봄
+  oddT: 3, oddCool: 90, // 바라보는 초, 같은 곳은 이 초 뒤에 다시
+  peers: 6, peerR: 90, // 남의 노루는 가까운 이만큼만, 이 거리 안만 그림 (draw call)
+  names: ['보리', '콩이', '달래', '솔이', '바람', '귤이', '오름이', '모래'],
+  say: { shy: '귤만 먹고 도망갔네', near: '저 노루, 날 기억하나', got: '오늘부터 내 노루', odd: '노루가 뭘 보는 거지' },
+};
+
 // 이름 (#162): 처음 지을 때·바꿀 때 글자 수. 바꾸기 값은 처음 한 번 무료, 그다음 price 부터 grow 배씩 (cap 에서 멈춤). 하루 perDay 번 (한국 날)
 export const NICK = { min: 2, max: 12, price: 2000, grow: 1.5, cap: 20000, perDay: 1 };
 export const NET = {
@@ -1900,7 +1929,8 @@ QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·
 // lv 이 레벨부터 · hoax 헛소문 확률 · caseK 열린 사건 실마리를 고를 확률(진짜 제보일 때) · gyul 끝내면 귤(서버 earn.js 가 하루 한 번 인정)
 // r 상호작용 거리 · off 길가 더미에서 떨어진 거리 [최소, 최대] m · far 흔적·표시가 보이는 거리 · ring 바닥 표시 반지름
 export const REPORT = { lv: 2, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14 };
-export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, goneAfter: 4, /* see.gone 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ face: { crows: 3, skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 3.4 } };
+// crop: 사건 1 무늬 반지름(m)·진하기·돌림 (#246) · view: 위에서 찍기 장면 길이(초)·높이·옆 거리 · face: 숨어 보기 장면 (drop 떨어지는 높이 m, dropAt 장면 비율)
+export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, goneAfter: 4, /* see.blink 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
 CASE.chase = { white: '#f4f3ee', glow: 0.35, behind: 2.4, glide: 3.2, glimT: 2.6, nightR: 45, afterT: 8, camBack: 3.6, camSide: 1.1, camUp: 1.9, faceD: 1.3, faceSide: 2.1, faceUp: 1.45, ambR: 70, ambW: 0.35, vanish: 7 };

@@ -16,6 +16,10 @@ export default {
   face: { kind: 'boss', at: [-12.5, -50], prop: 'yeti', label: '다가가 보기', len: 10, watch: true,
     lines: ['발자국 끝. 더미 앞에 흰 등이 앉아 있다.', '부스럭. 꽉. 또 부스럭.', '…'] },
   doc: 'k5d',
+  // 증거 사진 (#246 수사 보드): 눈밭, 봉지를 든 설인의 흰 등과 묶은 봉지 무더기
+  photo: '<rect width="100" height="75" fill="#c9d6e6"/><rect y="50" width="100" height="25" fill="#f3f6fa"/><path d="M0 50 L22 34 L40 46 L62 28 L84 44 L100 36 L100 50 Z" fill="#9fb2c8"/>'
+    + '<ellipse cx="46" cy="44" rx="13" ry="16" fill="#f7f7f4"/><circle cx="46" cy="27" r="8" fill="#f7f7f4"/><ellipse cx="38" cy="60" rx="4" ry="6" fill="#f7f7f4"/><ellipse cx="54" cy="60" rx="4" ry="6" fill="#f7f7f4"/>'
+    + '<ellipse cx="63" cy="50" rx="6" ry="7" fill="#9db4c6"/><circle cx="74" cy="61" r="4" fill="#eceff1"/><circle cx="80" cy="60" r="4" fill="#d6dde3"/><circle cx="77" cy="56" r="3.6" fill="#eceff1"/>',
   notes: [
     { id: 'k5a', paper: 'photo', t: '큰 발자국', from: '정상 더미 사이', b: '더미에서 멈췄다가, 다음 더미로.\n멈춘 자리마다 더미가 작아졌다.' },
     { id: 'k5b', paper: 'notebook', t: '흰 털 뭉치', from: '정상 북쪽 돌 틈', b: '돌 틈에 흰 털이 한 줌.\n털에 귤 껍질이 붙어 있다.\n간식은 귤로 하는 편.' },

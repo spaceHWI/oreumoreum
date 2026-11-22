@@ -28,7 +28,7 @@ function link(r) {
   room = r;
   r.on('hi', (m) => { late.newver?.checkMinVer(m.minVer); live = true; setRides(m.rides); setMode(); });
   r.on('host', () => setMode());
-  r.on('close', () => { live = false; pending = null; if (player.riding) dismountDeer(); setRides([]); freePeers(); setMode(); }); // 끊기면 내림 → 방에서도 풀림
+  r.on('close', () => { live = false; pending = null; if (player.riding && !player.riding.pal) dismountDeer(); setRides([]); freePeers(); setMode(); }); // 끊기면 내림 → 방에서도 풀림
   r.on('rides', (m) => setRides(m.r));
   r.on('mount', (m) => { if (m.no && pending && pending.id === m.i) { pending = null; toast('다른 사람이 타고 있어요'); } });
   r.on('deer', (m) => { if (life.remote) applyHerd(m.d); });

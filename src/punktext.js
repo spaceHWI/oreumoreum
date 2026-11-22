@@ -276,7 +276,7 @@ export const TITLES = [
   { t: '귤밭 주인', set: 'farmer' },
   { t: '개근 산타', set: 'santa' }, // 크리스마스 달력 25칸 (#222)
   // 사건 파일 (#232): 사건을 종결하면 (src/cases/c*.js title 과 같은 글, badge 'b-case-<id>')
-  { t: '까마귀와 같은 급', badge: 'b-case-c1' },
+  { t: '표지판 해독가', badge: 'b-case-c1' }, // #246 사건 1 '크롭서클' (옛 '까마귀와 같은 급' 자리)
   { t: '밤 근무 동기', badge: 'b-case-c2' },
   { t: '못 본 걸로 한 사람', badge: 'b-case-c3' },
   { t: '설인의 후배', badge: 'b-case-c5' },
