@@ -60,7 +60,7 @@ export const quests = createQuests({
   save, persist, defs: Q,
   hooks: {
     val, oldDone,
-    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
+    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) && late.shopOpen?.(need.slice(5)) !== false : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
     door: (id) => director.isOpen(id),
     open: () => director.isOpen('quest'),
     ready: (q) => onReady(q),
@@ -100,7 +100,7 @@ function addGiver(id, pos, root, h, runner = null, face = 0) {
   const d = Q.givers[id]; const sp = new THREE.Sprite(MARK['!']); sp.scale.set(0.9, 0.9, 1); sp.position.y = h; sp.visible = false; root.add(sp);
   const g = { id, name: d.name, def: d, pos, root, mark: sp, h, runner, face, heading: face, t: Math.random() * 6, greet: 0, cur: null };
   givers.set(id, g);
-  interactables.push({ label: '이야기', ic: 'quest', pos, r: Q.r, when: () => !late.tut?.active && !!g.cur, act: () => openGiver(id) });
+  interactables.push({ label: '이야기', ic: 'quest', pos, r: Q.r, when: () => !late.tut?.active && !!g.cur && (!d.shop || late.shopOpen?.(d.shop) !== false), act: () => openGiver(id) });
   return g;
 }
 function person(id, pos, face) {
@@ -112,8 +112,11 @@ function person(id, pos, face) {
 }
 // 오름지기: 들머리 안내판 옆 (정낭을 나서면 바로 보임)
 if (spots.sign && !spots.sign.silent && trash) {
-  const s = spots.sign, r = s.rot, d = Q.givers.jigi, X = [Math.cos(r), -Math.sin(r)], N = [Math.sin(r), Math.cos(r)];
-  const x = s.pos.x + X[0] * d.side + N[0] * d.fwd, z = s.pos.z + X[1] * d.side + N[1] * d.fwd, gate = spots.tut?.gate || null;
+  const s = spots.sign, r = s.rot, d = Q.givers.jigi, X = [Math.cos(r), -Math.sin(r)], N = [Math.sin(r), Math.cos(r)], gate = spots.tut?.gate || null;
+  const at = ([sd, fw]) => [s.pos.x + X[0] * sd + N[0] * fw, s.pos.z + X[1] * sd + N[1] * fw];
+  const ok = ([x, z]) => (spots.hareubangs || []).every((h) => Math.hypot(h.pos.x - x, h.pos.z - z) >= (d.hbGap || 0)) && (!col || !col.blocked(x, z, 0.45));
+  const [x, z] = [[d.side, d.fwd], ...(d.alt || [])].map(at).find(ok) || at([d.side, d.fwd]); /* 입구 하르방과 떨어진 자리 (#213) */
+  s.npc = { x, z };
   person('jigi', v3(x, z), gate ? Math.atan2(gate.x - x, gate.z - z) : Math.atan2(N[0], N[1]));
 }
 // 표지판: 구역 클린하우스 옆 (구역 2~5 줄기)
@@ -242,6 +245,7 @@ function ending(text) { const el = $('quest-end'); el.textContent = text; el.cla
 
 /* ---------- 조건을 채움 ---------- */
 function onReady(q) {
+  if (q.auto) { const r = quests.complete(q.id); if (r) { give(r, q); if (q.fin?.[0]) say('quest', 'qauto:' + q.id, `${q.name} 완료 · ${q.fin[0]}`, 3.4, { ttl: 60 }); late.questAutoDone?.(q); } trackDirty(true); return; } // 주는 사람 없는 퀘스트 (#208): 채우면 바로 끝
   const to = whoOf(q.to || q.giver);
   if (q.got) say('quest', 'qgot:' + q.id, `${q.got} · ${to}에게 가져가요`, 3.4, { ttl: 60 });
   else say('quest', 'qready:' + q.id, `${q.name} 완료! ${to}에게 돌아가요`, 3, { ttl: 60 });
@@ -267,6 +271,7 @@ function goPos(go) {
   if (go.startsWith('shop:')) { const sh = shopOf(go.slice(5)); return sh ? sh.door.clone() : null; }
   if (go === 'cairn') { const c = nearest(cairns.map((c) => c.pos)); return c ? c.clone() : null; }
   if (go === 'cave') return late.caveEnt?.() || null; // 용암 동굴 입구 (#195)
+  if (go === 'rimLook') return late.summitClue?.rimPos?.() || null; // 굼부리 가장자리 전망 자리 (#208)
   if (go === 'ch') { const c = nearest(CHS.map((c) => c.front)); return c ? c.clone() : null; }
   if (!trash) return null;
   const hs = trash.heaps.map((h, i) => ({ x: h.x, z: h.z, h, i }));
@@ -380,6 +385,7 @@ late.questUse = (shop) => quests.useCoupon(shop);
 
 /* ---------- 말 걸기·손 흔들기 ---------- */
 function wave(g) { if (g.runner) { g.pose = 'wave'; g.poseT = 0; } }
+late.questWave = (shop) => { for (const g of givers.values()) if (g.def.shop === shop) { g.root.visible = true; greet(g, true); } }; // 가게가 문을 열면 주인이 나와 손 흔듦 (#206)
 function greet(g, force = false) {
   const h = g.def.hello; if (!h?.length || !social) return;
   if (!force && g.greet > 0) return; g.greet = 14 + Math.random() * 10;
@@ -403,7 +409,7 @@ late.tickQuest = (dt) => {
     if (near && browseAt !== near.id) { browseAt = near.id; count('browse'); } else if (!near) browseAt = null;
   }
   for (const g of givers.values()) {
-    const d = Math.hypot(g.pos.x - player.pos.x, g.pos.z - player.pos.z), vis = d < 160;
+    const d = Math.hypot(g.pos.x - player.pos.x, g.pos.z - player.pos.z), vis = d < 160 && (!g.def.shop || late.shopOpen?.(g.def.shop) !== false); /* 닫힌 가게엔 주인이 아직 없음 (#206) */
     if (g.root.visible !== vis) g.root.visible = vis;
     if (!vis) continue;
     g.t += dt; if (g.mark.visible) g.mark.position.y = g.h + Math.sin(g.t * 2.4) * 0.08;

@@ -151,7 +151,7 @@ export function capture() {
   const ds = kstDate().replace(/-/g, '.');
   const badges = Object.keys(ach.state.badges).length;
   g.fillText(`${save.nick} · ${ds} · ${player.steps.toLocaleString('ko-KR')}걸음 · 뱃지 ${badges}개`, pad, ph + pad + 116);
-  if (logoImg.complete && logoImg.naturalWidth) { const lh = 92, lw = lh * logoImg.naturalWidth / logoImg.naturalHeight; g.drawImage(logoImg, W + pad - lw, ph + pad + 22, lw, lh); } // 사진 틀 로고 (#72)
+  if (logoImg.complete && logoImg.naturalWidth) { const lw = 280, lh = lw * logoImg.naturalHeight / logoImg.naturalWidth; g.drawImage(logoImg, W + pad - lw, ph + pad + 22 + (92 - lh) / 2, lw, lh); } // 사진 틀 로고 (#72), 폭 고정 (#209 가로로 길어진 로고)
   else { g.textAlign = 'right'; g.fillStyle = '#9c4a33'; g.font = '700 30px "Noto Sans KR", sans-serif'; g.fillText('오름오름', W + pad, ph + pad + 70); }
   out.toBlob((blob) => {
     if (photoUrl) URL.revokeObjectURL(photoUrl);

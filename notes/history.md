@@ -1573,3 +1573,49 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 보상: 받는 쪽은 내가 맞힌 적이 쫓겨나면 내 보상(`repelNet`), 칸 주인은 제가 맞힌 적만(`hurtNet`, 남의 피해엔 증강·밀림을 안 얹음). 주인 큰 보상·상자는 지금처럼 사람마다 하루 한 번
 - 이어받기: 받던 적을 같은 번호로 그대로(주인 드론 부르기는 지난 단계만큼 건너뜀). 칸 주인 알림·적 상태가 `NET.caveWaitSec`(4초) 안 오면(옛 서버·옛 클라이언트) 내 화면에서 굴림
 - 수치 `NET.cavePerSec·caveMax·caveEnemyMax·caveSendMs·caveWaitSec`. 확인: `node tools/online.js <서버> cave` 칸 주인·같은 번호·B 가 맞히면 A 기운 줆·이어받기 줄, `tools/sec.js` #205 줄
+
+## #207 UFO·외계인 초반 노출 줄이기 (2026-11-22)
+- 단계 0~3 을 끝낸 구역 수로 (`balance.js UFO.reveal.byDone`), 옛 저장도 바로 그 단계. 표는 `notes/journey.md` 0절 'UFO·외계인 드러남'
+- `src/ufoveil.js`: 단계 셈을 받는 곳. 단계 3 전 alien·drone 적(우두머리·레이드·남의 적 포함)은 `veilModel` 빛 덩이 + 이름 '수상한 불빛'(enemies.js spawnOne, boss.js name). `veiled(text)` 로 방송(punkworld pickLine·성탄 방송)·쪽지(dropNote)·이야기 알림(story line) 거름
+- `src/game/ufoseen.js`: 하늘에 스치는 것 far·ridge·close·clear, 아침의 흔적(하루 한 곳) → mutter `oddTrash`(새 `late.mutterEv`). 저장 `save.ufo`. 루프 셈 `ufoseen`(smoke LOOP)
+- 이야기 '수상한 불빛'(night) UFO 는 단계 3 전엔 빛 덩이(`makeUfo(k, parent, glow)`), '불법 주차 단속'(ufo)은 단계 3 부터. 글: night.done '처음 보는 캔을 주웠어요', 쪽지 n3a 보낸 이 '누군가', n3f '(사람 아님)'
+- dev `__oreum.ufoSeen.set(n)`·`play('far'|'ridge'|'close'|'clear')`·`trace()`·`state()`. `tools/oldsave.js` 에 ufo·ufo2 저장
+
+## #208 정상 첫 실마리 (2026-11-22)
+- 정상 표지석에 처음 닿으면(CLUE.touch m) 10초 장면: 카메라가 표지석에서 굼부리 쪽으로 돌며 높아지고 시야가 좁아짐 → 굼부리 바닥에서 빛 한 번(깊이 무시 스프라이트) → 끝나면 혼잣말 '방금… 저 아래에서 뭔가 빛났는데?'(혼잣말을 끈 사람은 토스트). 1.2초 뒤 건너뛰기. 싸우는 중·창·다른 안내 중이면 미뤘다가 표지석 30m 안에서 조용해지면
+- 장면은 엔딩(#168)의 cam 'cine' 자리를 같이 씀: `late.cineCam` 을 감싸 내 장면일 때만 내 카메라, 조작 잠금·적 멈춤도 그대로. 화면 UI 는 body.clue-cine 로 숨김
+- 첫 쪽지 NOTES 'n0'(z 'top', 도감엔 '정상'): 표지석 뒤 풀숲(종이·돌·풀 로우폴리). 읽으면(어디서 읽었든 안 읽음 목록에서 빠지면) 퀘스트 x-rim '굼부리를 내려다보기' 를 저절로 받음. 쪽지 수가 31장 → 업적 '쪽지 수집가' 는 n0 까지 모아야 함
+- 주는 사람 없는 퀘스트: QUESTS.side 의 `auto: true`(giver 'note:top' 은 이름만). 추적 줄에서 줄기 '받으러 가기' 보다 먼저, 채우면 game/quest.js onReady 가 바로 끝내고 보상(귤 15)·`late.questAutoDone`. 전망 자리 = 굼부리 둘레 길에서 표지석에 가장 가까운 점에서 안쪽 4m
+- 끝나면 카메라가 굼부리를 잠깐 보고, 감독 say('story') 로 아직 안 끝낸 가장 앞 구역 쪽 한 줄(CLUE_TEXT.door)
+- 망원경(표지석 옆): 9초 좁은 시야(fov 14)·둥근 테두리로 굼부리 바닥 → 먼 능선을 훑음. 낮엔 아무것도 없고, 밤이면 먼 불빛 하나(#207 UFO 드러남 단계 `revealStage()` ≥ CLUE.scope.light.stage 0, 단계 0 의 밤하늘 far 와 맞춤)
+- 옛 저장(mutter.summit·업적 view-·사진 기록이 있음): 장면 없이 쪽지만, 읽으면 퀘스트는 끝낸 것(skip, 보상 없음). 저장 save.clue = { s, old, q }
+- 확인: `node tools/summit.js [d|m] [shots]` (새 사용자·옛 저장 둘 다)
+
+## #206 가게를 퀘스트 순서대로 하나씩 열기 (2026-11-22)
+- 표 `balance.js SHOP_ST.unlock`(값·순서 임의): 장비점(정낭을 나섬, 알림 없음) → 만족한상회(첫 배낭을 가득 채워 버림) → 스톤(숲길 우두머리) → 루이네미장원·LEAP(구역 2 에 들어서거나 레벨 4) → 탈것 가게·마차 타기(남쪽 사면 우두머리)
+- 셈은 `src/shopgate.js`(DOM 없음), 게임은 `src/game/shopgate.js`. 저장 `save.shopGate = { open, init, full, dumps, fd }`. 한 번 열린 가게는 닫히지 않음
+- 닫힌 가게: 건물은 그대로, 문 자리 앞(`SHOP_ST.gate.shutIn`)에 셔터(기둥·말통·회색 골판 + 고깔 팻말), 지붕 간판은 어둡게·밤빛 없음, 주인 NPC 없음, 지도엔 작은 회색 점, 가게 안내 카드는 회색 + '준비 중 · ○○ 열려요', 가까이 가면 '준비 중 — ○○ 열려요' 한 줄(바로 그 자리 반응이라 감독을 거치지 않음)
+- 닫힌 가게는 상호작용·가장자리 표시·자동 걷기·창 열기·퀘스트(need shop:, 곁가지만 막힘 — 줄기 퀘스트는 장비점만 쓰고 장비점은 정낭에서 열림)·팁(go 가 닫힌 가게)·다음 할 일(스톤 식사)에서 빠짐. 튜토리얼 좌판(장비점)은 그대로
+- 열릴 때: 감독 `say('intro', 'shop-<id>', …, { ttl, then })` 로 줄에 섬(싸움·창·다른 말이 끝나면 차례) → 알림 + `tipMark` 하나 + 셔터가 말려 올라감(`gate.upT`) + 주인이 나와 손 흔들고 인사. `gate.waitMax` 초 넘게 못 받으면 알림 없이 엶. `game/director.js say` 에 `opt.then` 을 더함
+- 옛 저장: `save.shopGate` 가 없으면 처음 볼 때 조건(need·old)을 넘겼거나 쓴 적이 있으면(식사·머리·옷 산 기록·탈것) 알림 없이 엶
+- 어드민 개발자 메뉴 '가게 모두 열기'(이 기기 localStorage `oreumoreum.hwi.shops`)·촬영 모드(#185): 모두 열린 모습(저장은 그대로). 멀티: 내 화면에서만, 서버는 그대로
+- 확인: `node tools/shopgate.js`(막 마친 저장·조건마다 열림·옛 저장·스위치), `tools/oldsave.js` shopBad·shopVet, smoke LOOP 에 shopGate
+
+## #209 게임 로고 새 모양(A: Black Han Sans) (2026-11-22)
+- `src/logo.js`: 선으로 그리던 '오름오름'(글자 칸 100×120) → Black Han Sans '오'·'름' 윤곽을 path 로 박음(글꼴 파일은 싣지 않음). 윤곽은 `tools/logoglyph.py <글꼴>` 로 뽑음(npm @fontsource/black-han-sans 의 korean .woff 로 뽑았다). 고지: `notes/licenses.md`
+- '오' 의 ㅇ 고리는 빼고 그 자리(원래 ㅇ 바깥 높이)에 귤/외계인 얼굴, 가로는 높이의 1.2배 타원. 전체 비율 약 3.65:1 (전 2.9:1)
+- `LOGO_WEIGHTS`·`LOGO_WEIGHT`·`weight` 옵션 지움(새 윤곽엔 뜻 없음). 내보내는 이름(logoSvg·logoMark·logoIcon·svgUrl·LOGO_COLORS)·halo 는 그대로
+- 파비콘·앱 아이콘 귤도 같은 납작한 타원. `src/og.png`·`src/icons/*.png` 다시 구움
+- 첫 화면 로고 폭: 데스크톱 min(860px, 64vw), 폰 세로 90vw, 폰 가로 min(420px, 칸 폭). 사진 틀 로고는 폭 280 고정(높이 92 칸 가운데)
+- 앞뒤 그림: `notes/shots/209/`
+
+## #213 탈것 위쪽 보기·오름지기 자리
+- 탈 때(노루·탈것·마차) 올려다보는 끝 `CAM.ridePitchMin` -0.85(걸을 때 -0.6 그대로). 위로 볼수록 거리 `CAM.rideUpDist`(끝 0.6배)로 당기고 바라보는 점을 `rideUpLift` 만큼 올림, 탈것 높이 `CAM.rideLook`(노루·말 0.9, 스케이트 0.2, 스쿠터 0.25, 마차 0.3). 평지 실제 올려다보는 각 29도 → 45도, 카메라는 땅 위 1.2m 를 지킴. 끌기 범위는 `camPitchMin()`·`camPitchMax()` (input.js), 내리면 걷기 범위로 돌아옴
+- 오름지기: 안내판 옆 조금 뒤(`QUESTS.givers.jigi` side -2.8·fwd -1.2), 입구 하르방에서 5.1m → 8.3m. 하르방과 `hbGap` 6.5m 안이거나 막혀 있으면 `alt` 순서. 선 자리는 `spots.sign.npc`, 동료가 피하는 둘레(buddies NPCS)도 그 자리 기준. 말 걸기 범위·길 안내는 giver pos 를 따름
+- 확인: `node tools/ridecam.js`(걷기·노루·말·스케이트·마차, 끝까지 위·아래). `tools/buddies.js` 는 동료가 꺼져 있으면(#190) 화면 검사를 건너뜀
+## #211 모바일 떠다니는 조이스틱 (2026-11-22)
+- 폰 이동: 왼쪽 아래 구역(가로 왼쪽 45%·세로 아래 60%, 안전 영역 + 왼쪽 가장자리 16px 은 뺌) 어디든 누른 자리에 스틱 바탕이 생기고, 바탕 반지름(화면 짧은 변 × 0.16, 44~72px) 밖으로 끌면 바탕이 손가락을 따라옴. 데드존 15%·달리기(>0.92)는 예전 그대로. 수치 `balance.js STICK`
+- 손가락: 처음 구역(캔버스)이나 안내 고리(#joy)에 닿은 손가락 하나(joy.id)에만 묶고, 떼기 전까지는 구역 밖으로 나가도 이동. 오른쪽 시점 돌리기·버튼과 동시에 됨. 버튼 위에서 시작한 터치는 버튼 몫. 구역을 짧게 톡 친 것(0.25초·8px 안)은 예전처럼 그 땅으로 걸어가기
+- 쓰지 않을 때는 왼쪽 아래 안내 고리만(불투명도 25%, 5번 쓴 뒤 12%, save.joyN). 튜토리얼 '걷기' 는 '왼쪽 아래 아무 데나 누른 채 끌어 보세요' + 손가락이 끄는 움직임(#tut-focus.drag)
+- 설정 > 조작 '이동 스틱: 떠다님 / 고정'(save.stick, 없으면 떠다님. 폰에서만 보임). 고정이면 예전 제자리 스틱. 데스크톱은 그대로
+- 확인: `node tools/stick.js [그림 폴더]` (폰 세로·가로 CDP 터치: 세 곳 끌기·따라오는 바탕·두 손가락·버튼 위·톡 치기·가장자리·고정 설정). dev `__oreum.stick`. 그림 `notes/shots/211/`

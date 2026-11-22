@@ -9,6 +9,7 @@
 //    새 사건: boar-stare(멧돼지 앞 10초)·trash-day-500(하루 500개)·quest-boss1(퀘스트 '구역의 주인')·note-all. 까마귀·하르방(#163)은 그 기능이 ach.emit 으로 냄
 // 저장 save.punk = { title, notes {id: 주운 때}, unread [id], radio 1|0, day {d, n}, ev {한 번만 낸 사건} }
 // dev: __oreum.punkWorld (__oreum.punk 은 #164 아이템)
+import { veiled } from '../ufoveil.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
@@ -127,9 +128,10 @@ function pushSitu(k, text) {
 function pickLine() {
   const now = performance.now() / 1000;
   for (let i = situ.length - 1; i >= 0; i--) if (now - situ[i].t > R.situTtl) situ.splice(i, 1);
-  if (situ.length) return situ.shift().text;
-  const ok = RADIO.map((l, i) => i).filter((i) => !(RADIO[i].z > maxZ()) && !recent.includes(i));
-  const i = ok.length ? ok[Math.floor(Math.random() * ok.length)] : Math.floor(Math.random() * RADIO.length);
+  while (situ.length) { const t = situ.shift().text; if (!veiled(t)) return t; }
+  const fit = RADIO.map((l, i) => i).filter((i) => !(RADIO[i].z > maxZ()) && !veiled(RADIO[i].t)); /* #207 */
+  const ok = fit.filter((i) => !recent.includes(i));
+  const i = ok.length ? ok[Math.floor(Math.random() * ok.length)] : fit.length ? fit[Math.floor(Math.random() * fit.length)] : 0;
   recent.push(i); if (recent.length > 6) recent.shift();
   return RADIO[i].t;
 }
@@ -182,7 +184,7 @@ const fightNow = () => !!player.down || !!late.pace?.threat?.() || (state.tensio
 function syncChip() { chip.hidden = !P.unread.length; chip.querySelector('i').textContent = P.unread.length > 1 ? String(P.unread.length) : ''; }
 // 쪽지 창 (#199): 종이 모양·이전/다음 넘기기·그림은 game/noteview.js
 const view = createNoteView({
-  P, NOTES, zoneName: (z) => (z === 'cave' ? '용암 동굴' : zoneName(z)), persist, sound: () => late.sound, /* 동굴 쪽지 (#195) */
+  P, NOTES, zoneName: (z) => (z === 'cave' ? '용암 동굴' : z === 'top' ? '정상' : zoneName(z)), persist, sound: () => late.sound, /* 동굴 쪽지 (#195) */
   onRead: () => syncChip(),
   // 감독은 창이 닫힐 때까지 기다림 (도감에서 연 것은 도감 위에 뜸)
   onOpen: (dex) => { if (!dex) { closePanels(); holdWin('story', 'note', 'punk-note'); } late.sound?.snip?.(); },
@@ -203,7 +205,7 @@ function giveNote(id, { quiet = false } = {}) { // 쪽지 한 장을 얻음. 싸
 // 까마귀가 떨어뜨리는 영수증 쪽지 (#163): 그 자리 구역의 안 주운 쪽지 하나. 떨궜으면 true
 late.receiptDrop = (pos) => { const z = trash?.zoneAt(pos.x, pos.z) || 0; return z >= 1 && !!dropNote(z); };
 function dropNote(z) { // 그 구역에서 아직 안 주운 쪽지 하나 (구역 밖·다 모은 구역은 없음)
-  const left = NOTES.filter((n) => n.z === z && !P.notes[n.id]); if (!left.length) return null;
+  const left = NOTES.filter((n) => n.z === z && !P.notes[n.id] && !veiled(n.t + n.from + n.b)); if (!left.length) return null; /* #207 단계 3 전엔 외계인 글 빼고 */
   const n = left[Math.floor(Math.random() * left.length)]; giveNote(n.id); return n.id;
 }
 if (trash) trash.on((ev) => {
@@ -221,7 +223,7 @@ syncChip();
     for (const n of NOTES) {
       const got = !!P.notes[n.id], c = document.createElement('div'); c.className = 'dex-cell note' + (got ? '' : ' locked');
       c.innerHTML = `<span class="dex-ic">${iconSvg(BADGE_ICONS['b-notes'])}</span><b></b><small></small>`;
-      c.querySelector('b').textContent = got ? n.t : '???'; c.querySelector('small').textContent = got ? (P.unread.includes(n.id) ? '안 읽음' : n.from) : n.z === 'cave' ? '동굴' : `구역 ${n.z}`; /* 동굴 쪽지 (#195) */
+      c.querySelector('b').textContent = got ? n.t : '???'; c.querySelector('small').textContent = got ? (P.unread.includes(n.id) ? '안 읽음' : n.from) : n.z === 'cave' ? '동굴' : n.z === 'top' ? '정상' : `구역 ${n.z}`; /* 동굴 쪽지 (#195), 정상 첫 쪽지 (#208) */
       if (got) c.addEventListener('click', () => openNote(n.id, { dex: true }));
       g.append(c);
     }

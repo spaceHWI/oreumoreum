@@ -872,6 +872,25 @@ export const SHOP_ST = {
   roofShow: 70, // 지붕 간판은 카메라가 이 거리(m, 땅 위) 안일 때만 (#201: 멀리서는 감춤)
   dirR: 3.4, // 들머리 '가게 안내도' 판 앞 이 거리 안이면 상호작용 '가게 안내'
   cartHintR: 9, // 정상·능선 클린하우스 이 거리 안에서 버리고 나면 '가게 거리 가는 마차' 안내 (세션에 한 번)
+  // 가게를 퀘스트 순서대로 하나씩 열기 (#206, src/shopgate.js·game/shopgate.js). 값·순서는 임의
+  // need = [{사실: 최소값}, …] 중 하나라도 맞으면 열림 (사실: jeong 정낭을 나섬, fullDump 첫 배낭을 가득 채워 버림, zd1·zd2 그 구역 우두머리를 쫓음, zone 가 본 가장 높은 구역, lv 레벨, dumps 버린 수)
+  // old = 처음 볼 때(옛 저장)만 보는 조건 (그 가게를 쓴 적이 있어도 열림, 알림 없이). how = 닫힌 가게 앞 '준비 중 — ○○ 열려요', say = 열릴 때 알림, quiet = 알림 없이
+  // ride 는 탈것 가게와 마차 타기를 같이 엶
+  unlock: [
+    { id: 'gear', need: [{ jeong: 1 }], how: '정낭을 나서면', quiet: true },
+    { id: 'manjok', need: [{ fullDump: 1 }], old: [{ dumps: 2 }], how: '배낭을 가득 채워 클린하우스에 비우면', say: '골목 끝 만족한상회가 문을 열었어요' },
+    { id: 'stone', need: [{ zd1: 1 }], how: '숲길 우두머리를 쫓아내면', say: '장비점 옆 스톤이 문을 열었어요' },
+    { id: 'salon', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '골목 어귀 루이네 미장원이 문을 열었어요' },
+    { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
+    { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요 · 마차도 다녀요' },
+  ],
+  gate: {
+    fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)
+    shutW: 3.6, shutH: 2.5, shutIn: 0.5, // 닫힌 가게 셔터 폭·높이(m), 문 자리에서 건물 쪽으로 이만큼
+    upT: 1.4, // 셔터 올라가는 시간(초)
+    nearR: 2.5, nearOff: 10, // 가게 문 r + nearR 안에 오면 '준비 중' 한 줄, nearOff m 밖으로 나가면 다시
+    sec: 4, waitMax: 300, // 열림 알림 초, 감독 차례를 이 초 넘게 못 받으면 알림 없이 엶
+  },
 };
 // 장비점 (#128): 가게 거리 4번 터의 철물점 (임시 모양 src/hardware.js). 도구·배낭·무기를 판다. 이름은 실제 가게가 정해지면 바꿈
 export const GEAR_SHOP = { name: '장비점', W: 7.4, D: 5.8, fore: 0.6, r: 6.5 };
@@ -1159,12 +1178,25 @@ export const TRAIL = {
 };
 
 // 첫 화면 (#72): 정상 표지석을 가운데 두고 천천히 도는 카메라
-// 카메라 위아래 범위 (#170). 걸을 때와 탈 때(노루·탈것·마차) 같은 범위로 올려다보고, 탈 때만 조금 더 내려다봄
+// 카메라 위아래 범위 (#170 #213). 탈 때(노루·탈것·마차)는 걸을 때보다 더 올려다보고(위로 볼수록 카메라를 당기고 바라보는 점을 올림) 더 내려다봄
 export const CAM = {
   pitchMin: -0.6, pitchMax: 1.25, // 끌어서 돌리는 위아래 각도(라디안). -0.6 이면 평지에서 화면 위 대부분이 하늘
   ridePitchMax: 1.4, // 탈 때만 더 내려다봄
+  ridePitchMin: -0.85, // 탈 때 올려다보는 끝 (#213, 전에는 걸을 때와 같은 -0.6). 실제 올려다보는 각 약 29도 → 약 45도
+  rideUpDist: 0.6, // 탈 때 끝까지 올려다보면 카메라 거리 배율 (땅에 덜 박히고 캐릭터가 화면 아래로 비킴). 0 각도부터 끝까지 서서히
+  rideUpLift: 1.2, // 탈 때 끝까지 올려다보면 바라보는 점을 이만큼 더 올림(m)
+  rideLook: { deer: 0.9, horse: 0.9, skate: 0.2, scoot: 0.25, cart: 0.3 }, // 탈것 높이만큼 바라보는 점을 올림(m). 마차는 자리 높이가 이미 들어가 있어 조금만
   rideDist: 1.15, // 탈 때 카메라 거리 배율 (노루가 화면을 덜 가림). 내리면 1 로 서서히
   rideDistK: 3, // 거리 배율이 바뀌는 빠르기 (1/초)
+};
+// 폰 이동 스틱 (#211): 왼쪽 아래 구역 어디든 누른 자리에 스틱 바탕이 생기는 떠다니는 조이스틱
+export const STICK = {
+  zoneW: 0.45, // 이동 구역: 화면 가로 왼쪽 이만큼
+  zoneH: 0.6, // 이동 구역: 화면 세로 아래 이만큼
+  edge: 16, // 왼쪽 가장자리(px, 안전 영역 안쪽부터)는 브라우저 뒤로 가기 쓸기와 겹치지 않게 뺌
+  rK: 0.16, rMin: 44, rMax: 72, // 바탕 반지름(px) = 화면 짧은 변 × rK, 이 범위 안. 넘어가면 바탕이 손가락을 따라옴
+  tapT: 0.25, tapPx: 8, // 이만큼 짧게(초)·적게(px) 톡 친 건 스틱이 아니라 그 땅으로 걸어가기
+  guide: 0.25, faint: 0.12, faintAfter: 5, // 쓰지 않을 때 왼쪽 아래 안내 고리 불투명도. 이만큼 쓴 뒤에는 더 옅게
 };
 export const TITLE = {
   r: 650,       // 표지석에서 카메라까지 수평 거리(m)
@@ -1189,6 +1221,26 @@ export const UFO = {
   beam: { top: 0.3, w: 0.55, spread: 0.1, sink: 1.5, hi: 0.55, lo: 0.06 }, // 빛기둥: 위 반지름 비율, 접시 대비 아래 폭, 길이당 넓어짐, 땅속으로 겹침(m), 위·아래 밝기
   pool: { hi: 0.4 }, // 닿은 자리 빛 웅덩이 가운데 밝기
   sparks: 10,     // 흩날리는 빛 조각 수 (저사양은 없음)
+  // #207 게임 안 UFO·외계인 드러남 단계 (src/ufoveil.js·src/game/ufoseen.js). 첫 화면·로고는 게임 밖 간판이라 이 표와 상관없음. 값은 모두 임의
+  // 단계: 0 흔적만(튜토리얼~구역 1) · 1 먼 실루엣(구역 2) · 2 한 번 가까이(구역 3) · 3 또렷이(구역 3 끝난 뒤). 끝낸 구역 수(save.boss.done)로 정함 → 옛 저장도 바로 그 단계
+  reveal: {
+    byDone: [0, 1, 2, 3], // 끝낸 구역 수 → 단계 (넘으면 마지막 값)
+    kinds: ['alien', 'drone'], // 단계 3 전 이 적(우두머리·레이드·남이 싸우는 것 포함)은 내 화면에서 흐린 빛 덩이로
+    words: ['외계인', 'UFO'], // 단계 3 전엔 이 낱말이 든 쪽지·방송·혼잣말·이야기 알림을 내보내지 않음
+    veilName: '수상한 불빛', // 단계 3 전 그 적·우두머리 이름
+    blob: { size: 2.2, y: 1.1, halo: '#b8ffd8', core: '#f4fff0' }, // 빛 덩이 지름(m, 모양 배율 전)·높이·색
+    checkSec: 1,
+    // 단계 0: 밤하늘 먼 불빛 하나가 몇 초 지나감 (거리 dist m, 땅에서 up m, sec 초, 지름 size m). every 초마다, 처음은 first 초 뒤
+    far: { stages: [0], night: true, every: [240, 420], first: [50, 110], dist: [240, 320], up: [70, 100], sec: [5, 7], size: 7 },
+    // 단계 1·2: 능선 너머로 스치는 실루엣 (min m 밖, sec 초, 지름 k m, 흐리게 op). gone m 안으로 다가오면 사라짐. 가운데쯤 먼 빛기둥 beam 초
+    ridge: { stages: [1, 2], every: [200, 340], first: [40, 90], dist: [165, 230], min: 150, up: [20, 34], sec: [3, 5], k: 9, op: 0.5, gone: 120, beam: 1.4, cone: 60 },
+    // 단계 2: 한 번 머리 위로 가까이 지나감 (아래에서 본 원반과 빛만, 땅에 그림자). up m 높이, sec 초, 지름 k m, 길이 len m. 단계에 든 뒤 after 초 안
+    close: { stages: [2], after: [30, 90], up: 24, sec: 9, k: 14, len: 220, shadow: 0.42 },
+    // 단계 3 처음: 한 번 또렷이 (지금의 외계인 비행접시 모양). '불법 주차 단속'(story ufo)을 이미 본 저장은 건너뜀
+    clear: { stages: [3], after: [20, 60], up: 20, sec: 10, k: 4.2, len: 200, ahead: 45, beam: 0.25 }, // 앞쪽 ahead m 을 옆으로 가로지름, 빛기둥 밝기 beam
+    // 아침의 흔적 (단계 0·1): 하루 한 곳, 내 구역 남은 더미 곁 off m 에 풀이 둥글게 눌린 자리(반지름 r m). near m 안에 오면 혼잣말 한 번
+    trace: { stages: [0, 1], r: 3.4, off: [6, 11], near: 12 },
+  },
 };
 
 // 사진사 NPC (#70): 정상 표지석 근처에 삼각대를 세워 두고, 상호작용하면 사진을 찍어 줌. 무료
@@ -1208,6 +1260,20 @@ export const PHOTOG = {
   animR: 90,      // 이보다 멀면 움직임 계산을 쉼 (저사양)
   count: 0.9,     // 3·2·1 한 칸 시간(초)
   lines: ['사진 찍어 드릴까요?', '여기 빛이 제일 좋아요!', '오늘 오름 진짜 예쁘다', '웃어요~ 김치!'],
+};
+
+// 정상 첫 실마리 (#208, src/game/summit.js · 글은 src/punktext.js CLUE_TEXT): 표지석에 처음 닿으면 짧은 장면 → 표지석 뒤 첫 쪽지 → 퀘스트 '굼부리를 내려다보기'. 값은 모두 임의
+// touch 표지석에서 이 m 안이면 닿음 · near 미룬 장면은 이 안에 있을 때 보여 줌 · len 장면 길이(초) · skipAfter 이만큼 뒤 건너뛰기 단추
+// turn 카메라가 표지석에서 굼부리로 도는 [시작, 끝] 초 · flash 굼부리 안쪽 빛이 깜빡이는 때(초)·길이(초)·크기(m) · up 장면 카메라 높이(표지석 위 m) · fov 장면 끝 쪽 시야각
+// note 쪽지 자리: 표지석에서 바깥쪽(out, - 는 뒤)·옆(tan) m, r 읽는 거리 · rim 굼부리 둘레 길 위 전망 자리(표지석에서 가장 가까운 점에서 둘레 안쪽으로 in m), r 닿는 거리
+// scope 망원경: 표지석에서 out·tan m, r 쓰는 거리, len 보는 초, fov, sweep 좌우로 훑는 각(rad), far 먼 능선까지 m
+//   light 먼 불빛: 밤(해 높이 night 도 밑)이고 UFO 드러남 단계(#207 UFO.reveal, src/ufoveil.js revealStage)가 stage 이상일 때만. 단계 0 의 밤하늘 먼 불빛(far)과 맞춤
+export const CLUE = {
+  touch: 3.6, near: 30, len: 10, skipAfter: 1.2,
+  turn: [1.5, 6.5], flash: { at: 6.8, dur: 0.6, size: 26 }, up: 30, fov: 32,
+  note: { out: -1.5, tan: 0.5, r: 2.6 },
+  rim: { in: 4, r: 9 },
+  scope: { out: 0.7, tan: -2.8, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
 };
 
 // 탈것 (#69): 귤로 사고 버튼 하나로 타고 내림. 속도 = base(달리기) × 배율 (신발·식사 버프는 곱하지 않음). 값은 임의
@@ -1665,7 +1731,7 @@ export const QUESTS = {
   coupon: { gear: 0.1, leap: 0.1, salon: 0.5 },
   shopNpc: { side: 1.5, in: 0.6, gap: 3 }, // #190 가게 주인 자리: 문 오른쪽 side m · 터 앞 선에서 안쪽 in m · 다른 NPC·다른 가게 문과 gap m 넘게 (game/quest.js)
   givers: {
-    jigi: { name: '오름지기', at: 'sign', side: 2.6, fwd: 0.9, look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
+    jigi: { name: '오름지기', at: 'sign', side: -2.8, fwd: -1.2, alt: [[-4, -1.2], [-2.8, 0.9], [2.6, -2]], hbGap: 6.5, /* #213: 안내판 옆 조금 뒤, 입구 하르방에서 약 8m(전에는 side 2.6·fwd 0.9 로 5.1m). 하르방과 hbGap m 안이면 alt [side, fwd] 순서로 */ look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요', '천천히 둘러봐요', '귤은 아껴 던져요'] },
     'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
     'b:rest': { name: '능선 쉼터 표지판', board: 'rest' },
     'b:crater': { name: '굼부리 표지판', board: 'crater' },
@@ -1673,6 +1739,7 @@ export const QUESTS = {
     'shop:leap': { name: 'LEAP 점원', shop: 'leap', look: { shirt: '#f2f2f2', pants: '#24262c', shoes: '#f2f2f2' }, hello: ['오늘 핏 좋네요', '오름도 패션이에요'] },
     'shop:salon': { name: '루이네 원장', shop: 'salon', look: { shirt: '#c9879b', pants: '#3a2f3a', shoes: '#2a222a' }, hello: ['바람에 머리가 다 날렸네', '앞머리 다듬어 줄까요?'] },
     'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요'] },
+    'note:top': { name: '정상 쪽지' }, // #208 주는 사람 없이 쪽지를 읽으면 받는 퀘스트 (game/summit.js)
     'shop:satis': { name: '만족한상회 사장', shop: 'satis', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b' }, hello: ['갈치 드실래요?'] },
   },
   main: [
@@ -1717,6 +1784,8 @@ export const QUESTS = {
     { id: 'x-meal', giver: 'jigi', after: 'dump2', name: '밥은 먹고 다녀요', say: ['가게 거리 스톤에서 한 끼 먹고 와요. 든든해야 오래 줍죠.'], task: '스톤에서 식사 한 번', ask: { k: 'meal', n: 1 }, go: 'shop:stone', fin: ['얼굴이 폈네요.'], reward: { gyul: 10 }, need: 'shop:stone' },
     { id: 'x-browse', giver: 'jigi', after: 'dump2', name: '마을 구경', say: ['가게 거리에 미장원이랑 옷 가게도 있어요.', '사지 않아도 구경은 공짜.'], task: '루이네미장원이나 LEAP 구경', ask: { k: 'browse', n: 1 }, go: 'shop:salon', fin: ['구경 잘 했어요? 다음엔 지갑도 데려가요.'], reward: { gyul: 5 }, need: 'shop:salon' },
     // 굼부리 표지판 곁가지 (#195 감독 문 cave, 구역 4 우두머리 뒤)
+    // 정상 첫 쪽지 (#208, game/summit.js): 쪽지를 읽으면 저절로 받음(주는 사람 없음 auto), 전망 자리에 닿으면 바로 끝·보상. 옛 저장은 지난 것으로
+    { id: 'x-rim', giver: 'note:top', auto: true, name: '굼부리를 내려다보기', say: [], task: '굼부리 가장자리 전망 자리까지', ask: { k: 'rimLook', n: 1 }, go: 'rimLook', fin: ['굼부리 안쪽은 깊고 조용해요.'], reward: { gyul: 15 } },
     { id: 'x-cave', giver: 'b:crater', door: 'cave', after: 'boss4', name: '바람 새는 굴', say: ['[표지판] 굼부리 바닥 굴에서 찬바람이 새어 나옴.', '안에는 클린하우스가 없음. 들고 나온 것만 귤로 침.'], task: '용암 동굴에서 쓰레기 들고 나오기', ask: { k: 'caveOut', n: 1 }, go: 'cave', fin: ['[표지판] 동굴 벽에도 그들의 글씨가 있다고 함.'], reward: { gyul: 600 } },
     // 장비점 주인 (첫 버리기 뒤, 감독 문 shopQuest)
     { id: 'g-tool', giver: 'shop:gear', door: 'shopQuest', name: '손에 맞는 집게', say: ['그 집게, 손에 안 맞지? 딱 보면 알아.', '한 단계 위 걸로 바꿔 봐. 줍는 게 달라져.'], task: '도구 한 단계 올리기', ask: { k: 'tool', n: 1 }, go: 'shop:gear', fin: ['거봐, 손목이 안 아프지?'], reward: { coupon: ['gear', 1] } },

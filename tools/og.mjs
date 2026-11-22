@@ -4,7 +4,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 import fs from 'fs';
 import { logoSvg, LOGO_COLORS as C } from '../src/logo.js';
 const html = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0}body{width:1200px;height:630px;background:${C.paper};display:grid;place-items:center;overflow:hidden}
-svg{width:720px;height:auto}</style>
+svg{width:820px;height:auto}</style>
 <body>${logoSvg()}</body>`;
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1200, height: 630 } });
 await p.setContent(html); await p.screenshot({ path: 'src/og.png' }); await b.close();

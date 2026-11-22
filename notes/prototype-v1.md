@@ -30,9 +30,11 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | camera.js | 카메라, 첫 화면 궤도 |
 | hud.js | 위 한 줄·토스트·배너 자리, 상황 팁, 패널 닫기, 업적, 도감, 귤 숫자 늦게 올리기(gyulFx·gyulLand·gyulExpect) |
 | director.js | 감독(#176): `src/director.js` 를 게임에 붙임. 말을 거는 것은 `director.ask(kind, id, show)`·`say(kind, id, text, sec)` 로 한 번에 하나씩(우선순위·간격·싸움 중 제한), 문 열기(`register({ id, gate, intro, kind, clue })`, 순서·조건은 balance.js JOURNEY, 사실 값 FACTS), 한가할 때 실마리, 끝을 모르는 창은 `holdWin`. `late.director`, `__oreum.director`, 확인 `node tools/journey.js` |
-| input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
+| input.js | 키보드·조이스틱(떠다님·고정, #211)·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | wish.js | 돌탑 소원 글·함께 기도 (#127): 돌탑 창(돌 올리기 + 소원 한 줄, 남의 소원 함께 기도·신고), 돌탑 가까이에서 소원 말풍선, 들어올 때 '○명이 함께 빌어 줬어요', 어드민 '신고된 소원' 패널 (`wishApi` → `/wish`·`/wish/pray`·`/wish/report`·`/wish/news`·`/admin/wishes`·`/admin/wish`). moves.js `openWishes` 는 여기로 넘김 |
+| summit.js | 정상 첫 실마리(#208): 표지석에 처음 닿으면 장면(엔딩의 cam 'cine' 자리를 빌림, `late.cineCam` 을 감쌈·건너뛰기)·표지석 뒤 쪽지(NOTES 'n0', z 'top')·읽으면 퀘스트 x-rim(주는 사람 없는 auto, game/quest.js onReady 가 바로 끝냄)·전망 자리 셈 'rimLook'·감독 한 줄(`late.questAutoDone`)·망원경. 저장 save.clue. 수치 `CLUE`, 글 `CLUE_TEXT`. dev `__oreum.summit` |
+| shopgate.js | 가게를 퀘스트 순서대로 열기 (#206): `src/shopgate.js` 를 게임에 붙임. 닫힌 가게 문 앞 셔터·꺼진 지붕 간판(shops.js `roofSigns.off`)·'준비 중 — ○○ 열려요' 한 줄, 조건을 채우면 감독 `say('intro', …, { then })` 차례에 알림 + 셔터 올림 + 주인 손 흔듦(`late.questWave`). `late.shopOpen(id)`·`late.shopWhy(id)` 를 stores.js SHOP_POP when·openShopPop, shop.js 지도·가게 안내, quest.js 주인·need shop:, dump.js·ride.js 마차, hud.js 팁, nexthint.js 가 봄. 어드민 '가게 모두 열기'(이 기기만)·촬영 모드는 모두 열림. dev `__oreum.shopGate` |
 | gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
 | metricsadmin.js | 이용 통계 표 (#121): 어드민 개발자 메뉴 "수치" 패널. `adminApi.metrics` → `GET /admin/metrics`, 줄(잴 것) × 칸(날짜), 출처 단추 실서버·dev·어드민 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
@@ -96,6 +98,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | punkmeet.js | 오름펑크 상호작용(#163): 하르방 '인사하기'(하이파이브·하루 한 번 버프 `#punk-pill`, `late.punkPickR`·`late.punkSpeed`)·관광객 사진 부탁(쓰레기를 버리면 귤로 맞힘)·까마귀 도둑(배낭이 가득 차면). 모양 `src/punkmodels.js`, 소리 `src/punksound.js`, 수치 balance.js MEET, 저장 save.meet. `__oreum.punk`(#164 것과 함께), 확인 `node tools/punkmeet.js` |
 | start.js | 첫 화면 시작, 로그인, 랭킹 (서버 고르기는 #98 에서 없앰: 전투 오름 하나) |
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
+| ufoseen.js | UFO 드러남 단계(#207): 끝낸 구역 수 → 단계 0~3(`balance.js UFO.reveal`). 하늘에 스치는 것 far(단계 0 밤 먼 불빛)·ridge(1·2 능선 너머 실루엣·먼 빛기둥)·close(2 한 번 머리 위·그림자)·clear(3 처음 또렷이 한 번), 아침의 흔적(0·1 풀이 둥글게 눌린 자리 → 혼잣말 `late.mutterEv('oddTrash')`). 저장 `save.ufo`. 단계 셈을 `src/ufoveil.js` 에 걸어 둠. dev `__oreum.ufoSeen` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기. 게임 루프는 문장마다 한 줄(#193). `state.ticks` = 주요 갱신이 불린 셈(`__oreum.ticks`, `tools/smoke.js` 가 봄), `watchLoop` = 셈이 3초 멈춤·튜토리얼 30초 미시작을 오류 알림으로 |
 | where.js | 지금 있는 곳 이름(#153): `placeAt(x, z)` 가게 앞·가게 거리·클린하우스·돌탑·정상 전망대·개울가·정낭·구역 문턱('능선 들머리')·구역 이름. 반경은 `balance.js PLACE`. update.js 가 0.3초마다 위쪽 칸(`#where`)에 씀, 확인 `__oreum.where` |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
@@ -123,6 +126,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 오름펑크 글 (#165): punktext.js (#168 STORY_TEXT 뒤) — 방송(RADIO·RADIO_SITU)·쪽지(NOTES, id 는 저장에 씀)·칭호(TITLES, 번호가 멀티로 오가므로 뒤에만 더함). DOM 없음, 서버 validate·roomcore 도 씀
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
+- 가게 열기: shopgate.js(#206, DOM 없음: 표 balance.js `SHOP_ST.unlock`·`SHOP_ST.gate`, 저장 `save.shopGate`, 처음 볼 때 옛 저장은 조용히 엶). 게임 연결은 game/shopgate.js, 확인 `node tools/shopgate.js`
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
 - 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
 - 다음 할 일: game/nexthint.js(#142, quest 뒤): late.nextHint(퀘스트 줄, ctx) 가 추적 줄에 잠깐 바뀌는 안내(HP·배낭·장비점)나 퀘스트 뒤 이어 줄 것을 돌려줌. 수치는 balance.js NEXT_HINT

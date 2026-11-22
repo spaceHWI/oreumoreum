@@ -110,6 +110,7 @@ import './game/level.js'; // 레벨과 증강 (#159, boss·loot·buddies 뒤: �
 import './game/feel.js'; // 손맛 (#141): 콤보·피해 숫자·연속·진동 (level 뒤: 적 후크를 감쌈)
 import './game/ending.js'; // 엔딩 시네마틱 (#168)
 import './game/story.js'; // 이야기 이벤트 (#168)
+import './game/ufoseen.js'; // UFO 드러남 단계 (#207): 흔적 → 실루엣 → 또렷이
 import './game/swarm.js'; // 들판 떼 (#173)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
@@ -127,6 +128,8 @@ import './game/caveextra.js'; // 동굴 4번 조각 (#195): 벽 쪽지·동굴 �
 import './game/caveshare.js'; // 동굴 적 같이 보기 (#205): 같은 칸 사람끼리 적을 한 사람이 굴림
 import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/wish.js'; // 돌탑 소원 글·함께 기도 (#127)
+import './game/summit.js'; // 정상 첫 실마리 (#208): 첫 장면·표지석 뒤 쪽지·굼부리 퀘스트·망원경
+import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';

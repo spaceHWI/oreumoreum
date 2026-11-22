@@ -193,7 +193,7 @@ function fillShopDir(grid) {
     const P = SHOP_POP[sh.pop], open = !P?.when || P.when(), n = open ? affordable(sh.id).length : 0, nw = open ? newCount(sh.id) : 0, d = Math.round(Math.hypot(player.pos.x - sh.door.x, player.pos.z - sh.door.z));
     const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-card dir-card' + (open ? '' : ' poor'); b.dataset.shop = sh.id;
     b.setAttribute('aria-label', `${sh.name} · ${sh.sells}${n ? ` · 지금 살 수 있는 것 ${n}` : ''}`);
-    b.innerHTML = `<span class="food dir-ic">${shopSvg(sh.id)}${nw ? '<i class="ndot"></i>' : ''}</span><span class="mn"><b>${sh.name}</b><small>${sh.sells}</small></span>`
+    b.innerHTML = `<span class="food dir-ic">${shopSvg(sh.id)}${nw ? '<i class="ndot"></i>' : ''}</span><span class="mn"><b>${sh.name}</b><small>${open ? sh.sells : late.shopWhy?.(sh.id) ? `준비 중 · ${late.shopWhy(sh.id)} 열려요` : sh.sells}</small></span>`
       + `<span class="mv">${n ? `<span class="bf">살 수 있는 것 ${n}</span>` : ''}<span class="dist">${d < 8 ? '바로 앞' : `${d}m`}</span></span>`;
     b.addEventListener('click', () => goShop(sh.id));
     grid.append(b);
@@ -206,7 +206,7 @@ export function goShop(id, msg = '') {
   if (id === 'gear' && CH && (tutStall || !street)) return goTo({ pos: CH.shopFront, near: CLEANHOUSE.shopR, arrive: () => openShopPop('gear') }, '장비점 좌판', msg);
   if (late.tut?.active) { toast('튜토리얼을 마치면 가게 거리에서 살 수 있어요'); return false; }
   const sh = shopsBuilt.find((q) => q.id === id); if (!sh) { toast('이 맵에는 그 가게가 없어요'); return false; }
-  const P = SHOP_POP[sh.pop]; if (P?.when && !P.when()) { toast('정낭을 열면 가게 거리가 열려요'); return false; }
+  const P = SHOP_POP[sh.pop]; if (P?.when && !P.when()) { const w = late.shopWhy?.(sh.id); toast(w ? `준비 중 — ${w} 열려요` : '정낭을 열면 가게 거리가 열려요'); return false; }
   return goTo({ pos: sh.door, near: sh.r * 0.8, arrive: () => openShopPop(sh.pop) }, sh.name, msg);
 }
 function goTo(dest, name, msg) {
@@ -228,7 +228,9 @@ for (const sh of shopsBuilt) { const img = new Image(); img.src = 'data:image/sv
 late.shopIcons = (x, uv, s, inC) => {
   for (const sh of shopsBuilt) {
     const p = roofSigns?.signs[sh.id]?.pos || sh.door, [u, v] = uv(p.x, p.z); if (!inC(u, v)) continue;
-    const r = s * 0.55; x.fillStyle = '#2f3336'; x.strokeStyle = '#ff8a1f'; x.lineWidth = Math.max(1, s / 7); x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); x.stroke();
+    const r = s * 0.55, shut = late.shopOpen?.(sh.id) === false; /* 닫힌 가게는 회색 점 (#206) */
+    if (shut) { x.fillStyle = '#8c9093'; x.strokeStyle = '#55595c'; x.lineWidth = Math.max(1, s / 8); x.beginPath(); x.arc(u, v, r * 0.5, 0, 7); x.fill(); x.stroke(); continue; }
+    x.fillStyle = '#2f3336'; x.strokeStyle = '#ff8a1f'; x.lineWidth = Math.max(1, s / 7); x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); x.stroke();
     const img = iconImg[sh.id]; if (img?.complete && img.naturalWidth) x.drawImage(img, u - r * 0.72, v - r * 0.72, r * 1.44, r * 1.44);
     if (roofSigns?.signs[sh.id]?.dot.visible) { x.fillStyle = '#ff8a1f'; x.beginPath(); x.arc(u + r * 0.8, v - r * 0.8, r * 0.36, 0, 7); x.fill(); }
   }
