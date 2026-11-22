@@ -182,12 +182,14 @@ const win = { el: $('quest'), giver: null, item: null };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const CLOTH_NAME = Object.fromEntries(CLOTHES.map((c) => [c.id, c.name]));
 const CP_NAME = { gear: '장비점 할인권', leap: 'LEAP 할인권', salon: '머리 반값권', ade: '에이드 한 잔', satis: '고등어구이 한 번' };
-function rewardHtml(r) {
+const quipOf = (id) => { const L = Q.quip || []; let h = 0; for (const c of String(id || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return L.length ? L[h % L.length] : ''; }; /* #223 보상 줄 한 마디 */
+function rewardHtml(r, id) {
   const a = [];
   if (r?.gyul) a.push(`<span><i class="gy"></i>귤 ${r.gyul}</span>`);
   if (r?.coupon) a.push(`<span>${CP_NAME[r.coupon[0]] || '할인권'}${r.coupon[1] > 1 ? ' ×' + r.coupon[1] : ''}</span>`);
   if (r?.item) a.push(`<span>${esc(CLOTH_NAME[r.item] || '선물')}</span>`);
-  return a.length ? '<small>보상</small> ' + a.join('') : '';
+  const qp = id ? quipOf(id) : '';
+  return a.length ? '<small>보상</small> ' + a.join('') + (qp ? ` <small class="q-quip">${esc(qp)}</small>` : '') : '';
 }
 const whoOf = (id) => Q.givers[id]?.name || '';
 function show(g, it) {
@@ -198,7 +200,7 @@ function show(g, it) {
   talk.lines = splitSay(lines); talk.pages = null; talk.i = 0;
   const p = quests.prog(q.id);
   $('quest-task').innerHTML = it.st === 'ready' ? '' : `${esc(q.task)}${it.st === 'on' && q.ask.n > 1 && q.ask.k !== 'zone' ? ` <b>(${p}/${q.ask.n})</b>` : ''}${it.st === 'offer' && q.to && q.to !== q.giver ? `<br><small>끝나면 ${esc(whoOf(q.to))}</small>` : ''}`;
-  $('quest-rew').innerHTML = it.st === 'on' ? '' : rewardHtml(q.reward);
+  $('quest-rew').innerHTML = it.st === 'on' ? '' : rewardHtml(q.reward, q.id);
   const go = $('quest-go'); go.textContent = it.st === 'ready' ? '보상 받기' : it.st === 'offer' ? '받기' : '좋아요'; go.classList.toggle('claim', it.st === 'ready');
   win.el.hidden = false;
   paginate(); // 창이 보인 뒤에 재야 함
@@ -241,7 +243,7 @@ $('quest-close').addEventListener('click', closeWin);
 win.el.addEventListener('click', (e) => { if (e.target === win.el) closeWin(); });
 $('quest-go').addEventListener('click', () => {
   const it = win.item, g = win.giver; if (!it || !g) return;
-  if (it.st === 'offer') { if (quests.accept(it.q.id)) { if (quests.stuck(it.q.id)) { closeWin(); quests.tick(); return; } late.sound?.beep?.(true); toast(`퀘스트 받음 · ${it.q.task}`, 2.6); trackDirty(true);
+  if (it.st === 'offer') { if (quests.accept(it.q.id)) { if (quests.stuck(it.q.id)) { closeWin(); quests.tick(); return; } late.sound?.beep?.(true); toast(`${Q.took || '퀘스트 받음'} · ${it.q.task}`, 2.6); trackDirty(true);
       const now = quests.at(g.id).find((x) => x.q === it.q && x.st === 'ready'); if (now) { show(g, now); return; } } /* 이미 채운 것(#219 단계 도달)은 바로 돌려주기 창 */
     closeWin(); return; }
   if (it.st === 'ready') {
@@ -281,8 +283,8 @@ function onReady(q) {
 
 /* ---------- 감독 문 ---------- */
 const introAt = (gid, text) => () => { toast(text, 4); const g = givers.get(gid); if (g) { tipMark(g.pos.clone().setY(g.pos.y + 2)); wave(g); social?.showBubble('npc-q-' + gid, g.root, '여기요!', 3.6); } };
-director.register({ id: 'quest', kind: 'quest', intro: introAt('jigi', '오름지기가 손짓하고 있어요 · 다가가서 말을 걸어 봐요') });
-director.register({ id: 'shopQuest', kind: 'quest', gate: () => !!givers.get('shop:gear'), intro: introAt('shop:gear', '장비점 철물 삼춘이 할 말이 있대요') });
+director.register({ id: 'quest', kind: 'quest', intro: introAt('jigi', '오름지기가 손짓해요 · 다가가서 말을 걸어 봐요. 손짓은 대개 일이에요') });
+director.register({ id: 'shopQuest', kind: 'quest', gate: () => !!givers.get('shop:gear'), intro: introAt('shop:gear', '장비점 철물 삼춘이 할 말이 있대요 · 대개 연장 얘기예요') });
 director.register({ id: 'shopQuests', kind: 'quest', gate: (f) => (f.days >= 2 || f.zone >= 2) && [...givers.keys()].some((k) => k.startsWith('shop:') && k !== 'shop:gear'), intro: () => toast('가게 거리 주인들이 할 말이 있대요 · 흰 느낌표를 찾아봐요', 4) });
 
 /* ---------- 추적 줄 ---------- */
@@ -312,7 +314,7 @@ function goPos(go) {
 }
 function questInfo(t) {
   if (t.st === 'offer') return { t, text: `${whoOf(t.q.giver)}에게 가기`, prog: '', ready: false, go: t.q.giver, mark: '!' };
-  if (t.ready) return { t, text: `${whoOf(t.to)}에게 돌아가기`, prog: '', ready: true, go: t.to, mark: '?' };
+  if (t.ready) return { t, text: `${whoOf(t.to)}에게 보고하기`, prog: '', ready: true, go: t.to, mark: '?' };
   return { t, text: t.q.task, prog: t.n > 1 && t.q.ask.k !== 'zone' ? `${t.p}/${t.n}` : '', ready: false, go: t.q.go || null, mark: t.main ? '!' : 'w' };
 }
 // #142 다음 할 일 (game/nexthint.js): 잠깐 바뀌는 안내(배낭 참·귤 닿음·HP 낮음)가 먼저, 퀘스트가 없으면 이어 줄 것. 그 안내는 pos()·arrive·tap 을 직접 가짐
@@ -375,12 +377,12 @@ function openLog() {
   closePanels(); const l = quests.list(), body = $('qlog-body'), row = (cls, a, b = '') => `<div class="q-row ${cls}"><span>${a}</span>${b}</div>`;
   const by = new Map(); for (const o of l.on) { const g = o.q.to && o.ready ? o.q.to : o.q.giver; if (!by.has(g)) by.set(g, []); by.get(g).push(o); }
   let h = '<h3>하는 중</h3>';
-  if (!l.on.length) { const n = quests.tracked(); h += `<p class="q-empty">${n ? esc(`${whoOf(n.q.giver)}에게 가 보세요`) : '지금은 받은 퀘스트가 없어요'}</p>`; }
-  for (const [g, os] of by) for (const o of os) h += row(`${o.main ? 'main' : 'side'}${o.ready ? ' ready' : ''}`, `${esc(o.q.name)}<small>${esc(o.ready ? `${whoOf(g)}에게 돌아가기` : o.q.task)} · ${esc(whoOf(g))}</small>`, `<b>${o.ready ? '완료' : `${o.p}/${o.n}`}</b>`);
+  if (!l.on.length) { const n = quests.tracked(); h += `<p class="q-empty">${n ? esc(`${whoOf(n.q.giver)}에게 가 보세요`) : '지금은 받은 퀘스트가 없어요. 드문 평화예요'}</p>`; }
+  for (const [g, os] of by) for (const o of os) h += row(`${o.main ? 'main' : 'side'}${o.ready ? ' ready' : ''}`, `${esc(o.q.name)}<small>${esc(o.ready ? `${whoOf(g)}에게 보고하기` : o.q.task)} · ${esc(whoOf(g))}</small>`, `<b>${o.ready ? '완료' : `${o.p}/${o.n}`}</b>`);
   const cps = Object.entries(quests.state().cp).filter(([, n]) => n > 0);
   if (cps.length) h += '<h3>할인권</h3>' + cps.map(([k, n]) => row('side', esc(CP_NAME[k] || k), `<b>×${n}</b>`)).join('');
   const done = l.done.filter((q) => !l.skip.includes(q.id)).reverse();
-  if (done.length) { h += '<h3>끝낸 것</h3>'; const gs = new Map(); for (const q of done) { if (!gs.has(q.giver)) gs.set(q.giver, []); gs.get(q.giver).push(q); } for (const [g, qs] of gs) for (const q of qs) h += row('done', `${esc(q.name)}<small>${esc(whoOf(g))}</small>`); }
+  if (done.length) { h += '<h3>끝낸 것 · 처리 완료</h3>'; const gs = new Map(); for (const q of done) { if (!gs.has(q.giver)) gs.set(q.giver, []); gs.get(q.giver).push(q); } for (const [g, qs] of gs) for (const q of qs) h += row('done', `${esc(q.name)}<small>${esc(whoOf(g))}</small>`); }
   body.innerHTML = h; LOG.hidden = false;
 }
 $('qlog-close').addEventListener('click', () => { LOG.hidden = true; });

@@ -72,7 +72,7 @@ const TASK = { trash: (n) => n * 1.6, heapRoad: () => 75, heapField: () => 150, 
     else if (q.k === 'zone') await ev(() => { window.__oreum.save.journey.maxZ = 2; });
     else await ev(([k, n]) => { const o = window.__oreum; o.quest.count(k, n); if (k === 'recycle') o.save.recycle.visits += n; }, [q.k, q.n]); // 버린 횟수는 감독 문(shopQuest)도 봄
     ok(await until((id) => window.__oreum.quest.api.ready(id), 3000, q.id), `${q.id} 조건 채움`);
-    ok(await until(() => { const t = window.__oreum.quest.track(); return t?.ready && /돌아가기/.test(t.text); }, 5000), `${q.id} 추적 줄 노랗게 '${(await Q()).track?.text}'`);
+    ok(await until(() => { const t = window.__oreum.quest.track(); return t?.ready && /보고하기/.test(t.text); }, 5000), `${q.id} 추적 줄 노랗게 '${(await Q()).track?.text}'`);
     if (q.to === 'jigi') ok(await until(() => window.__oreum.quest.where().jigi.mark === '?', 5000), `${q.id} 오름지기 머리 위 ?`);
     s = await Q();
     if (q.id === 'heap1') await shot('ready');

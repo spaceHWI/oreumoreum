@@ -11,30 +11,30 @@ export const kstDate = (t = Date.now()) => { const k = new Date(t + 9 * 3600000)
 export const kstDayN = (t = Date.now()) => Math.floor((t + 9 * 3600e3) / 864e5);
 export const dateOfDay = (d) => kstDate(d * 864e5 - 9 * 3600e3 + 1);
 
-// ev: 업적 사건 이름(achievements emit). goal: 해야 할 수
+// ev: 업적 사건 이름(achievements emit). goal: 해야 할 수. q: 안내서 톤 한 마디 (#223, 할 일 창·끝낸 알림에 작게)
 export const TASKS = [
   // 싸움
-  { id: 't-repel-5', cat: 'fight', ev: 'enemy-repel', goal: 5, name: '적 5마리 쫓아내기' },
-  { id: 't-repel-12', cat: 'fight', ev: 'enemy-repel', goal: 12, name: '적 12마리 쫓아내기 · 해 진 뒤엔 두 배', x2: 'night' },
-  { id: 't-dumper-2', cat: 'fight', ev: 'dumper-repel', goal: 2, name: '투기꾼 2명 쫓아내기' },
-  { id: 't-smoker', cat: 'fight', ev: 'smoker-repel', goal: 1, name: '들머리 흡연자 쫓기' },
-  { id: 't-hareubang', cat: 'fight', ev: 'hareubang', goal: 1, name: '하르방 코에 귤 맞히기' },
+  { id: 't-repel-5', cat: 'fight', ev: 'enemy-repel', goal: 5, name: '적 5마리 쫓아내기', q: '멧돼지 쪽 집계는 따로 있어요' },
+  { id: 't-repel-12', cat: 'fight', ev: 'enemy-repel', goal: 12, name: '적 12마리 쫓아내기 · 해 진 뒤엔 두 배', q: '밤엔 두 배. 적도 그렇게 생각해요', x2: 'night' },
+  { id: 't-dumper-2', cat: 'fight', ev: 'dumper-repel', goal: 2, name: '투기꾼 2명 쫓아내기', q: '봉투는 두고 가라고 전해 주세요' },
+  { id: 't-smoker', cat: 'fight', ev: 'smoker-repel', goal: 1, name: '들머리 흡연자 쫓기', q: '연기는 분리수거가 안 돼요' },
+  { id: 't-hareubang', cat: 'fight', ev: 'hareubang', goal: 1, name: '하르방 코에 귤 맞히기', q: '하르방은 동의했어요(추정)' },
   // 치우기·쉬기
-  { id: 't-trash-150', cat: 'heal', ev: 'trash', goal: 150, name: '쓰레기 150개 줍기' },
-  { id: 't-trash-rain', cat: 'heal', ev: 'trash', goal: 80, name: '쓰레기 80개 줍기 · 비 오면 두 배', x2: 'rain' },
-  { id: 't-heap-3', cat: 'heal', ev: 'heap-clear', goal: 3, name: '쓰레기 더미 3곳 다 치우기' },
-  { id: 't-recycle-3', cat: 'heal', ev: 'recycle', goal: 3, name: '클린하우스 3번 다녀오기' },
-  { id: 't-fish-3', cat: 'heal', ev: 'fish', goal: 3, name: '낚시 3번 · 비 오면 두 배', x2: 'rain' },
-  { id: 't-top-15', cat: 'heal', ev: 'trash-top', goal: 15, name: '정상 근처에서 15개 줍기 · 해 진 뒤엔 두 배', x2: 'night' },
-  { id: 't-steps-4000', cat: 'heal', ev: 'steps', goal: 4000, name: '오늘은 4,000걸음' },
+  { id: 't-trash-150', cat: 'heal', ev: 'trash', goal: 150, name: '쓰레기 150개 줍기', q: '오름 전체의 아주 작은 몫. 0 은 아님' },
+  { id: 't-trash-rain', cat: 'heal', ev: 'trash', goal: 80, name: '쓰레기 80개 줍기 · 비 오면 두 배', q: '젖은 쓰레기는 무거워요. 대신 두 배', x2: 'rain' },
+  { id: 't-heap-3', cat: 'heal', ev: 'heap-clear', goal: 3, name: '쓰레기 더미 3곳 다 치우기', q: '더미는 내일 4시 4분에 돌아와요' },
+  { id: 't-recycle-3', cat: 'heal', ev: 'recycle', goal: 3, name: '클린하우스 3번 다녀오기', q: '분리하면 귤. 까닭은 묻지 말기로' },
+  { id: 't-fish-3', cat: 'heal', ev: 'fish', goal: 3, name: '낚시 3번 · 비 오면 두 배', q: '낚인 것의 정체는 책임 안 져요', x2: 'rain' },
+  { id: 't-top-15', cat: 'heal', ev: 'trash-top', goal: 15, name: '정상 근처에서 15개 줍기 · 해 진 뒤엔 두 배', q: '정상 쓰레기는 대개 먼저 와 있어요', x2: 'night' },
+  { id: 't-steps-4000', cat: 'heal', ev: 'steps', goal: 4000, name: '오늘은 4,000걸음', q: '걸음엔 세금이 없어요(아직)' },
   // 만남·나눔
-  { id: 't-hello-3', cat: 'meet', ev: 'emote-meet', goal: 3, name: '다른 사람에게 인사 3번 (동작)' },
-  { id: 't-photo', cat: 'meet', ev: 'photo', goal: 1, name: '정상 표지석 인증샷' },
-  { id: 't-meal', cat: 'meet', ev: 'meal', goal: 1, name: '식당에서 한 끼' },
-  { id: 't-feed', cat: 'meet', ev: 'feed', goal: 1, name: '노루에게 귤 주기' },
-  { id: 't-stone', cat: 'meet', ev: 'stone', goal: 1, name: '돌탑에 돌 올리기' },
-  { id: 't-cart', cat: 'meet', ev: 'cart', goal: 1, name: '마차 타기' },
-  { id: 't-chat', cat: 'meet', ev: 'chat', goal: 1, name: '말풍선으로 인사' },
+  { id: 't-hello-3', cat: 'meet', ev: 'emote-meet', goal: 3, name: '다른 사람에게 인사 3번 (동작)', q: '받아 주지 않아도 셈해요' },
+  { id: 't-photo', cat: 'meet', ev: 'photo', goal: 1, name: '정상 표지석 인증샷', q: '표지석은 늘 웃어요. 돌이라서' },
+  { id: 't-meal', cat: 'meet', ev: 'meal', goal: 1, name: '식당에서 한 끼', q: '빈속은 장비가 아니에요' },
+  { id: 't-feed', cat: 'meet', ev: 'feed', goal: 1, name: '노루에게 귤 주기', q: '노루는 고맙다고 안 해요. 원래 그래요' },
+  { id: 't-stone', cat: 'meet', ev: 'stone', goal: 1, name: '돌탑에 돌 올리기', q: '소원은 접수만 해요' },
+  { id: 't-cart', cat: 'meet', ev: 'cart', goal: 1, name: '마차 타기', q: '요금은 없어요. 멀미는 별도' },
+  { id: 't-chat', cat: 'meet', ev: 'chat', goal: 1, name: '말풍선으로 인사', q: '말풍선은 재활용돼요' },
 ];
 export const TASK_BY = Object.fromEntries(TASKS.map((t) => [t.id, t]));
 export const CATS = ['fight', 'heal', 'meet'];
