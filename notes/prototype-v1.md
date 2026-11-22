@@ -29,6 +29,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | place.js | 소품(표지석·벤치·징검돌·하르방·돌탑), 사물 충돌, 돌담, 들머리 개울, 가게 거리, 쓰레기·오름 안 클린하우스·꽃, 마차, 러너(player), HP |
 | camera.js | 카메라, 첫 화면 궤도 |
 | hud.js | 위 한 줄·토스트·배너 자리, 상황 팁, 패널 닫기, 업적, 도감, 귤 숫자 늦게 올리기(gyulFx·gyulLand·gyulExpect) |
+| msglog.js | 메시지 줄 (#252): 화면에 띄우는 글의 한 길 `msg(kind, text, opt)` (kind get·info·warn·multi). 위쪽 줄·퀘스트 추적 줄 아래 같은 모양 한 줄 칸이 쌓이는 로그(최대 MSG.max, 오래된 것부터 사라짐, 같은 글·같은 key 는 ×N 합침)와 고정 한 줄 `#msg-pin`(opt.pin, 터 밖 카운트다운. 튜토리얼 안내 `#tut-toast` 가 있으면 그것 우선, 같은 자리). 대사 창·증강·사건 장면 동안 감춤. hud.js `toast`·`pickMsg`·팁·업적 알림, 감독 `say`, talkfx 타자 한 줄, 구역 이름·꽃 핌·떼 버팀이 이것을 부름. 감독 busy 는 `msgBusy()`. 자리 잡기는 0.1초마다(방송 띠·떼/우두머리 띠와 겹치면 아래로). 수치 balance.js MSG. `tickMsg`(update.js), `__oreum.msg`·`__oreum.msglog`, 검사 `tools/msgshot.js` |
 | director.js | 감독(#176): `src/director.js` 를 게임에 붙임. 말을 거는 것은 `director.ask(kind, id, show)`·`say(kind, id, text, sec)` 로 한 번에 하나씩(우선순위·간격·싸움 중 제한), 문 열기(`register({ id, gate, intro, kind, clue })`, 순서·조건은 balance.js JOURNEY, 사실 값 FACTS), 한가할 때 실마리, 끝을 모르는 창은 `holdWin`. `late.director`, `__oreum.director`, 확인 `node tools/journey.js` |
 | talkfx.js | 대사 연출(#224): 타자 효과(`src/typer.js`, 자리를 먼저 잡고 보이는 글자 수만 늘림)를 퀘스트 창·동료 창·감독의 이야기/퀘스트 한 줄(`say` → `late.talk.toast`)에 붙이고, 화자 프로필(3D 모델을 그리기 바로 앞에 화면 구석에 그려 96×96 으로 떠 옴, 캐시·옷 바뀌면 다시)을 이름 옆에. 설정 '대사 타자 효과'(save.typeFx). 수치·화자 표는 balance.js TALK.type·face·who. `late.tickTalk`(update.js 그리기 앞), `__oreum.talk` |
 | input.js | 키보드·조이스틱(떠다님·고정, #211)·멀티터치·시점·핀치, 속도 |

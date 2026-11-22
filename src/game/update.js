@@ -21,7 +21,7 @@ import { $, wrapA, save, lookS, ab, persist, MAP_ID } from './save.js';
 import { renderer, quality, retro, post, scene, NSW, camera, resize, sun, applyQuality, fill, rim, SUN_DIR, clouds, wx, eoksaeMat, grass, motes, prints, spots, lamps, sunState, lampNight, applySky, sunEvent, prepShaders } from './scene.js';
 import { benchPos, benchOut, life, cairns, layoutCairn, stepCairn, fillCairn, tickCairnLod, col, wallPl, wall, stream, jeongReady, jeong, openJeong, shopsBuilt, roofSigns, STN, SAL, LEAPB, buff, trash, CH, CHS, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, camTarget, followCam, titleCam, ease } from './camera.js';
-import { ui, topFit, toast, tickTips, tickPickMsg, updateStats, busy, ach, tickBanner, refreshAchUI } from './hud.js';
+import { ui, topFit, toast, tickTips, tickPickMsg, updateStats, busy, ach, tickBanner, refreshAchUI, tickMsg } from './hud.js';
 import { keys, ptrs, joy, marker, setGait } from './input.js';
 import { bowReady, setHoldBow, aimHeading, releaseTangerine, releaseArrow, tickAimMark, tickEdgeAim } from './throw.js';
 import { dismountRide, rideWant, tickRideZone, tickCartRide, tickCartMark } from './ride.js';
@@ -41,6 +41,7 @@ import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
 state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0, reports: 0 };
+state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히 도는 이슈와 부딪혀서 따로
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -416,6 +417,7 @@ function step(now) {
   late.tickUfo?.(dt); // 첫 화면 UFO (#150): 카메라를 옮긴 뒤
   updateContext(); tickAimMark(now / 1000); tickEdgeAim();
   if (state.toastT > 0) { state.toastT -= dt; if (state.toastT <= 0) ui.toast.hidden = true; }
+  tickMsg(dt); // 메시지 줄 (#252, game/msglog.js)
   late.tickStory?.(dt, now / 1000); late.tickEnding?.(dt); // 이야기 이벤트·엔딩 (#168)
   late.tickUfoSeen?.(dt); // UFO 드러남 단계 (#207)
   late.tickSummit?.(dt); // 정상 첫 실마리 (#208, game/summit.js): 엔딩 뒤 (cine 자리를 같이 씀)

@@ -47,10 +47,10 @@ export const net = createNet({
   rideHook: (e, dt) => late.tubePeer?.(e, dt) || peerRide(e, dt), // 수거 관 (#248): 작아짐·숨김·튀어나옴이 먼저
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)
-  onToast: (m) => toast(m),
+  onToast: (m) => toast(m, undefined, 'multi'),
   solo: () => !!late.tut?.active, // #100 튜토리얼 중엔 혼자: 남이 안 보이고 내 모습도 안 보냄
 }); late.net = net;
-export const social = createSocial({ scene, net, save, onToast: (m) => toast(m), mapId: MAP_ID }); late.social = social;
+export const social = createSocial({ scene, net, save, onToast: (m) => toast(m, undefined, 'multi'), mapId: MAP_ID }); late.social = social;
 state.emo = createEmotes({
   scene, player, save, persist, net, toast, sound: () => late.sound, camera, placeArrow: (el, wp, lift) => late.placeArrow(el, wp, lift), ui: document.body,
   can: emoCan, riding: emoRiding, heapPos: () => nearestHeapPos(), groundAt, myRoot: () => runner.root,
