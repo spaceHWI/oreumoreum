@@ -6,8 +6,9 @@
 //   ev [{ id, kind 'photo'|'trace'|'note'|'act', at, prop, label, note, k?, n? }] 증거 (셋). act 는 at 없이 퀘스트 셈 k 가 사건을 연 뒤 n 번 오르면
 //   face { kind 'none'|'hide'|'arena'|'boss', at?, prop?, label?, len?, lines? } 대면. arena 는 그 구역 서바이벌 한 판을 버팀, boss 는 그 구역 우두머리를 쫓아냄 (사건을 연 뒤)
 //     arena·boss 에 follow { path [[x,z]…], near, end, speed, len } 를 주면 끝난 뒤 흰 옷을 따라가 장면까지 봐야 대면 끝 (#233, game/casechase.js). see.ghost 는 목격 때 흰 옷이 스침
+//     arena·boss 에 scene '<이름>' 이면 조건 뒤 face.at 에서 상호작용해 장면(caseprops.js SCENES)을 봐야 대면 끝 (#235) · see.gone 대면 뒤 목격 모양 치움 · 증거 z 다른 구역
 //   hello { <NPC id>: [말] } 종결 뒤 그 NPC 인사에 더하는 말 (#233)
-//   see.gone true 면 사건이 열린 뒤 화면에서 눈을 떼면 목격 모양이 사라짐 · face.actor + lines 가 있는 arena·boss 는 끝난 뒤 at 에서 '다가가기' 장면 (actor 는 late.caseActors, 예 game/casesuit.js)
+//   see.blink true 면 사건이 열린 뒤 화면에서 눈을 떼면 목격 모양이 사라짐 · face.actor + lines 가 있는 arena·boss 는 끝난 뒤 at 에서 '다가가기' 장면 (actor 는 late.caseActors, 예 game/casesuit.js)
 //     arena·boss 에 watch: true 면 조건 뒤 at 에 모양이 나타나고 다가가 보기 장면 (#236, 모양 userData.anim) · trail { pts, size, step } 발자국 한 줄
 //   doc 서류 쪽지 id (대면을 끝내면 받음) · notes [NOTES 모양] 증거·서류 쪽지 · quests [QUESTS.side 모양] 진행
 //   cloth 보상 옷(겉모습, 값 0) · title 칭호 글(punktext.js TITLES 에 같은 글로 한 줄 더함) · badge { id, color, desc, reward } 업적
@@ -15,9 +16,10 @@
 import c1 from './c1.js';
 import c2 from './c2.js';
 import c3 from './c3.js';
+import c4 from './c4.js';
 import c5 from './c5.js';
 
-const LIST = [c1, c2, c3, c5].filter(Boolean);
+const LIST = [c1, c2, c3, c4, c5].filter(Boolean).sort((a, b) => a.n - b.n);
 export const CASES = LIST;
 export const CASE_BY = Object.fromEntries(LIST.map((c) => [c.id, c]));
 export const CASE_DOCS = 5; // 사건 파일 맨 위 서류 칸 수 (단가표·수거 시간표·인수인계서·투입구 규격서·분실물 접수증)

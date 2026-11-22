@@ -116,6 +116,7 @@ import './game/story.js'; // 이야기 이벤트 (#168)
 import './game/ufoseen.js'; // UFO 드러남 단계 (#207): 흔적 → 실루엣 → 또렷이
 import './game/swarm.js'; // 들판 떼 (#173)
 import './game/arena.js'; // 서바이벌 터·징 (#231)
+import './game/token.js'; // 징표·좌판·전투 특화 무기·옷 (#255, arena 뒤)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
 import './game/fightcam.js'; // 전투 때 카메라 멀어지기 (#216, camera.js followCam 이 부름)

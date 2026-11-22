@@ -9,8 +9,8 @@ const FEET = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.
   + '<ellipse cx="50" cy="90" rx="40" ry="4" fill="#000" opacity=".18"/></svg>');
 export default {
   id: 'c3', n: 3, zone: 3, lv: 10, name: '맨 인 블랙', giver: 'b:rest',
-  // 목격: 능선 서쪽에 검은 양복 둘. 다가가면 혼잣말, 사건이 열린 뒤 화면에서 눈을 떼면 사라짐 (gone: 뒤돌아보면 없다)
-  see: { at: [-251, 52], r: 16, prop: 'suits', gone: true, say: '"아무것도 못 봤습니다." …뭘요?' },
+  // 목격: 능선 서쪽에 검은 양복 둘. 다가가면 혼잣말, 사건이 열린 뒤 화면에서 눈을 떼면 사라짐 (blink: 뒤돌아보면 없다)
+  see: { at: [-251, 52], r: 16, prop: 'suits', blink: true, say: '"아무것도 못 봤습니다." …뭘요?' },
   ev: [
     { id: 'k3a', kind: 'trace', at: [-249.5, 53.5], prop: 'prints', label: '살펴보기', note: 'k3a' },
     { id: 'k3b', kind: 'note', at: [80, -160], prop: 'notebook', label: '수첩 줍기', note: 'k3b' },

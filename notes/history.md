@@ -1811,6 +1811,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 그대로: 직접 던진 귤이 하르방에 맞는 것(hitTest 는 따로), 모자 흔들림, 하르방 코 맞히기 일일 목표, 인사하기·가이드 퀘스트. 다른 '적 아닌 것'(관광객·까마귀·흡연자·과녁)은 이슈별 이벤트용 대상이라 그대로 둠
 - 확인: `tools/smoke.js` 에 '하르방 곁에서 자동 겨누기 없음' 한 줄
 
+## #235 사건 4 '굼부리 괴물' (2026-11-22)
+- `src/cases/c4.js`: 레벨 14(임의)에 굼부리 바닥 가운데(48, -420) 52m 안에 들면 혼잣말 '방금… 뭐가 솟았다 들어갔지?' → 굼부리 표지판 '굼부리 괴물'(귤 150) → 증거 셋: 서쪽 둘레 말뚝 사진(8, -446) · 바닥 둥근 자국 다섯(38, -393) · 굼부리 관리 초소(금고 0404) 곁 초소 일지(23.6, -21.8, 초소가 정상 쪽이라 구역 5) → '안개가 걷히면'(귤 500·조사관 모자·외계 부품 3) → 굼부리 서바이벌 터 한 판 → 북서쪽 둘레 말뚝(14, -398)에서 '안개 지켜보기' 장면
+- 장면 'hose'(12초): 안개(얇은 원판 셋)가 걷히며 목이 하늘까지 이어진 주름 호스로 바뀌고, 카메라가 호스를 따라 하늘로 갔다 내려오면 주둥이에서 쓰레기가 쏟아져 새 더미가 됨. 글은 자막 세 줄뿐
+- 틀에 더한 것 (뒤 사건도 씀): `face.scene`(arena·boss 를 끝낸 뒤 face.at 에서 장면을 봐야 대면 끝, 저장 `save.cases[id].r` 싸움은 끝냄) · `face.tint`('dusk' 기본·'mist') · `see.gone`(대면 뒤 목격 모양 치움) · 증거 `z`(일부러 다른 구역에 둔 것, caserun 구역 검사) · 모양의 `userData.tick`(움직이는 모양) · 퀘스트 보상 재료는 #233 의 `mats` 를 씀. 장면은 `game/caseprops.js` SCENES
+- 목 그림자는 모양 'neck'(원통 마디 + 비스듬한 머리, 14초마다 솟았다 가라앉음) + 안개 원판, draw call 2. 들개 글: 동료 제니 z4 '들개들이 굼부리에서 도망쳐 나와요…'
+- 대면 화살표: 터를 버티기 전엔 서바이벌 터로, 버틴 뒤엔 장면 자리로
+- 확인: `node tools/caserun.js c4 [d|m] [shots]` (arena 대면·장면까지 봄)
+
 ## #238 매일 미확인 제보
 - 데이터 `src/cases/reports.js` 34개(헛소문 9, 큰 사건 실마리 c1~c5 각 하나: 아직 없는 사건 것은 아무에게도 안 나옴). `reportOf(날짜, ok)` 가 날짜 난수로 고름(REPORT.hoax 30% 헛소문)
 - 게임 `src/game/reports.js`: 레벨 REPORT.lv(2)부터 하루 하나, 구역은 journey.maxZ 까지. 길가 더미 곁에 흔적 모양 + 바닥 표시, '살펴보기'(헛소문은 '둘러보기') → find 한 줄 + 귤 REPORT.gyul(30). 쪽지 창 `#report-note`
@@ -1868,10 +1876,27 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
 
 ## #234 사건 3 '맨 인 블랙' (opus, 2026-11-22)
-- `src/cases/c3.js`: 레벨 10(임의), 능선. 의뢰 능선 쉼터 표지판(b:rest). 목격 (-251, 52) 검은 양복 둘(뒤돌아보면 실루엣 모양) → 혼잣말 '"아무것도 못 봤습니다." …뭘요?', 열린 뒤 화면에서 눈을 떼면 사라짐(see.gone)
+- `src/cases/c3.js`: 레벨 10(임의), 능선. 의뢰 능선 쉼터 표지판(b:rest). 목격 (-251, 52) 검은 양복 둘(뒤돌아보면 실루엣 모양) → 혼잣말 '"아무것도 못 봤습니다." …뭘요?', 열린 뒤 화면에서 눈을 떼면 사라짐(see.blink)
 - 증거(임의 자리): 맨발 자국 (-249.5, 53.5) 능선 서쪽 · 연습한 수첩 (80, -160) 동쪽 · 귤 상자 '작은 성의' (-140, -350) 북쪽
 - 대면: 능선 우두머리를 쫓아낸 뒤 (-95, 47, 길 위라 풀에 안 가림)에 검은 양복이 섬 → '다가가기' → 11초 장면: "아무것도 못 봤습니다." → "…불편… 불편을…" → 깊이 숙인 인사, 카메라가 발치(맨발) → 눈을 떼면 없음. 사과 문장은 끝까지 안 함
 - 증거 사진(doc k3d) '검은 양복의 발': 쪽지 img 에 SVG(바지 끝·맨발, 발가락 넷). 보상 귤 40·150(퀘스트 몫, 서버 계정마다 한 번), 조사관 외투(jacket:i-trench, 값 0), 굼부리 재료 m4 ×4(퀘스트 reward.mats, #233 틀), 칭호 '못 본 걸로 한 사람'
-- 틀에 더함(cases.js): see.gone, 싸움 뒤 장면(face.actor, save h). 배우는 `game/casesuit.js`. caserun 은 boss·arena 장면 길과 see.gone, 사건별 모양(id) 확인으로 고침
+- 틀에 더함(cases.js): see.blink(#235 의 see.gone 과 다름), 싸움 뒤 장면(face.actor, save h). 배우는 `game/casesuit.js`. caserun 은 boss·arena 장면 길과 see.gone, 사건별 모양(id) 확인으로 고침
 - sec.js 의 dev 에서도 나는 실패 4건(+가끔 소원 5건)은 #258 로 올림
 
+## #255 서바이벌 재화 '징표'·징표로만 사는 전투 특화 무기·옷 (2026-11-22)
+- 셈 `src/token.js`(게임·서버·tools 같이), 수치 balance.js `TOKEN`, 게임 `src/game/token.js`(arena 뒤), 서버 `server/src/token.js`(validate.js checkSave 가 부름, cred.tk·tz 는 earn.js normCred)
+- 얻기: 한 판 끝(swarm.js `late.swarmEnd`) → 버팀 = 구역 × 3 · 대장 쫓아냄 +2 · 안 쓰러짐 +1, 못 버티면 버틴 물결 × 0.5(2 까지). 기록 `save.tok.rec[구역] = { at, n, win }` 을 서버가 판 상한·통(초당 0.06, 40)·버틴 판은 쉬는 시간 × 0.9 안에 두 번 안 받음으로 인정. 기록은 되돌릴 수 없음
+- 씀: 새 무기 단계·징표 옷의 값만큼(`tokSpent`). 모자라면 산 것을 되돌림('tokItems' → fix.tok·reload), 남은 징표가 넘으면 깎음('tok' → fix.tok, start.js `late.tokFix`). 징표 옷은 귤 값(spentOf·revertItems)에서 뺌(freeCloths)
+- 보임: 터·좌판 근처에서만 '지금 있는 곳' 옆 `#where-tok`, 좌판 창 위 숫자, 내 가방 아래 한 줄(`late.tokFoot`). 위쪽 줄은 그대로
+- 좌판: 터 문 바깥 옆(터 자리·문 방향 기준 → #253 으로 옮겨도 따라감), 터마다 그리기 1번 + 가까운 좌판 하나에만 주인 '터지기'(러너 하나). 창은 `SHOP_POP.tok`(가게 팝업 틀, 클래스 tok 은 징표 동전)
+- 무기: 연발(mg 방식)·관통(gun + `pierce`, weaponfx.js 가 뚫고 다음 적까지)·폭발(bomb 방식) × 3단계. 강화는 기존 재료 강화 대신 징표로 단계를 올림(같은 칸이라 upMul 은 1). 든 것은 `save.tok.arm`, throw.js weaponNow 가 `late.tokArm` 먼저. 귤 무기를 고르거나 사면 내려놓음
+- 옷: 겉모습 옷(tier 0, style, tok)으로 CLOTHES 에. 입은 칸은 save.js wearV 가 `state.tokWearV` 를 먼저: 기운·회복·받는 피해는 더 큰 쪽, 모자·바지·베스트(줍기·벌이)는 없음 값 대신 피해 +6~8%(buff.mul('dmg') 감쌈). 여섯 칸이면 판 중 한 번 일어남(hp.hit 감쌈), 쉬는 시간 뒤 다시. LEAP 진열에서 뺌(weekly.js onShelf)
+- 차림 묶음 `save.tok.kit.pick·fight`(옷·징표 무기·귤 무기 단계): 내 가방 아래 버튼. 징을 칠 때 싸움 차림이 있고 지금과 다르면 '싸움 차림으로 갈아입을까요?'(`#tok-ask`, 고르면 판 시작)
+- 곁가지 퀘스트 x-token(오름지기, 문 field, 징표 10개 → 귤 20), 오늘의 할 일 t-arena(ev arena-win), 업적 b-token(징표 30)
+- 장비 점수(gearScore)는 그대로: 구역 권장·감독 문이 전투 장비로 흔들리지 않게. 내 가방 '피해' 줄은 든 무기(징표 무기 포함) 값
+- 확인: `node tools/tokenrun.js`(서버 셈 + 게임: 버팀 → 징표 → 좌판 → 귤로는 못 삼 → 징표로 삼 → 무기·옷·차림·징 묻기·관통·폭발·한 벌 덤), `tools/sec.js` 징표 5줄, `tools/oldsave.js tokBad·tokWear·tokStr`
+
+## #259 sec.js 실패 줄 (2026-11-22)
+- 원인: 검사 코드가 아니라 **남은 서버**. `sec.js` 는 wrangler 를 detached 로 띄우는데, `timeout` 으로 끊긴 실행이 서버를 남겨 같은 포트(8797~8800)를 계속 잡음 → 새 서버는 못 뜨고 /health 를 옛 서버가 받아, 옛 코드·쌓인 저장(지난 날짜의 이용 통계, 지운 계정 토큰, 이미 받은 귤 보내기 목록)으로 검사가 돌았음. 남은 서버를 끄고 돌리면 249/249 통과
+- `tools/localsrv.js`: `clearPorts`(포트가 이미 답하면 그 포트·`--persist-to` 이름으로 띄운 남은 wrangler·workerd 만 끄고 비워질 때까지 기다림) · `killOnExit`(SIGINT·SIGTERM·SIGHUP 에도 띄운 서버를 끔). `sec.js`·`rankrun.js` 가 씀
+- `notes/auto.md` 확인 절에 한 줄

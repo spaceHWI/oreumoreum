@@ -182,11 +182,13 @@ const ammoText = (w) => {
 };
 function fillArm() {
   const g = list(), own = save.equip.weapon || 1, use = save.weaponUse || own, nowW = WEAPONS[use - 1];
+  const tokOn = !!late.tokArm?.();
   WEAPONS.forEach((w, i) => {
-    const has = i < own, on = use === i + 1;
+    const has = i < own, on = !tokOn && use === i + 1;
     const sub = has ? `${armSub(w)}<br>${ammoText(w)}${on ? '' : ` · 피해 ${diffLine(nowW.dmg, w.dmg)}`}` : armSub(w);
     g.append(card({ icon: late.itemArt?.('weapon', i, 'food') || late.TIER_ART?.weapon?.[i] || '', name: w.name, sub, on, own: has, lock: has ? null : { shop: 'gear', price: w.price }, click: has ? () => { chooseArm(i + 1); buildBag(); } : null }));
   });
+  late.tokArmRows?.(g, card, buildBag); // 징표 무기 (#255, game/token.js)
 }
 // 도구·배낭: 산 단계까지 가짐. 가장 높은 단계가 장착 (#111 순서 없이 사도 산 단계 아래는 가짐)
 const TIER_K = { tool: { L: TOOLS, lo: 1, sub: (t) => `${t.rate ? `초당 ${t.rate}개` : `한 번에 ${t.per}개`} · ${t.r}m` }, bag: { L: BAGS, lo: 0, sub: (t) => `담는 양 ${t.cap}` } };
@@ -216,13 +218,14 @@ function fillRide() {
 }
 // 아래: 장비 점수와 주요 능력 4줄 (줍는 속도·배낭 용량·이동·무기 피해), 레벨·증강 한 줄 (#159, level.js late.augFoot)
 function fillFoot() {
-  const g = gearScore(save), t = toolNow(), w = WEAPONS[(save.weaponUse || save.equip.weapon || 1) - 1];
+  const g = gearScore(save), t = toolNow(), w = late.weaponNow?.() || WEAPONS[(save.weaponUse || save.equip.weapon || 1) - 1];
   const pick = `${(t.per / t.time).toFixed(1).replace(/\.0$/, '')}/초`, wd = +(w.dmg * weaponMul(save)).toFixed(1); // #140 등급·강화가 얹힌 값
   const spd = (shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0))).toFixed(2).replace(/0$/, '');
   const S = late.STAT_ICON || {};
   const row = (ic, name, v) => `<span class="bs">${SVG(S[ic] || '')}<em>${name}</em><b>${v}</b></span>`;
   footEl.innerHTML = `<div class="bag-score"><em class="bs-k">장비 힘</em>${scoreChip(g.total, 0)}<small>줍는 힘 ${g.pick} · 싸우는 힘 ${g.fight}</small></div>`
     + `<div class="bag-stats">${row('rate', '줍기', pick)}${row('cap', '배낭', bagCap())}${row('speed', '이동', '×' + spd)}${row('dmg', '피해', w.dps ? `${wd}/초` : wd)}</div>`
+    + (late.tokFoot?.() || '') /* 징표·싸움 차림 (#255) */
     + (late.lvShown?.() && bagS.tab !== 'stat' ? late.augFoot?.() || '' : ''); // 레벨·증강 (#159): 장비 점수와 따로 (능력 탭에선 위에 크게)
 }
 
