@@ -52,7 +52,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
   ok(r2.n >= 4 && !r2.any, `들판 ${r2.n}곳에 서 봐도 판이 시작되지 않음`);
 
   // 5) 처음 들어간 구역 안내
-  const r5 = await ev(async () => { const o = window.__oreum; o.enemies.test.clear(); o.hp.set(o.hp.max); o.player.target = null; await new Promise((r) => setTimeout(r, 400)); /* 앞 단계 들판에서 맞아 쓰러지면 들것이 자리를 옮김 (#253) */ o.arena.clearHint(); const a = o.arena.list()[1]; o.tp(a.gong.x + Math.sin(a.face) * 6, a.gong.z + Math.cos(a.face) * 6, a.face + Math.PI); const seen = [], mo = new MutationObserver(() => { const t = document.getElementById('toast')?.textContent || ''; if (t && seen[seen.length - 1] !== t) seen.push(t); }); mo.observe(document.body, { subtree: true, childList: true, characterData: true }); o.arena.clearHint(); /* 같은 때 뜨는 다른 알림(구역 안내 등)이 덮어써도 뜬 적이 있는지 봄 (#253) */
+  const r5 = await ev(async () => { const o = window.__oreum; o.enemies.test.clear(); o.hp.set(o.hp.max); o.player.target = null; await new Promise((r) => setTimeout(r, 400)); /* 앞 단계 들판에서 맞아 쓰러지면 들것이 자리를 옮김 (#253) */ o.arena.clearHint(); const a = o.arena.list()[1]; o.tp(a.gong.x + Math.sin(a.face) * 6, a.gong.z + Math.cos(a.face) * 6, a.face + Math.PI); const seen = [], mo = new MutationObserver(() => { const t = document.getElementById('msg-log')?.textContent || ''; /* #252 뒤로 알림은 #msg-log */ if (t && seen[seen.length - 1] !== t) seen.push(t); }); mo.observe(document.body, { subtree: true, childList: true, characterData: true }); o.arena.clearHint(); /* 같은 때 뜨는 다른 알림(구역 안내 등)이 덮어써도 뜬 적이 있는지 봄 (#253) */
     for (let t = 0; t < 30 && !seen.some((q) => /남쪽 사면 서바이벌 터/.test(q)); t++) await new Promise((r) => setTimeout(r, 100)); mo.disconnect(); const at = [Math.round(o.player.pos.x), Math.round(o.player.pos.z)]; const toast = seen.find((q) => /남쪽 사면 서바이벌 터/.test(q)) || seen.join(' / '); return { hint: o.arena.hint(), toast, at }; });
   ok(r5.hint[2] === 1 && /남쪽 사면 서바이벌 터/.test(r5.toast), `구역 2 에 처음 들어가면 안내 한 줄: ${r5.toast.slice(0, 60)}${r5.hint[2] ? '' : ' (자리 ' + r5.at + ')'}`);
 
@@ -82,12 +82,24 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     ok(/쉬는 중/.test(r3.tag || '') && !r3.again, `구역 ${z}: 쉬는 동안 징 '${(r3.tag || '').slice(0, 30)}' · 눌러도 시작 안 함`);
   }
 
+  // 4-0) 터 밖으로 나갔다 돌아오면 고정 한 줄이 걷히고 판은 이어짐 (#266: msgLog.unpin 이 없어 그 프레임에 멈추던 것)
+  const r40 = await ev(async () => {
+    const o = window.__oreum, a = o.arena.list()[0], P = o.player, sl = (ms) => new Promise((r) => setTimeout(r, ms));
+    o.enemies.test.clear(); o.hp.set(o.hp.max); o.swarm.clearRest(); o.swarm.start(1); await sl(500);
+    const x = a.x + a.r + 6, z = a.z; P.pos.set(x, o.height(x, z), z); await sl(1200);
+    const out = o.msglog.state().pin, f0 = o.renderer.info.render.frame;
+    P.pos.set(a.x, o.height(a.x, a.z), a.z); o.hp.set(o.hp.max); await sl(800);
+    const r = { out, back: o.msglog.state().pin, run: !!o.swarm.state(), frames: o.renderer.info.render.frame - f0 };
+    o.swarm.stop?.(); return r;
+  });
+  ok(r40.out?.key === 'leave' && !r40.back && r40.run && r40.frames > 2, `터 밖 → 돌아옴: 고정 줄 '${(r40.out?.text || '').slice(0, 20)}' 걷힘 · 판 이어짐 (${r40.frames}프레임)`);
+
   // 4) 터를 벗어나면 끝
   const r4 = await ev(async () => {
     const o = window.__oreum, a = o.arena.list()[0], P = o.player, sl = (ms) => new Promise((r) => setTimeout(r, ms));
     o.enemies.test.clear(); o.hp.set(o.hp.max); o.swarm.clearRest(); o.swarm.start(1); await sl(500);
     const x = a.x + a.r + 6, z = a.z; P.pos.set(x, o.height(x, z), z); await sl(1200);
-    const warn = document.getElementById('toast')?.textContent || '', mid = !!o.swarm.state();
+    const warn = o.msglog.state().pin?.text || '', mid = !!o.swarm.state(); /* #252 뒤로 경고는 #toast 가 아니라 위 고정 한 줄 */
     o.swarm.speed(3); for (let i = 0; i < 40 && o.swarm.state(); i++) { o.hp.set(o.hp.max); P.pos.set(x, o.height(x, z), z); await sl(250); } o.swarm.speed(1);
     return { warn, mid, why: o.swarm.last?.why, bonus: o.swarm.last?.bonus, rest: Math.round(o.swarm.rest(1)) };
   });
