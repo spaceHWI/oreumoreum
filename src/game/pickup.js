@@ -1,7 +1,7 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
 import { upMul, legendOn } from '../loot.js';
-import { LOOT } from '../balance.js';
+import { LOOT, RANK } from '../balance.js';
 import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, FEEL, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
@@ -72,8 +72,14 @@ function takeNow() {
     }
     if (n >= tool.per || room < 1) break;
   }
+  if (n) guestNudge();
   if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < FEEL.combo.gap ? pickS.combo + 1 : 1; pickS.comboAt = now; late.sound.combo?.(Math.min(FEEL.combo.pitchMax, pickS.combo - 1)); late.feel?.combo(pickS.combo); } /* 이어 주우면 음이 올라감 (#89), 콤보 숫자·보너스 (#141) */
   if (bagRoom() < 1) { late.sound.full?.(); fullToast(); }
+}
+/* #261: 로그인하지 않은 손님이 처음 RANK.guestNudge 개를 치우면 한 번 */
+function guestNudge() {
+  const a = state.account; if (!a || a.loggedIn || save.rankNudge || trash.totalCount() < RANK.guestNudge) return;
+  save.rankNudge = 1; persist(); toast('로그인하면 순위에 올라가요', 3.5);
 }
 export function tickPick(dt) {
   if (!trash) return;
