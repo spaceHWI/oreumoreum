@@ -58,6 +58,8 @@ const SAVES = {
   lvOld13: { nick: '옛 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(13) + 5, aug: { recycle: 3, bighand: 3, twin: 3, burst: 3 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 100 }, badges: {} } },
   lvOldRich: { nick: '옛 부자', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(5), aug: { recycle: 1 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 120000, pickup: 30000 }, badges: {} } },
   tutStall: { nick: '좌판 사람', coins: 30, nsV1: 1, nsV2: 1, nsV3: 1, bagV: 1, entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 9, done: false, v: 4, gyul: [0, 1, 2], hits: 3 }, equip: { tool: 1, bag: 0, shoes: 0, weapon: 1 } }, // #221 들머리 좌판 배낭 단계에 멈춘 저장 → 장비점 가기 처음, 가게 쪽 정낭·장비점 열림
+  tubeBad: { nick: '깨진 관', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, recycle: { visits: 2 }, tube: [3, 'nope', 'gate', 'gate', null] }, // #248 깨진 수거 관 목록
+  tubeOld: { nick: '옛 관', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, recycle: { visits: 5 }, journey: { step: 3, maxZ: 3, seen: {} } }, // #248 save.tube 없는 옛 저장
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
 };
 (async () => {
@@ -78,6 +80,9 @@ const SAVES = {
     if (errs.length || st.fail || !(f2 > (st.frames || 0))) bad++;
     if (!st.step || (st.srv && st.srv !== 'battle')) { bad++; console.log(name, '서버 고르기 흔적·clean 이 남음'); }
     if (name === 'style') { const c = await p.evaluate(() => ({ g: window.__oreum.save.outfit.gear.hat, t: window.__oreum.save.clothes.tint, w: window.__oreum.save.clothes.wear })).catch(() => ({})); if (!(c.g === 'hat:s-beanie~4' && Object.keys(c.t || {}).join() === 'hat:s-beanie' && !c.w?.vest)) { bad++; console.log(name, '겉모습 옷 저장 바로잡기 실패', JSON.stringify(c)); } } // #179
+    if (name.startsWith('tube')) { const L = await p.evaluate(() => window.__oreum.tube.linked()).catch(() => null); /* #248 깨진 목록은 아는 id 하나씩만, 옛 저장은 지난 구역(3)까지 */
+      const want = name === 'tubeBad' ? JSON.stringify(L) === '["gate"]' : !!(L && L.includes('gate') && L.includes('rest') && !L.includes('crater'));
+      if (!want) { bad++; console.log(name, '수거 관 목록 실패', JSON.stringify(L)); } else console.log(name, '수거 관', JSON.stringify(L)); }
     if (name.startsWith('lvOld')) { const L = await p.evaluate(() => { const o = window.__oreum; return { ...o.level.state(), v: o.save.lv.v }; }).catch(() => ({}));
       const want = name === 'lvOld13' ? (L.lv >= 13 && L.aug.recycle === 3 && L.aug.burst === 3 && Object.keys(L.aug).length === 4) : (L.lv >= 12 && L.aug.recycle === 1); /* 부자: 번 귤 15만 → 레벨 12 이상 (#202 곡선) */
       if (!(want && L.v === 2)) { bad++; console.log(name, '옛 레벨 바꾸기 실패', JSON.stringify({ lv: L.lv, xp: L.xp, aug: L.aug, v: L.v })); } else console.log(name, `레벨 ${L.lv} · 경험치(번 귤) ${L.xp} · 증강 ${JSON.stringify(L.aug)}`); }
