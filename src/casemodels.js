@@ -83,13 +83,24 @@ function skinGeo(asset, name, D) {
   g.computeBoundingSphere(); g.boundingSphere.radius *= 1.5; /* 팔을 들거나 앉아도 잘리지 않게 */
   geoCache.set(asset, g); return g;
 }
+/* 맨발 (#264): 모델 좌표 y 가 이보다 낮은 곳(구두)을 살색으로 칠함. 모양은 그대로, 발가락은 쓰는 쪽에서 붙임(casesuit.js) */
+const BARE = { mib: { y: 0.072, color: '#f1dcc2' } };
 const matCache = new Map();
-function skinMat(asset, glow) {
+function skinMat(asset, glow, name) {
   const key = asset + '|' + glow; let m = matCache.get(key); if (m) return m;
   m = propMaterial(asset, glow != null ? { glow } : {});
-  const prev = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { prev.call(m, sh, r); patchDQS(sh); };
-  m.customProgramCacheKey = () => 'casedq'; matCache.set(key, m); return m;
+  const bare = BARE[name], prev = m.onBeforeCompile;
+  m.onBeforeCompile = (sh, r) => {
+    prev.call(m, sh, r); patchDQS(sh);
+    if (!bare) return;
+    const c = new THREE.Color(bare.color).convertSRGBToLinear();
+    sh.vertexShader = 'varying float vBareY;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBareY = position.y;');
+    sh.fragmentShader = 'varying float vBareY;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+      `#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)}) * diffuse, 1.0 - smoothstep(${(bare.y - 0.006).toFixed(3)}, ${bare.y.toFixed(3)}, vBareY));`);
+  };
+  m.customProgramCacheKey = () => (bare ? 'casedq-bare' : 'casedq'); matCache.set(key, m); return m;
 }
+export const caseBare = (name) => BARE[name] || null;
 let depthMat = null;
 const dqDepth = () => depthMat || (depthMat = Object.assign(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), { onBeforeCompile: patchDQS }));
 
@@ -109,6 +120,7 @@ const CLIPS = {
   /* 검은 양복 */
   stand: (B, t) => { B.chest.rotation.x += S(t * 1.2) * 0.004; },
   talk: (B, t) => { B.head.rotation.x += (S(t * 4.2) * 0.5 + 0.5) * 0.06 * (S(t * 0.9) > -0.3 ? 1 : 0); },
+  bow: (B, t) => { const k = sstep(0, 0.9, t); B.chest.rotation.x += 0.62 * k; B.head.rotation.x += 0.3 * k; armUp(B, 'armL', 0.12 * k, -0.04 * k); armUp(B, 'armR', 0.12 * k, 0.04 * k); }, /* 깊이 숙인 인사: 허리(가슴 뼈)에서 숙이고 그대로 멈춤 (#264) */
   shuffle: (B, t) => { const a = S(t * 11); B.legL.rotation.x += a * 0.14; B.legR.rotation.x -= a * 0.14; B.hips.rotation.y += a * 0.02; },
   /* 흰 작업복 */
   glide: (B, t) => { B.chest.rotation.x += 0.08; armUp(B, 'armL', S(t * 1.4) * 0.08, 0.05); armUp(B, 'armR', -S(t * 1.4) * 0.08 - 0.05, -0.05); B.head.rotation.y += S(t * 0.7) * 0.15; },
@@ -131,7 +143,7 @@ const CLIPS = {
 /* 모델마다 이름 → 모션 (이름이 같아도 모델마다 뜻이 다를 수 있음) */
 const MOVES = {
   yeti: { idle: 'breathe', breathe: 'breathe', tie: 'tie', sit: 'sit', lookback: 'lookback', walk: 'heavy', wave: 'wave' },
-  mib: { idle: 'stand', stand: 'stand', talk: 'talk', walk: 'shuffle' },
+  mib: { idle: 'stand', stand: 'stand', talk: 'talk', walk: 'shuffle', bow: 'bow' },
   'ghost-keeper': { idle: 'idle', walk: 'glide', glide: 'glide', pinch: 'pinch', lookback: 'turnback' },
   'arena-keeper': { idle: 'idle', wave: 'wave1', gong: 'gong', offer: 'offer' },
   photographer: { idle: 'ready', shoot: 'shoot', beckon: 'beckon', wave: 'beckon' },
@@ -164,7 +176,7 @@ export function caseModel(name, { glow = null, shadow = true } = {}) {
   };
   tmp.onBeforeRender = seen;
   const mk = (asset, D) => {
-    const m = new THREE.SkinnedMesh(skinGeo(asset, name, D), skinMat(asset, glow)); m.customDepthMaterial = dqDepth(); m.onBeforeRender = seen; m.boundingSphere = m.geometry.boundingSphere.clone(); /* 뼈로 움직여도 잘리지 않게 넉넉한 구 (three 는 처음 자세로 한 번만 잼) */
+    const m = new THREE.SkinnedMesh(skinGeo(asset, name, D), skinMat(asset, glow, name)); m.customDepthMaterial = dqDepth(); m.onBeforeRender = seen; m.boundingSphere = m.geometry.boundingSphere.clone(); /* 뼈로 움직여도 잘리지 않게 넉넉한 구 (three 는 처음 자세로 한 번만 잼) */
     m.castShadow = shadow && !LOW; m.receiveShadow = true; rig.add(m); m.bind(skel, new THREE.Matrix4()); return m;
   };
 
