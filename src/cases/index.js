@@ -11,16 +11,18 @@
 //     arena·boss 에 follow { path [[x,z]…], near, end, speed, len } 를 주면 끝난 뒤 흰 옷을 따라가 장면까지 봐야 대면 끝 (#233, game/casechase.js). see.ghost 는 목격 때 흰 옷이 스침
 //     arena·boss 에 scene '<이름>' 이면 조건 뒤 face.at 에서 상호작용해 장면(caseprops.js SCENES)을 봐야 대면 끝 (#235) · see.gone 대면 뒤 목격 모양 치움 · 증거 z 다른 구역
 //   hello { <NPC id>: [말] } 종결 뒤 그 NPC 인사에 더하는 말 (#233)
+//     face.wait (#234): 조건 뒤에만 face 모양이 섬 (scene 과 같이)
 //     arena·boss 에 watch: true 면 조건 뒤 at 에 모양이 나타나고 다가가 보기 장면 (#236, 모양 userData.anim) · trail { pts, size, step } 발자국 한 줄
 //   doc 증거 사진 쪽지 id (대면을 끝내면 받음, paper 'photo') · photo 수사 보드에 꽂히는 사진 그림 (100×75 SVG 안쪽 글) · notes [NOTES 모양] 증거·사진 쪽지 · quests [QUESTS.side 모양] 진행
 //   cloth 보상 옷(겉모습, 값 0) · title 칭호 글(punktext.js TITLES 에 같은 글로 한 줄 더함) · badge { id, color, desc, reward } 업적
 // prop(모양)은 src/game/caseprops.js 의 이름 (crop·dent·rock·paper·bush·heap, #233 wall·rag·gone·line). 새 모양이 필요하면 거기에 더한다
 import c1 from './c1.js';
 import c2 from './c2.js';
+import c3 from './c3.js';
 import c4 from './c4.js';
 import c5 from './c5.js';
 
-const LIST = [c1, c2, c4, c5].filter(Boolean).sort((a, b) => a.n - b.n);
+const LIST = [c1, c2, c3, c4, c5].filter(Boolean).sort((a, b) => a.n - b.n);
 export const CASES = LIST;
 export const CASE_BY = Object.fromEntries(LIST.map((c) => [c.id, c]));
 export const CASE_SLOTS = 5; // 수사 보드의 증거 사진 자리 수 (사건 1~5, 다 모이면 빨간 실로 이어짐)

@@ -1905,3 +1905,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `notes/case-files.md` 6절(사건 더하는 법)을 새 모양으로. `tools/caserun.js` 는 옛 판 저장·위에서 찍기·떨어지는 더미·수사 보드(사진·핀·실)를 봄
 - 합칠 때 #233(follow)·#235(scene)·#236(watch)·#238(제보 칸)을 장면 틀(startRun/stopRun, mode hide·view·watch)과 수사 보드에 맞춤. c2·c4·c5 에도 `photo` 그림을 넣음. CSS 는 `game/casecss.js` 로 뗌(40KB)
 
+
+## #234 사건 3 '맨 인 블랙' (능선)
+- 데이터 `src/cases/c3.js`(레벨 10·의뢰 능선 쉼터 표지판 b:rest). 목격 (-251, 52) 검은 양복 둘(MYST.back 실루엣) → 혼잣말 '"아무것도 못 봤습니다." …뭘요?'. 한 번 본 뒤 눈을 떼면 사라짐(뒤돌아보면 없다, `game/casesuit.js`)
+- 증거: 맨발 자국 (-249.5, 53.5, 발가락 넷) · 연습한 수첩 (80, -160) · 귤 상자 '작은 성의' 사진 (-140, -350)
+- 대면: 능선 큰 멧돼지를 쫓아낸 뒤 (-95, 47) 에 검은 양복 하나가 섬(`face.wait`) → 다가가기 F → 장면 'suit' 11초: "아무것도 못 봤습니다." → "…불편… 불편을…" → 깊이 숙인 인사, 카메라가 발치(맨발) → 눈을 돌린 사이 사라짐. 사과 문장은 끝까지 말하지 않음
+- 증거 사진 3 '검은 양복의 발'(검은 바짓단 아래 맨발). 보상 귤 60·250, 조사관 바지(bottom:i-slacks), 굼부리 재료 m4 3, 칭호 '못 본 걸로 한 사람'(TITLES 끝), 업적 b-case-c3
+- 틀에 더한 것(`game/cases.js`): `face.wait` 조건 뒤에만 face 모양·대면 뒤 치움, boss 장면도 조건 전 추적 줄이 우두머리로, 장면 ctx 에 `faceRoot`. `caseprops.js` 에 `PROP_HOOK`·모양 suits·suit·prints·notebook·gyulbox
+- 앞 실행(브랜치 87dc44f)은 #246 앞 틀이라 새 틀로 옮겨 다시 씀(장면은 SCENES, 서류 → 증거 사진, 재료는 퀘스트 mats). 새 모델 없음: 검은 양복은 runner 몸 + 겉모습 jacket:x-mib·socks:x-mib·shoes:x-bare(npc). 모델이 오면(#262) casesuit 만 바꾸면 됨
