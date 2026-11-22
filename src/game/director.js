@@ -48,9 +48,10 @@ export const director = createDirector({
 });
 late.director = director;
 
-// 토스트 한 줄을 감독을 거쳐 (opt: ttl·queue·then)
+// 토스트 한 줄을 감독을 거쳐 (opt: ttl·queue·then). 이야기·퀘스트 안내는 안내서 목소리로 한 글자씩 (#224 game/talkfx.js)
+const TYPED = new Set(['story', 'quest']);
 export function say(kind, id, text, sec = JOURNEY.sec, opt = {}) {
-  return director.ask(kind, id, () => { mine = text; toast(text, sec); opt.then?.(); }, { sec, ...opt }); /* opt.then: 나갈 때 같이 할 일 (#206 가게 셔터) */
+  return director.ask(kind, id, () => { mine = text; if (!(TYPED.has(kind) && late.talk?.toast(text, sec))) toast(text, sec); opt.then?.(); }, { sec, ...opt }); /* opt.then: 나갈 때 같이 할 일 (#206 가게 셔터) */
 }
 
 // ---------- 지금 있는 것 등록 ----------
