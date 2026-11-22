@@ -11,6 +11,7 @@
 //   화면 위 이름·기운 줄은 우두머리 줄(#boss-bar)을 빌려 씀. 쫓아내면 그날 처음 한 번만 큰 보상
 // dev: __oreum.cave (deep·runs·traps·goChest·openChest·goOwner·owner·repelOwner·crumbleHere·rockHere·goWater)
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CAVE, BACK_LOOKS } from '../balance.js';
 import { rng } from '../cavegen.js';
 import { kstDate } from '../daily.js';
@@ -46,7 +47,7 @@ const keep = (x) => { if (x.isBufferGeometry) geoms.push(x); else mats.push(x); 
 function disposeAll() {
   for (const e of D.calls) if (life.enemies.list.includes(e)) life.enemies.remove(e);
   if (D.owner && life.enemies.list.includes(D.owner)) life.enemies.remove(D.owner);
-  for (const r of D.rocks) D.g?.remove(r.m);
+  D.g?.remove(...rockIM); rockIM.forEach((im) => { im.count = 0; });
   if (D.g) D.cs?.remove(D.g);
   geoms.forEach((x) => x.dispose()); mats.forEach((x) => x.dispose()); geoms.length = 0; mats.length = 0;
   Object.assign(D, { g: null, F: null, crumble: [], water: [], arrows: 0, chest: null, owner: null, ownerRoom: null, calls: [], rocks: [], ownerSeen: false });
@@ -102,7 +103,8 @@ function buildDeep(F, fi) {
     const o = new THREE.Group(); o.position.set(x, y + 0.04, z);
     const crack = new THREE.Mesh(crackGeo, keep(basic('#2a221c', { transparent: true, opacity: 0.85, depthWrite: false }))); crack.rotation.x = -Math.PI / 2; o.add(crack);
     const lines = new THREE.Group(); o.add(lines);
-    for (let j = 0; j < 5; j++) { const l = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.06, T.crumble.r * (0.6 + R() * 0.5))), keep(basic('#c86a2a', { transparent: true, opacity: 0.35, depthWrite: false }))); l.rotation.set(-Math.PI / 2, 0, j * 1.26 + R()); l.position.y = 0.01; lines.add(l); }
+    { const gs = []; for (let j = 0; j < 5; j++) { const q = new THREE.PlaneGeometry(0.06, T.crumble.r * (0.6 + R() * 0.5)); q.rotateZ(j * 1.26 + R()); gs.push(q); } /* 금 다섯 줄을 한 번에 그림 (#218) */
+      const l = new THREE.Mesh(keep(mergeGeometries(gs)), keep(basic('#c86a2a', { transparent: true, opacity: 0.35, depthWrite: false }))); gs.forEach((q) => q.dispose()); l.rotation.x = -Math.PI / 2; l.position.y = 0.01; lines.add(l); }
     const pit = new THREE.Mesh(pitGeo, keep(basic('#000000', { fog: false }))); pit.rotation.x = -Math.PI / 2; pit.position.y = 0.02; pit.visible = false; o.add(pit);
     g.add(o); D.crumble.push({ x, z, y, o, crack, lines, pit, st: 'ok', t: 0 });
   }
@@ -146,7 +148,7 @@ function tickCrumble(dt) {
     if (p.st === 'ok' && on) { p.st = 'warn'; p.t = C.warn; toast(L3.crack, 1.4); late.sound?.stone?.(); }
     if (p.st === 'warn') {
       p.t -= dt; const k = 1 - p.t / C.warn;
-      p.crack.material.color.setRGB(0.16 + 0.5 * k, 0.13 + 0.12 * k, 0.11); p.lines.children.forEach((l) => { l.material.opacity = 0.35 + 0.6 * k; l.scale.y = 1 + k * 0.6; });
+      p.crack.material.color.setRGB(0.16 + 0.5 * k, 0.13 + 0.12 * k, 0.11); p.lines.children.forEach((l) => { l.material.opacity = 0.35 + 0.6 * k; l.scale.set(1 + k * 0.6, 1 + k * 0.6, 1); });
       p.o.position.x = p.x + Math.sin(p.t * 60) * 0.03 * k;
       if (p.t <= 0) {
         p.st = 'down'; p.t = C.down; p.pit.visible = true; p.lines.visible = false; p.o.position.x = p.x; late.sound?.boom?.();
@@ -156,7 +158,7 @@ function tickCrumble(dt) {
         }
       }
     } else if (p.st === 'down' && (p.t -= dt) <= 0) {
-      p.st = 'ok'; p.pit.visible = false; p.lines.visible = true; p.crack.material.color.set('#2a221c'); p.lines.children.forEach((l) => { l.material.opacity = 0.35; l.scale.y = 1; });
+      p.st = 'ok'; p.pit.visible = false; p.lines.visible = true; p.crack.material.color.set('#2a221c'); p.lines.children.forEach((l) => { l.material.opacity = 0.35; l.scale.set(1, 1, 1); });
     }
   }
   if (!inAny && !player.air && D.F.walk(px, pz)) D.safe.set(px, player.pos.y, pz);
@@ -165,14 +167,26 @@ function tickCrumble(dt) {
 // ---------- 낙석 ----------
 const rockGeo = new THREE.DodecahedronGeometry(0.5, 0), rockMat = lam('#4a4541'), shadowGeo = new THREE.CircleGeometry(1, 14), shadowMat = new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.45, depthWrite: false });
 const ringMat = new THREE.MeshBasicMaterial({ color: '#ff6a3a', transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, fog: false }), ringGeo = new THREE.RingGeometry(0.9, 1, 18);
+/* 낙석은 그림자·경고 고리·돌 셋을 묶어 그림 (#218: 하나하나 그리면 주인 방 낙석 비에 draw call 이 늘어남). 한 층에 ROCK_MAX 개까지 */
+const ROCK_MAX = 24, rockIM = [[shadowGeo, shadowMat], [ringGeo, ringMat], [rockGeo, rockMat]].map(([g, m]) => { const im = new THREE.InstancedMesh(g, m, ROCK_MAX); im.count = 0; im.frustumCulled = false; im.name = 'cave-rocks'; return im; });
+rockIM[0].renderOrder = 1; rockIM[1].renderOrder = 2;
+const rk = new THREE.Object3D(), flat = new THREE.Euler(-Math.PI / 2, 0, 0), up = new THREE.Euler(0, 0, 0);
+function rockSet(im, i, x, y, z, s, e) { rk.position.set(x, y, z); rk.rotation.copy(e); rk.scale.setScalar(s); rk.updateMatrix(); im.setMatrixAt(i, rk.matrix); }
+function rockDraw() {
+  let a = 0, b = 0, c = 0;
+  for (const k of D.rocks) {
+    rockSet(rockIM[0], a++, k.x, k.y + 0.05, k.z, k.sh, flat);
+    if (k.st === 'warn') rockSet(rockIM[1], b++, k.x, k.y + 0.06, k.z, k.r, flat);
+    if (k.ry != null) rockSet(rockIM[2], c++, k.x, k.y + k.ry, k.z, k.r * 0.75, up);
+  }
+  [a, b, c].forEach((n, i) => { const im = rockIM[i]; im.count = n; if (n) im.instanceMatrix.needsUpdate = true; });
+}
 function dropRock(x, z, r, dmg) {
-  const F = D.F; if (!F || !F.walk(x, z)) return;
-  const y = F.floorY(x, z), top = F.ceilY(x, z) - 0.4, m = new THREE.Group();
-  const sh = new THREE.Mesh(shadowGeo, shadowMat); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.05; sh.scale.setScalar(r * 0.3); m.add(sh);
-  const ring = new THREE.Mesh(ringGeo, ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.scale.setScalar(r); m.add(ring);
-  const rock = new THREE.Mesh(rockGeo, rockMat); rock.scale.setScalar(r * 0.75); rock.position.y = top - y; rock.visible = false; m.add(rock);
-  m.position.set(x, y, z); D.g.add(m);
-  D.rocks.push({ m, sh, ring, rock, x, z, r, dmg, t: T.rock.warn, top: top - y, st: 'warn' });
+  const F = D.F; if (!F || !F.walk(x, z) || D.rocks.length >= ROCK_MAX) return;
+  const y = F.floorY(x, z), top = F.ceilY(x, z) - 0.4;
+  if (!rockIM[0].parent) D.g.add(...rockIM);
+  D.rocks.push({ x, y, z, r, dmg, sh: r * 0.3, ry: null, t: T.rock.warn, top: top - y, st: 'warn' });
+  rockDraw();
 }
 function rockRain(n, r, dmg, near) {
   const R = Math.random;
@@ -180,19 +194,21 @@ function rockRain(n, r, dmg, near) {
 }
 const hitDir = new THREE.Vector3();
 function tickRocks(dt) {
+  if (!D.rocks.length) { if (rockIM[0].count) rockDraw(); return; }
   for (let i = D.rocks.length - 1; i >= 0; i--) {
     const k = D.rocks[i];
     if (k.st === 'warn') {
-      k.t -= dt; const f = 1 - Math.max(0, k.t) / T.rock.warn; k.sh.scale.setScalar(k.r * (0.3 + 0.7 * f)); k.ring.material.opacity = 0.3 + 0.4 * Math.abs(Math.sin(f * 12));
-      if (k.t <= 0.25) { k.rock.visible = true; k.rock.position.y = k.top * Math.max(0, k.t / 0.25); }
+      k.t -= dt; const f = 1 - Math.max(0, k.t) / T.rock.warn; k.sh = k.r * (0.3 + 0.7 * f); ringMat.opacity = 0.3 + 0.4 * Math.abs(Math.sin(f * 12));
+      if (k.t <= 0.25) k.ry = k.top * Math.max(0, k.t / 0.25);
       if (k.t <= 0) {
-        k.st = 'lie'; k.t = T.rock.lie; k.ring.visible = false; k.rock.position.y = k.r * 0.3; late.sound?.stone?.();
+        k.st = 'lie'; k.t = T.rock.lie; k.ry = k.r * 0.3; late.sound?.stone?.();
         const dx = player.pos.x - k.x, dz = player.pos.z - k.z;
         if (Math.hypot(dx, dz) < k.r && !player.air) { hitDir.set(dx, 0, dz); if (hitDir.lengthSq() < 1e-4) hitDir.set(Math.sin(player.heading), 0, Math.cos(player.heading)).negate(); hitDir.normalize(); life.hooks.enemyHit?.(hitDir, { dmg: k.dmg, name: L3.rock }); }
       }
-    } else if ((k.t -= dt) <= 0) { D.g.remove(k.m); D.rocks.splice(i, 1); }
-    else if (k.t < 0.6) k.rock.position.y = k.r * 0.3 - (0.6 - k.t) * k.r;
+    } else if ((k.t -= dt) <= 0) D.rocks.splice(i, 1);
+    else if (k.t < 0.6) k.ry = k.r * 0.3 - (0.6 - k.t) * k.r;
   }
+  rockDraw();
 }
 // 줄 방 빼고 방 안에 있으면 가끔 낙석 (주인 방은 주인이 따로)
 function roomAt(x, z) { const F = D.F; for (const o of F.rooms) { const w = F.world(o); if (Math.hypot(x - w.x, z - w.z) < o.r) return o; } return null; }
@@ -290,13 +306,13 @@ function bossBar(on, e) {
 {
   const ci = late.caveIn, cf = late.caveFloor, co = late.caveFloorOff, out = late.caveOut, tk = late.caveTick;
   late.caveIn = (cs) => {
-    ci(cs); D.cs = cs;
+    ci(cs); D.cs = cs; life.dropCap = CAVE.drop; /* 흩어지는 귤 알갱이 줄이기 (#218) */
     const c = cv(), n = c.runs.n, full = CAVE.runs.full;
     setTimeout(() => toast(n > full ? L3.half : `${L3.today} · ${Math.min(n, full)}/${full}판`, 2.6), 1300);
   };
   late.caveFloor = (F, fi) => { cf(F, fi); buildDeep(F, fi); };
   late.caveFloorOff = () => { co(); disposeAll(); };
-  late.caveOut = (downed) => { disposeAll(); out(downed); };
+  late.caveOut = (downed) => { disposeAll(); life.dropCap = null; out(downed); };
   late.caveTick = (dt, F) => {
     tk(dt, F); if (!D.F) return;
     if (D.msgT > 0) D.msgT -= dt;
