@@ -203,8 +203,8 @@ export const CH_MINI = CH ? (spots.cleanMinis || []).map((m) => { const c = crea
 export const CHS = CH ? [CH, ...CH_MINI] : []; // 모든 클린하우스. 버리기·화살표·자동 걷기는 가장 가까운 곳
 export const chNear = (p = player.pos) => { let b = null, bd = 1e18; for (const c of CHS) { const d = (c.front.x - p.x) ** 2 + (c.front.z - p.z) ** 2; if (d < bd) { bd = d; b = c; } } return b; };
 export const chActs = CHS.map((c) => ({ ch: c, ic: 'dump', label: '버리기', pos: c.front, r: CLEANHOUSE.r, act: () => late.dumpBag(c) }));
-// 클린하우스 옆 가판대 (#128): 튜토리얼 동안만 장비점 좌판(집게·배낭 사기). 끝나면 사는 것은 가게 거리 장비점에서
-export const shopAct = CH && { ic: 'shop', label: '장비점', pos: CH.shopFront, r: CLEANHOUSE.shopR, when: () => !!late.tut?.active || !GEARB, act: () => late.openShopPop('gear') };
+// 클린하우스 옆 가판대 (#128): 가게 거리가 없는 맵에서만 장비점 좌판. #221 튜토리얼도 가게 거리 장비점에서 삼
+export const shopAct = CH && { ic: 'shop', label: '장비점', pos: CH.shopFront, r: CLEANHOUSE.shopR, when: () => !GEARB, act: () => late.openShopPop('gear') };
 // 깨끗해진 구역에 꽃과 어린 나무 (#46): 풀 색·꽃·나무·나비·새, 다 핀 구역엔 노루가 돌아오고 몹이 나오지 않음
 export const bloom = trash ? createBloom({ scene, ns: NSW, trash, height, onPath: (x, z) => surfaceAt(x, z) !== 0, col, low: LOW, ambFly: (z) => ZONE_LOOK.butterflies[z] || 0 }) : null;
 export const bfx = bloom ? createBloomFx({ scene, height, tier: () => (LOW ? 0 : quality.level) }) : null; // 치웠을 때·꽃밭 효과 (#65)

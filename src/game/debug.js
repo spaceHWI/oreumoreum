@@ -22,7 +22,7 @@ import { ONLINE, mountLogin } from '../online.js';
 import { state, late } from './state.js';
 import { $, isTouch, save, CLOTH, CL, wearRefund, wearV, syncEquipGear, lookS, ab, persist, MAP_ID } from './save.js';
 import { renderer, quality, retro, scene, NSW, camera, sun, applyQuality, wx, grass, motes, prints, spots, sunState, applySky, lamps, prepShaders, lampAim } from './scene.js';
-import { P, photoSpot, benchPos, life, cairns, fillCairn, col, wall, NS_TUT, stream, jeong, openJeong, street, shopsBuilt, roofSigns, STN, MANJ, SAL, LEAPB, buff, trash, CH, CH_MINI, CHS, chNear, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
+import { P, photoSpot, benchPos, life, cairns, fillCairn, col, wall, NS_TUT, stream, jeong, openJeong, street, shopsBuilt, roofSigns, GEARB, STN, MANJ, SAL, LEAPB, buff, trash, CH, CH_MINI, CHS, chNear, bloom, bfx, cart, runner, rig, player, hp } from './place.js';
 import { cam, followCam } from './camera.js';
 import { screenInfo, toggleFullscreen } from './screen.js';
 import { toast, addCoins, closePanels, ach, openDex, onDexGet, topStack, updateStats, gyulExpect } from './hud.js';
@@ -57,6 +57,7 @@ const tutTrashNext = () => { let b = null, bd = 1e9; for (const t of tutTrashLef
 const tut = createTutorial({ save, persist, player, isTouch, camDist: () => cam.zoomed, gyulR: () => gyulPickR(save), toast, // #151 확대 단계·귤 모으는 범위·정낭 안내
   onGyul: (at) => { save.coins += 1; persist(); updateStats(); sound.coin?.(); coinFx(at, 1); }, pts: NS_TUT, scene, height, camera, placeArrow, stream, jeong, openJeong, bagVol: () => (trash ? trash.bagVol() : 0), bagCap, tutTrashLeft: () => tutTrashLeftList().length, tutTrashNext, ch: CH,
   col, low: LOW, addTargets: life.addTargets, sound, juice: (p, d) => life.juiceSplash(p, d), ctxIc: () => state.ctxTarget?.ic, shopTab: gearTabNow, // #62 과녁·눌러야 할 곳, #100 칸 돌담
+  gear: GEARB && { door: GEARB.door, r: GEARB.r, way: [STREET.P(10, 0), STREET.P(16.5, 0)] }, openGear: () => late.tutOpenGear?.(), /* #221 진짜 장비점·골목 귤, 셔터 올리기 */
   onTop: topStack, onCoins: (gap) => { if (gap > 0) late.notEarned?.(gap); updateStats(); }, // #100 위쪽 토스트 자리 맞추기, 모자란 귤 채움
   onDone: () => { updateTrashUI(false); wx.calm(false); if ($('dev-tut')) $('dev-tut').hidden = true; } }); late.tut = tut;
 wx.calm(!!NS_TUT && tut.active); // #100 튜토리얼 동안은 맑음 (날씨 이벤트 없음)
