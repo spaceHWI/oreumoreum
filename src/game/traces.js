@@ -8,7 +8,7 @@
 // - 도감 '흔적' 칸(late.dexExtra 를 감쌈): 발자국·눌린 풀·뒤돌아보면·4:04. 본 것은 save.myst.tr = { fp, crop, back } (mystery.js mystSave)
 // - 내 화면에만 (멀티로 보내지 않음). 촬영 모드에서도 나옴. dev: __oreum.traces
 import * as THREE from 'three';
-import { MYST } from '../balance.js';
+import { MYST, SWARM } from '../balance.js';
 import { MYST_TEXT as T } from '../punktext.js';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
@@ -70,6 +70,7 @@ function cropSpot(id) {
     if (!CR.zones.includes(trash.zoneAt(x, z)) || !inB(x, z)) continue;
     if (trash.trail?.dist && trash.trail.dist(x, z, CR.trail + 1) < CR.trail) continue;
     if (trash.heaps.some((o) => Math.hypot(o.x - x, o.z - z) < CR.r + (o.r || 1) + 1)) continue;
+    if (SWARM.arena.at.some((c) => c && Math.hypot(c[0] - x, c[1] - z) < SWARM.arena.r + SWARM.arena.spawn[1] + CR.r)) continue; /* 서바이벌 터 밖 (#253) */
     const y = height(x, z), q = CR.r; let bad = 0;
     for (const [sx, sz] of [[q, 0], [-q, 0], [0, q], [0, -q], [q * 0.7, q * 0.7], [-q * 0.7, -q * 0.7]]) bad = Math.max(bad, Math.abs(height(x + sx, z + sz) - y));
     if (bad > CR.flat * (1 + k / 30)) continue;
@@ -235,6 +236,7 @@ late.tickTraces = (dt) => {
 late.tracesApi = {
   state: () => ({ stage: revealStage(), night: fp.night, prints: fp.n, near: +Math.min(1e9, ...fp.pts.map(([x, z]) => Math.hypot(x - player.pos.x, z - player.pos.z))).toFixed(1), footOp: +footOp().toFixed(2), crop: crop.ok && { id: crop.id, x: +crop.x.toFixed(1), z: +crop.z.toFixed(1), op: +crop.mesh.material.opacity.toFixed(2) }, fig: !!fig?.visible, coolBack: +coolBack.toFixed(1), tr: { ...mystSave().tr } }),
   crop: () => { crop.id = null; tickCrop(); return crop.ok && { x: crop.x, z: crop.z }; },
+  cropAt: (id) => { const q = cropSpot(id); return q && { x: q.x, z: q.z, r: CR.r }; }, /* 그날의 자리 (tools/arenacheck.js #253) */
   goCrop: (k = 0) => { if (!crop.ok) return null; const x = crop.x + k, z = crop.z + k; player.pos.set(x, height(x, z), z); player.visY = player.pos.y; return { x, z }; },
   goFoot: () => { if (nightNo() !== fp.night) { fp.night = nightNo(); footBuild(); } const p = fp.pts[Math.floor(fp.pts.length / 3)]; if (!p) return null; player.pos.set(p[0] + 2, height(p[0] + 2, p[1]), p[1]); player.visY = player.pos.y; return { x: p[0], z: p[1] }; },
   foot: () => { fp.night = null; tickFoot(); return fp.n; },

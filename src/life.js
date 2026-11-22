@@ -464,10 +464,10 @@ export function createLife({ scene, onToast, rnd, hooks, spots }) {
   const PR = 0.2 * TG.scale; // 바닥 귤 반지름 (#63)
   const pickGeo = new THREE.SphereGeometry(PR, 8, 6);
   const pickMesh = new THREE.InstancedMesh(pickGeo, tanMat, PICK_N);
-  pickMesh.castShadow = true; scene.add(pickMesh);
+  pickMesh.name = 'gyul-pick'; pickMesh.castShadow = true; scene.add(pickMesh);
   // 잎(같이 돌며 도는 걸 보이게)과 아래 빛 원: 같은 개수의 인스턴스
-  const pickLeaf = new THREE.InstancedMesh(leafGeo, leafMat, PICK_N); scene.add(pickLeaf);
-  const pickGlow = new THREE.InstancedMesh(glowGeo, glowMat, PICK_N); pickGlow.renderOrder = 1; scene.add(pickGlow);
+  const pickLeaf = new THREE.InstancedMesh(leafGeo, leafMat, PICK_N); pickLeaf.name = 'gyul-leaf'; scene.add(pickLeaf);
+  const pickGlow = new THREE.InstancedMesh(glowGeo, glowMat, PICK_N); pickGlow.name = 'gyul-glow'; pickGlow.renderOrder = 1; scene.add(pickGlow);
   const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), vp = new THREE.Vector3(), vs = new THREE.Vector3(1, 1, 1), yAx = new THREE.Vector3(0, 1, 0), xAx = new THREE.Vector3(1, 0, 0);
   const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
   const picks = [];
