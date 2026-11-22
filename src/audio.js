@@ -119,6 +119,7 @@ export class Sound {
     setTimeout(() => { if (this.on && this.ambOn) { if (this.day > 0.3) this.bird(); else if (Math.random() < 0.5) this.owl(); } this._scheduleBird(); }, next);
   }
   bird() {
+    if (!this.on || !this.ambOn) return; /* 소리 장치를 안 켠 채(ctx 없음) 밖에서 불러도 조용히 (#217) */
     const c = this.ctx; const t0 = c.currentTime;
     const pan = c.createStereoPanner ? c.createStereoPanner() : null;
     if (pan) { pan.pan.value = Math.random() * 1.8 - 0.9; pan.connect(this.amb); }
@@ -143,6 +144,7 @@ export class Sound {
     }
   }
   owl() {
+    if (!this.on || !this.ambOn) return;
     const c = this.ctx; const t0 = c.currentTime;
     for (let i = 0; i < 2; i++) {
       const t = t0 + i * 0.6;
@@ -158,6 +160,7 @@ export class Sound {
     setTimeout(() => { if (this.on && this.ambOn) this.crow(); this._scheduleCrow(); }, next);
   }
   crow() {
+    if (!this.on || !this.ambOn) return;
     const c = this.ctx; const t0 = c.currentTime;
     const pan = c.createStereoPanner ? c.createStereoPanner() : null;
     if (pan) { pan.pan.value = Math.random() * 1.6 - 0.8; pan.connect(this.amb); }
@@ -178,6 +181,7 @@ export class Sound {
     setTimeout(() => { if (this.on && this.ambOn) this.horseBell(); this._scheduleBell(); }, next);
   }
   horseBell() {
+    if (!this.on || !this.ambOn) return;
     const c = this.ctx; const t0 = c.currentTime;
     for (let i = 0; i < 5; i++) {
       const t = t0 + i * (0.35 + Math.random() * 0.15);
