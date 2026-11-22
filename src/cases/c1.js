@@ -27,7 +27,7 @@ export default {
     { id: 'c1a', paper: 'photo', t: '위에서 본 무늬', from: '숲길 바위 위', b: '위에서 보니 화살표 셋이 서로를 쫓는다.\n어디서 본 모양인데.' },
     { id: 'c1b', paper: 'notebook', t: '가운데 눌린 자국', from: '무늬 한가운데', b: '가운데만 풀이 납작하다.\n무거운 자루를 내려놓은 모양.' },
     { id: 'c1c', paper: 'crumple', t: '주민 쪽지', from: '숲길 끝 돌 밑', b: '무늬 생긴 다음 날은\n꼭 쓰레기가 있음.\n우연인가?' },
-    { id: 'c1d', paper: 'photo', t: '증거 사진 1', from: '새벽 네 시, 무늬 곁', b: '무늬 한가운데에 더미 하나.\n메시지가 아니었다.\n"여기 놓으세요."' },
+    { id: 'c1d', paper: 'photo', t: '한가운데 더미', from: '새벽 네 시, 무늬 곁', b: '무늬 한가운데에 더미 하나.\n메시지가 아니었다.\n"여기 놓으세요."' },
   ],
   // 진행은 퀘스트 엔진 (balance.js QUESTS.side 뒤에 붙음). 셈 'case:c1:ev' 증거 수 · 'case:c1:face' 대면을 끝냄 (ever: 받기 전 것도 셈)
   quests: [

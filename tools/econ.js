@@ -361,6 +361,12 @@ async function main() {
     const fl = flowCheck(runs, slack === 0);
     console.log(fl.lines.join('\n'));
     verdict.push(`${title}: 흐름 ${fl.ok ? '통과' : '실패'} (${fl.short})`);
+    // 사건 파일 (#243): 사건이 열리는 날(하루 끝 레벨 ≥ 사건 lv, 그 구역이 열림, 5번 가운데)이 5일 안이고 사건 하나의 귤 보상 합이 그날 벌이의 5% 아래
+    { const { CASES } = await import('../src/cases/index.js'), med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+      const rows = CASES.map((C) => { const day = med(runs.map((x) => { const i = x.days.findIndex((d) => (d.lv || 0) >= C.lv && ZONES.filter((Z) => d.score >= Z.rec * GROWTH.red).length >= C.zone); return i < 0 ? 99 : i + 1; }));
+        const g = (C.quests || []).reduce((a, q) => a + (q.reward?.gyul || 0), 0), earn = day < 99 ? med(runs.map((x) => x.days[day - 1]?.earned || 0)) : 0, pct = earn ? g / earn * 100 : 0;
+        return { id: C.id, lv: C.lv, day, g, pct, ok: day <= 5 && pct < 5 }; });
+      verdict.push(`${title}: 사건 파일 ${rows.every((x) => x.ok) ? '통과' : '✗'} (${rows.map((x) => `${x.id} 레벨 ${x.lv} ${x.day < 99 ? x.day + '일' : '못 엶'}·귤 ${x.g} ${x.pct.toFixed(1)}%${x.ok ? '' : '✗'}`).join(' / ')})`); }
     // 단계별 도달 시각 (5번 돌린 가운데)
     const keys = [...new Set(r.buys.map((b) => b.k + b.tier))];
     const med = (k) => { const ts = runs.map((x) => (x.buys.find((b) => b.k + b.tier === k) || { at: Infinity }).at).sort((a, b) => a - b); return ts[2]; };
