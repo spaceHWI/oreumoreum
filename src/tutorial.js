@@ -268,7 +268,9 @@ export function createTutorial({ save, persist, player, isTouch, camDist, gyulR,
     if (!shopGate || !dest || !shopGate.open) return dest;
     const g = shopGate, l = Math.hypot(g.ux, g.uz) || 1, nx = -g.uz / l, nz = g.ux / l, side = (q) => (q.x - g.c.x) * nx + (q.z - g.c.z) * nz;
     const sp = side(player.pos), sd = side(dest); if (Math.sign(sp) === Math.sign(sd) && Math.abs(sp) > 0.9) return dest;
-    const k = Math.sign(sd) || 1; return { x: g.c.x + nx * k * 1.6, z: g.c.z + nz * k * 1.6, via: true };
+    const k = Math.sign(sd) || 1, v = { x: g.c.x + nx * k * 1.6, z: g.c.z + nz * k * 1.6, via: true };
+    /* #240 정낭 너머 점의 원 안에 들어왔으면 지난 것: 클릭 이동은 0.8m 앞에서 멈춰 비스듬히 오면 |sp| 가 0.9 를 못 넘어 원이 그대로 남았음 */
+    return Math.hypot(player.pos.x - v.x, player.pos.z - v.z) < TUT.viaR ? dest : v;
   }
   function openShopSide(anim = true) { /* #221 가게 쪽 정낭 + 장비점 셔터 */
     if (!gear) return;
