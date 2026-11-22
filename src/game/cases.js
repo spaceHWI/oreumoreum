@@ -222,7 +222,7 @@ function beginHide(c) {
   late.mutterApi?.hush?.();
   const sp = spots[c.id], hide = sp.face, row = sp.see;
   run = { c, u: 0, len: c.face.len || 9, prev: cam.mode, fov: camera.fov, li: -1, snap: true, crows: [], sc: SCENES[c.face.scene] || null, tint: c.face.tint || 'dusk' };
-  if (run.sc) run.ctx = { scene, see: row, face: hide, seeRoot: sp.seeRoot }, run.st = run.sc.begin(run.ctx);
+  if (run.sc) run.ctx = { scene, see: row, face: hide, seeRoot: sp.seeRoot, blocked: (x, z, r) => !!col?.blocked(x, z, r), groundAt: (x, z) => height(x, z) }, run.st = run.sc.begin(run.ctx);
   for (let i = 0; i < (run.sc ? 0 : CASE.face.crows); i++) {
     const m = buildCrow(); m.loot.visible = false; m.root.visible = false; scene.add(m.root);
     const a = (i / CASE.face.crows) * Math.PI * 2 + 0.6;

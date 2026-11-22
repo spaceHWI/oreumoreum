@@ -170,7 +170,10 @@ B.hose = () => {
   const bits = [], cols = ['#b9c0c6', '#4f9a6a', '#e8e4da'];
   for (let i = 0; i < 10; i++) bits.push([new THREE.BoxGeometry(0.55, 0.4, 0.45), Math.sin(i * 2.3) * 0.5, -i * 0.42, Math.cos(i * 1.7) * 0.5, i, i * 0.5, 0]); /* 주둥이 아래 4m 기둥 */
   const pour = new THREE.Group(), p1 = lump(bits, cols[0]); p1.castShadow = false; pour.add(p1); pour.position.y = base; pour.visible = false; g.add(pour);
-  const heap = lump([[new THREE.DodecahedronGeometry(1.6, 0), 0, 0.4, 0, 0, 0, 0, 1.3, 0.6, 1.2], [new THREE.BoxGeometry(0.5, 0.4, 0.4), 1.2, 0.9, 0.3, 0.3, 0.6, 0], [new THREE.CylinderGeometry(0.12, 0.12, 0.4, 6), -1.0, 0.95, 0.5, 1.2, 0, 0]], '#8a8478');
+  const heap = new THREE.Group(); /* 새 더미: 검은 봉지 무더기 + 캔·병 (셋 덩어리) */
+  heap.add(lump([[new THREE.DodecahedronGeometry(0.9, 0), 0, 0.5, 0, 0, 0, 0, 1, 0.8, 1], [new THREE.DodecahedronGeometry(0.7, 0), 1.1, 0.4, 0.4, 0.4, 0, 0], [new THREE.DodecahedronGeometry(0.6, 0), -0.9, 0.35, 0.6, 0, 0.7, 0], [new THREE.DodecahedronGeometry(0.55, 0), 0.2, 0.3, -1.0]], '#34363b'));
+  heap.add(lump([[new THREE.CylinderGeometry(0.14, 0.14, 0.4, 7), 0.6, 1.1, 0.2, 1.2, 0, 0.4], [new THREE.CylinderGeometry(0.14, 0.14, 0.4, 7), -0.4, 0.9, -0.5, 0.2, 0, 1.3], [new THREE.CylinderGeometry(0.14, 0.14, 0.4, 7), 1.4, 0.7, -0.2, 0, 0, 1.5]], '#b9c0c6'));
+  heap.add(lump([[new THREE.CylinderGeometry(0.13, 0.16, 0.55, 7), -0.2, 1.25, 0.3, 0.9, 0.3, 0], [new THREE.CylinderGeometry(0.13, 0.16, 0.55, 7), 0.9, 0.9, 0.9, 0, 0, 1.2]], '#4f9a6a'));
   heap.scale.setScalar(0.001); g.add(heap);
   g.userData = { pour, heap, base };
   return g;
@@ -180,7 +183,7 @@ export function buildProp(kind) { const f = B[kind]; return f ? f() : null; }
 
 /* ---------- 대면 장면 (face.scene, game/cases.js 의 숨어 보기 틀을 빌려 씀) ---------- */
 // begin(ctx) → st · tick(st, u, T, ctx) · cam(st, u, T, ctx) → { pos, look } (없으면 숨어 보기 카메라) · end(st, ctx)
-// ctx = { scene, see: 목격 자리 Vector3, face: 대면 자리 Vector3, seeRoot: 목격 모양 root }
+// ctx = { scene, see: 목격 자리 Vector3, face: 대면 자리 Vector3, seeRoot: 목격 모양 root, blocked(x, z, r), groundAt(x, z) }
 const sm = (a) => a * a * (3 - 2 * a);
 const cl = (x) => Math.max(0, Math.min(1, x));
 export const SCENES = {
@@ -191,7 +194,11 @@ export const SCENES = {
       const fog = ctx.seeRoot?.userData.fog, body = ctx.seeRoot?.userData.body;
       if (ctx.seeRoot) { ctx.seeRoot.userData.hold = true; ctx.seeRoot.visible = true; }
       if (body) body.position.y = 0;
-      return { root: ctx.seeRoot, h, fog, body, op: fog?.material.opacity ?? 0.5, by: body?.position.y ?? 0 };
+      /* 카메라 자리: 가운데에서 대면 자리 쪽으로 D m. 그 줄에 나무·바위가 있으면 둘레로 돌려 빈 쪽 (ctx.blocked) */
+      const D = 14, a0 = Math.atan2(ctx.face.x - ctx.see.x, ctx.face.z - ctx.see.z); let cp = null;
+      for (let i = 0; i < 12 && !cp; i++) { const an = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.5, dx = Math.sin(an), dz = Math.cos(an); let okRay = true; for (let d = 2; d <= D + 2; d += 1.5) if (ctx.blocked?.(ctx.see.x + dx * d, ctx.see.z + dz * d, d > D - 3 ? 5 : 2.2)) { okRay = false; break; } /* 카메라 둘레는 넓게 (나뭇가지에 가림) */ if (okRay) cp = [ctx.see.x + dx * D, ctx.see.z + dz * D]; }
+      if (!cp) cp = [ctx.see.x + Math.sin(a0) * D, ctx.see.z + Math.cos(a0) * D];
+      return { cp, root: ctx.seeRoot, h, fog, body, op: fog?.material.opacity ?? 0.5, by: body?.position.y ?? 0 };
     },
     tick(st, u, T) {
       const clear = cl((u - T * 0.18) / (T * 0.22));
@@ -203,9 +210,9 @@ export const SCENES = {
       heap.scale.setScalar(Math.max(0.001, sm(cl((u - T * 0.66) / (T * 0.22)))));
     },
     cam(st, u, T, ctx) {
-      const s = ctx.see, f = ctx.face, up = sm(cl((u - T * 0.3) / (T * 0.18))) * (1 - sm(cl((u - T * 0.55) / (T * 0.12))));
-      const k = 0.45, px = f.x + (s.x - f.x) * k, pz = f.z + (s.z - f.z) * k; /* 둘레에서 가운데 쪽으로 반쯤 (나무에 덜 가림) */
-      return { pos: new THREE.Vector3(px, Math.max(f.y, s.y) + 7, pz), look: new THREE.Vector3(s.x, s.y + 3 + up * 110, s.z) };
+      const s = ctx.see, up = sm(cl((u - T * 0.3) / (T * 0.18))) * (1 - sm(cl((u - T * 0.55) / (T * 0.12))));
+      const [px, pz] = st.cp, gy = ctx.groundAt ? ctx.groundAt(px, pz) : s.y;
+      return { pos: new THREE.Vector3(px, Math.max(gy, s.y) + 4 + up * 45, pz), /* 호스를 따라 카메라도 올라감 (나뭇가지 위로) */ look: new THREE.Vector3(s.x, s.y + 3 + up * 110, s.z) };
     },
     end(st, ctx) {
       ctx.scene.remove(st.h); st.h.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
