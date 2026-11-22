@@ -1858,3 +1858,11 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 못 탐: 적 `TUBE.fightR` 안·우두머리·떼 판 중·튜토리얼·탈것/마차/노루. 쿨타임 없음, 귤 0개여도 탐
 - 멀티: presence `tb` = i(빨려 들어감)·p(관 속, 옮긴 자리)·o(튀어나옴). 서버는 p·o 가 붙은 순간 이동을 `NET.tubeGap`(3초)에 한 번 받아 줌(warpGap 과 따로), 그 밖의 tb 값은 지움
 - 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
+
+## #262 사건 파일 Tripo 모델 여섯: 줄이기·뼈대·모션
+- 원본(`assets` 브랜치 `case/*.glb`, 22~33만 삼각형) → `model/bake-case.py`(bake-prop.py 방식 + 같은 텍스처를 작게 줄인 멀리용 LOD 하나 더) → `model/extract-prop.js` → `src/model-case-<이름>[-lo].js`. 캐릭터 7,500 삼각형·텍스처 512 / 멀리용 1,500·128, 호스 1,500 / 380. 얼굴은 512 에서도 뭉개지지 않아 1024 는 안 씀
+- 받기: `tools/packassets.mjs` 에 `case-<이름>`·`case-<이름>-lo` (meta.lazy) → `assets.js` 가 한가할 때 받는 차례에서 뺌(assetInfo.total 에도 안 셈). 모델 합계 1,793KB → 2,645KB(+852KB, 한도 1.5MB 안). 첫 화면 받는 양은 그대로
+- `src/casemodels.js` `caseModel(이름)`: 뼈 7개(호스 8마디) 가중치는 정점과 뼈 선분 거리(1/d^6) + 큰 머리 통째 + 손에 든 것 상자 + 몸통 옆면 안쪽은 팔에서 뺌(gate). 듀얼 쿼터니언. 큰 모델·멀리용이 같은 뼈 → 캐릭터마다 그리는 것 1(+그림자). 받기·LOD 는 onBeforeRender(카메라 거리)로 저절로. 모션 섞기 0.25초
+- 바꾼 곳: 사건 5 설인(caseprops.js yeti: 앉아 묶기·한 손 들기), 사건 2 흰 옷(casechase.js: 미끄러지듯·집게질), 정상 사진사(photographer.js: 카메라 눈에·찍을 때 번쩍·손짓. 우비 차림은 없어짐, 예전 z- 장비는 남김). 검은 양복·호스·터지기는 #234·#235·#255 가 `caseModel` 로 씀(notes/case-files.md 6절)
+- 한 덩어리 모델이라 팔을 크게 들면 옆구리가 늘어남 → 모션은 작게(터지기 손 흔들기는 망고 든 손, 사진사는 카메라를 눈에 댄 채)
+- 검사 `node tools/casemodels.js` (첫 화면에 안 받음·여섯 받음·그리는 수 +6·모션마다 뼈가 움직임·찍기 notes/shots/262)
