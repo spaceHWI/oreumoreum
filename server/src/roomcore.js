@@ -32,7 +32,7 @@
 //   a 를 한 번도 안 보낸 연결(옛 클라이언트)도 닫지 않음. {t:'idle', s} 는 STATS_OPEN(로컬 확인)일 때만: 그 사람의 기준 초를 s 로 (tools/online.js)
 // 오름 레이드 (#181, src/raidcore.js): 방이 시각·시작·끝·기운·더미·기여·보상을 셈. 따로 셈(NET.raidPerSec·raidMax)
 //   {t:'rj'} 레이드 자리에 옴(참가 수) · {t:'rh', d} 피해(사람마다 초당 RAID.dps 까지만) · {t:'rp', i} 부서진 더미 i 에서 하나 · {t:'rs', s, a?} 방장만: 몸 자리·패턴 → 다른 사람 모두에게
-//   {t:'rgo'} 바로 열기 (STATS_OPEN 방·어드민만) → 방 전체에 {t:'rv', s, h?} (hi 의 raid 에도), 성공하면 보탠 사람마다 {t:'rw', g, box, xp, top} 이고 로그인한 사람은 g 를 번 몫(#144)에 넣음
+//   {t:'rgo', f?} 바로 열기 (STATS_OPEN 방·어드민만, f:1 은 STATS_OPEN 방만 남은 레이드를 지우고) → 방 전체에 {t:'rv', s, h?} (hi 의 raid 에도), 성공하면 보탠 사람마다 {t:'rw', g, box, xp, top} 이고 로그인한 사람은 g 를 번 몫(#144)에 넣음
 // 동굴 적 같이 보기 (#205): 같은 동굴 칸(ck)에서 먼저 들어온 사람이 칸 주인. 바뀌면(들어옴·나감·칸 옮김) 그 칸 사람 모두에게 {t:'ch', id, k}, 새로 온 사람에게도 한 번
 //   {t:'cs', k, e, w?, g?} 칸 주인만(k 는 지금 칸과 같아야 함) → 같은 칸 다른 사람에게 (적 [번호, 종류, x, z, 방향, 상태, 기운, 최대, 역할]…, 깬 방 w, 지킴이·주인 g). 칸이 다른 사람에게는 안 감
 //   {t:'cx', h:[[번호, 피해]…]} 칸 주인 아닌 사람 → 칸 주인에게만 {t:'cx', h(피해 ≤ bossHitMax), from}. 따로 셈(NET.cavePerSec·caveMax)
@@ -288,7 +288,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         const o = { t: 'rs', s: m.s }; if (numArr(m.a, 16)) o.a = m.a;
         all(JSON.stringify(o), p); break;
       }
-      case 'rgo': if (stats || p.adm) raid.start(); break;
+      case 'rgo': if (stats || p.adm) raid.start(stats && m.f === 1); break; // f:1 = 남은 레이드도 지우고 새로 (#245): 로컬 확인 방만, 어드민도 실서버에선 못 함
       case 'cs': { // 동굴 적 상태 (#205): 칸 주인만 → 같은 칸 다른 사람에게
         if (caveHostOf(p) !== p.id || m.k !== p.ck || !Array.isArray(m.e) || m.e.length > NET.caveEnemyMax || !m.e.every(caveRow)) return;
         const o = { t: 'cs', k: p.ck, e: m.e }; if (Number.isInteger(m.w) && m.w >= 0) o.w = m.w; if (Number.isInteger(m.g) && m.g >= 0 && m.g < 4) o.g = m.g;

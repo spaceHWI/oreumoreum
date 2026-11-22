@@ -36,7 +36,7 @@ let room = null, live = false;
 const myId = () => (live && room?.id) || 'me';
 const isHost = () => !live || !!room?.isHost;
 const local = RON ? createRaid({ send: (id, o) => { if (!live) onMsg(o); }, who: () => ({ nick: save.nick || '나', here: true }) }) : null;
-const tx = (o) => { if (live) room.send(o); else if (o.t === 'rh') local.hit('me', o.d); else if (o.t === 'rp') local.pick('me', o.i); else if (o.t === 'rj') local.join('me'); else if (o.t === 'rgo') local.start(); };
+const tx = (o) => { if (live) room.send(o); else if (o.t === 'rh') local.hit('me', o.d); else if (o.t === 'rp') local.pick('me', o.i); else if (o.t === 'rj') local.join('me'); else if (o.t === 'rgo') local.start(o.f === 1); };
 
 // 방이 알려 준 상태
 const S = { id: 0, ph: PH.idle, at: 0, end: 0, hp: 0, max: 1, n: 1, broke: 0, h: null, off: 0 }; // off: 서버 시계 - 내 시계 (ms, hi 의 now)
@@ -308,9 +308,9 @@ late.raidNet = {
 };
 
 /* ---------- 확인용 (window.__oreum.raid) ---------- */
-// start(): 바로 열기 (5초 뒤 시작. 서버는 STATS_OPEN 방·어드민만) · state() · go(): 굼부리 가운데로 · hit(d): 내가 맞힌 것처럼 · heaps(): 더미 자리
+// start(force): 바로 열기 (5초 뒤 시작. 서버는 STATS_OPEN 방·어드민만, force 는 남은 레이드도 지움 #245) · state() · go(): 굼부리 가운데로 · hit(d): 내가 맞힌 것처럼 · heaps(): 더미 자리
 late.raidApi = RON ? {
-  start() { tx({ t: 'rgo' }); return true; },
+  start(force) { tx(force ? { t: 'rgo', f: 1 } : { t: 'rgo' }); return true; },
   state: () => ({ ...S, h: S.h && S.h.slice(), live, host: isHost(), body: !!body, act: body?.act?.k || null, x: body && +body.e.pos.x.toFixed(1), z: body && +body.e.pos.z.toFixed(1), puppet: !!body?.e.puppet, heaps: heapMs.length, wins: save.raid.wins }),
   go(d = 14) { const x = C.x + d, z = C.z; player.pos.set(x, height(x, z), z); player.heading = -Math.PI / 2; late.placeRunner?.(); return { x: +x.toFixed(1), z: +z.toFixed(1) }; },
   center: () => ({ ...C, r: R.r }),

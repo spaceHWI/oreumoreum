@@ -1777,3 +1777,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 사건 파일 창 `#case-file`: 맨 위 서류 다섯 칸, 사건마다 목격·증거 셋·서류 칸과 미해결/종결 도장, 칸을 누르면 그 쪽지. 메뉴 [사건 파일]·쪽지 창 아래 [사건] 단추(사건이 열린 뒤)
 - 확인: `node tools/caserun.js c1 [d|m] [shots]` (처음부터 끝까지, 자리 막힘·구역, 폰 가로), `tools/sec.js`(사건 퀘스트 귤 한 번·두 번 거절·보상 옷), `tools/oldsave.js caseBad·caseMid`, `tools/storytext.mjs`(사건 글도 봄)
 
+## #245 검사 도구: online.js 판 것 인정·레이드 줄 안정화
+- `online.js` 판 것 인정 줄: `push()` 뒤 1.2초 고정 대신 `save.sold` 가 비워질 때까지(서버 응답) `until`
+- 레이드: `raid.start(force)` 더함 (`src/raidcore.js`·`game/raid.js`, 서버 `{t:'rgo', f:1}`). force 는 싸움 중·부서짐 레이드도 지우고 5초 뒤 새로. 서버는 STATS_OPEN 방만 받음(실서버 어드민도 못 함). `online.js raid` 는 시작할 때 force 로 열어 앞 실행이 남긴 레이드(이어받기 줄이 싸움 중으로 남김)와 상관없음. 이어받기 앞 16초 고정 대신 쉼(단계 0)이 될 때까지
+- `online.js <서버> core` (동굴·레이드·귤 주기 뺀 나머지). 나눠 돌리는 법은 `notes/auto.md` 확인 절. 통째는 소프트웨어 GL 에서 약 11분
+- `sec.js` 2줄: 실서버 어드민의 rgo f:1 은 무시, STATS_OPEN 방의 rgo f:1 은 새 레이드

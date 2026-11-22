@@ -461,6 +461,10 @@ async function startServers() {
       core.message(a, JSON.stringify({ t: 'rgo' })); core.step(); ok(core.raid.ph === 0, '레이드 바로 열기는 STATS_OPEN 방·어드민만');
       core.message(bq, JSON.stringify({ t: 'rs', s: [1, 2, 3] })); ok(!ms.a.some((m) => m.t === 'rs'), '방장 아닌 사람의 레이드 몸 알림은 버림');
       T0 += 30 * 60e3; core.step(); ok(core.raid.ph === 2, `정해진 시각(12:30 KST)에 레이드 시작 (단계 ${core.raid.ph})`);
+      { const ad = core.join(() => {}, { acct: 'raid-adm', adm: true }), id0 = core.raid.id; core.message(ad, JSON.stringify({ t: 'rgo', f: 1 })); core.step(); core.leave(ad); ok(core.raid.ph === 2 && core.raid.id === id0, '싸우는 중 레이드 지우고 새로 열기(rgo f:1)는 STATS_OPEN 방만: 실서버 어드민도 못 함 (#245)'); }
+      { let T1 = T0; const sc = createRoomCore({ now: () => T1, stats: true }), q = sc.join(() => {}); sc.message(q, JSON.stringify({ t: 'rgo' })); T1 += 6000; sc.step(); T1 += 1000; sc.step(); const id1 = sc.raid.id, ph1 = sc.raid.ph;
+        T1 += 1000; sc.message(q, JSON.stringify({ t: 'rgo' })); sc.step(); const keep = sc.raid.ph === 2 && sc.raid.id === id1; T1 += 1000; sc.message(q, JSON.stringify({ t: 'rgo', f: 1 })); sc.step(); T1 += 6000; sc.step();
+        ok(ph1 === 2 && keep && sc.raid.id === id1 + 1 && sc.raid.ph >= 1, `STATS_OPEN 방: 싸우는 중 rgo 는 그대로, rgo f:1 은 지우고 새 레이드 (#245, 번호 ${id1} → ${sc.raid.id}, 단계 ${sc.raid.ph})`); }
       const h0 = core.raid.hp; core.message(a, JSON.stringify({ t: 'rh', d: 1e9 })); ok(h0 - core.raid.hp <= N2.bossHitMax + 1e-6, `피해 부풀리기는 잘림 (${h0 - core.raid.hp})`);
       const h1 = core.raid.hp; for (let i = 0; i < 10; i++) { T0 += 100; core.message(a, JSON.stringify({ t: 'rh', d: 300 })); } ok(h1 - core.raid.hp <= RAID.dpsBurst + RAID.dps + 1, `한 사람이 1초에 줄 수 있는 피해 상한 (${Math.round(h1 - core.raid.hp)} ≤ ${RAID.dpsBurst + RAID.dps})`);
       core.message(a, JSON.stringify({ t: 'rp', i: 0 })); ok(core.raid.contrib(a.id).p === 0, '싸우는 동안(부서지기 전) 더미 줍기는 안 셈');
