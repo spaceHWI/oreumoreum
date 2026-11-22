@@ -247,6 +247,18 @@ async function startServers() {
       ok(!r.fixed.length && r.save.coins === 100 + qg, `퀘스트 보상(${q.id} ${qg})은 몫으로 인정`);
       let r2 = checkSave(P, { ...P, coins: 100 + qg, quest: { done: [q.id] } }, { ...r.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
       ok(r2.fixed.includes('coins') && r2.save.coins <= 100 + NET.earnPerSec * 1, '같은 퀘스트 보상 두 번 받기 거절 (처음부터 다시 해도)');
+      { // 사건 파일 (#232): 사건 퀘스트 보상 귤도 퀘스트 몫으로 계정마다 한 번 (src/cases/c*.js quests → QUESTS.side)
+        const { CASE_QUESTS } = await import('../src/cases/index.js');
+        for (const cq of CASE_QUESTS.filter((x) => x.reward?.gyul)) {
+          const g = cq.reward.gyul, k1 = checkSave(P, { ...P, coins: 100 + g, quest: { done: [cq.id] } }, { ...acc, credit: 0, bank: 0 }, t);
+          ok(!k1.fixed.length && k1.save.coins === 100 + g && k1.rec?.why?.quest === g, `사건 퀘스트 ${cq.id} 보상(귤 ${g})은 몫으로 인정`);
+          const k2 = checkSave(P, { ...P, coins: 100 + g, quest: { done: [cq.id] } }, { ...k1.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
+          ok(k2.fixed.includes('coins') && k2.save.coins <= 100 + NET.earnPerSec * 1, `사건 퀘스트 ${cq.id} 보상 두 번 받기 거절 (처음부터 다시 해도)`);
+        }
+        const cl = CASE_QUESTS.map((x) => x.reward?.item).filter(Boolean);
+        const k3 = checkSave(P, { ...P, clothes: { own: Object.fromEntries(cl.map((id) => [id, 1])), wear: {} } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!k3.fixed.length && cl.every((id) => k3.save.clothes.own[id]), `사건 보상 옷(${cl.join(',')})은 값 0 이라 그대로`);
+      }
       r = checkSave(P, { ...P, coins: 100, boss: { done: { 5: 1 } } }, acc, t);
       const r3 = checkSave(r.save, { ...r.save, coins: 100 + 2500 }, { ...r.acc, credit: 0, savedAt: t }, t + 5000);
       ok(!r3.fixed.length, '우두머리 귤은 기록 뒤 저장에서 주워도 받아 줌 (bank)');

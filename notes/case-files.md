@@ -73,3 +73,17 @@
 ## 5. 매일: 미확인 제보
 - 하루에 하나, 작은 목격담(쪽지 한 장 + 가서 보면 흔적 하나). 5분 안에 끝난다. 큰 사건의 실마리를 흘리거나 그냥 헛소문이다. 헛소문 비율 임의 30%.
 - 첫 화면의 '매일 새로운 콘텐츠'(#229)와 오늘의 할 일(#125)에 붙인다.
+
+## 6. 사건 더하는 법 (#232 에서 만든 틀)
+- 파일: `src/cases/c<번호>.js` 하나에 `export default { … }`. 데이터만 쓴다(three·DOM·다른 src 파일 import 없음: balance.js·punktext.js·achievements.js·서버가 읽음). `src/cases/index.js` 의 `LIST` 에 한 줄(import 와 함께) 더한다. 칭호는 `src/punktext.js` TITLES 끝에 `{ t: '<title 과 같은 글>', badge: 'b-case-<id>' }` 한 줄(멀티로 번호가 오가므로 뒤에만)
+- 모양(사건 1 `c1.js` 를 본보기로):
+  - `id` 'c<번호>' · `n` 서류 칸 자리(1~5) · `zone` 구역 · `lv` 열림 레벨 · `name` 제목 · `giver` 의뢰 NPC(balance.js QUESTS.givers id: jigi·b:slope·b:rest·b:crater·shop:…)
+  - `see { at: [x, z], r, prop, say }` 목격: 레벨이 lv 이상이면 at 에 prop 모양이 보이고, r m 안에 들면 혼잣말 say(22자) → '미해결'
+  - `ev [{ id, kind, at, prop, label, note }]` 증거 셋. kind: `photo` 사진 · `trace` 흔적 · `note` 쪽지 (자리에서 상호작용 → note 쪽지) · `act` 행동 n번 (`{ kind: 'act', k: '<퀘스트 셈 이름>', n }`, at 없음: 사건을 연 뒤 그 셈이 n 오르면. 예 'heap@2'·'dumper@2'·'repel:dog')
+  - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
+  - `doc` 서류 쪽지 id(대면을 끝내면 받음) · `notes` 증거·서류 쪽지(NOTES 모양: id·paper·t 14자·from·b 4줄) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄))
+  - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
+- 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
+- 사건의 마지막 퀘스트 보상을 받으면 종결(도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
+- 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 목격 → 증거 → 대면 → 서류 → 종결 → 창 → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`
+

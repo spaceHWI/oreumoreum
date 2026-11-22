@@ -55,7 +55,7 @@ const CAP = {
   clothes: () => ((LEAP.slots || []).some((k) => { try { return leapItems(k).some((it) => !it.own); } catch { return true; } }) ? Infinity : quests.state().c.clothes || 0),
 };
 export const questCan = (k) => { const c = CAP[k]?.(); return c == null || !Number.isFinite(c) ? Infinity : c; };
-const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; return quests.state().c[k] || 0; };
+const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; if (k.startsWith('case:')) return +late.caseVal?.(k) || 0; /* #232 사건 파일 */ return quests.state().c[k] || 0; };
 const life = () => save.ach?.life || {};
 // 옛 저장에서 이미 한 것 (catchUp): 그 구역을 끝냈으면 그 구역 퀘스트는 모두, 아니면 평생 기록으로 어림
 function oldDone(q) {
@@ -72,7 +72,7 @@ export const quests = createQuests({
   save, persist, defs: Q,
   hooks: {
     val, oldDone, cap: (k) => questCan(k), stuck: (q) => stuckDone(q),
-    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) && late.shopOpen?.(need.slice(5)) !== false : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : false), // #168 이야기 곁가지는 그 이벤트를 끝낸 뒤
+    has: (need) => (need.startsWith('shop:') ? !!shopOf(need.slice(5)) && late.shopOpen?.(need.slice(5)) !== false : need === 'loot' ? !!late.loot : need.startsWith('story:') ? !!save.story?.done?.includes?.(need.slice(6)) : need.startsWith('case:') ? !!late.caseOpen?.(need.slice(5)) : false), /* #168 이야기 곁가지는 그 이벤트를 끝낸 뒤 · #232 사건 퀘스트는 목격한 뒤 */
     door: (id) => director.isOpen(id),
     open: () => director.isOpen('quest'),
     ready: (q) => onReady(q),
@@ -267,6 +267,7 @@ function give(r, q) {
   if (r.item && CL && !CL.own[r.item]) { CL.own[r.item] = 1; persist(); toast(`${CLOTH_NAME[r.item] || '선물'}을 받았어요 · 내 가방에서 입어요`, 3); }
   late.sound?.swell?.(0.6);
   if (q.ending) ending(q.ending);
+  late.questGave?.(q); // 보상을 줌 (#232 사건 파일이 종결 도장·칭호)
 }
 // 끝 장면: 하늘에 큰 글씨 한 줄
 function ending(text) { const el = $('quest-end'); el.textContent = text; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 7000); }
@@ -308,6 +309,7 @@ function goPos(go) {
   if (go === 'cairn') { const c = nearest(cairns.map((c) => c.pos)); return c ? c.clone() : null; }
   if (go === 'cave') return late.caveEnt?.() || null; // 용암 동굴 입구 (#195)
   if (go === 'rimLook') return late.summitClue?.rimPos?.() || null; // 굼부리 가장자리 전망 자리 (#208)
+  if (go.startsWith('case:')) return late.casePos?.(go) || null; // 사건 파일 (#232): 아직 못 찾은 가장 가까운 증거·숨는 곳
   if (go === 'ch') { const c = nearest(CHS.map((c) => c.front)); return c ? c.clone() : null; }
   if (!trash) return null;
   const hs = trash.heaps.map((h, i) => ({ x: h.x, z: h.z, h, i }));

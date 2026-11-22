@@ -1,6 +1,7 @@
 // 오름펑크 글 모음 (#168 이야기 이벤트. #165 쪽지·방송·칭호도 여기에 더한다). 줄거리는 notes/journey.md 0절
 // 규칙: 장마다 물음 하나를 풀고 새 물음 하나를 던진다. '클린하우스' 와 외계인을 잇는 말은 4장(굼부리) 전에는 하지 않는다
 // 이벤트 id 는 balance.js STORY.list 와 같다. omen 예고 한 줄, go 벌어질 때, done 끝, say 말풍선(적·사람 머리 위), clue 끝난 뒤 실마리(오름지기에게 이야기하기 #158)
+import { CASE_NOTES } from './cases/index.js'; // 사건 파일 (#232)
 export const STORY_TEXT = {
   mom: {
     omen: '숲 가장자리에서 새끼 멧돼지가 울어요. 누굴 부르는 소리예요',
@@ -238,6 +239,7 @@ export const NOTES = [
   // 금고 쪽지 (#212, game/mystery.js): 굼부리 관리 초소 금고(0404)를 열면. 4장 반전은 말하지 않음
   { id: 'n404', paper: 'form', z: 'top', t: '수거 담당 인수인계서', from: '관리 초소 금고', b: '1. 수거는 매일 04:04. 늦으면 안 됨.\n2. 치워도 다시 쌓임. 위에서 내려오는 것은 세지 말 것.\n3. 누가 물어보면 \'관리 중\' 이라고만.\n인계자: (지워짐) / 인수자: ' },
 ];
+NOTES.push(...CASE_NOTES); // 사건 파일 쪽지 (#232, src/cases/c*.js notes): z 'case' 라 구역 쪽지로 떨어지지 않음. 사건의 증거·대면에서만
 
 // ---------- 3. 이름 장난 칭호 ----------
 // 번호(배열 자리)가 멀티로 오가므로 순서를 바꾸지 말고 뒤에만 더한다. badge = 이 업적(achievements.js BADGES)을 따면 열림
@@ -273,6 +275,8 @@ export const TITLES = [
   { t: '지구 견학 중', set: 'alien' },
   { t: '귤밭 주인', set: 'farmer' },
   { t: '개근 산타', set: 'santa' }, // 크리스마스 달력 25칸 (#222)
+  // 사건 파일 (#232): 사건을 종결하면 (src/cases/c*.js title 과 같은 글, badge 'b-case-<id>')
+  { t: '까마귀와 같은 급', badge: 'b-case-c1' },
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');
