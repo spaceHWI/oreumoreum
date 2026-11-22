@@ -105,7 +105,8 @@ const AFTER = {
     return { text: '오름 한 바퀴 둘러보기', prog: '', tap: () => late.openMap?.() };
   },
 };
-function after() { for (const k of N.after) { const h = AFTER[k]?.(); if (h) return { k: 'after:' + k, mark: 'next', ...h }; } return null; }
+let skip = new Set(); /* 확인용: 뺄 AFTER 키 (tools/nexthint.js) */
+function after() { for (const k of N.after) { if (skip.has(k)) continue; const h = AFTER[k]?.(); if (h) return { k: 'after:' + k, mark: 'next', ...h }; } return null; }
 
 /* ---------- 추적 줄에 얹기 (game/quest.js trackInfo 가 0.5초마다 부름) ---------- */
 // base = 퀘스트 줄(없으면 null). ctx.open 감독 문 quest(정낭을 나섬)
@@ -118,5 +119,5 @@ late.nextHint = (base, ctx = {}) => {
   const a = after(); why = a ? a.k : 'none'; return a;
 };
 
-late.nextDebug = { why: () => why, off(v = true) { off = !!v; }, // off: 잠깐 바뀌는 안내 끄기 (tools/questrun.js 가 퀘스트 줄만 볼 때)
+late.nextDebug = { why: () => why, off(v = true) { off = !!v; }, skip(ks = []) { skip = new Set(ks); }, // off: 잠깐 바뀌는 안내 끄기 (tools/questrun.js 가 퀘스트 줄만 볼 때)
   after: () => after(), reset() { hpUntil = 0; shopUntil = 0; shopSig = ''; }, shopUntil: () => shopUntil, hpUntil: () => hpUntil };

@@ -45,6 +45,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await ev(() => { window.__oreum.save.coins = 0; });
 
   // ----- HP 낮음 → 스톤에서 식사 -----
+  await ev(() => window.__oreum.shopGate?.open('stone')); await W(300); /* 스톤은 숲길 우두머리 뒤에 엶 (#206): 여기서는 열어 둠 */
   const hasStone = await ev(() => !!window.__oreum.stone);
   if (hasStone) {
     await ev(() => { const h = window.__oreum.hp; h.set(h.max * 0.2); });
@@ -58,6 +59,10 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await ev(() => { const o = window.__oreum, s = o.quest.api.state(); for (const q of o.quest.api.defs.main) if (!s.done.includes(q.id)) s.done.push(q.id); s.cur = null; for (const k of Object.keys(s.side)) delete s.side[k]; o.quest.next.reset(); });
   ok(await until(() => (window.__oreum.quest.track()?.k || '').startsWith('after:'), 12000), '퀘스트가 끝나면 이어 줄 것');
   t = await note(); ok(t.mark === 'next', '흰 › 표시');
+  // 그 구역의 사건 → 터 → 우두머리가 먼저 (#256): 확인하고 빼서(제보는 레벨에 따라 끼어서 같이 뺌) 그 뒤 차례를 봄
+  ok(['after:case', 'after:arena', 'after:boss'].includes(t.k), `그 구역 할 일이 먼저: ${t.text}`);
+  await ev(() => window.__oreum.quest.next.skip(['case', 'arena', 'boss', 'report']));
+  await until(() => !['after:case', 'after:arena', 'after:boss', 'after:report'].includes(window.__oreum.quest.track()?.k), 12000); t = await note();
   // 오늘의 업적을 다 받음 → 더미 → 소굴 → 돌탑 (강화·전설은 새 저장이라 없음)
   if (t.k === 'after:daily') {
     await ev(() => window.__oreum.quest.go()); await W(400);
