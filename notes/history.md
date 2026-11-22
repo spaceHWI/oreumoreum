@@ -1796,3 +1796,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 고친 것: 순위표(RANK.cacheMs 10초 캐시)에서 **내 줄**이 버린 직후에도 옛 수·옛 순위로 보이던 것 → 내 줄은 바로 센 값(rankOf)으로. 캐시 나이는 `Math.abs`
 - 어드민: 어드민 창 '상태' 탭 '지금 접속' 펼친 목록에 '랭킹 오늘·주·전체 ○·○·○명 · 마지막으로 늘어난 시각'. 서버 `/admin/online` 응답에 `rank {day, week, all, last}`(숫자만), 마지막 시각은 계정 DO 표 kv('rkLast')
 - 검사: `node tools/rankrun.js`(서버 하나·HTTP 만, 몇 초). 로컬(FAKE_AUTH)만 `PUT /save` body.at·`GET /rank?at=` 로 시각을 넣어 봄. `tools/sec.js` 에 랭킹 상태 숫자 넷만·손님 401 두 줄
+
+## #260 투기꾼 퀘스트 보장
+- 규칙 표(코드 조사): 투기꾼은 연출 감독(`pacing.js`, `PACE.battle`)이 공격 물결마다(간격 180~240초) 부름. 전엔 두 번에 한 번(`dumpEvery 2`)이라 10분에 1번꼴, 쓸 자리는 `pickHeap`(빈자리 있는 더미만, 구역은 `DUMP.zoneBase`+깨끗함 가중). 투기꾼을 조건으로 하는 것: 퀘스트 `dumper1`(구역1, n1)·`pair`(이벤트)·`note`(구역2, n1), 오늘의 할 일 `t-dumper-2`, 업적 `b-dumper`(30)
+- 앞 값/뒤 값(`node tools/dumpfreq.js 2` / `1`, 시드 3번 평균, 10분): 앞 1.0회 → 뒤 3.0회. `PACE.battle.dumpEvery` 2 → 1. 시간당 쓰레기 양(DUMP_PER_HOUR)은 한 번 양이 자동으로 나눠져 그대로
+- 퀘스트 보장: `src/game/dumperq.js`(+`balance.js DUMPER_Q`). 진행 중 퀘스트·오늘의 할 일에 투기꾼이 남았고(`dumperLeft`) 가게 거리 밖·튜토리얼·서바이벌·동굴·창·낚시·식사·탈것 아님이면 60초 뒤 한 명, 쫓아낸 뒤 조건이 남으면 45초 뒤. 60~90m 앞 길가 더미 쪽에서 출발(없으면 아무 더미). 빈자리 있는 더미가 없으면(새 저장) 양 0 으로 와서 서성임 → 퀘스트가 안 막힘. 한 줄 '누가 뭘 내려놓고 가요'(기존 가장자리 표시 dumpWarn 그대로), 추적 줄 n/m 은 기존
+- 안 한 것: 멀티에서 남이 먼저 쫓아낸 것을 같이 셈(투기꾼은 각자 화면에서 따로 돌아 지금 규칙이 없음), 연출 감독 공격 중엔 겹치지 않으려 시계만 멈춤. `dumper1` 받을 때 글에 '길가 더미 쪽' 한 마디
+- 검사: `node tools/dumperrun.js d|m` (퀘스트를 걸고 60초에 나타나 65초에 조건 채움), `tools/dumpfreq.js`. 게임 시간은 `dumpers.update(0.5)` 로 직접 돌림(느린 렌더에서도 같은 결과)
