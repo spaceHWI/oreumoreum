@@ -21,19 +21,31 @@ function vnoise(x, z, s) {
 // 오늘의 동굴 씨앗: 날짜(KST) 글자 → 숫자. 층마다 따로
 export const caveSeed = (day, floor) => hashStr('cave:' + day + ':' + floor);
 
-// 한 층 만들기. K = balance.js CAVE, fi = 층 번호(0 부터), seed
+// 카메라 안 (#214): 안마다 쓰는 값. 'a' 내려다보기(벽을 cut 높이에서 자르고 천장 없음) · 'b' 넓은 굴(길이 S 배, 천장 ceilK 배, 층 자리 따로) · 그 밖 = K 그대로
+// 'b' 는 같은 씨앗에서 난수 순서가 같아 지금 굴을 그대로 S 배 키운 모양. 칸 수는 같아 삼각형 수도 같음
+const KM = new Map();
+export function caveK(K, mode) {
+  if (mode !== 'a' && mode !== 'b') return K;
+  const key = K.x0 + ':' + mode; if (KM.has(key)) return KM.get(key);
+  let o;
+  if (mode === 'a') o = { ...K, mode, cut: K.view.a.cut };
+  else { const w = K.view.b, S = w.k; o = { ...K, mode, S, cell: K.cell * S, roomR: K.roomR.map((r) => r * S), bossR: K.bossR * S, corrW: K.corrW * S, ceil: { corr: K.ceil.corr * w.ceilK, room: K.ceil.room.map((h) => h * w.ceilK) }, x0: w.x0, floorGap: w.floorGap, cam: w.cam }; }
+  KM.set(key, o); return o;
+}
+
+// 한 층 만들기. K = balance.js CAVE (또는 caveK 로 고친 것), fi = 층 번호(0 부터), seed
 export function genFloor(K, fi, seed) {
-  const R = rng(seed), N = K.grid, C = K.cell, span = N * C;
+  const R = rng(seed), N = K.grid, C = K.cell, span = N * C, S = K.S || 1; /* S: 넓은 굴(#214 b) 길이 배율. 고정 거리·잡음 결도 같이 */
   const ox = K.x0 + fi * K.floorGap - span / 2, oz = K.z0 - span / 2; // 칸 (0,0) 의 세계 자리
   const last = fi === K.floors - 1;
   const nRoom = K.rooms[0] + Math.floor(R() * (K.rooms[1] - K.rooms[0] + 1));
   // 방 놓기: 가장자리에서 떨어지고 서로 겹치지 않게 (안 되면 조금씩 작게)
-  const rooms = [], pad = 6;
+  const rooms = [], pad = 6 * S;
   for (let k = 0, tries = 0; rooms.length < nRoom && tries < 600; tries++) {
     const boss = last && rooms.length === nRoom - 1;
     let r = boss ? K.bossR : K.roomR[0] + R() * (K.roomR[1] - K.roomR[0]); if (tries > 300) r *= 0.8;
     const x = pad + r + R() * (span - 2 * (pad + r)), z = pad + r + R() * (span - 2 * (pad + r));
-    if (rooms.every((o) => Math.hypot(o.x - x, o.z - z) > o.r + r + 7)) rooms.push({ i: k++, x, z, r, h: K.ceil.room[0] + R() * (K.ceil.room[1] - K.ceil.room[0]), kind: 'room' });
+    if (rooms.every((o) => Math.hypot(o.x - x, o.z - z) > o.r + r + 7 * S)) rooms.push({ i: k++, x, z, r, h: K.ceil.room[0] + R() * (K.ceil.room[1] - K.ceil.room[0]), kind: 'room' });
   }
   // 첫 방 = 줄(밖으로·위층으로) 방. 거기서 가장 먼 방 = 아래로 내려가는 구멍(맨 아래 층은 동굴의 주인 방)
   const start = rooms[0];
@@ -66,12 +78,12 @@ export function genFloor(K, fi, seed) {
   const pockets = [];
   if (!last) for (let tries = 0; tries < 40 && !pockets.length; tries++) {
     const c = corr[Math.floor(R() * corr.length)], k = Math.floor(c.pts.length / 2), p = c.pts[k], q = c.pts[Math.min(c.pts.length - 1, k + 1)];
-    const dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz) || 1, side = R() < 0.5 ? -1 : 1, d = 10 + R() * 5, r = 3.5 + R() * 1.2;
+    const dx = q[0] - p[0], dz = q[1] - p[1], L = Math.hypot(dx, dz) || 1, side = R() < 0.5 ? -1 : 1, d = (10 + R() * 5) * S, r = (3.5 + R() * 1.2) * S;
     const x = p[0] - dz / L * d * side, z = p[1] + dx / L * d * side;
     if (x < pad + r || z < pad + r || x > span - pad - r || z > span - pad - r) continue;
-    if (!rooms.every((o) => Math.hypot(o.x - x, o.z - z) > o.r + r + 4)) continue;
+    if (!rooms.every((o) => Math.hypot(o.x - x, o.z - z) > o.r + r + 4 * S)) continue;
     const o = { i: rooms.length, x, z, r, h: K.ceil.room[0], kind: 'pocket' }; rooms.push(o); pockets.push(o);
-    corr.push({ a: -1, b: o.i, pts: [p, [(p[0] + x) / 2 + dx / L * 2, (p[1] + z) / 2 + dz / L * 2], [x, z]], w: K.corrW * 0.8 });
+    corr.push({ a: -1, b: o.i, pts: [p, [(p[0] + x) / 2 + dx / L * 2 * S, (p[1] + z) / 2 + dz / L * 2 * S], [x, z]], w: K.corrW * 0.8 });
   }
   // 갈림길 수: 곁방 + 더 이은 통로(고리)
   const branch = pockets.length + added;
@@ -79,7 +91,7 @@ export function genFloor(K, fi, seed) {
   const cells = new Uint8Array(N * N), sN = seed & 0xffff;
   const segD = (px, pz, p, q) => { const vx = q[0] - p[0], vz = q[1] - p[1], L2 = vx * vx + vz * vz || 1; let t = ((px - p[0]) * vx + (pz - p[1]) * vz) / L2; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - p[0] - vx * t, pz - p[1] - vz * t); };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const px = (i + 0.5) * C, pz = (j + 0.5) * C, wob = (vnoise(px * 0.18, pz * 0.18, sN) - 0.5) * 2;
+    const px = (i + 0.5) * C, pz = (j + 0.5) * C, wob = (vnoise(px * 0.18 / S, pz * 0.18 / S, sN) - 0.5) * 2;
     let on = false;
     for (const o of rooms) if (Math.hypot(px - o.x, pz - o.z) < o.r * (1 + wob * 0.18)) { on = true; break; }
     if (!on) for (const c of corr) { const w = c.w * (1 + wob * 0.25); for (let k = 0; k < c.pts.length - 1 && !on; k++) if (segD(px, pz, c.pts[k], c.pts[k + 1]) < w) on = true; if (on) break; }
@@ -92,10 +104,10 @@ export function genFloor(K, fi, seed) {
     while (q.length) { const c = q.pop(), i = c % N, j = (c - i) / N; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N) continue; const k = b * N + a; if (cells[k] && !seen[k]) { seen[k] = 1; q.push(k); } } }
     for (let k = 0; k < N * N; k++) if (!seen[k]) cells[k] = 0; }
   // 높이: 바닥은 낮게 출렁이고 통로는 조금 비탈, 천장은 방 가운데가 높은 둥근 지붕
-  const floorL = (lx, lz) => (vnoise(lx * 0.07, lz * 0.07, sN + 7) - 0.5) * 2.4 + (vnoise(lx * 0.4, lz * 0.4, sN + 9) - 0.5) * 0.3;
+  const floorL = (lx, lz) => (vnoise(lx * 0.07 / S, lz * 0.07 / S, sN + 7) - 0.5) * 2.4 + (vnoise(lx * 0.4, lz * 0.4, sN + 9) - 0.5) * 0.3;
   const ceilL = (lx, lz) => {
-    let c = K.ceil.corr + (vnoise(lx * 0.3, lz * 0.3, sN + 3) - 0.5) * 0.9;
-    for (const o of rooms) { const d = Math.hypot(lx - o.x, lz - o.z) / o.r; if (d < 1.15) { const k = Math.max(0, 1 - d * d); c = Math.max(c, K.ceil.corr + (o.h - K.ceil.corr) * Math.sqrt(k) + (vnoise(lx * 0.25, lz * 0.25, sN + 5) - 0.5) * 1.4); } }
+    let c = K.ceil.corr + (vnoise(lx * 0.3 / S, lz * 0.3 / S, sN + 3) - 0.5) * 0.9 * S;
+    for (const o of rooms) { const d = Math.hypot(lx - o.x, lz - o.z) / o.r; if (d < 1.15) { const k = Math.max(0, 1 - d * d); c = Math.max(c, K.ceil.corr + (o.h - K.ceil.corr) * Math.sqrt(k) + (vnoise(lx * 0.25 / S, lz * 0.25 / S, sN + 5) - 0.5) * 1.4 * S); } }
     return c;
   };
   const cellAt = (lx, lz) => { const i = Math.floor(lx / C), j = Math.floor(lz / C); return i >= 0 && j >= 0 && i < N && j < N ? cells[j * N + i] : 0; };
@@ -117,8 +129,10 @@ export function genFloor(K, fi, seed) {
 
 // 그리는 모양: 위치·색 배열 (삼각형 목록, 인덱스 없음). 바닥·천장은 칸마다 사각형, 벽은 바닥 칸과 막힌 칸 사이 변마다 세로 3줄
 // 칸 모서리 (i,j) 는 늘 같은 만큼 흔들림 → 바닥·벽·천장이 틈 없이 이어짐
+// 삼각형 앞면: 바닥은 위, 천장은 아래, 벽은 굴 안(빈 칸) 쪽. 내려다보기(#214 a, K.cut)는 앞면만 그려 카메라 쪽 벽이 안 보이고(단면),
+//   천장 없이 벽을 바닥 + cut 높이에서 자름. 자른 윗면(바위 칸 가운데 빈 칸에 닿는 것)은 cap 으로 따로 (검게)
 export function caveMesh(F, K) {
-  const { N, C, cells, ox, oz, sN } = F, W = K.wobble * C;
+  const { N, C, cells, ox, oz, sN } = F, W = K.wobble * C, cut = K.cut || 0, cap = [];
   const jx = (i, j) => (h2(i, j, sN + 11) - 0.5) * 2 * W, jz = (i, j) => (h2(i, j, sN + 13) - 0.5) * 2 * W;
   const pos = [], col = [];
   const P = (i, j) => { const x = ox + i * C + jx(i, j), z = oz + j * C + jz(i, j); return [x, z]; };
@@ -134,17 +148,17 @@ export function caveMesh(F, K) {
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     if (!at(i, j)) continue;
     const c00 = P(i, j), c10 = P(i + 1, j), c01 = P(i, j + 1), c11 = P(i + 1, j + 1);
-    const f = (c) => [c[0], F.floorY(c[0], c[1]), c[1]], t = (c) => [c[0], F.ceilY(c[0], c[1]), c[1]];
+    const f = (c) => [c[0], F.floorY(c[0], c[1]), c[1]], t = (c) => [c[0], F.ceilY(c[0], c[1]), c[1]], topY = (c) => (cut ? F.floorY(c[0], c[1]) + cut : F.ceilY(c[0], c[1]));
     // 바닥 (위에서 보아 반시계 = 위를 봄)
     tri(f(c00), f(c01), f(c11), 0); tri(f(c00), f(c11), f(c10), 0);
     // 천장 (아래를 봄)
-    tri(t(c00), t(c11), t(c01), 2); tri(t(c00), t(c10), t(c11), 2);
+    if (!cut) { tri(t(c00), t(c11), t(c01), 2); tri(t(c00), t(c10), t(c11), 2); }
     // 벽: 막힌 이웃 쪽 변
     const sides = [[0, -1, c00, c10], [1, 0, c10, c11], [0, 1, c11, c01], [-1, 0, c01, c00]];
     for (const [di, dj, a, b] of sides) {
       if (at(i + di, j + dj)) continue;
       // 세로 3줄. 가운데 줄 점은 바위 쪽(바깥)으로 불룩/움푹
-      const rows = 3, ya = [F.floorY(a[0], a[1]), F.ceilY(a[0], a[1])], yb = [F.floorY(b[0], b[1]), F.ceilY(b[0], b[1])];
+      const rows = 3, ya = [F.floorY(a[0], a[1]), topY(a)], yb = [F.floorY(b[0], b[1]), topY(b)];
       const pt = (c, ys, r, key) => { const t0 = r / rows, y = ys[0] + (ys[1] - ys[0]) * t0, bulge = r > 0 && r < rows ? (h2(key, r, sN + 23) - 0.5) * W * 1.6 : 0; return [c[0] + di * bulge, y, c[1] + dj * bulge]; };
       const ka = (i + (a === c10 || a === c11 ? 1 : 0)) * 7919 + (j + (a === c01 || a === c11 ? 1 : 0)), kb = (i + (b === c10 || b === c11 ? 1 : 0)) * 7919 + (j + (b === c01 || b === c11 ? 1 : 0));
       for (let r = 0; r < rows; r++) {
@@ -153,7 +167,12 @@ export function caveMesh(F, K) {
       }
     }
   }
-  return { pos: new Float32Array(pos), col: new Float32Array(col), tris: pos.length / 9 };
+  if (cut) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { /* 자른 윗면: 빈 칸 둘레(8칸) 바위 칸만. 위를 봄 */
+    if (at(i, j) || !(at(i - 1, j) || at(i + 1, j) || at(i, j - 1) || at(i, j + 1) || at(i - 1, j - 1) || at(i + 1, j - 1) || at(i - 1, j + 1) || at(i + 1, j + 1))) continue;
+    const u = (c) => [c[0], F.floorY(c[0], c[1]) + cut, c[1]], c00 = u(P(i, j)), c10 = u(P(i + 1, j)), c01 = u(P(i, j + 1)), c11 = u(P(i + 1, j + 1));
+    cap.push(...c00, ...c01, ...c11, ...c00, ...c11, ...c10);
+  }
+  return { pos: new Float32Array(pos), col: new Float32Array(col), tris: pos.length / 9 + cap.length / 9, cap: cap.length ? new Float32Array(cap) : null };
 }
 
 // 이끼·수정 자리: 벽 가까운 바닥 칸(이끼), 방 안 벽가(수정). 층마다 같은 씨앗이면 같은 자리
