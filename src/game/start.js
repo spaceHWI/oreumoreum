@@ -9,6 +9,7 @@ import { trash, player } from './place.js';
 import { cam, endTitleCam } from './camera.js';
 import { toast, updateStats, closePanels, ach, panelOpen, cancelAll } from './hud.js';
 import { enableDev } from './menu.js';
+import { dropAdm } from '../mview.js';
 import { startSession } from './room.js';
 import { openLook, introMap, switchMap } from './look.js';
 import { sound, setSoundUI } from './hooks.js';
@@ -53,7 +54,7 @@ if (ONLINE) {
     onFix: (f) => { const c0 = save.coins; if (f.lv) late.lvFix?.(f.lv); if (f.gift && typeof f.gift === 'object') { const g = save.gift ||= { in: 0, out: 0 }, gi = Math.max(0, Math.floor(+f.gift.in || 0)), go = Math.max(0, Math.floor(+f.gift.out || 0)); if (f.coins != null) f.coins = Math.max(0, f.coins + Math.max(0, (g.in | 0) - gi) - Math.max(0, (g.out | 0) - go)); g.in = Math.max(g.in | 0, gi); g.out = Math.max(g.out | 0, go); } if (f.coins != null && f.coins !== save.coins) { const before = save.coins; save.coins = f.coins; updateStats(); if (f.cut?.n > 0) cutNotice(f.cut, before, f.coins); else toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; if (f.mealFree) save.mealFree = 1; if ('season' in f) { if (f.season) save.season = f.season; else delete save.season; late.season?.fixed(); } if (f.nick && f.nick !== save.nick) { const was = save.nick; save.nick = f.nick; if (f.nickRen) save.nickRen = f.nickRen; late.nickChanged?.(was); } if (save.coins > c0) late.notEarned?.(save.coins - c0); writeLocal(); } }); /* 이름 (#162): 서버가 되돌리거나 바꾼 이름 */
   document.querySelector('.intro-beta')?.setAttribute('hidden', '');
   mountLogin({ box: $('acct-box'), enterBtn: $('enter'), account: state.account, localSave: save, hasProgress: save.coins > 5 || (save.trash?.total || 0) > 0 || !!save.tut?.done, toast });
-  const syncAcct = () => { $('m-acct').hidden = !state.account.loggedIn; $('acct-days').textContent = `기록 보관 ${state.account.daysLeft()}일 남음`; if (state.account.admin) enableDev(); }; // 서버 어드민이면 개발자 메뉴 (#84)
+  const syncAcct = () => { $('m-acct').hidden = !state.account.loggedIn; $('acct-days').textContent = `기록 보관 ${state.account.daysLeft()}일 남음`; if (state.account.admin) enableDev(); else if (state.account.checked) dropAdm(); }; /* 어드민 아님이 확인되면 '모바일 화면으로 보기' 표시도 지움 (#220) */ // 서버 어드민이면 개발자 메뉴 (#84)
   state.account.on(syncAcct); syncAcct();
   $('acct-out').addEventListener('click', () => state.account.logout());
   $('acct-id').addEventListener('click', async () => { // 계정 번호(sub)만. 세션 토큰은 다루지 않음 (#95)

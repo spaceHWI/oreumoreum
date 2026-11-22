@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { groundAt } from '../world.js';
 import { drape } from '../drape.js';
 import { state, late } from './state.js';
-import { $, save, wearV, lookS, ab, persist } from './save.js';
+import { $, save, wearV, lookS, ab, persist, isTouch } from './save.js';
 import { augV } from '../augments.js';
 import { scene, wx, spots, sunEvent } from './scene.js';
 import { life, street, buff, trash, CH, CH_MINI, bloom, bfx, player, hp } from './place.js';
@@ -227,7 +227,7 @@ if (trash) {
 // by: 치운 사람(없으면 나). 다른 사람이 치운 건 가까이(otherR) 있을 때만 보이고 소리는 작게, 진동·동작 없음 (멀티 대비, 지금은 구조만)
 state.cheerQ = 0;
 const HEAP_LVL = { s: 0, l: 1, xl: 2 };
-const canVib = () => save.vib !== 0 && 'vibrate' in navigator && matchMedia('(pointer: coarse)').matches; // 설정 '진동' (#141)
+const canVib = () => save.vib !== 0 && 'vibrate' in navigator && isTouch; // 설정 '진동' (#141)
 function heapFx(hi, { by = null, gyul = 0 } = {}) {
   const h = trash?.heaps[hi]; if (!h || !bfx) return;
   const mine = !by, far = Math.hypot(h.x - player.pos.x, h.z - player.pos.z);

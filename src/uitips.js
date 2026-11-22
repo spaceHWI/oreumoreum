@@ -1,5 +1,6 @@
 // UI 를 누르면 무엇인지 알려 주는 토스트 (#60). 눌러서 창이 열리거나 동작하는 UI 는 대상이 아님
 // 문구는 아래 표 한 곳에 모은다. 각 줄: [눌린 곳 선택자, () => '이름 + 지금 값' 한 줄]
+import { IN_FRAME } from './mview.js';
 export const TIP_SEC = 1.8;
 export const LONG_MS = 500; // 길게 누르기 (#196)
 export function initUiTips({ $, toast, get }) {
@@ -29,7 +30,7 @@ export function initUiTips({ $, toast, get }) {
   let lpT = 0, lpEl = null, lpEat = false;
   const lpStop = () => { clearTimeout(lpT); lpT = 0; lpEl = null; };
   document.addEventListener('pointerdown', (e) => {
-    lpStop(); if (e.pointerType !== 'touch' || !e.target.closest) return;
+    lpStop(); if ((e.pointerType !== 'touch' && !IN_FRAME) || !e.target.closest) return;
     const el = e.target.closest(LONG); if (!el || !el.title) return;
     lpEl = el; const x0 = e.clientX, y0 = e.clientY;
     lpT = setTimeout(() => { if (lpEl !== el) return; lpT = 0; lpEat = true; setTimeout(() => { lpEat = false; }, 700); toast(el.title.replace(/\s*\([A-Z]\)\s*/g, ' ').trim(), TIP_SEC); }, LONG_MS);

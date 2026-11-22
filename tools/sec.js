@@ -770,6 +770,8 @@ async function startServers() {
     /* ---------- 빌드 결과 ---------- */
     const html = fs.existsSync('dist/index.html') ? fs.readFileSync('dist/index.html', 'utf8') : '';
     ok(/http-equiv="Content-Security-Policy"[^>]*script-src 'self' /.test(html) && !/<script>/.test(html) && /object-src 'none'/.test(html), '페이지 CSP (같은 곳 스크립트만, 인라인 없음 #85)');
+    { const fs1 = /frame-src ([^;"]*)/.exec(html)?.[1].trim() || ''; ok(fs1 === "'self' https://accounts.google.com/gsi/", `틀은 같은 곳(어드민 모바일 화면으로 보기 #220)·구글 로그인만 (${fs1})`); }
+    { const js = fs.readdirSync(path.join(__dirname, '..', 'dist')).filter((f) => /^main-.*\.js$/.test(f)).map((f) => fs.readFileSync(path.join(__dirname, '..', 'dist', f), 'utf8')).join(''); ok(/oreumoreum\.adm/.test(js) && /mframe/.test(js), '모바일 화면으로 보기는 어드민 표시가 있을 때만 (#220, 브라우저 확인은 tools/mview.js: 손님·보통 계정에 ?m=1·스위치가 먹지 않음)'); }
     { // 인라인 스크립트 (#97·#118): 원스토어 SDK 로더 한 줄과 인앱 브라우저 안내(src/inapp.js) 둘뿐이고, 둘 다 CSP 해시가 있어야 함
       const inl = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
       const hashOk = inl.every((c) => html.includes(`'sha256-${crypto.createHash('sha256').update(c, 'utf8').digest('base64')}'`));
