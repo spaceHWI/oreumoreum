@@ -130,6 +130,8 @@ import './game/caveshare.js'; // 동굴 적 같이 보기 (#205): 같은 칸 사
 import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/wish.js'; // 돌탑 소원 글·함께 기도 (#127)
 import './game/summit.js'; // 정상 첫 실마리 (#208): 첫 장면·표지석 뒤 쪽지·굼부리 퀘스트·망원경
+import './game/mystery.js'; // 미스터리 장치 (#212): 되풀이되는 숫자 4:04·관리 초소 금고
+import './game/traces.js'; // 미스터리 장치 (#212): 발자국·크롭서클·뒤돌아보면·도감 '흔적'
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
