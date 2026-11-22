@@ -86,6 +86,7 @@
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
   - (#233) `face.follow { path [[x,z]…], near, end, speed, len }`: arena·boss 를 끝낸 뒤(저장 a 1) 흰 옷이 path 를 앞서 가고 끝자리 장면(`face.lines` 자막)까지 봐야 대면 끝 (game/casechase.js). `see.ghost` 목격 때 흰 옷이 스침·실제 밤엔 목격 자리 너머를 오감. `hello { <NPC id>: [말] }` 종결 뒤 그 NPC 인사에 더함. 퀘스트 보상에 `mats { m<구역>: n }` (장비 재료) 를 쓸 수 있음
 - 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
+- (#235 에서 더함) 싸움 뒤 장면: `face { kind: 'arena'|'boss', scene: '<이름>', tint: 'mist', at, prop, label, len, lines }` 면 싸움을 끝낸 뒤 face.at 에서 상호작용해 장면을 봐야 대면이 끝남. 장면은 `caseprops.js` SCENES(begin·tick·cam·end). `see.gone: true` 면 대면 뒤 목격 모양을 치움. 증거 `z` 는 일부러 다른 구역에 둔 것(검사 구역). 퀘스트 보상 `mats: { m5: 3 }` 다음 구역 재료. 사건 4 `c4.js` 가 본보기
 - 사건의 마지막 퀘스트 보상을 받으면 종결(도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
 - 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 목격 → 증거 → 대면 → 서류 → 종결 → 창 → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`
 
