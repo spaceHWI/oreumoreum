@@ -2044,7 +2044,18 @@ export const MEET = {
 };
 // 대화·말풍선 한 틀 (#190). bubble: 머리 위 말풍선 한 줄 ch 자 · lines 줄, 넘치면 pages 장까지 넘기고 그래도 넘치면 말줄임. chatLines 채팅(사람이 쓴 글)은 한 장에 조금 더
 // win: 대화 창(.talk) 대사 한 장 최대 lines 줄(넘으면 ▶ 다음 장), line 대사 한 줄 권장 글자 수(넘으면 문장에서 나눠 보여 줌, tools/talkshot.js 가 셈)
-export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 } };
+export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win: { lines: 4, line: 28 },
+  /* #224 대사 타자 효과: 초당 cps 자, 쉼표 뒤 comma 초·마침표/물음표 뒤 stop 초, every 글자마다 '톡' */
+  type: { cps: 28, comma: 0.12, stop: 0.28, every: 3 },
+  /* #224 화자 프로필: px 굽는 크기, max 캐시 상한(사람 얼굴), fov, 목뼈 높이 H 에 대해 up(그림 가운데를 목 위 H×up)·half(보이는 반높이 H×half), side(살짝 옆, 라디안) */
+  face: { px: 96, max: 24, fov: 26, up: 0.3, half: 0.64, side: 0.42 },
+  /* 화자: bg 프로필 바탕색, p '톡' 높이(1 = 520Hz), ic 얼굴 대신 아이콘 (3D 모델이 없는 화자) */
+  who: {
+    jigi: { bg: '#cfe0a6', p: 0.9 }, 'shop:gear': { bg: '#b9c6d8', p: 0.75 }, 'shop:leap': { bg: '#e9e9ef', p: 1.25 }, 'shop:salon': { bg: '#f1c9d5', p: 1.35 },
+    'shop:stone': { bg: '#f4e6c4', p: 1.05 }, 'shop:satis': { bg: '#bcd6f0', p: 0.85 },
+    'b:slope': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'b:rest': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'b:crater': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'note:top': { bg: '#f3ead2', p: 1, ic: 'notes' },
+    guide: { bg: '#ffd9a8', p: 1.1, ic: 'notes' }, radio: { bg: '#ffe08a', p: 0.8, ic: 'radio' }, me: { bg: '#ffcf8a', p: 1.15 }, mate: { bg: '#c8e6ff', p: 1.2 }, peer: { bg: '#d7d2f4', p: 1.1 }, hidden: { bg: '#3b3d45', p: 0.7 },
+  } };
 
 // 동굴 탐험 (#195, src/cavegen.js · game/cave.js). 고렙용 별도 동굴 맵. 값·이름은 모두 임의
 // open: 'admin' 이면 개발자 메뉴가 켜진 사람만 들어감(1·2번 조각이 끝나기 전), true 면 minLv·needZone 을 채운 사람, false 면 막음

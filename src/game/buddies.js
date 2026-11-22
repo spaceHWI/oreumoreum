@@ -215,10 +215,16 @@ function openTalk(m) {
   if (!TW) return;
   closePanels(); talkS.m = m; m.route = null; m.task = null; m.heap = -1; setPose(m, 'move');
   const L = LINES[m.def.id];
-  TW.querySelector('.mt-name').textContent = m.def.name;
-  TW.querySelector('.mt-line').textContent = m.def.id === 'jenny' && Math.random() < m.def.photo ? one(L.ask) : lineFor(m);
+  talkFace = late.talk ? late.talk.head(TW.querySelector('h2'), 'mate:' + m.def.id, m.def.name, { root: m.r.root }) : null; /* #224 화자 프로필 */
+  mateSay(m, m.def.id === 'jenny' && Math.random() < m.def.photo ? one(L.ask) : lineFor(m));
   syncTalk(); TW.hidden = false;
 }
+let talkFace = null;
+function mateSay(m, text) { /* #224 타자 효과 */
+  const el = TW.querySelector('.mt-line');
+  if (late.talk) late.talk.typer.type(el, text, { tag: '', pitch: late.talk.pitchOf('mate:' + m.def.id), talker: talkFace }); else el.textContent = text;
+}
+late.mateRoots = () => mates.map((m) => ({ id: m.def.id, name: m.def.name, root: m.r.root }));
 function syncTalk() {
   const m = talkS.m; if (!m) return;
   const f = $('mt-follow'), on = followS.m === m;
@@ -240,7 +246,8 @@ function follow(m, on = true) {
 if (TW) {
   $('mt-close').addEventListener('click', closeTalk);
   $('mt-follow').addEventListener('click', () => { const m = talkS.m; if (!m) return; follow(m, followS.m !== m); closeTalk(); });
-  $('mt-more').addEventListener('click', () => { const m = talkS.m; if (m) TW.querySelector('.mt-line').textContent = lineFor(m); });
+  $('mt-more').addEventListener('click', () => { const m = talkS.m; if (m) mateSay(m, lineFor(m)); });
+  TW.querySelector('.mt-line').addEventListener('click', () => late.talk?.typer.finish(TW.querySelector('.mt-line')));
 }
 // 메뉴 설정: 동료 켜기/끄기
 { const b = $('menu-mates'); if (b) { const sync = () => { b.setAttribute('aria-pressed', String(!M.off)); b.textContent = M.off ? '동료: 끔' : '동료: 켬'; }; sync(); b.hidden = !ON;

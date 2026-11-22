@@ -19,10 +19,11 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
       const r = await ev((sel) => {
         const el = document.querySelector(sel); if (!el || el.closest('[hidden]')) return null;
         const pop = el.querySelector('.pop, .talk, .pn-paper') || el, R = pop.getBoundingClientRect(), bad = [];
+        const scrolls = /auto|scroll/.test(getComputedStyle(pop).overflowY); /* 쪽지 종이(#199)는 안에서 넘겨 읽음: 아래로 넘치는 것은 괜찮음 (#224 에서 고침) */
         if (R.left < -1 || R.top < -1 || R.right > innerWidth + 1 || R.bottom > innerHeight + 1) bad.push(`창이 화면 밖 ${[R.left, R.top, R.right, R.bottom].map(Math.round)}`);
         for (const x of pop.querySelectorAll('button, p, h2, .q-task, .q-rew')) {
           const r = x.getBoundingClientRect(); if (!r.width || x.closest('[hidden]')) continue;
-          if (r.right > R.right + 1 || r.left < R.left - 1 || r.bottom > R.bottom + 1) bad.push(`${x.tagName.toLowerCase()}#${x.id || x.className} 창 밖`);
+          if (r.right > R.right + 1 || r.left < R.left - 1 || (!scrolls && r.bottom > R.bottom + 1)) bad.push(`${x.tagName.toLowerCase()}#${x.id || x.className} 창 밖`);
           if (x.scrollWidth > x.clientWidth + 2 && getComputedStyle(x).overflowX === 'visible') bad.push(`${x.tagName.toLowerCase()} 글이 폭을 넘음`);
         }
         return { bad, w: Math.round(R.width), h: Math.round(R.height) };

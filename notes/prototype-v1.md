@@ -30,6 +30,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | camera.js | 카메라, 첫 화면 궤도 |
 | hud.js | 위 한 줄·토스트·배너 자리, 상황 팁, 패널 닫기, 업적, 도감, 귤 숫자 늦게 올리기(gyulFx·gyulLand·gyulExpect) |
 | director.js | 감독(#176): `src/director.js` 를 게임에 붙임. 말을 거는 것은 `director.ask(kind, id, show)`·`say(kind, id, text, sec)` 로 한 번에 하나씩(우선순위·간격·싸움 중 제한), 문 열기(`register({ id, gate, intro, kind, clue })`, 순서·조건은 balance.js JOURNEY, 사실 값 FACTS), 한가할 때 실마리, 끝을 모르는 창은 `holdWin`. `late.director`, `__oreum.director`, 확인 `node tools/journey.js` |
+| talkfx.js | 대사 연출(#224): 타자 효과(`src/typer.js`, 자리를 먼저 잡고 보이는 글자 수만 늘림)를 퀘스트 창·동료 창·감독의 이야기/퀘스트 한 줄(`say` → `late.talk.toast`)에 붙이고, 화자 프로필(3D 모델을 그리기 바로 앞에 화면 구석에 그려 96×96 으로 떠 옴, 캐시·옷 바뀌면 다시)을 이름 옆에. 설정 '대사 타자 효과'(save.typeFx). 수치·화자 표는 balance.js TALK.type·face·who. `late.tickTalk`(update.js 그리기 앞), `__oreum.talk` |
 | input.js | 키보드·조이스틱(떠다님·고정, #211)·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | wish.js | 돌탑 소원 글·함께 기도 (#127): 돌탑 창(돌 올리기 + 소원 한 줄, 남의 소원 함께 기도·신고), 돌탑 가까이에서 소원 말풍선, 들어올 때 '○명이 함께 빌어 줬어요', 어드민 '신고된 소원' 패널 (`wishApi` → `/wish`·`/wish/pray`·`/wish/report`·`/wish/news`·`/admin/wishes`·`/admin/wish`). moves.js `openWishes` 는 여기로 넘김 |

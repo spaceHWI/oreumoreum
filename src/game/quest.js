@@ -29,6 +29,7 @@ import { startAutoGo, stopAutoGo, autoGo } from './dump.js';
 import { cam } from './camera.js';
 import { gyulShower } from './hooks.js';
 import { icon } from '../icons.js';
+import { typer } from './talkfx.js';
 
 const Q = QUESTS;
 const v3 = (x, z, y = 0) => new THREE.Vector3(x, height(x, z) + y, z);
@@ -174,8 +175,9 @@ function rewardHtml(r) {
 }
 const whoOf = (id) => Q.givers[id]?.name || '';
 function show(g, it) {
+  typer.finish($('quest-say'));
   win.giver = g; win.item = it; const q = it.q;
-  $('quest-who').textContent = g.name;
+  talkFace = late.talk.head($('quest-who'), g.id, g.name, { root: g.runner ? g.root : null }); /* #224 화자 프로필 */
   const nm = $('quest-name'); nm.textContent = q.name; nm.classList.toggle('side', !it.main);
   const lines = it.st === 'ready' ? q.fin : q.say;
   talk.lines = splitSay(lines); talk.pages = null; talk.i = 0;
@@ -209,11 +211,16 @@ function paginate() {
   if (cur.length) pages.push(cur);
   talk.pages = pages; talk.i = 0; showPage();
 }
+// 한 장을 타자로 (#224). 다 나온 뒤에만 ▶. 글을 누르면 바로 전체, 다 나왔으면 다음 장
+let talkFace = null;
 function showPage() {
-  const P = talk.pages || [talk.lines]; $('quest-say').innerHTML = (P[talk.i] || []).map((x) => `<p>${esc(x)}</p>`).join('');
-  $('quest-next').hidden = talk.i >= P.length - 1;
+  const P = talk.pages || [talk.lines], last = talk.i >= P.length - 1, nx = $('quest-next');
+  typer.finish($('quest-say')); nx.hidden = true;
+  typer.type($('quest-say'), P[talk.i] || [], { pitch: late.talk.pitchOf(win.giver?.id), talker: talkFace, onDone: () => { nx.hidden = last; } });
 }
-$('quest-next').addEventListener('click', () => { if (talk.pages && talk.i < talk.pages.length - 1) { talk.i++; showPage(); } });
+const nextPage = () => { if (talk.pages && talk.i < talk.pages.length - 1) { talk.i++; showPage(); } };
+$('quest-next').addEventListener('click', () => { if (!typer.finish($('quest-say'))) nextPage(); });
+$('quest-say').addEventListener('click', () => { if (!typer.finish($('quest-say'))) nextPage(); });
 function openGiver(id) {
   const g = givers.get(id); if (!g) return; const l = quests.at(id);
   if (!l.length) { greet(g, true); return; }
@@ -424,6 +431,7 @@ late.tickQuest = (dt) => {
 };
 
 /* ---------- 확인용 (window.__oreum.quest) ---------- */
+late.questGivers = () => [...givers.values()].filter((g) => g.runner).map((g) => ({ id: g.id, name: g.name, root: g.root })); /* #224 프로필 굽기 */
 late.questDebug = {
   api: quests, givers, state: () => JSON.parse(JSON.stringify(quests.state())),
   get next() { return late.nextDebug; }, // #142 다음 할 일 (game/nexthint.js)
@@ -431,7 +439,7 @@ late.questDebug = {
   track: () => trCur && { text: trCur.text, prog: trCur.prog, ready: trCur.ready, go: trCur.go, k: trCur.k || null, mark: trCur.mark, target: trTarget && [+trTarget.x.toFixed(1), +trTarget.z.toFixed(1)], shown: !TR.hidden },
   give: (id) => quests.accept(id), done: (id) => { const r = quests.complete(id); if (r) give(r, quests.BY.get(id)); trackDirty(); return r; },
   count: (k, n = 1) => { count(k, n); trackDirty(); }, open: (gid) => openGiver(gid), log: () => openLog(), go: () => trackGo(), win: () => !win.el.hidden && { who: win.giver?.id, id: win.item?.q.id, st: win.item?.st, page: talk.i, pages: talk.pages?.length || 1 },
-  nextPage: () => $('quest-next').click(),
+  nextPage: () => { typer.finish($('quest-say')); nextPage(); }, /* 타자 중이면 끝내고 바로 다음 장 (#224) */
   showQ: (id, st = 'offer') => { const q = quests.BY.get(id), g = q && givers.get(q.giver); if (!g) return false; closePanels(); show(g, { q, st, main: QUESTS.main.includes(q) }); return true; }, // 창 그림 확인용 (#190)
   press: () => $('quest-go').click(), close: closeWin, catchUp: () => quests.catchUp(), reset: () => { quests.reset(); trackDirty(); }, goPos, ending,
 };
