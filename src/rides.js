@@ -254,6 +254,24 @@ function stopBoard(name) {
     x.fillStyle = '#b8452f'; x.font = '700 30px "Noto Sans KR", sans-serif'; x.fillText(line, 128, 112); t.needsUpdate = true; };
   draw('마차 정류장'); return { tex: t, draw };
 }
+// 아이콘 세트(icons.js)의 SVG 조각을 캔버스에 그림 (path·circle 만). size: 24 격자를 이 px 로
+const ICON_PATHS = new Map();
+function iconPaths(id) {
+  if (ICON_PATHS.has(id)) return ICON_PATHS.get(id);
+  const out = [], src = ic(id);
+  for (const m of src.matchAll(/<(path|circle)\b([^>]*)>/g)) {
+    const at = (k) => (m[2].match(new RegExp(`\\b${k}="([^"]*)"`)) || [])[1];
+    if (m[1] === 'path') { const d = at('d'); if (d) out.push(new Path2D(d)); }
+    else { const P = new Path2D(), cx = +at('cx'), cy = +at('cy'), r = +at('r'); P.moveTo(cx + r, cy); P.arc(cx, cy, r, 0, Math.PI * 2); out.push(P); }
+  }
+  ICON_PATHS.set(id, out); return out;
+}
+export function drawIcon(x, id, cx, cy, size, color) {
+  const k = size / 24; x.save(); x.translate(cx - size / 2, cy - size / 2); x.scale(k, k);
+  x.strokeStyle = color; x.lineWidth = 2.4; x.lineCap = 'round'; x.lineJoin = 'round';
+  for (const P of iconPaths(id)) x.stroke(P);
+  x.restore();
+}
 function ringSprite() {
   const c = document.createElement('canvas'); c.width = c.height = 96; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, sizeAttenuation: false }));
@@ -264,8 +282,8 @@ function ringSprite() {
     x.fillStyle = 'rgba(20,20,24,.6)'; x.beginPath(); x.arc(48, 48, 44, 0, Math.PI * 2); x.fill();
     x.lineWidth = 9; x.lineCap = 'round'; x.strokeStyle = 'rgba(255,255,255,.18)'; x.beginPath(); x.arc(48, 48, 32, 0, Math.PI * 2); x.stroke();
     x.strokeStyle = '#ff8a1f'; x.beginPath(); if (here) x.arc(48, 48, 32, 0, Math.PI * 2); else x.arc(48, 48, 32, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - f)); x.stroke();
-    // 가운데 작은 바퀴 그림
-    x.strokeStyle = '#fff'; x.lineWidth = 5; x.beginPath(); x.arc(48, 48, 12, 0, Math.PI * 2); x.stroke(); x.beginPath(); x.moveTo(36, 48); x.lineTo(60, 48); x.moveTo(48, 36); x.lineTo(48, 60); x.stroke();
+    // 가운데 마차 아이콘 (#228, icons.js 'cart'). 기다리는 동안 회색, 마차가 서 있으면 흰색
+    drawIcon(x, 'cart', 48, 48, 42, here ? '#fff' : 'rgba(255,255,255,.55)');
     t.needsUpdate = true;
   };
   return sp;

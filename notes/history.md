@@ -1656,3 +1656,4 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `tools/caverun.js`: 안마다 층 모양 검사(늘) · `--live` 에서 세 안 × 3장면 그림(notes/shots/214)·draw call·프레임 시간
 - 고른 뒤 안 하나만 남기는 정리는 기획 세션이 새 이슈로
 - #226 혼잣말 말풍선 점선 테두리 없앰: `game/mutter.js` 가 `bubbleCanvas` 기본 틀(보통 말풍선과 같은 실선·바탕)을 쓰고 글자색만 조금 옅게(#5d6650). 기울임·반투명 바탕도 뺌. `tools/talkshot.js` 창 검사는 세로 스크롤되는 창(쪽지 #199)이면 아래로 넘치는 것을 넘침으로 보지 않게 고침
+- #228 마차 아이콘: `tools/icongen.mjs` OWN 'cart' 를 옆에서 본 지붕 수레 + 바퀴 둘 + 끌채로 새로 그림(말은 생략, 16~24px 에서 수레로 읽힘) → `src/icons.js` 다시 만듦. 정류장 위 남은 시간 고리(`rides.js` ringSprite) 가운데의 바퀴 그림을 이 아이콘으로 바꿈(`drawIcon`: icons.js 조각을 캔버스 Path2D 로 그림). 기다리는 동안 회색, 마차가 서 있으면 흰색. 가장자리 표시(#cart-mark)·마차 타기·빠른 마차 상호작용·빠른 마차 화면 전환은 같은 ic('cart') 라 함께 바뀜. 다른 탈것(스케이트·스쿠터·말·노루) 아이콘은 제 모양이라 그대로. 확인 `tools/carticon.js`, 그림 notes/shots/228
