@@ -75,6 +75,12 @@
 ## 5. 매일: 미확인 제보
 - 하루에 하나, 작은 목격담(쪽지 한 장 + 가서 보면 흔적 하나). 5분 안에 끝난다. 큰 사건의 실마리를 흘리거나 그냥 헛소문이다. 헛소문 비율 임의 30%.
 - 첫 화면의 '매일 새로운 콘텐츠'(#229)와 오늘의 할 일(#125)에 붙인다.
+- 만든 것 (#238): 데이터 `src/cases/reports.js`(34개, 그중 헛소문 9·사건 실마리 5), 게임 `src/game/reports.js`, 수치 `balance.js REPORT`(임의: 레벨 2부터·헛소문 30%·귤 30).
+  - 하루(한국 날짜)에 하나, 날짜로 정해진 난수라 같은 날은 모두 같은 제보(가 본 구역·열린 사건에 따라 고를 수 있는 것만). 사건 실마리(`case: 'c<번호>'`)는 그 사건이 열린 사람에게만, 진짜 제보일 때 절반(caseK)은 실마리 쪽.
+  - 쪽지: 들어오고 조금 뒤 감독 한 줄 → 오늘의 할 일 창 '제보' 줄(누르면 쪽지, '가 보기' 는 걸어감) · 사건 파일 창 '제보' 칸 · 다음 할 일 줄.
+  - 흔적: 그 구역 길가 더미 곁(사건 실마리는 그 사건 목격 자리 곁)에 흔적 모양(prints·cans·ring·bag·glove·peel·cloth·flat)과 바닥 표시. 헛소문은 표시만. 상호작용 → 한 줄(find) + 귤.
+  - 서버 `earn.js`: save.report.got 이 오늘(또는 어제)이면 하루 한 번 인정. 검사 `node tools/reportrun.js [d|m]`.
+  - 제보 더하기: `REPORTS` 끝에 한 줄(제목 14자·쪽지 3줄·find 28자, `node tools/storytext.mjs`). 새 사건의 실마리는 `case` 에 그 사건 id.
 
 ## 6. 사건 더하는 법 (#232 에서 만든 틀)
 - 파일: `src/cases/c<번호>.js` 하나에 `export default { … }`. 데이터만 쓴다(three·DOM·다른 src 파일 import 없음: balance.js·punktext.js·achievements.js·서버가 읽음). `src/cases/index.js` 의 `LIST` 에 한 줄(import 와 함께) 더한다. 칭호는 `src/punktext.js` TITLES 끝에 `{ t: '<title 과 같은 글>', badge: 'b-case-<id>' }` 한 줄(멀티로 번호가 오가므로 뒤에만)

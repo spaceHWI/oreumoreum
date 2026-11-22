@@ -40,7 +40,7 @@ import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
-state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0 };
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0, reports: 0 };
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -422,6 +422,7 @@ function step(now) {
   late.tickMyst?.(dt); // 4:04·금고 (#212, game/mystery.js)
   late.tickCases?.(dt); // 사건 파일 (#232, game/cases.js): 목격·증거·숨어 보기 장면
   late.tickTube?.(dt); // 수거 관 (#248, game/tube.js): 빨려 들어감·관 속·튀어나옴 (updatePlayer 뒤라 몸 자리·크기를 덮어씀)
+  late.tickReports?.(dt); // 매일 미확인 제보 (#238, game/reports.js)
   late.tickTraces?.(dt); // 발자국·크롭서클·뒤돌아보면 (#212, game/traces.js)
   tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); if (late.tickQuest) { late.tickQuest(dt); state.ticks.quest++; } late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
   if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
