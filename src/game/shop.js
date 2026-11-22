@@ -1,7 +1,7 @@
 // 장비점 창(도구·배낭·무기)·가게 안내(무엇을 어디서 사는지·길 안내)·살 수 있는 새 물건 점·사는 연출, 옷 (#128. #86 에서 main.js 를 나눔. 파일 순서는 src/modules.js, 규칙은 notes/prototype-v1.md 코드 구조)
 // 사는 것은 모두 가게 거리의 가게에서 (#128): 도구·배낭·무기 = 장비점, 옷·신발 = LEAP, 머리 = 루이네미장원, 탈것 = 탈것 가게, 식사 = 스톤
 // 어디서나 열리던 상점(메뉴·귤 칸)은 가게 안내 → 고르면 그 가게까지 자동 걷기(dump.js startAutoGo(dest)) → 도착하면 그 가게 창
-import { TOOLS, BAGS, POCKET, SHOES, BOOTS, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE } from '../balance.js';
+import { TOOLS, BAGS, POCKET, SHOES, BOOTS, WEAPONS, WEAR, CLOTHES, wearPrice, HAIR, RIDES, LEAP, CLEANHOUSE, DEERPAL } from '../balance.js';
 import { onShelf } from '../weekly.js'; // 주간 옷장 (#126): 지난주·다음 주 한정 옷은 점·잠긴 칸에서 뺌
 import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
@@ -167,7 +167,7 @@ const SHOP_ITEMS = { // 가게마다 아직 안 가진 살 것 [{ key, price }].
     ...(LEAPB ? SHOES.map((t, i) => i >= (save.equip.shoes || 1) && { key: 'shoes:' + (i + 1), price: t.price }).filter(Boolean) : []),
     ...(LEAPB && !save.equip.boots ? [{ key: 'shoes:boots', price: BOOTS.price }] : [])],
   salon: () => (save.look ? HAIR.list.filter((h) => !save.hairs[h.key]).map((h) => ({ key: 'h:' + h.key, price: h.price })) : []),
-  ride: () => RIDES.list.filter((r) => !(save.rides.own || []).includes(r.id)).map((r) => ({ key: 'r:' + r.id, price: r.price })),
+  ride: () => [...RIDES.list.filter((r) => !(save.rides.own || []).includes(r.id)).map((r) => ({ key: 'r:' + r.id, price: r.price })), ...(save.deerPal?.sd ? [] : [{ key: 'r:saddle', price: DEERPAL.saddle.price }])], /* 노루 안장 (#247) */
 };
 const affordable = (id) => (SHOP_ITEMS[id] ? SHOP_ITEMS[id]().filter((x) => x.price <= save.coins) : []);
 const newCount = (id) => affordable(id).filter((x) => !seen[x.key]).length;

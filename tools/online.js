@@ -271,6 +271,18 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     if (!fed?.ok) console.log('  ', await A.p.evaluate((fid) => { const d = window.__oreum.life.deerById(fid); return JSON.stringify({ st: d.state, tg: d.target && { eatT: d.target.eatT, eaten: d.target.eaten, feeder: d.target.feeder }, fu: d.followUntil, fw: d.followWho, t: performance.now() / 1000 }); }, fid));
     ok(fed?.ok && /귤을 먹고/.test(bt), `B 가 던진 귤을 노루가 먹고 B 를 따라감 (${fed?.st} · ${bt})`);
   }
+  // 노루 친구 (#247): B 의 내 노루가 A 화면에서 B 뒤를 따라오고(presence dp 만, 좌표는 안 보냄), B 가 타면 A 화면에 걸터앉음
+  {
+    const bId = await B.p.evaluate(() => window.__oreum.net.myPeer);
+    await B.p.evaluate(() => { const o = window.__oreum; o.deerPal.reset(); o.save.coins = 7000; o.deerPal.buySaddle(); o.deerPal.name('보리'); o.net.send(true); });
+    let seen = false; for (let k = 0; k < 30 && !seen; k++) { await wait(A.p, 500); seen = await A.p.evaluate(() => window.__oreum.deerPal.state().peers >= 1); }
+    ok(seen && await A.p.evaluate((id) => window.__oreum.net.peersById.get(id)?.data?.dp === '보리', bId), 'A 화면에 B 의 노루 보리가 보임');
+    await B.p.evaluate(() => { const o = window.__oreum, q = o.deerPal.pal(); o.enemies?.test?.clear?.(); o.player.pos.set(q.pos.x + 1.2, q.pos.y, q.pos.z); o.deerPal.mount(); o.net.send(true); });
+    let rd = null; for (let k = 0; k < 30 && !rd?.ok; k++) { await wait(A.p, 500); rd = await A.p.evaluate((id) => { const o = window.__oreum, e = o.net.peersById.get(id); return { ok: !!e?.data?.dpr, pose: e?.data?.pose }; }, bId); }
+    ok(await B.p.evaluate(() => window.__oreum.deerPal.state().riding) && rd?.ok, `B 가 자기 노루를 타면 A 화면에도 탄 모습 (${JSON.stringify(rd)})`);
+    ok(await A.p.evaluate(() => { const o = window.__oreum; return !o.deerPal.state().on && o.deerPal.act() !== '타기'; }), '남의 노루는 내 행동 버튼에 타기로 뜨지 않음');
+    await B.p.evaluate(() => { const o = window.__oreum; o.deerPal.off(); o.deerPal.reset(); o.net.send(true); });
+  }
   if (ONLY === 'deer') {
     // 타는 중 접속이 끊기면 풀림
     const id = await A.p.evaluate(() => window.__oreum.life.deer.find((d) => d.state !== 'ridden' && d.state !== 'follow').id);
@@ -318,10 +330,11 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   ok(await A.p.evaluate(() => window.__oreum.net.ready), '로그인한 채로 방에 붙음 (토큰은 하위 프로토콜)');
   ok(await A.p.evaluate(() => document.getElementById('m-dev').hidden), '서버가 있으면 어드민이 아닌 계정에 개발자 메뉴 없음');
   // 순간 이동 두 번 → 서버가 되돌림
-  await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 300; }); await wait(A.p, 700);
-  await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x -= 300; }); await wait(A.p, 700); // 한 번은 받아 줌 (들것 귀환 같은 것)
+  /* 옮길 때마다 바로 보냄 (#247: 느린 화면에서는 700ms 안에 presence 가 안 나가 첫 두 번이 서버에 닿지 않고 셋째가 '첫 순간 이동' 으로 받아들여지던 것) */
+  await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 300; o.net.send(true); }); await wait(A.p, 700);
+  await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x -= 300; o.net.send(true); }); await wait(A.p, 700); // 한 번은 받아 줌 (들것 귀환 같은 것)
   const x0 = await A.p.evaluate(() => window.__oreum.player.pos.x);
-  await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 300; }); await wait(A.p, 1500);
+  await A.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 300; o.net.send(true); }); await wait(A.p, 1500);
   const x1 = await A.p.evaluate(() => window.__oreum.player.pos.x);
   ok(Math.abs(x1 - x0) < 30, `잦은 순간 이동은 서버가 되돌림 (${x0.toFixed(0)} → ${x1.toFixed(0)})`);
   // 너무 빠른 줍기(초당 NET.takePerSec 넘게) → 방이 거절 → 배낭·누적 수에서 되돌림. 한 틱에 60개면 takeMax 씩 나눠 보내고 takePerSec 만 받힘 (#144)

@@ -56,6 +56,9 @@ const SAVES = {
   lvOldRich: { nick: '옛 부자', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(5), aug: { recycle: 1 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 120000, pickup: 30000 }, badges: {} } },
   tutStall: { nick: '좌판 사람', coins: 30, nsV1: 1, nsV2: 1, nsV3: 1, bagV: 1, entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 9, done: false, v: 4, gyul: [0, 1, 2], hits: 3 }, equip: { tool: 1, bag: 0, shoes: 0, weapon: 1 } }, // #221 들머리 좌판 배낭 단계에 멈춘 저장 → 장비점 가기 처음, 가게 쪽 정낭·장비점 열림
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
+  // #247: 깨진 노루 친구 기록 · 이름만 있는 내 노루 (사귄 무리 노루 이름이 없는 맵)
+  deerBad: { nick: '노루 깨짐', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, deerPal: { n: 5, id: 7, fed: 'x', hg: 'q', sd: 'y', f: [1, 2] } },
+  deerName: { nick: '노루 이름', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, deerPal: { n: '보리', id: 'h999', fed: 40, hg: 2, sd: 1, open: 1, f: { h1: 2 } } },
 };
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

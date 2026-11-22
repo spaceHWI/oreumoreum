@@ -1059,6 +1059,14 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .nk-err { flex: 1 1 100%; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: #ffb3a8; }
 .nk-err[hidden] { display: none; }
 .look-ok:disabled { filter: grayscale(1); opacity: .5; box-shadow: none; }
+/* 노루 친구 (#247): 탈 때 배고픔 띠(눌러서 귤 1개 먹이기)·이름 짓기 창은 #nickwin 과 같은 모양 */
+#dp-hunger { position: fixed; left: 50%; bottom: calc(var(--safe-b) + 14px); z-index: 6; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border: 1px solid var(--hair); border-radius: 999px; background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: #fff; font: 800 11px/1 var(--display); }
+#dp-hunger svg { width: 16px; height: 16px; flex: none; }
+#dp-hunger .bar { width: 84px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.18); overflow: hidden; }
+#dp-hunger .bar i { display: block; height: 100%; width: calc(var(--h, 1) * 100%); background: var(--acc); border-radius: 3px; transition: width .3s; }
+#dp-hunger.low .bar i { background: #ff7a6b; }
+#dp-hunger .g { width: 10px; height: 10px; border-radius: 50%; background: var(--gyul); flex: none; }
+@media (max-width: 600px) { #dp-hunger .bar { width: 64px; } }
 .nk-pop { width: min(360px, calc(100vw - 32px)); }
 .nk-pop .pop-body { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 .nk-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
@@ -1965,6 +1973,19 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     </div>
   </div>
 </div>
+<!-- 노루 친구 (#247): 사귄 노루 이름 짓기 (이름 규칙·거르기는 닉네임 것) -->
+<div class="overlay dim" id="deerwin" hidden>
+  <div class="panel pop nk-pop" role="dialog" aria-label="노루 이름">
+    <div class="pop-head"><h2>노루 친구</h2><button type="button" class="btn small" id="deerwin-close">닫기</button></div>
+    <div class="pop-body">
+      <div class="nk-row"><input type="text" id="deer-name" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="노루 이름" aria-describedby="deer-name-err"><button type="button" class="nk-dice" id="deer-name-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button></div>
+      <p class="nk-err" id="deer-name-err" role="alert" hidden></p>
+      <p class="muted nk-note" id="deer-name-note"></p>
+      <button type="button" class="btn nk-go" id="deer-name-go">이름 붙이기</button>
+    </div>
+  </div>
+</div>
+<button type="button" id="dp-hunger" hidden aria-label="노루 배고픔 · 눌러서 귤 주기"><svg data-i="deer"></svg><span class="bar"><i></i></span><span class="g"></span></button>
 <div class="overlay dim" id="rank" hidden>
   <div class="panel pop">
     <div class="pop-head"><h2>랭킹</h2><button type="button" class="btn small" id="rank-close">닫기</button></div>

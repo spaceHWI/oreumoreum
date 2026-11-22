@@ -315,7 +315,7 @@ async function main() {
   console.log(`권장 점수 ${ZONES.map((Z) => `${Z.id}:${Z.rec}`).join(' ')} · 단계 점수 ${GROWTH.score.join('/')} · 귤 배수 ${ZONES.map((Z) => Z.gv).join('/')}`);
   console.log(`값 합: 도구 ${sum(TOOLS)} · 배낭 ${sum(BAGS)} · 신발 ${sum(SHOES)} · 무기 ${sum(WEAPONS)} · 옷 6칸 ${WSUM} (${WK.map((k) => `${WS[k].name} ${wearSum(k)}`).join(' · ')}) = ${sum(TOOLS) + sum(BAGS) + sum(SHOES) + sum(WEAPONS) + WSUM}`);
   const short = { tool: '도구', bag: '배낭', shoes: '신발', weapon: '무기', ride: '탈것', ...Object.fromEntries(WEAR.slots.map((w) => [w.k, w.name])) };
-  const verdict = []; let day1Rate = 0, storyEarn = 0;
+  const verdict = []; let day1Rate = 0, day2Rate = 0, storyEarn = 0;
   const FLOW_ONLY = has('--flow');
   // 하루 끝 목표 (#137): tier = 도구·배낭·신발 가장 낮은 단계, zone = 그날까지 다 치운 적 있는 가장 높은 구역 (이 구역까지는 다 치움)
   // tier = 도구·배낭·신발 가장 낮은 단계 [최소, 최대], zone = 그날까지 다 치운 가장 높은 구역(1부터 이어서) 최소, open = 하루 끝 장비 점수로 열린(빨강이 아닌) 구역 최소
@@ -347,7 +347,7 @@ async function main() {
   }
   for (const mode of ['battle']) for (const slack of SLACKS) {
     const runs = [1, 7, 42, 99, 123].map((s) => seedRun(mode, slack, s));
-    const r = runs[2]; if (!day1Rate && slack === 0) day1Rate = r.days[0].earned; // 1일차에 실제로 번 귤 (1시간)
+    const r = runs[2]; if (!day1Rate && slack === 0) day1Rate = r.days[0].earned; if (!day2Rate && slack === 0) day2Rate = Math.min(r.days[1]?.earned || 0, r.days[2]?.earned || Infinity); /* 노루 친구 (#247): 구역 2~3 날 (적은 쪽) */ // 1일차에 실제로 번 귤 (1시간)
     if (slack === 0) storyEarn = r.days.slice(0, 5).reduce((a, d) => a + d.earned, 0); // #168
     const lasts = runs.map((x) => x.last).sort((a, b) => a - b), last = lasts[2];
     const title = `전투 오름 · ${slack ? `여유 ${slack * 100}%` : '효율'}`;
@@ -410,6 +410,8 @@ async function main() {
   }
   // 흡연자 (#156): 하루 1시간 벌이에서 흡연자 몫이 3% 아래 (가장 적게 버는 1일 기준)
   if (day1Rate) { const pct = SMOKE_H / day1Rate * 100; verdict.push(`흡연자 하루 귤 ${Math.round(SMOKE_H)} = 1일 벌이 ${day1Rate.toLocaleString()} 의 ${pct.toFixed(1)}% → 3% 아래 ${pct < 3 ? '통과' : '넘음'}`); }
+  // 노루 친구 (#247): 1시간 내내 타고 달린다고 봄(안장 없음, 가장 많이 먹음) + 사귀기·친해짐 2단계까지 귤 한 번 → 구역 2~3 날 벌이의 5% 아래
+  if (day2Rate) { const DP = B.DEERPAL, perH = Math.ceil(3600 / DP.hungerT / DP.meal), once = DP.bond[DP.bond.length - 1], pct = (perH + once) / day2Rate * 100; verdict.push(`노루 친구: 시간당 먹이 ${perH} + 사귀기·친해짐 ${once} = 구역 2~3 날 벌이 ${day2Rate.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;

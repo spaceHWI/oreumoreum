@@ -213,6 +213,7 @@ function fillRide() {
     }
     g.append(card({ icon: late.rideArt?.(R.id, 'food') || RIDE_ICON[R.id], name: R.name, sub: rideStat(R), on, own, lock: own ? null : { shop: 'ride', price: R.price }, click: own ? () => { chooseRide(R.id); buildBag(); } : null, extra }));
   }
+  late.deerPal?.bagCard(g, card, () => { closeBag(); }); /* 내 노루 (#247, deerpal.js) */
 }
 // 아래: 장비 점수와 주요 능력 4줄 (줍는 속도·배낭 용량·이동·무기 피해), 레벨·증강 한 줄 (#159, level.js late.augFoot)
 function fillFoot() {

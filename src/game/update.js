@@ -40,7 +40,7 @@ import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
-state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0 };
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, deerPal: 0 };
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -108,7 +108,8 @@ function updatePlayer(dt) {
   if (dir && state.fishing?.active) state.fishing.stop(); // 움직이면 낚시를 그만둠 (#44)
   if (p.riding) {
     const d = p.riding;
-    const want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) * (1 + augV(save, 'deer')) : 0; // 노루 친구 (#159)
+    let want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) * (1 + augV(save, 'deer')) : 0; // 노루 친구 (#159)
+    if (d.pal) want = late.deerPalWant(want); /* 내 노루 (#247): 안장·친해짐·배고픔 */
     d.speed += (want - d.speed) * Math.min(1, dt * 5);
     if (dir && (joy.active || p.target)) d.heading += wrapA(Math.atan2(dir.x, dir.z) - d.heading) * Math.min(1, dt * 6);
     if (d.speed > 0.05) {
@@ -333,6 +334,7 @@ function step(now) {
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   deerNet.tick(dt); // 멀티 노루 (#92)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
+  if (late.tickDeerPal) { late.tickDeerPal(dt); state.ticks.deerPal++; } /* 노루 친구 (#247) */
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
   if (state.awe > 0) { state.awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (state.awe <= 0) state.aweBack = 2; }
   if (state.aweBack > 0 && !ptrs.size) { state.aweBack -= dt; cam.dist += (13 - cam.dist) * Math.min(1, dt * 2); cam.pitch += (0.32 - cam.pitch) * Math.min(1, dt * 2); }

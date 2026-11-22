@@ -242,3 +242,5 @@ late.tracesApi = {
   peek: (sec = 3) => { peekT = sec; return crop.ok; },
   stare: () => { coolStare = 0; stillT = ST.sec; standAt.copy(player.pos); stillYaw = yawU; return true; },
 };
+/* 노루 친구 (#247, deerpal.js): 내 노루가 멈춰 바라볼 것 (읽기만). 보이는 크롭서클 자리·밤 발자국 자리 */
+late.tracesOdd = () => ({ crop: crop.ok && crop.mesh.material.opacity > 0.05 ? [crop.x, crop.z] : null, foot: footOp() > 0.05 ? fp.pts : null });
