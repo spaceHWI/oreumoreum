@@ -1,5 +1,6 @@
 // 업적: 매일 바뀌는 오늘의 할 일 3개(#125, src/daily.js) + 이어 오기 + 평생 업적(뱃지). 보상은 귤과 한정 아이템
 // 이벤트 이름 → 진행도. emit(event, n)
+import { CASE_BADGES } from './cases/index.js'; // 사건 파일 (#232): 사건마다 칭호 업적
 import { kstDate, kstDayN, todaysTasks, TASK_BY, taskGyul, allGyul, runGyul, runStep, RUN_DAYS } from './daily.js';
 export { kstDate };
 
@@ -71,6 +72,7 @@ BADGES.push(
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
   { id: 'b-eye', ev: 'myst-safe', goal: 1, name: '눈썰미', desc: '관리 초소 금고를 열었어요', color: '#5a5f3a', reward: 20 }, // #212 금고
 );
+BADGES.push(...CASE_BADGES); // 사건 파일 (#232): 사건을 종결하면 game/cases.js 가 late.titles.give 로 사건을 냄
 
 // cond(kind): 지금 'rain'(비)·'night'(해 진 뒤)인가 · zone(): 가 본 가장 깊은 구역(보상) · active(): 오늘의 할 일을 셀 때인가(튜토리얼 중엔 아님)
 export function createAchievements({ save, persist, onDone, mapId, cond = () => false, zone = () => 1, active = () => true }) {

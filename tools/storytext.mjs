@@ -21,13 +21,22 @@ for (const [ev, o] of Object.entries(STORY_TEXT)) for (const [k, t] of Object.en
 RADIO.forEach((r, i) => add(`radio.${i}`, `오름 방송${r.z ? ` (구역 ${r.z} 뒤)` : ''}`, r.t, { pre: !r.z || r.z <= 3, max: 64 }));
 for (const [k, t] of Object.entries(RADIO_SITU)) add(`radio.situ.${k}`, '상황 방송', t, { max: 64 });
 for (const n of NOTES) {
-  const pre = n.z === 'top' || (typeof n.z === 'number' && n.z <= 3);
+  const pre = n.z === 'top' || (typeof n.z === 'number' && n.z <= 3) || (n.z === 'case' && n.cz <= 3); /* 사건 쪽지 (#232): 사건 구역 cz */
   add(`note.${n.id}.t`, `쪽지 제목 (${n.z})`, n.t, { pre, max: 14 });
   add(`note.${n.id}.b`, `쪽지 (${n.z} · ${n.from})`, n.b, { pre, lines: 4 });
 }
 for (const [k, t] of Object.entries(CLUE_TEXT)) {
   if (typeof t === 'object') { for (const [d, s] of Object.entries(t)) add(`clue.${k}.${d}`, '정상 실마리 · 감독 한 줄', s, { max: 64 }); continue; }
   add(`clue.${k}`, '정상 실마리', t);
+}
+/* 사건 파일 (#232, src/cases/c*.js): 목격 혼잣말·대면 장면 글 (쪽지·퀘스트는 위아래에서) */
+const { CASES } = await import('../src/cases/index.js');
+for (const c of CASES) {
+  const pre = c.zone <= 3;
+  add(`case.${c.id}.name`, '사건 제목', c.name, { pre, max: 14 });
+  add(`case.${c.id}.see`, '사건 목격 혼잣말', c.see?.say, { pre, max: 22 });
+  (c.face?.lines || []).forEach((s, i) => add(`case.${c.id}.face.${i}`, '사건 대면 장면 자막', s, { pre, max: 28 }));
+  add(`case.${c.id}.title`, '사건 칭호', c.title, { pre, max: 14 });
 }
 const zoneOf = (q) => q.z || 0;
 for (const [kind, list] of [['main', QUESTS.main], ['side', QUESTS.side]]) for (const q of list) {

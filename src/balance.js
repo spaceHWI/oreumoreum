@@ -1,4 +1,5 @@
 // 게임 수치 모음 (notes/spec.md 표 그대로). 다른 파일은 여기 값만 읽는다
+import { CASE_QUESTS, CASE_CLOTHES } from './cases/index.js'; // 사건 파일 (#232): 사건마다 퀘스트·보상 옷 (데이터만)
 
 // 쓰레기 종류: 비율·부피·귤(클린하우스에서 받는 값)
 export const TRASH_TYPES = [
@@ -1075,6 +1076,8 @@ export const PRIZE_CLOTHES = [
   { id: 'bottom:p-santa', slot: 'bottom', name: '오름 산타 바지', desc: '굴뚝 대신 오름을 오르는 바지', look: { kind: 'long', main: '#b5333a', acc: '#2b2f3a', belt: true } },
 ].map((c) => ({ tier: 0, style: true, prize: 'xmasAll', price: 5000, ...c }));
 CLOTHES.push(...PRIZE_CLOTHES);
+// 사건 파일 보상 옷 (#232, src/cases/c*.js cloth): 겉모습(tier 0), 값 0, 가게에 없음(weekly.js onShelf 가 case 로 뺌)
+CLOTHES.push(...CASE_CLOTHES);
 // 주간 옷장 (#126): LEAP '이번 주' 칸에 매주 월요일 00:00(KST) 바뀌는 한정 옷. 주 번호로 정해져 모두 같음 (src/weekly.js)
 // 지금 옷의 색·무늬 변형(새 kind 없음). 능력은 그 칸 tier 단계(4단계를 넘지 않음, 겉모습 위주), 값은 그 칸 4단계 값 × priceK. 산 옷은 계속 가짐
 // week: 몇째 주 차례(0 ~ weeks-1)에 나오는지. epoch = 0번 주가 시작한 월요일 00:00 KST
@@ -1855,6 +1858,10 @@ export const QUESTS = {
     { id: 'st-ufo', giver: 'jigi', name: '불법 주차', say: ['UFO 가 쓰레기를 쏟고 굼부리로 갔다고요?'], task: '오름지기에게 이야기하기', ask: { k: 'story:ufo', n: 1, ever: true }, fin: ['이제 다 같이 맞설 때예요. 귤 챙겨요.'], reward: { gyul: 5 }, need: 'story:ufo' },
   ],
 };
+QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·대면 퀘스트 (src/cases/c*.js quests, 셈 'case:<id>:ev'·'case:<id>:face' 는 game/cases.js)
+// 사건 파일 (#232, game/cases.js). 사건마다 자리·글은 src/cases/c*.js
+// free: 자리가 막혀 있으면 둘레 몇 m 까지 빈 자리를 찾음 · far: 이 거리 밖이면 모양을 숨김 · r: 증거·숨는 곳 상호작용 거리 · face: 대면 장면(숨어 보기) 까마귀 수·카메라
+export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 3.4 } };
 
 // 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
 // hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
