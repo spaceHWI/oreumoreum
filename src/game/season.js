@@ -52,7 +52,7 @@ function buildDeco() {
   }
   const wg = new THREE.Group(); wreaths.forEach((w) => wg.add(w)); g.add(bake(wg)); // 리스는 모두 한 메시
   const bulbs = makeBulbs(bulbPts); g.add(bulbs.mesh);
-  const hats = life.hareubangs.map((hb) => { const h = santaHat(0.42); h.position.set(0, 2.95, 0.05); hb.root.add(h); return h; });
+  const hats = life.hareubangs.map((hb) => { const h = santaHat(0.42); h.position.set(0, 2.95, 0.05); h.userData.y0 = 2.95; (hb.head || hb.root).add(h); if (hb.head) hb.head.userData.hat = h; return h; }); /* 몸통(흔들리는 그룹)에 씌움 (#216) */
   // 들머리 큰 트리
   const tree = buildTree({ low: LOW }), s0 = spots.start, hd = spots.startHeading || 0;
   const tx = s0.x - Math.cos(hd) * X.tree.at[0] + Math.sin(hd) * X.tree.at[1], tz = s0.z + Math.sin(hd) * X.tree.at[0] + Math.cos(hd) * X.tree.at[1];

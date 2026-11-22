@@ -9,6 +9,7 @@ import { P, player } from './place.js';
 // ---------- 카메라 ----------
 export const cam = { yaw: player.heading + Math.PI, pitch: 0.32, dist: 13, mode: 'follow', look: new THREE.Vector3(), pos: new THREE.Vector3() };
 export const camTarget = { pos: new THREE.Vector3(), look: new THREE.Vector3() };
+export const camFx = { dist: 1, pitch: 0 }; // 전투 때 거리 배율·위로 더 내려다보는 각 (#216, game/fightcam.js 가 정함)
 state.camPullT = -1; // 꽃밭 카메라 (#65): 0 부터 camT 초 동안. 조작은 막지 않음
 function camPullK() { const T = BLOOM_FX.zone.camT; if (state.camPullT < 0 || state.camPullT >= T) return 0; const u = state.camPullT / T, sm = (x) => x * x * (3 - 2 * x); return u < 0.35 ? sm(u / 0.35) : u > 0.6 ? sm((1 - u) / 0.4) : 1; }
 // 탈 때(노루·탈것·마차) 카메라 (#170): 위아래 상한만 조금 넓히고 거리를 조금 늘림. 위아래 범위는 걸을 때와 같음
@@ -25,8 +26,8 @@ export function followCam(dt, snap) {
   upK = snap ? up : upK + (up - upK) * Math.min(1, dt * 10);
   const look = player.pos.clone(); look.y = player.visY + 1.6 + rideLookH() + upK * CAM.rideUpLift;
   const rk = camRiding() ? CAM.rideDist * (1 - upK * (1 - CAM.rideUpDist)) : 1; rideK = snap ? rk : rideK + (rk - rideK) * Math.min(1, dt * CAM.rideDistK);
-  const pk = camPullK(), pitch = Math.max(pMin, Math.min(pMax, cam.pitch + pk * BLOOM_FX.zone.camPitch)), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
-  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * rideK * (1 + pk * BLOOM_FX.zone.camDist) * (1 - PACE.camIn * (state.tension || 0))); // 긴장 때 조금 가까이 (#89)
+  const pk = camPullK(), pitch = Math.max(pMin, Math.min(pMax, cam.pitch + pk * BLOOM_FX.zone.camPitch + camFx.pitch)), cp = Math.cos(pitch); // 꽃밭이 될 때 잠깐 물러남 (#65)
+  const off = new THREE.Vector3(Math.sin(cam.yaw) * cp, Math.sin(pitch), Math.cos(cam.yaw) * cp).multiplyScalar(cam.dist * camFx.dist * rideK * (1 + pk * BLOOM_FX.zone.camDist) * (1 - PACE.camIn * (state.tension || 0))); // 긴장 때 조금 가까이 (#89)
   const p = look.clone().add(off);
   const gh = height(p.x, p.z) + 1.2;
   if (p.y < gh) { look.y += (gh - p.y) * 0.8; p.y = gh; }

@@ -6,7 +6,7 @@ import { state, late } from './state.js';
 import { $, clamp, save, persist, isTouch } from './save.js';
 import { canvas, scene, camera, terrain } from './scene.js';
 import { player } from './place.js';
-import { cam, camPitchMax, camPitchMin } from './camera.js';
+import { cam, camFx, camPitchMax, camPitchMin } from './camera.js';
 import { STICK } from '../balance.js';
 import { optSeg } from './optui.js';
 import { busy, cancelAll } from './hud.js';
@@ -122,7 +122,7 @@ export function pressBtn(el, fn) {
 
 // 손으로 한 확대·축소 (#151): cam.zoomed 는 사람이 바꾼 배율의 누적 (첫 화면 카메라 연출 등 저절로 바뀐 것은 안 셈, 튜토리얼 확대 단계가 봄)
 cam.zoomed = 1;
-function userZoom(d) { const n = clamp(d, 4, 40); if (cam.dist > 0) cam.zoomed *= n / cam.dist; cam.dist = n; }
+function userZoom(d) { if (camFx.dist !== 1) { d *= camFx.dist; late.fightZoomUser?.(); } const n = clamp(d, 4, 40); /* 전투 때 멀어진 중이면 보이는 거리에서 (#216) */ if (cam.dist > 0) cam.zoomed *= n / cam.dist; cam.dist = n; }
 const ray = new THREE.Raycaster();
 export const marker = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.8, 12).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#fff6c8', transparent: true, opacity: 0.9, depthWrite: false })); late.marker = marker;
 marker.visible = false; marker.renderOrder = 3; scene.add(marker);

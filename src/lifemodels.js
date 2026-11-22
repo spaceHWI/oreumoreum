@@ -3,7 +3,7 @@
 // 노루는 멧돼지·들개(enemymodels.js)처럼 한 덩어리 모델에 위치로 뼈 가중치(몸·머리·꼬리·다리 4)를 붙여 움직임
 import * as THREE from 'three';
 import { LOW } from './gfx2.js';
-import { LIFE_MODELS as LM } from './balance.js';
+import { LIFE_MODELS as LM, HB_HAT } from './balance.js';
 import { unpackProp, propGeometry, propMaterial } from './propmodel.js';
 import { whenAsset, want, placeholderGeo, placeholderMat } from './assets.js';
 
@@ -98,4 +98,6 @@ export function shakeHareubang(hb) {
   const k = hb.hitT;
   hb.head.rotation.z = Math.sin(k * 20) * 0.05 * k;
   hb.head.position.y = Math.abs(Math.sin(k * 14)) * 0.08 * k;
+  const hat = hb.head.userData.hat; /* 쓴 모자 (#216): 몸통 자식이라 같이 흔들리고, 제 몸에서 한 박자 늦게 조금 더 기욺 */
+  if (hat) { hat.rotation.z = Math.sin(k * 20 - HB_HAT.lag) * 0.05 * k * HB_HAT.amp; hat.position.y = hat.userData.y0 + Math.abs(Math.sin(k * 14 - HB_HAT.lag)) * 0.04 * k; }
 }

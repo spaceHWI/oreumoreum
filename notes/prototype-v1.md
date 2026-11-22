@@ -27,7 +27,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | save.js | 공용 도구($·isTouch·clamp·wrapA), 저장 불러오기·예전 저장 고치기(예전 server clean → battle, #98)·persist, 맵 결정, 장비→겉모습 |
 | scene.js | 렌더러·장면·빛·성능 단계 적용, 실제 제주 시각의 해·하늘, 날씨 반영 |
 | place.js | 소품(표지석·벤치·징검돌·하르방·돌탑), 사물 충돌, 돌담, 들머리 개울, 가게 거리, 쓰레기·오름 안 클린하우스·꽃, 마차, 러너(player), HP |
-| camera.js | 카메라, 첫 화면 궤도 |
+| camera.js | 카메라, 첫 화면 궤도. `camFx`(전투 때 거리 배율·각, fightcam.js 가 정함) |
+| fightcam.js | 전투 때 카메라 멀어지기(#216): 나를 쫓는 적 수·떼·우두머리에 따라 거리 배율(balance.js CAM.fight), 끝나고 3초 뒤 돌아옴, 전투 중 손 확대·축소는 존중. 설정 '전투 때 멀어지기'(save.fightCam). `late.tickFightCam`(update.js 카메라 앞, ticks.fightCam), `__oreum.fightCam.state()/step()` |
 | hud.js | 위 한 줄·토스트·배너 자리, 상황 팁, 패널 닫기, 업적, 도감, 귤 숫자 늦게 올리기(gyulFx·gyulLand·gyulExpect) |
 | director.js | 감독(#176): `src/director.js` 를 게임에 붙임. 말을 거는 것은 `director.ask(kind, id, show)`·`say(kind, id, text, sec)` 로 한 번에 하나씩(우선순위·간격·싸움 중 제한), 문 열기(`register({ id, gate, intro, kind, clue })`, 순서·조건은 balance.js JOURNEY, 사실 값 FACTS), 한가할 때 실마리, 끝을 모르는 창은 `holdWin`. `late.director`, `__oreum.director`, 확인 `node tools/journey.js` |
 | input.js | 키보드·조이스틱(떠다님·고정, #211)·멀티터치·시점·핀치, 속도 |

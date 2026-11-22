@@ -40,7 +40,7 @@ import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
-state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0 };
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, fightCam: 0 };
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -370,6 +370,7 @@ function step(now) {
   }
   skyT -= dt; if (skyT <= 0) { skyT = 20; applySky(); }
 
+  late.tickFightCam?.(dt); // 전투 때 카메라 멀어지기 (#216, game/fightcam.js)
   if (cam.mode === 'free') { /* 디버그 */ }
   else if (cam.mode === 'follow') followCam(dt, false);
   else if (cam.mode === 'cine') late.cineCam?.(dt); // 엔딩 (#168, game/ending.js)
