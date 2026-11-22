@@ -5,7 +5,8 @@
 // - 진행: ask.k 셈 값(val)에서 받을 때 값(base)을 뺀 것. ever 면 받기 전 것도 셈(우두머리·구역처럼 다시 못 하는 것)
 // - 옛 저장(save.quest 가 없는데 튜토리얼을 마친 저장): 앞에서부터 이미 한 줄기 퀘스트(oldDone)를 보상 없이 끝낸 것으로 치고, 아직 안 한 첫 것부터 줌
 // 저장 save.quest = { v, cur: { id, base, r } | null, done: [id], side: { id: { base, r } }, cp: { 가게: 할인권 수 }, c: { 셈 이름: 수 }, skip: [옛 저장으로 건너뛴 id] }
-// hooks: val(k) 셈 값, has(need) 있는 기능인가, door(id) 감독 문이 열렸나, open() 줄기 퀘스트를 줄 때가 됐나(정낭을 나섬), oldDone(q) 옛 저장에서 이미 한 것인가, ready(q) 조건을 막 채움
+// - 더 채울 수 없음 (#219): hooks.cap(k) = 지금 그 셈이 오를 수 있는 끝(모르면 끝없음). 받을 때 값 + n 에 못 미치면 막힌 것(stuck) → tick 이 hooks.stuck(q) 를 불러 바로 끝냄(보상은 complete 한 번)
+// hooks: val(k) 셈 값, cap(k) 오를 수 있는 끝, stuck(q) 막힌 것을 바로 끝낼 때, has(need) 있는 기능인가, door(id) 감독 문이 열렸나, open() 줄기 퀘스트를 줄 때가 됐나(정낭을 나섬), oldDone(q) 옛 저장에서 이미 한 것인가, ready(q) 조건을 막 채움
 export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
   const MAIN = defs.main, SIDE = defs.side, BY = new Map([...MAIN, ...SIDE].map((q) => [q.id, q]));
   const isMain = (q) => MAIN.includes(q);
@@ -30,6 +31,11 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
   function prog(q, e) { const n = q.ask.n, v = val(q.ask.k) - (q.ask.ever ? 0 : (+e?.base?.[q.ask.k] || 0)); return Math.max(0, Math.min(n, Math.floor(v))); }
   const entry = (q) => (isMain(q) ? (S().cur?.id === q.id ? S().cur : null) : S().side[q.id] || null);
   const ready = (q) => { const e = entry(q); return !!e && prog(q, e) >= q.ask.n; };
+  function stuck(q, e = entry(q)) {
+    if (!e || prog(q, e) >= q.ask.n) return false;
+    const c = Number(call(hooks.cap, q.ask.k)); if (!Number.isFinite(c)) return false;
+    return c < (q.ask.ever ? 0 : (+e.base?.[q.ask.k] || 0)) + q.ask.n;
+  }
   const turnIn = (q) => q.to || q.giver;
 
   // 줄기: 끝내지 않은 첫 것 (need 없는 것은 건너뜀)
@@ -83,7 +89,7 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
   }
   // 끝내기: 보상을 돌려줌 (주는 것은 game/quest.js)
   function complete(id) {
-    const q = BY.get(id), s = S(); if (!q || !ready(q)) return null;
+    const q = BY.get(id), s = S(); if (!q || !(ready(q) || stuck(q))) return null;
     if (isMain(q)) s.cur = null; else delete s.side[id];
     s.done.push(id);
     const cp = q.reward?.coupon; if (cp) s.cp[cp[0]] = (s.cp[cp[0]] | 0) + cp[1];
@@ -104,7 +110,10 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
     const s = S(), es = [];
     if (s.cur) es.push([BY.get(s.cur.id), s.cur]);
     for (const id of Object.keys(s.side)) es.push([BY.get(id), s.side[id]]);
-    for (const [q, e] of es) { if (e.r || prog(q, e) < q.ask.n) continue; e.r = 1; persist(); call(hooks.ready, q); }
+    for (const [q, e] of es) {
+      if (stuck(q, e)) { call(hooks.stuck, q); continue; }
+      if (e.r || prog(q, e) < q.ask.n) continue; e.r = 1; persist(); call(hooks.ready, q);
+    }
   }
   const coupons = (shop) => S().cp[shop] | 0;
   function useCoupon(shop) { const s = S(); if (!(s.cp[shop] > 0)) return false; s.cp[shop]--; if (!s.cp[shop]) delete s.cp[shop]; persist(); return true; }
@@ -117,7 +126,7 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
     return { on: on.map((q) => ({ q, p: prog(q, entry(q)), n: q.ask.n, ready: ready(q), main: isMain(q) })), done, skip: s.skip || [] };
   }
   return {
-    defs, BY, at, mark, accept, complete, tracked, tick, prog: (id) => { const q = BY.get(id); return q ? prog(q, entry(q)) : 0; }, ready: (id) => { const q = BY.get(id); return !!q && ready(q); },
+    defs, BY, at, mark, accept, complete, tracked, tick, prog: (id) => { const q = BY.get(id); return q ? prog(q, entry(q)) : 0; }, stuck: (id) => { const q = BY.get(id); return !!q && stuck(q); }, ready: (id) => { const q = BY.get(id); return !!q && ready(q); },
     isDone, mainNext, catchUp, count, coupons, useCoupon, list, wasFresh, state: S,
     reset() { save.quest = null; S(); persist(); },
   };
