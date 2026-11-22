@@ -2094,6 +2094,8 @@ export const CAVE = {
     water: { p: 0.6, w: 2.6 },
     arrow: { s: 0.9 },
   },
+  // drop 동굴 안에서 흩어지는 귤 알갱이 (#218, draw call): 한 번에 max 개·떠 있는 것 모두 live 개까지(귤 합은 같고 알갱이 하나에 더 담음), trail 날아가는 꼬리
+  drop: { max: 6, live: 14, trail: false },
   // chest 숨은 방 상자: 곁방 하나에 하나(층 번호 = id). 하루 한 번(KST). gyul 층마다 귤, 재료·장비는 #140 dropLoot('treasure', loot 구역) (높은 등급)
   chest: { gyul: [1800, 2600, 3400], loot: 5, r: 2.4 },
   // owner 동굴의 주인(맨 아래 주인 방): ENEMIES.robot 을 k 배로. 방에 들어서면(wake m) 깨어남. 쉬며 기운이 참(#183)
