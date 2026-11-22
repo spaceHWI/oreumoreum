@@ -705,6 +705,16 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 #tut-focus .ring.r2 { animation-delay: .65s; }
 #tut-focus .finger { position: absolute; left: min(calc(var(--w) * .12), 30px); top: calc(var(--h) * .1); width: 34px; height: 40px; transform-origin: 40% 10%; animation: tutTap 1.3s ease-in-out infinite; filter: drop-shadow(1px 2px 0 rgba(0,0,0,.25)); }
 #tut-focus .finger svg { width: 100%; height: 100%; display: block; }
+/* 떠다니는 이동 스틱 (#211): 쓰지 않을 때는 왼쪽 아래 옅은 안내 고리, 누른 자리에 바탕이 생김 (input.js) */
+body.stick-float #joy:not(.on) { opacity: .25; transition: opacity .3s; background: rgba(255,255,255,.12); border: 2.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+body.stick-float #joy:not(.on) #joy-knob { opacity: 0; }
+body.stick-float #joy.faint:not(.on) { opacity: .12; }
+body.stick-float #joy.tut-focus:not(.on) { opacity: .7; }
+#joy.float { margin: 0 !important; transform: translate(-50%, -50%); bottom: auto !important; opacity: 1; transition: none; }
+#joy.float { background-color: rgba(20,20,24,.18); }
+#joy.float #joy-knob { background-color: rgba(255,255,255,.7); }
+#tut-focus.drag .finger { animation: tutDrag 1.8s ease-in-out infinite; }
+@keyframes tutDrag { 0%, 12% { transform: translate(-18px, 10px) scale(1); opacity: 0; } 22% { transform: translate(-18px, 10px) scale(.92); opacity: 1; } 62% { transform: translate(26px, -26px) scale(.92); opacity: 1; } 80%, 100% { transform: translate(26px, -26px) scale(1); opacity: 0; } }
 @keyframes tutRing { 0% { transform: scale(.94); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
 @keyframes tutTap { 0%, 100% { transform: translate(8px, 10px) rotate(-18deg); } 45% { transform: translate(0, 0) rotate(-18deg) scale(.92); } 60% { transform: translate(0, 0) rotate(-18deg) scale(.92); } }
 body.tut-dim [data-tut].tut-on:not(.tut-focus), body.tut-dim #shoppop.gearshop :is(#shoppop-tabs button, .buy-card, .buy-btn):not(.tut-focus) { opacity: .42; filter: saturate(.6); transition: opacity .25s; }
@@ -1571,7 +1581,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-d36960acb1.js">(function () {
+<script data-main="main-9bf6d43329.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
@@ -1722,6 +1732,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <div class="opt seg" id="menu-rainfx" data-label="비 효과"></div>
     <button type="button" id="menu-calmfx" aria-pressed="false" title="화면 흔들림·맞힌 순간 멈춤·느린 화면 (멀미)">화면 효과: 보통</button>
     <button type="button" id="menu-vib" aria-pressed="true" hidden>진동: 켬</button>
+    <div class="opt seg" id="menu-stick" data-label="이동 스틱" hidden></div>
     <button type="button" id="menu-boxview" aria-pressed="true" hidden>박스 시야: 켬</button>
     <button type="button" id="menu-notes">릴리스 노트</button>
     <button type="button" id="menu-rec" aria-pressed="false" title="촬영 모드: UI 없이 게임 장면만 녹화 (V)">촬영: 끔</button>
