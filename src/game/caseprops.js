@@ -5,13 +5,14 @@
 // 사건 2 (#233): wall 돌담 조각 · rag 흰 천이 걸린 낮은 돌담 · gone 더미가 있던 반듯한 빈자리 · line 빨랫줄의 흰 작업복과 메모
 // - 사건 5: print 큰 발자국 · fur 흰 털 뭉치 · knots 묶인 봉지 셋 · yeti 앉아 봉지를 묶는 설인(userData.anim, Tripo 모델 #262)
 // - (사건 4, #235) neck: 안개 속 긴 목 그림자(Tripo 호스 모델 #262, 솟았다 내려감·꿈틀) · rings: 같은 크기 둥근 자국들 · post: 둘레의 관찰 말뚝 · log: 초소 일지(받침에 얹은 공책)
+// - (사건 3, #234) suits: 능선에 선 검은 양복 둘(MYST.back 실루엣, 뒤돌아보면 없다는 game/casesuit.js PROP_HOOK) · suit: 대면 자리 하나(Tripo mib 모델, mibBody) · prints: 발가락 넷 맨발 자국 두 쌍 · notebook: 떨어진 검은 수첩 · gyulbox: 두고 간 귤 상자와 쪽지
 // 모양의 root.userData.tick(t, dt) 가 있으면 보이는 동안 game/cases.js 가 매 프레임 부름. 대면 장면은 아래 SCENES (game/cases.js 가 face.scene 이름으로 씀)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
 import { LOW } from '../gfx2.js';
-import { CASE } from '../balance.js';
-import { height } from '../world.js';
+import { CASE, MYST } from '../balance.js';
+import { height, groundAt } from '../world.js';
 import { drape } from '../drape.js';
 import { cropTex } from '../croptex.js';
 import { caseModel } from '../casemodels.js';
@@ -27,6 +28,20 @@ function lump(parts, color) {
   const mesh = new THREE.Mesh(mergeGeometries(gs), tm(color)); gs.forEach((g) => g.dispose());
   mesh.castShadow = !LOW; mesh.receiveShadow = true; return mesh;
 }
+// 검은 양복 실루엣 (#234, 뒤돌아보면 figure 와 같은 모양·색, 칼라만 흰 V)
+let SIL = null;
+function silh(x) {
+  const H = MYST.back.h, g = new THREE.Group();
+  const gs = [[new THREE.CylinderGeometry(0.16, 0.3, H * 0.62, 7), 0, H * 0.31, 0], [new THREE.SphereGeometry(0.34, 10, 8), 0, H * 0.62 + 0.36, 0, 0, 0, 0, 1, 1.25, 0.9],
+    [new THREE.CylinderGeometry(0.05, 0.04, H * 0.5, 5), -0.26, H * 0.38, 0, 0, 0, -0.12], [new THREE.CylinderGeometry(0.05, 0.04, H * 0.5, 5), 0.26, H * 0.38, 0, 0, 0, 0.12]];
+  const body = lump(gs, '#1a1d20'); body.material = (SIL ||= new THREE.MeshBasicMaterial({ color: '#1a1d20' })); body.castShadow = false; g.add(body);
+  g.add(lump([[new THREE.ConeGeometry(0.07, 0.2, 3), 0, H * 0.56, 0.2, Math.PI, 0, 0]], '#f2efe6'));
+  g.position.x = x; return g;
+}
+// 검은 양복 Tripo 모델 (#262 mib, 바짓단 아래 신발 없는 맨발). 대면 자리 모양과 game/casesuit.js 장면이 씀
+export const MIB_LIFT = 0.12; // 길 띠·풀에 발이 묻히지 않게 띄움 (발이 반전이라 보여야 함)
+export function mibBody() { const M = caseModel('mib'); M.play('stand'); M.update(0); return M; }
+export const PROP_HOOK = {}; // 모양 이름 → (root, t, dt) 매 프레임 (다른 파일이 채움: game/casesuit.js suits)
 const B = {
   crop() { // 무늬: 지름 2 판을 CASE.crop.r 로 키워 땅을 따라 휨 (흐린 풀빛, 그림자 없음)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, LOW ? 10 : 16, LOW ? 10 : 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: cropTex(), transparent: true, opacity: CASE.crop.op, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
@@ -79,6 +94,36 @@ const B = {
       [new THREE.BoxGeometry(0.22, 0.86, 0.05), 0.38, 1.33, 0], [new THREE.BoxGeometry(0.22, 0.86, 0.05), 0.66, 1.33, 0]], '#f4f3ee'));
     g.add(lump([[new THREE.BoxGeometry(0.12, 0.14, 0.012), 0.95, 1.7, 0.03]], '#efe6cf'));
     g.add(lump([[new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), 1.05, 0.45, 0.15, 0, 0, 0.25], [new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), 1.11, 0.45, 0.15, 0, 0, 0.18]], '#8a8f96'));
+    return g;
+  },
+  suits() { // 사건 3 목격: 검은 양복 둘, 1.4m 떨어져 나란히. 한 번 본 뒤 화면 밖으로 나가면 사라짐 (PROP_HOOK.suits)
+    const g = new THREE.Group(), body = new THREE.Group(); body.add(silh(-0.7), silh(0.7)); g.add(body);
+    g.userData.body = body; g.userData.tick = (t, dt) => PROP_HOOK.suits?.(g, t, dt); return g;
+  },
+  suit() { // 사건 3 대면 자리: 검은 양복 하나 (Tripo 모델 mib, 바짓단 아래 신발 없는 발)
+    const g = new THREE.Group(), M = mibBody(); g.add(M.root); g.userData.mib = M; g.userData.tick = (t, dt) => { if (!g.userData.y0) { g.userData.y0 = 1; g.position.y = groundAt(g.position.x, g.position.z) + MIB_LIFT; } M.update(dt); }; return g; /* 길의 디딤판 등 밟는 높이 위에 (groundAt) */
+  },
+  prints() { // 사건 3: 두 사람이 꼭 같은 자리에 선 맨발 자국 두 쌍 (구두 자국이 아님, 발가락 넷)
+    const parts = [];
+    for (const px of [-0.7, 0.7]) for (const k of [-1, 1]) {
+      const x = px + k * 0.13;
+      parts.push([new THREE.CircleGeometry(0.1, 9), x, 0.03, 0, -Math.PI / 2, 0, 0, 0.8, 1.45, 1]);
+      for (let t = 0; t < 4; t++) parts.push([new THREE.CircleGeometry(0.03, 6), x + (t - 1.5) * 0.045, 0.031, -0.19 + Math.abs(t - 1.5) * 0.012, -Math.PI / 2, 0, 0]);
+    }
+    return lump(parts, '#3b3328');
+  },
+  notebook() { // 사건 3: 떨어진 검은 수첩 (펼쳐짐)
+    const g = new THREE.Group(), c = Math.cos(0.5) * 0.07, s = Math.sin(0.5) * 0.07;
+    g.add(lump([[new THREE.BoxGeometry(0.34, 0.025, 0.22), 0, 0.02, 0, 0, 0.5, 0]], '#1c1e22'));
+    g.add(lump([[new THREE.PlaneGeometry(0.15, 0.2), -c, 0.035, s, -Math.PI / 2, 0, 0.5], [new THREE.PlaneGeometry(0.15, 0.2), c, 0.035, -s, -Math.PI / 2, 0, 0.5]], '#efe6cf'));
+    return g;
+  },
+  gyulbox() { // 사건 3: 바위 곁에 두고 간 귤 상자 (위에 귤, 앞에 쪽지)
+    const g = new THREE.Group();
+    g.add(lump([[new THREE.BoxGeometry(0.6, 0.32, 0.42), 0, 0.16, 0]], '#c89a5e'));
+    g.add(lump([0, 1, 2, 3, 4, 5].map((i) => [new THREE.IcosahedronGeometry(0.075, 1), -0.2 + (i % 3) * 0.2, 0.36, (i < 3 ? -0.09 : 0.09)]), '#f29a2e'));
+    g.add(lump([[new THREE.PlaneGeometry(0.2, 0.13), 0, 0.17, 0.215, 0, 0, 0.06]], '#f4ecd8'));
+    g.add(lump([[new THREE.DodecahedronGeometry(0.42, 0), -0.62, 0.25, -0.1, 0, 0, 0, 1, 0.8, 1]], '#4a4744'));
     return g;
   },
   heap() { // 더미: 흰 자루 셋·푸른 자루 하나·빨간 캔 둘

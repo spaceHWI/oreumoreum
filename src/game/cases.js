@@ -10,6 +10,7 @@
 //    face.follow 가 있으면 그 뒤 흰 옷을 끝까지 따라가 장면을 봐야 끝 (#233 사건 2, game/casechase.js. 터를 버티면 a 1)
 //    face.scene 이 있으면(#235) arena·boss 를 끝낸 뒤 face.at 에서 상호작용 → 그 장면(caseprops.js SCENES, 숨어 보기 틀을 빌려 씀)을 봐야 끝. face.tint 장면 빛('dusk' 기본·'mist')
 //    see.gone 이 있으면 대면을 끝낸 뒤 목격 모양을 치움
+//    face.wait(#234): 대면 조건을 채운 뒤에만 face 모양이 서고 대면을 끝내면 치움 · boss 장면은 조건 전 추적 줄이 우두머리 빈터로
 // 5. 종결: 사건의 마지막 퀘스트 보상을 받으면(game/quest.js late.questGave) '종결' 도장 + 칭호(late.titles.give) + 업적
 // 창 #case-file (#246 수사 보드): 코르크판에 사건마다 증거 사진 자리(CASE_SLOTS), 종결된 사건의 사진은 핀으로 꽂히고 빨간 실로 이어짐(끝은 다음 빈 자리로)
 //    사진(자리)을 누르면 아래에 그 사건의 목격·증거 3칸·사진 칸. 칸을 누르면 그 쪽지를 읽음
@@ -117,7 +118,7 @@ if (ON) for (const c of CASES) {
       when: () => isOpen(c.id) && !evGot(c, e) && !run && !state.cine && !late.tut?.active, act: () => takeEv(c, e) });
   }
   if (c.face?.at) {
-    const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id) && (!c.face.watch || !!S(c.id).r)); sp.face = o?.pos || v3(...c.face.at); sp.faceObj = o;
+    const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id) && (!(c.face.watch || c.face.wait) || (!!S(c.id).r && !(c.face.wait && S(c.id).f)))); sp.face = o?.pos || v3(...c.face.at); sp.faceObj = o;
     if (c.face.watch) interactables.push({ label: c.face.label || '다가가 보기', ic: 'eye', pos: sp.face, r: CASE.r + 3, /* 대면 조건 뒤 장면 (#236) */
       when: () => isOpen(c.id) && S(c.id).r && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginWatch(c) });
     if (c.face.scene) interactables.push({ label: c.face.label || '살펴보기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6, /* 싸움 뒤 장면 (#235) */
@@ -133,7 +134,7 @@ late.casePos = (go) => {
   const [, id, what] = go.split(':'), c = CASE_BY[id], sp = spots[id]; if (!c || !sp) return null;
   if (what === 'face') { /* 따라가기 (#233): 흰 옷 → 없으면 그 구역 서바이벌 터 */
     if (c.face?.follow) { const g = chase?.pos(c); if (g) return g; const a = c.face.kind === 'arena' && SWARM.arena?.at?.[c.zone]; if (a) return v3(a[0], a[1]); }
-    if (c.face?.kind === 'boss' && c.face.watch && !S(id).r) { const b = late.field?.api?.bosses?.find((q) => q.zone === c.zone); if (b) return v3(b.x, b.z); } /* 다가가 보기 (#236): 우두머리 전엔 빈터로 */
+    if (c.face?.kind === 'boss' && (c.face.watch || c.face.scene) && !S(id).r) { const b = late.field?.api?.bosses?.find((q) => q.zone === c.zone); if (b) return v3(b.x, b.z); } /* 다가가 보기 (#236): 우두머리 전엔 빈터로 */
     const s = S(id), ar = SWARM.arena?.at?.[c.zone];
     if (c.face.kind === 'arena' && c.face.scene && !s.r && !s.f && ar) return v3(ar[0], ar[1]); /* #235 터를 먼저 버팀 */
     return sp.face ? sp.face.clone() : sp.see.clone();
@@ -212,7 +213,7 @@ function beginHide(c) {
   if (fightNow()) { toast('지금은 숨을 때가 아니에요 · 싸움부터', 2.4); return false; }
   const sp = spots[c.id], hide = sp.face, mid = sp.see, len = c.face.len || 9;
   startRun({ mode: 'hide', c, len, fall0: c.face.drop ? len * CASE.face.dropAt - 0.8 : Infinity, sc: SCENES[c.face.scene] || null, tint: c.face.tint || (c.face.dawn ? 'dawn' : c.face.scene ? 'dusk' : '') });
-  if (run.sc) { run.ctx = { scene, see: mid, face: hide, seeRoot: sp.seeRoot, blocked: (x, z, r) => !!col?.blocked(x, z, r), groundAt: (x, z) => height(x, z) }; run.st = run.sc.begin(run.ctx); } /* #235 장면 틀 */
+  if (run.sc) { run.ctx = { scene, see: mid, face: hide, seeRoot: sp.seeRoot, faceRoot: sp.faceObj?.root || null, blocked: (x, z, r) => !!col?.blocked(x, z, r), groundAt: (x, z) => height(x, z) }; run.st = run.sc.begin(run.ctx); } /* #235 장면 틀 */
   { const dx = hide.x - mid.x, dz = hide.z - mid.z, L = Math.hypot(dx, dz) || 1, px = hide.x - dz / L * 0.9 + dx / L * 0.5, pz = hide.z + dx / L * 0.9 + dz / L * 0.5; player.pos.set(px, height(px, pz), pz); player.visY = player.pos.y; } /* 수풀 옆 (카메라는 반대쪽 옆) */
   player.heading = Math.atan2(mid.x - player.pos.x, mid.z - player.pos.z); player.pose = 'crouch'; player.poseT = 0;
   const tint = run.tint; if (tint === 'mist') requestAnimationFrame(() => cine.classList.add('mist')); else if (tint) setTimeout(() => { if (run?.mode === 'hide') cine.classList.add(tint); }, 300);

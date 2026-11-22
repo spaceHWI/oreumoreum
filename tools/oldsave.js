@@ -26,6 +26,7 @@ const SAVES = {
   reportOld: { nick: '어제 제보', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: '2026-01-01', id: 'u01', got: 1, said: 1 } },
   caseMid: { nick: '조사 중', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 1763800000000, ev: ['k1a', 'nope', 'k1a'], f: 0 } }, punk: { notes: { k1a: 1763800000000 }, unread: [] } },
   caseChase: { nick: '흰 옷 쫓기', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c2: { w: 1763800000000, ev: ['k2a', 'k2b', 'k2c'], f: 0, a: 'x', s: 'bad' } } }, /* #233 터를 버티고 따라가는 중 (a 깨짐) */
+  caseSuit: { nick: '검은 양복', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c3: { w: 1763800000000, ev: ['k3a', 'k3b', 'k3c', 'k3z'], f: 0, r: 'x', b: 'q' } } }, /* #234 대면 장면 앞에서 멈춘 저장 (깨진 r·b) */
   // #158: 퀘스트 기록이 깨진 저장 · 구역 1·2 를 끝낸 옛 저장(퀘스트 없음 → 구역 3 줄부터)
   questBad: { nick: '퀘스트 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, quest: { cur: 'nope', done: 5, side: [1], cp: 'x', c: null } },
   questVet: { nick: '고참', coins: 900, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 4, bag: 4, shoes: 3, weapon: 3 }, boss: { done: { 1: 1, 2: 2 } }, journey: { step: 9, seen: { quest: '2026-11-20' }, day: '2026-11-20', n: 0, days: 3, maxZ: 3 }, ach: { life: { trash: 900, 'heap-clear': 30, recycle: 20 } } },
