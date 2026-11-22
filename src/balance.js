@@ -1871,7 +1871,8 @@ export const QUESTS = {
 QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·대면 퀘스트 (src/cases/c*.js quests, 셈 'case:<id>:ev'·'case:<id>:face' 는 game/cases.js)
 // 사건 파일 (#232, game/cases.js). 사건마다 자리·글은 src/cases/c*.js
 // free: 자리가 막혀 있으면 둘레 몇 m 까지 빈 자리를 찾음 · far: 이 거리 밖이면 모양을 숨김 · r: 증거·숨는 곳 상호작용 거리 · face: 대면 장면(숨어 보기) 까마귀 수·카메라
-export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 3.4 } };
+// crop: 사건 1 무늬 반지름(m)·진하기·돌림 (#246) · view: 위에서 찍기 장면 길이(초)·높이·옆 거리 · face: 숨어 보기 장면 (drop 떨어지는 높이 m, dropAt 장면 비율)
+export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
 
 // 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
 // hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝

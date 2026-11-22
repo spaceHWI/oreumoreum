@@ -3,20 +3,22 @@
 // 2. 의뢰·진행: 퀘스트 엔진 그대로 (balance.js QUESTS.side 뒤에 붙은 사건 퀘스트, need 'case:<id>'). 셈은 late.caseVal: 'case:<id>:ev' 찾은 증거 수 · 'case:<id>:face' 대면을 끝냄
 //    추적 줄의 갈 곳: late.casePos('case:<id>') 아직 못 찾은 가장 가까운 증거 · 'case:<id>:face' 대면 자리
 // 3. 증거: 사건이 열리면 자리에 모양. 다가가 상호작용하면 그 쪽지(punktext.js NOTES, z 'case')를 얻음(쪽지 창이 열림). act 증거는 퀘스트 셈이 사건을 연 뒤 n 번 오르면
-// 4. 대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(해 질 녘 빛·까마귀가 날아와 빈자리에 귤·종이) → 서류 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
+//    view 증거(#246)는 찍을 때 목격 자리를 위에서 내려다보는 짧은 장면(찰칵) 뒤에 쪽지
+// 4. 대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(dawn 새벽빛, drop 모양이 목격 자리 가운데로 '툭') → 증거 사진 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
 //    arena·boss 는 사건을 연 뒤 그 구역 서바이벌 한 판(save.swarm.won[구역].at)·우두머리(save.boss.done[구역])가 늘면 끝 (뒤 사건 몫)
 // 5. 종결: 사건의 마지막 퀘스트 보상을 받으면(game/quest.js late.questGave) '종결' 도장 + 칭호(late.titles.give) + 업적
-// 창 #case-file: 맨 위 서류 CASE_DOCS 칸, 사건마다 목격·증거·서류 칸과 미해결/종결 도장. 칸을 누르면 그 쪽지를 읽음
-// 저장 save.cases = { <id>: { w 연 때(ms, 0 = 아직), ev [찾은 증거 id], f 대면을 끝냄 1, base { 셈: 연 때 값 }, b 연 때 우두머리 수, s 연 때 서바이벌 시각 } }
+// 창 #case-file (#246 수사 보드): 코르크판에 사건마다 증거 사진 자리(CASE_SLOTS), 종결된 사건의 사진은 핀으로 꽂히고 빨간 실로 이어짐(끝은 다음 빈 자리로)
+//    사진(자리)을 누르면 아래에 그 사건의 목격·증거 3칸·사진 칸. 칸을 누르면 그 쪽지를 읽음
+// 저장 save.cases = { <id>: { v 내용 판, w 연 때(ms, 0 = 아직), ev [찾은 증거 id], f 대면을 끝냄 1, base { 셈: 연 때 값 }, b 연 때 우두머리 수, s 연 때 서바이벌 시각 } }
+//    v 가 사건 데이터의 v 와 다르면(옛 내용으로 진행한 저장, #246) 그 사건 진행을 처음으로 하고 옛 쪽지(drop)를 뺌. 받은 귤·옷은 그대로
 // 멀티: 모두 내 화면에서만 (쪽지는 사람마다). 파일 순서는 traces 뒤 (src/modules.js: 퀘스트·쪽지·혼잣말·칭호가 다 있음). dev: __oreum.cases
 import * as THREE from 'three';
 import { CASE } from '../balance.js';
-import { CASES, CASE_BY, CASE_DOCS, caseLastQuest } from '../cases/index.js';
+import { CASES, CASE_BY, CASE_SLOTS, caseLastQuest, casePhoto } from '../cases/index.js';
 import { NOTES } from '../punktext.js';
 import { levelOf } from '../augments.js';
 import { zoneName } from '../zonelook.js';
 import { height } from '../world.js';
-import { buildCrow } from '../punkmodels.js';
 import { icon } from '../icons.js';
 import { state, late } from './state.js';
 import { $, save, persist, MAP_ID } from './save.js';
@@ -37,14 +39,22 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 /* ---------- 저장 (로그인 뒤 저장이 바뀌어도 맞게 매번 봄) ---------- */
 function S(id) {
   if (!isObj(save.cases)) save.cases = {};
+  const c = CASE_BY[id];
   let s = save.cases[id];
-  if (!isObj(s)) s = save.cases[id] = { w: 0, ev: [], f: 0 };
+  if (isObj(s) && c?.v && +s.v !== c.v) { s = null; dropOld(c); } /* 옛 내용으로 진행한 저장 (#246): 처음으로 */
+  if (!isObj(s)) s = save.cases[id] = { w: 0, ev: [], f: 0, ...(c?.v ? { v: c.v } : {}) };
   s.w = Number.isFinite(+s.w) && +s.w > 0 ? +s.w : 0;
-  const c = CASE_BY[id], ids = new Set((c?.ev || []).map((e) => e.id));
+  const ids = new Set((c?.ev || []).map((e) => e.id));
   s.ev = Array.isArray(s.ev) ? s.ev.filter((e, i, a) => ids.has(e) && a.indexOf(e) === i) : [];
   s.f = s.f ? 1 : 0;
   if (!isObj(s.base)) s.base = {};
   return s;
+}
+function dropOld(c) { /* 옛 판 쪽지를 주운 쪽지·안 읽음에서 뺌 */
+  const P = save.punk, d = c.drop || []; if (!isObj(P) || !d.length) return;
+  if (isObj(P.notes)) for (const id of d) delete P.notes[id];
+  if (Array.isArray(P.unread)) P.unread = P.unread.filter((x) => !d.includes(x));
+  persist();
 }
 const lv = () => { try { return levelOf(save.lv?.xp || 0).lv; } catch { return 1; } };
 const isOpen = (id) => !!CASE_BY[id] && !!S(id).w;
@@ -76,21 +86,21 @@ function free([x, z], r = 0.5) { // 막혀 있으면 둘레에서 빈 자리 (CA
   for (let d = 0.8; d <= CASE.free; d += 0.8) for (let a = 0; a < 6.28; a += 0.7) { const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (!col.blocked(px, pz, r)) return v3(px, pz); }
   return v3(x, z);
 }
-const objs = []; // { c, kind 'see'|'ev'|'face'|'gyul'|'doc', e?, root, pos, show() }
+const objs = []; // { c, kind 'see'|'ev'|'face'|'drop', e?, root, pos, show() }
 function place(c, kind, at, prop, e = null, show) {
   const pos = free(at), root = buildProp(prop); if (!root) return null;
-  root.position.copy(pos); root.rotation.y = Math.atan2(-pos.x + c.see.at[0], -pos.z + c.see.at[1]) || 0; root.visible = false; scene.add(root);
+  if (root.userData.place) root.userData.place(pos.x, pos.z); /* 땅을 따라 휘는 모양 (crop) */
+  else { root.position.copy(pos); root.rotation.y = kind === 'see' || kind === 'drop' ? 0 : Math.atan2(-pos.x + c.see.at[0], -pos.z + c.see.at[1]) || 0; }
+  root.visible = false; scene.add(root);
   const o = { c, kind, e, root, pos, show }; objs.push(o); return o;
 }
-const spots = {}; // id → { see, ev: { id: pos }, face }
+const spots = {}; // id → { see, ev: { id: pos }, face, drop: obj }
 if (ON) for (const c of CASES) {
   const sp = spots[c.id] = { ev: {} };
   const see = place(c, 'see', c.see.at, c.see.prop, null, () => lv() >= c.lv || isOpen(c.id)); sp.see = see?.pos || v3(...c.see.at);
-  if (see) see.root.rotation.y = 0;
   for (const e of c.ev) {
     if (e.kind === 'act' || !e.at) continue;
-    const o = place(c, 'ev', e.at, e.prop, e, () => isOpen(c.id) && !evGot(c, e)); sp.ev[e.id] = o?.pos || v3(...e.at);
-    if (o && e.prop === 'peel') o.root.rotation.y = 0;
+    const o = place(c, 'ev', e.at, e.prop, e, () => isOpen(c.id) && (!!e.view || !evGot(c, e))); /* 찍는 바위(view)는 남음 */ sp.ev[e.id] = o?.pos || v3(...e.at);
     interactables.push({ label: e.label || '살펴보기', ic: e.kind === 'photo' ? 'photo' : e.kind === 'note' ? 'notes' : 'eye', pos: sp.ev[e.id], r: CASE.r,
       when: () => isOpen(c.id) && !evGot(c, e) && !run && !state.cine && !late.tut?.active, act: () => takeEv(c, e) });
   }
@@ -98,12 +108,8 @@ if (ON) for (const c of CASES) {
     const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id)); sp.face = o?.pos || v3(...c.face.at);
     if (c.face.kind === 'hide') interactables.push({ label: c.face.label || '숨어 보기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6,
       when: () => isOpen(c.id) && evAll(c) && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginHide(c) });
-    // 대면 뒤 빈자리에 귤·종이 (row 의 +x 끝)
-    const end = sp.see.clone().add(new THREE.Vector3(0.95, 0, 0.18)); end.y = height(end.x, end.z);
-    for (const [k, prop, dx] of [['gyul', 'gyul', 0], ['doc', 'paper', 0.35]]) {
-      const r = buildProp(prop); r.position.copy(end).add(new THREE.Vector3(dx, 0, 0)); r.visible = false; scene.add(r);
-      objs.push({ c, kind: k, root: r, pos: r.position, show: () => (S(c.id).f || (run?.c === c && run.dropped)) && !closed(c) });
-    }
+    /* 장면에서 목격 자리 가운데로 떨어지는 모양: 대면 뒤 종결 전까지 그 자리에 */
+    if (c.face.drop) sp.drop = place(c, 'drop', c.see.at, c.face.drop, null, () => (S(c.id).f || (run?.c === c && run.u >= run.fall0)) && !closed(c));
   }
 }
 // 추적 줄 갈 곳 (game/quest.js goPos)
@@ -129,6 +135,10 @@ function openCase(c, quiet = false) {
 function takeEv(c, e) {
   const s = S(c.id); if (!s.w || s.ev.includes(e.id)) return;
   s.ev.push(e.id); persist(); late.sound?.snip?.();
+  if (e.view && beginView(c, e)) return; /* 위에서 찍는 장면 뒤에 쪽지·알림 (stopRun) */
+  evSaid(c, e);
+}
+function evSaid(c, e) {
   if (e.note) late.punkWorld?.note?.give(e.note); // 쪽지 창이 열림 (싸우는 중이면 표시만)
   const n = evN(c);
   say('quest', 'case-ev:' + e.id, n >= c.ev.length ? `증거 ${n}/${c.ev.length} · 다 모았어요. ${CASE_GIVER(c)}에게 가 봐요` : `증거 ${n}/${c.ev.length} · 사건 파일에 붙였어요`, 3, { ttl: 40 });
@@ -138,21 +148,43 @@ const fightNow = () => !!player.down || !!late.bossFight?.() || !!late.swarm?.st
 const CASE_GIVER = (c) => late.questDebug?.givers?.get?.(c.giver)?.name || '의뢰한 사람';
 function gotDoc(c) { if (c.doc) late.punkWorld?.note?.give(c.doc); late.questTrackDirty?.(true); }
 
-/* ---------- 대면: 숨어 보기 ---------- */
-let run = null; // { c, u, len, prev, fov, crows: [{ m, a }], line }
+/* ---------- 장면: 숨어 보기 (hide) · 위에서 찍기 (view) ---------- */
+let run = null; // { mode 'hide'|'view', c, e?, u, len, prev, fov, li, snap, fall0, fell }
 const css = document.createElement('style');
 css.textContent = `
 body.case-cine>*:not(#view):not(#case-cine){visibility:hidden!important}
-#case-cine { position: fixed; inset: 0; z-index: 12; pointer-events: auto; background: linear-gradient(180deg, rgba(120,60,110,.0), rgba(230,120,60,.0)); transition: background 2.4s; }
-#case-cine.dusk { background: linear-gradient(180deg, rgba(60,30,90,.55), rgba(240,120,50,.42) 70%, rgba(240,140,60,.3)); }
+#case-cine { position: fixed; inset: 0; z-index: 12; pointer-events: auto; background: transparent; transition: background 2.4s; }
+#case-cine.dawn { background: linear-gradient(180deg, rgba(8,12,34,.86), rgba(20,30,70,.6) 45%, rgba(60,70,120,.28) 75%, rgba(120,110,150,.18)); }
+#case-cine.flash { background: rgba(255,255,255,.85); transition: background .08s; }
+#case-cine.shot { background: transparent; transition: background .6s; box-shadow: inset 0 0 0 10px rgba(255,255,255,.75); }
 #case-cine::before, #case-cine::after { content: ''; position: absolute; left: 0; right: 0; height: 9vh; background: #000; transition: transform .5s; }
 #case-cine::before { top: 0; transform: translateY(-100%); } #case-cine::after { bottom: 0; transform: translateY(100%); }
 #case-cine.on::before, #case-cine.on::after { transform: none; }
 #case-cine .cc-sk { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(9vh + 12px); min-width: 44px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--hair); background: var(--glass-2, rgba(20,20,24,.6)); color: var(--ink); font: 700 14px var(--body); cursor: pointer; }
 #case-cine .cc-line { position: absolute; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: calc(100vw - 140px); color: #fff; font: 600 15px var(--body); text-align: center; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .5s; word-break: keep-all; }
 #case-cine .cc-line.on { opacity: 1; }
-#case-file .pop { width: min(540px, 100%); }
-#case-file .cf-docs { display: grid; grid-template-columns: repeat(${CASE_DOCS}, minmax(0, 1fr)); gap: 6px; margin: 2px 0 14px; }
+#case-file .pop { width: min(620px, 100%); }
+#case-file .cf-board { position: relative; border-radius: 10px; padding: 14px 10px 12px; margin: 0 0 12px; background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.08) 0 1px, transparent 2px) 0 0 / 9px 9px, radial-gradient(circle at 70% 60%, rgba(0,0,0,.1) 0 1px, transparent 2px) 0 0 / 7px 7px, #b98a55; box-shadow: inset 0 0 0 6px #7a5634, inset 0 0 18px rgba(0,0,0,.35); }
+#case-file .cf-pics { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(${CASE_SLOTS}, minmax(0, 1fr)); gap: 10px 8px; }
+#case-file .cf-pic { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 5px 5px 4px; border: 0; border-radius: 2px; background: #f6f3ea; color: #3a3630; font: 700 11px/1.2 var(--body); text-align: center; word-break: keep-all; box-shadow: 0 3px 6px rgba(0,0,0,.35); transform: rotate(var(--r, 0deg)); cursor: pointer; }
+#case-file .cf-pic img, #case-file .cf-pic .cf-ph { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 1px; background: #2d2a26; }
+#case-file .cf-pic .cf-ph { display: grid; place-items: center; color: rgba(255,255,255,.5); font: 900 20px var(--display); }
+#case-file .cf-pic.empty { background: rgba(255,255,255,.14); box-shadow: none; color: rgba(40,25,10,.75); outline: 2px dashed rgba(60,35,15,.45); outline-offset: -2px; cursor: default; }
+#case-file .cf-pic.empty .cf-ph { background: transparent; color: rgba(60,35,15,.55); }
+#case-file .cf-pic.lock { cursor: default; }
+#case-file .cf-pic.sel { outline: 3px solid #ffd27a; outline-offset: 2px; }
+#case-file .cf-pin { position: absolute; left: 50%; top: -6px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a7a, #c0302a 60%, #7a1a16); box-shadow: 0 2px 2px rgba(0,0,0,.4); z-index: 2; }
+#case-file .cf-pic .cf-st { position: absolute; right: 2px; bottom: 22%; transform: rotate(-10deg); border: 2px solid currentColor; border-radius: 4px; padding: 0 4px; font: 900 10px var(--display); background: rgba(246,243,234,.85); }
+#case-file .cf-st.open { color: #c4513a; } #case-file .cf-st.done { color: #2f7d44; }
+#case-file .cf-thread { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
+#case-file .cf-thread path { fill: none; stroke: #d0302a; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
+#case-file .cf-thread path.loose { stroke-dasharray: 3 4; opacity: .8; }
+#case-file .cf-case { position: relative; padding: 10px 10px 10px 12px; border-radius: 12px; background: rgba(255,255,255,.07); }
+#case-file .cf-case h3 { margin: 0 86px 2px 0; font: 800 16px var(--display); }
+#case-file .cf-case .cf-sub { margin: 0 86px 8px 0; color: var(--ink-soft); font-size: 12px; }
+#case-file .cf-case > .cf-st { position: absolute; right: 10px; top: 10px; transform: rotate(-8deg); border: 2px solid currentColor; border-radius: 6px; padding: 1px 8px; font: 900 13px var(--display); letter-spacing: .08em; }
+#case-file .cf-case > .cf-st.open { color: #e8846a; } #case-file .cf-case > .cf-st.done { color: #8fd09a; }
+#case-file .cf-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 #case-file .cf-slot { position: relative; min-height: 64px; border-radius: 8px; border: 1px dashed var(--hair); background: rgba(255,255,255,.04); color: var(--ink-soft); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; font: 700 11px/1.2 var(--body); text-align: center; word-break: keep-all; }
 #case-file .cf-slot svg { width: 18px; height: 18px; opacity: .55; }
 #case-file .cf-slot small { font-weight: 500; font-size: 10px; opacity: .8; }
@@ -160,16 +192,9 @@ body.case-cine>*:not(#view):not(#case-cine){visibility:hidden!important}
 #case-file .cf-slot.got { border-style: solid; border-color: transparent; background: #efe6cf; color: #33302a; }
 #case-file .cf-slot.got svg { opacity: .8; }
 #case-file .cf-slot.doc.got { background: #f4ecd8; box-shadow: inset 0 0 0 2px #c9a86a; }
-#case-file .cf-case { position: relative; padding: 10px 10px 10px 12px; border-radius: 12px; background: rgba(255,255,255,.07); margin-bottom: 8px; }
-#case-file .cf-case.lock { opacity: .55; }
-#case-file .cf-case h3 { margin: 0 86px 2px 0; font: 800 16px var(--display); }
-#case-file .cf-case .cf-sub { margin: 0 86px 8px 0; color: var(--ink-soft); font-size: 12px; }
-#case-file .cf-stamp { position: absolute; right: 10px; top: 10px; transform: rotate(-8deg); border: 2px solid currentColor; border-radius: 6px; padding: 1px 8px; font: 900 13px var(--display); letter-spacing: .08em; }
-#case-file .cf-stamp.open { color: #e8846a; } #case-file .cf-stamp.done { color: #8fd09a; }
-#case-file .cf-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-#case-file .cf-h { margin: 4px 0 6px; font: 800 13px var(--display); color: var(--ink-soft); }
-#case-file .cf-empty { color: var(--ink-soft); margin: 4px 0 10px; }
-@media (max-height: 480px) { #case-file .cf-slot { min-height: 46px; padding: 4px; } #case-file .cf-slot svg { display: none; } #case-file .cf-docs { margin-bottom: 8px; } }
+#case-file .cf-empty { color: var(--ink-soft); margin: 4px 0 4px; }
+@media (max-width: 600px) and (orientation: portrait) { #case-file .cf-pics { grid-template-columns: repeat(6, minmax(0, 1fr)); } #case-file .cf-pic { grid-column: span 2; } #case-file .cf-pic:nth-child(4) { grid-column: 2 / span 2; } }
+@media (max-height: 480px) { #case-file .cf-slot { min-height: 46px; padding: 4px; } #case-file .cf-slot svg { display: none; } #case-file .cf-board { padding: 10px 8px 8px; margin-bottom: 8px; } #case-file .cf-pic { font-size: 10px; } }
 @media (max-width: 380px) { #case-file .cf-slot { font-size: 10px; } }
 #punk-note .pn-nav .pn-case { padding: 0 12px; }
 #punk-note .pn-nav .pn-case svg { width: 18px; height: 18px; }
@@ -179,70 +204,79 @@ const cine = document.createElement('div'); cine.id = 'case-cine'; cine.hidden =
 cine.innerHTML = '<div class="cc-line"></div><button type="button" class="cc-sk">건너뛰기</button>';
 document.body.append(cine);
 const lineEl = cine.querySelector('.cc-line'), skBtn = cine.querySelector('.cc-sk');
-skBtn.addEventListener('click', (e) => { e.stopPropagation(); stopHide(); });
+skBtn.addEventListener('click', (e) => { e.stopPropagation(); stopRun(); });
 for (const ev of ['pointerdown', 'pointermove', 'wheel', 'touchstart']) cine.addEventListener(ev, (e) => { if (e.target !== skBtn) e.preventDefault(); }, { passive: false });
-addEventListener('keydown', (e) => { if (run && e.key === 'Escape') { e.preventDefault(); stopHide(); } });
+addEventListener('keydown', (e) => { if (run && e.key === 'Escape') { e.preventDefault(); stopRun(); } });
 
+function startRun(r) { // 공통: 조작 잠금·카메라 cine·화면 띠
+  late.mutterApi?.hush?.();
+  run = { u: 0, prev: cam.mode, fov: camera.fov, li: -1, snap: true, fall0: Infinity, ...r };
+  state.cine = run; cam.mode = 'cine'; player.target = null; player.speed = 0;
+  cine.hidden = false; skBtn.hidden = true; lineEl.classList.remove('on'); lineEl.textContent = '';
+  cine.className = ''; document.body.classList.add('case-cine'); requestAnimationFrame(() => cine.classList.add('on'));
+  director.begin('story', 'case:' + r.c.id, Infinity);
+}
+function beginView(c, e) { // 위에서 찍기: 목격 자리를 위에서 내려다봄 · 찰칵 (증거는 이미 셈)
+  if (state.cine || run) return false;
+  startRun({ mode: 'view', c, e, len: CASE.view.len });
+  requestAnimationFrame(() => { cine.classList.add('flash'); setTimeout(() => { if (run?.mode === 'view') { cine.classList.remove('flash'); cine.classList.add('shot'); } }, 120); });
+  return true;
+}
 function beginHide(c) {
   if (state.cine || run) return false;
   if (fightNow()) { toast('지금은 숨을 때가 아니에요 · 싸움부터', 2.4); return false; }
-  late.mutterApi?.hush?.();
-  const sp = spots[c.id], hide = sp.face, row = sp.see;
-  run = { c, u: 0, len: c.face.len || 9, prev: cam.mode, fov: camera.fov, li: -1, snap: true, crows: [] };
-  for (let i = 0; i < CASE.face.crows; i++) {
-    const m = buildCrow(); m.loot.visible = false; m.root.visible = false; scene.add(m.root);
-    const a = (i / CASE.face.crows) * Math.PI * 2 + 0.6;
-    run.crows.push({ m, a, from: new THREE.Vector3(row.x + Math.cos(a) * 26, row.y + 14 + i * 2, row.z + Math.sin(a) * 26), to: new THREE.Vector3(row.x - 0.6 + i * 0.6, row.y + 0.25, row.z + 0.55) });
-  }
-  state.cine = run; cam.mode = 'cine'; player.target = null; player.speed = 0;
-  { const dx = hide.x - row.x, dz = hide.z - row.z, L = Math.hypot(dx, dz) || 1, px = hide.x - dz / L * 0.9 + dx / L * 0.5, pz = hide.z + dx / L * 0.9 + dz / L * 0.5; player.pos.set(px, height(px, pz), pz); player.visY = player.pos.y; } /* 수풀 옆 (카메라는 반대쪽 옆) */
-  player.heading = Math.atan2(row.x - player.pos.x, row.z - player.pos.z); player.pose = 'crouch'; player.poseT = 0;
-  cine.hidden = false; skBtn.hidden = true; lineEl.classList.remove('on'); lineEl.textContent = '';
-  document.body.classList.add('case-cine'); requestAnimationFrame(() => cine.classList.add('on'));
-  setTimeout(() => { if (run) cine.classList.add('dusk'); }, 300);
-  director.begin('story', 'case:' + c.id, Infinity);
+  const sp = spots[c.id], hide = sp.face, mid = sp.see, len = c.face.len || 9;
+  startRun({ mode: 'hide', c, len, fall0: c.face.drop ? len * CASE.face.dropAt - 0.8 : Infinity });
+  { const dx = hide.x - mid.x, dz = hide.z - mid.z, L = Math.hypot(dx, dz) || 1, px = hide.x - dz / L * 0.9 + dx / L * 0.5, pz = hide.z + dx / L * 0.9 + dz / L * 0.5; player.pos.set(px, height(px, pz), pz); player.visY = player.pos.y; } /* 수풀 옆 (카메라는 반대쪽 옆) */
+  player.heading = Math.atan2(mid.x - player.pos.x, mid.z - player.pos.z); player.pose = 'crouch'; player.poseT = 0;
+  if (c.face.dawn) setTimeout(() => { if (run?.mode === 'hide') cine.classList.add('dawn'); }, 300);
   return true;
 }
-function stopHide() {
+function stopRun() {
   if (!run) return;
   const r = run; run = null; if (state.cine === r) state.cine = null;
-  for (const k of r.crows) { scene.remove(k.m.root); k.m.root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); }
   camera.fov = r.fov; camera.updateProjectionMatrix();
-  cine.classList.remove('on', 'dusk'); cine.hidden = true; document.body.classList.remove('case-cine');
+  cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine');
   if (player.pose === 'crouch') player.pose = 'move';
   cam.mode = r.prev && r.prev !== 'cine' && r.prev !== 'title' ? r.prev : 'follow'; if (cam.mode === 'follow') followCam(0, true);
   director.end('case:' + r.c.id);
+  const d = spots[r.c.id]?.drop; if (d) d.root.position.copy(d.pos);
+  if (r.mode === 'view') { setTimeout(() => evSaid(r.c, r.e), 250); return; }
   const s = S(r.c.id); s.f = 1; persist(); if (!haveNote(r.c.doc)) setTimeout(() => gotDoc(r.c), 400); /* 건너뛰어도 끝난 것으로 */
   late.questTrackDirty?.(true); syncBtns();
 }
-{ const prev = late.cineCam; late.cineCam = (dt) => { if (run && state.cine === run) hideCam(dt); else prev?.(dt); }; }
-function hideCam(dt) { // 수풀 뒤 낮은 눈높이에서 줄 선 더미를 봄
-  const sp = spots[run.c.id], row = sp.see, h = sp.face, dx = h.x - row.x, dz = h.z - row.z, L = Math.hypot(dx, dz) || 1, F = CASE.face;
-  const cx = row.x + dx / L * F.camBack + dz / L * F.camSide, cz = row.z + dz / L * F.camBack - dx / L * F.camSide;
-  camTarget.pos.set(cx, Math.max(height(cx, cz) + F.camUp, row.y + F.camUp), cz);
-  camTarget.look.set(row.x, row.y + 0.3, row.z);
+{ const prev = late.cineCam; late.cineCam = (dt) => { if (run && state.cine === run) runCam(dt); else prev?.(dt); }; }
+function runCam(dt) {
+  const sp = spots[run.c.id], mid = sp.see;
+  if (run.mode === 'view') { // 찍는 자리 쪽 하늘에서 무늬 가운데를 내려다봄
+    const at = sp.ev[run.e.id] || mid, dx = at.x - mid.x, dz = at.z - mid.z, L = Math.hypot(dx, dz) || 1, V = CASE.view;
+    camTarget.pos.set(mid.x + dx / L * V.side, mid.y + V.up, mid.z + dz / L * V.side); camTarget.look.copy(mid);
+    ease(dt, run.snap && !(run.snap = false), 3); return;
+  }
+  // 수풀 뒤 낮은 눈높이에서 무늬 가운데를 봄 (하늘은 화면 위 띠·새벽빛에 묻힘)
+  const h = sp.face, dx = h.x - mid.x, dz = h.z - mid.z, L = Math.hypot(dx, dz) || 1, F = CASE.face;
+  const cx = mid.x + dx / L * F.camBack + dz / L * F.camSide, cz = mid.z + dz / L * F.camBack - dx / L * F.camSide;
+  camTarget.pos.set(cx, Math.max(height(cx, cz) + F.camUp, mid.y + F.camUp), cz);
+  camTarget.look.set(mid.x, mid.y + 0.4, mid.z);
   ease(dt, run.snap && !(run.snap = false), 2.4);
 }
-function tickHide(dt) {
+function tickRun(dt) {
   const r = run; if (!r) return;
-  if (state.cine !== r) { const keep = r; run = null; for (const k of keep.crows) scene.remove(k.m.root); cine.hidden = true; document.body.classList.remove('case-cine'); director.end('case:' + keep.c.id); return; }
-  r.u += dt; const u = r.u, T = r.len, L = r.c.face.lines || [];
+  if (state.cine !== r) { run = null; cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine'); director.end('case:' + r.c.id); return; }
+  r.u += dt; const u = r.u, T = r.len;
+  if (r.mode === 'view') { if (u >= T) stopRun(); return; }
+  const L = r.c.face.lines || [];
   skBtn.hidden = u < CASE.face.skipAfter;
   const li = Math.min(L.length - 1, Math.floor(u / (T / Math.max(1, L.length))));
   if (li !== r.li && L[li]) { r.li = li; lineEl.classList.remove('on'); void lineEl.offsetWidth; lineEl.textContent = L[li]; lineEl.classList.add('on'); }
-  // 까마귀: T 의 30% 에 하늘에서 내려와 줄 옆에 앉고, 75% 에 빈자리에 귤·종이를 두고 날아감
-  r.crows.forEach((k, i) => {
-    const a = Math.max(0, Math.min(1, (u - T * (0.28 + i * 0.05)) / (T * 0.22))), b = Math.max(0, Math.min(1, (u - T * (0.72 + i * 0.04)) / (T * 0.2)));
-    k.m.root.visible = a > 0 && b < 1;
-    if (!k.m.root.visible) return;
-    const p = k.m.root.position; p.lerpVectors(k.from, k.to, a * a * (3 - 2 * a));
-    if (b > 0) { p.lerpVectors(k.to, k.from, b * b); p.y += b * 6; }
-    if (a >= 1 && b <= 0) p.y = k.to.y + Math.abs(Math.sin(u * 7 + i)) * 0.12;
-    const tgt = b > 0 ? k.from : k.to; k.m.root.lookAt(tgt.x, p.y, tgt.z);
-    const flap = a < 1 || b > 0 ? Math.sin(u * 22 + i) * 0.8 : Math.sin(u * 3 + i) * 0.1; k.m.wings[0].rotation.z = flap; k.m.wings[1].rotation.z = -flap;
-  });
-  if (u > T * 0.74 && !r.dropped) { r.dropped = true; chkT = 0; try { late.sound?.chime?.(0.25); } catch { /* 소리 없음 */ } }
-  if (u >= T) stopHide();
+  // 떨어지는 모양: fall0 부터 0.8초 동안 위에서 가운데로 (떨어뜨린 것은 보이지 않음), 닿으면 '툭'
+  const d = spots[r.c.id]?.drop;
+  if (d && u >= r.fall0) {
+    const k = Math.min(1, (u - r.fall0) / 0.8);
+    d.root.visible = true; d.root.position.set(d.pos.x, d.pos.y + CASE.face.drop * (1 - k * k), d.pos.z); d.root.rotation.y = (1 - k) * 2.4;
+    if (k >= 1 && !r.fell) { r.fell = true; try { late.sound?.thud?.(true); } catch { /* 소리 없음 */ } }
+  }
+  if (u >= T) stopRun();
 }
 
 /* ---------- 종결 (game/quest.js 가 보상을 준 뒤) ---------- */
@@ -265,21 +299,54 @@ const haveNote = (id) => !!id && !!late.punkWorld?.note?.got?.().includes(id);
 const slot = (cls, ic, label, sub, note) => note ? `<button type="button" class="cf-slot got ${cls}" data-note="${esc(note)}">${icon(ic)}<span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`
   : `<div class="cf-slot ${cls}">${icon(ic)}<span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
 const EV_IC = { photo: 'photo', trace: 'eye', note: 'notes', act: 'check' };
-function build() {
-  const docs = []; for (let n = 1; n <= CASE_DOCS; n++) { const c = CASES.find((x) => x.n === n), got = c && haveNote(c.doc); docs.push(slot('doc', 'notes', got ? NOTE_BY[c.doc]?.t || '서류' : '?', `서류 ${n}`, got ? c.doc : null)); }
-  let h = `<p class="cf-h">서류</p><div class="cf-docs">${docs.join('')}</div><p class="cf-h">사건</p>`;
-  if (!anyOpen()) h += '<p class="cf-empty">아직 열린 사건이 없어요. 오름은 평화로워 보여요(겉으로는)</p>';
-  for (const c of CASES) {
-    const open = isOpen(c.id), done = closed(c);
-    if (!open) { h += `<div class="cf-case lock"><h3>???</h3><p class="cf-sub">레벨 ${c.lv} · ${esc(zoneName(c.zone))} 어딘가</p></div>`; continue; }
-    const cells = [slot('see', 'eye', '목격', '', null).replace('cf-slot see', 'cf-slot got see')];
-    c.ev.forEach((e, i) => { const got = evGot(c, e), n = e.note && NOTE_BY[e.note]; cells.push(slot('ev', EV_IC[e.kind] || 'eye', got ? (n?.t || '증거') : `증거 ${i + 1}`, got ? '' : '?', got && n && haveNote(e.note) ? e.note : null)); });
-    const dg = haveNote(c.doc); cells.push(slot('doc', 'notes', dg ? NOTE_BY[c.doc]?.t || '서류' : '서류', dg ? '' : '?', dg ? c.doc : null));
-    h += `<div class="cf-case"><span class="cf-stamp ${done ? 'done' : 'open'}">${done ? '종결' : '미해결'}</span><h3>${esc(c.name)}</h3><p class="cf-sub">사건 ${c.n} · ${esc(zoneName(c.zone))} · 증거 ${evN(c)}/${c.ev.length}</p><div class="cf-row">${cells.join('')}</div></div>`;
-  }
-  $('case-file-body').innerHTML = h;
+let sel = null; // 아래에 펼친 사건 id
+const TILT = ['-3deg', '2deg', '-1.5deg', '3deg', '-2.5deg'];
+function pick() { // 처음 펼칠 사건: 진행 중인 것 중 가장 최근 → 없으면 가장 최근에 연 것
+  const open = CASES.filter((c) => isOpen(c.id)).sort((x, y) => S(y.id).w - S(x.id).w);
+  return (open.find((c) => !closed(c)) || open[0])?.id || null;
 }
-$('case-file-body').addEventListener('click', (e) => { const b = e.target.closest('[data-note]'); if (!b) return; win.hidden = true; late.punkWorld?.note?.open(b.dataset.note); });
+function board() { // 코르크판: 사건마다 사진 자리 하나. 종결 → 사진·핀, 진행 중 → 빈 사진·미해결, 아직 → 점선 자리
+  const pics = [];
+  for (let n = 1; n <= CASE_SLOTS; n++) {
+    const c = CASES.find((x) => x.n === n), r = `--r:${TILT[(n - 1) % TILT.length]}`;
+    if (!c || !isOpen(c.id)) { pics.push(`<div class="cf-pic empty${c ? ' lock' : ''}" style="${r}" data-n="${n}"><span class="cf-ph">${n}</span><span>${c ? `레벨 ${c.lv}` : '?'}</span></div>`); continue; }
+    const done = closed(c), ph = done && haveNote(c.doc) ? casePhoto(c) : '';
+    pics.push(`<button type="button" class="cf-pic${done ? ' done' : ''}${sel === c.id ? ' sel' : ''}" style="${r}" data-n="${n}" data-case="${c.id}" aria-label="${esc(c.name)}">${done ? '<i class="cf-pin"></i>' : ''}`
+      + `${ph ? `<img src="${ph}" alt="" draggable="false">` : '<span class="cf-ph">?</span>'}<span>${esc(c.name)}</span><span class="cf-st ${done ? 'done' : 'open'}">${done ? '종결' : '미해결'}</span></button>`);
+  }
+  return `<div class="cf-board"><div class="cf-pics">${pics.join('')}</div><svg class="cf-thread" aria-hidden="true"></svg></div>`;
+}
+function detail(c) { // 펼친 사건: 목격·증거 셋·사진 칸 (칸을 누르면 쪽지)
+  const done = closed(c);
+  const cells = [slot('see', 'eye', '목격', '', null).replace('cf-slot see', 'cf-slot got see')];
+  c.ev.forEach((e, i) => { const got = evGot(c, e), n = e.note && NOTE_BY[e.note]; cells.push(slot('ev', EV_IC[e.kind] || 'eye', got ? (n?.t || '증거') : `증거 ${i + 1}`, got ? '' : '?', got && n && haveNote(e.note) ? e.note : null)); });
+  const dg = haveNote(c.doc); cells.push(slot('doc', 'photo', dg ? NOTE_BY[c.doc]?.t || '증거 사진' : '증거 사진', dg ? '' : '?', dg ? c.doc : null));
+  return `<div class="cf-case"><span class="cf-st ${done ? 'done' : 'open'}">${done ? '종결' : '미해결'}</span><h3>${esc(c.name)}</h3><p class="cf-sub">사건 ${c.n} · ${esc(zoneName(c.zone))} · 증거 ${evN(c)}/${c.ev.length}</p><div class="cf-row">${cells.join('')}</div></div>`;
+}
+function build() {
+  if (!sel || !isOpen(sel)) sel = pick();
+  let h = board();
+  if (!anyOpen()) h += '<p class="cf-empty">아직 열린 사건이 없어요. 오름은 평화로워 보여요(겉으로는)</p>';
+  else if (CASE_BY[sel]) h += detail(CASE_BY[sel]);
+  $('case-file-body').innerHTML = h;
+  requestAnimationFrame(thread);
+}
+function thread() { // 빨간 실: 종결된 사진의 핀을 차례로 잇고, 끝은 다음 빈 자리 위로 늘어뜨림
+  const bd = win.querySelector('.cf-board'), svg = bd?.querySelector('.cf-thread'); if (!svg || win.hidden) return;
+  const B = bd.getBoundingClientRect(); svg.setAttribute('viewBox', `0 0 ${B.width} ${B.height}`);
+  const at = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2 - B.left, r.top - B.top]; };
+  const pins = [...bd.querySelectorAll('.cf-pic.done .cf-pin')].map((p) => { const r = p.getBoundingClientRect(); return [r.left + r.width / 2 - B.left, r.top + r.height / 2 - B.top]; });
+  const sag = (p, q) => { const mx = (p[0] + q[0]) / 2, my = Math.max(p[1], q[1]) + Math.min(28, Math.hypot(q[0] - p[0], q[1] - p[1]) * 0.18); return `M${p[0].toFixed(1)} ${p[1].toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)}`; };
+  let d = ''; for (let i = 1; i < pins.length; i++) d += sag(pins[i - 1], pins[i]) + ' ';
+  let loose = '';
+  if (pins.length && pins.length < CASE_SLOTS) { const nx = bd.querySelector(`.cf-pic[data-n="${pins.length + 1}"]`); if (nx) loose = sag(pins[pins.length - 1], at(nx)); }
+  svg.innerHTML = (d ? `<path d="${d.trim()}"/>` : '') + (loose ? `<path class="loose" d="${loose}"/>` : '');
+}
+addEventListener('resize', () => { if (!win.hidden) requestAnimationFrame(thread); });
+$('case-file-body').addEventListener('click', (e) => {
+  const p = e.target.closest('[data-case]'); if (p) { sel = p.dataset.case; build(); return; }
+  const b = e.target.closest('[data-note]'); if (!b) return; win.hidden = true; late.punkWorld?.note?.open(b.dataset.note);
+});
 function openFile() { closePanels(); build(); win.hidden = false; }
 // 메뉴 칸 [사건 파일] (퀘스트 뒤) · 쪽지 창 아래 [사건] (사건이 하나라도 열리면)
 const menuBtn = document.createElement('button'); menuBtn.type = 'button'; menuBtn.id = 'menu-case'; menuBtn.hidden = true; menuBtn.innerHTML = icon('notes') + '사건 파일';
@@ -295,7 +362,7 @@ syncBtns();
 let chkT = 0;
 function tickCases(dt) {
   state.ticks.cases++;
-  if (run) tickHide(dt);
+  if (run) tickRun(dt);
   if (!ON || (chkT -= dt) > 0) return; chkT = CASE.seeT;
   const px = player.pos.x, pz = player.pos.z, far2 = CASE.far * CASE.far;
   for (const o of objs) { const vis = (o.pos.x - px) ** 2 + (o.pos.z - pz) ** 2 < far2 && !state.cave && !!o.show(); if (o.root.visible !== vis) o.root.visible = vis; }
@@ -311,12 +378,13 @@ late.tickCases = tickCases;
 /* ---------- 확인용 (window.__oreum.cases) ---------- */
 late.cases = {
   list: CASES.map((c) => c.id), on: ON,
-  state: (id = 'c1') => { const c = CASE_BY[id]; if (!c) return null; const s = S(id); return { ...JSON.parse(JSON.stringify(s)), open: !!s.w, ev: evN(c), all: evAll(c), face: faceDone(c), closed: closed(c), lv: lv(), need: c.lv, run: run && { u: +run.u.toFixed(1) }, btn: !menuBtn.hidden }; },
+  state: (id = 'c1') => { const c = CASE_BY[id]; if (!c) return null; const s = S(id); return { ...JSON.parse(JSON.stringify(s)), open: !!s.w, ev: evN(c), all: evAll(c), face: faceDone(c), closed: closed(c), lv: lv(), need: c.lv, run: run && { mode: run.mode, u: +run.u.toFixed(1) }, btn: !menuBtn.hidden }; },
+  board: () => ({ pics: win.querySelectorAll('.cf-pic').length, done: win.querySelectorAll('.cf-pic.done').length, img: win.querySelectorAll('.cf-pic.done img').length, pins: win.querySelectorAll('.cf-pin').length, thread: win.querySelectorAll('.cf-thread path').length, sel }),
   spots: (id = 'c1') => { const sp = spots[id]; if (!sp) return null; const r = (p) => p && [+p.x.toFixed(1), +p.z.toFixed(1)]; return { see: r(sp.see), face: r(sp.face), ev: Object.fromEntries(Object.entries(sp.ev).map(([k, p]) => [k, r(p)])) }; },
   objs: () => objs.map((o) => ({ id: o.c.id, kind: o.kind, ev: o.e?.id || null, vis: o.root.visible })),
   open: (id = 'c1') => openCase(CASE_BY[id]), take: (id, eid) => { const c = CASE_BY[id], e = c?.ev.find((x) => x.id === eid); if (e) takeEv(c, e); return evN(c); },
   busy: () => fightNow(),
-  hide: (id = 'c1') => beginHide(CASE_BY[id]), stop: stopHide, jump: (u) => { if (run) run.u = u; },
+  hide: (id = 'c1') => beginHide(CASE_BY[id]), stop: stopRun, view: () => run?.mode || null, jump: (u) => { if (run) run.u = u; },
   file: openFile, fileOpen: () => !win.hidden, build, html: () => $('case-file-body').innerHTML,
   reset: (id = 'c1') => { if (isObj(save.cases)) delete save.cases[id]; persist(); syncBtns(); },
 };
