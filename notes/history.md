@@ -1874,6 +1874,20 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 못 탐: 적 `TUBE.fightR` 안·우두머리·떼 판 중·튜토리얼·탈것/마차/노루. 쿨타임 없음, 귤 0개여도 탐
 - 멀티: presence `tb` = i(빨려 들어감)·p(관 속, 옮긴 자리)·o(튀어나옴). 서버는 p·o 가 붙은 순간 이동을 `NET.tubeGap`(3초)에 한 번 받아 줌(warpGap 과 따로), 그 밖의 tb 값은 지움
 - 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
+
+## #255 서바이벌 재화 '징표'·징표로만 사는 전투 특화 무기·옷 (2026-11-22)
+- 셈 `src/token.js`(게임·서버·tools 같이), 수치 balance.js `TOKEN`, 게임 `src/game/token.js`(arena 뒤), 서버 `server/src/token.js`(validate.js checkSave 가 부름, cred.tk·tz 는 earn.js normCred)
+- 얻기: 한 판 끝(swarm.js `late.swarmEnd`) → 버팀 = 구역 × 3 · 대장 쫓아냄 +2 · 안 쓰러짐 +1, 못 버티면 버틴 물결 × 0.5(2 까지). 기록 `save.tok.rec[구역] = { at, n, win }` 을 서버가 판 상한·통(초당 0.06, 40)·버틴 판은 쉬는 시간 × 0.9 안에 두 번 안 받음으로 인정. 기록은 되돌릴 수 없음
+- 씀: 새 무기 단계·징표 옷의 값만큼(`tokSpent`). 모자라면 산 것을 되돌림('tokItems' → fix.tok·reload), 남은 징표가 넘으면 깎음('tok' → fix.tok, start.js `late.tokFix`). 징표 옷은 귤 값(spentOf·revertItems)에서 뺌(freeCloths)
+- 보임: 터·좌판 근처에서만 '지금 있는 곳' 옆 `#where-tok`, 좌판 창 위 숫자, 내 가방 아래 한 줄(`late.tokFoot`). 위쪽 줄은 그대로
+- 좌판: 터 문 바깥 옆(터 자리·문 방향 기준 → #253 으로 옮겨도 따라감), 터마다 그리기 1번 + 가까운 좌판 하나에만 주인 '터지기'(러너 하나). 창은 `SHOP_POP.tok`(가게 팝업 틀, 클래스 tok 은 징표 동전)
+- 무기: 연발(mg 방식)·관통(gun + `pierce`, weaponfx.js 가 뚫고 다음 적까지)·폭발(bomb 방식) × 3단계. 강화는 기존 재료 강화 대신 징표로 단계를 올림(같은 칸이라 upMul 은 1). 든 것은 `save.tok.arm`, throw.js weaponNow 가 `late.tokArm` 먼저. 귤 무기를 고르거나 사면 내려놓음
+- 옷: 겉모습 옷(tier 0, style, tok)으로 CLOTHES 에. 입은 칸은 save.js wearV 가 `state.tokWearV` 를 먼저: 기운·회복·받는 피해는 더 큰 쪽, 모자·바지·베스트(줍기·벌이)는 없음 값 대신 피해 +6~8%(buff.mul('dmg') 감쌈). 여섯 칸이면 판 중 한 번 일어남(hp.hit 감쌈), 쉬는 시간 뒤 다시. LEAP 진열에서 뺌(weekly.js onShelf)
+- 차림 묶음 `save.tok.kit.pick·fight`(옷·징표 무기·귤 무기 단계): 내 가방 아래 버튼. 징을 칠 때 싸움 차림이 있고 지금과 다르면 '싸움 차림으로 갈아입을까요?'(`#tok-ask`, 고르면 판 시작)
+- 곁가지 퀘스트 x-token(오름지기, 문 field, 징표 10개 → 귤 20), 오늘의 할 일 t-arena(ev arena-win), 업적 b-token(징표 30)
+- 장비 점수(gearScore)는 그대로: 구역 권장·감독 문이 전투 장비로 흔들리지 않게. 내 가방 '피해' 줄은 든 무기(징표 무기 포함) 값
+- 확인: `node tools/tokenrun.js`(서버 셈 + 게임: 버팀 → 징표 → 좌판 → 귤로는 못 삼 → 징표로 삼 → 무기·옷·차림·징 묻기·관통·폭발·한 벌 덤), `tools/sec.js` 징표 5줄, `tools/oldsave.js tokBad·tokWear·tokStr`
+
 ## #259 sec.js 실패 줄 (2026-11-22)
 - 원인: 검사 코드가 아니라 **남은 서버**. `sec.js` 는 wrangler 를 detached 로 띄우는데, `timeout` 으로 끊긴 실행이 서버를 남겨 같은 포트(8797~8800)를 계속 잡음 → 새 서버는 못 뜨고 /health 를 옛 서버가 받아, 옛 코드·쌓인 저장(지난 날짜의 이용 통계, 지운 계정 토큰, 이미 받은 귤 보내기 목록)으로 검사가 돌았음. 남은 서버를 끄고 돌리면 249/249 통과
 - `tools/localsrv.js`: `clearPorts`(포트가 이미 답하면 그 포트·`--persist-to` 이름으로 띄운 남은 wrangler·workerd 만 끄고 비워질 때까지 기다림) · `killOnExit`(SIGINT·SIGTERM·SIGHUP 에도 띄운 서버를 끔). `sec.js`·`rankrun.js` 가 씀
