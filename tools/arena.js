@@ -52,8 +52,9 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
   ok(r2.n >= 4 && !r2.any, `들판 ${r2.n}곳에 서 봐도 판이 시작되지 않음`);
 
   // 5) 처음 들어간 구역 안내
-  const r5 = await ev(async () => { const o = window.__oreum; o.arena.clearHint(); const a = o.arena.list()[1]; o.tp(a.gong.x + Math.sin(a.face) * 6, a.gong.z + Math.cos(a.face) * 6, a.face + Math.PI); await new Promise((r) => setTimeout(r, 1500)); return { hint: o.arena.hint(), toast: document.getElementById('toast')?.textContent || '' }; });
-  ok(r5.hint[2] === 1 && /서바이벌 터/.test(r5.toast), `구역 2 에 처음 들어가면 안내 한 줄: ${r5.toast.slice(0, 60)}`);
+  const r5 = await ev(async () => { const o = window.__oreum; o.enemies.test.clear(); o.hp.set(o.hp.max); o.player.target = null; await new Promise((r) => setTimeout(r, 400)); /* 앞 단계 들판에서 맞아 쓰러지면 들것이 자리를 옮김 (#253) */ o.arena.clearHint(); const a = o.arena.list()[1]; o.tp(a.gong.x + Math.sin(a.face) * 6, a.gong.z + Math.cos(a.face) * 6, a.face + Math.PI); const seen = [], mo = new MutationObserver(() => { const t = document.getElementById('toast')?.textContent || ''; if (t && seen[seen.length - 1] !== t) seen.push(t); }); mo.observe(document.body, { subtree: true, childList: true, characterData: true }); o.arena.clearHint(); /* 같은 때 뜨는 다른 알림(구역 안내 등)이 덮어써도 뜬 적이 있는지 봄 (#253) */
+    for (let t = 0; t < 30 && !seen.some((q) => /남쪽 사면 서바이벌 터/.test(q)); t++) await new Promise((r) => setTimeout(r, 100)); mo.disconnect(); const at = [Math.round(o.player.pos.x), Math.round(o.player.pos.z)]; const toast = seen.find((q) => /남쪽 사면 서바이벌 터/.test(q)) || seen.join(' / '); return { hint: o.arena.hint(), toast, at }; });
+  ok(r5.hint[2] === 1 && /남쪽 사면 서바이벌 터/.test(r5.toast), `구역 2 에 처음 들어가면 안내 한 줄: ${r5.toast.slice(0, 60)}${r5.hint[2] ? '' : ' (자리 ' + r5.at + ')'}`);
 
   // 3) 구역마다 징 → 판 → 버팀
   for (let z = 1; z <= 5; z++) {
@@ -62,7 +63,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
       o.enemies.test.clear(); o.hp.set(o.hp.max); o.swarm.clearRest(z);
       const f = a.face, until = async (fn, ms = 20000) => { for (let t = 0; t < ms && !fn(); t += 200) await sl(200); return fn(); };
       o.tp(a.gong.x + Math.sin(f) * 1.8, a.gong.z + Math.cos(f) * 1.8, f + Math.PI, 0.25, 11); P.target = null;
-      await sl(1500);
+      await sl(1500); await until(() => o.arena.ui().tag, 5000); /* 징 위 글: 화면이 자리 잡을 때까지 (#253) */
       const tagOn = o.arena.ui().tag, before = !!o.swarm.state();
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF' })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'f', code: 'KeyF' }));
       await sl(400);
