@@ -411,7 +411,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 /* 첫 화면 (#72): 천천히 도는 오름 위에 로고 + 현무암 카드 하나(베타 안내·릴리스 노트·시작) */
 #intro { place-items: stretch; padding-top: var(--safe-t); padding-bottom: var(--safe-b); }
 .intro-wrap { display: grid; grid-template-rows: 1fr auto; justify-items: center; align-items: center; gap: 16px; padding: 16px 0; min-height: 0; }
-.intro-logo { margin: 7vh 0 0; align-self: start; width: min(400px, 80vw); line-height: 0; }
+.intro-logo { margin: 7vh 0 0; align-self: start; width: min(860px, 64vw); line-height: 0; } /* #209: 로고가 납작해진 만큼 넓게 */
 .intro-logo svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 2px 8px rgba(0,0,0,.35)); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .intro-beta { margin: 0 0 10px; font-size: 13px; color: var(--ink-soft); }
@@ -426,7 +426,7 @@ kbd { background: rgba(255,255,255,.12); border-color: var(--hair); color: var(-
 body:has(#intro:not([hidden])) :is(#ch-arrow, #shop-arrow, #tut-arrow, #shop-mark, #cart-mark, #tut-skip, #tut-toast, #tut-focus, #tut-pinch) { display: none !important; } /* 첫 화면 위로 뜨는 화살표·표시는 감춤 */
 body:has(#intro:not([hidden])) :is(#topbar, #joy, #btn-ctx, #btn-pick, #arm-more, #btn-jump, #btn-ride, #btn-speed, #btn-actions, #btn-chat, #btn-ach, #btn-menu, #ammo, #toast, #pickmsg, #tip, #banner, .hud-sub) { visibility: hidden !important; } /* 첫 화면에선 HUD 도 감춤 (#16) */
 body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #intro .ver-line) { display: none; }
-@media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 84vw; } .intro-card { width: 100%; box-sizing: border-box; } #shoppop .pop { box-sizing: border-box; } } /* border-box: 폰에서 카드·가게 창이 화면 옆으로 몇 px 넘치던 것 (#105) */
+@media (max-width: 600px) { .intro-wrap { align-items: end; } .intro-logo { margin-top: 9vh; width: 90vw; } .intro-card { width: 100%; box-sizing: border-box; } #shoppop .pop { box-sizing: border-box; } } /* border-box: 폰에서 카드·가게 창이 화면 옆으로 몇 px 넘치던 것 (#105) */
 
 .intro-actions .btn:disabled { opacity: .4; pointer-events: none; }
 .ach-item { border: 0; border-radius: 14px; background: rgba(255,255,255,.08); padding: 10px 12px; }
@@ -1365,7 +1365,7 @@ body.banner-on .tip-toast { top: calc(var(--tb-top, var(--safe-t)) + var(--tb-h,
   :root { --ll-h: calc(100dvh - var(--safe-t) - var(--safe-b) - 16px); }
   /* 첫 화면: 로고 왼쪽, 카드 오른쪽 */
   #intro .intro-wrap { grid-template-rows: 100%; grid-template-columns: 1fr minmax(0, 380px); align-items: center; padding: 8px 0; gap: 20px; height: 100%; box-sizing: border-box; }
-  #intro .intro-logo { margin: 0; align-self: center; justify-self: center; width: min(320px, 38vw); }
+  #intro .intro-logo { margin: 0; align-self: center; justify-self: center; width: min(420px, 100%); }
   #intro .intro-card { width: 100%; max-height: var(--ll-h); box-sizing: border-box; padding: 14px 16px 12px; }
   #intro .intro-rn { font-size: 12px; }
   /* 창: 화면 높이 안에서, 안쪽이 스크롤 */
