@@ -9,8 +9,9 @@
 //   cloth 보상 옷(겉모습, 값 0) · title 칭호 글(punktext.js TITLES 에 같은 글로 한 줄 더함) · badge { id, color, desc, reward } 업적
 // prop(모양)은 src/game/caseprops.js 의 이름 (row·peel·nest·paper·bush). 새 모양이 필요하면 거기에 더한다
 import c1 from './c1.js';
+import c4 from './c4.js';
 
-const LIST = [c1].filter(Boolean);
+const LIST = [c1, c4].filter(Boolean).sort((a, b) => a.n - b.n);
 export const CASES = LIST;
 export const CASE_BY = Object.fromEntries(LIST.map((c) => [c.id, c]));
 export const CASE_DOCS = 5; // 사건 파일 맨 위 서류 칸 수 (단가표·수거 시간표·인수인계서·투입구 규격서·분실물 접수증)

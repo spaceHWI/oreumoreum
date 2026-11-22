@@ -264,6 +264,7 @@ $('quest-go').addEventListener('click', () => {
 function give(r, q) {
   if (r.gyul) { save.coins += r.gyul; persist(); gyulShower(r.gyul); }
   if (r.coupon) toast(`${CP_NAME[r.coupon[0]] || '할인권'}을 받았어요`, 2.6);
+  if (r.mat && late.lootApi) { late.lootApi.addMats(r.mat); toast('장비 재료를 받았어요 · 대장간에서 써요', 2.6); } /* #235 사건 보상: 다음 구역 재료 { 재료 id: 수 } (balance.js LOOT.mats) */
   if (r.item && CL && !CL.own[r.item]) { CL.own[r.item] = 1; persist(); toast(`${CLOTH_NAME[r.item] || '선물'}을 받았어요 · 내 가방에서 입어요`, 3); }
   late.sound?.swell?.(0.6);
   if (q.ending) ending(q.ending);

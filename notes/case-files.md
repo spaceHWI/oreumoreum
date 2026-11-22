@@ -84,6 +84,7 @@
   - `doc` 서류 쪽지 id(대면을 끝내면 받음) · `notes` 증거·서류 쪽지(NOTES 모양: id·paper·t 14자·from·b 4줄) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄))
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
 - 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
+- (#235 에서 더함) 싸움 뒤 장면: `face { kind: 'arena'|'boss', scene: '<이름>', tint: 'mist', at, prop, label, len, lines }` 면 싸움을 끝낸 뒤 face.at 에서 상호작용해 장면을 봐야 대면이 끝남. 장면은 `caseprops.js` SCENES(begin·tick·cam·end). `see.gone: true` 면 대면 뒤 목격 모양을 치움. 증거 `z` 는 일부러 다른 구역에 둔 것(검사 구역). 퀘스트 보상 `mat: { m5: 3 }` 다음 구역 재료. 사건 4 `c4.js` 가 본보기
 - 사건의 마지막 퀘스트 보상을 받으면 종결(도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
 - 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 목격 → 증거 → 대면 → 서류 → 종결 → 창 → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`
 
