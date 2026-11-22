@@ -1810,6 +1810,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `life.aimTargets()` 에서 하르방을 뺌(life.js), `game/throw.js` 의 하르방 예외·사거리 안 대체 고르기도 정리. 자동 겨누기·유도·가장자리 표시·다가가 쏘기·모아 쏘기 모두 같은 목록을 쓰므로 한 곳에서 빠짐
 - 그대로: 직접 던진 귤이 하르방에 맞는 것(hitTest 는 따로), 모자 흔들림, 하르방 코 맞히기 일일 목표, 인사하기·가이드 퀘스트. 다른 '적 아닌 것'(관광객·까마귀·흡연자·과녁)은 이슈별 이벤트용 대상이라 그대로 둠
 - 확인: `tools/smoke.js` 에 '하르방 곁에서 자동 겨누기 없음' 한 줄
+
+## #238 매일 미확인 제보
+- 데이터 `src/cases/reports.js` 34개(헛소문 9, 큰 사건 실마리 c1~c5 각 하나: 아직 없는 사건 것은 아무에게도 안 나옴). `reportOf(날짜, ok)` 가 날짜 난수로 고름(REPORT.hoax 30% 헛소문)
+- 게임 `src/game/reports.js`: 레벨 REPORT.lv(2)부터 하루 하나, 구역은 journey.maxZ 까지. 길가 더미 곁에 흔적 모양 + 바닥 표시, '살펴보기'(헛소문은 '둘러보기') → find 한 줄 + 귤 REPORT.gyul(30). 쪽지 창 `#report-note`
+- 붙인 곳: 오늘의 할 일 창 줄(hud.js `late.reportRow`), 사건 파일 창 '제보' 칸(cases.js `late.reportBoard`, 사건이 열려야 창 버튼이 보임), 다음 할 일 AFTER.report(daily 앞), 루프 `state.ticks.reports`
+- 서버 `earn.js` 6-3: save.report = { d, id, got } 이 오늘·어제면 하루 한 번(cred.rp). `sec.js` 3줄, `oldsave.js` reportBad·reportOld
+- 검사 `node tools/reportrun.js [d|m] [shots]` (60일 헛소문 비율·구역·사건 실마리 · 날짜 셋 다른 제보 끝까지 · 옛 저장). 확인용 날짜: 주소 `?rdate=YYYY-MM-DD` 또는 `__oreum.reports.date()`
+
 ## #251 레벨 보이기·레벨 기준으로 말하기
 - 위 줄 레벨 칸(#lv-pill)을 폰 '화면 단순하게' 에서도 늘 보임. 장비 점수 칸(#score-pill)은 없앰(셈 `updateScore` 는 state.gearScore·late.scoreChanged 만)
 - 구역 권장 레벨 `ZONES.recLv` 1·5·7·10·13: `tools/econ.js` 의 '권장 레벨'(여유 25%, 장비 점수가 rec 에 처음 닿는 레벨 가운데 값 4·5·7·10·13, 구역 1 은 1). 사건 파일 열림 레벨(3·6·10·14·18)보다 낮거나 같음
@@ -1842,6 +1850,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 감독 busy: 감독 글·얻음 줄이 아닌 알림이 떠 있으면 기다림 (`msgBusy`)
 - 멀티(room.js·give.js 받은 선물)는 kind 'multi'
 - 확인: `node tools/msgshot.js` (360×640·390×844·1280×720, 그림 tools/out/msg-*.png)
+
+## #260 투기꾼 퀘스트 보장
+- 규칙 표(코드 조사): 투기꾼은 연출 감독(`pacing.js`, `PACE.battle`)이 공격 물결마다(간격 180~240초) 부름. 전엔 두 번에 한 번(`dumpEvery 2`)이라 10분에 1번꼴, 쓸 자리는 `pickHeap`(빈자리 있는 더미만, 구역은 `DUMP.zoneBase`+깨끗함 가중). 투기꾼을 조건으로 하는 것: 퀘스트 `dumper1`(구역1, n1)·`pair`(이벤트)·`note`(구역2, n1), 오늘의 할 일 `t-dumper-2`, 업적 `b-dumper`(30)
+- 앞 값/뒤 값(`node tools/dumpfreq.js 2` / `1`, 시드 3번 평균, 10분): 앞 1.0회 → 뒤 3.0회. `PACE.battle.dumpEvery` 2 → 1. 시간당 쓰레기 양(DUMP_PER_HOUR)은 한 번 양이 자동으로 나눠져 그대로
+- 퀘스트 보장: `src/game/dumperq.js`(+`balance.js DUMPER_Q`). 진행 중 퀘스트·오늘의 할 일에 투기꾼이 남았고(`dumperLeft`) 가게 거리 밖·튜토리얼·서바이벌·동굴·창·낚시·식사·탈것 아님이면 60초 뒤 한 명, 쫓아낸 뒤 조건이 남으면 45초 뒤. 60~90m 앞 길가 더미 쪽에서 출발(없으면 아무 더미). 빈자리 있는 더미가 없으면(새 저장) 양 0 으로 와서 서성임 → 퀘스트가 안 막힘. 한 줄 '누가 뭘 내려놓고 가요'(기존 가장자리 표시 dumpWarn 그대로), 추적 줄 n/m 은 기존
+- 안 한 것: 멀티에서 남이 먼저 쫓아낸 것을 같이 셈(투기꾼은 각자 화면에서 따로 돌아 지금 규칙이 없음), 연출 감독 공격 중엔 겹치지 않으려 시계만 멈춤. `dumper1` 받을 때 글에 '길가 더미 쪽' 한 마디
+- 검사: `node tools/dumperrun.js d|m` (퀘스트를 걸고 60초에 나타나 65초에 조건 채움), `tools/dumpfreq.js`. 게임 시간은 `dumpers.update(0.5)` 로 직접 돌림(느린 렌더에서도 같은 결과)
 
 ## #248 수거 관: 클린하우스 사이 바로 이동
 - 클린하우스 5곳(들머리 `gate`·숲길 `skirt`·남쪽 사면 `slope`·능선 `rest`·굼부리 `crater`) 옆에 투입구(`src/tubemodel.js`). 상호작용 '수거 관' → '어디로 보낼까요?' (이름·거리·떨어질 귤) → 2.35초 연출 → 도착 배출구

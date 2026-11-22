@@ -315,6 +315,16 @@ async function startServers() {
         k2 = checkSave(k2.save, { ...k2.save, coins: k2.save.coins + g, myst: { safe: 1 } }, { ...k2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
         ok(k2.rec.why.safe === 0 && k2.fixed.includes('coins'), '금고를 지웠다 다시 열어 두 번 받기 거절');
       }
+      { // 미확인 제보 (#238): save.report.got 이 오늘이면 REPORT.gyul 인정, 같은 날 지웠다 다시 끝내도·지난 날짜·없는 제보는 거절
+        const { REPORT } = await import('../src/balance.js'), DL = await import('../src/daily.js'), g = REPORT.gyul, date = DL.kstDate(t);
+        const r1 = checkSave(P, { ...P, coins: 100 + g, report: { d: date, id: 'u01', got: 1 } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!r1.fixed.length && r1.rec?.why?.report === g, `오늘 끝낸 제보는 귤 ${g} 인정 (${r1.rec?.why?.report})`);
+        let r2 = checkSave(r1.save, { ...r1.save, report: { d: date, id: 'u01', got: 0 } }, { ...r1.acc, savedAt: t + 1000 }, t + 2000);
+        r2 = checkSave(r2.save, { ...r2.save, report: { d: date, id: 'u02', got: 1 } }, { ...r2.acc, savedAt: t + 2000 }, t + 3000);
+        ok(r2.rec.why.report === 0, '같은 날 제보를 지웠다 다시 끝내 두 번 받기 거절');
+        const r3 = checkSave(P, { ...P, report: { d: DL.dateOfDay(DL.kstDayN(t) - 4), id: 'u01', got: 1 } }, acc, t), r4 = checkSave(P, { ...P, report: { d: date, id: 'zz9', got: 1 } }, acc, t);
+        ok(r3.rec.why.report === 0 && r4.rec.why.report === 0, '지난 날짜·없는 제보는 인정 안 함');
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };
