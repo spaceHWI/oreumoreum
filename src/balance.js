@@ -382,6 +382,20 @@ export const CLEANHOUSE = {
   keep: 14, // 클린하우스 둘레 이 거리 안엔 몹이 나오지 않음
 };
 
+// 수거 관 (#248): 클린하우스 옆 투입구 → 다른 클린하우스 배출구. 가 본 곳(그 클린하우스에 한 번이라도 버린 곳)만. game/tube.js
+// 탈 때마다 귤을 관 속에 떨굼: drop × 구역 거리(한 칸 이상) × 높은 쪽(출발·도착) 구역 gv. 가진 귤이 모자라면 가진 만큼(0개여도 탐). 쿨타임 없음
+// (높은 쪽: 내려올 때도 같은 값. 도착 구역 gv 만 쓰면 높은 구역에서 내려오는 길이 거의 공짜라 오가기 10분 벌이가 10% 넘게 늚, tools/econ.js --tube)
+export const TUBE = {
+  r: 2.4, // 투입구 앞 이 거리 안이면 상호작용 '수거 관'
+  drop: 30, // 구역 한 칸 거리마다 귤 (× 높은 쪽 구역 gv). 처음 임의값 3 은 들머리 ↔ 굼부리 오가기 10분 벌이가 1.14배라 올림 (tools/econ.js --tube: 1.1 안)
+  zone: { crater: 4 }, // 이름·값에 쓰는 구역: 굼부리 들머리 클린하우스는 숲길(구역 1) 땅에 있지만 굼부리 더미를 맡음
+  at: { big: [-4.5, -0.55], mini: [2.95, -0.25] }, // 투입구 자리 (클린하우스 안쪽 좌표 x, z. 앞이 +z): 들머리 것은 게시판 쪽 옆, 오름 안 것은 오른쪽 옆
+  fightR: 16, // 적이 이 거리 안이면 못 탐
+  t: { in: 0.55, pipe: 1.35, out: 0.45 }, // 빨려 들어감 · 관 속(어두운 화면) · 튀어나옴 (합 2.35초, 2.5초 안). 자리는 관 속 가운데에서 옮김
+  rolls: 6, // 관 속에서 뒤로 굴러가는 귤 그림 수 (떨군 수가 적으면 그만큼)
+  peel: 5, // 나오면 머리에 귤 껍질이 붙어 있는 초
+};
+
 // 쓰레기 도감 (#13): 종류마다 흔한 것 4개(20종) + 드문 것 2개(10종) = 30종. kind 는 TRASH_TYPES 의 id
 export const DEX = {
   rareChance: 1 / 400, // 주울 때마다 이 확률로 그 종류의 드문 것
@@ -1160,6 +1174,10 @@ export const MUSIC = {
 // 보상: 다 쫓아내면 귤 bonus(나머지는 그 1/3), 그리고 rest 초 쉼
 // 지루함: calmMax 초 넘게 아무 일이 없으면 작은 즐거움 하나 (드문 쓰레기 반짝임·노루가 지나감·반딧불이 떼·잭팟 조짐)
 // 전환(tension 0~1): riseT 초에 걸쳐 오르고 fallT 초에 걸쳐 내려감. 화면 가장자리 색 edge, 카메라 거리 camIn 만큼 가까이, 하늘 sky 만큼 어둡게
+/* 퀘스트가 걸려 있을 때 투기꾼 보장 (#260, game/dumperq.js): 투기꾼을 조건으로 하는 퀘스트·오늘의 할 일이 진행 중이고 길·들판에 있으면 questGap 초 안에 한 명이
+   ahead[0]~ahead[1]m 앞에서 나타남(카메라 밖). 쫓아낸 뒤 조건이 남았으면 repelGap 초 뒤 다음 사람. 그 밖은 평소 연출 감독(PACE.battle.dumpEvery)이 부름 */
+export const DUMPER_Q = { questGap: 60, repelGap: 45, ahead: [60, 90], farMax: 260, view: 0.2, msg: '누가 뭘 내려놓고 가요' };
+
 export const PACE = {
   omen: 3,
   attack: [30, 90],
@@ -1167,7 +1185,7 @@ export const PACE = {
   bloomQuiet: 10,
   calmMax: 180,
   firstDelay: 25,
-  battle: { gap: [180, 240], bonus: 9, dumpEvery: 2, group: { 1: [1, 2], 2: [2, 2], 3: [2, 3], 4: [2, 3], 5: [3, 3] } },
+  battle: { gap: [180, 240], bonus: 9, dumpEvery: 1, group: { 1: [1, 2], 2: [2, 2], 3: [2, 3], 4: [2, 3], 5: [3, 3] } },
   truckMax: 140, // 트럭 한 번에 쌓는 최대 (방금 치운 보람을 지우지 않게. 투기꾼이 두 번에 한 번이라 시간당 양이 줄고 몹이 헤집는 쓰레기가 더해짐)
   near: 140, // 투기꾼이 노릴 더미: 플레이어에서 이 거리 안을 먼저 (보이는 곳에서 사건이 일어나게)
   protect: 600, // 방금(이 초 안에) 다 치운 더미에는 투기꾼이 다시 쌓지 않음
@@ -1492,6 +1510,7 @@ export const NET = {
   maxSpeed: Math.max(32, DEER.rideRun * 2), // 초당 m 상한: 조랑말(달리기 10 × 1.9) · 노루 타고 달리기(DEER.rideRun) · 받혀 튕김(28) 위로 여유. 넘으면 앞 자리로 되돌림
   moveSlack: 8,       // 이동 판정 여유 (m, 끊김·점프)
   warpGap: 10,        // 들것 귀환·자리 앉기 같은 순간 이동은 이 초에 한 번까지 받아 줌
+  tubeGap: 3,         // 수거 관(#248) 도착 표시(tb 'o')가 붙은 순간 이동은 warpGap 과 따로 이 초에 한 번까지 (연출 2.4초)
   takePerSec: 40,     // 더미 줍기: 1초에 몇 개 (한꺼번에도 이만큼. #137 흡입기 초당 32개. 예전 6)
   takeMax: 16,        // 한 메시지에 묶어 보내는 줍기 수 상한 (#137). 클라이언트는 이보다 많으면 나눠 보냄
   takeAsk: 64,        // 한 메시지에 적힌 수는 여기까지 셈: takeMax 를 넘은 몫도 '되돌려라'(no)로 알림 (#144, 화면의 되돌리기 상한과 같음)
@@ -1809,7 +1828,7 @@ export const QUESTS = {
     { id: 'dump2', z: 1, giver: 'jigi', name: '클린하우스 단골', say: ['배낭이 무거우면 클린하우스에 비워요.', '분리만 잘 하면 귤로 바꿔 줘요. 쓰레기가 귤이 되는 곳은 내가 아는 한 거기뿐이에요.'], task: '클린하우스에 2번 버리기', ask: { k: 'recycle', n: 2 }, go: 'ch', fin: ['단골 됐네요. 클린하우스 아저씨가 웃었어요. 적어 둘 만한 일이에요.'], reward: { gyul: 20 } },
     { id: 'piglet3', z: 1, giver: 'jigi', name: '귤은 던지라고 있는 것', say: ['아기 멧돼지 셋이 길을 헤집고 다녀요. 귤로 쫓아 줘요.', '다치진 않아요. 귤이 싫을 뿐이에요. 멧돼지 쪽에서도 같은 부탁을 받았을지 몰라요.'], task: '아기 멧돼지 3마리 쫓아내기', ask: { k: 'repel:piglet', n: 3 }, go: 'den@1', fin: ['던지는 폼이 좋던데요. 멧돼지 쪽 평가는 아직 못 들었어요.'], reward: { gyul: 30 } },
     { id: 'gear1', z: 1, giver: 'jigi', name: '장비가 사람을 만든다', say: ['맨손으로만 줍다간 허리가 먼저 그만둬요.', '가게 거리 장비점에서 집게든 배낭이든 한 칸 올려 봐요.'], task: '집게나 배낭 한 칸 올리기', ask: { k: 'gearTB', n: 1 }, go: 'shop:gear', fin: ['장비가 반짝이네요. 사람도 덩달아 반짝여 보여요. 착시지만 좋은 착시예요.'], reward: { gyul: 30 }, need: 'shop:gear' },
-    { id: 'dumper1', z: 1, giver: 'jigi', name: '불청객', say: ['봉투 들고 몰래 오는 사람들이 있어요. 무단 투기꾼.', '버리기 전에 귤을 맞히면 줄행랑쳐요. 신고서보다 귤이 빨라요.'], task: '무단 투기꾼 1명 쫓아내기', ask: { k: 'dumper', n: 1 }, fin: ['봉투는 끝까지 안 놓더라고요. 버리러 온 사람이 봉투를 아끼다니. 어디로 가져가는 걸까요.'], reward: { gyul: 20 } },
+    { id: 'dumper1', z: 1, giver: 'jigi', name: '불청객', say: ['봉투 들고 몰래 오는 사람들이 있어요. 무단 투기꾼.', '길가 더미 쪽에서 나타나요. 버리기 전에 귤을 맞히면 줄행랑쳐요. 신고서보다 귤이 빨라요.'], task: '무단 투기꾼 1명 쫓아내기', ask: { k: 'dumper', n: 1 }, fin: ['봉투는 끝까지 안 놓더라고요. 버리러 온 사람이 봉투를 아끼다니. 어디로 가져가는 걸까요.'], reward: { gyul: 20 } },
     { id: 'field1', z: 1, giver: 'jigi', name: '들판 탐사', say: ['길만 다니면 오름의 반도 못 본 거예요. 나머지 반엔 짐승이 살고요.', '들판 깊숙이 큰 더미가 있어요. 길 밖은 안내판도 책임을 안 져요.'], task: '들판 더미 1곳 치우기', ask: { k: 'heapField', n: 1 }, go: 'heapField', fin: ['들판까지 다녀오다니. 그 캔, 거기서도 나왔죠? …역시.'], reward: { gyul: 40 } },
     { id: 'den1', z: 1, giver: 'jigi', name: '소굴 정리', say: ['숲길에 멧돼지들이 모이는 굴이 있어요.', '굴 앞에서 한바탕 쫓아내면 한동안 조용해요. 한동안이 얼마인지는 멧돼지 마음이고요.'], task: '숲길 적 소굴 1곳 닫기', ask: { k: 'den@1', n: 1 }, go: 'den@1', fin: ['굴이 조용해졌어요. 그런데 그 큰 녀석은 아직 안 나왔죠?'], reward: { gyul: 50 } },
     { id: 'boss1', z: 1, giver: 'jigi', name: '구역의 주인', say: ['숲길이 거의 깨끗해지면 왕관 쓴 멧돼지가 나와요.', '쫓아내면 숲길은 당신 담당이에요. 담당이 된다는 건, 네, 계속 치운다는 뜻이에요.'], task: '숲길 우두머리 쫓아내기', ask: { k: 'boss@1', n: 1, ever: true }, go: 'boss@1', fin: ['해냈네요! 숲길 지킴이예요.', '하르방은 꼭 치운 자리에만 솟아요. 누가 시킨 것도 아닌데.'], reward: { gyul: 100 } },
@@ -1877,6 +1896,10 @@ export const QUESTS = {
 QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·대면 퀘스트 (src/cases/c*.js quests, 셈 'case:<id>:ev'·'case:<id>:face' 는 game/cases.js)
 // 사건 파일 (#232, game/cases.js). 사건마다 자리·글은 src/cases/c*.js
 // free: 자리가 막혀 있으면 둘레 몇 m 까지 빈 자리를 찾음 · far: 이 거리 밖이면 모양을 숨김 · r: 증거·숨는 곳 상호작용 거리 · face: 대면 장면(숨어 보기) 까마귀 수·카메라
+// 매일 미확인 제보 (#238, 데이터 src/cases/reports.js, 게임 src/game/reports.js). 값은 임의
+// lv 이 레벨부터 · hoax 헛소문 확률 · caseK 열린 사건 실마리를 고를 확률(진짜 제보일 때) · gyul 끝내면 귤(서버 earn.js 가 하루 한 번 인정)
+// r 상호작용 거리 · off 길가 더미에서 떨어진 거리 [최소, 최대] m · far 흔적·표시가 보이는 거리 · ring 바닥 표시 반지름
+export const REPORT = { lv: 2, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14 };
 export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 3.4 } };
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
@@ -1888,7 +1911,7 @@ CASE.watch = { back: 5.5, camBack: 8.5, camSide: 1.8, camUp: 2.1 }; /* 다가가
 // shopT 귤이 새로 다음 장비 값에 닿으면 이만큼 '장비점으로' (장비점 창을 열거나 문 shopR m 안에 오면 끝, 같은 장비로 다시 권하지 않음)
 // bagRoom 배낭 남은 칸이 이보다 작으면 '클린하우스로'
 // after: 줄기 퀘스트가 끝난 뒤 차례 (강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑). 모두 임의값
-export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'daily', 'heap', 'den', 'cairn'] };
+export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['forge', 'legend', 'report', 'daily', 'heap', 'den', 'cairn'] };
 
 // 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
 // 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐

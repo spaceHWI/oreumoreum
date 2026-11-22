@@ -1,4 +1,4 @@
-// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | emote: 동작(#242)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만 | core: 동굴·레이드·귤 주기(give.js) 빼고 나머지 (#245)]
+// 멀티 확인 (#7): node tools/online.js [서버주소=http://127.0.0.1:8787] [deer: 노루(#92)만 | tube: 수거 관(#248)만 | emote: 동작(#242)만 | cart: 지나가는 마차(#120)만 | raid: 레이드(#181)만 | cave: 동굴 칸(#195)·동굴 적 같이 보기(#205)만 | core: 동굴·레이드·귤 주기(give.js) 빼고 나머지 (#245)]
 // 로컬 서버(cd server && npm run dev, 가짜 로그인 켬)에 브라우저 둘을 붙여 서로 보이는지, 더미를 주우면 다른 쪽에도 줄어드는지,
 // 가짜 로그인 → 계정 저장 → 귤 부풀리기가 서버에서 바로잡히는지 본다
 const { chromium } = require('playwright');
@@ -109,6 +109,18 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await A.p.evaluate(() => { const o = window.__oreum; const m = o.emo.mine; o.emo.perform('thumb'); if (o.emo.mine) { o.emo.mine.id = 'zzz-old'; o.net.send(true); } });
     await wait(B.p, 3000);
     ok(!errs.length && await B.p.evaluate(() => window.__oreum.net.count === 1), `모르는 동작(zzz-old)을 받아도 B 에 오류 없음${errs.length ? ' — ' + errs.join(' | ') : ''}`);
+    await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return;
+  }
+  if (ONLY === 'tube') { // 수거 관 (#248): A 가 들머리 투입구로 남쪽 사면에 가면 B(들머리)에게 작아지며 들어가는 모습, 서버는 A 를 되돌리지 않고 B 화면에서도 A 가 사면 배출구에
+    const pre = (X) => X.p.evaluate(() => { const o = window.__oreum; o.tube.reset(['gate', 'slope']); o.tube.stand('gate'); });
+    await pre(A); await pre(B); await wait(A.p, 2000);
+    await A.p.evaluate(() => { const o = window.__oreum; o.tube.open('gate'); o.tube.choose('slope'); });
+    ok(await until(B, () => [...window.__oreum.net.peersById.values()].some((e) => e.data.tb === 'i' && e.runner.root.scale.x < 0.99), null, 30000), 'B 에게 A 가 작아지며 들어가는 모습');
+    ok(await until(A, () => !window.__oreum.tube.state().run, null, 90000), 'A 가 남쪽 사면에 도착');
+    await wait(A.p, 3000);
+    const far = await A.p.evaluate(() => { const o = window.__oreum, t = o.tube.list().find((q) => q.id === 'slope'); return +Math.hypot(o.player.pos.x - t.fx, o.player.pos.z - t.fz).toFixed(1); });
+    ok(far < 3, `서버가 A 를 되돌리지 않음 (배출구에서 ${far}m)`);
+    ok(await until(B, () => { const o = window.__oreum, t = o.tube.list().find((q) => q.id === 'slope'), e = [...o.net.peersById.values()][0]; return !!e && !e.data.tb && Math.abs(e.runner.root.scale.x - 1) < 1e-6 && Math.hypot(e.tpos.x - t.fx, e.tpos.z - t.fz) < 4; }, null, 30000), 'B 화면에서 A 는 사면 배출구, 크기 그대로');
     await A.ctx.close(); await B.ctx.close(); await b.close(); web.close(); return;
   }
   if (ONLY === 'cart') { // 지나가는 마차 (#120): A 가 달리는 마차에 타면 B 화면에도 앉은 모습, B 는 A 가 앉은 자리를 피해 앉음
