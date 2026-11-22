@@ -13,7 +13,7 @@ export default {
     { id: 'k3c', kind: 'photo', at: [-152, -334], prop: 'gyulbox', label: '사진 찍기', note: 'k3c' },
   ],
   // 대면: 능선 우두머리를 쫓아낸 뒤 at 에 검은 양복이 서 있음 → 다가가면 장면 (actor 'suit', game/casesuit.js). len 초, lines 자막(28자, 따옴표 둘이 대사)
-  face: { kind: 'boss', at: [-66, 67], prop: 'suit', label: '다가가기', actor: 'suit', len: 11,
+  face: { kind: 'boss', at: [78, -97], prop: 'suit', label: '다가가기', actor: 'suit', len: 11,
     lines: ['"아무것도 못 봤습니다."', '"…불편… 불편을…"', '고개를 깊이 숙인다. 맨발이다.', '눈을 떼자, 아무도 없다.'] },
   doc: 'k3d',
   // 증거 사진 (수사 보드·쪽지 창 위, 100×75 SVG 안쪽): 검은 바지 끝과 맨발, 발가락 넷
