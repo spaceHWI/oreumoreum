@@ -112,8 +112,11 @@ function person(id, pos, face) {
 }
 // 오름지기: 들머리 안내판 옆 (정낭을 나서면 바로 보임)
 if (spots.sign && !spots.sign.silent && trash) {
-  const s = spots.sign, r = s.rot, d = Q.givers.jigi, X = [Math.cos(r), -Math.sin(r)], N = [Math.sin(r), Math.cos(r)];
-  const x = s.pos.x + X[0] * d.side + N[0] * d.fwd, z = s.pos.z + X[1] * d.side + N[1] * d.fwd, gate = spots.tut?.gate || null;
+  const s = spots.sign, r = s.rot, d = Q.givers.jigi, X = [Math.cos(r), -Math.sin(r)], N = [Math.sin(r), Math.cos(r)], gate = spots.tut?.gate || null;
+  const at = ([sd, fw]) => [s.pos.x + X[0] * sd + N[0] * fw, s.pos.z + X[1] * sd + N[1] * fw];
+  const ok = ([x, z]) => (spots.hareubangs || []).every((h) => Math.hypot(h.pos.x - x, h.pos.z - z) >= (d.hbGap || 0)) && (!col || !col.blocked(x, z, 0.45));
+  const [x, z] = [[d.side, d.fwd], ...(d.alt || [])].map(at).find(ok) || at([d.side, d.fwd]); /* 입구 하르방과 떨어진 자리 (#213) */
+  s.npc = { x, z };
   person('jigi', v3(x, z), gate ? Math.atan2(gate.x - x, gate.z - z) : Math.atan2(N[0], N[1]));
 }
 // 표지판: 구역 클린하우스 옆 (구역 2~5 줄기)

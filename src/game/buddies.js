@@ -36,7 +36,7 @@ const G = ON ? buildTrailGraph(nsPaths, 6) : null;
 // 서 있으면 안 되는 문 앞: 가게·클린하우스
 const DOORS = ON ? [GEARB?.door, LEAPB?.door, SAL?.door, STN?.terrace, CH?.shopFront, ...CHS.map((c) => c.front)].filter(Boolean) : [];
 const SHOP_DOORS = ON ? [GEARB?.door, LEAPB?.door, SAL?.door, STN?.terrace].filter(Boolean) : [];
-const NPCS = ON ? [spots.sign?.pos, spots.photo?.stone].filter(Boolean) : []; // 오름지기(들머리 안내판 옆, #158)·사진사와 겹치지 않게
+const NPCS = ON ? [spots.sign?.npc || spots.sign?.pos, spots.photo?.stone].filter(Boolean) : []; // 오름지기(들머리 안내판 옆, #158 #213 실제 선 자리)·사진사와 겹치지 않게
 const nearDoor = (x, z, r = B.avoid.door) => DOORS.some((d) => Math.hypot(d.x - x, d.z - z) < r) || NPCS.some((d) => Math.hypot(d.x - x, d.z - z) < B.avoid.npc);
 const passable = (x, z) => !col.blocked(x, z, 0.45) && !nearDoor(x, z);
 const inField = (x, z) => passable(x, z) && (trash.ok ? trash.ok(x, z) : true); // 들판으로 나갈 때는 오름 안만
