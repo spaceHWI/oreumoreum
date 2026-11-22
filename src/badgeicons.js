@@ -23,7 +23,7 @@ const B = {
   'b-fish-1': ['fish'], 'b-fish-10': ['fish', '10'], 'b-fish-50': ['fish', '50'], 'b-fish-jack': ['coins'], 'b-fish-all': ['dex'], 'b-fish-rain': ['rain'], 'b-fish-night': ['star'], // #124 낚시
   // #165 칭호가 열리는 업적
   'b-earn-10k': ['coins'], 'b-stare': ['eye'], 'b-unpaid': ['unpaid'], 'b-alien-cs': ['alien'], 'b-crow': ['crow'], 'b-hare-five': ['hareubang'],
-  'b-dumper': ['trash-x'], 'b-guard-1': ['trees'], 'b-notes': ['notes'], 'b-ending': ['planet'], 'b-eye': ['eye'],
+  'b-dumper': ['trash-x'], 'b-guard-1': ['trees'], 'b-notes': ['notes'], 'b-ending': ['planet'], 'b-case-all': ['notes'], 'b-eye': ['eye'],
   'b-rare-gyul': ['gyul'], // #130 귀한 귤 넷
 };
 export const BADGE_GLYPH = Object.fromEntries(Object.entries(B).map(([k, [id]]) => [k, id]));

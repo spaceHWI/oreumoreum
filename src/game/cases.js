@@ -321,7 +321,8 @@ function board() { // 코르크판: 사건마다 사진 자리 하나. 종결 �
     pics.push(`<button type="button" class="cf-pic${done ? ' done' : ''}${sel === c.id ? ' sel' : ''}" style="${r}" data-n="${n}" data-case="${c.id}" aria-label="${esc(c.name)}">${done ? '<i class="cf-pin"></i>' : ''}`
       + `${ph ? `<img src="${ph}" alt="" draggable="false">` : '<span class="cf-ph">?</span>'}<span>${esc(c.name)}</span><span class="cf-st ${done ? 'done' : 'open'}">${done ? '종결' : '미해결'}</span></button>`);
   }
-  return `<div class="cf-board"><div class="cf-pics">${pics.join('')}</div><svg class="cf-thread" aria-hidden="true"></svg></div>`;
+  const up = !!late.caseFin?.up?.(); /* #237 사건을 다 끝냄: 실이 위(하늘)를 가리킴 (game/casefinale.js) */
+  return `<div class="cf-board${up ? ' up' : ''}">${up ? '<i class="cf-sky"></i>' : ''}<div class="cf-pics">${pics.join('')}</div><svg class="cf-thread" aria-hidden="true"></svg></div>`;
 }
 function detail(c) { // 펼친 사건: 목격·증거 셋·사진 칸 (칸을 누르면 쪽지)
   const done = closed(c);
@@ -351,7 +352,11 @@ function thread() { // 빨간 실: 종결된 사진의 핀을 차례로 잇고, 
     const last = +done[done.length - 1].dataset.n, empty = [...bd.querySelectorAll('.cf-pic:not(.done)')], nx = empty.find((e) => +e.dataset.n > last) || empty[0];
     if (nx) loose = sag(pins[pins.length - 1], at(nx));
   }
-  svg.innerHTML = (d ? `<path d="${d.trim()}"/>` : '') + (loose ? `<path class="loose" d="${loose}"/>` : '');
+  const A = late.caseFin?.anim?.(), cut = (k) => (A ? ` pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="${(1 - k).toFixed(3)}"` : ''); /* #237 실이 이어지는 연출 */
+  let ups = '';
+  if (bd.classList.contains('up') || A) { const top = [B.width / 2, 12]; /* 위쪽 하늘 띠 (.cf-sky) */ ups = pins.map((p) => `<path class="up" d="M${p[0].toFixed(1)} ${p[1].toFixed(1)} L${top[0].toFixed(1)} ${top[1]}"${cut(A ? A.up : 1)}/>`).join(''); }
+  svg.innerHTML = (d ? `<path d="${d.trim()}"${cut(A ? A.thread : 1)}/>` : '') + (loose && !ups ? `<path class="loose" d="${loose}"/>` : '') + ups;
+  if (A) requestAnimationFrame(thread);
 }
 addEventListener('resize', () => { if (!win.hidden) requestAnimationFrame(thread); });
 $('case-file-body').addEventListener('click', (e) => {
@@ -374,6 +379,7 @@ let chkT = 0, animT = 0;
 const animObjs = objs.filter((o) => o.root.userData.tick);
 function tickCases(dt) {
   state.ticks.cases++;
+  late.caseFin?.tick(dt); /* 사건 파일 끝 (#237, game/casefinale.js) */
   if (run) tickRun(dt);
   if (chase) chase.tick(dt, CASES);
   animT += dt; for (const o of animObjs) if (o.root.visible && !o.root.userData.hold) o.root.userData.tick(animT, dt); /* 움직이는 모양 (neck 등) */
@@ -398,7 +404,7 @@ late.cases = {
   objs: () => objs.map((o) => ({ id: o.c.id, kind: o.kind, ev: o.e?.id || null, vis: o.root.visible })),
   open: (id = 'c1') => openCase(CASE_BY[id]), take: (id, eid) => { const c = CASE_BY[id], e = c?.ev.find((x) => x.id === eid); if (e) takeEv(c, e); return evN(c); },
   arena: (z) => SWARM.arena?.at?.[z] || null, scene: () => run?.sc && { name: run.c.face.scene, shown: !!run.st?.h?.visible, u: +run.u.toFixed(1) },
-  busy: () => fightNow(), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
+  busy: () => fightNow(), still: () => fightNow() || !!run || !!chase?.state?.()?.chase, isClosed: (id) => !!CASE_BY[id] && closed(CASE_BY[id]), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
   hide: (id = 'c1') => beginHide(CASE_BY[id]), watch: (id = 'c5') => beginWatch(CASE_BY[id]), stop: stopRun, view: () => run?.mode || null, jump: (u) => { if (run) run.u = u; },
   file: openFile, fileOpen: () => !win.hidden, build, html: () => $('case-file-body').innerHTML,
   reset: (id = 'c1') => { if (isObj(save.cases)) delete save.cases[id]; persist(); syncBtns(); },
