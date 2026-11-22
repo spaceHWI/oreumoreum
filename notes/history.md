@@ -1790,3 +1790,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 새 모델 없음: 흰 옷은 오름지기와 같은 runner 에 흰 작업복·밀짚모자·집게, 소품 넷(돌담 조각·흰 천 걸린 돌담·빈 더미 자리·빨랫줄)은 caseprops.js 로우폴리
 - 확인: `node tools/caserun.js c2 [d|m] [shots]` (arena + follow 갈래를 더함: 버티기 전엔 안 나옴 → 화살표가 흰 옷 → 따라감 → 장면 → 사진), `tools/oldsave.js caseChase`, `tools/storytext.mjs`(종결 뒤 인사도 봄)
 
+
+## #250 랭킹 점검·고치기
+- 점검 결과: 서버 셈(저장의 치운 수 늘어난 만큼 rka·rkd, 한국 자정·월요일, 캐시 키에 날 번호, 이름은 acc.nick JOIN, 깎인 저장·처음부터 다시)은 제대로였음. 손님은 서버 401 → 게임은 이 기기 기록 + '로그인하면 랭킹에 올라가요'
+- 고친 것: 순위표(RANK.cacheMs 10초 캐시)에서 **내 줄**이 버린 직후에도 옛 수·옛 순위로 보이던 것 → 내 줄은 바로 센 값(rankOf)으로. 캐시 나이는 `Math.abs`
+- 어드민: 어드민 창 '상태' 탭 '지금 접속' 펼친 목록에 '랭킹 오늘·주·전체 ○·○·○명 · 마지막으로 늘어난 시각'. 서버 `/admin/online` 응답에 `rank {day, week, all, last}`(숫자만), 마지막 시각은 계정 DO 표 kv('rkLast')
+- 검사: `node tools/rankrun.js`(서버 하나·HTTP 만, 몇 초). 로컬(FAKE_AUTH)만 `PUT /save` body.at·`GET /rank?at=` 로 시각을 넣어 봄. `tools/sec.js` 에 랭킹 상태 숫자 넷만·손님 401 두 줄
