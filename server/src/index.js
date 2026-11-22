@@ -227,6 +227,7 @@ export default {
         if (url.pathname === '/admin/clamps' && req.method === 'GET') return json(await A.clampList(Math.max(1, Math.min(NET.clampKeepDays, Math.floor(Number(url.searchParams.get('days'))) || NET.clampKeepDays))));
         if (url.pathname === '/admin/metrics' && req.method === 'GET') return json({ days: METRICS.viewDays, rows: await A.metricsList(Math.max(1, Math.min(METRICS.keepDays, Math.floor(Number(url.searchParams.get('days'))) || METRICS.viewDays))) }); // 이용 통계 (#121)
         if (url.pathname === '/admin/grants' && req.method === 'GET') return json(await A.grantList());
+        if (url.pathname === '/admin/filegrants' && req.method === 'GET') return json(await A.fileGrantList()); // 귤 보내기 목록 (#215)
         if (url.pathname === '/admin/wishes' && req.method === 'GET') return json(await A.wishReported()); // 신고된 소원 (#127)
         if (url.pathname === '/admin/wish' && req.method === 'POST') {
           const b = await readJson(req, 256), id = Math.floor(Number(b?.id));

@@ -1428,6 +1428,8 @@ export const NET = {
   earnRec: { freshPerSec: 1 / 30, freshBurst: 30, legendPerSec: 1 / 1200, legendBurst: 3, bossGap: 1500, denGap: 1500, questPerSave: 6, soldMax: 64, caveK: 1.6, cavePerSec: 12, caveBurst: 26000, swarmRestK: 0.9, caveDayFull: 70000 }, /* swarmRestK (#202): 들판 떼 덤은 쉬는 시간의 이만큼 지나야 다시 인정 */
   clampKeepDays: 30,  // 귤 맞춤 기록(#188 GET /admin/clamps)·운영자 귤 보내기 기록 보관 날짜
   grantMax: 1000000,  // 어드민이 한 번에 보내는 귤 상한 (#188 POST /admin/grant)
+  // 귤 보내기 목록 (#215, server/grants.json): 기획 세션이 한 줄 더하면 서버가 id 마다 한 번만 보냄. 한 줄 상한·목록 전체 하루(한국 날) 상한·못 보낸 줄(받는 이 없음·하루 상한)을 다시 보는 간격
+  grantFileMax: 100000, grantFileDay: 500000, grantFileRetryMs: 60000,
   pickPerSec: 40, pickBurst: 1000, // 치운 양(누적)이 늘 수 있는 빠르기 (#137 흡입기 초당 32개. 예전 15·400)
   migrateCoinsMax: 30000, // 기기 기록을 계정으로 옮길 때 받아 주는 귤 상한
   saveMax: 200000,    // 저장 크기 상한 (바이트)
