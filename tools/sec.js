@@ -8,6 +8,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const KEEP = process.argv.includes('--keep');
+const { clearPorts, killOnExit } = require('./localsrv.js'); // #259 남은 서버 정리·끊겨도 끄기
 const SERVER_DIR = path.join(__dirname, '..', 'server');
 // 귤 보내기 목록 (#215): plain 서버는 server/grants.json 대신 이 목록 (GRANTS_TEST, FAKE_AUTH 일 때만 읽음)
 const FG = [
@@ -67,6 +68,8 @@ function forge(secret, o) { const pl = b64u(JSON.stringify(o)); return 'v2.' + p
 
 async function startServers() {
   const procs = [];
+  await clearPorts(Object.values(CFG).map((c) => c.port), 'oreum-sec-'); /* 앞 실행이 남긴 서버 (#259) */
+  killOnExit(() => (KEEP ? [] : procs));
   for (const [k, c] of Object.entries(CFG)) {
     const args = ['wrangler', 'dev', '--local', '--port', String(c.port), '--inspector-port', String(c.port + 1000), '--persist-to', path.join(require('os').tmpdir(), 'oreum-sec-' + k + '-' + Date.now())];
     for (const v of c.vars) args.push('--var', v);

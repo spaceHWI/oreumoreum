@@ -1887,3 +1887,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 곁가지 퀘스트 x-token(오름지기, 문 field, 징표 10개 → 귤 20), 오늘의 할 일 t-arena(ev arena-win), 업적 b-token(징표 30)
 - 장비 점수(gearScore)는 그대로: 구역 권장·감독 문이 전투 장비로 흔들리지 않게. 내 가방 '피해' 줄은 든 무기(징표 무기 포함) 값
 - 확인: `node tools/tokenrun.js`(서버 셈 + 게임: 버팀 → 징표 → 좌판 → 귤로는 못 삼 → 징표로 삼 → 무기·옷·차림·징 묻기·관통·폭발·한 벌 덤), `tools/sec.js` 징표 5줄, `tools/oldsave.js tokBad·tokWear·tokStr`
+
+## #259 sec.js 실패 줄 (2026-11-22)
+- 원인: 검사 코드가 아니라 **남은 서버**. `sec.js` 는 wrangler 를 detached 로 띄우는데, `timeout` 으로 끊긴 실행이 서버를 남겨 같은 포트(8797~8800)를 계속 잡음 → 새 서버는 못 뜨고 /health 를 옛 서버가 받아, 옛 코드·쌓인 저장(지난 날짜의 이용 통계, 지운 계정 토큰, 이미 받은 귤 보내기 목록)으로 검사가 돌았음. 남은 서버를 끄고 돌리면 249/249 통과
+- `tools/localsrv.js`: `clearPorts`(포트가 이미 답하면 그 포트·`--persist-to` 이름으로 띄운 남은 wrangler·workerd 만 끄고 비워질 때까지 기다림) · `killOnExit`(SIGINT·SIGTERM·SIGHUP 에도 띄운 서버를 끔). `sec.js`·`rankrun.js` 가 씀
+- `notes/auto.md` 확인 절에 한 줄
