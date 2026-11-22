@@ -1982,3 +1982,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 맨발: 모델 구두(모델 y 0.072 아래)를 셰이더에서 살색으로 칠함(`casemodels.js` BARE). 구두 주름이 발가락처럼 읽혀 발가락 조각은 붙여 봤다가 뺌(크고 하얘서 돌처럼 보임)
 - 능선 대면 자리에서 모델 발이 땅에 묻힘(그려진 땅이 `height()` 보다 0.16m 높음) → `caseprops.js groundLift` 로 땅 모양에 쏴서 올림. 플레이어·다른 NPC 쪽은 건드리지 않음
 - 찍은 것 `notes/shots/264/`, 검사 `tools/mibshot.js`(평지에서 talk·bow·발치)
+
+
+## #265 서바이벌 터: 밀려 나가면 돌아오기 어려움
+- 원인(봇 trace 에 속도·받힘·자세를 더해 봄): 받혀 밀린 게 아니라 **PC 키보드로 머신건·레이저를 누른 채(겨눔) W 를 누르면 몸 방향 = 과녁 쪽으로 걸음**. 과녁(떼)은 터 밖에서 들어오므로 가운데로 돌아서도 곧 과녁 쪽(바깥)으로 끌려 나감. 폰 조이스틱은 화면 기준이라 문제 없음 → 게임 쪽
+- 고침: `update.js` 키보드 이동에 `player.moveH`(이동 방향). 겨누지 않을 땐 몸 방향과 같고, 겨누는 동안 몸은 과녁을 보고 W·A·D 는 moveH 로(카메라도 moveH 를 따라감)
+- 더해서: 판 동안 터 테두리 `arena.edge`(4m) 안에서 받히면 밀리는 방향의 바깥 몫을 지우고 `arena.edgeIn`(0.5)만큼 안쪽으로 꺾음 (`swarm.js` late.swarmKnock ← `hooks.js` enemyHit). `arena.leave` 8초·터 자리는 그대로
+- 봇(`tools/swarm.js`)도 `P.moveH` 를 정함. 결과: 구역 4 권장 장비 2/2 버팀(대장까지, 전엔 0/2 leave) · 장비 한 단계 낮게 1판 'down'(leave 아님) · 구역 2·3·5 각 1판 버팀
+- 검사: `online.js` 의 토스트 관찰을 `#toast` → `#msg-log`(#252 메시지 줄 뒤로 #toast 는 비어 노루 줄 3개가 실패하던 낡은 검사)
+
+- #266 (오류 알림): 서바이벌 판 중 터 밖으로 나갔다 돌아온 프레임에 `late.msgLog?.unpin('leave')` 가 "is not a function" 으로 멈추던 것 (0.50.0). `unpin` 은 `msglog.js` 가 따로 export 한 함수인데 `late.msgLog` 객체에는 없었다(#252 에서 고정 한 줄을 만들 때 빠짐). `msgLog` 에 `unpin` 을 넣음. 다른 `late.msgLog?.…` 부름(`hud.js` drop)은 있는 함수
+- 검사: `tools/arena.js` 에 '터 밖 → 돌아옴: 고정 줄 걷힘·판 이어짐' 한 줄(고치기 전엔 실패). 같은 파일의 '터 밖 경고'·'처음 들어간 구역 안내' 는 #252 뒤로 비어 있는 `#toast` 를 봐서 실패하던 낡은 검사라 고정 한 줄·`#msg-log` 를 보게 고침

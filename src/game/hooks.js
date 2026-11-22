@@ -42,6 +42,7 @@ life.hooks.enemyHit = (dir, def) => {
   late.closeBag?.(); // 받히면 내 가방 창이 닫힘 (#166)
   if (player.riding) dismountDeer();
   if (player.ride) { dismountRide(); player.rideAuto = null; toast(`${RIDE_BY[save.rides.cur]?.name || '탈것'}에서 떨어졌어요`); } // 받히면 떨어짐 (#69)
+  late.swarmKnock?.(dir); /* #265 */
   player.kb.copy(dir).multiplyScalar(BOAR.knockSpeed); player.air = true; player.jumpV = BOAR.knockV; player.jumpY = 0.01;
   player.target = null; marker.visible = false; player.pose = 'move';
   player.knockN = (player.knockN || 0) + 1; player.knock = { t: 0, land: -1, ang: 0, ax: -dir.z, az: dir.x, id: player.knockN }; // 연달아 맞으면 처음부터 다시 (남는 값 없음). id 는 멀티로 보냄

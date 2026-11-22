@@ -264,7 +264,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(seen.rider === bId && seen.st === 'ridden' && seen.dr === id && seen.gap < 0.3 && seen.lift > 0.6 && Math.hypot(ap[0] - bp[0], ap[1] - bp[1]) < 1.5, `A 화면: B 가 노루에 걸터앉아 같이 움직임 (${JSON.stringify(seen)}, 차이 ${Math.hypot(ap[0] - bp[0], ap[1] - bp[1]).toFixed(2)}m)`);
     await A.p.screenshot({ path: 'dist/deer-ride-a.png' }); await B.p.screenshot({ path: 'dist/deer-ride-b.png' });
     // 같은 노루를 A 가 타려 하면: 화면에서 바로 막고, 화면 기록을 지워 억지로 물어도 방이 거절
-    const tryA = async () => { await A.p.evaluate((id) => { const o = window.__oreum; window.__toasts = []; const t = document.getElementById('toast'); window.__tob?.disconnect(); window.__tob = new MutationObserver(() => window.__toasts.push(t.textContent)); window.__tob.observe(t, { childList: true, characterData: true, subtree: true }); o.lifeModels.mount(o.life.deer.findIndex((d) => d.id === id)); }, id); await wait(A.p, 1000); return A.p.evaluate(() => ({ riding: !!window.__oreum.player.riding, t: window.__toasts.join('/') })); };
+    const tryA = async () => { await A.p.evaluate((id) => { const o = window.__oreum; window.__toasts = []; const t = document.getElementById('msg-log'); window.__tob?.disconnect(); window.__tob = new MutationObserver(() => window.__toasts.push(t.textContent)); window.__tob.observe(t, { childList: true, characterData: true, subtree: true }); o.lifeModels.mount(o.life.deer.findIndex((d) => d.id === id)); }, id); await wait(A.p, 1000); return A.p.evaluate(() => ({ riding: !!window.__oreum.player.riding, t: window.__toasts.join('/') })); };
     let r = await tryA(); ok(!r.riding && /다른 사람이 타고/.test(r.t), `같은 노루를 둘이 못 탐: 화면에서 막음 (${r.t})`);
     await A.p.evaluate(() => window.__oreum.deerNet().rides.clear());
     r = await tryA(); ok(!r.riding && /다른 사람이 타고/.test(r.t), `같은 노루를 둘이 못 탐: 방이 거절 (${r.t})`);
@@ -279,7 +279,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(vis[0].split(',').length === n0 + 2 && vis[0] === vis[1], `노루가 지나감도 두 화면에 같이 (${n0} → ${vis[0].split(',').length}, 같음 ${vis[0] === vis[1]})`);
     // 귤 먹이: B 가 던진 귤을 방장 화면의 노루가 먹고 B 를 따라감
     const fid = ids[1] || ids[0];
-    await B.p.evaluate((fid) => { const o = window.__oreum, d = o.life.deerById(fid); window.__toasts = []; const t = document.getElementById('toast'); new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); const T = o.life.deer[0].pos.constructor; o.life.throwTangerine(new T(d.pos.x + 3, d.pos.y + 1.2, d.pos.z), new T(-1, 0, 0), 2); }, fid);
+    await B.p.evaluate((fid) => { const o = window.__oreum, d = o.life.deerById(fid); window.__toasts = []; const t = document.getElementById('msg-log'); new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); const T = o.life.deer[0].pos.constructor; o.life.throwTangerine(new T(d.pos.x + 3, d.pos.y + 1.2, d.pos.z), new T(-1, 0, 0), 2); }, fid);
     let fed = null; for (let k = 0; k < 90 && !fed?.ok; k++) { await wait(A.p, 500); fed = await A.p.evaluate(({ fid, bId }) => { const d = window.__oreum.life.deerById(fid); return { ok: d.state === 'follow' && d.followWho === bId, st: d.state }; }, { fid, bId }); }
     for (let k = 0; k < 20 && !(await B.p.evaluate(() => /귤을 먹고/.test(window.__toasts.join('/')))); k++) await wait(B.p, 500);
     const bt = await B.p.evaluate(() => window.__toasts.join('/'));
@@ -396,7 +396,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.evaluate(() => { const o = window.__oreum; const st = o.trash.api.store; let h = 0; for (let i = 1; i < o.trash.api.heaps.length; i++) if (st.left(i) > st.left(h)) h = i; for (let k = 0; k < 3; k++) o.trash.api.take({ h }, 99); });
   await wait(A.p, 1200);
   const rk0 = await A.p.evaluate(() => window.__oreum.rank.state().last[window.__oreum.server.id()]?.rank ?? -1); // 들어올 때 잡은 기준 순위
-  await A.p.evaluate(() => { const o = window.__oreum; o.trash.api.store.bag.can = (o.trash.api.store.bag.can || 0) + 3; window.__toasts = []; const t = document.getElementById('toast'); new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); o.cleanhouse.dump(); });
+  await A.p.evaluate(() => { const o = window.__oreum; o.trash.api.store.bag.can = (o.trash.api.store.bag.can || 0) + 3; window.__toasts = []; const t = document.getElementById('msg-log'); new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.nodeType === 1 && window.__toasts.push((n.querySelector('span') || n).textContent)))).observe(t, { childList: true }); o.cleanhouse.dump(); /* #265: 메시지 줄(#252) 한 줄씩 */ });
   for (let k = 0; k < 240 && !(await A.p.evaluate(() => window.__toasts.some((x) => /오늘 .*위/.test(x)))); k++) await wait(A.p, 250); // 소프트웨어 GL 둘이면 느림
   const tl = await A.p.evaluate(() => window.__toasts.filter((x) => /위/.test(x)));
   const rk1 = await A.p.evaluate(() => window.__oreum.online.account().rankMe(window.__oreum.server.id()).then((r) => r.day.rank));
