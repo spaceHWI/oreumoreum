@@ -18,6 +18,7 @@ export const TASKS = [
   { id: 't-repel-12', cat: 'fight', ev: 'enemy-repel', goal: 12, name: '적 12마리 쫓아내기 · 해 진 뒤엔 두 배', q: '밤엔 두 배. 적도 그렇게 생각해요', x2: 'night' },
   { id: 't-dumper-2', cat: 'fight', ev: 'dumper-repel', goal: 2, name: '투기꾼 2명 쫓아내기', q: '봉투는 두고 가라고 전해 주세요' },
   { id: 't-smoker', cat: 'fight', ev: 'smoker-repel', goal: 1, name: '들머리 흡연자 쫓기', q: '연기는 분리수거가 안 돼요' },
+  { id: 't-arena', cat: 'fight', ev: 'arena-win', goal: 1, name: '서바이벌 터에서 한 판 버티기', q: '징은 세게 쳐도 돼요. 징 쪽에서 원해요' }, // #255
   { id: 't-hareubang', cat: 'fight', ev: 'hareubang', goal: 1, name: '하르방 코에 귤 맞히기', q: '하르방은 동의했어요(추정)' },
   // 치우기·쉬기
   { id: 't-trash-150', cat: 'heal', ev: 'trash', goal: 150, name: '쓰레기 150개 줍기', q: '오름 전체의 아주 작은 몫. 0 은 아님' },

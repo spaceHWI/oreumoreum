@@ -34,7 +34,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   ok(!!sp?.see, `자리 ${JSON.stringify(sp)}`);
   // 자리가 막힌 곳이 아닌가 (충돌)·구역 안인가
   const blk = await ev(([sp, z]) => { const o = window.__oreum, c = o.col, t = o.trash.api; const all = [['see', sp.see], ['face', sp.face], ...Object.entries(sp.ev)].filter(([, v]) => v);
-    return all.map(([k, [x, zz]]) => ({ k, blocked: !!c?.blocked(x, zz, 0.3), zone: t.zoneAt(x, zz) || 0, want: z })); }, [sp, C.zone]);
+    return all.map(([k, [x, zz]]) => ({ k, blocked: !!c?.blocked(x, zz, 0.3), zone: t.zoneAt(x, zz) || 0, want: z[k] || z.all })); }, [sp, { all: C.zone, ...Object.fromEntries(C.ev.filter((e) => e.z).map((e) => [e.id, e.z])) }]); /* 증거 z: 일부러 다른 구역에 둔 것 (c4 초소 일지) */
   for (const r of blk) ok(!r.blocked && r.zone === r.want, `${r.k} 자리: 막힘 ${r.blocked} · 구역 ${r.zone}`);
   // ----- 옛 판 저장 (#246): 진행을 처음으로·옛 쪽지 뺌 -----
   if (C.v) {
@@ -147,7 +147,31 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
       const bp = await ev((id) => { const p = window.__oreum.quest.goPos('case:' + id + ':face'); return p && [p.x, p.z]; }, CID);
       ok(!!bp && Math.hypot(bp[0] - sp.face[0], bp[1] - sp.face[1]) > 5, `대면 전 추적 줄은 ${C.face.kind} 자리로 ${bp && bp.map((v) => v.toFixed(0))}`);
     }
-    await ev((z) => { const o = window.__oreum; o.save.boss.done[z] = (o.save.boss.done[z] || 0) + 1; }, C.zone);
+    if (C.face.kind === 'arena') { /* 서바이벌 터 한 판을 버틴 것으로 (판 자체는 tools/swarmrun.js) */
+      const ar = await ev((z) => window.__oreum.cases.arena(z), C.zone);
+      const tg0 = await ev((id) => window.__oreum.quest.goPos('case:' + id + ':face'), CID);
+      if (C.face.scene && ar) ok(Math.hypot(tg0.x - ar[0], tg0.z - ar[1]) < 2, `대면 화살표는 먼저 서바이벌 터로 (${tg0.x.toFixed(0)}, ${tg0.z.toFixed(0)})`);
+      await ev((z) => { const o = window.__oreum; o.save.swarm ||= {}; o.save.swarm.won ||= {}; o.save.swarm.won[z] = { at: Date.now() + 1000, b: 0 }; }, C.zone);
+    } else await ev((z) => { const o = window.__oreum; o.save.boss.done[z] = (o.save.boss.done[z] || 0) + 1; }, C.zone);
+    if (C.face.scene) { /* 싸움 뒤 장면 (#235): face.at 에서 F → 장면 → 끝 */
+      ok(await until((id) => window.__oreum.cases.state(id).r === 1, 4000, CID), '싸움을 끝내면 장면 자리가 열림');
+      s = await CS(); ok(!s.f && !s.face, '장면을 보기 전엔 대면이 끝나지 않음');
+      const tg1 = await ev((id) => window.__oreum.quest.goPos('case:' + id + ':face'), CID);
+      ok(Math.hypot(tg1.x - sp.face[0], tg1.z - sp.face[1]) < 2, '이제 화살표는 장면 자리로');
+      await go(sp.face[0] + 0.8, sp.face[1] + 0.8); await W(800);
+      ok(await until(() => { window.__oreum.enemies.test.clear(); return !window.__oreum.cases.busy(); }, 15000), '싸움이 가라앉음 (둘레의 적을 치운 뒤)');
+      await p.keyboard.press('f'); await W(800);
+      s = await CS(); ok(!!s.run, `${C.face.label} 자리에서 F → 장면`);
+      if (!s.run) console.log('  까닭', JSON.stringify(await ev(() => { const o = window.__oreum; return { toast: document.getElementById('toast').textContent, ctx: o.aim.ctx(), busy: o.cases.busy() }; })));
+      ok(await ev(() => window.__oreum.cam.mode === 'cine' && document.body.classList.contains('case-cine')), '장면 동안 카메라·화면');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.45); await W(700); await shot('scene-up');
+      ok(await ev(() => window.__oreum.cases.scene()?.shown), '장면 모양이 보임');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len * 0.85); await W(700); await shot('scene-pour');
+      await ev((t) => window.__oreum.cases.jump(t), C.face.len - 0.1); await W(1200);
+      s = await CS(); ok(!s.run && s.f === 1 && s.face, '장면 끝 · 대면 끝냄');
+      ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
+      if (C.see.gone) { const g = await until((id) => !window.__oreum.cases.objs().find((o) => o.id === id && o.kind === 'see').vis, 6000, CID); ok(g, '대면 뒤 목격 모양은 치움'); if (!g) console.log('  까닭', JSON.stringify(await ev((id) => ({ o: window.__oreum.cases.objs().filter((o) => o.id === id), s: window.__oreum.cases.state(id) }), CID))); }
+    }
     if (C.face.watch) { /* 조건을 채우면 face 자리에 모양 → 다가가 보기(F) → 장면 → 증거 사진 */
       ok(await until((id) => window.__oreum.cases.state(id).r === 1, 4000, CID), '대면 조건 채움 (r)');
       await ev(() => window.__oreum.enemies.test.clear());
@@ -170,11 +194,12 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   ok(await until((d) => window.__oreum.punkWorld.note.got().includes(d), 3000, C.doc), `증거 사진 '${C.doc}' 받음 · 쪽지 창 '${await ev(() => window.__oreum.punkWorld.note.shown())}'`);
   await shot('doc'); await closeNote();
   ok(await until((id) => window.__oreum.quest.api.ready(id), 3000, q2.id), `${q2.id} 조건 채움`);
+  await ev(() => window.__oreum.enemies.test.clear()); /* 둘레 적에게 맞아 귤이 줄면 셈이 어긋남 */
   coins = await ev(() => window.__oreum.save.coins);
   await ev((g) => window.__oreum.quest.open(g), C.giver); await W(400);
   w = await ev(() => window.__oreum.quest.win()); ok(w?.id === q2.id && w.st === 'ready', `${q2.id} 돌려주기 창`);
   await ev(() => window.__oreum.quest.press()); await W(800); await ev(() => window.__oreum.quest.close());
-  ok(await ev(() => window.__oreum.save.coins) - coins === (q2.reward.gyul || 0), `${q2.id} 보상 귤 ${q2.reward.gyul}`);
+  { const dq = await ev(() => window.__oreum.save.coins) - coins; ok(dq === (q2.reward.gyul || 0), `${q2.id} 보상 귤 ${q2.reward.gyul} (받은 귤 ${dq})`); }
   if (C.cloth) ok(await ev((id) => !!window.__oreum.save.clothes?.own?.[id], C.cloth.id), `옷 '${C.cloth.name}' 받음`);
   s = await CS(); ok(s.closed, '사건 종결');
   for (const [gid, L] of Object.entries(C.hello || {})) ok(await ev(([g, L]) => { const h = window.__oreum.cases.hello(g); return L.every((t) => h.includes(t)); }, [gid, L]), `종결 뒤 ${gid} 인사에 사건 말 ${L.length}줄`);

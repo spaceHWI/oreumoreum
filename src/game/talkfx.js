@@ -14,7 +14,6 @@ import { state, late } from './state.js';
 import { $, save, persist } from './save.js';
 import { renderer, scene, quality } from './scene.js';
 import { runner as meRunner } from './place.js';
-import { ui, topStack } from './hud.js';
 
 const F = TALK.face, WHO = TALK.who;
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -153,16 +152,12 @@ function head(h2, id, name, o = {}) {
   return h2.querySelector('.pf');
 }
 // 감독의 한 줄 (이야기·퀘스트 안내): 안내서 목소리, 타자로
-function sayToast(text, sec, who = 'guide') {
-  const el = ui.toast; if (!el) return false;
-  el.classList.add('pf-t'); el.innerHTML = faceHtml(who) + '<span class="pf-s"></span>';
-  el.hidden = false; state.toastT = sec + typer.dur(text);
-  topStack();
-  typer.type(el.querySelector('.pf-s'), text, { tag: '', pitch: pitchOf(who), talker: el.querySelector('.pf') });
+function sayToast(text, sec, who = 'guide', fx = '') { /* #252: 메시지 줄 한 줄, 왼쪽 아이콘이 화자 얼굴 */
+  const sp = late.msg?.('info', text, { sec: sec + typer.dur(text), long: true, own: true, fx, icon: faceHtml(who) }); if (!sp) return false;
+  const pf = sp.parentElement.querySelector('.pf');
+  typer.type(sp, text, { tag: '', pitch: pitchOf(who), talker: pf });
   return true;
 }
-// 보통 토스트로 돌아갈 때 틀을 지움 (hud.js toast 는 textContent 를 바꿈)
-new MutationObserver(() => { const el = ui.toast; if (el && el.classList.contains('pf-t') && !el.querySelector('.pf')) el.classList.remove('pf-t'); }).observe(ui.toast, { childList: true });
 
 /* ---------- 설정 ---------- */
 {

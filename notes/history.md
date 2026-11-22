@@ -1811,6 +1811,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 그대로: 직접 던진 귤이 하르방에 맞는 것(hitTest 는 따로), 모자 흔들림, 하르방 코 맞히기 일일 목표, 인사하기·가이드 퀘스트. 다른 '적 아닌 것'(관광객·까마귀·흡연자·과녁)은 이슈별 이벤트용 대상이라 그대로 둠
 - 확인: `tools/smoke.js` 에 '하르방 곁에서 자동 겨누기 없음' 한 줄
 
+## #235 사건 4 '굼부리 괴물' (2026-11-22)
+- `src/cases/c4.js`: 레벨 14(임의)에 굼부리 바닥 가운데(48, -420) 52m 안에 들면 혼잣말 '방금… 뭐가 솟았다 들어갔지?' → 굼부리 표지판 '굼부리 괴물'(귤 150) → 증거 셋: 서쪽 둘레 말뚝 사진(8, -446) · 바닥 둥근 자국 다섯(38, -393) · 굼부리 관리 초소(금고 0404) 곁 초소 일지(23.6, -21.8, 초소가 정상 쪽이라 구역 5) → '안개가 걷히면'(귤 500·조사관 모자·외계 부품 3) → 굼부리 서바이벌 터 한 판 → 북서쪽 둘레 말뚝(14, -398)에서 '안개 지켜보기' 장면
+- 장면 'hose'(12초): 안개(얇은 원판 셋)가 걷히며 목이 하늘까지 이어진 주름 호스로 바뀌고, 카메라가 호스를 따라 하늘로 갔다 내려오면 주둥이에서 쓰레기가 쏟아져 새 더미가 됨. 글은 자막 세 줄뿐
+- 틀에 더한 것 (뒤 사건도 씀): `face.scene`(arena·boss 를 끝낸 뒤 face.at 에서 장면을 봐야 대면 끝, 저장 `save.cases[id].r` 싸움은 끝냄) · `face.tint`('dusk' 기본·'mist') · `see.gone`(대면 뒤 목격 모양 치움) · 증거 `z`(일부러 다른 구역에 둔 것, caserun 구역 검사) · 모양의 `userData.tick`(움직이는 모양) · 퀘스트 보상 재료는 #233 의 `mats` 를 씀. 장면은 `game/caseprops.js` SCENES
+- 목 그림자는 모양 'neck'(원통 마디 + 비스듬한 머리, 14초마다 솟았다 가라앉음) + 안개 원판, draw call 2. 들개 글: 동료 제니 z4 '들개들이 굼부리에서 도망쳐 나와요…'
+- 대면 화살표: 터를 버티기 전엔 서바이벌 터로, 버틴 뒤엔 장면 자리로
+- 확인: `node tools/caserun.js c4 [d|m] [shots]` (arena 대면·장면까지 봄)
+
 ## #238 매일 미확인 제보
 - 데이터 `src/cases/reports.js` 34개(헛소문 9, 큰 사건 실마리 c1~c5 각 하나: 아직 없는 사건 것은 아무에게도 안 나옴). `reportOf(날짜, ok)` 가 날짜 난수로 고름(REPORT.hoax 30% 헛소문)
 - 게임 `src/game/reports.js`: 레벨 REPORT.lv(2)부터 하루 하나, 구역은 journey.maxZ 까지. 길가 더미 곁에 흔적 모양 + 바닥 표시, '살펴보기'(헛소문은 '둘러보기') → find 한 줄 + 귤 REPORT.gyul(30). 쪽지 창 `#report-note`
@@ -1842,6 +1850,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 표에 처음 오르는 사람(전체 또는 오늘 줄이 없던 사람)은 `rankAdd` 가 순위 캐시를 비워 바로 보임
 - 순위 창 아래 '손님 n명은 로그인하면 여기에 올라와요' (같은 방 presence 에 `ac` 가 없는 사람 수, 0명이면 숨김). 손님은 누적 `RANK.guestNudge`(10)개를 넘겨 주우면 토스트 한 번(`save.rankNudge`). #252 메시지 줄이 아직 안 합쳐져 토스트로 둠
 - 검사: `rankrun.js` 손님→로그인 새 계정 오늘 표 줄, `sec.js` 부풀린 오늘 값 깎임·어제 날짜 0·바로 뒤 저장에서 또 못 받음
+## #252 메시지 한 줄 로그
+- 새 `src/game/msglog.js`: 모든 화면 글을 `msg(kind, text, opt)` 한 길로. 옛 `toast()` 는 이것을 부름(세 번째 인자로 kind). `#toast`·`#pickmsg`·`#tip`·`#banner`·`#zone-title`·`#bloom-banner`·`#swarm-win` 칸은 더 안 띄움(HTML 은 남김)
+- 로그: 위쪽 줄·퀘스트 추적 줄 아래 왼쪽, 같은 높이(30px) 한 줄 칸, 최대 3줄, 글 길이에 맞춰 2.5~5초, 오래된 것부터 흐려지며 사라짐, 같은 글은 ×N(줍기는 '빈 캔 ×3')
+- 고정: 퀘스트 추적 줄 그대로 + 그 아래 한 자리(튜토리얼 안내 우선, 없으면 `opt.pin` 한 줄: 서바이벌 터 밖 카운트다운)
+- 강조 효과는 레벨 업·사건 종결(감독 id 'case-done:')만. 구역 이름·꽃 핌·업적·떼 버팀은 보통 한 줄
+- 감독 busy: 감독 글·얻음 줄이 아닌 알림이 떠 있으면 기다림 (`msgBusy`)
+- 멀티(room.js·give.js 받은 선물)는 kind 'multi'
+- 확인: `node tools/msgshot.js` (360×640·390×844·1280×720, 그림 tools/out/msg-*.png)
 
 ## #260 투기꾼 퀘스트 보장
 - 규칙 표(코드 조사): 투기꾼은 연출 감독(`pacing.js`, `PACE.battle`)이 공격 물결마다(간격 180~240초) 부름. 전엔 두 번에 한 번(`dumpEvery 2`)이라 10분에 1번꼴, 쓸 자리는 `pickHeap`(빈자리 있는 더미만, 구역은 `DUMP.zoneBase`+깨끗함 가중). 투기꾼을 조건으로 하는 것: 퀘스트 `dumper1`(구역1, n1)·`pair`(이벤트)·`note`(구역2, n1), 오늘의 할 일 `t-dumper-2`, 업적 `b-dumper`(30)
@@ -1859,6 +1875,24 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티: presence `tb` = i(빨려 들어감)·p(관 속, 옮긴 자리)·o(튀어나옴). 서버는 p·o 가 붙은 순간 이동을 `NET.tubeGap`(3초)에 한 번 받아 줌(warpGap 과 따로), 그 밖의 tb 값은 지움
 - 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
 
+## #255 서바이벌 재화 '징표'·징표로만 사는 전투 특화 무기·옷 (2026-11-22)
+- 셈 `src/token.js`(게임·서버·tools 같이), 수치 balance.js `TOKEN`, 게임 `src/game/token.js`(arena 뒤), 서버 `server/src/token.js`(validate.js checkSave 가 부름, cred.tk·tz 는 earn.js normCred)
+- 얻기: 한 판 끝(swarm.js `late.swarmEnd`) → 버팀 = 구역 × 3 · 대장 쫓아냄 +2 · 안 쓰러짐 +1, 못 버티면 버틴 물결 × 0.5(2 까지). 기록 `save.tok.rec[구역] = { at, n, win }` 을 서버가 판 상한·통(초당 0.06, 40)·버틴 판은 쉬는 시간 × 0.9 안에 두 번 안 받음으로 인정. 기록은 되돌릴 수 없음
+- 씀: 새 무기 단계·징표 옷의 값만큼(`tokSpent`). 모자라면 산 것을 되돌림('tokItems' → fix.tok·reload), 남은 징표가 넘으면 깎음('tok' → fix.tok, start.js `late.tokFix`). 징표 옷은 귤 값(spentOf·revertItems)에서 뺌(freeCloths)
+- 보임: 터·좌판 근처에서만 '지금 있는 곳' 옆 `#where-tok`, 좌판 창 위 숫자, 내 가방 아래 한 줄(`late.tokFoot`). 위쪽 줄은 그대로
+- 좌판: 터 문 바깥 옆(터 자리·문 방향 기준 → #253 으로 옮겨도 따라감), 터마다 그리기 1번 + 가까운 좌판 하나에만 주인 '터지기'(러너 하나). 창은 `SHOP_POP.tok`(가게 팝업 틀, 클래스 tok 은 징표 동전)
+- 무기: 연발(mg 방식)·관통(gun + `pierce`, weaponfx.js 가 뚫고 다음 적까지)·폭발(bomb 방식) × 3단계. 강화는 기존 재료 강화 대신 징표로 단계를 올림(같은 칸이라 upMul 은 1). 든 것은 `save.tok.arm`, throw.js weaponNow 가 `late.tokArm` 먼저. 귤 무기를 고르거나 사면 내려놓음
+- 옷: 겉모습 옷(tier 0, style, tok)으로 CLOTHES 에. 입은 칸은 save.js wearV 가 `state.tokWearV` 를 먼저: 기운·회복·받는 피해는 더 큰 쪽, 모자·바지·베스트(줍기·벌이)는 없음 값 대신 피해 +6~8%(buff.mul('dmg') 감쌈). 여섯 칸이면 판 중 한 번 일어남(hp.hit 감쌈), 쉬는 시간 뒤 다시. LEAP 진열에서 뺌(weekly.js onShelf)
+- 차림 묶음 `save.tok.kit.pick·fight`(옷·징표 무기·귤 무기 단계): 내 가방 아래 버튼. 징을 칠 때 싸움 차림이 있고 지금과 다르면 '싸움 차림으로 갈아입을까요?'(`#tok-ask`, 고르면 판 시작)
+- 곁가지 퀘스트 x-token(오름지기, 문 field, 징표 10개 → 귤 20), 오늘의 할 일 t-arena(ev arena-win), 업적 b-token(징표 30)
+- 장비 점수(gearScore)는 그대로: 구역 권장·감독 문이 전투 장비로 흔들리지 않게. 내 가방 '피해' 줄은 든 무기(징표 무기 포함) 값
+- 확인: `node tools/tokenrun.js`(서버 셈 + 게임: 버팀 → 징표 → 좌판 → 귤로는 못 삼 → 징표로 삼 → 무기·옷·차림·징 묻기·관통·폭발·한 벌 덤), `tools/sec.js` 징표 5줄, `tools/oldsave.js tokBad·tokWear·tokStr`
+
+## #259 sec.js 실패 줄 (2026-11-22)
+- 원인: 검사 코드가 아니라 **남은 서버**. `sec.js` 는 wrangler 를 detached 로 띄우는데, `timeout` 으로 끊긴 실행이 서버를 남겨 같은 포트(8797~8800)를 계속 잡음 → 새 서버는 못 뜨고 /health 를 옛 서버가 받아, 옛 코드·쌓인 저장(지난 날짜의 이용 통계, 지운 계정 토큰, 이미 받은 귤 보내기 목록)으로 검사가 돌았음. 남은 서버를 끄고 돌리면 249/249 통과
+- `tools/localsrv.js`: `clearPorts`(포트가 이미 답하면 그 포트·`--persist-to` 이름으로 띄운 남은 wrangler·workerd 만 끄고 비워질 때까지 기다림) · `killOnExit`(SIGINT·SIGTERM·SIGHUP 에도 띄운 서버를 끔). `sec.js`·`rankrun.js` 가 씀
+- `notes/auto.md` 확인 절에 한 줄
+
 ## #246 사건 파일을 바뀐 기획으로 (크롭서클·증거 사진·수사 보드)
 - 사건 1 을 '정리하는 자'(까마귀·단가표) → **'크롭서클'** 로 (`src/cases/c1.js`). 까마귀·단가표·줄 선 더미·껍질·둥지·'까마귀와 같은 급' 은 뺌
 - 목격: 레벨 3 에 구역 1 숲길 아래 평평한 풀밭 (-510, -90) 에 고정 무늬(반지름 6m, #212 크롭서클 그림을 `src/croptex.js` 로 떼어 같이 씀). 7m 안에 들면 혼잣말 cropMid 와 같은 글 '풀이 누웠네. 바람이 둥글게 불었나?'
@@ -1869,4 +1903,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 옛 저장: 사건에 `v`(판) — 저장의 판이 다르면 그 사건 진행을 처음으로, 옛 쪽지(k1a~k1d)를 주운 쪽지에서 뺌. 퀘스트 id 도 c1-ev·c1-face 로 바꿈(옛 k1-* 는 남아도 무시). 받은 귤·조끼·업적 그대로. 칭호 글만 '표지판 해독가' 로(같은 업적 자리)
 - 임의값: 귤 20/60(그대로), `CASE.crop`(r 6·진하기 0.6), `CASE.view`(2.8초·높이 22·옆 9), `CASE.face`(카메라 높이 1.4, 떨어지는 높이 30, 장면의 62% 에 닿음)
 - `notes/case-files.md` 6절(사건 더하는 법)을 새 모양으로. `tools/caserun.js` 는 옛 판 저장·위에서 찍기·떨어지는 더미·수사 보드(사진·핀·실)를 봄
+- 합칠 때 #233(follow)·#235(scene)·#236(watch)·#238(제보 칸)을 장면 틀(startRun/stopRun, mode hide·view·watch)과 수사 보드에 맞춤. c2·c4·c5 에도 `photo` 그림을 넣음. CSS 는 `game/casecss.js` 로 뗌(40KB)
 

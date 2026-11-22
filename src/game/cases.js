@@ -8,6 +8,8 @@
 //    대면 hide(숨어 보기): 증거를 다 찾으면 수풀에서 상호작용 → 짧은 장면(dawn 새벽빛, drop 모양이 목격 자리 가운데로 '툭') → 증거 사진 쪽지. 장면은 엔딩의 'cine' 자리를 빌려 씀(조작 잠금)
 //    arena·boss 는 사건을 연 뒤 그 구역 서바이벌 한 판(save.swarm.won[구역].at)·우두머리(save.boss.done[구역])가 늘면 끝
 //    face.follow 가 있으면 그 뒤 흰 옷을 끝까지 따라가 장면을 봐야 끝 (#233 사건 2, game/casechase.js. 터를 버티면 a 1)
+//    face.scene 이 있으면(#235) arena·boss 를 끝낸 뒤 face.at 에서 상호작용 → 그 장면(caseprops.js SCENES, 숨어 보기 틀을 빌려 씀)을 봐야 끝. face.tint 장면 빛('dusk' 기본·'mist')
+//    see.gone 이 있으면 대면을 끝낸 뒤 목격 모양을 치움
 // 5. 종결: 사건의 마지막 퀘스트 보상을 받으면(game/quest.js late.questGave) '종결' 도장 + 칭호(late.titles.give) + 업적
 // 창 #case-file (#246 수사 보드): 코르크판에 사건마다 증거 사진 자리(CASE_SLOTS), 종결된 사건의 사진은 핀으로 꽂히고 빨간 실로 이어짐(끝은 다음 빈 자리로)
 //    사진(자리)을 누르면 아래에 그 사건의 목격·증거 3칸·사진 칸. 칸을 누르면 그 쪽지를 읽음
@@ -31,8 +33,9 @@ import { toast, panelOpen, closePanels, PANELS } from './hud.js';
 import { director, say } from './director.js';
 import { interactables } from './stores.js';
 import { quests } from './quest.js';
-import { buildProp } from './caseprops.js';
+import { buildProp, SCENES } from './caseprops.js';
 import { makeChase } from './casechase.js';
+import { caseCss } from './casecss.js';
 
 const ON = MAP_ID === 'namsongi';
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -78,6 +81,7 @@ function faceDone(c) {
   if (hit && evAll(c)) {
     if (c.face.watch) { if (!s.r) { s.r = 1; persist(); late.questTrackDirty?.(true); } return false; } /* 다가가 보기 장면이 끝나면 (#236) */
     if (c.face.follow) { if (!s.a) { s.a = 1; persist(); chase?.start(c); } return false; } /* 따라가기 장면이 끝나면 chaseDone */
+    if (c.face.scene) { if (!s.r) { s.r = 1; persist(); late.questTrackDirty?.(true); say('quest', 'case-scene:' + c.id, `${c.name} · ${c.face.label || '살펴보기'} 자리로`, 3, { ttl: 40 }); } return false; } /* #235 장면 자리에서 상호작용 */
     s.f = 1; persist(); gotDoc(c); return true;
   }
   return false;
@@ -104,7 +108,7 @@ function place(c, kind, at, prop, e = null, show) {
 const spots = {}; // id → { see, ev: { id: pos }, face, drop: obj }
 if (ON) for (const c of CASES) {
   const sp = spots[c.id] = { ev: {} };
-  const see = place(c, 'see', c.see.at, c.see.prop, null, () => lv() >= c.lv || isOpen(c.id)); sp.see = see?.pos || v3(...c.see.at);
+  const see = place(c, 'see', c.see.at, c.see.prop, null, () => (lv() >= c.lv || isOpen(c.id)) && !(c.see.gone && S(c.id).f)); sp.seeRoot = see?.root || null; sp.see = see?.pos || v3(...c.see.at);
   if (c.trail?.pts && late.caseFoot) { const im = late.caseFoot(c.trail.pts, c.trail.size, c.trail.step); objs.push({ c, kind: 'trail', root: im, pos: v3(...c.trail.pts[Math.floor(c.trail.pts.length / 2)]), show: () => lv() >= c.lv || isOpen(c.id) }); } /* 발자국 한 줄 (#236) */
   for (const e of c.ev) {
     if (e.kind === 'act' || !e.at) continue;
@@ -116,6 +120,8 @@ if (ON) for (const c of CASES) {
     const o = place(c, 'face', c.face.at, c.face.prop || 'bush', null, () => isOpen(c.id) && (!c.face.watch || !!S(c.id).r)); sp.face = o?.pos || v3(...c.face.at); sp.faceObj = o;
     if (c.face.watch) interactables.push({ label: c.face.label || '다가가 보기', ic: 'eye', pos: sp.face, r: CASE.r + 3, /* 대면 조건 뒤 장면 (#236) */
       when: () => isOpen(c.id) && S(c.id).r && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginWatch(c) });
+    if (c.face.scene) interactables.push({ label: c.face.label || '살펴보기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6, /* 싸움 뒤 장면 (#235) */
+      when: () => isOpen(c.id) && evAll(c) && S(c.id).r && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginHide(c) });
     if (c.face.kind === 'hide') interactables.push({ label: c.face.label || '숨어 보기', ic: 'eye', pos: sp.face, r: CASE.r + 0.6,
       when: () => isOpen(c.id) && evAll(c) && !S(c.id).f && !run && !state.cine && !late.tut?.active, act: () => beginHide(c) });
     /* 장면에서 목격 자리 가운데로 떨어지는 모양: 대면 뒤 종결 전까지 그 자리에 */
@@ -128,6 +134,8 @@ late.casePos = (go) => {
   if (what === 'face') { /* 따라가기 (#233): 흰 옷 → 없으면 그 구역 서바이벌 터 */
     if (c.face?.follow) { const g = chase?.pos(c); if (g) return g; const a = c.face.kind === 'arena' && SWARM.arena?.at?.[c.zone]; if (a) return v3(a[0], a[1]); }
     if (c.face?.kind === 'boss' && c.face.watch && !S(id).r) { const b = late.field?.api?.bosses?.find((q) => q.zone === c.zone); if (b) return v3(b.x, b.z); } /* 다가가 보기 (#236): 우두머리 전엔 빈터로 */
+    const s = S(id), ar = SWARM.arena?.at?.[c.zone];
+    if (c.face.kind === 'arena' && c.face.scene && !s.r && !s.f && ar) return v3(ar[0], ar[1]); /* #235 터를 먼저 버팀 */
     return sp.face ? sp.face.clone() : sp.see.clone();
   }
   let b = null, bd = Infinity;
@@ -175,56 +183,7 @@ function gotDoc(c) { if (c.doc) late.punkWorld?.note?.give(c.doc); late.questTra
 /* ---------- 장면: 숨어 보기 (hide) · 위에서 찍기 (view) ---------- */
 let run = null; // { mode 'hide'|'view', c, e?, u, len, prev, fov, li, snap, fall0, fell }
 const css = document.createElement('style');
-css.textContent = `
-body.case-cine>*:not(#view):not(#case-cine){visibility:hidden!important}
-#case-cine { position: fixed; inset: 0; z-index: 12; pointer-events: auto; background: transparent; transition: background 2.4s; }
-#case-cine.dawn { background: linear-gradient(180deg, rgba(8,12,34,.86), rgba(20,30,70,.6) 45%, rgba(60,70,120,.28) 75%, rgba(120,110,150,.18)); }
-#case-cine.snow { background: linear-gradient(180deg, rgba(200,215,235,.38), rgba(240,244,250,.18) 60%, rgba(255,255,255,.05)); }
-#case-cine.flash { background: rgba(255,255,255,.85); transition: background .08s; }
-#case-cine.shot { background: transparent; transition: background .6s; box-shadow: inset 0 0 0 10px rgba(255,255,255,.75); }
-#case-cine::before, #case-cine::after { content: ''; position: absolute; left: 0; right: 0; height: 9vh; background: #000; transition: transform .5s; }
-#case-cine::before { top: 0; transform: translateY(-100%); } #case-cine::after { bottom: 0; transform: translateY(100%); }
-#case-cine.on::before, #case-cine.on::after { transform: none; }
-#case-cine .cc-sk { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(9vh + 12px); min-width: 44px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--hair); background: var(--glass-2, rgba(20,20,24,.6)); color: var(--ink); font: 700 14px var(--body); cursor: pointer; }
-#case-cine .cc-line { position: absolute; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: calc(100vw - 140px); color: #fff; font: 600 15px var(--body); text-align: center; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .5s; word-break: keep-all; }
-#case-cine .cc-line.on { opacity: 1; }
-#case-file .pop { width: min(620px, 100%); }
-#case-file .cf-board { position: relative; border-radius: 10px; padding: 14px 10px 12px; margin: 0 0 12px; background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.08) 0 1px, transparent 2px) 0 0 / 9px 9px, radial-gradient(circle at 70% 60%, rgba(0,0,0,.1) 0 1px, transparent 2px) 0 0 / 7px 7px, #b98a55; box-shadow: inset 0 0 0 6px #7a5634, inset 0 0 18px rgba(0,0,0,.35); }
-#case-file .cf-pics { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(${CASE_SLOTS}, minmax(0, 1fr)); gap: 10px 8px; }
-#case-file .cf-pic { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 5px 5px 4px; border: 0; border-radius: 2px; background: #f6f3ea; color: #3a3630; font: 700 11px/1.2 var(--body); text-align: center; word-break: keep-all; box-shadow: 0 3px 6px rgba(0,0,0,.35); transform: rotate(var(--r, 0deg)); cursor: pointer; }
-#case-file .cf-pic img, #case-file .cf-pic .cf-ph { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 1px; background: #2d2a26; }
-#case-file .cf-pic .cf-ph { display: grid; place-items: center; color: rgba(255,255,255,.5); font: 900 20px var(--display); }
-#case-file .cf-pic.empty { background: rgba(255,255,255,.14); box-shadow: none; color: rgba(40,25,10,.75); outline: 2px dashed rgba(60,35,15,.45); outline-offset: -2px; cursor: default; }
-#case-file .cf-pic.empty .cf-ph { background: transparent; color: rgba(60,35,15,.55); }
-#case-file .cf-pic.lock { cursor: default; }
-#case-file .cf-pic.sel { outline: 3px solid #ffd27a; outline-offset: 2px; }
-#case-file .cf-pin { position: absolute; left: 50%; top: -6px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a7a, #c0302a 60%, #7a1a16); box-shadow: 0 2px 2px rgba(0,0,0,.4); z-index: 2; }
-#case-file .cf-pic .cf-st { position: absolute; right: 2px; bottom: 22%; transform: rotate(-10deg); border: 2px solid currentColor; border-radius: 4px; padding: 0 4px; font: 900 10px var(--display); background: rgba(246,243,234,.85); }
-#case-file .cf-st.open { color: #c4513a; } #case-file .cf-st.done { color: #2f7d44; }
-#case-file .cf-thread { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
-#case-file .cf-thread path { fill: none; stroke: #d0302a; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
-#case-file .cf-thread path.loose { stroke-dasharray: 3 4; opacity: .8; }
-#case-file .cf-case { position: relative; padding: 10px 10px 10px 12px; border-radius: 12px; background: rgba(255,255,255,.07); }
-#case-file .cf-case h3 { margin: 0 86px 2px 0; font: 800 16px var(--display); }
-#case-file .cf-case .cf-sub { margin: 0 86px 8px 0; color: var(--ink-soft); font-size: 12px; }
-#case-file .cf-case > .cf-st { position: absolute; right: 10px; top: 10px; transform: rotate(-8deg); border: 2px solid currentColor; border-radius: 6px; padding: 1px 8px; font: 900 13px var(--display); letter-spacing: .08em; }
-#case-file .cf-case > .cf-st.open { color: #e8846a; } #case-file .cf-case > .cf-st.done { color: #8fd09a; }
-#case-file .cf-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-#case-file .cf-slot { position: relative; min-height: 64px; border-radius: 8px; border: 1px dashed var(--hair); background: rgba(255,255,255,.04); color: var(--ink-soft); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 4px; font: 700 11px/1.2 var(--body); text-align: center; word-break: keep-all; }
-#case-file .cf-slot svg { width: 18px; height: 18px; opacity: .55; }
-#case-file .cf-slot small { font-weight: 500; font-size: 10px; opacity: .8; }
-#case-file button.cf-slot { cursor: pointer; }
-#case-file .cf-slot.got { border-style: solid; border-color: transparent; background: #efe6cf; color: #33302a; }
-#case-file .cf-slot.got svg { opacity: .8; }
-#case-file .cf-slot.doc.got { background: #f4ecd8; box-shadow: inset 0 0 0 2px #c9a86a; }
-#case-file .cf-h { margin: 4px 0 6px; font: 800 13px var(--display); color: var(--ink-soft); }
-#case-file .cf-empty { color: var(--ink-soft); margin: 4px 0 4px; }
-@media (max-width: 600px) and (orientation: portrait) { #case-file .cf-pics { grid-template-columns: repeat(6, minmax(0, 1fr)); } #case-file .cf-pic { grid-column: span 2; } #case-file .cf-pic:nth-child(4) { grid-column: 2 / span 2; } }
-@media (max-height: 480px) { #case-file .cf-slot { min-height: 46px; padding: 4px; } #case-file .cf-slot svg { display: none; } #case-file .cf-board { padding: 10px 8px 8px; margin-bottom: 8px; } #case-file .cf-pic { font-size: 10px; } }
-@media (max-width: 380px) { #case-file .cf-slot { font-size: 10px; } }
-#punk-note .pn-nav .pn-case { padding: 0 12px; }
-#punk-note .pn-nav .pn-case svg { width: 18px; height: 18px; }
-`;
+css.textContent = caseCss(CASE_SLOTS);
 document.head.append(css);
 const cine = document.createElement('div'); cine.id = 'case-cine'; cine.hidden = true;
 cine.innerHTML = '<div class="cc-line"></div><button type="button" class="cc-sk">건너뛰기</button>';
@@ -252,10 +211,11 @@ function beginHide(c) {
   if (state.cine || run) return false;
   if (fightNow()) { toast('지금은 숨을 때가 아니에요 · 싸움부터', 2.4); return false; }
   const sp = spots[c.id], hide = sp.face, mid = sp.see, len = c.face.len || 9;
-  startRun({ mode: 'hide', c, len, fall0: c.face.drop ? len * CASE.face.dropAt - 0.8 : Infinity });
+  startRun({ mode: 'hide', c, len, fall0: c.face.drop ? len * CASE.face.dropAt - 0.8 : Infinity, sc: SCENES[c.face.scene] || null, tint: c.face.tint || (c.face.dawn ? 'dawn' : c.face.scene ? 'dusk' : '') });
+  if (run.sc) { run.ctx = { scene, see: mid, face: hide, seeRoot: sp.seeRoot, blocked: (x, z, r) => !!col?.blocked(x, z, r), groundAt: (x, z) => height(x, z) }; run.st = run.sc.begin(run.ctx); } /* #235 장면 틀 */
   { const dx = hide.x - mid.x, dz = hide.z - mid.z, L = Math.hypot(dx, dz) || 1, px = hide.x - dz / L * 0.9 + dx / L * 0.5, pz = hide.z + dx / L * 0.9 + dz / L * 0.5; player.pos.set(px, height(px, pz), pz); player.visY = player.pos.y; } /* 수풀 옆 (카메라는 반대쪽 옆) */
   player.heading = Math.atan2(mid.x - player.pos.x, mid.z - player.pos.z); player.pose = 'crouch'; player.poseT = 0;
-  if (c.face.dawn) setTimeout(() => { if (run?.mode === 'hide') cine.classList.add('dawn'); }, 300);
+  const tint = run.tint; if (tint === 'mist') requestAnimationFrame(() => cine.classList.add('mist')); else if (tint) setTimeout(() => { if (run?.mode === 'hide') cine.classList.add(tint); }, 300);
   return true;
 }
 // 대면 watch (#236 사건 5): 대면 조건(우두머리 등)을 채운 뒤 face 자리에서 상호작용 → 뒤에서 조용히 다가가 봄. 모양(prop)의 userData.anim(u) 이 장면을 움직임
@@ -273,6 +233,7 @@ function beginWatch(c) {
 function stopRun() {
   if (!run) return;
   const r = run; run = null; if (state.cine === r) state.cine = null;
+  if (r.sc) r.sc.end(r.st, r.ctx);
   camera.fov = r.fov; camera.updateProjectionMatrix();
   cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine');
   if (player.pose === 'crouch') player.pose = 'move';
@@ -286,6 +247,7 @@ function stopRun() {
 }
 { const prev = late.cineCam; late.cineCam = (dt) => { if (run && state.cine === run) runCam(dt); else prev?.(dt); }; }
 function runCam(dt) {
+  if (run.sc?.cam) { const v = run.sc.cam(run.st, run.u, run.len, run.ctx); camTarget.pos.copy(v.pos); camTarget.look.copy(v.look); ease(dt, run.snap && !(run.snap = false), 2.4); return; } /* #235 */
   const sp = spots[run.c.id], mid = sp.see;
   if (run.mode === 'watch') { /* 쪼그린 나의 어깨 뒤에서 흰 등을 봄 (#236) */
     const f = sp.face, W = CASE.watch, sd = W.camSide * run.side, cx = f.x + run.bx * W.camBack + run.bz * sd, cz = f.z + run.bz * W.camBack - run.bx * sd;
@@ -305,13 +267,14 @@ function runCam(dt) {
 }
 function tickRun(dt) {
   const r = run; if (!r) return;
-  if (state.cine !== r) { run = null; cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine'); director.end('case:' + r.c.id); return; }
+  if (state.cine !== r) { run = null; if (r.sc) r.sc.end(r.st, r.ctx); cine.className = ''; cine.hidden = true; document.body.classList.remove('case-cine'); director.end('case:' + r.c.id); return; }
   r.u += dt; const u = r.u, T = r.len;
   if (r.mode === 'view') { if (u >= T) stopRun(); return; }
   const L = r.c.face.lines || [];
   skBtn.hidden = u < CASE.face.skipAfter;
   const li = Math.min(L.length - 1, Math.floor(u / (T / Math.max(1, L.length))));
   if (li !== r.li && L[li]) { r.li = li; lineEl.classList.remove('on'); void lineEl.offsetWidth; lineEl.textContent = L[li]; lineEl.classList.add('on'); }
+  if (r.sc) { r.sc.tick(r.st, u, T, r.ctx); if (r.tint === 'mist' && u > T * 0.18) cine.classList.add('clear'); if (u >= T) stopRun(); return; } /* #235 */
   if (r.mode === 'watch') spots[r.c.id].faceObj?.root.userData.anim?.(Math.min(1, u / T), u);
   // 떨어지는 모양: fall0 부터 0.8초 동안 위에서 가운데로 (떨어뜨린 것은 보이지 않음), 닿으면 '툭'
   const d = spots[r.c.id]?.drop;
@@ -407,14 +370,16 @@ function syncBtns() { const on = anyOpen(); menuBtn.hidden = !on; noteBtn.hidden
 syncBtns();
 
 /* ---------- 매 프레임 ---------- */
-let chkT = 0;
+let chkT = 0, animT = 0;
+const animObjs = objs.filter((o) => o.root.userData.tick);
 function tickCases(dt) {
   state.ticks.cases++;
   if (run) tickRun(dt);
   if (chase) chase.tick(dt, CASES);
+  animT += dt; for (const o of animObjs) if (o.root.visible && !o.root.userData.hold) o.root.userData.tick(animT, dt); /* 움직이는 모양 (neck 등) */
   if (!ON || (chkT -= dt) > 0) return; chkT = CASE.seeT;
   const px = player.pos.x, pz = player.pos.z, far2 = CASE.far * CASE.far;
-  for (const o of objs) { const vis = (o.pos.x - px) ** 2 + (o.pos.z - pz) ** 2 < far2 && !state.cave && !!o.show(); if (o.root.visible !== vis) o.root.visible = vis; }
+  for (const o of objs) { const vis = (o.pos.x - px) ** 2 + (o.pos.z - pz) ** 2 < far2 && !state.cave && !!o.show(); if (o.root.visible !== vis && !o.root.userData.hold) o.root.visible = vis; }
   if (!state.sessionOn || late.tut?.active || state.cave || state.cine || panelOpen()) return;
   for (const c of CASES) {
     const s = S(c.id);
@@ -432,6 +397,7 @@ late.cases = {
   spots: (id = 'c1') => { const sp = spots[id]; if (!sp) return null; const r = (p) => p && [+p.x.toFixed(1), +p.z.toFixed(1)]; return { see: r(sp.see), face: r(sp.face), ev: Object.fromEntries(Object.entries(sp.ev).map(([k, p]) => [k, r(p)])) }; },
   objs: () => objs.map((o) => ({ id: o.c.id, kind: o.kind, ev: o.e?.id || null, vis: o.root.visible })),
   open: (id = 'c1') => openCase(CASE_BY[id]), take: (id, eid) => { const c = CASE_BY[id], e = c?.ev.find((x) => x.id === eid); if (e) takeEv(c, e); return evN(c); },
+  arena: (z) => SWARM.arena?.at?.[z] || null, scene: () => run?.sc && { name: run.c.face.scene, shown: !!run.st?.h?.visible, u: +run.u.toFixed(1) },
   busy: () => fightNow(), chase: () => chase?.state() || null, hello: (g) => late.caseHello(g), chaseJump: (u) => chase?.jump(u), chaseNext: () => chase?.next(),
   hide: (id = 'c1') => beginHide(CASE_BY[id]), watch: (id = 'c5') => beginWatch(CASE_BY[id]), stop: stopRun, view: () => run?.mode || null, jump: (u) => { if (run) run.u = u; },
   file: openFile, fileOpen: () => !win.hidden, build, html: () => $('case-file-body').innerHTML,

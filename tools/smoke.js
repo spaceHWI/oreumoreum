@@ -6,6 +6,7 @@
 // 먼저 node build.mjs (dist/test.html 을 씀)
 const { chromium, devices } = require('playwright');
 const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk', 'cases', 'tube', 'reports'];
+LOOP.push('msg'); // 메시지 줄 (#252)
 const modes = process.argv[2] ? [process.argv[2]] : ['d', 'm'];
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };
 const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';

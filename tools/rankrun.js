@@ -3,6 +3,7 @@
 //   계정 둘이 치움 → 저장 → 오늘·이번 주·전체 순위와 내 순위가 늘어남 / 일요일 밤 → 월요일 0시(날·주 경계, 시각을 넣어 줌)
 //   이름 바꾼 뒤 순위표 이름 / 손님으로 치우고 로그인한 새 계정이 오늘 표에 (#261) / 서버가 깎은 저장(치운 수가 한 번에 너무 많음) 뒤에도 순위가 멈추지 않음 / 버린 직후 내 줄 / 손님 401 / 어드민 랭킹 상태
 const { spawn } = require('child_process');
+const { clearPorts, killOnExit } = require('./localsrv.js');
 const path = require('path'), os = require('os');
 const SERVER_DIR = path.join(__dirname, '..', 'server');
 const NOSPAWN = process.argv.includes('--no-spawn');
@@ -26,6 +27,7 @@ const T = { sun: kst('2026-11-29T12:00:00'), sunLate: kst('2026-11-29T23:59:00')
   let proc = null;
   const t0 = Date.now();
   if (!NOSPAWN) {
+    await clearPorts([PORT], 'oreum-rank-'); killOnExit(() => (proc ? [proc] : [])); /* #259 */
     proc = spawn('npx', ['wrangler', 'dev', '--local', '--port', String(PORT), '--inspector-port', String(PORT + 1000), '--persist-to', path.join(os.tmpdir(), 'oreum-rank-' + Date.now()), '--var', 'FAKE_AUTH:1', '--var', 'STATS_OPEN:1'], { cwd: SERVER_DIR, stdio: 'ignore', detached: true });
     let up = false;
     for (let i = 0; i < 90 && !up; i++) { try { up = (await fetch(BASE + '/health')).ok; } catch (e) { await sleep(1000); } }

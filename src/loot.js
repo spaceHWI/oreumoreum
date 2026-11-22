@@ -88,7 +88,7 @@ export const fxOf = (k) => Object.keys(LOOT.fx).find((f) => LOOT.fx[f].slots.inc
 // ---------- 능력 ----------
 // 그 칸 장비의 능력 배율 (1 + 등급) × (1 + 강화 × 12%). 무기는 가장 높은 무기를 골라 쓸 때만 (손에 바꿔 들면 그 무기 값)
 export function upMul(save, k) {
-  if (k === 'weapon' && (save?.weaponUse || save?.equip?.weapon) !== save?.equip?.weapon) return 1;
+  if (k === 'weapon' && (save?.tok?.arm || (save?.weaponUse || save?.equip?.weapon) !== save?.equip?.weapon)) return 1; /* 징표 무기(#255)는 강화가 단계에 들어 있음 */
   if (!slotTier(save, k) && k !== 'weapon') return 1;
   const u = slotUp(save, k); return (1 + (GROWTH.grade[u.g] || 0)) * (1 + GROWTH.enh * u.e);
 }

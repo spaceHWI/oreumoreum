@@ -254,8 +254,7 @@ function zoneFx(z) {
   const bn = $('bloom-banner'), fl = (s) => `<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="${color}" stroke="rgba(0,0,0,.28)" stroke-width=".6">${[0, 72, 144, 216, 288].map((a) => `<ellipse cx="12" cy="6.4" rx="3.6" ry="5" transform="rotate(${a + s} 12 12)"/>`).join('')}</g><circle cx="12" cy="12" r="2.6" fill="#ffb01f"/></svg>`;
   bn.innerHTML = `<span class="bz">${icon('zone')}<b>${z}</b></span><svg class="ba" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg><span class="bf">${fl(0)}${fl(36)}${fl(12)}</span>`;
   bn.title = `${z}구역 ${BLOOM.zones[z]?.name || ''}`; bn.style.setProperty('--bb-t', C.bannerT + 's');
-  bn.hidden = false; bn.classList.remove('go'); void bn.offsetWidth; bn.classList.add('go');
-  clearTimeout(zoneFx.t); zoneFx.t = setTimeout(() => { bn.hidden = true; bn.classList.remove('go'); }, C.bannerT * 1000 + 100);
+  toast(bn.title + ' 꽃이 피었어요', C.bannerT, 'get', { icon: fl(0) }); /* #252: 큰 배너 대신 메시지 줄 한 줄 */
   if (canVib()) try { navigator.vibrate(C.vib); } catch { /* 진동 막힘 */ }
 }
 // 콘솔 확인 (#65): __oreum.bloom.test.heap(10|50|200) 가장 가까운 그 크기 더미 옆으로 가서 효과, .zone(z) 지금(또는 z) 구역 꽃밭 효과. 저장은 바꾸지 않음
