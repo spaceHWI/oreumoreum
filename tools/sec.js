@@ -433,6 +433,16 @@ async function startServers() {
     P.send(presence(300, 0)); await sleep(300);
     const back = P.last('pos');
     ok(back && Math.abs(back.x - -300) < 1, `잦은 순간 이동 되돌림 (pos ${back && back.x})`);
+    { // 수거 관 (#248): 관 속(tb 'p')·도착(tb 'o') 표시가 붙은 순간 이동은 warpGap 과 따로 tubeGap 에 한 번. 바로 또 하면 되돌림. tb 는 i·p·o 만 남에게
+      const posN = () => P.msgs.filter((m) => m.t === 'pos').length, seenTb = () => Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1]?.tb;
+      const n0 = posN(); P.send(presence(300, 0, { tb: 'p' })); await sleep(700);
+      ok(posN() === n0 && seenTb() === 'p', `수거 관 순간 이동은 받아 줌·남에게 tb 감 (${posN() - n0}, ${seenTb()})`);
+      P.send(presence(-300, 0, { tb: 'o' })); await sleep(400);
+      const b2 = P.last('pos');
+      ok(posN() === n0 + 1 && b2 && Math.abs(b2.x - 300) < 1, `수거 관도 tubeGap 안에 또 하면 되돌림 (pos ${b2 && b2.x})`);
+      P.send(presence(300.4, 0, { tb: '<b>x</b>' })); await sleep(700);
+      ok(seenTb() === undefined, `모르는 tb 는 지움 (${seenTb()})`);
+    }
     // 속도 조작: 0.1초마다 20m (200m/s) 를 계속 → 되돌리다 끊음
     let x = -300; for (let i = 0; i < 20; i++) { x += 20; P.send(presence(x, 0)); await sleep(100); }
     await sleep(300);

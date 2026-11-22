@@ -232,6 +232,7 @@ const CTX_ICON = {
   bomb: ic('bomb'),
   throw: ic('gyul-throw'),
   dump: ic('cleanhouse'),
+  tube: ic('recycle'), // 수거 관 (#248)
   give: ic('gift'),
   field: ic('field'), // 서바이벌 터 징 (#231, game/arena.js) // 귤 주기 (#175)
   chest: ic('chest'), // 숨은 보물 (#138)
