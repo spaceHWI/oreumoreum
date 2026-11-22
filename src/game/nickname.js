@@ -16,7 +16,7 @@ const online = () => !!state.account?.loggedIn;
 const val = () => cleanText($('nick-new').value, NICK.max + 4);
 let busyNow = false;
 
-function showNick() { $('nick-mirror').textContent = save.nick; late.bagRefresh?.(); }
+export function showNick() { $('nick-mirror').textContent = save.nick; $('menu-nick-name').textContent = save.nick; late.bagRefresh?.(); }
 // 서버가 되돌리거나 바꾼 이름 (start.js onFix) — 걸린 이름이면 알려 줌
 late.nickChanged = (was) => { showNick(); net.send(true); if (was && save.nickRen?.free) toast('쓸 수 없는 이름이라 새 이름을 붙였어요. 다음 한 번은 무료로 바꿀 수 있어요', 4); };
 

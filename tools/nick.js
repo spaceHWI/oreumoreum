@@ -16,6 +16,8 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   await p.fill('#look-nick', '운영자'); ok(await p.evaluate(() => document.getElementById('look-ok').disabled), '사칭 이름 막힘');
   await p.fill('#look-nick', 'a'); ok(await p.evaluate(() => document.getElementById('look-ok').disabled), '한 글자 막힘');
   await p.click('#look-nick-dice'); ok(await p.evaluate(() => !document.getElementById('look-ok').disabled), '주사위로 다시 뽑기');
+  await p.fill('#look-nick', ''); await p.waitForTimeout(100);
+  ok(await p.evaluate(() => !document.getElementById('look-ok').disabled && !document.getElementById('look-nick-hint').hidden && /설정/.test(document.getElementById('look-nick-hint').textContent)), '#230 비워 두면 기본 이름으로 넘어감·설정 안내 한 줄');
   await p.fill('#look-nick', '귤 줍는 하니🍊'); await p.waitForTimeout(100);
   if (SHOT) await p.screenshot({ path: 'shot-look-nick.png' });
   await p.click('#look-ok'); await p.waitForTimeout(400);
@@ -44,6 +46,11 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   await p.evaluate(() => { __oreum.save.nickRen.day -= 1; document.getElementById('menu-nick').click(); });
   await p.fill('#nick-new', '세번째 이름');
   ok(await p.evaluate(() => document.getElementById('nick-new-go').disabled && /2,500귤 더 필요/.test(document.getElementById('nick-new-go').textContent)), '모자라면 \'2,500귤 더 필요\' (값 3,000)');
+  // #230 메뉴 맨 위 '이름: 지금 이름 바꾸기 ›' (스크롤 없이)
+  await p.evaluate(() => { document.getElementById('nickwin-close').click(); document.getElementById('btn-menu').click(); }); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => { const e = document.getElementById('menu-nick'), r = e.getBoundingClientRect(); return document.getElementById('menu-nick-name').textContent === '두번째 이름' && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && document.getElementById('menu').scrollTop === 0; }), '#230 메뉴 맨 위에 지금 이름·바꾸기');
+  await p.evaluate(() => document.getElementById('menu-nick').click()); await p.waitForTimeout(200);
+  ok(await p.evaluate(() => !document.getElementById('nickwin').hidden), '#230 메뉴 이름 줄 → 이름 바꾸기 창');
   // 내 가방 이름 옆 버튼
   await p.evaluate(() => { document.getElementById('nickwin-close').click(); __oreum.save.coins = 99999; });
   await p.evaluate(() => document.getElementById('menu-wardrobe').click()); await p.waitForTimeout(500);

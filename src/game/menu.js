@@ -15,7 +15,7 @@ import { initAdmWin } from './admwin.js';
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });
-$('btn-menu').addEventListener('click', () => { inboxCheck(); const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('m-wx').innerHTML = wxIcon(wx.kind) + WX[wx.kind].name; $('ach-dot3').hidden = $('ach-dot').hidden; a.hidden = !open; });
+$('btn-menu').addEventListener('click', () => { inboxCheck(); const a = $('menu'); const open = a.hidden; closePanels(); a.classList.remove('more'); $('m-steps').textContent = player.steps.toLocaleString('ko-KR'); $('m-wx').innerHTML = wxIcon(wx.kind) + WX[wx.kind].name; $('ach-dot3').hidden = $('ach-dot').hidden; $('menu-nick-name').textContent = save.nick; a.hidden = !open; }); /* #230 메뉴 맨 위 지금 이름 */
 $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'));
 // 처음부터 다시(#33): 2초 꾹 누르면 이 기기의 저장을 지움. 닉네임·그래픽·소리 설정은 남김 (돌탑의 돌은 서버에 있어 그대로)
 {

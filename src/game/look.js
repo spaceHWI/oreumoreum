@@ -42,13 +42,13 @@ export function openLook() {
   cancelAll(); player.target = null; marker.visible = false;
   lookS.open = true; lookS.t = 0; lookS.sex = save.look?.sex || 'm'; lookS.skin = save.look?.skin || 0; lookS.colors = lcClean(save.look?.colors);
   cam.mode = 'look'; $('look').hidden = false; document.body.classList.add('looking'); lookPreview();
-  $('look-nickrow').hidden = !!save.nickSet; $('look-nick').value = save.nick; checkLookNick(); // 처음 한 번만 이름을 지음. 정한 뒤 바꾸기는 이름 바꾸기 창 (#162)
+  $('look-nickrow').hidden = !!save.nickSet; $('look-nick').value = save.nick; $('look-nick').placeholder = save.nick; checkLookNick(); // 처음 한 번만 이름을 지음. 정한 뒤 바꾸기는 이름 바꾸기 창 (#162)
 }
 // 이름 칸 (#162): 걸리면 칸 아래 한 줄만 보이고(어느 낱말인지는 말하지 않음) 시작 버튼이 눌리지 않음
-const lookNick = () => cleanText($('look-nick').value, NICK.max + 4);
+const lookNick = () => cleanText($('look-nick').value, NICK.max + 4) || save.nick; /* #230 비워 두면 처음 붙은 이름 그대로 */
 function checkLookNick() {
   const ok = !!save.nickSet || nickOk(lookNick()), typed = $('look-nick').value.trim() !== '';
-  $('look-nick-err').hidden = ok || !typed; $('look-nick').setAttribute('aria-invalid', String(!ok)); $('look-ok').disabled = !ok;
+  $('look-nick-err').hidden = ok || !typed; $('look-nick-hint').hidden = !$('look-nick-err').hidden; $('look-nick').setAttribute('aria-invalid', String(!ok)); $('look-ok').disabled = !ok;
   return ok;
 }
 export function closeLook() {

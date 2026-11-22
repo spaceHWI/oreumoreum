@@ -1055,6 +1055,15 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .nk-dice svg { width: 24px; height: 24px; }
 .nk-err { flex: 1 1 100%; margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: #ffb3a8; }
 .nk-err[hidden] { display: none; }
+.nk-lab { flex: none; font: 800 15px var(--display); color: rgba(255,255,255,.85); } /* #230 이름 칸을 첫눈에 */
+#look .nk-in { border-color: var(--acc); flex: 1 1 0; max-width: 240px; }
+.nk-hint { flex: 1 1 100%; margin: 0; text-align: center; font-size: 12px; color: rgba(255,255,255,.7); }
+.nk-hint[hidden] { display: none; }
+.pop-menu .m-nick { width: 100%; justify-content: flex-start; gap: 8px; font-family: var(--body); font-weight: 500; font-size: 14px; } /* #230 메뉴 맨 위: 이름: 지금 이름 바꾸기 › */
+.pop-menu .m-nick span { opacity: .7; flex: none; }
+.pop-menu .m-nick b { font-family: var(--display); font-weight: 800; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.pop-menu .m-nick em { font-style: normal; font-weight: 700; color: var(--acc); flex: none; }
+@media (max-width: 600px) { #menu .m-nick { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 14px; } }
 .look-ok:disabled { filter: grayscale(1); opacity: .5; box-shadow: none; }
 .nk-pop { width: min(360px, calc(100vw - 32px)); }
 .nk-pop .pop-body { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
@@ -1756,6 +1765,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 </div>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
   <div class="grab ph"></div>
+  <button type="button" id="menu-nick" class="m-nick" aria-label="이름 바꾸기"><span>이름</span><b id="menu-nick-name"></b><em>바꾸기 ›</em></button>
   <button type="button" id="menu-feedback" class="m-fb"><svg data-i="feedback"></svg>의견 보내기</button>
   <div class="m-wx" id="m-wx" aria-label="지금 날씨"></div>
   <div class="m-stat ph"><span>걸음<b id="m-steps">0</b></span><span>귤<b id="m-coins">0</b></span></div>
@@ -1778,7 +1788,6 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <input type="range" id="music-vol" min="0" max="100" step="5" value="60" aria-label="배경 음악 크기">
   </div>
   <div class="m-more">
-    <button type="button" id="menu-nick">이름 바꾸기</button>
     <button type="button" id="menu-help">조작법</button>
     <button type="button" id="menu-fs" aria-pressed="false" hidden>전체 화면</button>
     <button type="button" id="menu-fshow" hidden>전체 화면으로 하는 법</button>
@@ -2112,7 +2121,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <!-- 캐릭터 고르기 (#51): 가운데 캐릭터가 돌아가며 보이고, 아래 카드에서 기본 머리(성별)·피부색을 고름 -->
 <div id="look" hidden>
   <div class="panel look-card" role="dialog" aria-label="캐릭터 고르기">
-    <div class="look-nick" id="look-nickrow"><input type="text" id="look-nick" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="이름" aria-describedby="look-nick-err"><button type="button" class="nk-dice" id="look-nick-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button><p class="nk-err" id="look-nick-err" role="alert" hidden>이 이름은 쓸 수 없어요</p></div>
+    <div class="look-nick" id="look-nickrow"><label class="nk-lab" for="look-nick">이름</label><input type="text" id="look-nick" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="이름" aria-describedby="look-nick-err"><button type="button" class="nk-dice" id="look-nick-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button><p class="nk-err" id="look-nick-err" role="alert" hidden>이 이름은 쓸 수 없어요</p><p class="nk-hint" id="look-nick-hint">이름은 설정에서 바꿀 수 있어요</p></div>
     <div class="look-top">
       <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
       <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>
