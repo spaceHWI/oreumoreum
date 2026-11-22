@@ -89,12 +89,12 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
     const cp = q.reward?.coupon; if (cp) s.cp[cp[0]] = (s.cp[cp[0]] | 0) + cp[1];
     persist(); return q.reward || {};
   }
-  // 추적할 것: 줄기 하는 중 → 곁가지 하는 중 → 줄기 받으러 가기
+  // 추적할 것: 줄기 하는 중 → 곁가지 채움·저절로 받은 것(auto) → 줄기 받으러 가기 → 곁가지 하는 중
   function tracked() {
     const s = S();
     const mk = (q, e, st) => ({ q, st, p: e ? prog(q, e) : 0, n: q.ask.n, ready: !!e && prog(q, e) >= q.ask.n, to: turnIn(q), main: isMain(q) });
     if (s.cur) { const q = BY.get(s.cur.id); return mk(q, s.cur, 'on'); }
-    for (const q of SIDE) if (s.side[q.id] && ready(q)) return mk(q, s.side[q.id], 'on');
+    for (const q of SIDE) if (s.side[q.id] && (ready(q) || q.auto)) return mk(q, s.side[q.id], 'on'); // 주는 사람 없는 퀘스트(#208 auto)는 줄기 받으러 가기보다 먼저
     if (mainOpen()) { const q = mainNext(); if (q) return mk(q, null, 'offer'); }
     for (const q of SIDE) if (s.side[q.id]) return mk(q, s.side[q.id], 'on');
     return null;

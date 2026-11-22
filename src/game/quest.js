@@ -242,6 +242,7 @@ function ending(text) { const el = $('quest-end'); el.textContent = text; el.cla
 
 /* ---------- 조건을 채움 ---------- */
 function onReady(q) {
+  if (q.auto) { const r = quests.complete(q.id); if (r) { give(r, q); if (q.fin?.[0]) say('quest', 'qauto:' + q.id, `${q.name} 완료 · ${q.fin[0]}`, 3.4, { ttl: 60 }); late.questAutoDone?.(q); } trackDirty(true); return; } // 주는 사람 없는 퀘스트 (#208): 채우면 바로 끝
   const to = whoOf(q.to || q.giver);
   if (q.got) say('quest', 'qgot:' + q.id, `${q.got} · ${to}에게 가져가요`, 3.4, { ttl: 60 });
   else say('quest', 'qready:' + q.id, `${q.name} 완료! ${to}에게 돌아가요`, 3, { ttl: 60 });
@@ -267,6 +268,7 @@ function goPos(go) {
   if (go.startsWith('shop:')) { const sh = shopOf(go.slice(5)); return sh ? sh.door.clone() : null; }
   if (go === 'cairn') { const c = nearest(cairns.map((c) => c.pos)); return c ? c.clone() : null; }
   if (go === 'cave') return late.caveEnt?.() || null; // 용암 동굴 입구 (#195)
+  if (go === 'rimLook') return late.summitClue?.rimPos?.() || null; // 굼부리 가장자리 전망 자리 (#208)
   if (go === 'ch') { const c = nearest(CHS.map((c) => c.front)); return c ? c.clone() : null; }
   if (!trash) return null;
   const hs = trash.heaps.map((h, i) => ({ x: h.x, z: h.z, h, i }));

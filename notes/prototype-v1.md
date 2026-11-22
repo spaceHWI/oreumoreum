@@ -33,6 +33,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | wish.js | 돌탑 소원 글·함께 기도 (#127): 돌탑 창(돌 올리기 + 소원 한 줄, 남의 소원 함께 기도·신고), 돌탑 가까이에서 소원 말풍선, 들어올 때 '○명이 함께 빌어 줬어요', 어드민 '신고된 소원' 패널 (`wishApi` → `/wish`·`/wish/pray`·`/wish/report`·`/wish/news`·`/admin/wishes`·`/admin/wish`). moves.js `openWishes` 는 여기로 넘김 |
+| summit.js | 정상 첫 실마리(#208): 표지석에 처음 닿으면 장면(엔딩의 cam 'cine' 자리를 빌림, `late.cineCam` 을 감쌈·건너뛰기)·표지석 뒤 쪽지(NOTES 'n0', z 'top')·읽으면 퀘스트 x-rim(주는 사람 없는 auto, game/quest.js onReady 가 바로 끝냄)·전망 자리 셈 'rimLook'·감독 한 줄(`late.questAutoDone`)·망원경. 저장 save.clue. 수치 `CLUE`, 글 `CLUE_TEXT`. dev `__oreum.summit` |
 | gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
 | metricsadmin.js | 이용 통계 표 (#121): 어드민 개발자 메뉴 "수치" 패널. `adminApi.metrics` → `GET /admin/metrics`, 줄(잴 것) × 칸(날짜), 출처 단추 실서버·dev·어드민 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |

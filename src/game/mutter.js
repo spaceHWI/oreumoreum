@@ -74,6 +74,7 @@ const LINES = [
   { id: 'hungry', when: () => !save.buff && hp.hp / hp.max < M.hpLow && !hp.isDown, solved: () => life0('meal') > 0 },
   { id: 'legs', when: () => !(save.rides?.own?.length) && walked >= M.walk, solved: () => (save.rides?.own?.length || 0) > 0 },
   { id: 'summit', ev: true },
+  { id: 'glint', ev: true }, // #208 정상 첫 장면 끝에 game/summit.js 가 say('glint') 로 부름
   { id: 'cave', need: () => !!late.caveApi, when: () => !state.cave && zoneNow() === 4 && late.caveApi.can()[0], solved: () => !!save.cave?.runs?.d }, /* #195 바람 새는 굴 (들어가 보면 끝) */
 ];
 for (let i = 1; T['idle' + i]; i++) LINES.push({ id: 'idle' + i, idle: true });
