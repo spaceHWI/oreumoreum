@@ -63,7 +63,7 @@ export const postFeedback = ONLINE ? (items) => api('/feedback', { method: 'POST
 // 받은 의견 보기 (#96): 어드민만. before 가 있으면 그 id 보다 오래된 50개
 export const getFeedback = ONLINE ? (before = 0) => api('/feedback' + (before ? `?before=${before | 0}` : '')) : null;
 // 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민만
-export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }), metrics: (days = 14) => api('/admin/metrics?days=' + (days | 0)) } : null;
+export const adminApi = ONLINE ? { clamps: (days = 30) => api('/admin/clamps?days=' + (days | 0)), grants: () => api('/admin/grants'), filegrants: () => api('/admin/filegrants'), grant: (sub, n, why) => api('/admin/grant', { method: 'POST', body: { sub, n, why } }), metrics: (days = 14) => api('/admin/metrics?days=' + (days | 0)) } : null;
 // 돌탑 소원 (#127): 읽기·기도·신고는 손님도, 쓰기·내 소식은 로그인만. admin* 은 어드민만
 export const wishApi = ONLINE ? {
   list: (c) => api('/wish?c=' + encodeURIComponent(c)), put: (c, text) => api('/wish', { method: 'POST', body: { c, text } }),

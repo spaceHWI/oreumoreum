@@ -15,15 +15,20 @@ const li = (head, body, meta, onClick) => {
   return e;
 };
 async function load() {
-  const cl = $('clamp-list'), gl = $('grant-list'); cl.textContent = ''; gl.textContent = '';
-  const [c, g] = await Promise.all([adminApi.clamps().catch(() => null), adminApi.grants().catch(() => null)]);
+  const cl = $('clamp-list'), gl = $('grant-list'), fl = $('fgrant-list'); cl.textContent = ''; gl.textContent = ''; fl.textContent = '';
+  const [c, g, f] = await Promise.all([adminApi.clamps().catch(() => null), adminApi.grants().catch(() => null), adminApi.filegrants().catch(() => null)]);
   if (!Array.isArray(c)) toast('기록을 불러오지 못했어요');
   for (const r of c || []) cl.append(li(`${kst(r.at)} · ${cleanText(r.nick, 24) || '이름 없음'} · v${cleanText(r.ver, 20) || '?'}`, `귤 -${r.amt} (${cleanText(r.why, 20)}) ${r.before} → 요청 ${r.ask} → ${r.after}`,
     `계정 ${cleanText(r.sub, 80)} · 몫 ${r.info?.room ?? '?'} · 인정 ${r.info?.rec ?? '?'} · 거절한 판 것 ${r.info?.bad ?? 0}`,
     () => { $('grant-sub').value = r.sub; $('grant-n').value = r.amt; $('grant-why').value = '잘못 깎인 귤을 돌려드려요'; }));
   if (Array.isArray(c) && !c.length) cl.append(li('', '깎인 기록이 없어요', ''));
   for (const r of g || []) gl.append(li(`${kst(r.at)} · ${cleanText(r.nick, 24) || '이름 없음'}`, `귤 ${r.n} · ${cleanText(r.why, 60)}`, `계정 ${cleanText(r.sub, 80)} · ${r.got ? '받음 ' + kst(r.got_at) : '아직 안 받음'}`));
+  for (const r of f || []) fl.append(li(`${cleanText(r.id, 60)} · ${cleanText(r.nick, 24) || '이름 없음'}`, `귤 ${r.n} · ${FST[r.st] || r.st}${r.note ? ' (' + (FNOTE[r.note] || cleanText(r.note, 20)) + ')' : ''}${r.st === 'sent' ? (r.got ? ' · 받음' : ' · 아직 안 받음') : ''}`, `${kst(r.at)}${r.sub ? ' · 계정 ' + cleanText(r.sub, 80) : ''} · ${cleanText(r.why, 60)}`));
+  if (Array.isArray(f) && !f.length) fl.append(li('', '목록 파일에 보낼 줄이 없어요', ''));
 }
+/* 목록 파일 (#215, server/grants.json) 줄 상태 */
+const FST = { sent: '보냄', hold: '보류', wait: '기다림' };
+const FNOTE = { many: '같은 닉네임이 여럿', none: '받는 계정 없음', day: '오늘 상한', 'bad:n': '귤 수가 잘못됨', 'bad:max': '한 줄 상한 넘음', 'bad:to': '받는 이 없음' };
 function open() { closePanels(); $('gyuladm').hidden = false; load(); }
 let on = false;
 export function initGyulAdmin() {
