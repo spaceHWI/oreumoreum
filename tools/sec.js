@@ -519,6 +519,8 @@ async function startServers() {
     const r3 = (onl.j?.rooms || []).find((r) => r.map === 'namsongi' && r.ch === 3);
     ok(onl.status === 200 && r3 && r3.n === 2 && r3.login === 1 && onl.j.n >= 2 && onl.j.guest >= 1 && onl.j.peak?.n >= 2, `어드민은 지금 접속을 봄 (3번 방 ${r3?.n}명, 로그인 ${r3?.login})`);
     ok(!/fake-|user1|boss|검사|"x"|"z"|ip|sub|nick|acct/i.test(onTxt), '지금 접속 응답에 이름·계정 번호·IP·좌표가 없음');
+    { const rk = onl.j?.rank; ok(rk && ['day', 'week', 'all', 'last'].every((k) => Number.isFinite(rk[k])) && Object.keys(rk).length === 4, `지금 접속에 랭킹 상태는 숫자 넷만 (#250: ${JSON.stringify(rk)})`); }
+    ok((await req('plain', '/rank')).status === 401 && (await req('plain', '/rank/me')).status === 401, '손님은 서버 순위표 못 봄 (401, 게임은 이 기기 기록만 보여 줌)');
     onA.close(); onB.close(); await sleep(400);
     const onl2 = (await req('plain', '/admin/online', { token: Bs.token })).j;
     ok(!(onl2?.rooms || []).some((r) => r.map === 'namsongi' && r.ch === 3) && onl2.peak.n >= 2, '나가면 방에서 빠지고 오늘 최고는 남음');
