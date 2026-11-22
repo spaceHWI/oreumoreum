@@ -322,16 +322,16 @@ async function startServers() {
         const { runMax, armPrice } = await import('../src/token.js'), R0 = (await import('../src/balance.js')).SWARM.run, T0 = { n: 0, got: 0, own: {}, rec: {} };
         const P0 = { ...P, tok: T0 }, a0 = { ...acc, credit: 0, bank: 0 };
         let k = checkSave(P0, { ...P0, tok: { ...T0, n: runMax(3), got: runMax(3), rec: { 3: { at: t, n: runMax(3), win: 1 } } } }, a0, t);
-        ok(!k.fixed.includes('tok') && k.save.tok.n === runMax(3) && k.save.coins === P0.coins, `징표 한 판(구역 3, ${runMax(3)})은 인정, 귤은 그대로`);
+        ok(!k.fixed.includes('tok') && k.save.tok.n === runMax(3) && k.save.coins === P0.coins, `망고 한 판(구역 3, ${runMax(3)})은 인정, 귤은 그대로`);
         let k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, n: runMax(3) * 2, rec: { 3: { at: t + 60000, n: runMax(3), win: 1 } } } }, { ...k.acc, savedAt: t + 60000 }, t + 60000);
-        ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '쉬는 시간 안에 같은 구역 징표 두 번 받기 거절');
+        ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '쉬는 시간 안에 같은 구역 망고 두 번 받기 거절');
         k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, n: 999, rec: { 4: { at: t + 1000, n: 999, win: 0 } } } }, { ...k.acc, savedAt: t + 1000 }, t + 1000);
-        ok(k2.fixed.includes('tok') && k2.save.tok.n <= runMax(3) + runMax(4), `한 판 상한을 넘는 징표는 깎음 (${k2.save.tok.n})`);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n <= runMax(3) + runMax(4), `한 판 상한을 넘는 망고는 깎음 (${k2.save.tok.n})`);
         k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, rec: {} } }, { ...k.acc, savedAt: t + 2000 }, t + 2000);
         k2 = checkSave(k2.save, { ...k2.save, tok: { ...k2.save.tok, n: k2.save.tok.n + runMax(3), rec: { 3: { at: t, n: runMax(3), win: 1 } } } }, { ...k2.acc, savedAt: t + R0.rest * 2000 }, t + R0.rest * 2000);
         ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '기록을 지웠다 옛 기록으로 다시 받기 거절');
         k2 = checkSave({ ...P0, coins: 99999 }, { ...P0, coins: 99999, tok: { ...T0, own: { blast: 3 }, arm: 'blast' } }, a0, t);
-        ok(k2.fixed.includes('tokItems') && !k2.save.tok.own.blast && k2.save.coins === 99999, `귤(99999)로는 징표 무기 못 삼 (값 ${armPrice('blast', 1)}+…)`);
+        ok(k2.fixed.includes('tokItems') && !k2.save.tok.own.blast && k2.save.coins === 99999, `귤(99999)로는 망고 무기 못 삼 (값 ${armPrice('blast', 1)}+…)`);
       }
       { // 미확인 제보 (#238): save.report.got 이 오늘이면 REPORT.gyul 인정, 같은 날 지웠다 다시 끝내도·지난 날짜·없는 제보는 거절
         const { REPORT } = await import('../src/balance.js'), DL = await import('../src/daily.js'), g = REPORT.gyul, date = DL.kstDate(t);
