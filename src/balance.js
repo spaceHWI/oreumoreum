@@ -179,8 +179,9 @@ export const SWARM = {
   /* 서바이벌 터 (#231, game/arena.js): 구역마다 한 곳. 터 가운데 징을 울려야(상호작용) 한 판이 시작됨. 들판에 들어가기만 해서는 시작하지 않음
      at[구역] 터 가운데 [x, z] (길에서 가깝고 덜 기운 곳, 안에 더미·소굴·보물·NPC 없음: node tools/arena.js 가 확인), r 반지름(m, 임의값)
      leave 판 동안 터 밖에 이 초 넘게 있으면 끝(덤 없음, 쉬는 시간 × leaveRest), gongR 징 상호작용 거리, spawn 떼가 나오는 곳 = 터 테두리 밖 [안, 밖] m
+     edge 판 동안 테두리에서 이 m 안이면 받혀 밀리는 방향의 바깥쪽 몫을 지우고 edgeIn 만큼 안쪽으로 꺾음 (#265: 비탈 터에서 밀려 나가 돌아오지 못함)
      hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리 */
-  arena: { r: 22, leave: 8, leaveRest: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
+  arena: { r: 22, leave: 8, leaveRest: 0.5, edge: 4, edgeIn: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
     at: [null, [-16, -540], [-312, 84], [-116, 28], [84, -440], [64, -12]] }, /* #253 자리 다시 잡음: node tools/arenacheck.js 겹침 0 */
 };
 
@@ -1951,7 +1952,7 @@ QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·
 // r 상호작용 거리 · off 길가 더미에서 떨어진 거리 [최소, 최대] m · far 흔적·표시가 보이는 거리 · ring 바닥 표시 반지름
 export const REPORT = { lv: 5, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14 };
 // crop: 사건 1 무늬 반지름(m)·진하기·돌림 (#246) · view: 위에서 찍기 장면 길이(초)·높이·옆 거리 · face: 숨어 보기 장면 (drop 떨어지는 높이 m, dropAt 장면 비율)
-export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, goneAfter: 4, /* see.blink 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
+export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, mibTalk: 8, /* 사건 3 목격 검은 양복이 이 m 안이면 talk (#264) */ goneAfter: 4, /* see.blink 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
 CASE.chase = { white: '#f4f3ee', glow: 0.35, behind: 2.4, glide: 3.2, glimT: 2.6, nightR: 45, afterT: 8, camBack: 3.6, camSide: 1.1, camUp: 1.9, faceD: 1.3, faceSide: 2.1, faceUp: 1.45, ambR: 70, ambW: 0.35, vanish: 7 };

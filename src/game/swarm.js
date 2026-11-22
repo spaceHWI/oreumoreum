@@ -436,6 +436,12 @@ late.tickSwarm = (dt) => {
   for (const e of E.list) if (e.def.swarm && ((e.state === 'flee' && e.st > 1.2) || (e.state === 'leave' && e.st > 3.5))) { E.remove(e); break; } // 쫓겨난·떠나는 떼 적은 곧 사라짐 (그리기 수)
   if (!run && !shots.length && orbMesh.count) orbitHide();
 };
+/* 터 가장자리 받힘 (#265, hooks.js enemyHit): 판 동안 테두리 가까이에서 받히면 바깥으로 밀지 않고 안쪽으로 꺾음 */
+late.swarmKnock = (dir) => {
+  const c = run && AT(run.zone); if (!c) return; const dx = player.pos.x - c[0], dz = player.pos.z - c[1], d = Math.hypot(dx, dz);
+  if (d < A.r - A.edge || d < 0.1) return; const ux = dx / d, uz = dz / d, o = dir.x * ux + dir.z * uz;
+  if (o > -A.edgeIn) { const k = o + A.edgeIn; dir.x -= ux * k; dir.z -= uz * k; const L = Math.hypot(dir.x, dir.z) || 1; dir.x /= L; dir.z /= L; }
+};
 /* 터 밖 (#231): 나가면 남은 초를 한 줄로 세고, arena.leave 초가 지나면 끝 */
 function tickLeave(dt) {
   if (arenaD(run.zone) <= A.r + 0.5) { if (leaveT > 0) { leaveT = 0; leaveS = -1; late.msgLog?.unpin('leave'); toast(SWARM_TEXT.inside, 1.2); } return; }
