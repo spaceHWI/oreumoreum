@@ -41,7 +41,8 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
 | metricsadmin.js | 이용 통계 표 (#121): 어드민 개발자 메뉴 "수치" 패널. `adminApi.metrics` → `GET /admin/metrics`, 줄(잴 것) × 칸(날짜), 출처 단추 실서버·dev·어드민 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
-| admonline.js | 지금 접속 (#186): 어드민 설정 맨 위 '지금 접속 ○명' 줄·펼친 목록(방별·로그인/손님·오늘 최고·내 방 구역별). 메뉴와 어드민 설정이 열려 있을 때만 `getOnline`(GET /admin/online) 을 `NET.onlinePollMs` 마다. 구역별은 내 화면의 `net.peersById` 자리로 셈 |
+| admonline.js | 지금 접속 (#186): 어드민 창 '상태' 탭 '지금 접속 ○명' 줄·펼친 목록(방별·로그인/손님·오늘 최고·내 방 구역별). 어드민 창 '상태' 탭이 열려 있을 때만 `getOnline`(GET /admin/online) 을 `NET.onlinePollMs` 마다. 구역별은 내 화면의 `net.peersById` 자리로 셈 |
+| admwin.js | 어드민 창(#220): 메뉴 '어드민 설정' → 창 하나, 탭 5개(상태·귤·계정·해 보기·의견·기타), 2~3열 칸 격자로 한 화면. 마지막 탭 기억. 버전·서버·이번 실행 오류, 계정 번호 가림, 레벨 +1·UFO·금고·이야기 띄우기, 모바일 화면으로 보기 스위치. 다른 버튼은 주인 파일이 id 로 붙임
 | throw.js | 귤 던지기·귤 활·조준 표시·화면 밖 적 방향. 골라 쓰는 무기(`save.weaponUse`), 3~6단계면 `late.fireArm` |
 | arms.js | 무기 3~6단계(#123): 귤 총·머신건(누르고 있으면 연사)·귤즙 레이저(누르는 동안 줄기)·귤 폭탄(던지기 동작으로 포물선), 탄 표시, 무기 고르기(`chooseArm`, 던지기 버튼 옆 ▾ → 내 가방 무기 탭), 멀티 presence `wf`, 레이저 과열(#200: 열 셈 `src/laserheat.js`, 버튼 둘레 열 고리 `#heat`, 들판 자동 쏘기 `late.laserAuto`, 과열 김 presence `wh`). 효과 `src/weaponfx.js`, 손에 든 모양 `src/weaponmodels.js`, 소리 `src/weaponsound.js` |
 | charge.js | 모아 쏘기(#129): 던지기 버튼(F)을 길게 눌렀다 놓기. `pressFire`(stores.js throwAct.act) → 누르는 동안 모음(`tickCharge`, update.js 에서 tickArms 앞) → 놓으면 `fireCharged`. 손·활은 `state.chargeShot` 을 throw.js release 가 씀, 총·머신건·레이저·폭탄은 arms.js `chargedArm`. 이동 느려짐 `late.chargeSlow`, 사거리 `late.chargeRange`, 맞음 `life.hooks.chargeHit`(enemies.js hurt 의 ch), 멀티 presence `cg`·wf 7번째 칸. 효과 `src/chargefx.js`, 수치 balance.js CHARGE. 확인 `node tools/charge.js` |
@@ -115,7 +116,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 지난 변경 기록(이슈별 메모)은 `notes/history.md`
 
 그 밖의 모듈 (src/)
-- 맵·그림: boot.js(맵 결정, 맨 먼저) · inapp.js(인앱 브라우저 안내, 페이지 맨 앞 인라인, #118) · namsongi.js/namsongidata.js(남송이 지형) · pathclear.js(길 둘레 비우기 규칙 #227) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js(가로등, model-lamp.js) · lampaim.js(가로등 팔이 길 쪽을 보게 돌림각·자리 다시 잡기, #174, scene.js 가 부름) · retro.js · quality.js
+- 맵·그림: boot.js(맵 결정, 맨 먼저) · mview.js('모바일인가' 판정 isMobile() 한 곳 + 어드민 '모바일 화면으로 보기' 폰 틀, #220. main.js 가 맨 먼저 봄) · inapp.js(인앱 브라우저 안내, 페이지 맨 앞 인라인, #118) · namsongi.js/namsongidata.js(남송이 지형) · pathclear.js(길 둘레 비우기 규칙 #227) · world.js · gfx2.js · toon.js · sun.js · weather.js · halla.js · maps.js · nsbound.js · zones.js · trailshape.js · stonewall.js/wallmodel.js · stream.js/streamshape.js · gate.js/donnaeko.js(숨긴 예전 맵) · lamps.js(가로등, model-lamp.js) · lampaim.js(가로등 팔이 길 쪽을 보게 돌림각·자리 다시 잡기, #174, scene.js 가 부름) · retro.js · quality.js
 - 캐릭터·장비: runner.js · basebody.js · runnermodel.js/dqskin.js · gear.js · clothes.js/clothicons.js · emotes.js · footprints.js · lookcolors.js(처음 고르는 기본 옷 색 #155: `tintGear` 가 기본 옷 4종을 `id~번호` 장비로, 색 동그라미 `colorDots`)
 - 캐릭터 구조 (#106): 뼈대 7개(hips·chest·head·armL·armR·legL·legR, 듀얼 쿼터니언 dqskin.js) 하나에 세 겹을 얹는다
   - 기본 몸 `basebody.js`: 옷 없는 매끈한 몸 한 메시(몸통+목·팔·벙어리장갑 손·다리·발). 몸통 단면은 옷과 같은 표(clothes.js TORSO·HIPS)에서 조금 안쪽. 정점마다 부위 번호(REGION: neck chest waist pelvis upperarm forearm hand thigh shin foot). 남·여는 `bodyWarp`(허리·골반 폭)만 다르고 머리 모양으로 정함(runner.js `bodySex`: 단발·똥머리 = 여, `outfit.body` 가 있으면 그것). 피부색은 재질 색, 발은 양말 색(cFoot)
