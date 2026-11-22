@@ -27,6 +27,12 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   if (r.d > 1) ok(r.b2 && r.days.includes(r.d - 1), `지난 날(${r.d - 1}일) 귤 50 으로 열기 → ${r.c1}→${r.c2}`);
   const fut = await p.evaluate(() => { const S = window.__oreum.season; return S.day(Math.min(25, S.state().calDay + 1)); });
   ok(!fut, '앞날은 못 엶');
+  // 어드벤트 판 (#222): 25문·가운데 트리 문·다 열면 칸 → 25칸째에 세트·귤 500 한 번
+  const adv = await p.evaluate(() => { const o = window.__oreum, S = o.season; S.setDay(25); S.open(); const doors = [...document.querySelectorAll('#xmas-cal .xd')]; const mid = doors[12]; const r = { n: doors.length, mid: mid?.className, all: document.querySelector('#xmas-all .xa-n').textContent };
+    o.save.coins = 5000; const xs = o.save.season.xmas; xs.all = 0; const c0 = o.save.coins; for (let d = 1; d <= 25; d++) S.day(d); r.gotAll = S.state().xs.all; r.gain = o.save.coins - c0; r.own = ['hat:p-santa', 'jacket:p-santa', 'bottom:p-santa'].every((id) => o.save.clothes.own[id]); r.allTxt = document.querySelector('#xmas-all .xa-n').textContent;
+    const c1 = o.save.coins; S.day(25); r.again = o.save.coins - c1; S.setDay(0); document.getElementById('xmas').hidden = true; return r; });
+  ok(adv.n === 25 && /big tree/.test(adv.mid || ''), `어드벤트 판 문 ${adv.n}개 · 가운데 트리 문 (${adv.mid})`);
+  ok(adv.gotAll === 1 && adv.own && adv.allTxt === '받음' && adv.again === 0, `다 열면 세트 3벌·받음 표시 (귤 변화 ${adv.gain}, 다시 0)`);
   // 선물 상자: 줍기
   const g = await p.evaluate(async () => { const o = window.__oreum, S = o.season, c0 = o.save.coins; S.gift(o.player.pos.x + 0.5, o.player.pos.z); await new Promise((r) => setTimeout(r, 600)); return { left: S.state().gifts, gain: o.save.coins - c0, gn: S.state().xs.gn, gift: S.state().xs.gift }; });
   ok(g.left === 0 && (g.gain >= 20 || g.gift.length === 1) && g.gn === 1, `선물 상자 열림 (귤 +${g.gain}, 옷 ${g.gift.join(',') || '-'})`);

@@ -7,7 +7,7 @@
 // - 치운 양(누적)도 같은 방식
 import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
 import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM } from '../../src/balance.js';
-import { cleanXmas, calOpenable, calCost, calReward, calClothIds } from '../../src/seasoncal.js';
+import { cleanXmas, calOpenable, calCost, calReward, calClothIds, calFull, CAL_ALL_CLOTHES } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
 import { checkLv } from '../../src/augments.js';
 import { TITLES, NOTES } from '../../src/punktext.js';
@@ -83,7 +83,8 @@ function norm(s) {
 //   분리수거 달인·큰손처럼 귤 벌이에 닿는 증강이 레벨보다 많이 붙지 않게
 
 // 철 이벤트 (#180): 달력·선물 옷은 값을 안 셈
-const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift] : []);
+// 달력을 다 연 옷(#222)은 seasonCheck 가 확인한 all 일 때만 (seasonCheck 가 spentOf 보다 먼저 돎)
+const freeCloths = (S) => new Set(S.season?.xmas ? [...calClothIds(S.season.xmas.days), ...S.season.xmas.gift, ...(S.season.xmas.all ? CAL_ALL_CLOTHES : [])] : []);
 // 새로 산 것들의 값
 function spentOf(P, S) {
   const free = freeCloths(S);
@@ -131,6 +132,9 @@ function seasonCheck(P, S, { xday = 0, treeDone = false }, fixed, budget = Infin
   SX.gift = [...new Set([...P0.gift, ...(xday ? gAdd : [])])].slice(0, Math.max(P0.gift.length, SEASON.xmas.santa.giftMax));
   if (SX.tree && !P0.tree) { if (treeDone && xday) out.room += SEASON.xmas.tree.gift; else { SX.tree = 0; fixed.push('season'); } }
   if (P0.tree) SX.tree = 1;
+  // 다 열면 (#222): 25칸이 다 찬 저장에서 처음 all 이 1 이 될 때 한 번 귤 calAll.coins. 칸은 줄지 않으니(P0 를 늘 합침) 지웠다 다시 받을 수 없음
+  if (SX.all && !P0.all) { if (calFull(SX.days)) out.room += SEASON.xmas.calAll.coins; else { SX.all = 0; fixed.push('season'); } }
+  if (P0.all) SX.all = 1;
   if (SX.snow && !SX.days.includes(SEASON.xmas.cal.days)) SX.snow = 0;
   return out;
 }
