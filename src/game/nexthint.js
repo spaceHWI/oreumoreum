@@ -17,7 +17,7 @@ import { canBuyGear } from './shop.js';
 const v3 = (p) => (p ? new THREE.Vector3(p.x, height(p.x, p.z), p.z) : null);
 const dist = (p) => Math.hypot(p.x - player.pos.x, p.z - player.pos.z);
 function nearest(list) { let b = null, bd = 1e12; for (const o of list) { const d = dist(o); if (d < bd) { bd = d; b = o; } } return b; }
-const shop = (id) => shopsBuilt.find((sh) => sh.id === id) || null;
+const shop = (id) => (late.shopOpen?.(id) === false ? null : shopsBuilt.find((sh) => sh.id === id) || null); /* 닫힌 가게로는 안내하지 않음 (#206) */
 const zname = (z) => ZONES.find((q) => q.id === z)?.name || `구역 ${z}`;
 const openGear = (forge) => () => { if (forge && late.forgeApi) late.forgeApi.open(); else late.openShopPop?.('gear'); };
 

@@ -1573,3 +1573,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 보상: 받는 쪽은 내가 맞힌 적이 쫓겨나면 내 보상(`repelNet`), 칸 주인은 제가 맞힌 적만(`hurtNet`, 남의 피해엔 증강·밀림을 안 얹음). 주인 큰 보상·상자는 지금처럼 사람마다 하루 한 번
 - 이어받기: 받던 적을 같은 번호로 그대로(주인 드론 부르기는 지난 단계만큼 건너뜀). 칸 주인 알림·적 상태가 `NET.caveWaitSec`(4초) 안 오면(옛 서버·옛 클라이언트) 내 화면에서 굴림
 - 수치 `NET.cavePerSec·caveMax·caveEnemyMax·caveSendMs·caveWaitSec`. 확인: `node tools/online.js <서버> cave` 칸 주인·같은 번호·B 가 맞히면 A 기운 줆·이어받기 줄, `tools/sec.js` #205 줄
+
+## #206 가게를 퀘스트 순서대로 하나씩 열기 (2026-11-22)
+- 표 `balance.js SHOP_ST.unlock`(값·순서 임의): 장비점(정낭을 나섬, 알림 없음) → 만족한상회(첫 배낭을 가득 채워 버림) → 스톤(숲길 우두머리) → 루이네미장원·LEAP(구역 2 에 들어서거나 레벨 4) → 탈것 가게·마차 타기(남쪽 사면 우두머리)
+- 셈은 `src/shopgate.js`(DOM 없음), 게임은 `src/game/shopgate.js`. 저장 `save.shopGate = { open, init, full, dumps, fd }`. 한 번 열린 가게는 닫히지 않음
+- 닫힌 가게: 건물은 그대로, 문 자리 앞(`SHOP_ST.gate.shutIn`)에 셔터(기둥·말통·회색 골판 + 고깔 팻말), 지붕 간판은 어둡게·밤빛 없음, 주인 NPC 없음, 지도엔 작은 회색 점, 가게 안내 카드는 회색 + '준비 중 · ○○ 열려요', 가까이 가면 '준비 중 — ○○ 열려요' 한 줄(바로 그 자리 반응이라 감독을 거치지 않음)
+- 닫힌 가게는 상호작용·가장자리 표시·자동 걷기·창 열기·퀘스트(need shop:, 곁가지만 막힘 — 줄기 퀘스트는 장비점만 쓰고 장비점은 정낭에서 열림)·팁(go 가 닫힌 가게)·다음 할 일(스톤 식사)에서 빠짐. 튜토리얼 좌판(장비점)은 그대로
+- 열릴 때: 감독 `say('intro', 'shop-<id>', …, { ttl, then })` 로 줄에 섬(싸움·창·다른 말이 끝나면 차례) → 알림 + `tipMark` 하나 + 셔터가 말려 올라감(`gate.upT`) + 주인이 나와 손 흔들고 인사. `gate.waitMax` 초 넘게 못 받으면 알림 없이 엶. `game/director.js say` 에 `opt.then` 을 더함
+- 옛 저장: `save.shopGate` 가 없으면 처음 볼 때 조건(need·old)을 넘겼거나 쓴 적이 있으면(식사·머리·옷 산 기록·탈것) 알림 없이 엶
+- 어드민 개발자 메뉴 '가게 모두 열기'(이 기기 localStorage `oreumoreum.hwi.shops`)·촬영 모드(#185): 모두 열린 모습(저장은 그대로). 멀티: 내 화면에서만, 서버는 그대로
+- 확인: `node tools/shopgate.js`(막 마친 저장·조건마다 열림·옛 저장·스위치), `tools/oldsave.js` shopBad·shopVet, smoke LOOP 에 shopGate
+

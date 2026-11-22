@@ -71,6 +71,7 @@ export function createTips({ save, persist, show, state, today = () => new Date(
     for (const tip of TABLE) {
       let ok = false; try { ok = !!tip.when(S); } catch { ok = false; }
       if (!ok || !can(tip)) continue;
+      if (tip.go && S.goOk && !S.goOk(tip.go)) continue; /* 닫힌 가게로 보내는 팁 (#206) */
       if (tip.id === 'bagFull' || tip.id === 'bagOften') { if (!S.bagFull) continue; }
       fire(tip); delete ev[tipEvName(tip.id)]; return tip;
     }

@@ -33,6 +33,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | input.js | 키보드·조이스틱·멀티터치·시점·핀치, 속도 |
 | menu.js | 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 |
 | wish.js | 돌탑 소원 글·함께 기도 (#127): 돌탑 창(돌 올리기 + 소원 한 줄, 남의 소원 함께 기도·신고), 돌탑 가까이에서 소원 말풍선, 들어올 때 '○명이 함께 빌어 줬어요', 어드민 '신고된 소원' 패널 (`wishApi` → `/wish`·`/wish/pray`·`/wish/report`·`/wish/news`·`/admin/wishes`·`/admin/wish`). moves.js `openWishes` 는 여기로 넘김 |
+| shopgate.js | 가게를 퀘스트 순서대로 열기 (#206): `src/shopgate.js` 를 게임에 붙임. 닫힌 가게 문 앞 셔터·꺼진 지붕 간판(shops.js `roofSigns.off`)·'준비 중 — ○○ 열려요' 한 줄, 조건을 채우면 감독 `say('intro', …, { then })` 차례에 알림 + 셔터 올림 + 주인 손 흔듦(`late.questWave`). `late.shopOpen(id)`·`late.shopWhy(id)` 를 stores.js SHOP_POP when·openShopPop, shop.js 지도·가게 안내, quest.js 주인·need shop:, dump.js·ride.js 마차, hud.js 팁, nexthint.js 가 봄. 어드민 '가게 모두 열기'(이 기기만)·촬영 모드는 모두 열림. dev `__oreum.shopGate` |
 | gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
 | metricsadmin.js | 이용 통계 표 (#121): 어드민 개발자 메뉴 "수치" 패널. `adminApi.metrics` → `GET /admin/metrics`, 줄(잴 것) × 칸(날짜), 출처 단추 실서버·dev·어드민 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |
@@ -123,6 +124,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 오름펑크 글 (#165): punktext.js (#168 STORY_TEXT 뒤) — 방송(RADIO·RADIO_SITU)·쪽지(NOTES, id 는 저장에 씀)·칭호(TITLES, 번호가 멀티로 오가므로 뒤에만 더함). DOM 없음, 서버 validate·roomcore 도 씀
 - 박자: pacing.js(연출 감독 #89, DOM 없음 — tools/pace.js 가 node 에서 그대로 돌림)
 - 감독: director.js(#176, DOM 없음 — tools/journey.js 가 node 에서 30분 시간표를 뽑음). 설계는 notes/journey.md
+- 가게 열기: shopgate.js(#206, DOM 없음: 표 balance.js `SHOP_ST.unlock`·`SHOP_ST.gate`, 저장 `save.shopGate`, 처음 볼 때 옛 저장은 조용히 엶). 게임 연결은 game/shopgate.js, 확인 `node tools/shopgate.js`
 - 전리품·강화 셈 (#140): loot.js (순수 함수: 드롭 굴리기·강화 값·입기·귤로 바꾸기·저장 바로잡기 normLoot, 서버 validate.js 도 씀)
 - 퀘스트: quest.js(#158, DOM 없음: 줄기 하나씩·곁가지·진행·옛 저장 건너뛰기·할인권). 게임 연결은 game/quest.js, 표는 balance.js QUESTS
 - 다음 할 일: game/nexthint.js(#142, quest 뒤): late.nextHint(퀘스트 줄, ctx) 가 추적 줄에 잠깐 바뀌는 안내(HP·배낭·장비점)나 퀘스트 뒤 이어 줄 것을 돌려줌. 수치는 balance.js NEXT_HINT

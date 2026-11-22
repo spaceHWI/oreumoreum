@@ -127,6 +127,7 @@ import './game/caveextra.js'; // 동굴 4번 조각 (#195): 벽 쪽지·동굴 �
 import './game/caveshare.js'; // 동굴 적 같이 보기 (#205): 같은 칸 사람끼리 적을 한 사람이 굴림
 import './game/punkmeet.js'; // 오름펑크 상호작용 (#163): 하르방 하이파이브·관광객 사진·까마귀 도둑
 import './game/wish.js'; // 돌탑 소원 글·함께 기도 (#127)
+import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';

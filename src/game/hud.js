@@ -85,6 +85,7 @@ let tipIdle = 0, tipBagN = -1;
 function tipState() {
   const full = !!trash && late.bagRoom() < 1, sp = tipStreamPos();
   return {
+    goOk: (go) => late.shopOpen?.(go === 'shop' ? 'gear' : go) !== false, /* 닫힌 가게로 보내는 팁은 쉼 (#206) */
     busy: !!(late.tut.active) || !late.director?.isOpen('tips') || !late.director?.can('tip') || // 감독(#176): 문이 열렸고 지금 팁 차례일 때만
        (!!late.pace && !late.pace.canTip()) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
     bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && late.canBuyGear().length > 0,
