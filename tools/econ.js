@@ -408,6 +408,22 @@ async function main() {
     const a1 = lastOf(true), a0 = lastOf(false), pull = a0 - a1;
     verdict.push(`오늘의 할 일: 하루 보상이 그날 벌이의 최대 ${worst}% → 15% 안 ${worst <= 15 ? '통과' : '넘음'} · 마지막 칸(여유 25%) ${a0 === Infinity ? '-' : hm(a0)} → ${a1 === Infinity ? '-' : hm(a1)}: ${pull <= 3600 ? '하루 안 (통과)' : '하루 넘게 당겨짐'}`);
   }
+  // 수거 관 (#248): 들머리(가게 거리)에서 높은 구역에 가서 일하고 돌아오는 10분. 걸어서 오가기 vs 관 두 번(연출 TUBE.t 합 × 2 + 떨군 귤 두 번)
+  //   도착 클린하우스 = 그 구역 더미에서 가장 가까운 클린하우스. 클린하우스 구역은 들머리 0·숲길 1·남쪽 사면 2·능선 3·굼부리 4 (TUBE.zone, tools/tuberun.js 가 찍는 목록)
+  //   지금 오가는 길: 구역 2 는 권장 신발로 걸어 오감, 구역 3 위는 조랑말로 오르고 빠른 마차(구역 완료)로 내려옴 (--norides 면 걸어서). 목표: 관을 쓴 10분 귤 ≤ 지금 10분 귤 × 1.1
+  if (has('--tube') || !FLOW_ONLY) {
+    const TB = B.TUBE, CH_Z = [0, 1, 2, 3, 4], ride = TB.t.in + TB.t.pipe + TB.t.out, gvz = (z) => ZONES.find((Q) => Q.id === z)?.gv || 1;
+    const dropK = +arg('--tubedrop', TB.drop), drop = (a, b) => dropK * Math.max(1, Math.abs(b - a)) * gvz(Math.max(1, a, b));
+    const rows = ZONES.filter((Z) => Z.id >= 2).map((Z) => { const i = ZONES.indexOf(Z), t = Z.id, e = { ...e0, tool: Math.min(t, TOOLS.length), bag: Math.min(t, BAGS.length), shoes: Math.min(t, SHOES.length), ride: NORIDE || t < 3 ? 0 : RIDES.list.length };
+      const hs = map.heaps.filter((h) => h[0] === t), near = (f) => hs.reduce((a, h) => a + Math.hypot(h[2] - f.x, h[3] - f.z), 0) / Math.max(1, hs.length);
+      const k = FRONTS.length > 1 ? FRONTS.map((f, j) => j).slice(1).sort((a, b) => near(FRONTS[a]) - near(FRONTS[b]))[0] : 0, f = FRONTS[k];
+      const R = zones[i].n * gOf(zones[i], e) / clearT(zones[i], e), D = Math.hypot(f.x - map.front.x, f.z - map.front.z) * DETOUR, F = ZONE_BOSS.fast, walk = t >= 3 && !NORIDE ? travel(e, D) / 2 + F.fade * 2 + F.hold : travel(e, D); /* 지금: 구역 3 위는 조랑말로 오르고 빠른 마차(구역 완료)로 내려옴 */
+      const cost = drop(0, CH_Z[k]) + drop(CH_Z[k], 0), on = R * Math.max(0, 600 - 2 * ride) - cost, off = R * Math.max(0, 600 - walk);
+      const need = Math.max(0, (R * (600 - 2 * ride) - 1.1 * off) / (cost / dropK || 1));
+      return { 구역: t, '내리는 곳': k, '필요 drop': +need.toFixed(1), '지금 오가기(초)': Math.round(walk), '지금 10분': Math.round(off), '관 10분': Math.round(on), '떨군 귤': cost, 배: +(on / off).toFixed(2), ok: on <= off * 1.1 }; });
+    console.log(`\n수거 관 (#248): 들머리 ↔ 구역 10분 (관 ${ride.toFixed(1)}초 × 2, drop ${dropK})`); console.table(rows);
+    verdict.push(`수거 관 10분 귤: ${rows.every((r) => r.ok) ? '통과' : '넘음'} (${rows.map((r) => r.구역 + ':' + r.배).join(' ')}, 1.1 안)`);
+  }
   // 흡연자 (#156): 하루 1시간 벌이에서 흡연자 몫이 3% 아래 (가장 적게 버는 1일 기준)
   if (day1Rate) { const pct = SMOKE_H / day1Rate * 100; verdict.push(`흡연자 하루 귤 ${Math.round(SMOKE_H)} = 1일 벌이 ${day1Rate.toLocaleString()} 의 ${pct.toFixed(1)}% → 3% 아래 ${pct < 3 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));

@@ -1782,3 +1782,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 레이드: `raid.start(force)` 더함 (`src/raidcore.js`·`game/raid.js`, 서버 `{t:'rgo', f:1}`). force 는 싸움 중·부서짐 레이드도 지우고 5초 뒤 새로. 서버는 STATS_OPEN 방만 받음(실서버 어드민도 못 함). `online.js raid` 는 시작할 때 force 로 열어 앞 실행이 남긴 레이드(이어받기 줄이 싸움 중으로 남김)와 상관없음. 이어받기 앞 16초 고정 대신 쉼(단계 0)이 될 때까지
 - `online.js <서버> core` (동굴·레이드·귤 주기 뺀 나머지). 나눠 돌리는 법은 `notes/auto.md` 확인 절. 통째는 소프트웨어 GL 에서 약 11분
 - `sec.js` 2줄: 실서버 어드민의 rgo f:1 은 무시, STATS_OPEN 방의 rgo f:1 은 새 레이드
+
+## #248 수거 관: 클린하우스 사이 바로 이동
+- 클린하우스 5곳(들머리 `gate`·숲길 `skirt`·남쪽 사면 `slope`·능선 `rest`·굼부리 `crater`) 옆에 투입구(`src/tubemodel.js`). 상호작용 '수거 관' → '어디로 보낼까요?' (이름·거리·떨어질 귤) → 2.35초 연출 → 도착 배출구
+- 굼부리 들머리 클린하우스는 숲길(구역 1) 땅에 있지만 굼부리 더미를 맡아 이름·값은 굼부리 (`TUBE.zone`)
+- 열림: 그 클린하우스에 한 번이라도 버린 곳만 (`save.tube`). 옛 저장은 버린 적이 있으면 `journey.maxZ` 안의 클린하우스로 채움
+- 값: `TUBE.drop`(30) × 구역 거리 × 높은 쪽 구역 gv. 처음 임의값(3 × 도착 구역 gv)은 들머리 ↔ 굼부리 오가기 10분 벌이가 1.14배라 바꿈. `node tools/econ.js --tube` (지금: 구역 3 위는 조랑말로 오르고 빠른 마차로 내려옴. 관 10분 ≤ 1.1배)
+- 못 탐: 적 `TUBE.fightR` 안·우두머리·떼 판 중·튜토리얼·탈것/마차/노루. 쿨타임 없음, 귤 0개여도 탐
+- 멀티: presence `tb` = i(빨려 들어감)·p(관 속, 옮긴 자리)·o(튀어나옴). 서버는 p·o 가 붙은 순간 이동을 `NET.tubeGap`(3초)에 한 번 받아 줌(warpGap 과 따로), 그 밖의 tb 값은 지움
+- 확인: `node tools/tuberun.js [d|m]`, `tools/sec.js`(tb 순간 이동 3줄), `tools/oldsave.js tubeBad,tubeOld`
