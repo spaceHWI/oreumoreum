@@ -5,12 +5,14 @@
 //   see { at [x,z], r, prop, say } 목격: 레벨 lv 이상으로 at 의 r m 안에 들면 혼잣말 say → 사건 파일 '미해결'
 //   ev [{ id, kind 'photo'|'trace'|'note'|'act', at, prop, label, note, k?, n? }] 증거 (셋). act 는 at 없이 퀘스트 셈 k 가 사건을 연 뒤 n 번 오르면
 //   face { kind 'none'|'hide'|'arena'|'boss', at?, prop?, label?, len?, lines? } 대면. arena 는 그 구역 서바이벌 한 판을 버팀, boss 는 그 구역 우두머리를 쫓아냄 (사건을 연 뒤)
+//     arena·boss 에 watch: true 면 조건 뒤 at 에 모양이 나타나고 다가가 보기 장면 (#236, 모양 userData.anim) · trail { pts, size, step } 발자국 한 줄 · mats { 재료 id: 수 } 종결 때
 //   doc 서류 쪽지 id (대면을 끝내면 받음) · notes [NOTES 모양] 증거·서류 쪽지 · quests [QUESTS.side 모양] 진행
 //   cloth 보상 옷(겉모습, 값 0) · title 칭호 글(punktext.js TITLES 에 같은 글로 한 줄 더함) · badge { id, color, desc, reward } 업적
 // prop(모양)은 src/game/caseprops.js 의 이름 (row·peel·nest·paper·bush). 새 모양이 필요하면 거기에 더한다
 import c1 from './c1.js';
+import c5 from './c5.js';
 
-const LIST = [c1].filter(Boolean);
+const LIST = [c1, c5].filter(Boolean);
 export const CASES = LIST;
 export const CASE_BY = Object.fromEntries(LIST.map((c) => [c.id, c]));
 export const CASE_DOCS = 5; // 사건 파일 맨 위 서류 칸 수 (단가표·수거 시간표·인수인계서·투입구 규격서·분실물 접수증)

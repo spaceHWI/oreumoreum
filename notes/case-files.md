@@ -81,6 +81,8 @@
   - `see { at: [x, z], r, prop, say }` 목격: 레벨이 lv 이상이면 at 에 prop 모양이 보이고, r m 안에 들면 혼잣말 say(22자) → '미해결'
   - `ev [{ id, kind, at, prop, label, note }]` 증거 셋. kind: `photo` 사진 · `trace` 흔적 · `note` 쪽지 (자리에서 상호작용 → note 쪽지) · `act` 행동 n번 (`{ kind: 'act', k: '<퀘스트 셈 이름>', n }`, at 없음: 사건을 연 뒤 그 셈이 n 오르면. 예 'heap@2'·'dumper@2'·'repel:dog')
   - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
+    - arena·boss 에 `watch: true`·`at`·`prop`·`label`·`len`·`lines` 를 주면 조건을 채운 뒤 at 에 모양이 나타나고 [label] → 등 뒤에서 보는 장면(#236 사건 5). 모양의 `userData.anim(u)`(0~1)가 장면을 움직인다(`caseprops.js` yeti 본보기). 조건 전엔 추적 줄이 우두머리 빈터로
+  - `trail { pts: [[x, z], …], size, step }` (있으면) 목격 모양과 같이 보이는 발자국 한 줄 (MYST.foot 모양을 크게, `traces.js late.caseFoot`, #236) · `mats { m5: 6 }` (있으면) 종결 때 재료
   - `doc` 서류 쪽지 id(대면을 끝내면 받음) · `notes` 증거·서류 쪽지(NOTES 모양: id·paper·t 14자·from·b 4줄) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄))
   - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
 - 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게)
