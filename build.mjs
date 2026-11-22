@@ -64,7 +64,7 @@ const csp = (scriptSrc) => [
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https: wss: data: blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*",
-  'frame-src https://accounts.google.com/gsi/',
+  "frame-src 'self' https://accounts.google.com/gsi/", /* 'self': 어드민 모바일 화면으로 보기 틀 (#220) */
   "media-src 'self' data: blob:", "worker-src 'self' blob:",
   "manifest-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'",
 ].join('; ');

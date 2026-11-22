@@ -1,4 +1,5 @@
 // 공용 도구($·isTouch·clamp·wrapA), 저장 불러오기·예전 저장 고치기·persist, 맵·서버 결정, 장비→겉모습 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { isMobile } from '../mview.js';
 import { tintGear, lcClean } from '../lookcolors.js'; // #155
 import { NSMODE } from '../boot.js';
 import { useNamsongi } from '../namsongi.js';
@@ -17,7 +18,7 @@ import { slotTier } from '../gearscore.js';
 import { ADJ, NOUN } from '../nickwords.js';
 
 export const $ = (id) => document.getElementById(id);
-export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+export const isTouch = isMobile(); /* 판정은 mview.js 한 곳 (#220): 진짜 터치 기기이거나 어드민 '모바일 화면으로 보기' 틀 안 */
 if (isTouch) document.body.classList.add('touch');
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));

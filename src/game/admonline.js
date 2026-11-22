@@ -7,12 +7,13 @@ import { getOnline } from '../online.js';
 import { late } from './state.js';
 import { $, MAP_ID } from './save.js';
 import { trash, player } from './place.js';
+import { admTab } from './admwin.js';
 
 let on = false, last = 0, busy = false, data = null, wasOpen = false;
 const kstHM = (t) => new Date(t).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false });
 const mapName = (id) => MAPS[id]?.short || MAPS[id]?.name || id;
 const zoneName = (z) => (z ? ZONES[z - 1]?.name || '구역 ' + z : '들머리');
-const isOpen = () => !$('menu').hidden && !$('adm-body').hidden && !document.hidden;
+const isOpen = () => !$('admwin').hidden && admTab() === 'state' && !document.hidden; /* 어드민 창 '상태' 탭 (#220) */
 
 function row(k, v, me) {
   const d = document.createElement('div'); d.className = 'r' + (me ? ' me' : '');

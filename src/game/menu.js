@@ -10,6 +10,8 @@ import { marker } from './input.js';
 import { initInbox, inboxCheck } from './inbox.js';
 import { initGyulAdmin } from './gyuladmin.js';
 import { initOnline } from './admonline.js';
+import { setAdm, dropAdm } from '../mview.js';
+import { initAdmWin } from './admwin.js';
 
 // ---------- 동작 ----------
 $('btn-actions').addEventListener('click', () => { const a = $('actions'); const open = a.hidden; closePanels(); a.hidden = !open; if (open) state.emo.opened(); });
@@ -40,6 +42,7 @@ const hwiFlag = (() => { const HK = 'oreumoreum.hwi'; try { const q = new URLSea
 $('m-dev').hidden = true;
 export function enableDev() {
   if (devOn) return; devOn = true;
+  setAdm(); /* 이 기기가 어드민임을 기억 (모바일 화면으로 보기 #220) */
   $('m-dev').hidden = false;
   if (state.debugReady) late.exposeDebug();
   if (ONLINE) { initInbox(); initGyulAdmin(); initOnline(); } // 받은 의견 (#96)·귤 맞춤·보내기 (#188)·지금 접속 (#186): 서버 어드민에게만
@@ -65,7 +68,7 @@ export function enableDev() {
       let on0 = false; try { on0 = localStorage.getItem(XK) === '1'; } catch (e) { /* 무시 */ } setXY(on0);
       xb.addEventListener('click', () => setXY($('xy').hidden));
     }
-    $('adm-toggle').addEventListener('click', () => { const h = !$('adm-body').hidden; $('adm-body').hidden = h; $('adm-toggle').setAttribute('aria-expanded', String(!h)); });
+    initAdmWin(); // 어드민 창: 탭으로 나눠 한 화면에 (#220, admwin.js)
     let rc = 0;
     $('dev-reset').addEventListener('click', () => {
       if (!rc) { rc = 1; $('dev-reset').textContent = '정말 지울까요? 한 번 더'; setTimeout(() => { rc = 0; $('dev-reset').textContent = '모두 리셋'; }, 4000); return; }
@@ -87,6 +90,7 @@ export function enableDev() {
   }
 }
 if (!ONLINE && hwiFlag) enableDev(); // 혼자 하기(서버 주소 없음)는 예전처럼
+else if (!ONLINE) dropAdm();
 $('menu-ride').addEventListener('click', () => late.openRideWin()); // 탈것 창 (#109)
 $('menu-ach').addEventListener('click', () => openAch());
 $('menu-sound').addEventListener('click', () => { if (late.sound.on) late.sound.stop(); else late.sound.start(); save.soundOff = late.sound.on ? 0 : 1; persist(); late.setSoundUI(); }); // 소리는 메뉴 안에서만 (#75)
