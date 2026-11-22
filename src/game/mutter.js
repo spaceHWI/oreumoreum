@@ -87,10 +87,10 @@ const textOf = (l) => (l.text ? l.text() : T[l.id]) || '';
 const spent = (l) => (S.seen[l.id] | 0) >= M.max;
 const alive = (l) => { if (spent(l)) return false; try { if (l.need && !l.need()) return false; if (l.solved && l.solved()) return false; } catch { return false; } return true; };
 
-// ---------- 말풍선 (채팅 말풍선 모양, 기울인 옅은 글자) ----------
+// ---------- 말풍선 (보통 말풍선과 같은 실선 테두리, 글자만 조금 옅게. 점선·기울임은 #226 에서 뺌) ----------
 let bub = null; // { sp, t }
 function makeBubble(text, L) { // 그림은 src/bubble.js 한 틀 (#190). L: 이번 장 줄들
-  const b = bubbleCanvas(text, { L, font: 'italic 500 26px "Noto Sans KR", sans-serif', fill: 'rgba(251,246,230,0.86)', stroke: 'rgba(51,64,42,0.5)', lineW: 3, dash: [7, 5], ink: '#5d6650' });
+  const b = bubbleCanvas(text, { L, ink: '#5d6650' });
   const tx = new THREE.CanvasTexture(b.canvas); tx.colorSpace = TEXCS;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));
   const [sx, sy] = bubbleScale(b); sp.scale.set(sx, sy, 1); sp.center.set(0.5, 0); sp.renderOrder = 10; sp.position.y = M.y - 0.42; sp.name = 'mutter';

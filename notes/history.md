@@ -1655,3 +1655,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - A 는 키(WASD)도 화면 기준, 카메라가 저절로 돌지 않음, 위아래 고정·좁은 확대. 화면 가장자리 어둠으로 긴장 유지
 - `tools/caverun.js`: 안마다 층 모양 검사(늘) · `--live` 에서 세 안 × 3장면 그림(notes/shots/214)·draw call·프레임 시간
 - 고른 뒤 안 하나만 남기는 정리는 기획 세션이 새 이슈로
+- #226 혼잣말 말풍선 점선 테두리 없앰: `game/mutter.js` 가 `bubbleCanvas` 기본 틀(보통 말풍선과 같은 실선·바탕)을 쓰고 글자색만 조금 옅게(#5d6650). 기울임·반투명 바탕도 뺌. `tools/talkshot.js` 창 검사는 세로 스크롤되는 창(쪽지 #199)이면 아래로 넘치는 것을 넘침으로 보지 않게 고침
+
+## #219 강화 다 올린 뒤 강화 퀘스트 막힘
+- 원인: 퀘스트 '강화 한 번 해 보기'(g-up, ask upgrade) 의 셈을 아무 곳에서도 올리지 않았음 → 강화해도 영영 0. `game/forge.js` 강화 성공 때 `late.questEv('upgrade')`
+- 옛 저장: `save.quest.c.upgrade` 가 없으면 처음 한 번 지금 올린 강화 수 합으로 채우고, 걸려 있던 강화 퀘스트는 받기 전 것도 셈(보상이 할인권 한 장이라 너그럽게)
+- 더 채울 수 없음: `src/quest.js` 의 `stuck(q)` (hooks.cap(k) = 지금 오를 수 있는 끝 < 받을 때 값 + n). tick 이 막힌 것을 `hooks.stuck` 로 바로 끝냄(보상 한 번, '이미 다 했어요'). 받는 순간·불러올 때 모두
+- 끝 있는 셈은 `game/quest.js` CAP 한곳(`questCan(k)`): tool·bag·weapon·gearTB·gearAll(가장 높은 단계), upgrade(입은 장비가 모두 +enhMax), clothes(LEAP 에 안 가진 옷 없음). 나머지(더미·소굴·식사·낚시·인사·사진·머리·구경·투기꾼·적·구역·우두머리)는 다시 할 수 있거나 ever 라 끝없음
+- 받을 때 이미 채운 것(ever 단계 도달 등)은 받자마자 돌려주기 창을 바로 띄움
+- 서버 `earn.js` 는 quest.done 의 보상을 조건 없이 계정마다 한 번 인정 → 바로 끝낸 것도 거절하지 않음
+- `tools/oldsave.js`: upMax(다 강화 + 강화 퀘스트 → 끝·할인권), upOld(셈 없는 옛 저장 → 강화 수로 채워 준비됨), gearMax(끝 단계 + '한 칸 올리기' 줄기 → 끝·다음 줄)
