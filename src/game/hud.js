@@ -148,7 +148,7 @@ export function updateScore() {
   if (d) late.scoreChanged?.(g.total, d);
 }
 export function addCoins(n, why) { save.coins = Math.max(0, save.coins + n); persist(); updateStats(); if (why) toast(`${why} · 귤 ${n > 0 ? '+' : ''}${n}`); if (n > 0) late.sound.coin?.(); }
-export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin', 'fs-tip', 'admwin'];
+export const PANELS = ['omap', 'sign', 'wishes', 'chat', 'actions', 'menu', 'ach', 'dex', 'feedback', 'notes', 'shoppop', 'rank', 'inbox', 'zdone', 'wake-pick', 'quest', 'qlog', 'xmas', 'mate-talk', 'aug-pick', 'nickwin', 'deerwin', 'fs-tip', 'admwin'];
 export const panelOpen = () => PANELS.some((id) => !$(id).hidden);
 export const busy = () => ['sit', 'photo', 'photo-wait', 'crouch'].includes(player.pose) || cam.mode === 'wardrobe' || lookS.open || panelOpen() || !!player.rescue || hp.isDown || hp.pending;
 export function closePanels() { PANELS.forEach((id) => { $(id).hidden = true; }); }

@@ -18,16 +18,16 @@ Object.assign(late, { dismountDeer, doJump, standUp }); // 앞 파일에서 부�
 // 노루 타기. 멀티(서버 방)면 방에 먼저 물어 한 마리에 한 사람만 (#92, deernet.js). 방이 허락하면 now=true 로 다시 불림
 export function mountDeer(d, now = false) {
   if (busy() || player.riding || player.cart) return;
-  if (!now && late.deerNet?.claim(d)) return;
+  if (!now && !d.pal && late.deerNet?.claim(d)) return; /* 내 노루(#247)는 방에 묻지 않음 */
   if (player.ride) dismountRide();
   life.mount(d); player.riding = d; player.target = null; marker.visible = false;
   d.heading = player.heading; d.pos.y = height(d.pos.x, d.pos.z);
-  toast('노루 등에 올라탔어요. 점프 버튼으로 내려요');
+  toast(d.pal ? `${d.name} 등에 올라탔어요. 점프 버튼으로 내려요` : '노루 등에 올라탔어요. 점프 버튼으로 내려요');
   ach.emit('ride');
 }
 export function dismountDeer() {
   const d = player.riding; if (!d) return;
-  life.dismount(d); player.riding = null; late.deerNet?.release(d);
+  life.dismount(d); player.riding = null; if (!d.pal) late.deerNet?.release(d);
   player.pos.copy(d.pos).add(new THREE.Vector3(Math.cos(d.heading), 0, -Math.sin(d.heading)).multiplyScalar(1.2)); player.pos.y = height(player.pos.x, player.pos.z);
   player.speed = 0;
 }
