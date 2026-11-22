@@ -70,6 +70,7 @@ function updatePlayer(dt) {
 
   let dir = null;
   if (!busy() && !p.knock && p.pose !== 'photo-wait') {
+    if (!aiming || p.moveH == null) p.moveH = p.heading; /* #265: 겨누는 동안 몸은 과녁을 보고, 키보드 W·A·D 는 이 이동 방향으로 (예전엔 몸 방향=과녁 쪽으로만 걸어 터 밖으로 끌려 나감) */
     let fx = 0, fz = 0;
     if (keys.has('w') || keys.has('arrowup')) fz -= 1;
     if (keys.has('s') || keys.has('arrowdown')) fz += 1;
@@ -93,8 +94,8 @@ function updatePlayer(dt) {
       if (!aiming) { const dh = wrapA(Math.atan2(dir.x, dir.z) - p.heading); p.heading += dh * Math.min(1, dt * 10); }
     } else if (fx || fz) {
       p.target = null; p.onArrive = null; marker.visible = false; p.joyMag = 1;
-      if (fx) { if (p.riding) p.riding.heading -= fx * dt * 2.6; else if (!aiming) p.heading -= fx * dt * 2.6; }
-      const hh = p.riding ? p.riding.heading : p.heading;
+      if (fx) { if (p.riding) p.riding.heading -= fx * dt * 2.6; else if (!aiming) p.heading -= fx * dt * 2.6; else p.moveH -= fx * dt * 2.6; }
+      const hh = p.riding ? p.riding.heading : aiming ? p.moveH : p.heading;
       if (fz) dir = new THREE.Vector3(Math.sin(hh), 0, Math.cos(hh)).multiplyScalar(-fz);
       const dy = wrapA((hh + Math.PI) - cam.yaw);
       if (ptrs.size === 0 && state.camHold <= 0) cam.yaw += dy * Math.min(1, dt * (fz ? 3 : 1.5));
