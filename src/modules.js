@@ -136,6 +136,7 @@ import './game/summit.js'; // 정상 첫 실마리 (#208): 첫 장면·표지석
 import './game/mystery.js'; // 미스터리 장치 (#212): 되풀이되는 숫자 4:04·관리 초소 금고
 import './game/traces.js'; // 미스터리 장치 (#212): 발자국·크롭서클·뒤돌아보면·도감 '흔적'
 import './game/cases.js'; // 사건 파일 (#232): 사건 틀·사건 1 '정리하는 자'·사건 파일 창 (데이터 src/cases/)
+import './game/casesuit.js'; // 사건 3 대면 장면의 검은 양복 (#234)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)

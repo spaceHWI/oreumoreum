@@ -278,6 +278,7 @@ export const TITLES = [
   // 사건 파일 (#232): 사건을 종결하면 (src/cases/c*.js title 과 같은 글, badge 'b-case-<id>')
   { t: '까마귀와 같은 급', badge: 'b-case-c1' },
   { t: '밤 근무 동기', badge: 'b-case-c2' },
+  { t: '못 본 걸로 한 사람', badge: 'b-case-c3' },
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');
