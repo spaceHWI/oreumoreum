@@ -1,6 +1,6 @@
 // 가게를 퀘스트 순서대로 열기 (#206) 확인. 먼저 node build.mjs. node tools/shopgate.js
-// 1) 튜토리얼을 막 마친 저장: 장비점만 열림, 나머지는 셔터·꺼진 간판·준비 중·주인 없음·마차 못 탐
-// 2) 첫 배낭 가득 → 버림 → 만족한상회 알림·셔터 올라감 / 구역 1 우두머리 → 스톤 / 레벨·구역 2 → 미장원·LEAP / 구역 2 우두머리 → 탈것·마차
+// 1) 튜토리얼을 막 마친 저장: 장비점만 열림, 나머지는 셔터·꺼진 간판·준비 중·주인 없음 (마차는 탐, #244)
+// 2) 첫 배낭 가득 → 버림 → 만족한상회 알림·셔터 올라감 / 구역 1 우두머리 → 스톤 / 레벨·구역 2 → 미장원·LEAP / 구역 2 우두머리 → 탈것 가게
 // 3) 옛 저장(구역 2 끝·식사한 적 있음): 처음부터 모두 열림(알림 없이) · 4) 어드민 '가게 모두 열기'
 const { chromium } = require('playwright');
 const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
@@ -64,8 +64,8 @@ async function page(b, data) {
     // 미장원·LEAP: 구역 2
     await E(() => { window.__oreum.save.journey.maxZ = 2; });
     ok(await until(() => window.__oreum.shopGate.isOpen('salon') && window.__oreum.shopGate.isOpen('leap'), 90000), '구역 2 에서 미장원·LEAP 이 열림');
-    // 마차: 구역 2 우두머리 전엔 못 탐
-    ok(await E(() => !window.__oreum.shopGate.isOpen('ride')), '탈것 가게·마차 아직 닫힘');
+    // 탈것 가게: 구역 2 우두머리 전엔 닫힘 (마차는 탐, #244)
+    ok(await E(() => !window.__oreum.shopGate.isOpen('ride')), '탈것 가게 아직 닫힘');
     await E(() => { window.__oreum.save.boss.done[2] = 1; });
     ok(await until(() => window.__oreum.shopGate.isOpen('ride'), 60000), '구역 2 우두머리 뒤 탈것 가게가 열림');
     // 다시 읽어도 열린 채

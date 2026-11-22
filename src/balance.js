@@ -889,14 +889,14 @@ export const SHOP_ST = {
   // 가게를 퀘스트 순서대로 하나씩 열기 (#206, src/shopgate.js·game/shopgate.js). 값·순서는 임의
   // need = [{사실: 최소값}, …] 중 하나라도 맞으면 열림 (사실: jeong 정낭을 나섬, fullDump 첫 배낭을 가득 채워 버림, zd1·zd2 그 구역 우두머리를 쫓음, zone 가 본 가장 높은 구역, lv 레벨, dumps 버린 수)
   // old = 처음 볼 때(옛 저장)만 보는 조건 (그 가게를 쓴 적이 있어도 열림, 알림 없이). how = 닫힌 가게 앞 '준비 중 — ○○ 열려요', say = 열릴 때 알림, quiet = 알림 없이
-  // ride 는 탈것 가게와 마차 타기를 같이 엶
+  // ride 는 탈것 가게만 엶. 마차 타기는 가게와 상관없이 늘 됨 (#244)
   unlock: [
     { id: 'gear', need: [{ jeong: 1 }], how: '정낭을 나서면', quiet: true },
     { id: 'manjok', need: [{ fullDump: 1 }], old: [{ dumps: 2 }], how: '배낭을 가득 채워 클린하우스에 비우면', say: '골목 끝 만족한상회가 문을 열었어요' },
     { id: 'stone', need: [{ zd1: 1 }], how: '숲길 우두머리를 쫓아내면', say: '장비점 옆 스톤이 문을 열었어요' },
     { id: 'salon', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '골목 어귀 루이네 미장원이 문을 열었어요' },
     { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
-    { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요 · 마차도 다녀요' },
+    { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요' },
   ],
   gate: {
     fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)
