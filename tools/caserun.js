@@ -6,30 +6,35 @@
 //       → 수사 보드(#246: 사진 자리 5·종결 사진·핀·빨간 실, 사진을 누르면 증거 칸, 칸을 누르면 쪽지) → 다시 읽어도 그대로 · 증거·숨는 곳이 막힌 곳이 아님
 //       옛 판으로 진행한 저장(save.cases 의 v 가 다름)은 처음으로 돌고 옛 쪽지(drop)가 빠짐
 const { chromium, devices } = require('playwright');
-const CID = process.argv[2] && /^c\d$/.test(process.argv[2]) ? process.argv[2] : 'c1';
-const rest = process.argv.slice(2).filter((a) => a !== CID), mode = rest[0] || 'd', SHOTS = !!rest[1];
-let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); if (!c) fails++; };
-(async () => {
-  const { CASE_BY, caseLastQuest } = await import('../src/cases/index.js');
-  const C = CASE_BY[CID]; if (!C) { console.log('없는 사건', CID); process.exit(1); }
-  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const ctx = await b.newContext(mode === 'm' ? { ...devices['iPhone 13'] } : { viewport: { width: 1280, height: 720 } });
-  const p = await ctx.newPage(); let errs = 0;
-  p.on('pageerror', (e) => { errs++; console.log('ERR', e.message.slice(0, 300)); });
-  const W = (ms) => p.waitForTimeout(ms);
-  let shotN = 0; const shot = async (n) => { if (SHOTS) await p.screenshot({ path: `dist/case-${mode}-${shotN++}-${n}.jpg`, type: 'jpeg', quality: 55, scale: 'css', timeout: 150000 }); };
-  const ev = (fn, arg) => p.evaluate(fn, arg);
+const CID0 = process.argv[2] && /^c\d$/.test(process.argv[2]) ? process.argv[2] : 'c1';
+const rest = process.argv.slice(2).filter((a) => a !== CID0), MODE = rest[0] || 'd', SHOTS0 = !!rest[1];
+let fails = 0; const ok0 = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); if (!c) fails++; };
+// 들어오기(첫 화면 → 튜토리얼 건너뛰기 → 감독 문 quest). tools/fullrun.js 가 한 저장으로 사건을 잇는 데도 씀 (#243)
+async function enterGame(p, ok) {
+  const W = (ms) => p.waitForTimeout(ms), ev = (fn, arg) => p.evaluate(fn, arg);
   const until = async (fn, ms = 8000, arg) => { const t1 = Date.now(); while (Date.now() - t1 < ms) { if (await ev(fn, arg)) return true; await W(250); } return false; };
-  const go = (x, z) => ev(([x, z]) => { const o = window.__oreum; o.player.pos.set(x, o.groundAt(x, z), z); o.player.visY = o.player.pos.y; o.player.target = null; o.snap(); }, [x, z]);
-  const CS = () => ev((id) => window.__oreum.cases.state(id), CID);
-  const closeNote = () => ev(() => window.__oreum.punkWorld.note.close());
   await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await W(6000);
   await p.click('#enter').catch(() => {}); await W(4000);
   await ev(() => window.__oreum.setTod(14));
   if (await ev(() => !document.getElementById('look').hidden)) { await p.click('#look-ok').catch(() => {}); await W(1500); }
   await ev(() => { const o = window.__oreum; o.swarm?.disable?.(true); /* 들판 떼 한 판(#202)은 따로 (tools/swarmrun.js). 싸우는 중엔 숨을 수 없음 */ o.tut.skipAll(); o.quest.next?.off(true); o.save.mutter = { ...(o.save.mutter || {}) }; });
   ok(await until(() => window.__oreum.director.state().open.includes('quest'), 20000), '감독 문 quest 열림');
-  await until(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); return true; }, 1000);
+}
+// 사건 하나를 처음부터 종결·수사 보드·다시 읽기까지. p 는 이미 들어온 페이지. o.chain 이면 앞 사건을 이미 끝낸 저장 (보드의 종결 수가 더 많음)
+async function runCase(p, CID, mode, SHOTS, ok, o = {}) {
+  const { CASE_BY, caseLastQuest } = await import('../src/cases/index.js');
+  const C = CASE_BY[CID]; if (!C) { ok(false, '없는 사건 ' + CID); return; }
+  const W = (ms) => p.waitForTimeout(ms);
+  /* 그리는 수 (#243): 찍는 자리마다 20 프레임 동안 draw call 최대·삼각형·프레임 시간. o.perf 배열이 있으면 담음 */
+  const meas = async (tag) => { if (!o.perf) return; const r = await p.evaluate(() => new Promise((res) => { const R = window.__oreum.renderer; let mx = 0, tr = 0, n = 0; const t0 = performance.now(); const f = () => { mx = Math.max(mx, R.info.render.calls); tr = Math.max(tr, R.info.render.triangles); if (++n < 20) requestAnimationFrame(f); else res({ calls: mx, tris: tr, ms: +((performance.now() - t0) / 20).toFixed(1) }); }; requestAnimationFrame(f); })).catch(() => null); if (r) o.perf.push({ 사건: CID, 자리: tag, ...r }); };
+  let shotN = 0; const shot = async (n) => { await meas(n); if (SHOTS) await p.screenshot({ path: `dist/case-${mode}-${CID}-${shotN++}-${n}.jpg`, type: 'jpeg', quality: 55, scale: 'css', timeout: 150000 }); };
+  const ev = (fn, arg) => p.evaluate(fn, arg);
+  const until = async (fn, ms = 8000, arg) => { const t1 = Date.now(); while (Date.now() - t1 < ms) { if (await ev(fn, arg)) return true; await W(250); } return false; };
+  const go = (x, z) => ev(([x, z]) => { const o = window.__oreum; o.player.pos.set(x, o.groundAt(x, z), z); o.player.visY = o.player.pos.y; o.player.target = null; o.snap(); }, [x, z]);
+  const CS = () => ev((id) => window.__oreum.cases.state(id), CID);
+  const closeNote = () => ev(() => window.__oreum.punkWorld.note.close());
+  await ev(() => { const o = window.__oreum; o.swarm?.disable?.(true); o.quest.next?.off(true); o.setTod(14); });
+  await until(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); if (!document.getElementById('wake-pick')?.hidden) document.getElementById('wake-start')?.click(); /* 다시 들어오면 '어디서 시작' 창 (zonedone.js) */ return true; }, 1000);
   const sp = await ev((id) => window.__oreum.cases.spots(id), CID);
   ok(!!sp?.see, `자리 ${JSON.stringify(sp)}`);
   // 자리가 막힌 곳이 아닌가 (충돌)·구역 안인가
@@ -46,11 +51,11 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   // ----- 레벨이 모자라면 열리지 않음 -----
   let s = await CS(); ok(!s.open && s.lv < C.lv, `처음엔 사건이 닫혀 있음 (레벨 ${s.lv} < ${C.lv})`);
   await go(sp.see[0] + 2, sp.see[1] + 2); await W(1500);
-  s = await CS(); ok(!s.open, '레벨이 모자라면 목격 자리에 가도 안 열림');
+  s = await CS(); ok(!s.open, '레벨이 모자라면 목격 자리에 가도 안 열림'); await meas('before');
   ok(await ev((id) => !window.__oreum.cases.objs().find((o) => o.kind === 'see' && o.id === id).vis, CID), '레벨이 모자라면 목격 모양도 안 보임');
   // ----- 레벨 lv → 목격 -----
   await go(sp.see[0] + 40, sp.see[1] + 40); await W(300);
-  await ev((L) => { const o = window.__oreum; for (let x = 0; o.level.state().lv < L; x += 50) o.level.setXp(x); }, C.lv);
+  await ev((L) => { const o = window.__oreum; for (let x = o.level.state().xp, g = 0; o.level.state().lv < L && g < 200; g++) { x += Math.max(50, Math.ceil(o.level.state().need / 4)); o.level.setXp(x); } }, C.lv); /* 지금 경험치에서 올림 (fullrun 이 이어 쓸 때 앞 레벨로 내려가지 않게) */
   s = await CS(); ok(s.lv >= C.lv, `레벨 ${s.lv}`);
   await until(() => { const L = window.__oreum.level.state(); if (L.open) window.__oreum.level.close(); return !L.open && !document.querySelector('.overlay:not([hidden])'); }, 4000); /* 레벨업 증강 고르기 창은 닫음 (창이 열린 동안은 목격하지 않음) */
   await go(sp.see[0] + 3, sp.see[1] + 3); await ev((sp) => { const o = window.__oreum, p = o.player.pos; o.cam.yaw = Math.atan2(p.x - sp[0], p.z - sp[1]); o.snap(); }, sp.see); await W(400); /* 목격 모양 쪽을 봄 */
@@ -88,9 +93,18 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
       ok(await ev(() => window.__oreum.cam.mode === 'follow'), '카메라 돌아옴');
     }
     const shown = await ev(() => window.__oreum.punkWorld.note.shown());
+    if (!shown) console.log('  까닭', JSON.stringify(await ev(() => { const o = window.__oreum; return { ctx: o.aim.ctx(), panels: [...document.querySelectorAll('.overlay')].filter((e) => !e.hidden).map((e) => e.id), cam: o.cam.mode, lvOpen: o.level.state().open, pos: [+o.player.pos.x.toFixed(1), +o.player.pos.z.toFixed(1)], focus: document.activeElement?.id || document.activeElement?.tagName }; })));
     ok(await ev((id) => window.__oreum.punkWorld.note.got().includes(id), e.note), `${e.id} (${e.kind}) 찾음 · 쪽지 창 '${shown}'`);
     if (e === C.ev[0]) await shot('note');
     await closeNote(); await W(300);
+    if (o.midReload && e === C.ev.find((x) => x.kind !== 'act')) { /* 사건 도중 새로 고침 (#243 fullrun): 찾은 증거·받은 퀘스트가 그대로 */
+      const n0 = (await CS()).ev;
+      await p.reload(); await W(6000); await p.click('#enter').catch(() => {}); await W(4000);
+      await ev(() => { const o = window.__oreum; o.swarm?.disable?.(true); o.quest.next?.off(true); o.setTod(14); });
+      await until(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); if (!document.getElementById('wake-pick')?.hidden) document.getElementById('wake-start')?.click(); /* 다시 들어오면 '어디서 시작' 창 (zonedone.js) */ return true; }, 1000);
+      await until(() => { const L = window.__oreum.level.state(); if (L.open) window.__oreum.level.close(); return !L.open && !document.querySelector('.overlay:not([hidden])'); }, 6000); /* 다시 읽으면 고르지 않은 증강 창이 다시 열림 */
+      const s1 = await CS(); ok(s1.open && s1.ev === n0 && (await ev((id) => { const st = window.__oreum.save.quest; return st.cur?.id === id || Object.keys(st.side || {}).includes(id) || Object.values(st.side || {}).some((e) => e?.id === id); }, q1.id)), `사건 도중 새로 고침: 열림·증거 ${s1.ev}/${n0}·'${q1.id}' 받은 채`);
+    }
   }
   s = await CS(); ok(s.ev === C.ev.length && s.all, `증거 ${s.ev}/${C.ev.length}`);
   ok(await until((id) => window.__oreum.quest.api.ready(id), 3000, q1.id), `${q1.id} 조건 채움`);
@@ -261,7 +275,16 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await p.reload(); await W(6000); await p.click('#enter').catch(() => {}); await W(4000);
   s = await CS(); ok(s.open && s.closed && s.f === 1 && s.ev === C.ev.length, `다시 읽어도 그대로 ${JSON.stringify({ open: s.open, closed: s.closed, ev: s.ev })}`);
   ok(await ev(() => !document.getElementById('menu-case').hidden), '다시 읽어도 메뉴 [사건 파일]');
-  ok(errs === 0, `페이지 오류 ${errs}`);
+}
+module.exports = { enterGame, runCase };
+if (require.main === module) (async () => {
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const ctx = await b.newContext(MODE === 'm' ? { ...devices['iPhone 13'] } : { viewport: { width: 1280, height: 720 } });
+  const p = await ctx.newPage(); let errs = 0;
+  p.on('pageerror', (e) => { errs++; console.log('ERR', e.message.slice(0, 300)); });
+  await enterGame(p, ok0);
+  await runCase(p, CID0, MODE, SHOTS0, ok0);
+  ok0(errs === 0, `페이지 오류 ${errs}`);
   await b.close();
   console.log(fails ? `실패 ${fails}` : '통과'); process.exitCode = fails ? 1 : 0;
 })();

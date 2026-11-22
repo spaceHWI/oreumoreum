@@ -3,7 +3,7 @@
 // - crop: 풀이 둥글게 누운 무늬(#212 크롭서클 그림, 땅을 따라 휨. userData.place(x, z) 로 놓음) · dent: 무늬 가운데 눌린 자국 · rock: 올라서서 찍는 바위
 // - paper: 돌에 눌린 쪽지 · bush: 숨을 수풀 · heap: 떨어지는 더미(자루·캔)
 // 사건 2 (#233): wall 돌담 조각 · rag 흰 천이 걸린 낮은 돌담 · gone 더미가 있던 반듯한 빈자리 · line 빨랫줄의 흰 작업복과 메모
-// 사건 3 (#234): suits 능선에 선 검은 양복 둘(MYST.back 실루엣) · suit 하나(대면 자리) · prints 맨발 자국 두 쌍(발가락 넷) · notebook 떨어진 검은 수첩 · gyulbox 두고 간 귤 상자와 쪽지
+// 사건 3 (#234): suits 능선에 선 검은 양복 둘 · suit 하나(대면 자리) — 둘 다 Tripo mib 모델(#264) · prints 맨발 자국 두 쌍(발가락 넷) · notebook 떨어진 검은 수첩 · gyulbox 두고 간 귤 상자와 쪽지
 // - 사건 5: print 큰 발자국 · fur 흰 털 뭉치 · knots 묶인 봉지 셋 · yeti 앉아 봉지를 묶는 설인(userData.anim, Tripo 모델 #262)
 // - (사건 4, #235) neck: 안개 속 긴 목 그림자(Tripo 호스 모델 #262, 솟았다 내려감·꿈틀) · rings: 같은 크기 둥근 자국들 · post: 둘레의 관찰 말뚝 · log: 초소 일지(받침에 얹은 공책)
 // 모양의 root.userData.tick(t, dt) 가 있으면 보이는 동안 game/cases.js 가 매 프레임 부름. 대면 장면은 아래 SCENES (game/cases.js 가 face.scene 이름으로 씀)
@@ -11,11 +11,13 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from '../toon.js';
 import { LOW } from '../gfx2.js';
-import { CASE, MYST } from '../balance.js';
+import { CASE } from '../balance.js';
 import { height } from '../world.js';
 import { drape } from '../drape.js';
 import { cropTex } from '../croptex.js';
 import { caseModel } from '../casemodels.js';
+import { player } from './place.js';
+import { scene } from './scene.js';
 
 const MATS = {};
 const tm = (c) => (MATS[c] ||= new THREE.MeshToonMaterial({ color: c, gradientMap: gradHard }));
@@ -28,16 +30,16 @@ function lump(parts, color) {
   const mesh = new THREE.Mesh(mergeGeometries(gs), tm(color)); gs.forEach((g) => g.dispose());
   mesh.castShadow = !LOW; mesh.receiveShadow = true; return mesh;
 }
-// 검은 양복 실루엣 (뒤돌아보면 figure 와 같은 모양·색, 칼라만 흰 V)
-function silh(x) {
-  const H = MYST.back.h, g = new THREE.Group(), mat = (SIL ||= new THREE.MeshBasicMaterial({ color: '#1a1d20' }));
-  const gs = [[new THREE.CylinderGeometry(0.16, 0.3, H * 0.62, 7), 0, H * 0.31, 0], [new THREE.SphereGeometry(0.34, 10, 8), 0, H * 0.62 + 0.36, 0, 0, 0, 0, 1, 1.25, 0.9],
-    [new THREE.CylinderGeometry(0.05, 0.04, H * 0.5, 5), -0.26, H * 0.38, 0, 0, 0, -0.12], [new THREE.CylinderGeometry(0.05, 0.04, H * 0.5, 5), 0.26, H * 0.38, 0, 0, 0, 0.12]];
-  const body = lump(gs, '#1a1d20'); body.material = mat; body.castShadow = false; g.add(body);
-  g.add(lump([[new THREE.ConeGeometry(0.07, 0.2, 3), 0, H * 0.56, 0.2, Math.PI, 0, 0]], '#f2efe6'));
-  g.position.x = x; return g;
+/* 사건 3 검은 양복 (Tripo mib, #264). 그려진 땅 높이와 height() 차이: 남송이 땅 그물은 비탈에서 height() 보다 높게 그려져(능선 대면 자리 +0.16m) 발이 묻힘.
+   땅 모양(terrain)에 한 번 쏴 보고 그만큼 올림(groundLift, 0~0.5) */
+const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0), from = new THREE.Vector3();
+export function groundLift(x, z, y) {
+  const t = scene.getObjectByName('terrain'); if (!t) return 0;
+  from.set(x, y + 30, z); ray.set(from, down); ray.far = 60;
+  const hit = ray.intersectObject(t, false)[0]; return hit ? Math.max(0, Math.min(0.5, hit.point.y - y)) : 0;
 }
-let SIL = null;
+function mib(g, x) { const m = caseModel('mib'); m.root.position.x = x; m.play('stand'); m.update(0); g.add(m.root); return m; }
+function lift(g, M) { if (g.userData.lifted) return; g.userData.lifted = true; g.updateMatrixWorld(true); for (const m of M) { const p = m.root.getWorldPosition(from); m.root.position.y = groundLift(p.x, p.z, g.position.y); } } /* 자리는 cases.js 가 처음 보일 때 정해 둠 */
 const B = {
   crop() { // 무늬: 지름 2 판을 CASE.crop.r 로 키워 땅을 따라 휨 (흐린 풀빛, 그림자 없음)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, LOW ? 10 : 16, LOW ? 10 : 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: cropTex(), transparent: true, opacity: CASE.crop.op, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
@@ -92,10 +94,20 @@ const B = {
     g.add(lump([[new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), 1.05, 0.45, 0.15, 0, 0, 0.25], [new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), 1.11, 0.45, 0.15, 0, 0, 0.18]], '#8a8f96'));
     return g;
   },
-  suits() { // 검은 양복 둘 (뒤돌아보면의 실루엣 모양 그대로, game/traces.js figure). 1.4m 떨어져 나란히
-    const g = new THREE.Group(); g.add(silh(-0.7), silh(0.7)); return g;
+  suits() { // 검은 양복 둘 (Tripo mib #262 → #264). 1.4m 떨어져 나란히, 가만히 서서 고개만 나를 봄. 가까우면 둘 다 같은 말(아주 작게 끄덕)
+    const g = new THREE.Group(), M = [-0.7, 0.7].map((x) => mib(g, x));
+    g.userData.tick = (t, dt) => { lift(g, M); const near = player.pos.distanceToSquared(g.position) < CASE.mibTalk ** 2; for (const m of M) { m.play(near ? 'talk' : 'stand'); m.lookAt(player.pos); m.update(dt); } };
+    return g;
   },
-  suit() { return silh(0); },
+  suit() { // 대면 자리 (우두머리 뒤): 혼자 서서 나를 봄. 다가가 상호작용하면 casesuit.js 배우로 바뀜(이 모양은 숨음)
+    const g = new THREE.Group(), m = mib(g, 0);
+    g.userData.tick = (t, dt) => { /* 몸도 천천히 나를 향해 돎 (자리는 cases.js 가 정함, 돌리기만) */
+      lift(g, [m]);
+      const want = Math.atan2(player.pos.x - g.position.x, player.pos.z - g.position.z) - g.rotation.y, d = Math.atan2(Math.sin(want - m.root.rotation.y), Math.cos(want - m.root.rotation.y));
+      m.root.rotation.y += d * Math.min(1, dt * 1.5); m.lookAt(player.pos); m.update(dt);
+    };
+    return g;
+  },
   prints() { // 두 사람이 꼭 같은 자리에 선 맨발 자국 두 쌍 (구두 자국이 아님, 발가락 넷)
     const parts = [];
     for (const px of [-0.7, 0.7]) for (const k of [-1, 1]) {

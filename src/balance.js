@@ -38,7 +38,7 @@ export const FIELD_HEAPS = { 1: { mt: 1 }, 2: { mt: 1 }, 3: { l: 2, mt: 1 }, 4: 
 // 구역 (#45): src/zones.js zoneAt 이 위치로 번호를 구함. heaps 더미 크기별 수, min 목표 시간(권장 장비로 혼자, 클린하우스 왕복 포함)
 // rec 권장 장비 점수 (#137, GROWTH.score 로 셈. 칸 10개가 모두 n단계면 구역 n 쯤). gear 권장 장비 단계(도구·배낭·신발, 시간 계산용)
 // recLv 권장 레벨 (#251): 플레이어에게 보이는 기준. node tools/econ.js 의 '권장 레벨'(장비 점수가 rec 에 닿는 레벨 가운데 값, 여유 25%) 4·5·7·10·13 에서 구역 1 은 1.
-//   사건 파일 열림 레벨(3·6·10·14·18)보다 낮거나 같게(사건이 열릴 때는 이미 권장 레벨). 안쪽 셈(적 세기·slowNew 등)은 그대로 rec
+//   사건 파일 열림 레벨(3·6·10·12·15, #243)보다 낮거나 같게(사건이 열릴 때는 이미 권장 레벨). 안쪽 셈(적 세기·slowNew 등)은 그대로 rec
 // gv 이 구역 쓰레기 귤 배수 (#137: 구역마다 벌이가 약 2.5배. 클린하우스에서 받는 귤 = TRASH_TYPES gyul × gv)
 //   #138 들판 더미·쓰레기 산이 더해져 하루 1시간을 다 쓰게 되어 1·1·2·8·14 로 낮춤 (전 4·4.5·8·18·30, tools/econ.js 흐름 통과)
 // mix 나오는 쓰레기 종류 비율(TRASH_TYPES 순서: 캔·페트병·비닐·스티로폼·폐어구)
@@ -1951,7 +1951,7 @@ QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·
 // r 상호작용 거리 · off 길가 더미에서 떨어진 거리 [최소, 최대] m · far 흔적·표시가 보이는 거리 · ring 바닥 표시 반지름
 export const REPORT = { lv: 2, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14 };
 // crop: 사건 1 무늬 반지름(m)·진하기·돌림 (#246) · view: 위에서 찍기 장면 길이(초)·높이·옆 거리 · face: 숨어 보기 장면 (drop 떨어지는 높이 m, dropAt 장면 비율)
-export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, goneAfter: 4, /* see.blink 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
+export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, mibTalk: 8, /* 사건 3 목격 검은 양복이 이 m 안이면 talk (#264) */ goneAfter: 4, /* see.blink 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
 CASE.chase = { white: '#f4f3ee', glow: 0.35, behind: 2.4, glide: 3.2, glimT: 2.6, nightR: 45, afterT: 8, camBack: 3.6, camSide: 1.1, camUp: 1.9, faceD: 1.3, faceSide: 2.1, faceUp: 1.45, ambR: 70, ambW: 0.35, vanish: 7 };
@@ -2267,7 +2267,7 @@ export const MSG = { max: 3, min: 2.5, maxSec: 5, perChar: 0.08, h: 30, gap: 5 }
 // suit: 여섯 칸을 다 입으면 판 중 쓰러질 때 한 번 일어남(hp 비율), 쉬는 시간(SWARM.run.rest 초) 뒤 다시 참
 // stall: 좌판 자리(터 문 기준 옆 side m·바깥 out m), npc 이름. 값과 속도 어림: 첫 무기 = 구역 판 3~4번, 한 벌 = 10~15번 (결과 코멘트·tools/tokenrun.js)
 export const TOKEN = {
-  name: '징표', icon: 'gong',
+  name: '망고', icon: 'gong',
   earn: { win: 3, leader: 2, clean: 1, part: 0.5, partMax: 2 },
   server: { perSec: 0.06, burst: 40, restK: 0.9, migrateMax: 40 },
   arms: [
@@ -2284,11 +2284,11 @@ export const TOKEN = {
     { id: 'jacket:t-gong', slot: 'jacket', z: 2, price: 20, name: '현무암 조끼 갑옷', tok: { guard: 0.3 }, look: { kind: 'jacket', main: '#45464b', acc: '#f08a24', cuffs: true } },
     { id: 'hat:t-gong', slot: 'hat', z: 3, price: 22, name: '귤띠 두건', tok: { dmg: 0.06 }, look: { kind: 'bucket', main: '#3e3f45', acc: '#f08a24' } },
     { id: 'bottom:t-gong', slot: 'bottom', z: 4, price: 26, name: '터 바지', tok: { dmg: 0.06 }, look: { kind: 'long', main: '#3a3b40', acc: '#f08a24', knee: true } },
-    { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '징표 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
+    { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '망고 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
   ],
   suit: { hp: 0.5 },
   stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6 },
   quest: { n: 10, gyul: 20 },
 };
 CLOTHES.push(...TOKEN.cloth.map(({ z, tok, ...c }) => ({ tier: 0, style: true, tok: true, tokZ: z, tokStat: tok, ...c, price: 0, tokPrice: c.price })));
-QUESTS.side.push({ id: 'x-token', giver: 'jigi', door: 'field', name: '징 값', say: ['구역마다 서바이벌 터가 하나씩, 징 옆엔 좌판이 하나씩 있어요. 주인은 터지기 씨.', '버티면 징표를 줘요. 귤은 안 받아요. 징표만 받아요. 까닭은 터지기 씨도 몰라요.'], task: `터에서 징표 ${TOKEN.quest.n}개 모으기`, ask: { k: 'token', n: TOKEN.quest.n }, fin: ['징표가 모였네요. 귤로 바꿔 줄 순 없어요. 대신 이걸 받아요.'], reward: { gyul: TOKEN.quest.gyul } }); /* 징표 (#255) */
+QUESTS.side.push({ id: 'x-token', giver: 'jigi', door: 'field', name: '징 값', say: ['구역마다 서바이벌 터가 하나씩, 징 옆엔 좌판이 하나씩 있어요. 주인은 터지기 씨.', '버티면 망고를 줘요. 귤은 안 받아요. 망고만 받아요. 까닭은 터지기 씨도 몰라요.'], task: `터에서 망고 ${TOKEN.quest.n}개 모으기`, ask: { k: 'token', n: TOKEN.quest.n }, fin: ['망고가 모였네요. 귤로 바꿔 줄 순 없어요. 대신 이걸 받아요.'], reward: { gyul: TOKEN.quest.gyul } }); /* 징표 (#255) */

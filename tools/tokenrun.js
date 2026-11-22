@@ -1,7 +1,7 @@
-// 징표 (#255): node tools/tokenrun.js
-// 1) 서버 셈(브라우저 없이): 한 판 징표는 상한까지만, 쉬는 시간 안 두 번째 버팀 거절, 귤로는 못 삼(징표 없이 산 무기는 되돌림), 옛 저장은 징표 0
-// 2) 게임(dist/test.html 남송이): 구역 1 터 한 판을 버팀(시간을 끝 무렵으로) → 징표 얻음 → 좌판 창에 무기·옷 → 귤이 많아도 징표가 모자라면 못 삼
-//    → 징표로 연발 1단계 삼 → 징표 줄어듦 → 들면 무기가 연발 값 · 옷 입은 칸은 싸움 값/줍기 몫 없음 · 차림 묶음 저장·입기 · 징을 칠 때 묻기
+// 망고 (#255): node tools/tokenrun.js
+// 1) 서버 셈(브라우저 없이): 한 판 망고는 상한까지만, 쉬는 시간 안 두 번째 버팀 거절, 귤로는 못 삼(망고 없이 산 무기는 되돌림), 옛 저장은 망고 0
+// 2) 게임(dist/test.html 남송이): 구역 1 터 한 판을 버팀(시간을 끝 무렵으로) → 망고 얻음 → 좌판 창에 무기·옷 → 귤이 많아도 망고가 모자라면 못 삼
+//    → 망고로 연발 1단계 삼 → 망고 줄어듦 → 들면 무기가 연발 값 · 옷 입은 칸은 싸움 값/줍기 몫 없음 · 차림 묶음 저장·입기 · 징을 칠 때 묻기
 const { chromium } = require('playwright');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) fail++; };
 (async () => {
@@ -12,23 +12,23 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   const t = Date.now(), acc = { credit: 0, pickCredit: 1e6, bank: 0, savedAt: t - 60000, cred: {} };
   const P = { ...JSON.parse(JSON.stringify(FRESH)), coins: 1000, nick: '징지기', tok: { n: 0, got: 0, own: {}, rec: {} } };
   let r = checkSave(P, { ...P, tok: { n: 6, got: 6, own: {}, rec: { 1: { at: t, n: 6, win: 1 } } } }, acc, t);
-  ok(!r.fixed.includes('tok') && r.save.tok.n === 6, `구역 1 버틴 판 징표 6(상한) 인정 (${r.save.tok.n})`);
+  ok(!r.fixed.includes('tok') && r.save.tok.n === 6, `구역 1 버틴 판 망고 6(상한) 인정 (${r.save.tok.n})`);
   const r2 = checkSave(r.save, { ...r.save, tok: { ...r.save.tok, n: 12, got: 12, rec: { 1: { at: t + 60000, n: 6, win: 1 } } } }, { ...r.acc, savedAt: t }, t + 60000);
   ok(r2.fixed.includes('tok') && r2.save.tok.n === 6, `쉬는 시간 안에 같은 구역 두 번째 버팀은 거절 (${r2.save.tok.n})`);
   const r3 = checkSave(P, { ...P, tok: { n: 999, got: 999, own: {}, rec: { 2: { at: t, n: 999, win: 1 } } } }, acc, t);
-  ok(r3.fixed.includes('tok') && r3.save.tok.n === runMax(2), `상한 넘는 징표는 구역 2 상한 ${runMax(2)} 로 깎음 (${r3.save.tok.n})`);
+  ok(r3.fixed.includes('tok') && r3.save.tok.n === runMax(2), `상한 넘는 망고는 구역 2 상한 ${runMax(2)} 로 깎음 (${r3.save.tok.n})`);
   const r4 = checkSave(P, { ...P, coins: 1000, tok: { n: 0, got: 0, own: { rapid: 1 }, arm: 'rapid', rec: {} } }, acc, t);
-  ok(r4.fixed.includes('tokItems') && !r4.save.tok.own.rapid && r4.save.coins === 1000, '징표 없이(귤만 있고) 산 연발은 되돌림, 귤은 그대로');
+  ok(r4.fixed.includes('tokItems') && !r4.save.tok.own.rapid && r4.save.coins === 1000, '망고 없이(귤만 있고) 산 연발은 되돌림, 귤은 그대로');
   const r5 = checkSave({ ...P, tok: { n: 20, got: 20, own: {}, rec: {} } }, { ...P, tok: { n: 20 - armPrice('rapid', 1), got: 20, own: { rapid: 1 }, arm: 'rapid', rec: {} } }, acc, t);
-  ok(!r5.fixed.length && r5.save.tok.own.rapid === 1, `징표로 산 연발(${armPrice('rapid', 1)})은 그대로`);
+  ok(!r5.fixed.length && r5.save.tok.own.rapid === 1, `망고로 산 연발(${armPrice('rapid', 1)})은 그대로`);
   const r6 = checkSave({ ...P, tok: { n: 20, got: 20, own: {}, rec: {} } }, { ...P, tok: { n: 20, got: 20, own: { rapid: 1 }, rec: {} } }, acc, t);
-  ok(r6.fixed.includes('tok') && r6.save.tok.n === 20 - armPrice('rapid', 1), `값을 안 빼고 산 것은 남은 징표를 깎음 (${r6.save.tok.n})`);
+  ok(r6.fixed.includes('tok') && r6.save.tok.n === 20 - armPrice('rapid', 1), `값을 안 빼고 산 것은 남은 망고를 깎음 (${r6.save.tok.n})`);
   const cl = { ...P, tok: { n: 0, got: 0, own: {}, rec: {} } }, r7 = checkSave(cl, { ...cl, clothes: { own: { 'top:t-gong': 1 }, wear: { top: 'top:t-gong' } } }, acc, t);
-  ok(r7.fixed.includes('tokItems') && !r7.save.clothes.own['top:t-gong'] && !r7.fixed.includes('items'), '징표 없이 가진 징표 옷은 되돌림(귤 값으로 보지 않음)');
+  ok(r7.fixed.includes('tokItems') && !r7.save.clothes.own['top:t-gong'] && !r7.fixed.includes('items'), '망고 없이 가진 망고 옷은 되돌림(귤 값으로 보지 않음)');
   const old = checkSave({ ...JSON.parse(JSON.stringify(FRESH)), coins: 50, nick: '옛사람' }, { ...JSON.parse(JSON.stringify(FRESH)), coins: 50, nick: '옛사람' }, acc, t);
-  ok(old.save.tok && old.save.tok.n === 0 && !old.fixed.length, '옛 저장(tok 없음)은 징표 0 으로');
-  let bucket = checkSave(P, P, acc, t).acc.cred.tk; ok(bucket === TOKEN.server.burst, `징표 통 ${bucket}`);
-  { let s = P, a = { ...acc, savedAt: t, cred: { tk: 0 } }; const x = checkSave(s, { ...s, tok: { n: 4, got: 4, own: {}, rec: { 1: { at: t, n: 4, win: 0 } } } }, a, t); ok(x.save.tok.n === 0 && x.fixed.includes('tok'), '통이 빈 채 징표는 거절'); }
+  ok(old.save.tok && old.save.tok.n === 0 && !old.fixed.length, '옛 저장(tok 없음)은 망고 0 으로');
+  let bucket = checkSave(P, P, acc, t).acc.cred.tk; ok(bucket === TOKEN.server.burst, `망고 통 ${bucket}`);
+  { let s = P, a = { ...acc, savedAt: t, cred: { tk: 0 } }; const x = checkSave(s, { ...s, tok: { n: 4, got: 4, own: {}, rec: { 1: { at: t, n: 4, win: 0 } } } }, a, t); ok(x.save.tok.n === 0 && x.fixed.includes('tok'), '통이 빈 채 망고는 거절'); }
   void SWARM;
 
   /* ---------- 2) 게임 ---------- */
@@ -42,7 +42,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   await p.evaluate(() => { const o = window.__oreum; o.pace.pacing.test.first.done = true; o.pace.pacing.test.first.bloomed = true; o.setTod(13); o.setWeather('clear'); o.director.open('field'); });
   await p.waitForFunction(() => !!window.__oreum.tok, null, { timeout: 20000 });
   const s0 = await p.evaluate(() => window.__oreum.tok.state());
-  ok(s0.n === 0 && !s0.arming, `옛 저장으로 시작: 징표 0 (${s0.n})`);
+  ok(s0.n === 0 && !s0.arming, `옛 저장으로 시작: 망고 0 (${s0.n})`);
   const st = await p.evaluate(() => window.__oreum.tok.stalls());
   ok(st.length >= 5, `좌판 ${st.length}곳 (${st.map((s) => s.zone).join(',')})`);
   // 한 판 버팀
@@ -52,18 +52,18 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m
   await p.waitForFunction(() => !window.__oreum.swarm.state() && window.__oreum.swarm.last, null, { timeout: 60000 });
   const s1 = await p.evaluate(() => { clearInterval(window.__god); const o = window.__oreum; return { ...o.tok.state(), last: o.swarm.last, tl: o.tok.last }; });
   const want = await p.evaluate(() => window.__oreum.tok.runTokens({ zone: 1, win: true, leader: false, clean: true, waves: 6 }));
-  ok(s1.last.why === 'win' && s1.n === want && s1.rec[1]?.win === 1 && s1.rec[1]?.n === want, `구역 1 버팀 → 징표 ${s1.n} (기대 ${want}), 기록 ${JSON.stringify(s1.rec[1])}`);
+  ok(s1.last.why === 'win' && s1.n === want && s1.rec[1]?.win === 1 && s1.rec[1]?.n === want, `구역 1 버팀 → 망고 ${s1.n} (기대 ${want}), 기록 ${JSON.stringify(s1.rec[1])}`);
   // 좌판 창
   await p.evaluate(() => { const o = window.__oreum; o.tok.go(1); o.save.coins = 99999; o.tok.open(1); });
   await p.waitForTimeout(300);
   const c0 = await p.evaluate(() => ({ open: window.__oreum.tok.shopOpen(), cards: window.__oreum.tok.cards(), coins: document.getElementById('shoppop-coins').textContent }));
   ok(c0.open && c0.cards.some((c) => c.id === 'rapid') && c0.cards.some((c) => c.id === 'top:t-gong') && !c0.cards.some((c) => c.id === 'blast'), `구역 1 좌판: 연발·옷 2칸, 폭발 없음 (${c0.cards.map((c) => c.id).join(',')}) · 위 숫자 ${c0.coins}`);
-  ok(c0.coins === String(s1.n), '좌판 위 숫자는 귤이 아니라 징표');
+  ok(c0.coins === String(s1.n), '좌판 위 숫자는 귤이 아니라 망고');
   const poor = await p.evaluate(() => { const o = window.__oreum, c = o.save.coins, r = o.tok.buyArm('rapid', 1); return { r, coins: o.save.coins === c, n: o.tok.state().n }; });
-  ok(!poor.r && poor.coins, `징표가 모자라면(귤 99999 있어도) 못 삼 (징표 ${poor.n})`);
+  ok(!poor.r && poor.coins, `망고가 모자라면(귤 99999 있어도) 못 삼 (망고 ${poor.n})`);
   const bought = await p.evaluate(() => { const o = window.__oreum; o.tok.give(20, 1, false); const n0 = o.tok.state().n, c = o.save.coins, r = o.tok.buyArm('rapid', 1), s = o.tok.state(); return { r, n0, n: s.n, coins: o.save.coins === c, arm: s.arming, w: s.weapon, dmg: s.dmg }; });
   const pr = armPrice('rapid', 1);
-  ok(bought.r && bought.n === bought.n0 - pr && bought.coins, `징표로 연발 1단계 삼: ${bought.n0} → ${bought.n} (값 ${pr}), 귤 그대로`);
+  ok(bought.r && bought.n === bought.n0 - pr && bought.coins, `망고로 연발 1단계 삼: ${bought.n0} → ${bought.n} (값 ${pr}), 귤 그대로`);
   ok(bought.arm === 'rapid' && bought.w === 'mg' && bought.dmg === TOKEN.arms[0].lv[0].dmg, `든 무기 = 연발 (쏘는 방식 ${bought.w}, 피해 ${bought.dmg})`);
   const fire = await p.evaluate(async () => { const o = window.__oreum; o.enemies.test.clear(); o.save.coins = 500; o.weapon.fire(); await new Promise((r) => setTimeout(r, 400)); return { ok: true }; });
   ok(fire.ok && !errs.length, '연발 쏘기 오류 없음');
