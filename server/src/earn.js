@@ -15,11 +15,14 @@
 //   상자: save.cave.chest.got 의 새 id 'c<층>' (서버 날짜 하루에 한 번, cred.cc) · 주인: save.cave.boss 가 오늘(또는 어제) 날짜로 바뀌면 그날 한 번 (cred.cb)
 // - 들판 떼 한 판 (#202): save.swarm.won[구역] = { at, b } 의 at 이 새로우면 덤 b (SWARM.run.bonusMax 까지). 구역마다 쉬는 시간(SWARM.run.rest × swarmRestK) 안에 두 번 인정하지 않음 (서버 시계)
 // - 금고 (#212): save.myst.safe 가 새로 1 이 되면 MYST.safe.gyul. 계정마다 한 번 (cred.safe, 처음부터 다시 해도 두 번 안 받음)
+// - 미확인 제보 (#238, src/cases/reports.js): save.report = { d, id, got } 의 got 이 서버 날짜(오늘·어제)면 REPORT.gyul. 날마다 한 번 (cred.rp 날짜)
 // 기록이 없는 것(적·업적·낚시 등)은 지금처럼 credit 에서
-import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM, CAVE, MYST } from '../../src/balance.js';
+import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM, CAVE, MYST, REPORT } from '../../src/balance.js';
+import { REPORT_BY } from '../../src/cases/reports.js';
 import { sellValue, GEAR_SLOTS, curItem, clothId, WEAR_K } from '../../src/loot.js';
 import { slotTier } from '../../src/gearscore.js';
 import { kstDay } from '../../src/rankday.js';
+import { normTkCred } from './token.js';
 import { todaysTasks, taskGyul, allGyul, runGyul, RUN_DAYS, dateOfDay, runStep } from '../../src/daily.js';
 
 const E = NET.earnRec;
@@ -41,9 +44,11 @@ export function normCred(c) {
     dlp: isObj(o.dlp) && typeof o.dlp.d === 'string' ? { d: o.dlp.d.slice(0, 10), ids: Array.isArray(o.dlp.ids) ? o.dlp.ids.slice(0, 3) : [], all: o.dlp.all ? 1 : 0 } : { d: '', ids: [], all: 0 }, // 어제 것 (자정 넘어 저장)
     cave: num(o.cave, E.caveBurst), // 동굴 통 (#195)
     safe: o.safe ? 1 : 0, // 금고를 연 계정 (#212)
+    rp: typeof o.rp === 'string' ? o.rp.slice(0, 10) : '', // 미확인 제보를 인정한 마지막 날 (#238)
     cd: isObj(o.cd) ? { d: num(o.cd.d), g: num(o.cd.g) } : { d: 0, g: 0 }, // 동굴 오늘 인정한 쓰레기 몫 (3번 조각)
     cc: isObj(o.cc) && Array.isArray(o.cc.got) ? { d: num(o.cc.d), got: o.cc.got.filter((x) => typeof x === 'string').slice(0, CAVE.floors) } : { d: 0, got: [] }, // 동굴 오늘 연 상자
     cb: typeof o.cb === 'string' ? o.cb.slice(0, 10) : '', // 동굴 주인 큰 보상을 준 날
+    ...normTkCred(o), // 징표 통·구역별 버틴 판 (#255, server/src/token.js)
     run: isObj(o.run) ? { n: num(o.run.n), last: num(o.run.last), paid: Array.isArray(o.run.paid) ? o.run.paid.filter((x) => RUN_DAYS.includes(x)) : [] } : { n: 0, last: 0, paid: [] },
   };
 }
@@ -66,7 +71,7 @@ export function cleanSold(list) {
 // → { room: 인정한 귤, cred, why: { sold, quest, boss, den, tr, sight }, bad: [거절한 판 것] }
 export function recognize(P, S, sold, cred, t) {
   const C = normCred(JSON.parse(JSON.stringify(cred || {})));
-  const why = { sold: 0, quest: 0, boss: 0, den: 0, tr: 0, sight: 0, daily: 0, run: 0, cave: 0, swarm: 0, safe: 0 };
+  const why = { sold: 0, quest: 0, boss: 0, den: 0, tr: 0, sight: 0, daily: 0, run: 0, cave: 0, swarm: 0, safe: 0, report: 0 };
   // 통 채우기 (지난 시각부터)
   const dt = Math.max(0, Math.min(NET.earnWindow * 6, (t - (C.at || t)) / 1000));
   C.fresh = Math.min(E.freshBurst, C.fresh + dt * E.freshPerSec);
@@ -133,6 +138,9 @@ export function recognize(P, S, sold, cred, t) {
   }
   // 6-2) 금고 (#212): 계정마다 한 번
   if (S.myst?.safe === 1 && P.myst?.safe !== 1 && !C.safe) { C.safe = 1; why.safe = MYST.safe.gyul; }
+  // 6-3) 미확인 제보 (#238): 서버 날짜(오늘·어제)의 끝낸 제보, 하루 한 번
+  { const R = S.report, d = isObj(R) && typeof R.d === 'string' ? R.d : '';
+    if (d && R.got && REPORT_BY[R.id] && (d === dateOfDay(day) || d === dateOfDay(day - 1)) && C.rp !== d && C.rp < d) { C.rp = d; why.report = REPORT.gyul; } }
   // 7) 오늘의 할 일 (#125)
   const pz = Math.max(1, Math.min(5, Math.floor(Number(P.journey?.maxZ)) || 1)), z = Math.max(pz, Math.min(pz + 1, Math.floor(Number(S.journey?.maxZ)) || 1));
   const SD = isObj(S.ach?.daily) ? S.ach.daily : null, today = dateOfDay(day), yday = dateOfDay(day - 1);

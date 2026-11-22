@@ -10,7 +10,7 @@ import { cam, endTitleCam } from './camera.js';
 import { toast, updateStats, closePanels, ach, panelOpen, cancelAll } from './hud.js';
 import { enableDev } from './menu.js';
 import { dropAdm } from '../mview.js';
-import { startSession } from './room.js';
+import { startSession, net } from './room.js';
 import { openLook, introMap, switchMap } from './look.js';
 import { sound, setSoundUI } from './hooks.js';
 import { createRank } from '../rank.js';
@@ -51,7 +51,7 @@ function cutNotice(c, before, after) {
 if (ONLINE) {
   state.account = createAccount({ getSave: () => save, writeLocal, toast, entered: () => state.sessionOn, ver: VERSION,
     onGift: (g) => { late.notEarned?.(g.n); save.coins += g.n; persist(); updateStats(); late.sound?.coin?.(); late.gyulShower?.(g.n); toast(`운영자가 귤 ${g.n.toLocaleString()}개를 보냈어요${g.why ? ': ' + g.why : ''}`, 5); }, // #188
-    onFix: (f) => { const c0 = save.coins; if (f.lv) late.lvFix?.(f.lv); if (f.gift && typeof f.gift === 'object') { const g = save.gift ||= { in: 0, out: 0 }, gi = Math.max(0, Math.floor(+f.gift.in || 0)), go = Math.max(0, Math.floor(+f.gift.out || 0)); if (f.coins != null) f.coins = Math.max(0, f.coins + Math.max(0, (g.in | 0) - gi) - Math.max(0, (g.out | 0) - go)); g.in = Math.max(g.in | 0, gi); g.out = Math.max(g.out | 0, go); } if (f.coins != null && f.coins !== save.coins) { const before = save.coins; save.coins = f.coins; updateStats(); if (f.cut?.n > 0) cutNotice(f.cut, before, f.coins); else toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; if (f.mealFree) save.mealFree = 1; if ('season' in f) { if (f.season) save.season = f.season; else delete save.season; late.season?.fixed(); } if (f.nick && f.nick !== save.nick) { const was = save.nick; save.nick = f.nick; if (f.nickRen) save.nickRen = f.nickRen; late.nickChanged?.(was); } if (save.coins > c0) late.notEarned?.(save.coins - c0); writeLocal(); } }); /* 이름 (#162): 서버가 되돌리거나 바꾼 이름 */
+    onFix: (f) => { const c0 = save.coins; if (f.lv) late.lvFix?.(f.lv); if (f.tok) late.tokFix?.(f.tok); /* 징표 (#255) */ if (f.gift && typeof f.gift === 'object') { const g = save.gift ||= { in: 0, out: 0 }, gi = Math.max(0, Math.floor(+f.gift.in || 0)), go = Math.max(0, Math.floor(+f.gift.out || 0)); if (f.coins != null) f.coins = Math.max(0, f.coins + Math.max(0, (g.in | 0) - gi) - Math.max(0, (g.out | 0) - go)); g.in = Math.max(g.in | 0, gi); g.out = Math.max(g.out | 0, go); } if (f.coins != null && f.coins !== save.coins) { const before = save.coins; save.coins = f.coins; updateStats(); if (f.cut?.n > 0) cutNotice(f.cut, before, f.coins); else toast('귤을 서버 기록에 맞췄어요'); } if (f.total != null && save.trash) save.trash.total = f.total; if (f.mealFree) save.mealFree = 1; if ('season' in f) { if (f.season) save.season = f.season; else delete save.season; late.season?.fixed(); } if (f.nick && f.nick !== save.nick) { const was = save.nick; save.nick = f.nick; if (f.nickRen) save.nickRen = f.nickRen; late.nickChanged?.(was); } if (save.coins > c0) late.notEarned?.(save.coins - c0); writeLocal(); } }); /* 이름 (#162): 서버가 되돌리거나 바꾼 이름 */
   document.querySelector('.intro-beta')?.setAttribute('hidden', '');
   mountLogin({ box: $('acct-box'), enterBtn: $('enter'), account: state.account, localSave: save, hasProgress: save.coins > 5 || (save.trash?.total || 0) > 0 || !!save.tut?.done, toast });
   const syncAcct = () => { $('m-acct').hidden = !state.account.loggedIn; $('acct-days').textContent = `기록 보관 ${state.account.daysLeft()}일 남음`; if (state.account.admin) enableDev(); else if (state.account.checked) dropAdm(); }; /* 어드민 아님이 확인되면 '모바일 화면으로 보기' 표시도 지움 (#220) */ // 서버 어드민이면 개발자 메뉴 (#84)
@@ -69,7 +69,8 @@ if (ONLINE) {
 // ---------- 랭킹 (#11): 메뉴·클린하우스 옆 게시판에서 열기, 버린 뒤 순위 토스트 ----------
 const rankFace = (look) => { const [k, sk] = String(look).split('|'); return k ? late.HEAD_SVG(k, SKIN_TONES[Math.max(0, Math.min(SKIN_TONES.length - 1, +sk || 0))]) : '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="22" r="11" fill="rgba(255,255,255,.35)"/></svg>'; };
 export const rank = createRank({ account: state.account, store: trash?.store || null, face: rankFace, toast, ach, save, persist, onOpen: closePanels,
-  el: { box: $('rank'), list: $('rank-list'), note: $('rank-note'), range: $('rank-range') } });
+  el: { box: $('rank'), list: $('rank-list'), note: $('rank-note'), range: $('rank-range') },
+  guests: () => (net.solo ? 0 : [...net.peersById.values()].filter((e) => e.data && e.data.ac !== 1).length) }); /* #261: 같은 방 손님 수 */
 if (state.account?.loggedIn) setTimeout(() => rank.prime(), 2500); // 오늘 순위 기준
 late.openRank = () => rank.open(); late.rankAfterDump = () => rank.afterDump();
 $('menu-rank').addEventListener('click', () => rank.open());

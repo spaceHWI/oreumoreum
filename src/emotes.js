@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { TEXCS } from './boot.js';
 import { EMOTE } from './balance.js';
 
-// 동작(이모트) (#76): 채팅 없이 뜻을 전하는 동작. 바퀴 메뉴·머리 위 아이콘 말풍선·방향 표시·net 으로 보내기
+// 동작(이모트) (#76, #242 8개·버튼 곁 부채꼴): 채팅 없이 뜻을 전하는 동작. 부채꼴 메뉴·머리 위 아이콘 말풍선·방향 표시·net 으로 보내기
 // 동작 이름 = 캐릭터 포즈 이름 (runner.js animate). hand: 손동작(탈것을 타고 있어도 됨)
 // dur: 초 (0 = 걸을 때까지 계속). mark: 다른 사람 화면에 방향 표시를 남김
 // 아이콘은 24×24 선 그림 path 문자열 하나로: 바퀴 칸(SVG)과 말풍선(캔버스 Path2D)이 같은 그림을 씀
@@ -40,9 +40,8 @@ export const EMOTES = [
 ];
 export const EMOTE_BY = Object.fromEntries(EMOTES.map((e) => [e.id, e]));
 export const isEmote = (id) => !!EMOTE_BY[id];
-// 바퀴 쪽: 8칸씩. 동작이 많아 3쪽 (마지막 쪽은 6칸)
-export const PAGES = [];
-for (let i = 0; i < EMOTES.length; i += 8) PAGES.push(EMOTES.slice(i, i + 8).map((e) => e.id));
+// 화면에 보이는 8개 (#242). 남이 목록 밖 동작을 보내도 EMOTE_BY 에 있으면 그대로 보이고, 모르는 것은 isEmote 로 거름
+export const SHOWN = EMOTE.list.filter(isEmote);
 
 const svg = (e, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="${e.fill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${e.icon}"/></svg>`;
 
@@ -67,7 +66,7 @@ function makeSprite(e, accent, size) {
 
 export function createEmotes({ scene, player, save, persist, net, toast, sound, camera, placeArrow, ui, can, riding, heapPos, faceTo, onEmote, groundAt, myRoot }) {
   const tipSec = 1.6;
-  save.emoFav = Array.isArray(save.emoFav) && save.emoFav.length === 4 && save.emoFav.every(isEmote) ? save.emoFav : [...EMOTE.favDefault];
+  if ('emoFav' in save) { delete save.emoFav; persist(); } /* 예전 안쪽 고정 4칸 (#242 에서 없앰) */
   let mine = null; // presence 로 보내는 내 동작 { id, at, mx, mz }
   let over = null; // 탈것을 타고 있을 때 손동작 { id, t }
   let lastMark = -1e9;
@@ -205,59 +204,96 @@ export function createEmotes({ scene, player, save, persist, net, toast, sound, 
   }
   const presence = () => ({ em: mine });
 
-  // ----- 바퀴 메뉴 -----
-  let page = 0, editing = null, wheel = null, holdT = 0, held = false;
+  // ----- 동작 버튼 곁 부채꼴 (#242) -----
+  // 버튼을 누르면 버튼을 중심으로 8칸이 펼쳐짐. 누른 채 밀어서 떼면 그 칸, 그냥 누르고 떼면 열린 채로 두고 눌러 고름. 고르면 닫힘
+  // 버튼이 화면 왼쪽이면 위→오른쪽, 오른쪽이면 위→왼쪽, 가운데면 위 반원. 위 공간이 모자라면 반지름을 줄임
+  let wheel = null, chatEl = null, anchor = null, hot = null;
+  const F = EMOTE.fan;
+  function anchorAt(btn) {
+    const r = btn?.getBoundingClientRect();
+    if (r && r.width > 0) return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    /* 단순 화면(#189)처럼 버튼이 숨어 있으면: 폰 동작 버튼 자리(왼쪽 아래, 조이스틱 위) */
+    const cs = getComputedStyle(document.documentElement), px = (v) => parseFloat(cs.getPropertyValue(v)) || 0;
+    return { x: Math.max(16, px('--safe-l')) + 22, y: innerHeight - px('--safe-b') - 172 };
+  }
+  function layout(a) {
+    const W = innerWidth, H = innerHeight, half = F.cell / 2 + 6;
+    const hx = a.x < W / 3 ? 1 : a.x > W * 2 / 3 ? -1 : 0, up = a.y > H / 2;
+    const cl = (p) => ({ ...p, x: Math.max(half, Math.min(W - half, p.x)), y: Math.max(half, Math.min(H - half, p.y)) });
+    /* 폰 가로처럼 위가 낮으면: 버튼 옆으로 한 줄 (조이스틱 위, 엄지로 옆으로 밀기) */
+    if (hx && H < F.rowH) {
+      const cells = SHOWN.map((_, i) => ({ i, x: a.x + hx * (F.cell / 2 + 30 + i * (F.cell + 8)), y: a.y }));
+      return { cells: cells.map(cl), chat: cl({ x: a.x, y: a.y + (up ? -1 : 1) * (F.cell + 8) }) };
+    }
+    let [a0, a1] = hx ? F.side : F.mid;
+    if (hx < 0) [a0, a1] = [-180 - a0, -180 - a1];
+    if (!up) [a0, a1] = [-a0, -a1];
+    const room = up ? a.y - F.top : H - a.y - half, k = Math.max(0.7, Math.min(1, room / (F.r[1] + half)));
+    /* 안쪽 줄은 바깥 줄 칸 사이에 오게 엇갈림 (양 끝을 1/8 씩 안으로) */
+    const ring = (n, r, off, st) => Array.from({ length: n }, (_, i) => {
+      const t = ((a0 + (a1 - a0) * (st ? (n > 1 ? 0.125 + (i * 0.75) / (n - 1) : 0.5) : n > 1 ? i / (n - 1) : 0.5)) * Math.PI) / 180;
+      return { i: off + i, x: a.x + Math.cos(t) * r * k, y: a.y + Math.sin(t) * r * k };
+    });
+    const out = [...ring(F.inner, F.r[0], 0, 1), ...ring(SHOWN.length - F.inner, F.r[1], F.inner, 0)];
+    const mt = (((a0 + a1) / 2) * Math.PI) / 180, cr = (F.r[1] + F.cell) * k;
+    return { cells: out.map(cl), chat: cl({ x: a.x + Math.cos(mt) * cr, y: a.y + Math.sin(mt) * cr }) };
+  }
   function render() {
     if (!wheel) return;
-    const ids = PAGES[page], ride = riding();
-    const cell = (id, i, n, r, cls, key) => {
-      const e = EMOTE_BY[id]; const a = (i / n) * Math.PI * 2 - Math.PI / 2 + (cls === 'fav' ? Math.PI / 4 : 0);
-      return `<button type="button" class="emo-c ${cls}${ride && !e.hand ? ' off' : ''}${editing === id ? ' pick' : ''}" data-id="${id}" data-i="${i}" style="left:${(50 + Math.cos(a) * r).toFixed(2)}%;top:${(50 + Math.sin(a) * r).toFixed(2)}%" aria-label="${e.name}">${svg(e)}${key ? `<kbd>${key}</kbd>` : ''}</button>`;
-    };
-    wheel.innerHTML = ids.map((id, i) => cell(id, i, 8, 38.5, 'out', i + 1)).join('')
-      + save.emoFav.map((id, i) => cell(id, i, 4, 21, 'fav', '')).join('')
-      + `<button type="button" class="emo-pg" aria-label="다음 쪽">${PAGES.map((_, i) => `<i class="${i === page ? 'on' : ''}"></i>`).join('')}</button>`;
-    wheel.classList.toggle('edit', !!editing);
+    const ride = riding(), L = layout(anchor || anchorAt(null));
+    wheel.innerHTML = SHOWN.map((id, i) => {
+      const e = EMOTE_BY[id], p = L.cells[i];
+      return `<button type="button" class="emo-c${ride && !e.hand ? ' off' : ''}" data-id="${id}" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px;--d:${i * 18}ms" aria-label="${e.name}">${svg(e)}<span>${e.name}</span><kbd>${i + 1}</kbd></button>`;
+    }).join('');
+    if (chatEl) { chatEl.style.left = L.chat.x.toFixed(1) + 'px'; chatEl.style.top = L.chat.y.toFixed(1) + 'px'; }
+    hot = null;
   }
-  function bindWheel(el) {
-    wheel = el;
-    el.addEventListener('pointerdown', (ev) => {
-      const b = ev.target.closest('.emo-c.out'); held = false; clearTimeout(holdT);
-      if (!b) return;
-      holdT = setTimeout(() => { held = true; editing = b.dataset.id; render(); toast('안쪽 칸을 누르면 바뀌어요', 2.4); }, EMOTE.hold);
+  const cellAt = (x, y) => document.elementFromPoint(x, y)?.closest?.('.emo-c') || null;
+  function light(b) { if (b === hot) return; hot?.classList.remove('hot'); hot = b; b?.classList.add('hot'); }
+  function bindWheel(el, chat) {
+    wheel = el; chatEl = chat || null;
+    el.addEventListener('click', (ev) => { const b = ev.target.closest('.emo-c'); if (b) pick(b.dataset.id); });
+  }
+  // btn: 동작 버튼, isOpen()/setOpen(bool): 창 열고 닫기 (menu.js)
+  function bindButton(btn, isOpen, setOpen) {
+    let drag = null, skip = false;
+    btn.addEventListener('pointerdown', (ev) => {
+      if (ev.button > 0) return;
+      skip = true;
+      if (isOpen()) { setOpen(false); return; }
+      setOpen(true);
+      drag = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, moved: false };
+      try { btn.setPointerCapture(ev.pointerId); } catch (e) { /* 무시 */ }
     });
-    const cancelHold = () => clearTimeout(holdT);
-    el.addEventListener('pointerup', cancelHold); el.addEventListener('pointerleave', cancelHold); el.addEventListener('pointercancel', cancelHold);
-    el.addEventListener('contextmenu', (ev) => { ev.preventDefault(); const b = ev.target.closest('.emo-c.out'); if (b) { held = true; editing = b.dataset.id; render(); toast('안쪽 칸을 누르면 바뀌어요', 2.4); } });
-    el.addEventListener('wheel', (ev) => { ev.preventDefault(); flip(ev.deltaY > 0 ? 1 : -1); }, { passive: false });
-    el.addEventListener('click', (ev) => {
-      if (held) { held = false; return; }
-      if (ev.target.closest('.emo-pg')) { flip(1); return; }
-      const b = ev.target.closest('.emo-c'); if (!b) { if (editing) { editing = null; render(); } return; }
-      const id = b.dataset.id;
-      if (editing) {
-        if (b.classList.contains('fav')) { save.emoFav[+b.dataset.i] = editing; persist(); toast(`${EMOTE_BY[editing].name} 고정`, tipSec); }
-        editing = null; render(); return;
-      }
-      toast(EMOTE_BY[id].name, tipSec);
-      choose(id);
+    btn.addEventListener('pointermove', (ev) => {
+      if (!drag || ev.pointerId !== drag.id) return;
+      if (Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) > 12) drag.moved = true;
+      light(cellAt(ev.clientX, ev.clientY));
     });
+    const end = (ev, cancel) => {
+      if (!drag || ev.pointerId !== drag.id) return;
+      const b = cancel ? null : cellAt(ev.clientX, ev.clientY), moved = drag.moved; drag = null; light(null);
+      if (b) pick(b.dataset.id); else if (moved && !cancel) setOpen(false); /* 그냥 눌렀다 떼면 열린 채로 */
+    };
+    btn.addEventListener('pointerup', (ev) => { end(ev, false); setTimeout(() => { skip = false; }, 400); });
+    btn.addEventListener('pointercancel', (ev) => end(ev, true));
+    /* 키보드·메뉴 타일(단순 화면)은 click 만 옴 */
+    btn.addEventListener('click', () => { if (skip) { skip = false; return; } setOpen(!isOpen()); });
   }
   let onChoose = null;
-  function choose(id) { onChoose?.(id); }
-  function flip(d) { page = (page + d + PAGES.length) % PAGES.length; editing = null; render(); }
-  function opened() { editing = null; render(); }
-  // 숫자 키: 바퀴가 열려 있으면 이 쪽 1~8, 닫혀 있으면 1~4 = 안쪽 고정 칸
-  function key(n, open) {
-    const id = open ? PAGES[page][n - 1] : n <= 4 ? save.emoFav[n - 1] : null;
+  function pick(id) { toast(EMOTE_BY[id].name, tipSec); onChoose?.(id); }
+  function opened(btn) { anchor = anchorAt(btn); render(); }
+  // 숫자 키 1~8: 열려 있든 닫혀 있든 같은 8개
+  function key(n) {
+    const id = SHOWN[n - 1];
     if (!id) return false;
-    toast(EMOTE_BY[id].name, tipSec); choose(id); return true;
+    pick(id); return true;
   }
 
   return {
-    perform, stop, tick, overlay, overlayPeer, presence, bindWheel, render, opened, flip, key,
+    perform, stop, tick, overlay, overlayPeer, presence, bindWheel, bindButton, render, opened, key, shown: SHOWN,
     set onChoose(f) { onChoose = f; },
-    get page() { return page; }, get mine() { return mine; }, get over() { return over; },
-    test: { marks, bubbles, edges, seen, get editing() { return editing; } },
+    get mine() { return mine; }, get over() { return over; },
+    test: { marks, bubbles, edges, seen, layout: () => layout(anchor || anchorAt(null)) },
   };
 }

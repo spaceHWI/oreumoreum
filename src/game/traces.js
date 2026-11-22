@@ -8,8 +8,9 @@
 // - 도감 '흔적' 칸(late.dexExtra 를 감쌈): 발자국·눌린 풀·뒤돌아보면·4:04. 본 것은 save.myst.tr = { fp, crop, back } (mystery.js mystSave)
 // - 내 화면에만 (멀티로 보내지 않음). 촬영 모드에서도 나옴. dev: __oreum.traces
 import * as THREE from 'three';
-import { MYST } from '../balance.js';
+import { MYST, SWARM } from '../balance.js';
 import { MYST_TEXT as T } from '../punktext.js';
+import { cropTex } from '../croptex.js'; /* 무늬 그림 (#246 사건 1 과 같이 씀) */
 import { height } from '../world.js';
 import { drape } from '../drape.js';
 import { LOW } from '../gfx2.js';
@@ -44,23 +45,6 @@ function footOp() {
 }
 
 /* ---------- 크롭서클 ---------- */
-function cropTex() {
-  const c = document.createElement('canvas'); c.width = c.height = 256;
-  const g = c.getContext('2d'), m = 128;
-  g.clearRect(0, 0, 256, 256); g.lineCap = 'round'; g.lineJoin = 'round';
-  g.strokeStyle = 'rgba(214,224,150,1)'; g.lineWidth = 12; g.beginPath(); g.arc(m, m, 118, 0, Math.PI * 2); g.stroke();
-  g.lineWidth = 5; g.beginPath(); g.arc(m, m, 104, 0, Math.PI * 2); g.stroke();
-  for (let i = 0; i < 3; i++) { /* 화살표 셋이 서로 쫓는 삼각형 */
-    const a0 = -Math.PI / 2 + i * Math.PI * 2 / 3, a1 = a0 + Math.PI * 2 / 3, r = 62;
-    const p0 = [m + Math.cos(a0 + 0.32) * r, m + Math.sin(a0 + 0.32) * r], p1 = [m + Math.cos(a1 - 0.32) * r, m + Math.sin(a1 - 0.32) * r];
-    g.lineWidth = 18; g.beginPath(); g.moveTo(...p0); g.lineTo(...p1); g.stroke();
-    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], l = Math.hypot(dx, dy), ux = dx / l, uy = dy / l;
-    g.fillStyle = 'rgba(214,224,150,1)'; g.beginPath();
-    g.moveTo(p1[0] + ux * 22, p1[1] + uy * 22); g.lineTo(p1[0] - uy * 22, p1[1] + ux * 22); g.lineTo(p1[0] + uy * 22, p1[1] - ux * 22); g.closePath(); g.fill();
-  }
-  g.fillStyle = 'rgba(214,224,150,1)'; g.beginPath(); g.arc(m, m, 14, 0, Math.PI * 2); g.fill();
-  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
-}
 const crop = { mesh: null, place: null, id: null, x: 0, z: 0, ok: false };
 function cropSpot(id) {
   const r = rng(0x9e37 + id * 7919), pool = trash.heaps.filter((h) => CR.zones.includes(h.zone) && !h.field);
@@ -70,6 +54,7 @@ function cropSpot(id) {
     if (!CR.zones.includes(trash.zoneAt(x, z)) || !inB(x, z)) continue;
     if (trash.trail?.dist && trash.trail.dist(x, z, CR.trail + 1) < CR.trail) continue;
     if (trash.heaps.some((o) => Math.hypot(o.x - x, o.z - z) < CR.r + (o.r || 1) + 1)) continue;
+    if (SWARM.arena.at.some((c) => c && Math.hypot(c[0] - x, c[1] - z) < SWARM.arena.r + SWARM.arena.spawn[1] + CR.r)) continue; /* 서바이벌 터 밖 (#253) */
     const y = height(x, z), q = CR.r; let bad = 0;
     for (const [sx, sz] of [[q, 0], [-q, 0], [0, q], [0, -q], [q * 0.7, q * 0.7], [-q * 0.7, -q * 0.7]]) bad = Math.max(bad, Math.abs(height(x + sx, z + sz) - y));
     if (bad > CR.flat * (1 + k / 30)) continue;
@@ -108,9 +93,9 @@ function cropMid() {
 }
 
 /* ---------- 발자국 ---------- */
-function footTex() {
+function footTex(col = 'rgba(150,140,118,1)') {
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-  g.fillStyle = 'rgba(150,140,118,1)'; /* 밤에도 보이게 흐린 흙빛 */
+  g.fillStyle = col; /* 밤에도 보이게 흐린 흙빛 */
   g.beginPath(); g.ellipse(32, 44, 9, 11, 0, 0, Math.PI * 2); g.fill(); /* 뒤꿈치 */
   for (const a of [-0.55, 0, 0.55]) { g.save(); g.translate(32, 38); g.rotate(a); g.beginPath(); g.ellipse(0, -18, 4, 11, 0, 0, Math.PI * 2); g.fill(); g.restore(); }
   return new THREE.CanvasTexture(c);
@@ -154,6 +139,17 @@ function tickFoot() {
   const op = footOp(); fp.mat.opacity = 0.85 * op; fp.im.visible = op > 0.01 && !state.cave;
   if (op > 0.3 && fp.pts.some(([x, z]) => Math.hypot(x - player.pos.x, z - player.pos.z) < F.seen)) mark('fp');
 }
+
+/* 사건용 발자국 한 줄 (#236 사건 5 '설인'): 위 발자국 모양을 size 배로, pts 꺾은선을 따라 step m 마다. 밤낮 없이 늘 보임(보일지는 부른 쪽이 visible 로 정함) */
+late.caseFoot = (pts, size = 1, step = F.step) => {
+  const L = []; for (let i = 1; i < pts.length; i++) { const [ax, az] = pts[i - 1], [bx, bz] = pts[i], d = Math.hypot(bx - ax, bz - az); for (let s = i === 1 ? 0 : step * 0.5; s < d; s += step) L.push([ax + (bx - ax) * s / d, az + (bz - az) * s / d, Math.atan2(bx - ax, bz - az)]); }
+  const n = Math.min(L.length, 120), mat = new THREE.MeshBasicMaterial({ map: footTex('rgba(84,78,66,1)'), transparent: true, opacity: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat, Math.max(1, n)); im.frustumCulled = false; im.renderOrder = 2; im.name = 'casefoot';
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(F.size * size, 1, F.size * size * 1.3), p = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < n; i++) { const [x, z, a] = L[i], sd = (i % 2 ? 0.22 : -0.22) * size; p.set(x + Math.cos(a) * sd, height(x, z) + 0.04, z - Math.sin(a) * sd); q.setFromAxisAngle(Y, a); m4.compose(p, q, sc); im.setMatrixAt(i, m4); }
+  im.count = n; im.instanceMatrix.needsUpdate = true; im.visible = false; G.add(im);
+  return im;
+};
 
 /* ---------- 뒤돌아보면 ---------- */
 const fwd = new THREE.Vector3();
@@ -235,6 +231,7 @@ late.tickTraces = (dt) => {
 late.tracesApi = {
   state: () => ({ stage: revealStage(), night: fp.night, prints: fp.n, near: +Math.min(1e9, ...fp.pts.map(([x, z]) => Math.hypot(x - player.pos.x, z - player.pos.z))).toFixed(1), footOp: +footOp().toFixed(2), crop: crop.ok && { id: crop.id, x: +crop.x.toFixed(1), z: +crop.z.toFixed(1), op: +crop.mesh.material.opacity.toFixed(2) }, fig: !!fig?.visible, coolBack: +coolBack.toFixed(1), tr: { ...mystSave().tr } }),
   crop: () => { crop.id = null; tickCrop(); return crop.ok && { x: crop.x, z: crop.z }; },
+  cropAt: (id) => { const q = cropSpot(id); return q && { x: q.x, z: q.z, r: CR.r }; }, /* 그날의 자리 (tools/arenacheck.js #253) */
   goCrop: (k = 0) => { if (!crop.ok) return null; const x = crop.x + k, z = crop.z + k; player.pos.set(x, height(x, z), z); player.visY = player.pos.y; return { x, z }; },
   goFoot: () => { if (nightNo() !== fp.night) { fp.night = nightNo(); footBuild(); } const p = fp.pts[Math.floor(fp.pts.length / 3)]; if (!p) return null; player.pos.set(p[0] + 2, height(p[0] + 2, p[1]), p[1]); player.visY = player.pos.y; return { x: p[0], z: p[1] }; },
   foot: () => { fp.night = null; tickFoot(); return fp.n; },

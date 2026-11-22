@@ -19,4 +19,4 @@ export function weeklyBuyable(t = Date.now(), grace = 0) {
   return s;
 }
 // 가게에 지금 내놓는 옷인지: 한정 옷(week 가 있음)은 이번 주 것만, 나머지는 늘
-export const onShelf = (c, t = Date.now()) => !c.cave && !c.prize && (c.week == null || weeklyNow(t).some((x) => x.id === c.id)); // 동굴 옷(#195)·달력 다 연 옷(#222 prize)은 가게에 없음
+export const onShelf = (c, t = Date.now()) => !c.cave && !c.prize && !c.case && !c.tok && (c.week == null || weeklyNow(t).some((x) => x.id === c.id)); // 동굴 옷(#195)·달력 다 연 옷(#222 prize)은 가게에 없음

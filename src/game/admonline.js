@@ -1,4 +1,4 @@
-// 지금 접속 (#186): 어드민 설정 맨 위 한 줄 '지금 접속 ○명'. 누르면 방별 인원·로그인/손님·구역별(내 방)·오늘 최고
+// 지금 접속 (#186): 어드민 설정 맨 위 한 줄 '지금 접속 ○명'. 누르면 방별 인원·로그인/손님·구역별(내 방)·오늘 최고·랭킹 상태(#250)
 // 서버 GET /admin/online (어드민만, 숫자만). 메뉴와 어드민 설정이 열려 있을 때만 NET.onlinePollMs 마다 물음
 // 구역별 인원은 서버가 지형을 모르므로 내 화면이 아는 같은 방 사람 자리(net.peersById)로 셈 (좌표는 서버가 내보내지 않음)
 import { NET, ZONES } from '../balance.js';
@@ -36,6 +36,7 @@ function draw() {
   if (!data) { box.append(row('불러오는 중', '')); return; }
   box.append(row('로그인 / 손님', `${data.login} / ${data.guest}`));
   if (data.peak) box.append(row('오늘 최고', `${data.peak.n}명 · ${kstHM(data.peak.at)}`));
+  if (data.rank) { const k = data.rank, ago = k.last ? Math.round((Date.now() - k.last) / 60000) : -1; box.append(row('랭킹 오늘·주·전체', `${k.day}·${k.week}·${k.all}명 · ${ago < 0 ? '기록 없음' : ago < 60 * 24 ? kstHM(k.last) + ' 늚' : Math.floor(ago / 1440) + '일 전 늚'}`)); } /* #250: 순위표 사람 수·마지막으로 순위가 늘어난 시각 (이름·계정 번호 없음) */
   const myCh = late.mpRoom?.ch;
   box.append(head('방'));
   if (!data.rooms.length) box.append(row('열린 방 없음', ''));

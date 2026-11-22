@@ -3,6 +3,10 @@ const { chromium } = require('playwright');
 const OLD_XP = (L) => { let x = 0; for (let i = 1; i < L; i++) x += Math.round(70 * i ** 1.6); return x; }; // #159 곡선으로 레벨 L 에 닿는 경험치
 const SAVES = {
   empty: {},
+  // #255 징표: 깨진 tok·없는 무기·넘는 단계·이상한 차림 묶음, 징표 옷을 입은 저장
+  tokBad: { nick: '징표 사람', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, tok: { n: -5, got: 'x', own: { rapid: 9, zzz: 1 }, arm: 'zzz', rec: 'q', kit: { fight: { wear: 5, arm: 'blast' }, pick: 3 }, rv: 'z' } },
+  tokWear: { nick: '징표 옷', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, tok: { n: 12, got: 30, own: { pierce: 2 }, arm: 'pierce', rec: { 2: { at: 5, n: 99, win: 1 } } }, clothes: { own: { 'top:t-gong': 1, 'vest:t-gong': 1 }, wear: { top: 'top:t-gong', vest: 'vest:t-gong' } } },
+  tokStr: { nick: '징표 글', coins: 40, tok: 'abc' },
   v0: { nick: '예전 사람', coins: 321, equip: { tool: 3 }, outfit: { hat: { type: 'cap', color: '#222222' } }, owned: { 'shirt:tee:#ff0000': 1 }, totalSteps: 999, nsV1: 1, ach: { done: {} } },
   broken: { nick: '깨진 사람', coins: 'abc', equip: 5, clothes: 3, rides: 'x', trash: { srv: 1, bag: null, dex: 7 }, ach: { daily: 3, life: null, badges: [] }, tut: 'x', look: { sex: 'q', skin: 99 }, hairs: 2, buff: { id: 'nope', left: 5 }, recycle: [], server: 'nope', wishes: null, story: { done: 'x', wait: [1, 'nope', 'mom'], cans: [[1, 'a'], null], box: 3 } },
   old8: { nick: '8일 전 사람', coins: 777, music: 0, gfx: 'low', lastSeen: Date.now() - 8 * 864e5 },
@@ -16,6 +20,12 @@ const SAVES = {
   journey: { nick: '감독 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, journey: { step: 'x', seen: 7, day: 3, n: 'q' }, pace: { first: 1, bloomed: 1, hint: { w: 3, t: 1 } } },
   // #155: 기본 옷 색 번호가 깨진 저장
   lookc: { nick: '색 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, look: { sex: 'f', skin: 2, colors: { hat: 99, top: 'x', bottom: -3, shoes: 2.5 } } },
+  // #232: 사건 파일 기록이 깨진 저장 · 사건을 연 저장(증거 하나)
+  caseBad: { nick: '사건 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 'x', ev: 5, f: 'q', base: 3 }, zz: 7 } },
+  reportBad: { nick: '제보 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: 404, id: 'zz', got: 'yes', said: [] } }, // 미확인 제보 (#238): 이상한 값
+  reportOld: { nick: '어제 제보', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: '2026-01-01', id: 'u01', got: 1, said: 1 } },
+  caseMid: { nick: '조사 중', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 1763800000000, ev: ['k1a', 'nope', 'k1a'], f: 0 } }, punk: { notes: { k1a: 1763800000000 }, unread: [] } },
+  caseChase: { nick: '흰 옷 쫓기', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c2: { w: 1763800000000, ev: ['k2a', 'k2b', 'k2c'], f: 0, a: 'x', s: 'bad' } } }, /* #233 터를 버티고 따라가는 중 (a 깨짐) */
   // #158: 퀘스트 기록이 깨진 저장 · 구역 1·2 를 끝낸 옛 저장(퀘스트 없음 → 구역 3 줄부터)
   questBad: { nick: '퀘스트 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, quest: { cur: 'nope', done: 5, side: [1], cp: 'x', c: null } },
   questVet: { nick: '고참', coins: 900, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, equip: { tool: 4, bag: 4, shoes: 3, weapon: 3 }, boss: { done: { 1: 1, 2: 2 } }, journey: { step: 9, seen: { quest: '2026-11-20' }, day: '2026-11-20', n: 0, days: 3, maxZ: 3 }, ach: { life: { trash: 900, 'heap-clear': 30, recycle: 20 } } },
@@ -52,6 +62,8 @@ const SAVES = {
   lvOld13: { nick: '옛 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(13) + 5, aug: { recycle: 3, bighand: 3, twin: 3, burst: 3 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 100 }, badges: {} } },
   lvOldRich: { nick: '옛 부자', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: OLD_XP(5), aug: { recycle: 1 }, draw: null, rr: 0, old: 1 }, journey: { step: 3, seen: { level: '2026-01-01' } }, ach: { life: { earn: 120000, pickup: 30000 }, badges: {} } },
   tutStall: { nick: '좌판 사람', coins: 30, nsV1: 1, nsV2: 1, nsV3: 1, bagV: 1, entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 9, done: false, v: 4, gyul: [0, 1, 2], hits: 3 }, equip: { tool: 1, bag: 0, shoes: 0, weapon: 1 } }, // #221 들머리 좌판 배낭 단계에 멈춘 저장 → 장비점 가기 처음, 가게 쪽 정낭·장비점 열림
+  tubeBad: { nick: '깨진 관', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, recycle: { visits: 2 }, tube: [3, 'nope', 'gate', 'gate', null] }, // #248 깨진 수거 관 목록
+  tubeOld: { nick: '옛 관', coins: 10, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, recycle: { visits: 5 }, journey: { step: 3, maxZ: 3, seen: {} } }, // #248 save.tube 없는 옛 저장
   lvBad: { nick: '깨진 레벨', coins: 10, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 'x', aug: { nope: 9, twin: 99, burst: -1 }, draw: [1, 2], rr: 'y' }, journey: { step: 3, seen: { level: '2026-01-01' } } }, // #159 깨진 레벨·증강
 };
 (async () => {
@@ -72,6 +84,9 @@ const SAVES = {
     if (errs.length || st.fail || !(f2 > (st.frames || 0))) bad++;
     if (!st.step || (st.srv && st.srv !== 'battle')) { bad++; console.log(name, '서버 고르기 흔적·clean 이 남음'); }
     if (name === 'style') { const c = await p.evaluate(() => ({ g: window.__oreum.save.outfit.gear.hat, t: window.__oreum.save.clothes.tint, w: window.__oreum.save.clothes.wear })).catch(() => ({})); if (!(c.g === 'hat:s-beanie~4' && Object.keys(c.t || {}).join() === 'hat:s-beanie' && !c.w?.vest)) { bad++; console.log(name, '겉모습 옷 저장 바로잡기 실패', JSON.stringify(c)); } } // #179
+    if (name.startsWith('tube')) { const L = await p.evaluate(() => window.__oreum.tube.linked()).catch(() => null); /* #248 깨진 목록은 아는 id 하나씩만, 옛 저장은 지난 구역(3)까지 */
+      const want = name === 'tubeBad' ? JSON.stringify(L) === '["gate"]' : !!(L && L.includes('gate') && L.includes('rest') && !L.includes('crater'));
+      if (!want) { bad++; console.log(name, '수거 관 목록 실패', JSON.stringify(L)); } else console.log(name, '수거 관', JSON.stringify(L)); }
     if (name.startsWith('lvOld')) { const L = await p.evaluate(() => { const o = window.__oreum; return { ...o.level.state(), v: o.save.lv.v }; }).catch(() => ({}));
       const want = name === 'lvOld13' ? (L.lv >= 13 && L.aug.recycle === 3 && L.aug.burst === 3 && Object.keys(L.aug).length === 4) : (L.lv >= 12 && L.aug.recycle === 1); /* 부자: 번 귤 15만 → 레벨 12 이상 (#202 곡선) */
       if (!(want && L.v === 2)) { bad++; console.log(name, '옛 레벨 바꾸기 실패', JSON.stringify({ lv: L.lv, xp: L.xp, aug: L.aug, v: L.v })); } else console.log(name, `레벨 ${L.lv} · 경험치(번 귤) ${L.xp} · 증강 ${JSON.stringify(L.aug)}`); }

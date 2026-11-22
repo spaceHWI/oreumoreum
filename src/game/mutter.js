@@ -183,6 +183,8 @@ late.mutterApi = {
   lines: LINES.map((l) => l.id),
   wrap: (t) => bubbleLines(t), // 말풍선 줄 나눔 (#190, src/bubble.js)
   say: (id) => { const l = BY[id]; if (!l) return false; return speak(l, true); },
+  hush: () => clearBubble(), /* 말풍선을 바로 지움 (#232 장면 시작) */
+  line: (id, text) => (isOff() || !text ? false : speak({ id, text: () => text }, true)), /* 다른 기능의 한 줄 (#232 사건 목격). 혼잣말을 껐으면 false */
   ev: (id) => { evAt[id] = clock; },
   now: () => candidates().map((l) => l.id),
   bubble: () => (bub ? { text: bub.text, t: +bub.t.toFixed(2), opacity: +bub.sp.material.opacity.toFixed(2), onMe: bub.sp.parent === runner.root } : null),

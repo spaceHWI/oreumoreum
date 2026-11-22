@@ -5,7 +5,8 @@
 // 3) 튜토리얼을 건너뛴 저장: 걷기·줍기 한 번·던지기 한 번·가게 창 열고 닫기·내 가방 열고 닫기
 // 먼저 node build.mjs (dist/test.html 을 씀)
 const { chromium, devices } = require('playwright');
-const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk'];
+const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk', 'cases', 'tube', 'reports'];
+LOOP.push('msg'); // 메시지 줄 (#252)
 const modes = process.argv[2] ? [process.argv[2]] : ['d', 'm'];
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };
 const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
@@ -59,6 +60,9 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     if (mode === 'm') await p.tap('#btn-ctx').catch(() => {}); else await p.keyboard.press('f');
     ok(await seen, `${tag} 던지기 한 번 (귤 ${c0} → ${await E(() => window.__oreum.save.coins)})`);
     await W(800);
+    // 하르방 곁에서는 자동으로 겨누지 않음 (#249)
+    const hbT = await E(async () => { const o = window.__oreum, h = o.life.hareubangs[0], q = o.player.pos.clone(); o.player.pos.set(h.pos.x + 1.5, o.groundAt(h.pos.x + 1.5, h.pos.z), h.pos.z); let hit = 0; for (let i = 0; i < 20; i++) { await new Promise((r) => setTimeout(r, 150)); if (o.aim.target() || o.aim.lock()) hit++; } o.player.pos.copy(q); o.aim.setLock(null); return hit; });
+    ok(hbT === 0, `${tag} 하르방 곁에서 자동 겨누기 없음 (${hbT}회 잡힘)`);
     // 줍기 한 번: 줍기 버튼(가장 가까운 쓰레기로 걸어가 주움, #104)
     await E(() => { window.__oreum.trash.goHeap(0); }); await W(600); /* 더미 옆으로 옮겨 가까운 쓰레기를 줍게 */
     const pk0 = await E(() => window.__oreum.trash.state().picked);

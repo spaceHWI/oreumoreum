@@ -15,10 +15,9 @@ import { $, save, persist } from './save.js';
 import { player, trash, life } from './place.js';
 import { cam } from './camera.js';
 import { toast, panelOpen, tipMark, nearestHeapPos } from './hud.js';
+import { msgBusy } from './msglog.js';
 import { sunState } from './scene.js';
 
-let mine = ''; // 감독이 띄운 토스트 글 (바깥 토스트와 구별)
-const ownToast = () => { const el = $('toast'); return !el.hidden && el.textContent === mine; };
 const J = () => save.journey || {};
 // 사실 값 (JOURNEY.doors need). 뒤 이슈는 여기에 한 줄 더함
 const FACTS = {
@@ -42,7 +41,7 @@ export const director = createDirector({
   hooks: {
     facts: () => Object.fromEntries(Object.entries(FACTS).map(([k, f]) => { let v = 0; try { v = f(); } catch { v = 0; } return [k, v]; })),
     busy: () => !state.sessionOn || document.hidden || !!late.tut?.active || panelOpen() || cam.mode === 'wardrobe' || !!late.mealS?.on || !!late.cutS?.on
-      || (!$('toast').hidden && !ownToast()) || !$('banner').hidden || !!state.photoState,
+      || msgBusy() || !!state.photoState, /* #252: 메시지 줄에 감독 글이 아닌 알림이 떠 있으면 기다림 */
     fight: () => !!player.down || !!late.pace?.threat?.() || (state.tension || 0) > 0.3 || !!late.bossFight?.() || !!life?.enemies?.near?.(player.pos, 25),
   },
 });
@@ -51,7 +50,8 @@ late.director = director;
 // 토스트 한 줄을 감독을 거쳐 (opt: ttl·queue·then). 이야기·퀘스트 안내는 안내서 목소리로 한 글자씩 (#224 game/talkfx.js)
 const TYPED = new Set(['story', 'quest']);
 export function say(kind, id, text, sec = JOURNEY.sec, opt = {}) {
-  return director.ask(kind, id, () => { mine = text; if (!(TYPED.has(kind) && late.talk?.toast(text, sec))) toast(text, sec); opt.then?.(); }, { sec, ...opt }); /* opt.then: 나갈 때 같이 할 일 (#206 가게 셔터) */
+  const fx = opt.fx || (String(id).startsWith('case-done:') ? 'big' : ''); /* #252 짧은 강조는 레벨 업·사건 종결만 */
+  return director.ask(kind, id, () => { if (!(TYPED.has(kind) && late.talk?.toast(text, sec, undefined, fx))) toast(text, sec, 'info', { own: true, fx }); opt.then?.(); }, { sec, ...opt }); /* opt.then: 나갈 때 같이 할 일 (#206 가게 셔터) */
 }
 
 // ---------- 지금 있는 것 등록 ----------

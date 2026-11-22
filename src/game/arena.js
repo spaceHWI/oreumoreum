@@ -1,6 +1,6 @@
 // 서바이벌 터 (#231): 구역마다 한 곳(balance.js SWARM.arena.at). 낮은 현무암 돌 고리 + 가운데 징. 징을 울려야(상호작용) 떼 한 판이 시작됨 (판 자체는 game/swarm.js)
 // - 그리기: 터마다 메시 하나(돌 고리·징을 정점 색으로 합침, toon 재질). 멀면 안 그림 → 화면에 1~2개, 터마다 그리기 1번
-// - 징 위 글(#arena-tag): 가까우면 '서바이벌 시작 · 권장 장비 점수 · 버티는 시간', 쉬는 시간엔 남은 시간. 상호작용 버튼 글도 같음
+// - 징 위 글(#arena-tag): 가까우면 '서바이벌 시작 · 권장 레벨 · 버티는 시간', 쉬는 시간엔 남은 시간. 상호작용 버튼 글도 같음
 // - 알림: 그 구역에 처음 들어가면 한 번 터 쪽(카메라 기준 앞·오른쪽·뒤·왼쪽)과 거리 한 줄 (save.swarm.hint). 가장자리 표시(#arena-arrow)는 near~hintR m 일 때만, 다른 길 안내가 있으면 쉼 (#201)
 // - 지도: 큰 지도·미니맵에 터 아이콘(귤색 고리) (field.js drawIcons 가 late.arenaIcons 를 부름)
 // - 멀티: 같은 터 안에 있는 사람이 판 중(presence sw)이면 나도 판에 듦 (떼는 사람마다 따로, swarm.js)
@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SWARM, ZONES } from '../balance.js';
 import { SWARM_TEXT } from '../punktext.js';
-import { gearScore, zoneRec } from '../gearscore.js';
+import { zoneRecLv, myLv } from '../gearscore.js';
 import { gradHard } from '../toon.js';
 import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
@@ -42,13 +42,15 @@ function faceOf(c) {
   for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, d = trash ? trash.trail.dist(c[0] + Math.sin(a) * A.r, c[1] + Math.cos(a) * A.r, 80) : 0; if (d < bd) { bd = d; best = a; } }
   return best;
 }
+// 구역 분위기 (#253): 고리 돌 색만 다름 (숲길 이끼·사면·능선 밝은 돌·굼부리 붉은 송이·정상 눈 덮인 돌). 메시 수는 같음
+const STONE = [null, ['#47514a', '#3f4a40'], ['#45464b', '#505157'], ['#5b5c60', '#66676a'], ['#5a4038', '#4d3a35'], ['#5f6266', '#8a8e93']];
 function arenaGeo(zone, c, face) {
-  const r = rnd0(2310 + zone * 97), out = [], n = Math.round(Math.PI * 2 * A.r / 1.7);
+  const r = rnd0(2310 + zone * 97), out = [], n = Math.round(Math.PI * 2 * A.r / 1.7), sc = STONE[zone] || STONE[2];
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2; let da = Math.atan2(Math.sin(a - face), Math.cos(a - face)); if (Math.abs(da) < 0.12) continue; // 문
     const x = c[0] + Math.sin(a) * A.r, z = c[1] + Math.cos(a) * A.r, R = 0.32 + r() * 0.16;
     const g = new THREE.IcosahedronGeometry(R, 0).scale(1.3 + r() * 0.4, 0.75 + r() * 0.3, 1).rotateY(r() * 6.28).translate(x, height(x, z) + R * 0.45, z);
-    out.push(paint(g, r() < 0.5 ? '#45464b' : '#505157', r, 0.18));
+    out.push(paint(g, r() < 0.5 ? sc[0] : sc[1], r, 0.18));
   }
   // 문 양옆 돌 깃대 (귤색 천)
   for (const s of [-1, 1]) {
@@ -58,14 +60,17 @@ function arenaGeo(zone, c, face) {
   }
   // 징: 두 기둥 + 가로대 + 둥근 놋쇠판 (길 쪽을 봄)
   const y0 = height(c[0], c[1]), G = [];
-  for (const s of [-1, 1]) G.push(paint(new THREE.CylinderGeometry(0.1, 0.13, 2.5, 6).translate(s * 1.05, 1.25, 0), '#6b4a2a', r, 0.1));
+  for (const s of [-1, 1]) G.push(paint(new THREE.CylinderGeometry(0.1, 0.13, 3.1, 6).translate(s * 1.05, 0.95, 0), '#6b4a2a', r, 0.1)); // 기둥 밑은 땅에 묻힘 (비탈, #253)
   G.push(paint(new THREE.BoxGeometry(2.5, 0.16, 0.18).translate(0, 2.45, 0), '#5a3d22'));
   G.push(paint(new THREE.CylinderGeometry(0.72, 0.72, 0.09, 18).rotateX(Math.PI / 2).translate(0, 1.45, 0), '#c9a24a'));
   G.push(paint(new THREE.CylinderGeometry(0.26, 0.26, 0.14, 12).rotateX(Math.PI / 2).translate(0, 1.45, 0.02), '#e2bf62'));
   for (const s of [-1, 1]) G.push(paint(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 3).translate(s * 0.45, 2.15, 0), '#2b2218'));
-  G.push(paint(new THREE.CylinderGeometry(1.6, 1.8, 0.12, 10).translate(0, 0.02, 0), '#6d6a52', r, 0.08)); // 밟힌 흙 바닥
   const gong = mergeGeometries(G).rotateY(face).translate(c[0], y0, c[1]);
   out.push(gong);
+  // 밟힌 흙 바닥: 땅 높이를 따름 (비탈에서 뜨거나 묻히지 않게, #253)
+  const fl = new THREE.CylinderGeometry(1.6, 1.8, 0.12, 10).translate(c[0], 0.02, c[1]), fp = fl.attributes.position;
+  for (let i = 0; i < fp.count; i++) fp.setY(i, fp.getY(i) + height(fp.getX(i), fp.getZ(i)));
+  out.push(paint(fl, '#6d6a52', r, 0.08));
   return mergeGeometries(out);
 }
 
@@ -122,12 +127,12 @@ function showTag(a, d) {
   if (d > A.tagR || SW()?.zone() || panelOpen() || cam.mode !== 'follow' || state.cine) { if (!tag.hidden) tag.hidden = true; return; }
   pv.copy(a.gong); pv.y += 3.1; pv.project(camera);
   if (pv.z > 1 || Math.abs(pv.x) > 1.05 || Math.abs(pv.y) > 1.05) { if (!tag.hidden) tag.hidden = true; return; }
-  const l = restOf(a.zone), key = l > 0 ? 'r' + Math.ceil(l) : 'g' + a.zone + ':' + gearScore(save).total;
+  const l = restOf(a.zone), key = l > 0 ? 'r' + Math.ceil(l) : 'g' + a.zone + ':' + myLv(save);
   if (key !== tagKey) {
     tagKey = key; tag.classList.toggle('rest', l > 0);
     tag.firstChild.textContent = l > 0 ? `${T.restTag} ${mmss(l)}` : T.gong;
-    const rec = zoneRec(a.zone), my = gearScore(save).total, tt = SW()?.runT(a.zone) || 0;
-    tag.lastChild.innerHTML = l > 0 ? '' : `<span title="권장 장비 점수">권장 ${rec}${my < rec ? ` (지금 ${my})` : ''}</span><span title="버티는 시간">${mmss(tt)} 버티기</span>`;
+    const rec = zoneRecLv(a.zone), my = myLv(save), tt = SW()?.runT(a.zone) || 0;
+    tag.lastChild.innerHTML = l > 0 ? '' : `<span title="권장 레벨">권장 Lv ${rec}${my < rec ? ` (지금 Lv ${my})` : ''}</span><span title="버티는 시간">${mmss(tt)} 버티기</span>`;
   }
   tag.hidden = false; tag.style.transform = `translate(${((pv.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-pv.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px) translate(-50%, -100%)`;
 }
@@ -195,5 +200,6 @@ late.arenaApi = {
   near: () => near && { zone: near.zone, d: +nearD.toFixed(1) },
   ui: () => ({ tag: !tag.hidden && tag.textContent, arrow: !arrow.hidden }),
   hint: () => ({ ...H }), clearHint() { for (const k of Object.keys(H)) delete H[k]; lastZone = -1; },
+  meshes: () => arenas.map((a) => a.mesh), /* tools/arenacheck.js (#253) */
   act: (z) => interactables.find((i) => i.pos === arenas.find((a) => a.zone === z)?.gong),
 };

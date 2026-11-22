@@ -47,8 +47,8 @@ const STAT_ICON = {
 const STAT_TITLE = { per: '한 번에 줍는 수', rate: '초당 줍는 수', r: '닿는 거리', cap: '배낭 용량', speed: '빠르기', dmg: '피해', gyul: '귤 모으는 범위' }; late.STAT_ICON = STAT_ICON;
 // 장비 점수 (#137): 칸마다 지금 것 대비 ▲/▼ 점수 차, 고른 것의 점수
 const SCORE_IC = ic('score');
-export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 점수 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
-export function scoreChip(sc, d) { return `<span class="gs" title="장비 점수">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
+export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 힘 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
+export function scoreChip(sc, d) { return `<span class="gs" title="장비 힘">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
 const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
   : k === 'bag' ? [['cap', String(t.cap)], ['gyul', `${gyulPickR({ equip: { bag: t.tier } })}m`]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
 // 순서 없이 사기 (#111): 귤만 충분하면 어느 단계든 바로 산다. 산 단계 아래는 '가짐'
@@ -89,7 +89,7 @@ export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번
   const off = late.questOff?.('gear', next.price) || 0, pay = next.price - off; // 퀘스트 할인권 (#158)
   if (save.coins < pay) { toast(`귤이 ${pay - save.coins}개 모자라요`); return; }
   const from = save.coins;
-  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; if (k === 'shoes' && save.equip.boots === 2) save.equip.boots = 1; /* 새 신발을 사면 장화를 벗음 (#167) */ late.lootTidy?.(); if (k === 'weapon') save.weaponUse = i + 1; // 새로 산 무기를 바로 씀 (#123)
+  save.coins -= pay; if (off) late.questUse('gear'); late.tierUpLoot?.(k); save.equip[k] = i + 1; if (k === 'shoes' && save.equip.boots === 2) save.equip.boots = 1; /* 새 신발을 사면 장화를 벗음 (#167) */ late.lootTidy?.(); if (k === 'weapon') { save.weaponUse = i + 1; if (save.tok) save.tok.arm = null; } /* 새로 산 무기를 바로 씀 (#123), 징표 무기는 내려놓음 (#255) */
   syncEquipGear(); runner.apply(save.outfit); persist(); updateStats(); updateTrashUI(true); net.send(true);
   if (k === 'weapon') { late.sound.coin?.(); ach.emit('weapon-buy'); ach.emit('weapon-buy-' + next.id); late.armsChanged?.(); } // 무기 (#38, 고르는 창·탄 표시 #123)
   else { late.sound.coin?.(); ach.emit('gear-buy'); ach.emit('gear-buy-' + k); checkGearBadges(); }

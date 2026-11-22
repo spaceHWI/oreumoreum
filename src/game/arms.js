@@ -71,7 +71,7 @@ function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } 
   else v = fwd().multiplyScalar(w.speed).setY(w.grav * 0.1);
   if (spread) { v.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (Math.random() - 0.5) * 2 * spread); v.y += (Math.random() - 0.5) * spread * w.speed; }
   const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1);
-  const s = armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }); // 유도 (#148)
+  const s = armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size, pierce: w.pierce || 0 }); // 유도 (#148), 관통 (#255 징표 무기)
   if (twinRoll()) { const v2 = v.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW * 0.5), f2 = from.clone(); setTimeout(() => armFx.shoot(f2, v2, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS * 0.5); } /* 쌍귤 (#159): 탄은 더 쓰지 않음 */
   if (!ch) save.ammo[w.id] -= 1; A.kick = 1; persist();
   if (w.id === 'gun') sfx()?.gun?.(); else sfx()?.mg?.();
@@ -332,6 +332,7 @@ export function openArmWin() { late.openBag?.('arm'); }
 export function chooseArm(tier) {
   if (tier < 1 || tier > save.equip.weapon) return;
   stopLaser(); A.held = false;
+  if (save.tok) save.tok.arm = null; /* 귤 무기를 고르면 징표 무기를 내려놓음 (#255) */
   save.weaponUse = tier; persist(); setHoldBow(false); late.net?.send(true);
   updateArmBtn();
   late.sound?.beep?.(true);

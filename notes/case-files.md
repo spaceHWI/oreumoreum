@@ -9,6 +9,7 @@
 - 톤: X-파일처럼 으스스하게 시작해 피식 웃게 끝난다(#210·#223 글 규칙).
 - 외계인은 엔딩 전까지 직접 나오지 않는다. 엔딩의 사과 "불편을 줘서 죄송합니다." 는 글자 그대로.
 - 새 체계를 만들지 않는다. 지금의 퀘스트 형식, 쪽지, 사진, 발자국·크롭서클·방송(MYST), 서바이벌 터(#231), 우두머리를 그대로 쓴다.
+- 서바이벌 터 자리(#253, `SWARM.arena.at`, `node tools/arenacheck.js` 로 겹침 0): 구역 1 (-16, -540) · 2 (-312, 84) · 3 (-116, 28) · 4 (84, -440) · 5 (64, -12). 사건 대면·흰 옷 출발처럼 터를 쓰는 자리는 이 값을 기준으로 (터를 또 옮기면 c2 `follow.path` 첫 자리도)
 
 ## 2. 사건 한 건의 틀
 1. 목격: 그 구역에 들어가면 이상한 것을 스치듯 본다(혼잣말 한 줄). 사건 파일에 '미해결' 로 생긴다.
@@ -36,6 +37,7 @@
 - 지금 있는 크롭서클(MYST.crop)을 쓴다.
 
 ### 사건 2. 흰 옷 귀신
+- 만든 것(#233, `src/cases/c2.js`): 레벨 6 · 의뢰 남쪽 사면 표지판 · 목격 돌담 조각(-480, 60) · 증거 줄어든 더미 사진(-530, 128)·돌담 흰 천(-420, 150)·표지판 뒤 빨랫줄 메모(-458, 104) · 대면 남쪽 사면 서바이벌 터(-312, 84, #253 에서 옮김)를 버틴 뒤 흰 옷을 다섯 자리 따라감 → 더미 곁(-432.5, 85.5)에서 돌아봄 · 증거 사진 '흰 옷과 집게' · 보상 조사관 코트·칭호 '밤 근무 동기'·멧돼지 엄니 3·귤 30+80. 오두막이 없어 빨랫줄은 표지판 뒤 들판에 둠
 - 목격: 밤에 돌담 너머로 흰 것이 스윽 지나간다.
 - 증거: ① 흰 것이 지나간 자리에 더미가 하나 줄어 있다(사진) ② 돌담에 걸린 흰 천 조각 ③ 빨랫줄의 흰 작업복(오름지기 집 곁)
 - 대면: 남쪽 사면 서바이벌 터를 버틴 밤, 흰 옷을 끝까지 따라가면 돌아본다.
@@ -73,3 +75,29 @@
 ## 5. 매일: 미확인 제보
 - 하루에 하나, 작은 목격담(쪽지 한 장 + 가서 보면 흔적 하나). 5분 안에 끝난다. 큰 사건의 실마리를 흘리거나 그냥 헛소문이다. 헛소문 비율 임의 30%.
 - 첫 화면의 '매일 새로운 콘텐츠'(#229)와 오늘의 할 일(#125)에 붙인다.
+- 만든 것 (#238): 데이터 `src/cases/reports.js`(34개, 그중 헛소문 9·사건 실마리 5), 게임 `src/game/reports.js`, 수치 `balance.js REPORT`(임의: 레벨 2부터·헛소문 30%·귤 30).
+  - 하루(한국 날짜)에 하나, 날짜로 정해진 난수라 같은 날은 모두 같은 제보(가 본 구역·열린 사건에 따라 고를 수 있는 것만). 사건 실마리(`case: 'c<번호>'`)는 그 사건이 열린 사람에게만, 진짜 제보일 때 절반(caseK)은 실마리 쪽.
+  - 쪽지: 들어오고 조금 뒤 감독 한 줄 → 오늘의 할 일 창 '제보' 줄(누르면 쪽지, '가 보기' 는 걸어감) · 사건 파일 창 '제보' 칸 · 다음 할 일 줄.
+  - 흔적: 그 구역 길가 더미 곁(사건 실마리는 그 사건 목격 자리 곁)에 흔적 모양(prints·cans·ring·bag·glove·peel·cloth·flat)과 바닥 표시. 헛소문은 표시만. 상호작용 → 한 줄(find) + 귤.
+  - 서버 `earn.js`: save.report.got 이 오늘(또는 어제)이면 하루 한 번 인정. 검사 `node tools/reportrun.js [d|m]`.
+  - 제보 더하기: `REPORTS` 끝에 한 줄(제목 14자·쪽지 3줄·find 28자, `node tools/storytext.mjs`). 새 사건의 실마리는 `case` 에 그 사건 id.
+
+## 6. 사건 더하는 법 (#232 에서 만든 틀, #246 에서 증거 사진·수사 보드로)
+- 파일: `src/cases/c<번호>.js` 하나에 `export default { … }`. 데이터만 쓴다(three·DOM·다른 src 파일 import 없음: balance.js·punktext.js·achievements.js·서버가 읽음). `src/cases/index.js` 의 `LIST` 에 한 줄(import 와 함께) 더한다. 칭호는 `src/punktext.js` TITLES 끝에 `{ t: '<title 과 같은 글>', badge: 'b-case-<id>' }` 한 줄(멀티로 번호가 오가므로 뒤에만)
+- 모양(사건 1 `c1.js` 크롭서클을 본보기로):
+  - `id` 'c<번호>' · `n` 수사 보드 사진 자리(1~5) · `zone` 구역 · `lv` 열림 레벨 · `name` 제목 · `giver` 의뢰 NPC(balance.js QUESTS.givers id: jigi·b:slope·b:rest·b:crater·shop:…)
+  - `v`·`drop`(선택): 내용을 바꿔 다시 낼 때 판 번호를 올리면 그 판이 아닌 저장의 진행이 처음으로 돌고, `drop` 의 옛 쪽지 id 가 주운 쪽지에서 빠진다(받은 귤·옷은 그대로). 새 사건은 적지 않아도 된다
+  - `see { at: [x, z], r, prop, say }` 목격: 레벨이 lv 이상이면 at 에 prop 모양이 보이고, r m 안에 들면 혼잣말 say(22자) → '미해결'
+  - `ev [{ id, kind, at, prop, label, note, view? }]` 증거 셋. kind: `photo` 사진 · `trace` 흔적 · `note` 쪽지 (자리에서 상호작용 → note 쪽지) · `act` 행동 n번 (`{ kind: 'act', k: '<퀘스트 셈 이름>', n }`, at 없음: 사건을 연 뒤 그 셈이 n 오르면. 예 'heap@2'·'dumper@2'·'repel:dog'). `view: true` 면 찍을 때 목격 자리를 위에서 내려다보는 짧은 장면(CASE.view) 뒤에 쪽지
+  - `face { kind, … }` 대면: `none` 증거만 · `hide` 숨어 보기(`at`·`prop`·`label`·`len` 초·`lines` 자막 28자, `drop` 장면 중 목격 자리 가운데로 떨어지는 모양, `dawn` 새벽빛) · `arena` 그 구역 서바이벌 한 판을 버팀(사건을 연 뒤 `save.swarm.won[구역].at` 이 늘면, #231) · `boss` 그 구역 우두머리(사건을 연 뒤 `save.boss.done[구역]` 이 늘면)
+    - arena·boss 에 `watch: true`·`at`·`prop`·`label`·`len`·`lines` 를 주면 조건을 채운 뒤 at 에 모양이 나타나고 [label] → 등 뒤에서 보는 장면(#236 사건 5). 모양의 `userData.anim(u)`(0~1)가 장면을 움직인다(`caseprops.js` yeti 본보기). 조건 전엔 추적 줄이 우두머리 빈터로
+  - `trail { pts: [[x, z], …], size, step }` (있으면) 목격 모양과 같이 보이는 발자국 한 줄 (MYST.foot 모양을 크게, `traces.js late.caseFoot`, #236)
+  - `doc` **증거 사진** 쪽지 id(대면을 끝내면 받음, notes 에서 `paper: 'photo'`, 제목 '증거 사진 <번호>') · `photo` 수사 보드에 꽂히고 쪽지 창 위쪽에 붙는 사진 그림(100×75 SVG 안쪽 글. index.js `casePhoto` 가 주소로 바꿈)
+  - `notes` 증거·사진 쪽지(NOTES 모양: id·paper·t 14자·from·b 3줄 이내) · `quests` 곁가지 둘(첫째 ask `case:<id>:ev` n = 증거 수, 둘째 after 첫째·ask `case:<id>:face` n 1, 둘 다 `need: 'case:<id>'`·`ever: true`, go 'case:<id>'·'case:<id>:face', 구역 4 이상이면 z 를 꼭 적는다(글 검사가 단계 3 뒤로 봄). 대사 한 번에 두 줄 이내)
+  - `cloth` 보상 옷(겉모습, 값 0 — '조사관' 한 벌의 조각. 다섯이 모이면 OUTFIT_SETS 에 'inv' 묶음을 더할 것) · `title` 칭호 글 · `badge { id: 'b-case-<id>', color, desc, reward }`
+  - (#233) `face.follow { path [[x,z]…], near, end, speed, len }`: arena·boss 를 끝낸 뒤(저장 a 1) 흰 옷이 path 를 앞서 가고 끝자리 장면(`face.lines` 자막)까지 봐야 대면 끝 (game/casechase.js). `see.ghost` 목격 때 흰 옷이 스침·실제 밤엔 목격 자리 너머를 오감. `hello { <NPC id>: [말] }` 종결 뒤 그 NPC 인사에 더함. 퀘스트 보상에 `mats { m<구역>: n }` (장비 재료) 를 쓸 수 있음
+- 새 모양(prop)이 필요하면 `src/game/caseprops.js` 의 B 에 하나 더한다(재질마다 lump 로 합쳐 draw call 을 적게. 땅을 따라 휘는 판은 `userData.place(x, z)`, crop 처럼)
+- (#235 에서 더함) 싸움 뒤 장면: `face { kind: 'arena'|'boss', scene: '<이름>', tint: 'mist', at, prop, label, len, lines }` 면 싸움을 끝낸 뒤 face.at 에서 상호작용해 장면을 봐야 대면이 끝남. 장면은 `caseprops.js` SCENES(begin·tick·cam·end). `see.gone: true` 면 대면 뒤 목격 모양을 치움. 증거 `z` 는 일부러 다른 구역에 둔 것(검사 구역). 퀘스트 보상 `mats: { m5: 3 }` 다음 구역 재료. 사건 4 `c4.js` 가 본보기
+- 사건의 마지막 퀘스트 보상을 받으면 종결(수사 보드에 사진·핀·빨간 실, 도장·칭호·업적). 귤은 퀘스트 보상이라 서버가 계정마다 한 번 인정(따로 손댈 것 없음)
+- 수사 보드(`#case-file`): 코르크판에 사진 자리 다섯. 종결 → 사진에 핀, 핀끼리 빨간 실(마지막 핀에서 다음 빈 자리로 점선). 진행 중 → '?' 사진·미해결. 사진을 누르면 아래에 목격·증거 셋·사진 칸, 칸을 누르면 쪽지. 메뉴 ☰ → 사건 파일, 쪽지 창 아래 사건 파일 단추
+- 검사: `node build.mjs && node tools/caserun.js c<번호> d` (자리 막힘·구역, 옛 판 저장, 목격 → 증거(위에서 찍기) → 대면(떨어지는 모양) → 증거 사진 → 종결 → 수사 보드(사진·핀·실) → 다시 읽기), 폰은 `m`. 글은 `node tools/storytext.mjs`, 서버 몫은 `node tools/sec.js`

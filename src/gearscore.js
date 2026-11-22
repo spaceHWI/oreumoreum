@@ -2,6 +2,7 @@
 // 칸 10개: 도구·배낭·신발·무기 (save.equip) + 옷 6칸. 합이 장비 점수
 // #179: 옷은 겉모습(save.clothes.wear)과 능력을 떼어 냄. 옷 칸 능력 = 그 칸에서 가진 옷 중 점수(단계·등급·강화)가 가장 높은 것 (abilityCloth). 겉모습 옷(tier 0)은 능력 없음
 // 등급·강화 자리 (다음 이슈에서 채움): 장비는 save.gearUp = { 칸: { g, e } }, 옷은 save.clothes.up = { 옷 id: { g, e } }. 없으면 0
+import { levelOf } from './augments.js';
 import { GROWTH, ZONES, WEAR, CLOTHES, GYUL_PICK, WEAR_START, SHOES, BOOTS } from './balance.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
@@ -65,6 +66,17 @@ export function zoneTone(score, zone) {
   return k < GROWTH.red ? 'r' : k >= GROWTH.green ? 'g' : 'y';
 }
 export const zoneRec = (zone) => ZONES.find((z) => z.id === zone)?.rec || 0;
+// 레벨 기준 (#251): 플레이어에게 보이는 권장은 레벨. 색 'r'·'y'·'g' 는 레벨 차이로 (GROWTH.lvRed)
+export const zoneRecLv = (zone) => ZONES.find((z) => z.id === zone)?.recLv || 1;
+export const myLv = (save) => levelOf(save?.lv?.xp || 0).lv;
+export function lvTone(lv, zone) {
+  if (!ZONES.find((z) => z.id === zone)) return '';
+  const d = lv - zoneRecLv(zone);
+  return d <= -GROWTH.lvRed ? 'r' : d >= 0 ? 'g' : 'y';
+}
+export const zoneToneLv = (save, zone) => lvTone(myLv(save), zone);
+/* 레벨은 됐는데 장비가 많이 모자람 (GROWTH.gearLow): 장비점에 들르라고 한 번 */
+export const gearShort = (save, zone, score) => myLv(save) >= zoneRecLv(zone) && score < zoneRec(zone) * GROWTH.gearLow;
 
 // 귤 모으는 범위(m, #151): 기본 + 배낭 단계마다 더함 (호주머니·배낭 1단계 = 기본). 전리품 장비(#140)의 같은 능력치도 여기에 더한다
 export const gyulPickR = (save) => GYUL_PICK.r + GYUL_PICK.perBag * Math.max(0, (save?.equip?.bag || 0) - 1);

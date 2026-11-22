@@ -10,7 +10,7 @@ const ready = (p) => p.waitForFunction(() => window.__oreum && window.__oreum.re
 // 화면에 보이는 HUD 요소: 이름 → 선택자
 const HUD = {
   joy: '#joy', pick: '#btn-pick', ctx: '#btn-ctx', jump: '#btn-jump', speed: '#btn-speed', ride: '#btn-ride', armMore: '#arm-more', rideMore: '#ride-more',
-  gyul: '#gyul-pill', lv: '#lv-pill', score: '#score-pill', bag: '#bag-pill', clean: '#clean-pill', hp: '#hp-bar', buff: '#buff-pill', zone: '#zone-pill', xy: '#xy-pill', ach: '#ach-chip', fs: '#fs-chip', fb: '#fb-chip',
+  gyul: '#gyul-pill', lv: '#lv-pill', bag: '#bag-pill', clean: '#clean-pill', hp: '#hp-bar', buff: '#buff-pill', zone: '#zone-pill', xy: '#xy-pill', ach: '#ach-chip', fs: '#fs-chip', fb: '#fb-chip',
   minimap: '#minimap', mapDot: '#map-dot', quest: '#quest-track', swarm: '#swarm-bar', dockAct: '#btn-actions', dockChat: '#btn-chat', dockAch: '#btn-ach', menu: '#btn-menu',
   rec: '#rec-ui', newver: '#newver', mutter: '#mutter', cart: '#cart-mark', chArrow: '#ch-arrow', shopMark: '#shop-mark', shopArrow: '#shop-arrow',
 };

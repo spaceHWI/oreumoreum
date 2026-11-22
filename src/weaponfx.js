@@ -21,7 +21,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
   // from·vel: Vector3. opt: { dmg, grav, life, peersFn, vis(보이기만), quiet }
   function shoot(from, vel, opt = {}) {
     if (shots.length >= N) shots.shift();
-    const s = { p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null, ch: opt.ch || 0, sc: opt.size ? new THREE.Vector3(opt.size, opt.size, opt.size) : null }; /* ch·size: 모아 쏘기 (#129) */
+    const s = { p: from.clone(), v: vel.clone(), t: 0, life: opt.life ?? 0.6, dmg: opt.dmg ?? 1, grav: opt.grav ?? 0, peersFn: opt.peersFn || null, vis: !!opt.vis, quiet: !!opt.quiet, onHit: opt.onHit || null, home: opt.home || null, ch: opt.ch || 0, pierce: opt.pierce || 0, sc: opt.size ? new THREE.Vector3(opt.size, opt.size, opt.size) : null }; /* ch·size: 모아 쏘기 (#129) */
     shots.push(s); return s;
   }
   function updateShots(dt) {
@@ -34,6 +34,7 @@ export function createWeaponFx({ scene, life, LOW, sound }) {
         s.v.y -= s.grav * h; if (s.home && !steer(s.v, s.p, s.home, h, COMBAT.homeRateBow)) s.home = null; s.p.addScaledVector(s.v, h); // 유도 (#148)
         if (!s.vis) {
           const hit = life.hitAt(s.p, s.dmg, s.v, { quiet: s.quiet, ch: s.ch });
+          if (hit && s.pierce > 0) { s.pierce--; s.dmg *= 0.85; life.juiceSplash(s.p, v1.copy(s.v).normalize()); s.p.addScaledVector(v1, 1.4); continue; } /* 관통 (#255): 한 줄로 다음 적까지 */
           if (hit) { done = true; s.onHit?.(hit, s.p); life.juiceSplash(s.p, v1.copy(s.v).normalize()); if (!s.quiet) sound?.splat?.(); break; }
           if (s.peersFn && s.t > 0.03) for (const pe of s.peersFn()) { if (Math.hypot(s.p.x - pe.pos.x, s.p.z - pe.pos.z) < 0.6 && s.p.y > pe.pos.y + 0.2 && s.p.y < pe.pos.y + 2.2) { life.hooks.hitRunner?.(pe.id); done = true; break; } }
           if (done) break;

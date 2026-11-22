@@ -1,7 +1,7 @@
 // 줍기·배낭, 구역 확인, 더미·꽃밭 효과 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { gearScore, zoneTone, zoneRec } from '../gearscore.js';
+import { zoneToneLv, zoneRecLv } from '../gearscore.js';
 import { upMul, legendOn } from '../loot.js';
-import { LOOT } from '../balance.js';
+import { LOOT, RANK } from '../balance.js';
 import { TOOLS, BAGS, POCKET, CLEANHOUSE, BLOOM, BLOOM_FX, SHOP_ST, PACE, FEEL, PICK_SEEK, TUT, BLOOM_HOLD } from '../balance.js';
 import { STREET } from '../streetlayout.js';
 import { ZONE_IDS } from '../zones.js';
@@ -72,8 +72,14 @@ function takeNow() {
     }
     if (n >= tool.per || room < 1) break;
   }
+  if (n) guestNudge();
   if (n) { trash.store.commit(); updateTrashUI(true); late.tut.notify('trash', n); const now = performance.now() / 1000; pickS.combo = now - pickS.comboAt < FEEL.combo.gap ? pickS.combo + 1 : 1; pickS.comboAt = now; late.sound.combo?.(Math.min(FEEL.combo.pitchMax, pickS.combo - 1)); late.feel?.combo(pickS.combo); } /* 이어 주우면 음이 올라감 (#89), 콤보 숫자·보너스 (#141) */
   if (bagRoom() < 1) { late.sound.full?.(); fullToast(); }
+}
+/* #261: 로그인하지 않은 손님이 처음 RANK.guestNudge 개를 치우면 한 번 */
+function guestNudge() {
+  const a = state.account; if (!a || a.loggedIn || save.rankNudge || trash.totalCount() < RANK.guestNudge) return;
+  save.rankNudge = 1; persist(); toast('로그인하면 순위에 올라가요', 3.5);
 }
 export function tickPick(dt) {
   if (!trash) return;
@@ -201,11 +207,11 @@ export function updateTrashUI(bump) {
   // 화면의 깨끗함은 지금 구역 값으로, 있는 곳 이름 옆에 (#196). 구역 밖(마을·가게 거리·길)은 감춤. 오름 전체 값은 오름 지도
   const wk = zoneNow ? String(zc) : '';
   if (wk !== whereCK) { whereCK = wk; const w = $('where-c'); w.hidden = !zoneNow; $('where-cn').textContent = wk; $('where-ring').setAttribute('stroke-dasharray', `${(zc / 100 * 37.7).toFixed(1)} 37.7`); w.classList.toggle('done', zc >= 100); topFit.dirty(); }
-  const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneTone(gearScore(save).total, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
+  const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneToneLv(save, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
   if (zk !== state.lastZoneUI) { state.lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc;
-    // 권장 장비 점수와 견준 색 (#137): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
+    // 권장 레벨과 견준 색 (#137 → #251 레벨 차이): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
     for (const el of [$('zone-pill'), $('xy-pill')]) { if (tone) el.dataset.tone = tone; else delete el.dataset.tone; }
-    $('zone-pill').dataset.rec = zoneNow ? zoneRec(zoneNow) : ''; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
+    $('zone-pill').dataset.rec = zoneNow ? zoneRecLv(zoneNow) : ''; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
     // 꽃 아이콘 (#46): 지금 구역이 다 피었으면 꽃 모양(귤색), 깨끗한 정도 옆엔 다 핀 구역마다 작은 점. 색은 흰색·귤색만 (#75)
     const bl = !!(bloom && zoneNow && bloom.isBloomed(zoneNow)); $('zone-pill').classList.toggle('bloom', bl);
     const row = $('bloom-row'); row.hidden = !zb; row.innerHTML = [...zb].map((z) => `<i title="${z}구역 ${BLOOM.zones[z].name}"></i>`).join(''); topFit.dirty(); }
@@ -248,8 +254,7 @@ function zoneFx(z) {
   const bn = $('bloom-banner'), fl = (s) => `<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="${color}" stroke="rgba(0,0,0,.28)" stroke-width=".6">${[0, 72, 144, 216, 288].map((a) => `<ellipse cx="12" cy="6.4" rx="3.6" ry="5" transform="rotate(${a + s} 12 12)"/>`).join('')}</g><circle cx="12" cy="12" r="2.6" fill="#ffb01f"/></svg>`;
   bn.innerHTML = `<span class="bz">${icon('zone')}<b>${z}</b></span><svg class="ba" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg><span class="bf">${fl(0)}${fl(36)}${fl(12)}</span>`;
   bn.title = `${z}구역 ${BLOOM.zones[z]?.name || ''}`; bn.style.setProperty('--bb-t', C.bannerT + 's');
-  bn.hidden = false; bn.classList.remove('go'); void bn.offsetWidth; bn.classList.add('go');
-  clearTimeout(zoneFx.t); zoneFx.t = setTimeout(() => { bn.hidden = true; bn.classList.remove('go'); }, C.bannerT * 1000 + 100);
+  toast(bn.title + ' 꽃이 피었어요', C.bannerT, 'get', { icon: fl(0) }); /* #252: 큰 배너 대신 메시지 줄 한 줄 */
   if (canVib()) try { navigator.vibrate(C.vib); } catch { /* 진동 막힘 */ }
 }
 // 콘솔 확인 (#65): __oreum.bloom.test.heap(10|50|200) 가장 가까운 그 크기 더미 옆으로 가서 효과, .zone(z) 지금(또는 z) 구역 꽃밭 효과. 저장은 바꾸지 않음

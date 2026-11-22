@@ -8,6 +8,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const KEEP = process.argv.includes('--keep');
+const { clearPorts, killOnExit } = require('./localsrv.js'); // #259 남은 서버 정리·끊겨도 끄기
 const SERVER_DIR = path.join(__dirname, '..', 'server');
 // 귤 보내기 목록 (#215): plain 서버는 server/grants.json 대신 이 목록 (GRANTS_TEST, FAKE_AUTH 일 때만 읽음)
 const FG = [
@@ -67,6 +68,8 @@ function forge(secret, o) { const pl = b64u(JSON.stringify(o)); return 'v2.' + p
 
 async function startServers() {
   const procs = [];
+  await clearPorts(Object.values(CFG).map((c) => c.port), 'oreum-sec-'); /* 앞 실행이 남긴 서버 (#259) */
+  killOnExit(() => (KEEP ? [] : procs));
   for (const [k, c] of Object.entries(CFG)) {
     const args = ['wrangler', 'dev', '--local', '--port', String(c.port), '--inspector-port', String(c.port + 1000), '--persist-to', path.join(require('os').tmpdir(), 'oreum-sec-' + k + '-' + Date.now())];
     for (const v of c.vars) args.push('--var', v);
@@ -141,6 +144,18 @@ async function startServers() {
     ok(fakeItem.status === 200 && !me3.save.rides.own.length && !me3.save.clothes.own['gold-crown'], '목록에 없는 물건 지움');
     const tr = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, trash: { total: 100000 } } } });
     ok(tr.j.fixed.includes('picked'), '치운 양(랭킹) 부풀리기 바로잡힘');
+    { // #261: 손님 기록을 옮길 때 '오늘 치운 수' 부풀리기는 줍기 몫(pickBurst) 안으로 깎임, 날이 다르면 0
+      const { kstDay, weekStart } = await import('../src/rankday.js'); const d = kstDay();
+      const M = await login('dev', 'mig-day-' + Date.now()), M2 = await login('dev', 'mig-old-' + Date.now());
+      const mig = (X, rk) => req('dev', '/save', { method: 'PUT', token: X.token, body: { migrate: true, save: { ...S0, trash: { total: 500000, rk } } } });
+      await mig(M, { d, w: weekStart(d), day: { battle: 500000 }, week: { battle: 500000 }, all: { battle: 500000 } });
+      await mig(M2, { d: d - 1, w: weekStart(d - 1), day: { battle: 300 }, week: { battle: 300 }, all: { battle: 300 } });
+      const rm = (await req('dev', '/rank/me', { token: M.token })).j, rm2 = (await req('dev', '/rank/me', { token: M2.token })).j;
+      ok(rm?.day?.n > 0 && rm.day.n <= NET.pickBurst && rm.week.n === rm.day.n, `옮긴 기록의 부풀린 오늘 값은 깎임 (오늘 ${rm?.day?.n} ≤ ${NET.pickBurst})`);
+      ok(rm2?.day?.n === 0 && rm2.all.n > 0, `어제 날짜의 오늘 값은 오늘 표에 안 들어감 (${JSON.stringify(rm2?.day)})`);
+      const nx = await req('dev', '/save', { method: 'PUT', token: M.token, body: { save: { ...S0, trash: { total: 500000 + NET.pickBurst } } } });
+      ok(nx.j.fixed.includes('picked'), '옮긴 오늘 몫은 줍기 몫에서 빠져 바로 뒤 저장에서 또 받지 못함');
+    }
     // #140 전리품: 강화 +6·없는 등급·재료 음수·없는 재료·없는 칸은 바로잡음
     const lt = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: me3.save.coins, gearUp: { tool: { g: 7, e: 6 }, crown: { g: 1, e: 1 } }, mats: { m1: -5, m2: 3, gold: 9 }, loot: [{ s: 'tool', t: 9, g: 1, e: 0 }, { s: 'hat', t: 2, g: 4, e: 0 }, { s: 'bag', t: 2, g: 1, e: 2 }], clothes: { own: {}, wear: {}, up: { 'hat:w-cap': { g: 2, e: 9 }, nope: { g: 1 } } } } } });
     const me4 = (await req('dev', '/me', { token: A.token })).j.save;
@@ -247,6 +262,18 @@ async function startServers() {
       ok(!r.fixed.length && r.save.coins === 100 + qg, `퀘스트 보상(${q.id} ${qg})은 몫으로 인정`);
       let r2 = checkSave(P, { ...P, coins: 100 + qg, quest: { done: [q.id] } }, { ...r.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
       ok(r2.fixed.includes('coins') && r2.save.coins <= 100 + NET.earnPerSec * 1, '같은 퀘스트 보상 두 번 받기 거절 (처음부터 다시 해도)');
+      { // 사건 파일 (#232): 사건 퀘스트 보상 귤도 퀘스트 몫으로 계정마다 한 번 (src/cases/c*.js quests → QUESTS.side)
+        const { CASE_QUESTS } = await import('../src/cases/index.js');
+        for (const cq of CASE_QUESTS.filter((x) => x.reward?.gyul)) {
+          const g = cq.reward.gyul, k1 = checkSave(P, { ...P, coins: 100 + g, quest: { done: [cq.id] } }, { ...acc, credit: 0, bank: 0 }, t);
+          ok(!k1.fixed.length && k1.save.coins === 100 + g && k1.rec?.why?.quest === g, `사건 퀘스트 ${cq.id} 보상(귤 ${g})은 몫으로 인정`);
+          const k2 = checkSave(P, { ...P, coins: 100 + g, quest: { done: [cq.id] } }, { ...k1.acc, credit: 0, bank: 0, savedAt: t }, t + 1000);
+          ok(k2.fixed.includes('coins') && k2.save.coins <= 100 + NET.earnPerSec * 1, `사건 퀘스트 ${cq.id} 보상 두 번 받기 거절 (처음부터 다시 해도)`);
+        }
+        const cl = CASE_QUESTS.map((x) => x.reward?.item).filter(Boolean);
+        const k3 = checkSave(P, { ...P, clothes: { own: Object.fromEntries(cl.map((id) => [id, 1])), wear: {} } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!k3.fixed.length && cl.every((id) => k3.save.clothes.own[id]), `사건 보상 옷(${cl.join(',')})은 값 0 이라 그대로`);
+      }
       r = checkSave(P, { ...P, coins: 100, boss: { done: { 5: 1 } } }, acc, t);
       const r3 = checkSave(r.save, { ...r.save, coins: 100 + 2500 }, { ...r.acc, credit: 0, savedAt: t }, t + 5000);
       ok(!r3.fixed.length, '우두머리 귤은 기록 뒤 저장에서 주워도 받아 줌 (bank)');
@@ -290,6 +317,31 @@ async function startServers() {
         let k2 = checkSave(k1.save, { ...k1.save, myst: {} }, { ...k1.acc, savedAt: t + 1000 }, t + 2000);
         k2 = checkSave(k2.save, { ...k2.save, coins: k2.save.coins + g, myst: { safe: 1 } }, { ...k2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
         ok(k2.rec.why.safe === 0 && k2.fixed.includes('coins'), '금고를 지웠다 다시 열어 두 번 받기 거절');
+      }
+      { // 징표 (#255): 판 기록(save.tok.rec)만큼 상한까지 인정, 쉬는 시간 안 두 번째 버팀 거절, 귤로 못 삼, 기록 지웠다 다시 받기 거절, 남에게 줄 길 없음(귤 몫과 따로)
+        const { runMax, armPrice } = await import('../src/token.js'), R0 = (await import('../src/balance.js')).SWARM.run, T0 = { n: 0, got: 0, own: {}, rec: {} };
+        const P0 = { ...P, tok: T0 }, a0 = { ...acc, credit: 0, bank: 0 };
+        let k = checkSave(P0, { ...P0, tok: { ...T0, n: runMax(3), got: runMax(3), rec: { 3: { at: t, n: runMax(3), win: 1 } } } }, a0, t);
+        ok(!k.fixed.includes('tok') && k.save.tok.n === runMax(3) && k.save.coins === P0.coins, `징표 한 판(구역 3, ${runMax(3)})은 인정, 귤은 그대로`);
+        let k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, n: runMax(3) * 2, rec: { 3: { at: t + 60000, n: runMax(3), win: 1 } } } }, { ...k.acc, savedAt: t + 60000 }, t + 60000);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '쉬는 시간 안에 같은 구역 징표 두 번 받기 거절');
+        k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, n: 999, rec: { 4: { at: t + 1000, n: 999, win: 0 } } } }, { ...k.acc, savedAt: t + 1000 }, t + 1000);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n <= runMax(3) + runMax(4), `한 판 상한을 넘는 징표는 깎음 (${k2.save.tok.n})`);
+        k2 = checkSave(k.save, { ...k.save, tok: { ...k.save.tok, rec: {} } }, { ...k.acc, savedAt: t + 2000 }, t + 2000);
+        k2 = checkSave(k2.save, { ...k2.save, tok: { ...k2.save.tok, n: k2.save.tok.n + runMax(3), rec: { 3: { at: t, n: runMax(3), win: 1 } } } }, { ...k2.acc, savedAt: t + R0.rest * 2000 }, t + R0.rest * 2000);
+        ok(k2.fixed.includes('tok') && k2.save.tok.n === runMax(3), '기록을 지웠다 옛 기록으로 다시 받기 거절');
+        k2 = checkSave({ ...P0, coins: 99999 }, { ...P0, coins: 99999, tok: { ...T0, own: { blast: 3 }, arm: 'blast' } }, a0, t);
+        ok(k2.fixed.includes('tokItems') && !k2.save.tok.own.blast && k2.save.coins === 99999, `귤(99999)로는 징표 무기 못 삼 (값 ${armPrice('blast', 1)}+…)`);
+      }
+      { // 미확인 제보 (#238): save.report.got 이 오늘이면 REPORT.gyul 인정, 같은 날 지웠다 다시 끝내도·지난 날짜·없는 제보는 거절
+        const { REPORT } = await import('../src/balance.js'), DL = await import('../src/daily.js'), g = REPORT.gyul, date = DL.kstDate(t);
+        const r1 = checkSave(P, { ...P, coins: 100 + g, report: { d: date, id: 'u01', got: 1 } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!r1.fixed.length && r1.rec?.why?.report === g, `오늘 끝낸 제보는 귤 ${g} 인정 (${r1.rec?.why?.report})`);
+        let r2 = checkSave(r1.save, { ...r1.save, report: { d: date, id: 'u01', got: 0 } }, { ...r1.acc, savedAt: t + 1000 }, t + 2000);
+        r2 = checkSave(r2.save, { ...r2.save, report: { d: date, id: 'u02', got: 1 } }, { ...r2.acc, savedAt: t + 2000 }, t + 3000);
+        ok(r2.rec.why.report === 0, '같은 날 제보를 지웠다 다시 끝내 두 번 받기 거절');
+        const r3 = checkSave(P, { ...P, report: { d: DL.dateOfDay(DL.kstDayN(t) - 4), id: 'u01', got: 1 } }, acc, t), r4 = checkSave(P, { ...P, report: { d: date, id: 'zz9', got: 1 } }, acc, t);
+        ok(r3.rec.why.report === 0 && r4.rec.why.report === 0, '지난 날짜·없는 제보는 인정 안 함');
       }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
@@ -409,6 +461,16 @@ async function startServers() {
     P.send(presence(300, 0)); await sleep(300);
     const back = P.last('pos');
     ok(back && Math.abs(back.x - -300) < 1, `잦은 순간 이동 되돌림 (pos ${back && back.x})`);
+    { // 수거 관 (#248): 관 속(tb 'p')·도착(tb 'o') 표시가 붙은 순간 이동은 warpGap 과 따로 tubeGap 에 한 번. 바로 또 하면 되돌림. tb 는 i·p·o 만 남에게
+      const posN = () => P.msgs.filter((m) => m.t === 'pos').length, seenTb = () => Q.msgs.filter((m) => m.t === 'u').flatMap((m) => m.p).filter(([id]) => id === P.msgs[0].id).pop()?.[1]?.tb;
+      const n0 = posN(); P.send(presence(300, 0, { tb: 'p' })); await sleep(700);
+      ok(posN() === n0 && seenTb() === 'p', `수거 관 순간 이동은 받아 줌·남에게 tb 감 (${posN() - n0}, ${seenTb()})`);
+      P.send(presence(-300, 0, { tb: 'o' })); await sleep(400);
+      const b2 = P.last('pos');
+      ok(posN() === n0 + 1 && b2 && Math.abs(b2.x - 300) < 1, `수거 관도 tubeGap 안에 또 하면 되돌림 (pos ${b2 && b2.x})`);
+      P.send(presence(300.4, 0, { tb: '<b>x</b>' })); await sleep(700);
+      ok(seenTb() === undefined, `모르는 tb 는 지움 (${seenTb()})`);
+    }
     // 속도 조작: 0.1초마다 20m (200m/s) 를 계속 → 되돌리다 끊음
     let x = -300; for (let i = 0; i < 20; i++) { x += 20; P.send(presence(x, 0)); await sleep(100); }
     await sleep(300);
@@ -449,6 +511,10 @@ async function startServers() {
       core.message(a, JSON.stringify({ t: 'rgo' })); core.step(); ok(core.raid.ph === 0, '레이드 바로 열기는 STATS_OPEN 방·어드민만');
       core.message(bq, JSON.stringify({ t: 'rs', s: [1, 2, 3] })); ok(!ms.a.some((m) => m.t === 'rs'), '방장 아닌 사람의 레이드 몸 알림은 버림');
       T0 += 30 * 60e3; core.step(); ok(core.raid.ph === 2, `정해진 시각(12:30 KST)에 레이드 시작 (단계 ${core.raid.ph})`);
+      { const ad = core.join(() => {}, { acct: 'raid-adm', adm: true }), id0 = core.raid.id; core.message(ad, JSON.stringify({ t: 'rgo', f: 1 })); core.step(); core.leave(ad); ok(core.raid.ph === 2 && core.raid.id === id0, '싸우는 중 레이드 지우고 새로 열기(rgo f:1)는 STATS_OPEN 방만: 실서버 어드민도 못 함 (#245)'); }
+      { let T1 = T0; const sc = createRoomCore({ now: () => T1, stats: true }), q = sc.join(() => {}); sc.message(q, JSON.stringify({ t: 'rgo' })); T1 += 6000; sc.step(); T1 += 1000; sc.step(); const id1 = sc.raid.id, ph1 = sc.raid.ph;
+        T1 += 1000; sc.message(q, JSON.stringify({ t: 'rgo' })); sc.step(); const keep = sc.raid.ph === 2 && sc.raid.id === id1; T1 += 1000; sc.message(q, JSON.stringify({ t: 'rgo', f: 1 })); sc.step(); T1 += 6000; sc.step();
+        ok(ph1 === 2 && keep && sc.raid.id === id1 + 1 && sc.raid.ph >= 1, `STATS_OPEN 방: 싸우는 중 rgo 는 그대로, rgo f:1 은 지우고 새 레이드 (#245, 번호 ${id1} → ${sc.raid.id}, 단계 ${sc.raid.ph})`); }
       const h0 = core.raid.hp; core.message(a, JSON.stringify({ t: 'rh', d: 1e9 })); ok(h0 - core.raid.hp <= N2.bossHitMax + 1e-6, `피해 부풀리기는 잘림 (${h0 - core.raid.hp})`);
       const h1 = core.raid.hp; for (let i = 0; i < 10; i++) { T0 += 100; core.message(a, JSON.stringify({ t: 'rh', d: 300 })); } ok(h1 - core.raid.hp <= RAID.dpsBurst + RAID.dps + 1, `한 사람이 1초에 줄 수 있는 피해 상한 (${Math.round(h1 - core.raid.hp)} ≤ ${RAID.dpsBurst + RAID.dps})`);
       core.message(a, JSON.stringify({ t: 'rp', i: 0 })); ok(core.raid.contrib(a.id).p === 0, '싸우는 동안(부서지기 전) 더미 줍기는 안 셈');
@@ -503,6 +569,8 @@ async function startServers() {
     const r3 = (onl.j?.rooms || []).find((r) => r.map === 'namsongi' && r.ch === 3);
     ok(onl.status === 200 && r3 && r3.n === 2 && r3.login === 1 && onl.j.n >= 2 && onl.j.guest >= 1 && onl.j.peak?.n >= 2, `어드민은 지금 접속을 봄 (3번 방 ${r3?.n}명, 로그인 ${r3?.login})`);
     ok(!/fake-|user1|boss|검사|"x"|"z"|ip|sub|nick|acct/i.test(onTxt), '지금 접속 응답에 이름·계정 번호·IP·좌표가 없음');
+    { const rk = onl.j?.rank; ok(rk && ['day', 'week', 'all', 'last'].every((k) => Number.isFinite(rk[k])) && Object.keys(rk).length === 4, `지금 접속에 랭킹 상태는 숫자 넷만 (#250: ${JSON.stringify(rk)})`); }
+    ok((await req('plain', '/rank')).status === 401 && (await req('plain', '/rank/me')).status === 401, '손님은 서버 순위표 못 봄 (401, 게임은 이 기기 기록만 보여 줌)');
     onA.close(); onB.close(); await sleep(400);
     const onl2 = (await req('plain', '/admin/online', { token: Bs.token })).j;
     ok(!(onl2?.rooms || []).some((r) => r.map === 'namsongi' && r.ch === 3) && onl2.peak.n >= 2, '나가면 방에서 빠지고 오늘 최고는 남음');
