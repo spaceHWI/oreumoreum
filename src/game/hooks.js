@@ -2,7 +2,7 @@
 import { nsPaths } from '../namsongi.js';
 import { DEX_LIST } from '../trash.js';
 import { gyulPickR } from '../gearscore.js';
-import { TUT, BOAR, SCATTER, ENEMY_SPAWN, ENEMIES, ENEMY_DROP, DUMP, MUSIC, COMBAT } from '../balance.js';
+import { TUT, BOAR, SCATTER, ENEMY_SPAWN, ENEMIES, ENEMY_DROP, DUMP, DUMPER_Q, MUSIC, COMBAT } from '../balance.js';
 import { RIDE_BY } from '../rides.js';
 import { augV } from '../augments.js';
 import { flinchK } from '../bodytilt.js';
@@ -110,13 +110,13 @@ export const dumpers = trash ? createDumpers({
   hooks: {
     canSpawn: () => !NS_TUT || !!save.tut?.done, // 튜토리얼 중엔 안 옴 (#100: 마지막 정낭 단계도)
     paced: true, heapW: (i) => late.pace?.heapW(i) ?? 1, hit: (p, dead) => late.pace?.hit(p, dead), // 연출 감독이 부름 (#89, game/pace.js)
-    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); say('danger', 'dumperCome', d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요', 2.8, { ttl: 6 }); },
+    appear: (d) => { dumpWarn.start({ x: d.pos.x, z: d.pos.z }); if (late.pace?.guide.appear(d)) return; tips.event('dumper'); say('danger', 'dumperCome', d.quest ? DUMPER_Q.msg : d.kind === 'truck' ? '투기 트럭이 와요! 귤을 맞혀 쫓아내요' : '무단투기꾼이 와요! 귤을 맞혀 쫓아내요', 2.8, { ttl: 6 }); }, // #260 퀘스트용이면 한 줄
     dumped: (d, n) => { late.mutterDumped?.(d, n); if (late.pace?.guide.dumped(d)) return; if (n && d.pos.distanceTo(player.pos) < 120) toast(`${iga(d.def.name)} 쓰레기 ${n}개를 버리고 갔어요`); },
     dress: (d) => late.season?.dress(d), // 산타 투기꾼 (#180)
     repel: (kind, pos, def, d) => {
       life.scatterTangerines(pos, late.rareDrop?.(kind, pos, def.reward) ?? def.reward); late.season?.repel(d, pos); // 귀한 귤 낮은 확률 (#130) // 산타면 선물 상자 (#180)
       sound.beep?.(true); if (!late.pace?.guide.repel(d)) toast(`${iga(def.name)} 놀라 도망가요`);
-      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.story?.dumperRepel?.(); // 이야기 이벤트 (#168)
+      ach.emit('dumper-repel'); ach.emit('dumper-repel-' + kind); late.pace?.note('repel'); late.story?.dumperRepel?.(); late.dumperQRepel?.(); // 이야기 이벤트 (#168)·퀘스트 투기꾼 간격 (#260)
     },
     offline: (n) => { const m = `자리를 비운 사이 쓰레기 ${n}개가 다시 쌓였어요`; if (!$('intro').hidden) state.introToast = m; else toast(m); },
   },

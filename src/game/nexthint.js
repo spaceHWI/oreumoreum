@@ -65,6 +65,7 @@ const AFTER = {
     const it = d.items.find((x) => !x.done); if (!it) return null; const def = ach.defD(it.id); if (!def) return null;
     return { text: `오늘의 업적 · ${def.name}`, prog: def.goal > 1 ? `${Math.min(it.prog, def.goal)}/${def.goal}` : '', tap: openAch };
   },
+  report: () => late.reportHint?.(), // 매일 미확인 제보 (#238, game/reports.js)
   heap() {
     if (!trash) return null; const hs = []; trash.heaps.forEach((h, i) => { if (trash.store.left(i) > 0) hs.push(h); });
     const h = nearest(hs); if (!h) return null;

@@ -76,7 +76,7 @@ function levelFx(lv) {
   glowT = LEVEL.glow.t; glow.visible = true;
   pill.classList.remove('up'); void pill.offsetWidth; pill.classList.add('up');
   late.sound?.fanfare?.();
-  say('level', 'lvUp', `레벨 ${lv}!`, 2.4, { ttl: 8 });
+  say('level', 'lvUp', `레벨 ${lv}!`, 2.6, { ttl: 8, fx: 'big' });
 }
 function tickGlow(dt) {
   if (!glow.visible) return;

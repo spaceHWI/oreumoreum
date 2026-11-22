@@ -124,7 +124,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sentCk: new Map(), ck: '', ckAt: 0, sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
-      key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, caveTok: NET.cavePerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
+      key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, caveTok: NET.cavePerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, tubeT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
     const fill = peers.size ? 0 : fillEmpty(t); // 첫 사람이면 빈 동안 몫부터 (#131)
     if (!peers.size) { crowd = 1; crowdT = t; npSent = 1; }
     peers.set(p.id, p); roomSeen = t;
@@ -180,13 +180,15 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     if (p.has) {
       const dist = Math.hypot(d.x - p.mx, d.z - p.mz), allow = ((t - p.mT) / 1000) * NET.maxSpeed + NET.moveSlack;
       if (dist > allow) {
-        if ((t - p.warpT) / 1000 >= NET.warpGap) p.warpT = t; // 들것 귀환·자리 앉기 같은 순간 이동은 가끔 받아 줌
+        if ((d.tb === 'p' || d.tb === 'o') && (t - p.tubeT) / 1000 >= NET.tubeGap) p.tubeT = t; // 수거 관 (#248): 관 속·도착 표시가 붙은 순간 이동은 warpGap 과 따로 tubeGap 초에 한 번
+        else if ((t - p.warpT) / 1000 >= NET.warpGap) p.warpT = t; // 들것 귀환·자리 앉기 같은 순간 이동은 가끔 받아 줌
         else { st.moveBack++; out(p, JSON.stringify({ t: 'pos', x: p.mx, z: p.mz })); strike(p, 'move'); return; }
       }
     }
     // 움직임 (#131 사람 수): 마지막으로 센 자리에서 crowdMove m 넘게 가면 움직인 것으로. 처음 자리는 세지 않음
     if (!p.has) { p.ax = d.x; p.az = d.z; } else if (Math.hypot(d.x - p.ax, d.z - p.az) > DUMP.crowdMove) { p.ax = d.x; p.az = d.z; p.actT = t; }
     p.tu = !!d.tu;
+    if ('tb' in d && d.tb !== 'i' && d.tb !== 'p' && d.tb !== 'o') delete d.tb; // 수거 관 단계 (#248): 이 셋만 남에게 보냄
     caveCell(p, d); // 동굴 칸 (#195)
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
     if (p.acct) d.ac = 1; else delete d.ac; // 로그인한 사람 (#175 귤 주기). 클라이언트가 보낸 값은 버림

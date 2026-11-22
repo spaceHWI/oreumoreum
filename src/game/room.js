@@ -43,14 +43,14 @@ export const net = createNet({
     room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
   },
-  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}), ...(late.swarmExtra ? late.swarmExtra() : {}) }), /* tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76) */
-  rideHook: (e, dt) => peerRide(e, dt),
+  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}), ...(late.swarmExtra ? late.swarmExtra() : {}), ...(late.tubeExtra ? late.tubeExtra() : {}) }), /* tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76) */
+  rideHook: (e, dt) => late.tubePeer?.(e, dt) || peerRide(e, dt), // 수거 관 (#248): 작아짐·숨김·튀어나옴이 먼저
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)
-  onToast: (m) => toast(m),
+  onToast: (m) => toast(m, undefined, 'multi'),
   solo: () => !!late.tut?.active, // #100 튜토리얼 중엔 혼자: 남이 안 보이고 내 모습도 안 보냄
 }); late.net = net;
-export const social = createSocial({ scene, net, save, onToast: (m) => toast(m), mapId: MAP_ID }); late.social = social;
+export const social = createSocial({ scene, net, save, onToast: (m) => toast(m, undefined, 'multi'), mapId: MAP_ID }); late.social = social;
 state.emo = createEmotes({
   scene, player, save, persist, net, toast, sound: () => late.sound, camera, placeArrow: (el, wp, lift) => late.placeArrow(el, wp, lift), ui: document.body,
   can: emoCan, riding: emoRiding, heapPos: () => nearestHeapPos(), groundAt, myRoot: () => runner.root,

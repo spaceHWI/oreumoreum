@@ -17,6 +17,8 @@ import { cam } from './camera.js';
 import { wx, sunState } from './scene.js';
 import { CAT_NAME, RUN_DAYS } from '../daily.js';
 import { DAILY } from '../balance.js';
+import { msg, msgBusy, tickMsg } from './msglog.js';
+export { tickMsg };
 
 Object.assign(late, { toast, closePanels, gyulExpect: (n) => gyulExpect(n) }); // 앞 파일에서 부르는 함수
 
@@ -41,17 +43,16 @@ export const topFit = (() => {
   return { dirty: () => { dirty = true; }, tick(dt) { const v = `${$('hp-bar').hidden}${$('buff-pill').hidden}${$('punk-pill')?.hidden}${document.body.classList.contains('tut')}`; if (v !== vis) { vis = v; dirty = true; t = 0; } t -= dt; if (dirty && t <= 0) { t = 0.2; fit(); } }, fit, get bottom() { return bottom; } };
 })();
 state.toastT = 0;
-export function toast(msg, sec = 2.8) { ui.toast.textContent = msg; ui.toast.hidden = false; state.toastT = sec; topStack(); }
+/* 옛 토스트 (#252): 메시지 줄 한 줄로. kind 'info'·'get'·'warn'·'multi' (game/msglog.js). #toast 칸은 이제 안 씀 */
+export function toast(text, sec, kind = 'info', opt = {}) { return msg(kind, text, { sec, ...opt }); }
 // 줍기 메시지 (#116): 따로 작은 한 줄. 새로 주우면 바꿔 쓰고, 같은 것을 이어 주우면 ×N. 다른 토스트는 건드리지 않음
-const pm = { name: '', n: 0, t: 0 };
-export function pickMsg(name, line = '') { // line: 정한 글 그대로 (귀한 귤 '한라봉! 귤 +5' #130)
-  const el = $('pickmsg'); if (!el || !name) return;
-  if (line) { pm.name = ''; pm.n = 0; pm.t = 2.6; el.textContent = line; el.hidden = false; return; }
-  pm.n = pm.t > 0 && pm.name === name ? pm.n + 1 : 1; pm.name = name; pm.t = 2;
+export function pickMsg(name, line = '') { // line: 정한 글 그대로 (귀한 귤 '한라봉! 귤 +5' #130). 메시지 줄 'get' 한 줄, 같은 것을 이어 주우면 ×N (#252)
+  if (!name) return;
+  if (line) { msg('get', line); return; }
   const c = name.charCodeAt(name.length - 1) - 0xac00, jong = c >= 0 && c <= 11171 ? c % 28 !== 0 : false;
-  el.textContent = pm.n > 1 ? `${name} ×${pm.n}` : `${name}${jong ? '을' : '를'} 주웠어요`; el.hidden = false;
+  msg('get', name, { key: 'pick:' + name, sec: 2.5, fmt: (n) => (n > 1 ? `${name} ×${n}` : `${name}${jong ? '을' : '를'} 주웠어요`) });
 }
-export function tickPickMsg(dt) { if (pm.t > 0) { pm.t -= dt; if (pm.t <= 0) { const el = $('pickmsg'); if (el) el.hidden = true; } } }
+export function tickPickMsg() { /* #252: 메시지 줄이 맡음 */ }
 // 위 가운데 배너·팁·토스트가 겹치지 않게 (#16): 보이는 것의 높이를 CSS 변수로 넘기고 body 클래스로 아래로 밀기
 export function topStack() {
   const b = document.body, bn = document.getElementById('banner'), tp = [document.getElementById('tip'), document.getElementById('tut-toast')].find((e) => e && !e.hidden), on = !!tp; // #100 튜토리얼 토스트도 같은 자리
@@ -63,11 +64,13 @@ initUiTips({ $, toast, get: { hp: () => hp.hp, hpMax: () => hp.max, bagName: () 
 // ---------- 상황에 맞는 팁 (#66): 표는 tips.js ----------
 const tipEl = $('tip'); let tipT = 0, tipNow = null, tipMarkT = 0, tipMarkPos = null; export { tipMarkT }; export { tipMarkPos };
 function showTip(tip) {
-  tipNow = tip; tipEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIP_ICON[tip.ic] || ''}</svg><span>${tip.text}</span>`;
-  tipEl.classList.toggle('go', !!tip.go); tipEl.hidden = false; tipT = TIP.sec; late.sound.beep?.(false); topStack();
+  tipNow = tip; tipT = TIP.sec; late.sound.beep?.(false); /* #252: 메시지 줄 한 줄 (누르면 그쪽으로) */
+  tipSp = msg('info', tip.text.replace(/<[^>]+>/g, ''), { sec: TIP.sec, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIP_ICON[tip.ic] || ''}</svg>`, click: tipGo, own: true, done: () => { if (tipT > 0) tipHide(); } });
   late.director?.begin('tip', 'tip:' + tip.id, TIP.sec); // 감독(#176)에게 알림
 }
-const tipHide = () => { tipEl.hidden = true; tipT = 0; late.director?.end('tip:' + tipNow?.id); };
+let tipSp = null;
+const tipHide = () => { tipT = 0; if (tipSp) { const sp = tipSp; tipSp = null; late.msgLog?.drop(sp); } late.director?.end('tip:' + tipNow?.id); };
+function tipGo() { const g = tipNow?.go; tipHide(); if (g && TIP_GO[g]) TIP_GO[g](); }
 export const tips = createTips({ save, persist, show: showTip }); late.tips = tips;
 export function tipMark(pos) { tipMarkPos = pos; tipMarkT = 6; }
 export function nearestHeapPos() { if (!trash) return null; let b = null, bd = 1e9; trash.heaps.forEach((h, i) => { if (!(trash.store.left(i) > 0)) return; const d = Math.hypot(h.x - player.pos.x, h.z - player.pos.z); if (d < bd) { bd = d; b = { x: h.x, z: h.z }; } }); return b; }
@@ -78,7 +81,7 @@ const TIP_GO = {
   stone: () => { if (STN?.terrace) tipMark(STN.terrace.clone()); },
   map: () => late.openMap?.(), // 오름 지도 (#136)
 };
-tipEl.addEventListener('click', () => { const g = tipNow?.go; tipHide(); topStack(); if (g && TIP_GO[g]) TIP_GO[g](); });
+
 { const b = $('menu-tips'); const sync = () => b.setAttribute('aria-pressed', String(!tips.isOff())); sync(); b.addEventListener('click', () => { tips.off(!tips.isOff()); sync(); if (tips.isOff()) tipHide(); }); } // 메뉴에서 팁 끄기
 function tipStreamPos() { if (!stream) return null; const [al, lat] = stream.local(player.pos.x, player.pos.z); const [x, z] = stream.at(stream.centerOff(lat) + 0, Math.max(-20, Math.min(20, lat))); return { x, z, d: Math.hypot(x - player.pos.x, z - player.pos.z) }; }
 let tipIdle = 0, tipBagN = -1;
@@ -87,7 +90,7 @@ function tipState() {
   return {
     goOk: (go) => late.shopOpen?.(go === 'shop' ? 'gear' : go) !== false, /* 닫힌 가게로 보내는 팁은 쉼 (#206) */
     busy: !!(late.tut.active) || !late.director?.isOpen('tips') || !late.director?.can('tip') || // 감독(#176): 문이 열렸고 지금 팁 차례일 때만
-       (!!late.pace && !late.pace.canTip()) || !$('toast').hidden || !tipEl.hidden || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
+       (!!late.pace && !late.pace.canTip()) || msgBusy() || tipT > 0 || late.mealS.on || late.cutS.on || panelOpen() || cam.mode === 'wardrobe' || !state.sessionOn || document.hidden || player.down || (isTouch && false),
     bagFull: full, bagTier: save.equip.bag, canBuy: !!trash && late.canBuyGear().length > 0,
     hpLow: hp.hp / hp.max < 0.4, enemyNear: life.enemies.near(player.pos, 25) || (!!late.dumpers && late.dumpers.list.some((d) => Math.hypot(d.pos.x - player.pos.x, d.pos.z - player.pos.z) < 25)),
     hasBow: late.weaponNow().id !== 'hand', idle: tipIdle,
@@ -98,7 +101,7 @@ function tipState() {
 export function tickTips(dt) {
   const n = trash ? trash.store.pickedCount() : 0;
   if (n !== tipBagN) { tipBagN = n; tipIdle = 0; } else if (!panelOpen() && !late.tut.active) tipIdle += dt;
-  if (tipT > 0) { tipT -= dt; if (tipT <= 0) { tipEl.hidden = true; topStack(); } }
+  if (tipT > 0) { tipT -= dt; if (tipT <= 0) tipHide(); }
   if (tipMarkT > 0) { tipMarkT -= dt; if (tipMarkT <= 0 || (tipMarkPos && player.pos.distanceTo(tipMarkPos) < 6)) { tipMarkT = 0; tipMarkPos = null; } }
   tips.update(dt, tipState);
 }// 귤 숫자 (#133): 실제 값(save.coins)은 바로 바뀌고, 위쪽 숫자(#coins)만 얻는 효과가 닿은 뒤 올라간다.
@@ -188,13 +191,11 @@ function onAchievement(r) {
 export function tickBanner(dt) {
   dailyTick(dt);
   if (document.body.classList.contains('tut')) return; // 튜토리얼 중엔 조용히. 보상은 업적 창에 남아 있음
-  if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) { $('banner').hidden = true; document.body.classList.remove('banner-on'); } return; }
+  if (bannerT > 0) { bannerT -= dt; return; }
   const b = bannerQueue.shift(); if (!b) return;
-  $('banner-bdg').innerHTML = iconSvg(b.icon); $('banner-bdg').style.background = b.color;
-  $('banner-title').textContent = b.title; $('banner-sub').textContent = b.sub;
-  $('banner').hidden = false; document.body.classList.add('banner-on'); bannerT = 4.5; topStack();
+  bannerT = 1.2; /* #252: 큰 배너 대신 메시지 줄 한 줄 (누르면 업적 창) */
+  msg('get', b.title, { sec: 4.5, icon: `<span style="display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:${b.color}">${iconSvg(b.icon)}</span>`, click: () => openAch() });
 }
-$('banner-go').addEventListener('click', () => { $('banner').hidden = true; document.body.classList.remove('banner-on'); bannerT = 0; openAch(); });
 export function refreshAchUI(keep) { // keep: 목록은 그대로 (받기 버튼이 '받음' 을 잠깐 보여 줌)
   const d = ach.ensureDaily();
   const done = d.items.filter((x) => x.done).length;
@@ -217,6 +218,7 @@ function claimBtn(cls, reward, take) {
   });
   return b;
 }
+late.buildAch = () => buildAch(); // 미확인 제보 (#238) 를 끝내면 다시 그림
 function buildAch() {
   const d = ach.ensureDaily();
   const [yy, mm, dd] = d.date.split('-');
@@ -249,6 +251,7 @@ function buildAch() {
     else { right.className = 'muted'; right.style.fontSize = '12px'; right.textContent = `귤 ${ach.allGyul()}`; }
     row.append(t, right); list.append(row);
   }
+  late.reportRow?.(list); // 매일 미확인 제보 (#238, game/reports.js)
   { // 이어 오기 (#125): 연속 날 수 · 다음 보상 날
     const R = ach.state.run, nx = RUN_DAYS.find((n) => n > R.n);
     $('ach-run').textContent = R.n ? `이어 오기 ${R.n}일째${nx ? ` · ${nx}일째 보상` : ''}` : '';

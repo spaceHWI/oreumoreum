@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { BLOOM as B } from './balance.js';
 import { ZONE_IDS, ZONE_BOX } from './zones.js';
+import { inArena } from './pathclear.js';
 
 function mulberry(seed) { let s = seed >>> 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function paint(g, color) { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); g.computeVertexNormals(); const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
@@ -60,7 +61,7 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low, ambFly
   // 2) 자리: 구역마다 고르게 흩은 꽃 무리 · 어린 나무, 더미 자리 둘레 꽃
   const rnd = mulberry(4601);
   const items = []; // { x, z, y, rot, s, zone, kind 0 꽃 1 나무, tOn, tOff, heap, cur, tgt, delay, wd }
-  const free = (x, z, r) => !onPath(x, z) && !(col && col.blocked(x, z, r)) && !trash.heaps.some((h) => Math.hypot(h.x - x, h.z - z) < h.r + 0.6);
+  const free = (x, z, r) => !onPath(x, z) && !(col && col.blocked(x, z, r)) && !trash.heaps.some((h) => Math.hypot(h.x - x, h.z - z) < h.r + 0.6) && !inArena(x, z, r); /* 서바이벌 터 안엔 피지 않음 (#253) */
   function scatter(per, fn) {
     const st = Math.sqrt(per), { x0, z0, size } = ZONE_BOX;
     for (let z = z0; z < z0 + size; z += st) for (let x = x0; x < x0 + size; x += st) { const px = x + rnd() * st, pz = z + rnd() * st, k = zoneAt(px, pz); if (k) fn(px, pz, k); }
@@ -83,12 +84,12 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low, ambFly
   const treeMat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
   const IM = {}; /* IM[zone][g] = { stem, head, cap } */
   ZONE_IDS.forEach((z) => { IM[z] = [0, 1, 2].map((g) => { const geo = clumpGeo(B.zones[z].kind, z * 10 + g), cap = Math.max(1, items.filter((it) => it.kind === 0 && it.zone === z && it.g === g).length);
-    const mk = (gg, m) => { const im = new THREE.InstancedMesh(gg, m, cap); im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; scene.add(im); return im; };
+    const mk = (gg, m) => { const im = new THREE.InstancedMesh(gg, m, cap); im.name = 'bloom-flower'; im.count = 0; im.frustumCulled = false; im.receiveShadow = !low; scene.add(im); return im; };
     const head = mk(geo.head, headMat); head.setColorAt(0, new THREE.Color()); return { stem: mk(geo.stem, stemMat), head }; }); });
   const tuftCap = Math.max(1, items.filter((it) => it.kind === 2).length);
-  const tufts = new THREE.InstancedMesh(tuftGeo(77), stemMat, tuftCap); tufts.count = 0; tufts.frustumCulled = false; tufts.receiveShadow = !low; scene.add(tufts);
+  const tufts = new THREE.InstancedMesh(tuftGeo(77), stemMat, tuftCap); tufts.name = 'bloom-tuft'; tufts.count = 0; tufts.frustumCulled = false; tufts.receiveShadow = !low; scene.add(tufts);
   const treeCap = Math.max(1, items.filter((it) => it.kind === 1).length);
-  const trees = new THREE.InstancedMesh(treeGeo(), treeMat, treeCap); trees.count = 0; trees.frustumCulled = false; trees.castShadow = !low; trees.receiveShadow = !low; trees.setColorAt(0, new THREE.Color()); scene.add(trees);
+  const trees = new THREE.InstancedMesh(treeGeo(), treeMat, treeCap); trees.name = 'bloom-tree'; trees.count = 0; trees.frustumCulled = false; trees.castShadow = !low; trees.receiveShadow = !low; trees.setColorAt(0, new THREE.Color()); scene.add(trees);
   const ZC = {}; ZONE_IDS.forEach((z) => { ZC[z] = new THREE.Color(B.zones[z].color); });
   const BROWN = new THREE.Color('#8a6a3c'), TREE_C = [new THREE.Color('#ffffff'), new THREE.Color('#e6f2d6'), new THREE.Color('#f2f6dc')];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), sc = new THREE.Vector3(), colr = new THREE.Color();
@@ -153,9 +154,9 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low, ambFly
   /* ---------- 나비·새 ---------- */
   const NB = low ? B.butterfliesLow : B.butterflies, NBIRD = B.birds;
   const bfMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-  const bf = new THREE.InstancedMesh(wingGeo(0.17, 0.2), bfMat, NB * 2); bf.frustumCulled = false; bf.count = 0; bf.setColorAt(0, new THREE.Color()); scene.add(bf);
+  const bf = new THREE.InstancedMesh(wingGeo(0.17, 0.2), bfMat, NB * 2); bf.name = 'fly'; bf.frustumCulled = false; bf.count = 0; bf.setColorAt(0, new THREE.Color()); scene.add(bf);
   const birdMat = new THREE.MeshToonMaterial({ color: '#3a3a44', side: THREE.DoubleSide, gradientMap: gradHard });
-  const bd = new THREE.InstancedMesh(wingGeo(0.55, 0.32), birdMat, NBIRD * 2); bd.frustumCulled = false; bd.count = 0; scene.add(bd);
+  const bd = new THREE.InstancedMesh(wingGeo(0.55, 0.32), birdMat, NBIRD * 2); bd.name = 'fly'; bd.frustumCulled = false; bd.count = 0; scene.add(bd);
   const BF_C = ['#ffffff', '#ffe27a', '#ffb8d0', '#cfe0ff', '#f6c46a'].map((h) => new THREE.Color(h));
   const flies = []; for (let i = 0; i < NB; i++) flies.push({ p: new THREE.Vector3(), to: new THREE.Vector3(), h: 0, ph: Math.random() * 6, k: 0, t: 0, c: BF_C[i % BF_C.length] });
   let birds = []; // { p, v, ph, st: 'in'|'circle'|'out', t, cx, cz, cy, a }
@@ -232,5 +233,5 @@ export function createBloom({ scene, ns, trash, height, onPath, col, low, ambFly
   }
   // 서버를 바꿀 때 (#35): 그 사이 쓰레기 변화는 연출 없이 바로 맞춤. run 안에서 쓰레기를 바꿈
   function resync(run) { mute = true; try { run?.(); } finally { mute = false; } items.forEach((it) => { it.on = false; it.cur = 0; it.wd = false; }); anim.clear(); ZONE_IDS.forEach((z) => { bloomed[z] = false; }); refresh(true); }
-  return { update, resync, replay, on: (f) => listeners.push(f), isBloomed: (z) => !!bloomed[z], bloomed: () => ZONE_IDS.filter((z) => bloomed[z]), clean: (z) => clean[z], flock, flushUp, spotIn, test };
+  return { update, resync, replay, on: (f) => listeners.push(f), isBloomed: (z) => !!bloomed[z], bloomed: () => ZONE_IDS.filter((z) => bloomed[z]), clean: (z) => clean[z], flock, flushUp, spotIn, test, decor: () => items.map((it) => [it.kind, it.x, it.z]) /* tools/arenacheck.js (#253) */ };
 }
