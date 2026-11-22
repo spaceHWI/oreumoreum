@@ -37,6 +37,8 @@ export const HEAP = {
 export const FIELD_HEAPS = { 1: { mt: 1 }, 2: { mt: 1 }, 3: { l: 2, mt: 1 }, 4: { xl: 1, mt: 1 }, 5: { xl: 1, mt: 1 } };
 // 구역 (#45): src/zones.js zoneAt 이 위치로 번호를 구함. heaps 더미 크기별 수, min 목표 시간(권장 장비로 혼자, 클린하우스 왕복 포함)
 // rec 권장 장비 점수 (#137, GROWTH.score 로 셈. 칸 10개가 모두 n단계면 구역 n 쯤). gear 권장 장비 단계(도구·배낭·신발, 시간 계산용)
+// recLv 권장 레벨 (#251): 플레이어에게 보이는 기준. node tools/econ.js 의 '권장 레벨'(장비 점수가 rec 에 닿는 레벨 가운데 값, 여유 25%) 4·5·7·10·13 에서 구역 1 은 1.
+//   사건 파일 열림 레벨(3·6·10·14·18)보다 낮거나 같게(사건이 열릴 때는 이미 권장 레벨). 안쪽 셈(적 세기·slowNew 등)은 그대로 rec
 // gv 이 구역 쓰레기 귤 배수 (#137: 구역마다 벌이가 약 2.5배. 클린하우스에서 받는 귤 = TRASH_TYPES gyul × gv)
 //   #138 들판 더미·쓰레기 산이 더해져 하루 1시간을 다 쓰게 되어 1·1·2·8·14 로 낮춤 (전 4·4.5·8·18·30, tools/econ.js 흐름 통과)
 // mix 나오는 쓰레기 종류 비율(TRASH_TYPES 순서: 캔·페트병·비닐·스티로폼·폐어구)
@@ -45,11 +47,11 @@ export const FIELD_HEAPS = { 1: { mt: 1 }, 2: { mt: 1 }, 3: { l: 2, mt: 1 }, 4: 
 // 시간 어림은 __oreum.trash.estimate() (클린하우스 왕복 = 직선 거리 × 1.15, 달리기 10 × 신발)
 // 조정: 1구역은 캔·페트병·비닐만(부피 1) + 클린하우스 215 안, 5구역 대형 더미는 200 → 140개 (그대로면 약 29분)
 export const ZONES = [
-  { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: 10, gv: 1, gear: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
-  { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: 25, gv: 1, gear: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07], chMax: 90 },
-  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, gv: 2, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11], chMax: 80 },
-  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, gv: 8, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16], chMax: 90 },
-  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, gv: 14, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 }, chMax: 80 },
+  { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: 10, recLv: 1, gv: 1, gear: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
+  { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: 25, recLv: 5, gv: 1, gear: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07], chMax: 90 },
+  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, recLv: 7, gv: 2, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11], chMax: 80 },
+  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, recLv: 10, gv: 8, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16], chMax: 90 },
+  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, recLv: 13, gv: 14, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 }, chMax: 80 },
 ];
 // 성장 수치 (#137, notes/growth-loop.md 3절): 장비 점수. src/gearscore.js 가 읽음
 // score[단계] = 칸 하나 점수 (0 = 없음·호주머니). 칸 10개(도구·배낭·신발·무기 + 옷 6칸)의 합이 장비 점수
@@ -61,6 +63,8 @@ export const GROWTH = {
   pick: ['tool', 'bag', 'shoes', 'hat', 'bottom', 'vest'],
   fight: ['weapon', 'top', 'jacket', 'socks'],
   red: 0.85, green: 1.2,
+  /* #251 보이는 색은 레벨 차이로: 내 레벨이 권장보다 lvRed 이상 낮으면 빨강, 권장 이상이면 초록, 사이는 노랑. 레벨은 됐는데 장비 점수가 권장의 gearLow 아래면 그 구역에 들어갈 때 한 번 '장비점에 들러요' */
+  lvRed: 2, gearLow: 0.6,
   // 단계별 값 (도구·배낭·신발·무기 같은 곡선, 단계마다 약 4배). 1단계는 배낭(호주머니 → 배낭)만 값이 있음
   price: [0, 50, 200, 800, 3200, 13000, 30000],
   wearK: 1, // 옷 6칸 값 = price × wearK (같은 곡선)
@@ -1879,6 +1883,7 @@ export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, face: { crows: 3, sk
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
 CASE.chase = { white: '#f4f3ee', glow: 0.35, behind: 2.4, glide: 3.2, glimT: 2.6, nightR: 45, afterT: 8, camBack: 3.6, camSide: 1.1, camUp: 1.9, faceD: 1.3, faceSide: 2.1, faceUp: 1.45, ambR: 70, ambW: 0.35, vanish: 7 };
+CASE.watch = { back: 5.5, camBack: 8.5, camSide: 1.8, camUp: 2.1 }; /* 다가가 보기 장면(#236 사건 5, face.watch). 나는 모양 등 뒤 back m, 카메라는 등 뒤 camBack m·옆 camSide m·위 camUp m */
 
 // 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
 // hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
