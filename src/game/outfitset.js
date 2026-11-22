@@ -11,7 +11,7 @@ import { toast } from './hud.js';
 import { LOW } from '../gfx2.js';
 
 export const wornSet = (s = save) => OUTFIT_SETS.find((t) => t.items.every((id) => Object.values(s?.clothes?.wear || {}).includes(id))) || null;
-export const setTitles = (s = save) => OUTFIT_SETS.filter((t) => t.items.every((id) => s?.clothes?.own?.[id])).map((t) => ({ id: t.id, title: t.title }));
+export const setTitles = (s = save) => OUTFIT_SETS.filter((t) => !t.badge && t.items.every((id) => s?.clothes?.own?.[id])).map((t) => ({ id: t.id, title: t.title }));
 
 const N = LOW ? SET_FX.lowN : SET_FX.n;
 const dot = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })();
@@ -24,7 +24,7 @@ function check(fromWear) {
   const s = wornSet();
   if (s?.id === cur?.id) return;
   cur = s; pts.visible = !!s; if (s) mat.color.set(s.fx);
-  if (s && fromWear) { toast(`한 벌 맞춤 · ${s.name} · 칭호 '${s.title}' 를 달 수 있어요`, 3); late.sound?.fanfare?.(); }
+  if (s && fromWear) { const t = !s.badge || save.ach?.badges?.[s.badge]; toast(`한 벌 맞춤 · ${s.name}${t ? ` · 칭호 '${s.title}' 를 달 수 있어요` : ''}`, 3); late.sound?.fanfare?.(); } /* badge: 칭호는 그 업적으로 열림 (#237) */
 }
 function tick(dt) {
   if (!cur) return;

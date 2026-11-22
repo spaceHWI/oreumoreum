@@ -73,6 +73,7 @@ BADGES.push(
   { id: 'b-eye', ev: 'myst-safe', goal: 1, name: '눈썰미', desc: '관리 초소 금고를 열었어요', color: '#5a5f3a', reward: 20 }, // #212 금고
 );
 BADGES.push(...CASE_BADGES); // 사건 파일 (#232): 사건을 종결하면 game/cases.js 가 late.titles.give 로 사건을 냄
+BADGES.push({ id: 'b-case-all', ev: 'case-all', goal: 1, name: '수석 조사관', desc: '증거 사진 다섯 장을 빨간 실로 이었어요', color: '#8a2a2a', reward: 0 }); // #237 사건 파일 끝 (game/casefinale.js)
 BADGES.push({ id: 'b-token', ev: 'token', goal: 30, name: '징 치는 사람', desc: '징표 30개를 모았어요', glyph: '징', color: '#f08a24', reward: 20 }); // 징표 (#255, game/token.js 가 emit('token', n))
 
 // cond(kind): 지금 'rain'(비)·'night'(해 진 뒤)인가 · zone(): 가 본 가장 깊은 구역(보상) · active(): 오늘의 할 일을 셀 때인가(튜토리얼 중엔 아님)

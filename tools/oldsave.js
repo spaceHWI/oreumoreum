@@ -25,6 +25,8 @@ const SAVES = {
   reportBad: { nick: '제보 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: 404, id: 'zz', got: 'yes', said: [] } }, // 미확인 제보 (#238): 이상한 값
   reportOld: { nick: '어제 제보', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, lv: { xp: 99999 }, report: { d: '2026-01-01', id: 'u01', got: 1, said: 1 } },
   caseMid: { nick: '조사 중', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c1: { w: 1763800000000, ev: ['k1a', 'nope', 'k1a'], f: 0 } }, punk: { notes: { k1a: 1763800000000 }, unread: [] } },
+  caseFinBad: { nick: '사건 끝 깨짐', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, caseFin: 'x', boss: { done: { 5: 1 } }, story: { done: ['ufo'], wait: ['end', 'zz'] } }, /* #237 깨진 끝 기록·사건 없이 엔딩이 줄에 선 저장 */
+  endSeen: { nick: '엔딩 본 사람', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, boss: { done: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 } }, story: { done: ['end'], seen: 1 }, clothes: { own: { 'vest:i-pocket': 1, 'jacket:i-coat': 1, 'hat:i-hat': 1 }, wear: { vest: 'vest:i-pocket', jacket: 'jacket:i-coat', hat: 'hat:i-hat' } } }, /* #237 엔딩을 이미 본 옛 저장: 막히지 않음 · 조사관 옷 셋 */
   caseChase: { nick: '흰 옷 쫓기', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c2: { w: 1763800000000, ev: ['k2a', 'k2b', 'k2c'], f: 0, a: 'x', s: 'bad' } } }, /* #233 터를 버티고 따라가는 중 (a 깨짐) */
   caseC3: { nick: '맨발 조사', coins: 50, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, cases: { c3: { w: 1763800000000, ev: ['k3a', 'k3a', 'zz'], f: 0, h: 'yes', b: 'q' } }, mats: { m4: 'x' } }, // #234 사건 3: 대면 장면 준비(h) 깨짐
   // #158: 퀘스트 기록이 깨진 저장 · 구역 1·2 를 끝낸 옛 저장(퀘스트 없음 → 구역 3 줄부터)
@@ -104,6 +106,9 @@ const SAVES = {
       if (!want) { bad++; console.log(name, '더 채울 수 없는 퀘스트 풀기 실패', JSON.stringify(q)); } else console.log(name, '퀘스트 풀림', JSON.stringify({ done: q.done.slice(-2), cur: q.cur, cp: q.cp, coins: q.coins })); }
     if (name === 'tutStall') { const t = await p.evaluate(() => { const o = window.__oreum; return { s: o.save.tut.step, v: o.save.tut.v, step: o.tut.step, sg: o.tut.shopGate()?.open, gear: o.shopGate.isOpen('gear'), stall: o.cleanhouse.api.mark.visible }; }).catch(() => ({}));
       if (!(t.s === 8 && t.v === 5 && t.step === 'tongs' && t.sg && t.gear && !t.stall)) { bad++; console.log(name, '좌판 단계 옮기기 실패', JSON.stringify(t)); } else console.log(name, '장비점 단계', JSON.stringify(t)); }
+    if (name === 'endSeen' || name === 'caseFinBad') { const f = await p.evaluate(() => ({ ...window.__oreum.caseFin.state(), cur: window.__oreum.story.state().cur, set: window.__oreum.outfitSet.worn() })).catch(() => ({}));
+      const want = name === 'endSeen' ? f.ready && f.saw && f.t === 0 && f.set === 'inv' : !f.ready && f.t === 0 && f.cur !== 'end';
+      if (!want) { bad++; console.log(name, '사건 파일 끝 저장 실패', JSON.stringify(f)); } else console.log(name, '사건 파일 끝', JSON.stringify(f)); }
     if (name === 'questVet' && st.qnext !== 'heap3') { bad++; console.log(name, '옛 저장 퀘스트 건너뛰기 실패', st.qnext); } // #158
     if (name === 'clean' && !(st.coins === 4321 && st.equip.tool === 3 && st.equip.weapon === 2 && st.total === 900 && st.slots.join() === 'battle' && st.rkAll?.battle === 900 && !('clean' in st.rkAll))) { bad++; console.log(name, '옮기기 실패'); }
     if (name === 'loot' && !(st.mats?.r2 === 2 && st.mats?.m3 === 4 && !('m1' in st.mats) && !('zz' in st.mats) && st.up?.tool?.g === 3 && st.up.tool.e === 5 && st.nloot <= 2)) { bad++; console.log(name, '전리품 저장 바로잡기 실패'); }

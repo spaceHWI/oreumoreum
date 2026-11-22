@@ -317,7 +317,9 @@ if (S.box) addBox(S.box[0], S.box[1]);
 // ---------- 차례 ----------
 let cur = null, safeT = 0, retryT = 0, checkT = 0, lastZone = -1, wasNight = false, truckFree = false;
 const hasTruckOk = () => isDoneId('truck') || cur?.id === 'truck' || !!save.pace?.hint?.t; // 트럭의 첫 등장은 '트럭이 온다' (옛 저장에서 트럭을 이미 본 사람은 그대로)
+const endOk = () => late.caseFin?.ready?.() ?? true; // 엔딩은 사건 파일 끝(#237, game/casefinale.js)을 본 뒤에만 (이미 본 저장은 그대로)
 function fire(id) { // 조건이 맞음 → 줄에 섬
+  if (id === 'end' && !endOk()) return false;
   if (!ON || !DEF[id] || isDoneId(id) || S.wait.includes(id) || cur?.id === id) return false;
   S.wait.push(id); S.wait.sort((a, b) => IDS.indexOf(a) - IDS.indexOf(b)); persist(); return true;
 }
@@ -354,7 +356,7 @@ function tickStory(dt, time) {
   safeT = safe() ? safeT + dt : 0;
   if (safeT < STORY.safeSec) return;
   const d = dayOf(); if (S.day !== d) { S.day = d; S.n = 0; }
-  const next = S.wait.find((id) => doorOk(DEF[id]) && (id === 'end' || S.n < STORY.perDay)); // 엔딩은 하루 개수와 상관없이
+  const next = S.wait.find((id) => doorOk(DEF[id]) && (id === 'end' ? endOk() : S.n < STORY.perDay)); // 엔딩은 하루 개수와 상관없이
   if (next && director.can('story')) { safeT = 0; begin(next); }
 }
 // 상태로 보는 조건 (1초마다): 밤의 불빛, 구역 4 에 들어섬, 구역 2 절반
@@ -397,8 +399,9 @@ late.story = {
     if (z === 3 && isDoneId('meet')) line('meetHost', `${name} · ${T.meet.host}`, 3);
     if (z === 5 && isDoneId('ufo')) line('ufoHost', `${name}${josaIGa(name)} UFO 에서 내렸어요!`, 3);
   },
-  bossBeat(z) { if (z === 3) fire('tour'); if (z === 5) fire('end'); if (z === 1 && (sunState?.el ?? 30) < -4) fire('night'); },
+  bossBeat(z) { if (z === 3) fire('tour'); if (z === 5 && !fire('end') && !isDoneId('end') && !endOk()) late.caseFin?.short?.(); if (z === 1 && (sunState?.el ?? 30) < -4) fire('night'); },
   dumperRepel: onDumperRepel,
+  endReady: () => fire('end'), // 사건 파일 끝 (#237): 빨간 실 연출 뒤 엔딩 줄에 섬
   get busy() { return !!cur; },
 };
 

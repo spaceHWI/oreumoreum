@@ -32,6 +32,9 @@ body.case-cine>*:not(#view):not(#case-cine){visibility:hidden!important}
 #case-file .cf-thread { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
 #case-file .cf-thread path { fill: none; stroke: #d0302a; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
 #case-file .cf-thread path.loose { stroke-dasharray: 3 4; opacity: .8; }
+#case-file .cf-board.up { padding-top: 58px; }
+#case-file .cf-sky { position: absolute; left: 6px; right: 6px; top: 6px; height: 44px; border-radius: 4px 4px 0 0; background: radial-gradient(circle at 18% 40%, rgba(255,255,255,.7) 0 1px, transparent 1.5px), radial-gradient(circle at 63% 30%, rgba(255,255,255,.6) 0 1px, transparent 1.5px), radial-gradient(circle at 82% 65%, rgba(255,255,255,.5) 0 1px, transparent 1.5px), linear-gradient(180deg, #141a3a, #3a4470); }
+#case-file .cf-thread path.up { stroke-width: 1.6; }
 #case-file .cf-case { position: relative; padding: 10px 10px 10px 12px; border-radius: 12px; background: rgba(255,255,255,.07); }
 #case-file .cf-case h3 { margin: 0 86px 2px 0; font: 800 16px var(--display); }
 #case-file .cf-case .cf-sub { margin: 0 86px 8px 0; color: var(--ink-soft); font-size: 12px; }

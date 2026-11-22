@@ -141,6 +141,7 @@ import './game/mystery.js'; // 미스터리 장치 (#212): 되풀이되는 숫�
 import './game/traces.js'; // 미스터리 장치 (#212): 발자국·크롭서클·뒤돌아보면·도감 '흔적'
 import './game/cases.js'; // 사건 파일 (#232): 사건 틀·사건 1 '정리하는 자'·사건 파일 창 (데이터 src/cases/)
 import './game/casesuit.js'; // 사건 3 대면 장면의 검은 양복 (#234)
+import './game/casefinale.js'; // 사건 파일 끝 '버리는 자' (#237): 다 종결 → 빨간 실이 하늘로 → 엔딩
 import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
 import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림

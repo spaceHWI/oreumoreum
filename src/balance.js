@@ -1160,6 +1160,7 @@ export const OUTFIT_SETS = [
   { id: 'alien', name: '외계인', title: '지구 견학 중', fx: '#9af06a', items: ['hat:s-antenna', 'bottom:s-leggings', 'jacket:s-glow'] },
   { id: 'farmer', name: '귤 농부', title: '귤밭 주인', fx: '#ffb347', items: ['hat:s-beanie', 'bottom:s-mombbe', 'vest:s-basket'] },
   { id: 'santa', name: '오름 산타', title: '개근 산타', fx: '#ff6a6a', items: ['hat:p-santa', 'jacket:p-santa', 'bottom:p-santa'] }, // 크리스마스 달력을 다 열면 (#222, SEASON.xmas.calAll)
+  { id: 'inv', name: '조사관', title: '수석 조사관', badge: 'b-case-all', fx: '#d0302a', items: ['vest:i-pocket', 'jacket:i-coat', 'hat:i-hat'] }, // 사건 파일 옷 (#237). 칭호는 옷이 아니라 다섯 사건 종결로 열림 (badge, game/casefinale.js)
 ];
 export const SET_FX = { n: 8, lowN: 5, r: 0.75, y: 0.8, spin: 0.9, bob: 0.12, size: 0.16, step: 0.6 }; // 둘레 효과: 점 수(저사양), 반지름·높이(m), 도는 빠르기(rad/s), 위아래, 점 크기, 번갈아 높이
 export const WEAR_START = { hat: 'hat:w-cap', top: 'top:w-tee', bottom: 'bottom:w-shorts' }; // 처음 차림 (신발 1단계 쓰레빠는 SHOES)
@@ -1955,6 +1956,8 @@ export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, goneAfter: 4, /* see
 // nightR 흰 옷이 이 m 안이면 화면이 밤빛 · afterT 장면 뒤 사라지기까지 초 · cam* 장면 카메라(내 어깨 뒤) → face* 돌아본 흰 옷 앞 m·옆·높이 · ambR 실제 밤에 목격 돌담 이 m 안이면 오감(ambW 빠르기, vanish m 안이면 사라짐). 모두 임의값
 CASE.chase = { white: '#f4f3ee', glow: 0.35, behind: 2.4, glide: 3.2, glimT: 2.6, nightR: 45, afterT: 8, camBack: 3.6, camSide: 1.1, camUp: 1.9, faceD: 1.3, faceSide: 2.1, faceUp: 1.45, ambR: 70, ambW: 0.35, vanish: 7 };
 CASE.watch = { back: 5.5, camBack: 8.5, camSide: 1.8, camUp: 2.1 }; /* 다가가 보기 장면(#236 사건 5, face.watch). 나는 모양 등 뒤 back m, 카메라는 등 뒤 camBack m·옆 camSide m·위 camUp m */
+/* 사건 파일 끝 '버리는 자' (#237, game/casefinale.js): 사건을 다 종결하면 safe 초 조용할 때 수사 보드가 열리고 빨간 실이 핀을 차례로 이음(thread 초) → 다섯 줄이 위(하늘)로(up 초) → 혼잣말 → 엔딩. 모두 임의값 */
+CASE.fin = { safe: 2, thread: 2.4, up: 1.6, hold: 2.2 };
 
 // 다음 할 일 (#142, src/game/nexthint.js): 퀘스트 추적 줄을 잠깐 바꾸는 안내와, 줄기 퀘스트가 끝난 사람에게 이어 줄 것
 // hpLow 이 비율 밑이면(싸우는 중 tension 이 calm 넘으면 빼고) '스톤에서 식사', hpOk 까지 차거나 hpT 초 지나면 끝
