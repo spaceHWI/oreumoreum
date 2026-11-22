@@ -223,6 +223,7 @@ body.tut [data-tut]:not(.tut-on) { visibility: hidden; pointer-events: none; }
 .ach-item .bar { grid-column: 1 / -1; height: 8px; border-radius: 5px; background: #eee6cc; overflow: hidden; }
 .ach-item .bar i { display: block; height: 100%; background: var(--leaf); }
 .ach-item small { color: var(--ink-soft); font-size: 12px; }
+.ach-item .ach-quip { display: block; font-size: 11px; color: var(--ink-soft); opacity: .8; margin-top: 2px; } /* #223 */
 .ach-head { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; }
 .ach-head h3 { font-family: var(--display); font-weight: 800; font-size: 18px; margin: 0; }
 .ach-head span { font-size: 12px; color: var(--ink-soft); }
@@ -1148,6 +1149,7 @@ body.boss-on .toast, body.boss-on #tip, body.boss-on #banner, body.boss-on #bloo
 #quest .q-rew { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 12px; font-weight: 800; }
 #quest .q-rew .gy { width: 16px; height: 16px; border-radius: 50%; background: var(--gyul); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15); }
 #quest .q-rew span { display: inline-flex; align-items: center; gap: 5px; }
+#quest .q-rew .q-quip { font-weight: 500; font-style: italic; opacity: .7; } /* #223 보상 줄 한 마디 */
 #quest .q-go { width: 100%; min-height: 48px; font-size: 17px; }
 #quest .q-go.claim { animation: qglow 1.2s ease-in-out infinite; }
 @keyframes qglow { 50% { box-shadow: 0 0 0 4px rgba(255,210,63,.45), 0 0 18px rgba(255,170,40,.6); } }
@@ -1583,7 +1585,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-5ba5b0c3b2.js">(function () {
+<script data-main="main-81a76d240f.js">(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
   window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
   var ua = navigator.userAgent || '';
