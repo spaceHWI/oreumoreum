@@ -2103,6 +2103,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - `src/director.js why(kind)`: 지금 못 나가는 까닭('cur:<id>'·'gap'·'busy'·'fight'·'queue:<id>', 빈 글이면 나갈 수 있음). `game/director.js busyWhy()`·`fightWhy()` 가 바깥 사정 이름을 돌려줌(hooks.busy·fight 도 이것으로). dev: `__oreum.director.why('story')` → `{ d, busy, fight }`
 - 안티에일리어싱 검사 스위치 (`game/scene.js AA_ON`): 주소 `?aa=0` 끔·`?aa=1` 켬. 없으면 **file:// (tools/ 가 여는 test.html) 은 끔**, 실서버·dev 는 그대로(#276). 소프트웨어 GL 에서 3.4fps vs 1.7fps (2배). 그래서 95개 검사 도구 주소를 하나하나 고치지 않음. `tools/perfrun.js` 는 실제처럼 재려고 `&aa=1`
 - `tools/casefin.js`: '창을 닫으면 엔딩 시작' 을 실제 90초 대신 감독 시계 60초(실제로는 10분까지) 기다림. 실패하면 감독이 왜 기다렸는지(why·줄·로그)를 함께 찍음
+
 ## #278 NPC 대사 위트 있게 (2026-11-23)
 - 인물마다 말버릇 하나(오름지기 서류·민원, 철물 삼춘 장비 탓, 스톤 음식 인생 상담, 미장원 머리로 사람 읽기, LEAP 운동 권유, 만족한상회 '만족' 보증, 안녕 매니저 워케이션, 탈것 가게 속도·안전, 터지기 흥정, 사진사 구도, 흡연자 핑계, 투기꾼 우김). 표·앞뒤 본보기는 `notes/story-text.md` 'NPC 대사'
 - 글 `src/npclines.js`, 고르기 `src/game/npctalk.js`: 조건 줄(날씨·밤·밤늦게·구역·구역 끝냄·귤 바닥/많음·배낭 가득·초보/고참·쓰러짐·탐·박스 헬멧)은 세 배로 잘 뽑힘, 최근 세 줄은 빼서 잇달아 같은 말 없음, 처음 만남 한 번(`save.npcMet`)
