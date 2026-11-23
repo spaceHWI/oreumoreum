@@ -87,7 +87,7 @@ async function chain(mode) {
   // 끝 연출 → 엔딩
   ok(await ev(() => window.__oreum.caseFin.state().all), `사건 ${CASES.length}개 모두 종결 ${JSON.stringify(await cstate())}`);
   await ev(() => { const o = window.__oreum; o.enemies.test.clear(); o.quest.close?.(); o.cases.fileClose?.(); document.getElementById('case-file-close')?.click(); });
-  ok(await until(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); return !!window.__oreum.caseFin.state().run || window.__oreum.caseFin.state().t > 0; }, 90000), '조용해지면 끝 연출 시작 (수사 보드·빨간 실)');
+  ok(await until(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); if (!document.getElementById('wake-pick')?.hidden) document.getElementById('wake-start')?.click(); /* 다시 들어와 뜬 '어디서 시작' 창 (#256) */ return !!window.__oreum.caseFin.state().run || window.__oreum.caseFin.state().t > 0; }, 90000), '조용해지면 끝 연출 시작 (수사 보드·빨간 실)');
   if (!(await ev(() => window.__oreum.caseFin.state().t > 0 || !!window.__oreum.caseFin.state().run))) console.log('  까닭', JSON.stringify(await ev(() => ({ f: window.__oreum.caseFin.state(), panels: [...document.querySelectorAll('.overlay')].filter((e) => !e.hidden).map((e) => e.id), cam: window.__oreum.cam.mode, busy: window.__oreum.cases.busy() }))));
   ok(await until(() => !window.__oreum.caseFin.state().run, 15000), '끝 연출 끝');
   ok(await ev(() => !!window.__oreum.save.ach.badges['b-case-all']), "칭호 '수석 조사관'");
