@@ -1,7 +1,31 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4RFPyQ/blanSP/nctg8Xb317kpQwthWs6XHda6+Rtqo=' https://h5sdk.onestore.net 'sha256-9rCmAXFEhVerX4egOQtUzDRpNY2YSI/SEwmBQ5j2Dno=' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src https://h5sdk.onestore.net 'self' https: wss: data: blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; frame-src 'self' https://accounts.google.com/gsi/; media-src 'self' data: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cellipse%20cx%3D%2230%22%20cy%3D%2239%22%20rx%3D%2228%22%20ry%3D%2223.5%22%20fill%3D%22%23ff8a1f%22%2F%3E%3Cpath%20d%3D%22M32%2017c2%20-10%2015%20-16%2030%20-12c-5%2012%20-18%2016%20-30%2012z%22%20fill%3D%22%233f9a3a%22%2F%3E%3C%2Fsvg%3E"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#24251f"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="오름오름"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임"><meta property="og:title" content="오름오름"><meta property="og:description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임"><meta property="og:type" content="website"><meta property="og:url" content="https://spacehwi.github.io/oreumoreum/"><meta property="og:image" content="https://spacehwi.github.io/oreumoreum/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><script type="module" async>import{createSDK}from"https://h5sdk.onestore.net/lib/v1.2.0/onestore-h5-sdk.min.js";window.__onestoreSDK=createSDK;dispatchEvent(new Event("onestore-sdk"))</script><link rel="preload" href="a/runner-df17e15d25.bin" as="fetch" crossorigin></head><body><title>오름오름</title>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4RFPyQ/blanSP/nctg8Xb317kpQwthWs6XHda6+Rtqo=' https://h5sdk.onestore.net 'sha256-+58RoTfk0jdPCKnrHLploXRVg2hytBJ+rn/Ubw2vVco=' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src https://h5sdk.onestore.net 'self' https: wss: data: blob: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; frame-src 'self' https://accounts.google.com/gsi/; media-src 'self' data: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cellipse%20cx%3D%2230%22%20cy%3D%2239%22%20rx%3D%2228%22%20ry%3D%2223.5%22%20fill%3D%22%23ff8a1f%22%2F%3E%3Cpath%20d%3D%22M32%2017c2%20-10%2015%20-16%2030%20-12c-5%2012%20-18%2016%20-30%2012z%22%20fill%3D%22%233f9a3a%22%2F%3E%3C%2Fsvg%3E"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#24251f"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="오름오름"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임"><meta property="og:title" content="오름오름"><meta property="og:description" content="제주 오름을 걸으며 쓰레기를 줍고 귤을 모으는 웹 게임"><meta property="og:type" content="website"><meta property="og:url" content="https://spacehwi.github.io/oreumoreum/"><meta property="og:image" content="https://spacehwi.github.io/oreumoreum/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><script type="module" async>import{createSDK}from"https://h5sdk.onestore.net/lib/v1.2.0/onestore-h5-sdk.min.js";window.__onestoreSDK=createSDK;dispatchEvent(new Event("onestore-sdk"))</script><link rel="preload" href="a/runner-df17e15d25.bin" as="fetch" crossorigin></head><body><title>오름오름</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&display=swap">
+<!-- 로딩 창 (#281): 스크립트·모델을 받기 전부터 덮고, 첫 그림이 온전히 그려진 뒤 걷힌다 (src/bootscreen.js). 그 전에는 캔버스·첫 화면 글·버튼이 비치지 않게 -->
+<style>
+html { background: #24251f; }
+#boot { position: fixed; inset: 0; z-index: 2147482000; background: #24251f; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 24px 16px; box-sizing: border-box; font-family: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; text-align: center; transition: opacity .4s ease; }
+#boot.off { opacity: 0; pointer-events: none; }
+#boot[hidden] { display: none !important; }
+#boot .bt-logo { width: min(420px, 78vw); line-height: 0; }
+#boot .bt-logo svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 2px 8px rgba(0,0,0,.35)); }
+#boot .bt-slogan { margin: 14px 0 0; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: rgba(255,255,255,.72); }
+#boot .bt-track { width: min(260px, 64vw); height: 6px; margin: 34px 0 0; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+#boot .bt-bar { height: 100%; width: 100%; border-radius: inherit; background: #ff8a1f; transform-origin: 0 50%; transform: scaleX(0); transition: transform .2s linear; }
+#boot .bt-wit { min-height: 1.4em; margin: 14px 0 0; font-size: 13px; color: rgba(255,255,255,.6); }
+#boot .bt-slow { margin: 6px 0 0; font-size: 13px; font-weight: 700; color: #ffb766; }
+#boot .bt-retry { margin: 14px 0 0; padding: 10px 22px; border: 0; border-radius: 999px; background: #ff8a1f; color: #201000; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { #boot, #boot .bt-bar { transition: none; } }
+</style>
+<div id="boot" role="progressbar" aria-label="오름오름 불러오는 중" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="bt-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -16 409 112" role="img" aria-label="오름오름"><g fill="#ffffff"><path transform="translate(0 0)" d="M56.88 71.5H90V90.25H0V71.5H33.12V59H56.88Z"/><path transform="translate(105 0)" d="M88.75 44.62V32.25H24.75V28.62H87.5V0.38H2.5V12.75H64V16.25H2.5V44.62ZM0 48.5V62.12H90V48.5ZM87.5 65.75H2.5V94H87.5ZM26 81.62V78.12H64V81.62Z"/><path transform="translate(210 0)" d="M56.88 71.5H90V90.25H0V71.5H33.12V59H56.88Z"/><path transform="translate(315 0)" d="M88.75 44.62V32.25H24.75V28.62H87.5V0.38H2.5V12.75H64V16.25H2.5V44.62ZM0 48.5V62.12H90V48.5ZM87.5 65.75H2.5V94H87.5ZM26 81.62V78.12H64V81.62Z"/></g><ellipse cx="45" cy="27.56" rx="33" ry="27.56" fill="#ff8a1f"/><path d="M48.31 3.86c5 -11 16 -15 26 -12c-5 10 -15 15 -26 12z" fill="#3f9a3a"/><path d="M245.76 2.76Q245.1 -9 238.5 -11" fill="none" stroke="#8fd06a" stroke-width="4" stroke-linecap="round"/><circle cx="238.5" cy="-11" r="3.8" fill="#ffd23f"/><path d="M264.24 2.76Q264.9 -9 271.5 -11" fill="none" stroke="#8fd06a" stroke-width="4" stroke-linecap="round"/><circle cx="271.5" cy="-11" r="3.8" fill="#ffd23f"/><ellipse cx="255" cy="27.56" rx="33" ry="27.56" fill="#8fd06a"/><ellipse cx="243.12" cy="29.76" rx="6.89" ry="10.2" fill="#1c1c22" transform="rotate(-24 243.12 29.76)"/><circle cx="241.47" cy="25.48" r="2.07" fill="#fff"/><ellipse cx="266.88" cy="29.76" rx="6.89" ry="10.2" fill="#1c1c22" transform="rotate(24 266.88 29.76)"/><circle cx="265.23" cy="25.48" r="2.07" fill="#fff"/></svg></div>
+  <p class="bt-slogan">힐링을 가장한 미스터리 메타버스</p>
+  <div class="bt-track"><div class="bt-bar" id="boot-bar"></div></div>
+  <p class="bt-wit" id="boot-wit" aria-live="polite"></p>
+  <p class="bt-slow" id="boot-slow" hidden>조금만 더요</p>
+  <button type="button" class="bt-retry" id="boot-retry" hidden>다시 시도</button>
+</div>
 <style>
 /* 레이아웃: 화면 전체 3D. 위: 장소·귤 | 오늘의 업적 | 체력. 아래 왼쪽: 조이스틱(터치), 아래 오른쪽: 상호작용 큰 버튼과 점프·귤·속도, 아래 가운데: 동작·말·업적·메뉴 */
 :root {
@@ -34,7 +58,9 @@
 html, body { height: 100%; }
 [hidden] { display: none !important; }
 body { background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
-#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: #cfe0dc; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: var(--night); transition: opacity .3s; }
+#view:not(.drawn) { opacity: 0; } /* #280: 첫 그림이 나오기 전 캔버스는 바탕(밤색)만. 예전 낮 하늘색(#cfe0dc) 바탕이 받는 동안 2~3초 보였다가 밤 첫 화면으로 바뀌어 깜박였음 */
+@media (prefers-reduced-motion: reduce) { #view { transition: none; } }
 #view:focus { outline: none; }
 .panel { background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: inset 0 0 0 2px #fff, 3px 4px 0 rgba(59, 58, 51, .22); }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -166,6 +192,15 @@ body.looking #pickmsg, body.hp-down #pickmsg, body.looking #combo, body.hp-down 
 .m-acct textarea { flex: 1 1 100%; font-size: 12px; padding: 6px; border-radius: 8px; resize: none; }
 .m-acct button { flex: 1 1 40%; padding: 8px 6px !important; font-size: 13px !important; }
 .acct-ask { z-index: 40; background: rgba(14,14,18,.4); }
+.acct-card { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 400px; box-sizing: border-box; padding: 8px 8px 8px 10px; border-radius: 16px; background: rgba(255,255,255,.07); border: 1px solid var(--hair); text-align: left; } /* 계정 칸 (#281) */
+.acct-av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--acc); color: var(--acc-fg); font: 800 16px/1 var(--display); }
+.acct-meta { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.acct-nick { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acct-mail { font-size: 11.5px; line-height: 1.35; color: var(--ink-soft); word-break: keep-all; overflow-wrap: anywhere; }
+.acct-card .acct-logout { flex: none; padding: 7px 12px; font-size: 12.5px; }
+#m-acct-card { flex: 1 1 100%; display: flex; justify-content: center; }
+#menu .opt-g .m-acct .acct-card button { flex: none; min-height: 36px; }
+.acct-ask-sub { font-size: 13px; color: var(--ink-soft); }
 .acct-ask .panel { max-width: 320px; padding: 18px; border-radius: 20px; text-align: center; }
 .acct-ask p { margin: 0 0 14px; line-height: 1.5; }
 .acct-ask .row { display: flex; gap: 8px; } .acct-ask .row .btn { flex: 1; }
@@ -1736,9 +1771,76 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-5e30b220e2.js">(function () {
+<script data-main="main-59effcd1d5.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
+   빌드(build.mjs)가 inapp.js 앞에 붙여 맨 처음 도는 인라인 스크립트로 넣는다. 게임 쪽은 src/bootbar.js 로 부른다.
+   window.__boot: p(값, 천천히 올라갈 끝) · fetchMain(주소, 다 되면) · ready() · fail() · show(글) · state() */
+(function () {
+  var el = document.getElementById('boot'); if (!el) return;
+  var bar = document.getElementById('boot-bar'), wit = document.getElementById('boot-wit'), slow = document.getElementById('boot-slow'), retry = document.getElementById('boot-retry');
+  var WITS = ['귤 닦는 중…', '오름지기 깨우는 중…', '억새 빗질하는 중…', '돌하르방 모자 고쳐 씌우는 중…', '바람 방향 맞추는 중…', '클린하우스 문 여는 중…', '현무암 구멍 세는 중…', '노루에게 길 묻는 중…'];
+  var t0 = Date.now(), floor = 3, cap = 40, shown = 0, done = false, failed = false, wi = Math.floor(Math.random() * WITS.length), log = [];
+  function note(s) { log.push(Math.round((Date.now() - t0) / 100) / 10 + 's ' + s); if (log.length > 20) log.shift(); }
+  function draw() { if (bar) bar.style.transform = 'scaleX(' + (shown / 100).toFixed(3) + ')'; el.setAttribute('aria-valuenow', String(Math.round(shown))); }
+  function setWit() { if (wit) wit.textContent = WITS[wi % WITS.length]; wi++; }
+  setWit();
+  var witT = setInterval(function () { if (done) return; setWit(); }, 3000);
+  /* 막대: 단계가 정한 floor 아래로는 안 내려가고, 기다리는 동안 cap 쪽으로 천천히 다가감 */
+  var tickT = setInterval(function () {
+    if (done) return;
+    var s = (Date.now() - t0) / 1000;
+    if (!failed) {
+      if (s > 10 && slow) slow.hidden = false;
+      if (s > 30 && retry) retry.hidden = false;
+    }
+    if (floor < cap) floor += (cap - floor) * 0.02;
+    shown += (Math.max(shown, floor) - shown) * 0.25;
+    draw();
+  }, 100);
+  if (retry) retry.onclick = function () { location.reload(); };
+  function p(v, c) { if (done) return; v = +v || 0; if (v > floor) floor = Math.min(99, v); cap = Math.max(floor, Math.min(99, c == null ? floor : +c)); note('p ' + Math.round(v)); }
+  function ready() {
+    if (done) return; done = true; note('ready');
+    clearInterval(witT); clearInterval(tickT);
+    shown = 100; draw();
+    el.classList.add('off');
+    setTimeout(function () { if (done) el.hidden = true; }, 450);
+  }
+  /* 받기 실패: 지금 오류 안내(오류 알림)는 그대로 두고, 여기서는 다시 시도 단추만 바로 */
+  function fail() { failed = true; note('fail'); if (slow) { slow.textContent = '불러오지 못했어요'; slow.hidden = false; } if (retry) retry.hidden = false; }
+  /* 다시 받기 직전(새 버전·로그인·로그아웃): 같은 창을 다시 덮어 흰 화면이 끼지 않게 */
+  function show(text) {
+    done = false; failed = false; el.hidden = false; el.classList.remove('off');
+    if (wit) wit.textContent = text || '불러오는 중…';
+    if (slow) slow.hidden = true; if (retry) retry.hidden = true;
+    shown = floor = 100; cap = 100; draw(); note('show');
+  }
+  /* 게임 코드(main-해시.js) 받기: 받은 양을 막대로. 받은 것은 브라우저 캐시에 남아 바로 이어 붙는 스크립트 태그가 다시 받지 않음 */
+  function fetchMain(src, run) {
+    var go = function () { if (run) { var r = run; run = null; r(); } };
+    if (!window.fetch || !window.ReadableStream) { p(5, 38); go(); return; }
+    fetch(src).then(function (r) {
+      if (!r.ok || !r.body) { go(); return; }
+      var total = +r.headers.get('content-length') || 0, got = 0, rd = r.body.getReader();
+      if (!total) p(5, 38);
+      (function pump() {
+        rd.read().then(function (x) {
+          if (x.done) { p(40, 58); go(); return; }
+          got += x.value.length; if (total) p(3 + 37 * Math.min(1, got / total), 40);
+          pump();
+        }, go);
+      })();
+    }, go);
+  }
+  window.__boot = { p: p, ready: ready, fail: fail, show: show, fetchMain: fetchMain, state: function () { return { done: done, shown: Math.round(shown), floor: Math.round(floor), cap: Math.round(cap), hidden: el.hidden, slow: slow ? !slow.hidden : false, retry: retry ? !retry.hidden : false, wit: wit ? wit.textContent : '', ms: Date.now() - t0, log: log.slice() }; } };
+  draw();
+})();
+(function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
-  window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
+  window.__loadMain = function () {
+    if (!mainSrc) return; var src = mainSrc; mainSrc = '';
+    var add = function () { var m = document.createElement('script'); m.src = src; m.onerror = function () { if (window.__boot) window.__boot.fail(); }; document.body.appendChild(m); };
+    if (window.__boot) window.__boot.fetchMain(src, add); else add(); /* 받은 양을 로딩 창 막대로 (#281, bootscreen.js) */
+  };
   var ua = navigator.userAgent || '';
   /* 앱별 안내 표 (#239): re=UA 판별, name=앱 이름, steps=따라 하기 단계, auto=자동으로 넘기는 앱 */
   var APPS = [
@@ -1919,7 +2021,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
-  <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-out">로그아웃</button><button type="button" id="acct-del">내 기록 지우기</button></div>
+  <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-del">내 기록 지우기</button></div>
   <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg data-i="reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.06 13a9 9 0 1 0 .49 -4.09"/><path d="M3 4v5h5"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg></button></div>
   <div class="m-dev" id="m-dev" hidden>
     <button type="button" id="adm-toggle" class="adm-head" aria-haspopup="dialog" aria-controls="admwin" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
