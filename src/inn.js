@@ -35,7 +35,7 @@ export function createInn({ scene, height, site, low = false, col = null }) {
   let yHi = -1e9, yLo = 1e9; for (const a of [-1, -0.5, 0, 0.5, 1]) for (const b of [0, zF, zC, zB]) { const [px, pz] = wpt(a * W / 2, b); const h = height(px, pz); yHi = Math.max(yHi, h); yLo = Math.min(yLo, h); }
   const y0 = yHi + 0.15;
   const root = new THREE.Group(); root.position.set(site.x, y0, site.z); root.rotation.y = site.rot; scene.add(root);
-  const WALL = '#efece6', WALL2 = '#dcd8cf', CON = '#9a9c98', DARK = '#2f3a42', WD = '#a57a4c', P = [];
+  const WALL = '#d8695c', WALL2 = '#c25a4f', CON = '#8a8584', DARK = '#1f8f8a', RAIL = '#1f8f8a', CURT = '#2aa39c', BLIND = '#3f78c4', WD = '#a57a4c', P = [];
   // 받침(현무암 판석 마당): 비탈에서 뜨지 않게, 앞마당까지
   const plH = y0 - yLo + 0.5;
   P.push(box(W + 1.4, plH, D + fore + 0.4, '#3b4044', M4(0, 0.02 - plH / 2, -(D + fore) / 2)));
@@ -62,6 +62,7 @@ export function createInn({ scene, height, site, low = false, col = null }) {
     }
   }
   for (let i = 0; i < 4; i++) { const x = -W / 2 + 1.6 + i * (W - 3.2) / 3; P.push(box(1.6, 1.9, 0.36, WD, M4(x, 0.95 + 0.06, zB + 0.42))); for (let k = 1; k < 4; k++) P.push(box(1.5, 0.04, 0.3, '#7a5a38', M4(x, 0.06 + k * 0.5, zB + 0.45))); }
+  P.push(box(W - 1.0, 0.9, 0.04, BLIND, M4(0, H1 - 0.7, zB + 0.26))); /* 파란 블라인드 */
   // 2층: 꽉 찬 상자 + 앞면 객실 창 여섯(틀·작은 난간), 지붕 판·난간벽
   P.push(box(W, H2, D, WALL, M4(0, H1 + H2 / 2 + 0.15, zC)));
   P.push(box(W + 0.3, 0.26, D + 0.3, CON, M4(0, H + 0.28, zC))); // 지붕 판
@@ -72,8 +73,9 @@ export function createInn({ scene, height, site, low = false, col = null }) {
   for (let i = 0; i < 6; i++) {
     const x = winX(i);
     P.push(box(ww + 0.2, wh + 0.2, 0.08, DARK, M4(x, winY, zF + 0.02)));
-    P.push(box(ww + 0.3, 0.06, 0.5, '#5d6870', M4(x, winY - wh / 2 - 0.1, zF + 0.25)), box(ww + 0.3, 0.05, 0.05, '#5d6870', M4(x, winY - wh / 2 + 0.38, zF + 0.48))); // 작은 난간
-    for (const a of [-1, 0, 1]) P.push(box(0.04, 0.48, 0.04, '#5d6870', M4(x + a * (ww / 2 + 0.1), winY - wh / 2 + 0.14, zF + 0.48)));
+    P.push(box(0.22, wh - 0.1, 0.03, CURT, M4(x - ww / 2 + 0.2, winY, zF + 0.1))); /* 청록 커튼 */
+    P.push(box(ww + 0.3, 0.06, 0.5, RAIL, M4(x, winY - wh / 2 - 0.1, zF + 0.25)), box(ww + 0.3, 0.05, 0.05, RAIL, M4(x, winY - wh / 2 + 0.38, zF + 0.48))); // 작은 난간
+    for (const a of [-1, 0, 1]) P.push(box(0.04, 0.48, 0.04, RAIL, M4(x + a * (ww / 2 + 0.1), winY - wh / 2 + 0.14, zF + 0.48)));
   }
   // 문 위 차양 + 기둥 둘
   P.push(box(3.2, 0.12, 1.6, DARK, M4(0, H1 - 0.35, zF + 0.8)));
