@@ -76,6 +76,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     let e = peersById.get(pr.peer);
     if (!e) {
       const r = buildRunner();
+      r.apply(expandOutfit({})); /* 옷이 오기 전에도 기본 옷 (#269: 바지·신발·조끼 기본색이 검정이라 옷이 늦게 오면 검은 몸으로 보였음) */
       r.root.visible = false;
       scene.add(r.root); cull?.()?.add(r.root, { dynamic: true, shadow: false }); // 그림자는 아래 update 에서 따로
       e = { peer: pr.peer, runner: r, label: null, nick: '', outfitKey: '', pos: new THREE.Vector3(), tpos: new THREE.Vector3(), heading: 0, theading: 0, data: {}, speed: 0, lastPos: new THREE.Vector3(), lastT: 0, poseT: 0 };

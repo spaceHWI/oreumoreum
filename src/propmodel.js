@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { NSMODE, TEXCS } from './boot.js';
 import { gradHard } from './toon.js';
+import { NPC_LIGHT } from './balance.js';
 import { bytesAs as b64, whenAsset, lazyTexture, placeholderGeo, placeholderMat } from './assets.js';
 
 // 정점 자료(위치 Float32Array, 법선, uv, 인덱스)를 풀어 줌. 뼈 가중치를 붙일 때 위치가 필요해서 따로
@@ -29,13 +30,17 @@ export function propTexture(name) {
   texCache.set(name, t); return t;
 }
 // 멧돼지(boar.js)와 같은 재질: 남송이는 3단 툰 + 텍스처 색에 비례한 자체 빛(밤에 덜 뭉개짐), 다른 곳은 램버트
-// opts: glow(자체 빛 세기), color(곱할 색), clip(true 면 uniforms.cutY 위를 잘라냄: 미장원 안을 위에서 볼 때)
+// opts: glow(자체 빛 세기), color(곱할 색), clip(true 면 uniforms.cutY 위를 잘라냄: 미장원 안을 위에서 볼 때), minLight(가장 어두운 비율, #269 NPC_LIGHT.floor)
 export function propMaterial(name, opts = {}) {
   const map = propTexture(name), glow = opts.glow ?? 0.16;
   const mat = NSMODE ? new THREE.MeshToonMaterial({ map, gradientMap: gradHard, color: opts.color || '#ffffff', emissive: '#ffffff', emissiveIntensity: glow })
     : new THREE.MeshLambertMaterial({ map, color: opts.color || '#e4e4e4', emissive: '#ffffff', emissiveIntensity: glow * 2 });
-  const cut = { value: 1e9 };
+  const cut = { value: 1e9 }, minL = { value: opts.minLight ?? 0 }, on = map.userData.texOn, wait = new THREE.Color(NPC_LIGHT.wait).convertSRGBToLinear(), v3 = (c) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
   mat.onBeforeCompile = (sh) => {
+    /* #269: 텍스처 그림이 오기 전(texOn 0)엔 회색 (안 올라간 텍스처는 검게 읽힘). opts.minLight 를 주면(NPC·생물) 밤·그림자에서도 텍스처 색 × floor 보다 어둡지 않게 (건물은 0) */
+    sh.uniforms.texOn = on; sh.uniforms.npcFloor = minL;
+    sh.fragmentShader = 'uniform float texOn, npcFloor;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>\ndiffuseColor.rgb = mix(${v3(wait)} * diffuse, diffuseColor.rgb, texOn);`)
+      .replace('#include <opaque_fragment>', `outgoingLight = max(outgoingLight, diffuseColor.rgb * npcFloor);\n#include <opaque_fragment>`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= diffuseColor.rgb / max(diffuse, vec3(0.001));');
     if (opts.clip) {
       sh.uniforms.cutY = cut;
@@ -44,7 +49,7 @@ export function propMaterial(name, opts = {}) {
     }
   };
   if (opts.clip) { mat.side = THREE.DoubleSide; mat.customProgramCacheKey = () => 'propclip'; }
-  mat.userData.cut = cut;
+  mat.userData.cut = cut; mat.userData.texOn = on;
   return mat;
 }
 // 건물 하나: 모델을 s 배로 키우고 바닥(floor, 모델 좌표 y)이 로컬 y=0 에 오게 내림

@@ -1483,6 +1483,18 @@ export const PERF = {
   weakGpu: /swiftshader|llvmpipe|softpipe|mali-4|mali-t[0-7]|adreno \(tm\) [2-4]\d\d|powervr sgx|intel.*hd graphics [2-5]\d\d0?\b/i,
   // 자동일 때 느리면 한 칸씩 내림: 프레임이 slowDt 넘게 slowT 초 이어지면 (픽셀 배율 → 그림자 끔), fastDt 아래로 fastT 초면 되돌림
   slowDt: 0.045, slowT: 2.5, fastDt: 0.02, fastT: 20,
+  // 폰 발열 줄이기 (#271, game/fps.js). 값은 모두 임의
+  // 프레임 상한: 설정 '화면 부드럽게' 절약(eco)·부드럽게(smooth). 고른 적 없으면 폰은 절약, PC 는 부드럽게. 싸움(fight) 중 상한, 6초(idleT) 넘게 입력이 없으면 idle, 창이 화면을 덮으면 cover
+  // fight: 재 보니 30 에서도 swarm.js 버팀 비율이 그대로라 절약에서는 30 그대로 둠 (부드럽게면 60). tol: 상한 간격보다 이 ms 일찍 온 rAF 도 그림 (60Hz 화면 흔들림)
+  fps: { eco: 30, smooth: 60, fight: 30, idle: 20, cover: 15, idleT: 6, still: 0.3, tol: 2 },
+  aaPhone: false,               // 폰·낮음 단계는 안티에일리어싱 끔 (렌더러를 만들 때 정함). 픽셀 배율은 그대로 (올리면 그리는 픽셀이 늘어 더 비쌈)
+  // 그림자 지도 다시 그리기: 폰은 every 프레임에 한 번, 플레이어가 서 있으면 still 프레임에 한 번, fast(m/s) 넘게 빠르면 매 프레임 (내 그림자가 끊겨 보이지 않게)
+  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7 },
+  // 발열 지킴 (자동 단계일 때만): 이어서 논 시간 at 초마다 한 칸, 프레임 셈 시간이 trendGap 초 사이 trendUp 넘게 늘면 한 칸 (그리는 수가 비슷할 때만), rest 초 쉬면 되돌림
+  // 칸: 1 픽셀 배율 × prMul (prMin 아래로는 안 내림) → 2 그림자 끔 → 3 풀·먼지 밀도 × grassK
+  heat: { at: [600, 1200], win: 60, trendGap: 180, trendUp: 0.15, trendMin: 0.5, callsSame: 0.2, rest: 300, prMul: 0.8, prMin: 0.85, grassK: 0.5, max: 3 },
+  start: { battery: 0.2, mem: 4 }, // 처음부터 한 칸 낮게: 충전 안 하는 배터리가 이 아래, deviceMemory 가 이 이하, 움직임 줄이기, 데이터 절약
+  heatLog: { every: 10, total: 1200, base: 120 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
 };
 
 // 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)
@@ -1707,8 +1719,13 @@ export const CRASHES = {
 // 사건 파일 Tripo 모델 (#262, casemodels.js): scale 모델 키 0.98 → 게임 키. near 이 거리 안에 오면 큰 모델을 받음(그 전엔 멀리용 1,500 삼각형), far 이 거리 밖이면 멀리용을 그림
 export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
+  release: 90, releaseT: 30, relEvery: 3, // #272: 큰 모델이 있는 것이 모두 이 m 밖에 releaseT 초 넘게 있으면 그 큰 모델을 GPU 에서 내림(다시 오면 저절로 다시 올림). relEvery: 살피는 간격(초)
   scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
 };
+// 검은 NPC (#269): Tripo 모델(사건 모델·노루·하르방·들개·외계인·가게·가로등) 텍스처 그림이 오기 전 회색으로 그리고 fadeIn 초에 걸쳐 텍스처로.
+// floor: 빛이 모자란 곳(밤·그림자·동굴)에서 텍스처 색의 이 비율보다는 어둡지 않게 (얼굴·옷 색이 읽히게. 낮에는 이미 이보다 밝아 바뀌지 않음)
+// testFloor·testNight: tools/npcdark.js 가 모델 픽셀 평균 밝기(0~255)를 재는 바닥 (낮·안개 / 밤)
+export const NPC_LIGHT = { wait: '#a3a49c', fadeIn: 0.35, floor: 0.3, testFloor: 40, testNight: 28 };
 export const LIFE_MODELS = {
   deer: { scale: 1.9, near: 140, seatY: 1.0, seatZ: -0.62 }, // 키 약 1.86m. near: 이 거리 안에 노루가 오면 모델을 받음. 탈 때 러너를 등 높이·뒤쪽으로
   hareubang: { scale: 3.2 },                     // 키 약 3.1m (예전 임시 모양과 같음)

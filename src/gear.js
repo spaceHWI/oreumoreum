@@ -34,7 +34,7 @@ export const fromData = (name, def = '#ffffff') => (mat) => {
   mesh.userData.keep = true; // 받고 나서 모양·재질을 바꾸므로 runner 가 다른 조각과 합치지 않음 (#106)
   whenAsset(name, (D) => {
     let g = geoCache.get(name); if (!g) { g = dataGeo(D); geoCache.set(name, g); }
-    if (D.tex) { const t = new THREE.TextureLoader().load(D.tex); t.flipY = false; t.colorSpace = TEXCS; m.map = t; m.needsUpdate = true; }
+    if (D.tex) new THREE.TextureLoader().load(D.tex, (t) => { t.flipY = false; t.colorSpace = TEXCS; m.map = t; m.needsUpdate = true; }); /* 그림이 풀린 뒤에 붙임: 그 전에 붙이면 머리가 검게 보임 (#269) */
     mesh.geometry = g; mesh.material = m;
   }, { now: true });
   return mesh;

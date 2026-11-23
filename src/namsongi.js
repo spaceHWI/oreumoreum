@@ -475,7 +475,7 @@ vec3 groundColor(vec2 p){
   void main(){ vec3 d=normalize(vD); float h=max(d.y,0.0); vec3 c=mix(uHor,uTop,smoothstep(0.0,0.5,h));
     float s=max(dot(d,uSun),0.0); c+=uSunCol*(smoothstep(0.9993,0.9996,s)*0.9+pow(s,24.0)*0.28+pow(s,4.0)*0.08);
     gl_FragColor=vec4(c,1.0); }` }));
-  skyMesh.renderOrder = -10; skyMesh.frustumCulled = false; scene.add(skyMesh);
+  skyMesh.renderOrder = 1000; /* #272: 불투명 맨 뒤에 그려 땅·나무에 가린 픽셀은 깊이 검사로 건너뜀 (맨 앞이면 화면 전체를 한 번 더 칠함) */ skyMesh.frustumCulled = false; scene.add(skyMesh);
   const cloudMat = new T.ShaderMaterial({ uniforms: skyU,
     vertexShader: 'varying vec3 vN;void main(){vN=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
     fragmentShader: `varying vec3 vN;uniform vec3 uSun;uniform vec3 uCl;uniform vec3 uCs;
