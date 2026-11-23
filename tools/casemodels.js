@@ -1,5 +1,5 @@
 // 사건 파일 Tripo 모델 검사 (#262): node tools/casemodels.js [dist 폴더=dist] [출력 폴더=notes/shots/262]
-// 여섯 모델을 플레이어 앞 한 줄에 세워 모델이 뜨는지(큰 모델·멀리용), 모션마다 뼈가 움직이는지, 그리는 수(draw call)가 모델마다 2 이하인지 보고 찍음
+// 다섯 모델을(사진사는 #268 에서 빠짐) 플레이어 앞 한 줄에 세워 모델이 뜨는지(큰 모델·멀리용), 모션마다 뼈가 움직이는지, 그리는 수(draw call)가 모델마다 2 이하인지 보고 찍음
 // 찍는 것: all-front.jpg(한 줄 앞), all-side.jpg(옆), <모델>.jpg(앞·옆·모션 둘 한 장에). 실패하면 exit 1
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -21,7 +21,7 @@ const bad = []; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL '
   await p.click('#enter', { timeout: 20000 }).catch(() => {}); await p.waitForTimeout(800);
   await p.waitForFunction(() => { const a = window.__oreum.assets; return !a || a.done >= a.total; }, null, { timeout: 180000 }).catch(() => {});
   await p.waitForTimeout(1500);
-  check(got.filter((n) => !/photographer/.test(n)).length === 0, '첫 화면·한가할 때는 사건 모델을 받지 않음 (받은 것: ' + (got.join(',') || '없음') + ')');
+  check(got.length === 0, '첫 화면·한가할 때는 사건 모델을 받지 않음 (받은 것: ' + (got.join(',') || '없음') + ')');
   await p.evaluate(() => { const st = document.createElement('style'); st.textContent = 'body > *:not(canvas){display:none!important}'; document.head.append(st); const o = window.__oreum; o.setWeather('clear'); o.setTod(13); o.pace?.test?.hold?.(); });
   /* 한 줄로 세움: 플레이어 앞 9m, 옆으로 2.6m 간격. 그리는 수는 세우기 전·후 차이 */
   await p.evaluate(() => { window.__oreum.cam.mode = 'free'; window.__calls = () => new Promise((ok) => { const r = window.__oreum.renderer; requestAnimationFrame(() => { r.info.autoReset = false; r.info.reset(); requestAnimationFrame(() => { const n = r.info.render.calls, t = r.info.render.triangles; r.info.autoReset = true; ok([n, t]); }); }); }); });
@@ -34,11 +34,11 @@ const bad = []; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL '
   });
   await p.waitForFunction(() => window.__cm.every((m) => m.loaded.hi && m.loaded.lo), null, { timeout: 60000 }).catch(() => {});
   const ld = await p.evaluate(() => window.__cm.map((m) => m.name + ':' + (m.loaded.hi ? 'hi' : '-') + (m.loaded.lo ? '+lo' : '')));
-  check(ld.every((s) => s.endsWith('hi+lo')), '여섯 모델 받음 ' + ld.join(' '));
+  check(ld.every((s) => s.endsWith('hi+lo')), '다섯 모델 받음 ' + ld.join(' '));
   await p.waitForTimeout(1200);
   const calls1 = await p.evaluate(() => window.__calls());
   const calls0 = await p.evaluate(async () => { window.__cm.forEach((m) => { m.root.visible = false; }); const c = await window.__calls(); window.__cm.forEach((m) => { m.root.visible = true; }); return c; });
-  check(calls1[0] - calls0[0] <= 6 * 2, `그리는 수 늘어남 ${calls1[0] - calls0[0]} (모델 6, 그림자 포함 모델마다 2 이하) · 삼각형 +${calls1[1] - calls0[1]}`);
+  check(calls1[0] - calls0[0] <= 5 * 2, `그리는 수 늘어남 ${calls1[0] - calls0[0]} (모델 5, 그림자 포함 모델마다 2 이하) · 삼각형 +${calls1[1] - calls0[1]}`);
   const tri = await p.evaluate(() => window.__cm.map((m) => { let hi = 0, lo = 0; m.root.traverse((o) => { if (o.isSkinnedMesh) { const n = o.geometry.index.count / 3; if (n > 1600 || m.name === 'hose' && n > 400) hi = n; else lo = n; } }); return [m.name, hi, lo]; }));
   console.log('삼각형 (큰·멀리용):', tri.map((t) => t.join(' ')).join(' · '));
   await p.screenshot({ path: path.join(OUT, 'all-front.jpg'), quality: 72 });
@@ -49,7 +49,7 @@ const bad = []; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL '
     for (const k of window.__oreum.caseModel.moves(m.name)) { m.play(k, { restart: true }); m.update(0.5); const a = sig(); let most = 0; for (let i = 0; i < 30; i++) { m.update(1 / 30); const c = sig(); most = Math.max(most, c.reduce((s, v, j) => s + Math.abs(v - a[j]), 0)); } const pose = Object.values(m.bones).reduce((s, b) => s + Math.abs(b.rotation.x) + Math.abs(b.rotation.y) + Math.abs(b.rotation.z), 0); out[k] = +(most + pose).toFixed(3); } return [m.name, out]; }));
   for (const [n, o] of mv) check(Object.values(o).every((v) => v > 0.002), `모션 ${n}: ${Object.entries(o).map(([k, v]) => k + ' ' + v).join(', ')}`);
   /* 모델마다 한 장: 앞 · 옆 · 모션 둘 (가까이에서) */
-  const PICK = { yeti: ['sit+tie', 'walk'], mib: ['talk', 'walk'], 'ghost-keeper': ['pinch', 'lookback'], 'arena-keeper': ['wave', 'offer'], photographer: ['idle', 'beckon'], hose: ['wriggle', 'rise'] };
+  const PICK = { yeti: ['sit+tie', 'walk'], mib: ['talk', 'walk'], 'ghost-keeper': ['pinch', 'lookback'], 'arena-keeper': ['wave', 'offer'], hose: ['wriggle', 'rise'] };
   for (let i = 0; i < mv.length; i++) {
     const n = mv[i][0], shots = [];
     for (const [k, side] of [['idle', 0], ['idle', 1], [PICK[n][0], 0], [PICK[n][1], 0]]) {

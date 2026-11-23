@@ -1,7 +1,7 @@
 // 사진사 NPC (#70): 정상 표지석 근처 전망 좋은 곳에 삼각대를 세워 두고 서 있음
-// - #262 부터 모습은 Tripo 사진사 모델(casemodels.js 'photographer': 카메라 들어 찍기·손짓). 아래 z- 장비는 예전 차림(남겨 둠, 목록엔 안 나옴)
-// - 예전 차림(본인 동의, 이슈 코멘트): 뒤로 묶은 긴 머리, 흰 선바이저, 파란 바람막이 위 검은 러닝 조끼(등에 작은 배낭), 검은 레깅스, 러닝화,
-//   한 손에 짐벌 카메라, 목에도 카메라. 비 오는 날에는 노란 우비. 얼굴·몸은 우리 캐릭터 그대로(옷만 입힘)
+// - #262 에서 Tripo 모델로 바꿨다가 #268 에서 이 차림으로 되돌리고 다듬음(손 카메라·목 카메라 끈·허리 렌즈 가방, 둘러보기·만지작·손짓·눈에 대고 찰칵)
+// - 차림(본인 동의, 이슈 코멘트): 뒤로 묶은 긴 머리, 흰 선바이저, 파란 바람막이 위 검은 러닝 조끼(등에 작은 배낭), 검은 레깅스, 러닝화,
+//   한 손에 카메라(#268: 짐벌 → 큰 렌즈 손 카메라), 목에도 카메라. 비 오는 날에는 노란 우비. 얼굴·몸은 우리 캐릭터 그대로(옷만 입힘)
 // - 사진은 삼각대 카메라 자리에서 찍음 (main.js 가 camPos·camLook 으로 카메라를 옮김)
 // - 수치는 balance.js PHOTOG
 import * as THREE from 'three';
@@ -11,7 +11,6 @@ import { gradHard } from './toon.js';
 import { ACCESSORIES } from './gear.js';
 import { CLOTH_BUILD } from './clothes.js';
 import { PHOTOG } from './balance.js';
-import { caseModel } from './casemodels.js';
 
 // ---- 사진사 전용 장비 (npc: true → 옷장·상점 목록에 안 나옴). 좌표는 모델 기본 자세(키 0.98) 기준 ----
 const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
@@ -37,22 +36,42 @@ Object.assign(ACCESSORIES, {
   'bottom:z-tights': { slot: 'bottom', label: '레깅스', skin: true, hide: ['body'], npc: true, build: (mat) => CLOTH_BUILD.long(mat, { kind: 'long', main: '#24262c', acc: '#3a3d45' }) },
   'jacket:z-wind': { slot: 'jacket', label: '파란 바람막이', skin: true, npc: true, build: (mat) => CLOTH_BUILD.jacket(mat, { main: '#3a78c8', acc: '#f2f2f2' }) },
   'jacket:z-rain': { slot: 'jacket', label: '노란 우비', skin: true, npc: true, build: (mat) => CLOTH_BUILD.jacket(mat, { main: '#f4cf3c', acc: '#e0a92a', hood: true, cuffs: true, puff: true }) },
-  // 검은 러닝 조끼 + 등에 작은 배낭 + 목에 건 카메라
+  // 검은 러닝 조끼 + 등에 작은 배낭 (목 카메라는 #268 부터 back:z-camstrap, 우비 위에도 보이게)
   'vest:z-run': { slot: 'vest', label: '러닝 조끼', skin: true, npc: true,
     build: (mat) => { const v = CLOTH_BUILD.vest(mat, { main: '#22242a', acc: '#3a3d45', pockets: 2 });
       const pack = M(new RoundedBoxGeometry(0.24, 0.25, 0.09, 2, 0.035), mat('pack', '#2e3138'), 0, 0.42, -0.19);
-      const strap = M(new THREE.TorusGeometry(0.13, 0.008, 4, 20), mat('strap', '#1c1d22'), 0, 0.53, 0.06); strap.rotation.x = Math.PI / 2 - 0.5;
-      const cam = smallCam(mat, 1.15); cam.position.set(0, 0.43, 0.26);
-      return G(v, pack, strap, cam); } },
-  // 오른손 짐벌: 손잡이(+y 위로) 끝에 작은 카메라
-  'hand:z-gimbal': { slot: 'hand', label: '짐벌 카메라', bone: 'armR', npc: true,
-    build: (mat) => { const grip = mat('grip', '#2b2d33'), arm = mat('arm', '#9aa0a8');
-      const handle = M(new THREE.CylinderGeometry(0.018, 0.02, 0.13, 10), grip, 0, 0.04, 0);
-      const yoke = M(new THREE.BoxGeometry(0.012, 0.06, 0.012), arm, 0.03, 0.13, 0);
-      const cam = smallCam(mat, 0.85); cam.position.set(0, 0.16, 0.02);
-      const inner = G(handle, yoke, cam); inner.rotation.x = 0.25;
-      const outer = G(inner); outer.rotation.z = -Math.PI / 2; outer.position.set(...HAND); return outer; } },
+      return G(v, pack); } },
+  // 목에 건 카메라(어깨에서 V 로 내려오는 주황 끈 + 렌즈 앞) + 허리 렌즈 가방 (#268). 가슴 뼈에 붙음
+  'back:z-camstrap': { slot: 'back', label: '목 카메라', bone: 'chest', npc: true,
+    build: (mat) => { const S = mat('strap', '#e2683c'), P = mat('pouch', '#3b3f2e'), PL = mat('flap', '#55603e');
+      const rod = (a, b, r) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = M(new THREE.CylinderGeometry(r, r, d.length(), 5), S); m.position.copy(A).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); return m; };
+      const cam = smallCam(mat, 1.5); cam.position.set(0, 0.44, 0.27); cam.rotation.x = 0.12;
+      const straps = [-1, 1].flatMap((k) => [rod([k * 0.12, 0.6, -0.02], [k * 0.12, 0.6, 0.17], 0.011), rod([k * 0.12, 0.6, 0.17], [k * 0.055, 0.48, 0.27], 0.011)]);
+      const pouch = M(new THREE.CylinderGeometry(0.06, 0.06, 0.11, 10), P, 0.24, 0.27, 0.06), flap = M(new THREE.CylinderGeometry(0.066, 0.066, 0.025, 10), PL, 0.24, 0.335, 0.06);
+      return G(cam, straps, pouch, flap); } },
 });
+// 손 카메라 (#268): 장비가 아니라 오른팔 뼈에 직접 붙여 손목 각도를 동작마다 바꿈. 좌표는 팔을 내린 손 기준(아래 -y, 앞 +z)
+function handCam(tm) {
+  const body = tm('#26272c'), lensM = tm('#3d4250'), ring = tm('#e2683c'), glass = new THREE.MeshBasicMaterial({ color: '#8fc6f0' });
+  const b = M(new RoundedBoxGeometry(0.15, 0.095, 0.07, 2, 0.014), body, 0, -0.02, 0.06);
+  const grip = M(new RoundedBoxGeometry(0.045, 0.1, 0.08, 2, 0.015), body, -0.06, -0.025, 0.065);
+  const shoe = M(new THREE.BoxGeometry(0.04, 0.03, 0.04), body, 0.015, 0.04, 0.06);
+  const lens = M(new THREE.CylinderGeometry(0.042, 0.046, 0.09, 14), lensM, 0.02, -0.02, 0.14); lens.rotation.x = Math.PI / 2;
+  const rg = M(new THREE.CylinderGeometry(0.048, 0.048, 0.014, 14), ring, 0.02, -0.02, 0.17); rg.rotation.x = Math.PI / 2;
+  const gl = M(new THREE.CircleGeometry(0.034, 14), glass, 0.02, -0.02, 0.186);
+  const g = G(b, grip, shoe, lens, rg, gl); g.userData.lens = new THREE.Vector3(0.02, -0.02, 0.2); return g;
+}
+const GEAR = (rain) => ({ hair: 'hat:short', hat: 'hat:z-visor', face: 'face:none', back: 'back:z-camstrap', top: 'top:z-tee', bottom: 'bottom:z-tights', vest: rain ? 'vest:none' : 'vest:z-run', jacket: rain ? 'jacket:z-rain' : 'jacket:z-wind', socks: 'socks:none', shoes: 'shoes:s2', hand: 'hand:none' });
+
+// 자세 덧그리기: 서 있는 자세(runner 'move', 속도 0) 위에 무게 w 만큼 섞음. 팔 x 음수 = 앞으로 듦, 오른팔 z 양수 = 안쪽으로
+function photogPose({ armL, armR, head, torso }, t, w) {
+  const mix = (o, k, x, y, z) => { o.rotation.x += (x - o.rotation.x) * k; o.rotation.y += (y - o.rotation.y) * k; o.rotation.z += (z - o.rotation.z) * k; };
+  const S = Math.sin;
+  if (w.look > 0.01) { mix(armR, w.look, -0.35, 0, 0.12); head.rotation.y += S(t * 0.7) * 0.75 * w.look; head.rotation.x += (-0.08 + S(t * 0.45) * 0.06) * w.look; torso.rotation.y += S(t * 0.7) * 0.12 * w.look; }
+  if (w.fid > 0.01) { mix(armR, w.fid, -1.35 + S(t * 2.2) * 0.05, 0, 0.5); mix(armL, w.fid, -1.25 + S(t * 3.1) * 0.12, 0, -0.55 + S(t * 4.3) * 0.08); head.rotation.x += 0.5 * w.fid; head.rotation.z += S(t * 1.3) * 0.06 * w.fid; }
+  if (w.wave > 0.01) { mix(armR, w.wave, -0.45, 0, 0.15); mix(armL, w.wave, -1.6 + S(t * 9) * 0.45, 0, 0.35); head.rotation.z += 0.1 * w.wave; torso.rotation.y -= 0.1 * w.wave; }
+  if (w.shoot > 0.01) { mix(armR, w.shoot, -2.05, 0, 0.62); mix(armL, w.shoot, -1.85, 0, -0.55); head.rotation.x += 0.05 * w.shoot; torso.rotation.x -= 0.04 * w.shoot; }
+}
 
 export function createPhotographer({ scene, social, P, out, tan, spot, height, buildRunner, outfit, col, low, rnd = Math.random }) {
   const mid = P.stone.clone().lerp(spot, 0.5); mid.y = height(mid.x, mid.z);
@@ -76,12 +95,16 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     tripod.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = true; } }); }
   // 사진사: 삼각대 옆, 사진 자리를 봄
   const pos = tp.clone().addScaledVector(tan, PHOTOG.stand); pos.y = height(pos.x, pos.z);
-  // #262: Tripo 사진사 모델(올리브 벙거지·조끼·카메라·삼각대 배낭, casemodels.js). 모델 root 는 크기가 들어 있어서 이름표는 바깥 묶음에 붙임
-  const model = caseModel('photographer'), holder = new THREE.Group(); holder.add(model.root);
-  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#fffbe8', transparent: true, opacity: 0, depthWrite: false })); flash.scale.setScalar(0.22); model.attach('armR', flash, [0, 0.63, 0.32]); /* 찍을 때 번쩍 */
-  const run = { root: holder, animate: (dt, o) => { model.play(o.pose === 'shoot' ? 'shoot' : o.pose === 'wave' ? 'beckon' : 'idle'); model.update(dt); flash.material.opacity = model.flash; flash.visible = model.flash > 0.02; } };
+  const run = buildRunner();
   let rain = false;
-  run.root.position.copy(pos); scene.add(run.root);
+  const dress = () => run.apply({ ...outfit, shoes: { ...outfit.shoes, color: '#f2f2f2' }, gear: GEAR(rain) });
+  dress(); run.root.position.copy(pos); scene.add(run.root);
+  // 손 카메라: 오른팔 뼈 → 손 자리(pivot, 팔 내린 자세로 돌림) → 손목(wrist, 동작마다 기울임). 뼈의 기본 자세 자리는 부모 뼈 위치를 더해 구함
+  const armBone = run.root.getObjectByName('armR'), wrist = new THREE.Group();
+  if (armBone) { const j = new THREE.Vector3(); for (let b = armBone; b && b.isBone; b = b.parent) j.add(b.position);
+    const pivot = new THREE.Group(); pivot.position.set(HAND[0] - j.x, HAND[1] - j.y, HAND[2] - j.z); pivot.rotation.z = -Math.PI / 2; armBone.add(pivot); pivot.add(wrist); }
+  const cam = handCam(tm); wrist.add(cam); cam.traverse((o) => { if (o.isMesh) { o.castShadow = !low; o.receiveShadow = false; } });
+  const flash = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#fffbe8', transparent: true, opacity: 0, depthWrite: false })); flash.scale.setScalar(0.5); flash.position.copy(cam.userData.lens); flash.visible = false; cam.add(flash); /* 찍을 때 번쩍 (#262 연출) */
   const faceTo = (p) => Math.atan2(p.x - pos.x, p.z - pos.z);
   let heading = faceTo(spot); run.root.rotation.y = heading;
   if (col) { col.add(pos.x, pos.z, 0.6); col.add(tp.x, tp.z, 0.5); }
@@ -90,10 +113,10 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     g.font = '700 28px "Noto Sans KR", sans-serif'; g.fillStyle = 'rgba(51,64,42,.6)'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#fbf6e6'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(PHOTOG.name, 128, 34);
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = TEXCS;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, opacity: 0 })); s.scale.set(3.2, 0.8, 1); s.position.y = 2.85; run.root.add(s); return s; })();
-  const st = { pose: 'move', t: 0, greetCd: 6, beckon: 0 };
+  const st = { pose: 'move', t: 0, greetCd: 6, beckon: 0, idle: 0, act: 'look', actT: 0, w: { fid: 0, look: 0, wave: 0, shoot: 0 }, shootT: 0, flash: 0 };
   const say = (text) => social?.showBubble('npc-photog', run.root, text, 3.5);
   function beckon() { st.beckon = PHOTOG.beckon; st.pose = 'wave'; st.t = 0; say('여기 서 보세요!'); }
-  function setRain(on) { rain = !!on; } /* 모델 하나라 우비는 없음 (#262) */
+  function setRain(on) { on = !!on; if (on === rain) return; rain = on; dress(); }
   function update(dt, player, { shooting = false, hide = false } = {}) {
     const d = player.pos.distanceTo(pos);
     run.root.visible = !hide; label.visible = !hide && d < 18;
@@ -105,7 +128,14 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     // 찍는 동안엔 사진 자리를, 아니면 가까이 온 사람을 봄
     const want = shooting ? faceTo(spot) : d < PHOTOG.greetR ? faceTo(player.pos) : faceTo(spot);
     let dh = want - heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); heading += dh * Math.min(1, dt * 5); run.root.rotation.y = heading;
-    run.animate(dt, { pose: shooting ? 'shoot' : st.pose });
+    // 동작 (#268): 기다릴 땐 둘러보기 ↔ 카메라 만지작을 번갈아, 다가오면 왼손 손짓, 찍을 땐 카메라를 눈에 대고 찰칵(번쩍)
+    st.actT -= dt; if (st.actT <= 0) { st.act = st.act === 'look' ? 'fid' : 'look'; st.actT = 3.5 + rnd() * 3; }
+    if (shooting) { const was = st.shootT; st.shootT += dt; const at = PHOTOG.count * 3; if (was < at && st.shootT >= at) st.flash = 1; } else st.shootT = 0;
+    st.flash = Math.max(0, st.flash - dt * 4); flash.material.opacity = st.flash; flash.visible = st.flash > 0.02;
+    const W = st.w, go = (k, on) => { W[k] += ((on ? 1 : 0) - W[k]) * Math.min(1, dt * 5); };
+    go('shoot', shooting); go('wave', !shooting && st.pose === 'wave'); go('fid', !shooting && st.pose !== 'wave' && st.act === 'fid'); go('look', !shooting && st.pose !== 'wave' && st.act === 'look');
+    run.animate(dt, { speed: 0, running: false, pose: 'move', t: st.t, post: (p) => photogPose(p, st.t, W) });
+    wrist.rotation.x = 0.35 * W.look + 0.9 * W.fid + 0.55 * W.wave - 0.2 * W.shoot; wrist.rotation.z = -0.2 * W.shoot;
   }
   return { pos, camPos, camLook: look, tripod, runner: run, beckon, setRain, update, get rain() { return rain; }, state: st };
 }
