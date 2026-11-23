@@ -76,6 +76,8 @@ async function shoot(p, tag, cond) {
   /* 1) 받는 중: 자료(모양)는 왔고 텍스처 그림은 아직 */
   { const { p, errs, ctx } = await open(b, true);
     await p.waitForFunction(() => window.__npcs.every((e) => !e.m || e.m.loaded.hi), null, { timeout: 60000 }).catch(() => {});
+    /* #272: 늦추기는 첫 화면 전에 받는 텍스처(러너 몸 modelTex 처럼 texOn 이 없는 것)까지 늦춤. 실제로는 그렇지 않으니 그것들이 올라오길 기다린 뒤 센다 (안 그러면 사건 모델이 먼저 받아질 때 러너 메시 5 가 잡혀 들쭉날쭉) */
+    await p.waitForFunction(() => { let n = 0; window.__oreum.scene.traverseVisible((m) => { if (m.isMesh) for (const mt of [].concat(m.material || [])) if (mt.map && !mt.map.image && !mt.userData?.texOn) n++; }); return n === 0; }, null, { timeout: 30000 }).catch(() => {});
     const blk = await p.evaluate(() => window.__blackMesh());
     check(blk.length === 0, '받는 중 텍스처 없이 그려지는 메시 ' + blk.length + (blk.length ? ' (' + [...new Set(blk)].slice(0, 6).join(',') + ')' : ''));
     if (process.env.ONLY === 'blk') { console.log(blk); process.exit(0); }
