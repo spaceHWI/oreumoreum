@@ -459,7 +459,7 @@ late.tickQuest = (dt) => {
     const want = d < 9 ? Math.atan2(player.pos.x - g.pos.x, player.pos.z - g.pos.z) : g.face;
     let dh = want - g.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); g.heading += dh * Math.min(1, dt * 4); g.root.rotation.y = g.heading;
     if (g.pose === 'wave' && (g.poseT += dt) > 2.2) g.pose = 'move';
-    g.runner.animate(dt, { speed: 0, running: false, pose: g.pose || 'move', t: g.poseT || g.t, air: false, jumpV: 0 });
+    if (g.anim) g.anim(dt, d); else g.runner.animate(dt, { speed: 0, running: false, pose: g.pose || 'move', t: g.poseT || g.t, air: false, jumpV: 0 }); /* 오름지기 차림·동작 (#282 game/jigi.js) */
   }
   tickTrack(dt);
 };
