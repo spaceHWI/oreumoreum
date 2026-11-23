@@ -34,7 +34,9 @@
 html, body { height: 100%; }
 [hidden] { display: none !important; }
 body { background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
-#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: #cfe0dc; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: var(--night); transition: opacity .3s; }
+#view:not(.drawn) { opacity: 0; } /* #280: 첫 그림이 나오기 전 캔버스는 바탕(밤색)만. 예전 낮 하늘색(#cfe0dc) 바탕이 받는 동안 2~3초 보였다가 밤 첫 화면으로 바뀌어 깜박였음 */
+@media (prefers-reduced-motion: reduce) { #view { transition: none; } }
 #view:focus { outline: none; }
 .panel { background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: inset 0 0 0 2px #fff, 3px 4px 0 rgba(59, 58, 51, .22); }
 button { font: inherit; color: inherit; cursor: pointer; }

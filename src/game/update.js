@@ -273,7 +273,9 @@ function frame(now) {
     reportCrash(e, 'frame'); stepErr++;
     if (stepErr > 1) try { renderer.render(scene, camera); } catch (_) { /* 그리기도 못 하면 다음 프레임 */ } // 같은 곳에서 계속 나면 그리기만이라도
   }
+  if (!shown) { shown = true; renderer.domElement.classList.add('drawn'); } /* 첫 그린 프레임에 캔버스를 보임 (#280, page.html #view) */
 }
+let shown = false;
 function step(now) {
   mtFrame(); // 이용 통계 평균 fps (#121): 숫자 하나 더하기
   if (state.osPaused || state.idleRest) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97)·오래 멈춰 쉬는 중 (#157, idle.js): 그리지도 움직이지도 않음
