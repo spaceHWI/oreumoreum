@@ -39,8 +39,9 @@ import { tickDirector } from './director.js'; // #176
 import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
+import * as fps from './fps.js'; // 프레임 상한·발열 지킴 (#271)
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
-state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0, reports: 0 };
+state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0, reports: 0, fps: 0 };
 state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히 도는 이슈와 부딪혀서 따로
 state.ticks.deerPal = 0; // 노루 친구 (#247)
 
@@ -236,7 +237,8 @@ let last = performance.now(); let saveT = 0; state.awe = 0; state.aweBack = 0; l
 let slowT = 0, fastT = 0;
 function adaptQuality(dt) { // 자동일 때만: 느리면 한 단계씩 내리고(픽셀 배율 → 그림자 끔), 오래 빠르면 시작 단계까지 되돌림
   if (!quality.auto || PERF_LOCK || document.hidden) { slowT = fastT = 0; return; }
-  if (dt >= PERF.slowDt) { slowT += dt; fastT = 0; } else if (dt < PERF.fastDt) { fastT += dt; slowT = 0; }
+  const iv = fps.interval(); /* 상한(#271)이 있으면 그 간격을 기준으로: 30fps 상한이면 33ms 가 '빠름' */
+  if (dt >= Math.max(PERF.slowDt, iv * 1.4)) { slowT += dt; fastT = 0; } else if (dt < Math.max(PERF.fastDt, iv * 1.15)) { fastT += dt; slowT = 0; }
   if (slowT > PERF.slowT && quality.level > 0) { quality.level--; slowT = 0; applyQuality(); mt('qdown'); } // 자동으로 단계 내림 수 (#121)
   if (fastT > PERF.fastT && quality.level < quality.tier) { quality.level++; fastT = 0; applyQuality(); }
 }
@@ -264,7 +266,9 @@ function watchLoop(dt) {
 }
 function frame(now) {
   requestAnimationFrame(frame);
-  try { step(now); stepErr = 0; } catch (e) {
+  if (!fps.due(now)) return; /* 그릴 차례가 아니면 건너뜀 (#271, game/fps.js). 입력은 이벤트로 쌓여 다음 프레임에 읽힘 */
+  const w0 = performance.now();
+  try { step(now); stepErr = 0; fps.after(performance.now() - w0); } catch (e) {
     reportCrash(e, 'frame'); stepErr++;
     if (stepErr > 1) try { renderer.render(scene, camera); } catch (_) { /* 그리기도 못 하면 다음 프레임 */ } // 같은 곳에서 계속 나면 그리기만이라도
   }
@@ -272,13 +276,13 @@ function frame(now) {
 function step(now) {
   mtFrame(); // 이용 통계 평균 fps (#121): 숫자 하나 더하기
   if (state.osPaused || state.idleRest) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97)·오래 멈춰 쉬는 중 (#157, idle.js): 그리지도 움직이지도 않음
-  const rawDt = (now - last) / 1000; const dt = Math.min(0.05, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
-  if (state.slowMo > 0) state.slowMo -= Math.min(0.05, rawDt);
-  late.tickLevel?.(Math.min(0.05, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
-  if (!state.augPause) tickPace(Math.min(0.05, rawDt), now / 1000);
-  late.tickFeel?.(Math.min(0.05, rawDt)); // 손맛 (#141): 숫자·흙먼지·가장자리
+  const rawDt = Math.max(0, now - last) / 1000, dtMax = fps.maxDt(); const dt = Math.min(dtMax, rawDt) * (state.hitStop > 0 ? PACE.hitStopK : 1) * (state.slowMo > 0 ? state.slowK || 1 : 1) * (state.augPause ? 0 : 1); last = now; // 증강 고르기 창(#159): 혼자면 멈춤 // 맞힌 순간 짧은 멈춤 (#89), 우두머리를 쫓아낸 느린 화면 (#139)
+  if (state.slowMo > 0) state.slowMo -= Math.min(dtMax, rawDt);
+  late.tickLevel?.(Math.min(dtMax, rawDt)); // 레벨·증강 (#159): 창이 멈춘 동안에도 돎
+  if (!state.augPause) tickPace(Math.min(dtMax, rawDt), now / 1000);
+  late.tickFeel?.(Math.min(dtMax, rawDt)); // 손맛 (#141): 숫자·흙먼지·가장자리
   state.camHold = Math.max(0, state.camHold - dt);
-  watchLoop(Math.min(0.05, rawDt));
+  watchLoop(Math.min(dtMax, rawDt));
   hp.tryBegin(player); hp.update(dt, player); player.down = hp.isDown || hp.pending;
   if (cart) cart.update(dt, Date.now() / 1000 + state.cartShift, camera.position, lampNight); // 마차 (#69): 앉은 사람이 따라가게 먼저
   // 게임 루프 본문: 문장마다 한 줄 (#193 — 한 줄에 이어 쓰다 중간 // 주석이 뒤 문장을 모두 꺼 버린 사고). tk.* 는 tools/smoke.js 가 '불리는지' 보는 셈. 루프에 새 시스템을 붙이면 셈도 한 줄 더한다
@@ -435,6 +439,7 @@ function step(now) {
   enemyWarn.update(dt); dumpWarn.update(dt);
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }
+  fps.tick(dt); tk.fps++; /* 그림자 지도 다시 그릴 차례·발열 지킴 (#271): 그리기 바로 앞 */
   late.tickTalk?.(); /* 화자 프로필 굽기 (#224, game/talkfx.js): 그리기 바로 앞 (굽은 구석을 이어 그리는 화면이 덮음) */
   if (state.cave) late.caveFrame(dt); /* 동굴 (#195, game/cave.js): 동굴 장면만 그림 */
   else if (NSW) { NSW.update(dt, player.pos, camera); wallPl.value.copy(player.pos); wall.update(player.pos); jeong?.lod(player.pos); renderer.render(scene, camera); }

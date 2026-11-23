@@ -1466,6 +1466,18 @@ export const PERF = {
   weakGpu: /swiftshader|llvmpipe|softpipe|mali-4|mali-t[0-7]|adreno \(tm\) [2-4]\d\d|powervr sgx|intel.*hd graphics [2-5]\d\d0?\b/i,
   // 자동일 때 느리면 한 칸씩 내림: 프레임이 slowDt 넘게 slowT 초 이어지면 (픽셀 배율 → 그림자 끔), fastDt 아래로 fastT 초면 되돌림
   slowDt: 0.045, slowT: 2.5, fastDt: 0.02, fastT: 20,
+  // 폰 발열 줄이기 (#271, game/fps.js). 값은 모두 임의
+  // 프레임 상한: 설정 '화면 부드럽게' 절약(eco)·부드럽게(smooth). 고른 적 없으면 폰은 절약, PC 는 부드럽게. 싸움(fight) 중 상한, 6초(idleT) 넘게 입력이 없으면 idle, 창이 화면을 덮으면 cover
+  // fight: 재 보니 30 에서도 swarm.js 버팀 비율이 그대로라 절약에서는 30 그대로 둠 (부드럽게면 60). tol: 상한 간격보다 이 ms 일찍 온 rAF 도 그림 (60Hz 화면 흔들림)
+  fps: { eco: 30, smooth: 60, fight: 30, idle: 20, cover: 15, idleT: 6, still: 0.3, tol: 2 },
+  aaPhone: false,               // 폰·낮음 단계는 안티에일리어싱 끔 (렌더러를 만들 때 정함). 픽셀 배율은 그대로 (올리면 그리는 픽셀이 늘어 더 비쌈)
+  // 그림자 지도 다시 그리기: 폰은 every 프레임에 한 번, 플레이어가 서 있으면 still 프레임에 한 번, fast(m/s) 넘게 빠르면 매 프레임 (내 그림자가 끊겨 보이지 않게)
+  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7 },
+  // 발열 지킴 (자동 단계일 때만): 이어서 논 시간 at 초마다 한 칸, 프레임 셈 시간이 trendGap 초 사이 trendUp 넘게 늘면 한 칸 (그리는 수가 비슷할 때만), rest 초 쉬면 되돌림
+  // 칸: 1 픽셀 배율 × prMul (prMin 아래로는 안 내림) → 2 그림자 끔 → 3 풀·먼지 밀도 × grassK
+  heat: { at: [600, 1200], win: 60, trendGap: 180, trendUp: 0.15, trendMin: 0.5, callsSame: 0.2, rest: 300, prMul: 0.8, prMin: 0.85, grassK: 0.5, max: 3 },
+  start: { battery: 0.2, mem: 4 }, // 처음부터 한 칸 낮게: 충전 안 하는 배터리가 이 아래, deviceMemory 가 이 이하, 움직임 줄이기, 데이터 절약
+  heatLog: { every: 10, total: 1200, base: 120 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
 };
 
 // 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)

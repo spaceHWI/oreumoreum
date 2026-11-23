@@ -2016,3 +2016,16 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 셰이더 컴파일 실패는 `scene.js` renderer.debug.onShaderError 로 오류 알림 `[오류 gl] 검은 NPC: 셰이더 컴파일 실패 …` (WebGL 을 잃은 동안은 뺌)
 - 러너 몸 텍스처(`runner.js` modelTex)·멧돼지·돌담도 같은 TextureLoader 틀이지만 첫 화면 전에 받는 것·적·벽이라 그대로 둠
 - 검사 `node tools/npcdark.js [d|m]`: 받는 중(그림 9초 늦춤)·낮·안개·밤·밤 비에서 모델마다 픽셀 평균 밝기 ≥ `testFloor`(40)·`testNight`(28), 받는 중 텍스처 없이 그려지는 메시 0. 그림은 `notes/shots/269/`
+
+- #271 폰 발열 줄이기 1: 새 `src/game/fps.js`(프레임 상한·쉴 때 낮게·그림자 지도 띄엄띄엄·발열 지킴·배터리), `src/game/heatlog.js`(`?heat=1` 재기 창), `tools/perfrun.js`(앞·뒤 일의 양). 값은 balance.js `PERF.fps`·`aaPhone`·`shadowUp`·`heat`·`start`·`heatLog` (모두 임의)
+- 프레임 상한: update.js frame 이 rAF 마다 `fps.due(now)` 로 그릴 차례만 step. 폰 기본 30(설정 '화면 부드럽게' 절약/부드럽게, `save.fps`), PC 60. 120Hz 에서도 상한 넘게 안 그림. 게임 dt 는 실제 흐른 시간(상한 `fps.maxDt()` = max(0.05, 1.3/상한)), 시계가 뒤로 가면 0
+- 쉴 때: 6초 입력 없고 움직이지 않으면 20, 창(PANELS·내 가방)이 덮으면 15. 싸움(서바이벌 판·우두머리·적 가까이·긴장)은 PERF.fps.fight — swarm.js 구역 1 --fast 3판이 60·30(--eco) 모두 버팀 100% 라 절약에서는 30 그대로. 튜토리얼·state.cine·사진·따라가기 아닌 카메라는 쉬는 상태 아님
+- 자동 단계 내림(adaptQuality)의 빠름·느림 기준을 상한 간격에 맞춤 (30 상한이면 33ms 가 '빠름')
+- 렌더러: 폰·낮음 단계는 antialias 끔, 폰 그림자 PCFShadowMap. 그림자 지도 autoUpdate 끔 → 폰 2프레임(서 있으면 3)에 한 번, 7m/s 넘게 빠르거나 마차·장면이면 매번, PC 매번. 단계가 바뀌면 바로 한 번
+- 후처리 retro·post 는 남송이(NSW) 길에서는 쓰지 않음(renderer.render 바로) — 바꿀 것 없음
+- 발열 지킴(자동 단계만, 사용자가 품질을 고르면 안 함): 이어 논 10·20분에 한 칸, 1분 평균 셈 시간이 3분 전보다 15%(0.5ms) 넘게 늘면 한 칸(그리는 수 ±20% 안일 때만). 칸: 픽셀 배율 ×0.8 → 그림자 끔 → 풀·먼지 ×0.5 (scene.js applyQuality·heatDensity). 5분 쉬면(탭 숨김·쉬는 중·입력 없음) 되돌림
+- 처음부터 낮게: quality.js autoTier 가 deviceMemory ≤4·움직임 줄이기·데이터 절약이면 한 칸, 배터리(충전 안 함 20% 아래)는 비동기라 fps.js 가 시작 뒤 quality.level 한 칸
+- 탭이 숨으면: rAF 멈춤(그리기·네트워크 보내기·게임 셈), 소리는 start.js 가 suspend, 음악 tick 은 suspend 면 그냥 돌아감. 날씨 30분 폴링만 숨었을 때 건너뛰게 함
+- 확인 `__oreum.fps.state()`·`set()`·`heat(k)`·`pick('eco')`, 재기 `node tools/perfrun.js --base origin/dev`(Playwright 가짜 시계로 60Hz rAF 흉내, 화면 픽셀 + 그림자 지도 픽셀을 '일' 로)
+- npcdark.js(#269) '받는 중 텍스처 없이' 줄이 폰에서 실패: 프레임 상한으로 로딩이 빨라져 러너 몸 텍스처(회색 막 없음, 이것도 blob 이라 9초 늦춰짐)가 오기 전에 셈. 막 없는 스킨 메시 텍스처가 올 때까지 기다린 뒤 세게 고침 (dev 앞 빌드는 통과, 고친 뒤 m 통과)
+- 앞·뒤 (tools/perfrun.js, 폰 390×844·보통 단계, 가짜 시계 20초): 들판 걷기·가게 거리·서바이벌 판 62.5→31.2 프레임/s, 그림자 지도 62.5→15.6번/s, 일(화면+그림자 픽셀) 97.6→32.4M/s (0.33). 들판에 서서 입력 없음 22.4 프레임/s·일 19.3M/s (0.20). 그리는 수는 그대로
