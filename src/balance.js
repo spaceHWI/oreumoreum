@@ -1692,6 +1692,10 @@ export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
   scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
 };
+// 검은 NPC (#269): Tripo 모델(사건 모델·노루·하르방·들개·외계인·가게·가로등) 텍스처 그림이 오기 전 회색으로 그리고 fadeIn 초에 걸쳐 텍스처로.
+// floor: 빛이 모자란 곳(밤·그림자·동굴)에서 텍스처 색의 이 비율보다는 어둡지 않게 (얼굴·옷 색이 읽히게. 낮에는 이미 이보다 밝아 바뀌지 않음)
+// testFloor·testNight: tools/npcdark.js 가 모델 픽셀 평균 밝기(0~255)를 재는 바닥 (낮·안개 / 밤)
+export const NPC_LIGHT = { wait: '#a3a49c', fadeIn: 0.35, floor: 0.3, testFloor: 40, testNight: 28 };
 export const LIFE_MODELS = {
   deer: { scale: 1.9, near: 140, seatY: 1.0, seatZ: -0.62 }, // 키 약 1.86m. near: 이 거리 안에 노루가 오면 모델을 받음. 탈 때 러너를 등 높이·뒤쪽으로
   hareubang: { scale: 3.2 },                     // 키 약 3.1m (예전 임시 모양과 같음)

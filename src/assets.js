@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { MeshoptDecoder as WasmDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { MeshoptDecoder as JsDecoder } from 'meshoptimizer/meshopt_decoder_reference.js';
 import { ASSETS } from './assetlist.js';
-import { crashNote } from './crash.js'; // #108 마지막 한 일
+import { crashNote, reportCrash } from './crash.js'; // #108 마지막 한 일
+import { NPC_LIGHT } from './balance.js';
 
 export const assetHooks = { stale: null }; // 받다 404 가 나면(배포로 예전 파일이 지워짐) 새 버전 알림 (#134)
 const cache = new Map(); // 이름 → 풀린 자료 { ...meta, pos: Uint8Array, ..., tex: blob URL }
@@ -103,9 +104,21 @@ export const onAnyAsset = (cb) => { anyCbs.push(cb); }; // 모델 하나가 와�
 export const assetsDone = () => assetInfo.done >= assetInfo.total;
 
 // 텍스처를 먼저 만들어 재질에 넣고, 이미지는 자료가 오면 채움
+// #269: 그림이 오기 전 텍스처는 GPU 에 없어서 검게 읽힘 → userData.texOn(0~1, 재질이 셰이더에서 씀)이 0 인 동안 재질은 회색으로 그리고, 그림이 오면 NPC_LIGHT.fadeIn 초에 걸쳐 1.
+//   userData.ready: 그림이 올라감. 풀기에 실패하면 두 번 더 해 보고, 그래도 안 되면 오류 알림('검은 NPC')
 export function lazyTexture(name, setup) {
   const t = new THREE.Texture(); setup?.(t);
-  whenAsset(name, (d) => { if (!d.tex) return; new THREE.ImageLoader().load(d.tex, (img) => { t.image = img; t.needsUpdate = true; }); });
+  const on = t.userData.texOn = { value: 0 }; t.userData.ready = false;
+  const fade = () => { const t0 = performance.now(), step = () => { on.value = Math.min(1, (performance.now() - t0) / 1000 / NPC_LIGHT.fadeIn); if (on.value < 1) requestAnimationFrame(step); }; step(); };
+  whenAsset(name, (d) => {
+    if (!d.tex) { crashNote('검은 NPC 텍스처 없음 ' + name); return; }
+    let n = 0;
+    const go = () => new THREE.ImageLoader().load(d.tex, (img) => { t.image = img; t.needsUpdate = true; t.userData.ready = true; fade(); }, undefined, () => {
+      if (++n <= 2) { setTimeout(go, 1500 * n); return; }
+      crashNote('검은 NPC 텍스처 풀기 실패 ' + name); reportCrash({ name: '검은 NPC', message: '텍스처 풀기 실패 ' + name }, 'tex');
+    });
+    go();
+  });
   return t;
 }
 // 임시 모양: 모델 bbox 크기의 상자(건물) 또는 타원체(생물·머리). 색은 둔한 회색
