@@ -103,6 +103,7 @@ import './game/loot.js'; // 전리품·재료·장비 드롭 (#140)
 import './game/raregyul.js'; // 귀한 귤 (#130): 한라봉·천혜향·레드향·황금향
 import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
+import './game/jigi.js'; // 오름지기 차림·동작 (#282)
 import './game/dumperq.js'; // 투기꾼 퀘스트 보장 (#260)
 import './game/nexthint.js'; // 다음 할 일 (#142): 추적 줄에 잠깐 바뀌는 안내·퀘스트 뒤 이어 줄 것
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
