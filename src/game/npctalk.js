@@ -76,6 +76,7 @@ function ownerRoot(id) {
   const g = late.questDebug?.givers?.get?.('shop:' + id); return g?.root?.visible ? g.root : null;
 }
 function bubble(id, kind) { const r = ownerRoot(id); if (!r || !r.visible || !social) return; const s = line(id, kind); if (s) social.showBubble('npc-q-shop:' + id, r, s, 3.4); }
+late.npcAte = (shop) => { const id = POP[shop]; if (id && NPC_TALK[id]?.ate) bubble(id, 'ate'); }; /* 식사를 마치면 주인 머리 위 말풍선 (#279, stores.js finishMeal) */
 const tokN = () => save.tok?.n | 0;
 let cur = null, c0 = 0, t0 = 0, bought = false;
 function tickShopTalk() {

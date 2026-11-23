@@ -91,6 +91,7 @@ export function orderMeal(m, shop = 'stone') {
   const S = MEAL_SHOPS[shop]; if (!m || !S?.api || mealS.on) return;
   if (!save.mealFree) { save.mealFree = 1; persist(); toast('첫 식사는 무료예요'); } // #93: 첫 한 번은 귤을 받지 않음 (서버 확인은 validate.js)
   else if (m.drink && late.questUse?.('ade')) toast(`${m.ko} · 셰프가 한 잔 샀어요`); // 퀘스트 에이드 한 잔 (#158)
+  else if (shop === 'manjok' && m.id === 'godeungeo' && late.questUse?.('satis')) toast(`${m.ko} · 사장님이 한 번 샀어요`); /* 퀘스트 고등어구이 한 번 (#279, m-eat 보상) */
   else { if (save.coins < m.price) { toast(`귤이 ${m.price - save.coins}개 모자라요`); return; } save.coins -= m.price; persist(); updateStats(); late.sound.coin?.(); }
   closePanels(); late.stopAutoGo(); setHoldBow(false); if (state.fishing?.active) state.fishing.stop();
   Object.assign(mealS, { on: true, item: m, phase: 'walk', t: 0, api: S.api, cfg: S.cfg, shop });
@@ -109,6 +110,7 @@ export function finishMeal() {
   if (player.target === mealS.target && player.onArrive) { player.target = null; player.onArrive = null; }
   buff.give(m); updateBuffUI(true);
   ach.emit('meal'); ach.emit('meal-' + m.id); if (mealS.shop !== 'stone') ach.emit('meal-' + mealS.shop); // 식사는 두 식당 모두 셈 (#167)
+  late.npcAte?.(mealS.shop); /* 식사 뒤 주인 말 (#279) */
   toast(`${m.ko} · ${bIconText(m)}`);
 }
 const BUFF_WORD = { speed: '이동 속도', bag: '배낭 용량', dmg: '귤 피해', pick: '줍는 속도', regen: 'HP 회복', guard: '받는 피해', gyulR: '귤 모으는 범위' };

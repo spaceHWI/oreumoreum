@@ -1918,7 +1918,8 @@ export const QUESTS = {
     'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요', '오늘의 메뉴: 오늘 거예요'] },
     'note:top': { name: '정상 쪽지' }, // #208 주는 사람 없이 쪽지를 읽으면 받는 퀘스트 (game/summit.js)
     'shop:inn': { name: '안녕 매니저', shop: 'inn', look: { shirt: '#e9ecef', pants: '#3a4150', shoes: '#26262b', hat: 'hat:short' }, hello: ['일이 많은 당신의 안녕을 바랍니다', '체크인은 지금, 걱정은 체크아웃 때 두고 가요', '와이파이 비밀번호요? 귤이에요'] }, // #270 숙소 오피스제주
-    'shop:satis': { name: '만족한상회 사장', shop: 'satis', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b' }, hello: ['갈치 드실래요?', '뼈는 없고 정만 있어요'] },
+    'shop:ride': { name: '탈것 가게 사장', shop: 'ride', look: { shirt: '#e0443a', pants: '#2b2b30', shoes: '#26262b', hat: 'hat:w-cap' }, hello: ['오늘 바람은 순풍이에요', '빠른 건 우리가, 조심은 당신이'] }, /* #279 탈것 가게에도 주인이 없었음 */
+    'shop:satis': { name: '만족한상회 사장', shop: 'manjok', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b', hat: 'hat:npc-kerchief', vest: 'vest:npc-apron' }, hello: ['갈치 드실래요?', '뼈는 없고 정만 있어요'] }, /* #279 가게 id 는 manjok (전엔 'satis' 라 주인이 안 섰음). 앞치마·머릿수건은 gear.js NPC 전용 */
   },
   main: [
     // ----- 1장 숲길 '이상한 쓰레기' (첫날) -----
@@ -1981,7 +1982,7 @@ export const QUESTS = {
     { id: 'c-fish', giver: 'shop:stone', door: 'shopQuests', after: 'c-meal', name: '재료 구해 오기', say: ['오늘 생선이 똑 떨어졌어요.', '들머리 개울가에서 두 번만 낚아 와 줘요. 캔이 낚이면 그건 메뉴에서 뺄게요.'], task: '개울가에서 낚시 2번', ask: { k: 'fish', n: 2 }, fin: ['신선하네요! 에이드 한 잔 더.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
     { id: 'c-full', giver: 'shop:stone', door: 'shopQuests', after: 'c-fish', name: '든든하게 한 판', say: ['밥 먹었으면 힘 써야죠.', '식사 버프가 남아 있을 때 아무 구역에서나 적 10마리. 소화도 시킬 겸.'], task: '버프 중 적 10마리 쫓기', ask: { k: 'repelBuff', n: 10 }, fin: ['역시 밥심! 에이드는 내가 쏠게요.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
     // 만족한상회 사장 (#167 가게가 들어오면)
-    { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?', '여기서 만족한상 한 번만 먹어 봐요. 뼈 걱정은 하지 마요.'], task: '만족한상회 한 상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
+    { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?', '여기서 만족한상 한 번만 먹어 봐요. 뼈 걱정은 하지 마요.'], task: '만족한상회 한 상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:manjok', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:manjok' },
     // 숙소 오피스제주 안녕 매니저 (#270, 숙소가 열리면). 첫 숙박은 반값(INN.price.first)
     { id: 'i-stay', giver: 'shop:inn', door: 'shopQuests', name: '일이 많은 당신에게', say: ['일이 많아 보이네요. 얼굴에 다 써 있어요.', '오피스제주에서 하룻밤만 묵어 봐요. 첫 숙박은 반값이에요. 안녕은 원래 값이 없지만요.'], task: '오피스제주에서 1번 묵기', ask: { k: 'innStay', n: 1 }, go: 'shop:inn', fin: ['개운하죠? 그 얼굴이 우리 간판이에요.'], reward: { gyul: 20 }, need: 'shop:inn' },
     { id: 'i-run', giver: 'shop:inn', door: 'shopQuests', after: 'i-stay', name: '개운할 때 일하기', say: ['개운함이 남아 있을 때가 일하기 제일 좋아요.', '버프가 있는 동안 아무 구역 서바이벌 터에서 1판 버텨 봐요. 퇴근은 그다음이에요.'], task: '버프 중 서바이벌 터 1판 버티기', ask: { k: 'innRun', n: 1 }, fin: ['역시. 다음 숙박은 우리가 기다릴게요.'], reward: { gyul: 30 }, need: 'shop:inn' },
