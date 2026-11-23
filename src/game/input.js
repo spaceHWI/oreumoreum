@@ -151,7 +151,8 @@ addEventListener('keydown', (e) => {
   if (/^[1-8]$/.test(k)) state.emo.key(+k); // 동작 (#242): 1~8 = 부채꼴 8칸 (열려 있든 닫혀 있든)
   if (k === 'g') $('btn-actions').click(); // G: 동작 부채꼴 열고 닫기 (임의, #242)
   if (k === 'enter') { e.preventDefault(); late.openChat(); }
-  if (k === 'r' || k === 'shift') cycleSpeed();
+  if (k === 'r' && late.magHeld?.()) late.reloadNow(true); /* 총을 들었으면 R 은 재장전 (#274, 달리기는 Shift) */
+  else if (k === 'r' || k === 'shift') cycleSpeed();
   if (k === 'f') late.doInteract(); // 상호작용 (#34). 줍기(E)는 tickPick 이 누르고 있는 동안 처리
   if (k === 'e') late.pressPick(); // 범위 밖이면 가까운 쓰레기로 걸어감 (#104)
   if (k === 'q') late.toggleRide(); // 탈것 (#69)

@@ -557,7 +557,7 @@ export function buildRunner(opts = {}) {
         chest.scale.setScalar(1 + Math.sin(t * 1.1) * 0.025); break; }
     }
   }
-  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2, kick = 0, post = null }) {
+  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2, kick = 0, rl = 0, post = null }) {
     if (model) tickEyes(dt, face, lid, pose);
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'aim' || pose === 'carry');
@@ -598,9 +598,9 @@ export function buildRunner(opts = {}) {
       armR.rotation.set((-1.45 + 0.5 * draw - 0.25 * snap) * up + armR.rotation.x * (1 - up), 0, (0.5 + 0.4 * draw - 0.3 * snap) * up - 0.12 * (1 - up));
       torso.rotation.y += -0.22 * up; torso.rotation.x += 0.04 * up; head.rotation.y += 0.2 * up;
     } else if (pose === 'aim') { // 귤 총·머신건·레이저 (#123): 왼손에 든 무기를 앞으로 겨누고 오른손으로 받침. kick 0~1 = 쏜 반동
-      const up = sstep(0, 0.1, t), k = kick * up;
-      armL.rotation.set((-1.5 + 0.22 * k) * up + armL.rotation.x * (1 - up), 0, 0.12 + 0.1 * up);
-      armR.rotation.set((-1.3 + 0.18 * k) * up + armR.rotation.x * (1 - up), 0, 0.62 * up - 0.12 * (1 - up));
+      const up = sstep(0, 0.1, t), k = kick * up, r = rl > 0 ? Math.sin(Math.PI * Math.min(1, rl)) * up : 0; /* rl 재장전 0~1 (#274): 총을 내리고 오른손이 아래로 갔다 옴 */
+      armL.rotation.set((-1.5 + 0.22 * k + 0.6 * r) * up + armL.rotation.x * (1 - up), 0, 0.12 + 0.1 * up + 0.15 * r);
+      armR.rotation.set((-1.3 + 0.18 * k + 0.95 * r) * up + armR.rotation.x * (1 - up), 0, 0.62 * up - 0.12 * (1 - up) - 0.3 * r);
       torso.rotation.y += -0.18 * up; torso.rotation.x += (0.03 - 0.06 * k) * up; head.rotation.y += 0.16 * up;
     } else if (pose === 'fish') { // 낚시 (#44): 두 손으로 낚싯대를 쥠. rod = 낚싯대가 앞으로 들린 각(0 수평, 1.6 머리 위, 더 크면 뒤로 젖힘)
       const a = -0.75 - rod * 0.95;

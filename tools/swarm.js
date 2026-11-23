@@ -4,7 +4,7 @@
 // 터 밖으로 밀리면 가운데 쪽으로 달리며 뛰어넘음. --fast: 그리지 않음(셈만, 빠름). --runs N: 구역마다 N 판 (버틴 비율), --down N: 장비를 구역보다 N 단계 낮게 (#254). 기본 상한 --cap 36 (PC)
 // --t0 N: 물결 시간 N 초에서 시작 (예: 170 이면 3분 단계부터, 130초 뒤 떼 대장)
 // 움직임: 0.4초마다 적이 적고 귤 조각이 있는 쪽(서바이벌 터 안 #231·지나갈 수 있는 곳)으로 달림 (조이스틱 흉내, W 누른 채 방향만 바꿈). --still: 서 있음
-// 증강은 레벨업 창이 뜨면 첫 카드. 기록: 버틴 시간(게임 초)·쫓아낸 수·최고 물결·잃은 기운(최대의 %)·번 귤·조각·레벨업 횟수·대장. 목표: 권장 장비로 3분은 무난히, 5분 대장은 아슬아슬
+// 탄창(#274): 다 쏘면 저절로 재장전, 둘레 9m 에 적이 없고 탄창이 절반 아래면 손 재장전(기록 '손장전'). 증강은 레벨업 창이 뜨면 첫 카드. 기록: 버틴 시간(게임 초)·쫓아낸 수·최고 물결·잃은 기운(최대의 %)·번 귤·조각·레벨업 횟수·대장. 목표: 권장 장비로 3분은 무난히, 5분 대장은 아슬아슬
 const { chromium } = require('playwright');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : +args[i + 1]; };
 const ZONES = args.filter((a, i) => /^\d$/.test(a) && !/^--/.test(args[i - 1] || '')).map(Number); if (!ZONES.length) ZONES.push(1, 2, 3, 4, 5);
@@ -40,7 +40,9 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
       const C = (window.__c = { lost: 0, down: 0, last: o.hp.hp, t0: o.weapon.t(), coins0: o.save.coins, max: o.hp.max, peak: 0, augs: 0, leader: 0, lv0: o.level.state().lv, next: 0, taps: 0 });
       const loop = () => {
         const gt = o.weapon.t() - C.t0; if (!hold && gt >= C.next) { o.weapon.fire(); C.taps++; C.next = gt + TAP; } /* 손으로 누름: charge.js 를 거치지 않는 짧은 누름과 같음 */
-        const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s && s.zone === window.__zn) { C.s = s; C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; } requestAnimationFrame(loop); };
+        const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s && s.zone === window.__zn) { C.s = s; C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; }
+        { const m = o.weapon.mag(); if (m && m.t <= 0 && m.n < m.mag * 0.5 && !o.enemies.list.some((e) => e.state !== 'flee' && e.state !== 'leave' && Math.hypot(e.pos.x - o.player.pos.x, e.pos.z - o.player.pos.z) < 9) && o.weapon.reload()) C.rl = (C.rl || 0) + 1; } /* 탄창 (#274): 둘레 9m 에 적이 없고 탄창이 절반 아래면 미리 재장전 */
+        requestAnimationFrame(loop); };
       requestAnimationFrame(loop); return hold ? 'hold' : true;
     }, { zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST });
     if (!ok) { console.log('구역', zn, '들판 자리를 못 찾음'); continue; }
@@ -71,7 +73,7 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
     const c = await p.evaluate(() => { const o = window.__oreum, C = window.__c; o.swarm.speed(1); return { ...C, coins: o.save.coins - C.coins0, lvUp: o.level.state().lv - C.lv0, sc: o.gearScore?.()?.total ?? null }; });
     const s = c.s || {};
     const why = await p.evaluate(() => window.__oreum.swarm.last?.why || (window.__oreum.swarm.state() ? '시간' : '-'));
-    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader };
+    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader, 손장전: c.rl || 0 };
     console.log(JSON.stringify(row)); res.push(row);
     await p.evaluate(() => { const o = window.__oreum; o.swarm.stop(); o.enemies.test.clear(); });
     await p.waitForFunction(() => { const h = window.__oreum.hp; return !h.isDown && !h.pending && h.hp > 0; }, null, { timeout: 120000, polling: 500 }).catch(() => {});

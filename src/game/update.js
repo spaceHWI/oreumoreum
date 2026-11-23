@@ -352,7 +352,7 @@ function step(now) {
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
   // 비탈 숙임(뼈)은 맞는 동안 줄여 움찔 기울기(root)와 겹쳐 눕지 않게 (#107)
-  runner.animate(dt, { kick: state.armKick || 0, speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, edur: EMOTE_BY[player.pose]?.dur || 2, over: state.emo.overlay() && { ...state.emo.overlay(), dur: EMOTE_BY[state.emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)) * (player.knock ? 1 - flinchK(player.knock.t) : 1), tool: save.equip.tool, dur: toolNow().time, rod: state.fishing ? state.fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
+  runner.animate(dt, { kick: state.armKick || 0, rl: state.reloadK || 0, speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, edur: EMOTE_BY[player.pose]?.dur || 2, over: state.emo.overlay() && { ...state.emo.overlay(), dur: EMOTE_BY[state.emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)) * (player.knock ? 1 - flinchK(player.knock.t) : 1), tool: save.equip.tool, dur: toolNow().time, rod: state.fishing ? state.fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
   state.fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);
