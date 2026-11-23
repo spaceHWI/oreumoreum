@@ -162,7 +162,7 @@ export function createRoofSigns({ scene, height, street, shops }) {
       const dh = dh0, top = s.onTop && dh > S.roofTopNear && d < S.roofTopFar, m = s.sp.material;
       if (m.depthTest === top) { m.depthTest = !top; s.dot.material.depthTest = !top; s.glow.material.depthTest = !top; s.sp.renderOrder = top ? 999 : 3; s.dot.renderOrder = top ? 1000 : 4; }
       m.opacity = top && d < S.roofNear ? S.roofFade : 1;
-      s.glow.material.opacity = s.off ? 0 : night * S.roofGlow; /* 닫힌 가게는 간판이 꺼짐 (#206) */
+      s.glow.material.opacity = s.off ? 0 : night * S.roofGlow; /* 닫힌 가게는 간판이 꺼짐 (#206) */ s.glow.visible = s.glow.material.opacity > 0.004; /* #272: 낮에 0 으로 그리지 않음 */
     }
   }
   const seen = (from) => Object.fromEntries(Object.entries(signs).map(([k, s]) => [k, !blocked(s, from)]));

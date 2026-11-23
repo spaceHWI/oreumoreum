@@ -1690,6 +1690,7 @@ export const CRASHES = {
 // 사건 파일 Tripo 모델 (#262, casemodels.js): scale 모델 키 0.98 → 게임 키. near 이 거리 안에 오면 큰 모델을 받음(그 전엔 멀리용 1,500 삼각형), far 이 거리 밖이면 멀리용을 그림
 export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
+  release: 90, releaseT: 30, relEvery: 3, // #272: 큰 모델이 있는 것이 모두 이 m 밖에 releaseT 초 넘게 있으면 그 큰 모델을 GPU 에서 내림(다시 오면 저절로 다시 올림). relEvery: 살피는 간격(초)
   scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
 };
 export const LIFE_MODELS = {

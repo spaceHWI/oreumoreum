@@ -203,7 +203,7 @@ export function createStream({ scene, height, groundAt, addWalkable, line, walls
     if (!res) { placeRod(rodRest); bob.position.set(bobRest.x, bobRest.y + Math.sin(t * 2.2) * 0.04, bobRest.z); setLine(bob.position, 0.25); }
     if (!p || Math.hypot(p.pos.x - nx, p.pos.z - nz) < 140) npc.animate(dt, { speed: 0, running: false, pose: 'sit', t, air: false, jumpV: 0 }); // 멀면 멈춰 둠
     for (const d of drops) if (d.m.visible) { d.t += dt; d.v.y -= 14 * dt; d.m.position.addScaledVector(d.v, dt); if (d.t > 0.9) d.m.visible = false; }
-    for (const r of rings) { r.t += dt; const k = Math.max(0, r.t) / 0.9; r.m.material.opacity = r.t < 0 || k > 1 ? 0 : 0.7 * (1 - k); r.m.scale.setScalar(1 + k * 3); }
+    for (const r of rings) { r.t += dt; const k = Math.max(0, r.t) / 0.9; r.m.material.opacity = r.t < 0 || k > 1 ? 0 : 0.7 * (1 - k); r.m.visible = r.m.material.opacity > 0; r.m.scale.setScalar(1 + k * 3); } /* #272: 0 이면 그리지 않음 */
     if (!p) return false;
     if (!res) { const [al, lat] = local(p.pos.x, p.pos.z), d = al - centerOff(lat); if (Math.abs(d) > hw(lat)) lastSide = Math.sign(d); }
     if (!res && !p.air && !p.riding && inWater(p.pos.x, p.pos.z) && !hooks.float?.(p)) begin(p); // 테왁 배낭이면 빠지지 않고 뜸 (#164, game/punk.js)
