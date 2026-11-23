@@ -91,11 +91,12 @@ function tickWake(dt) {
 }
 let wakePick = null; // 고르는 창을 띄울 때 정한 자리 (창이 떠 있는 동안 들머리에 있어도 그대로)
 late.afterEnter = () => {
-  const s = late.wakeAt(); if (!ON || !s || !save.tut?.done) return;
-  wakePick = { s, z: S.wake }; $('wake-ch').textContent = `${zoneShort(S.wake)} 클린하우스`;
+  const s = late.wakeAt(), inn = late.innWake?.() || null; if (!ON || !(s || inn) || !save.tut?.done) return; /* #270 한 번 묵은 숙소도 한 곳 */
+  wakePick = { s, z: S.wake, inn }; $('wake-ch').hidden = !s; if (s) $('wake-ch').textContent = `${zoneShort(S.wake)} 클린하우스`; $('wake-inn').hidden = !inn;
   closePanels(); $('wake-pick').hidden = false;
 };
-$('wake-ch').addEventListener('click', () => { $('wake-pick').hidden = true; const w = wakePick; wakePick = null; if (w) { S.wake = w.z; persist(); travel(w.s, 'steps', `${zoneShort(w.z)} 클린하우스로`, B.shortcut); } });
+$('wake-inn').addEventListener('click', () => { $('wake-pick').hidden = true; const w = wakePick; wakePick = null; if (w?.inn) travel(w.inn, 'steps', '오피스제주로', B.shortcut); });
+$('wake-ch').addEventListener('click', () => { $('wake-pick').hidden = true; const w = wakePick; wakePick = null; if (w?.s) { S.wake = w.z; persist(); travel(w.s, 'steps', `${zoneShort(w.z)} 클린하우스로`, B.shortcut); } });
 $('wake-start').addEventListener('click', () => { $('wake-pick').hidden = true; wakePick = null; });
 
 /* ---------- 빠른 마차·지름길 (구역 완료로 열림) ---------- */

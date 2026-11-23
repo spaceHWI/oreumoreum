@@ -73,7 +73,7 @@ export function createStone({ scene, height, site, low, col, addWalkable }) {
   // 밤: 창이 따뜻하게 빛남 (창 자리에 더하기 섞기 판), 처마 밑 전구도 빛남
   const winMat = new THREE.MeshBasicMaterial({ color: '#ffb85a', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
   const wins = M.windows.map(([x0, x1, wy0, wy1, wz]) => new THREE.PlaneGeometry(L(x1 - x0), L(wy1 - wy0)).translate(L((x0 + x1) / 2), LY((wy0 + wy1) / 2), L(wz) + 0.03));
-  root.add(new THREE.Mesh(mergeGeometries(wins), winMat));
+  const win = new THREE.Mesh(mergeGeometries(wins), winMat); root.add(win);
   const bulbs = M.bulbs.map(([bx, by]) => { const sp = glowSprite('#ffcf7a', 0.9); sp.position.set(L(bx), LY(by), L(M.bulbZ) + 0.05); root.add(sp); return sp; });
   // 밤 빛웅덩이 + (저사양이 아니면) 광원 하나
   const T = L(M.deck.z1 - M.deck.z0), tzc = L((M.deck.z0 + M.deck.z1) / 2);
@@ -118,7 +118,7 @@ export function createStone({ scene, height, site, low, col, addWalkable }) {
   function setLeft(k) { food.scale.setScalar(Math.max(0.05, k)); glassM.scale.set(1, Math.max(0.05, k), 1); glassM.position.y = 0.12 * Math.max(0.05, k); }
 
   function update(dt, night) {
-    winMat.opacity = night * 0.75; for (const b of bulbs) b.material.opacity = night; poolMat.opacity = night * 0.5;
+    winMat.opacity = night * 0.75; for (const b of bulbs) b.material.opacity = night; poolMat.opacity = night * 0.5; win.visible = pool.visible = night > 0.02; for (const b of bulbs) b.visible = night > 0.02; /* #272: 낮에 0 으로 그리지 않음 */
     if (light) light.intensity = night * 20;
   }
   return { root, center, terrace, seat, seatGo, seatHeading, table, signPos, update, serve, setLeft, y0 };

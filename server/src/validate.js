@@ -6,16 +6,17 @@
 //   ② bank: 방이 받아 준 줍기 × 더미 구역 값 (roomcore → Accounts.earn). 클린하우스에 버린 귤 몫. 번 귤은 ② 에서 먼저 씀
 // - 치운 양(누적)도 같은 방식
 import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
-import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM, TOKEN } from '../../src/balance.js';
+import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM, TOKEN, INN } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds, calFull, CAL_ALL_CLOTHES } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
-import { checkLv } from '../../src/augments.js';
+import { checkLv, levelOf } from '../../src/augments.js';
 import { TITLES, NOTES } from '../../src/punktext.js';
 import { recognize, cleanSold, normCred } from './earn.js';
 import { WEEKLY_IDS, weeklyBuyable } from '../../src/weekly.js';
 import { normTok, TOK_CLOTHES } from '../../src/token.js';
 import { tokenCheck } from './token.js';
 import { kstDay, weekStart } from '../../src/rankday.js';
+import { dateOfDay } from '../../src/daily.js';
 
 const CLOTH = Object.fromEntries(CLOTHES.map((c) => [c.id, c]));
 const BACK = Object.fromEntries(BACK_LOOKS.map((b) => [b.id, b]));
@@ -79,6 +80,7 @@ function norm(s) {
     s.punk = { title: Number.isInteger(k.title) && k.title >= 0 && k.title < TITLES.length ? k.title : -1, notes, unread: Array.isArray(k.unread) ? k.unread.filter((id) => notes[id] !== undefined).slice(0, NOTES.length) : [], radio: k.radio === 0 ? 0 : 1,
       day: isObj(k.day) ? { d: typeof k.day.d === 'string' ? k.day.d.slice(0, 10) : '', n: int(k.day.n, 0, 1e6, 0) } : { d: '', n: 0 }, ev: isObj(k.ev) ? Object.fromEntries(Object.keys(k.ev).filter((e) => /^[a-z0-9-]{1,24}$/.test(e)).slice(0, 32).map((e) => [e, 1])) : {} };
   }
+  if (s.inn !== undefined) { const o = isObj(s.inn) ? s.inn : {}; s.inn = { d: typeof o.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.d) ? o.d : '', n: int(o.n, 0, 1e6, 0), left: Math.max(0, Math.min(INN.buffSec, Number(o.left) || 0)) }; } // 숙소 (#270): 마지막 묵은 날·묵은 수·개운함 남은 초
   normTok(s); // 징표 (#255, server/src/token.js)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
@@ -101,7 +103,28 @@ function spentOf(P, S) {
   for (const id of S.rides.own) if (!P.rides.own.includes(id)) sp += RIDE[id].price;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
   for (const id of Object.keys(backOwn(S))) if (!backOwn(P)[id]) sp += BACK[id].price; // 배낭 겉모습 (#164)
+  sp += innSpent(P, S); // 숙소 (#270)
   return sp;
+}
+// 숙소 (#270): 새로 묵은 수 × 값 (지난 저장의 레벨로 셈. 첫 숙박은 반값). 값을 셈에 넣어야 같은 저장 사이에 번 귤·경험치 몫이 바로 잡힘
+const innN = (s) => (isObj(s.inn) ? s.inn.n : 0);
+function innSpent(P, S) {
+  const k = innN(S) - innN(P); if (k <= 0) return 0;
+  const lv = levelOf(Number(P.lv?.xp) || 0).lv, one = INN.price.base + lv * INN.price.perLv;
+  return Math.round(one * (innN(P) ? 1 : INN.price.first)) + Math.round(one) * (k - 1);
+}
+// 숙소 기록 바로잡기: 묵은 수는 줄지 않고, 날이 바뀌려면 수가 늘어야 하며, 새 날은 서버 날짜 오늘(또는 어제: 자정 직전에 묵은 저장이 늦게 옴)까지만, 하루에 한 번
+function innCheck(P, S, t, fixed) {
+  if (!isObj(S.inn) && !isObj(P.inn)) return;
+  const p = isObj(P.inn) ? P.inn : { d: '', n: 0, left: 0 }; if (!isObj(S.inn)) S.inn = { ...p };
+  const day = kstDay(t), ok = new Set([dateOfDay(day), dateOfDay(day - 1)]), more = S.inn.n > p.n;
+  const bad = S.inn.n < p.n || (S.inn.d !== p.d && (!more || !ok.has(S.inn.d))) || (more && (S.inn.n - p.n > 1 || p.d === S.inn.d));
+  if (bad) { S.inn = { ...p, left: Math.min(S.inn.left, p.d === S.inn.d || ok.has(p.d) ? INN.buffSec : 0) }; fixed.push('inn'); }
+}
+// 개운함 경험치 (#270 INN.buff.xp): 마지막 묵은 날이 서버 날짜 오늘·어제이고 개운함이 남아 있으면 그만큼 더 받아 줌
+function innXp(P, S, t) {
+  const o = isObj(S.inn) ? S.inn : null; if (!o || !(o.left > 0 || P.inn?.left > 0)) return 1;
+  const day = kstDay(t); return o.d === dateOfDay(day) || o.d === dateOfDay(day - 1) ? 1 + INN.buff.xp : 1;
 }
 function revertItems(P, S) {
   const free = freeCloths(S);
@@ -110,6 +133,8 @@ function revertItems(P, S) {
   for (const id of Object.keys(S.clothes.own)) if (!P.clothes.own[id] && !START_CLOTH.has(id) && !free.has(id)) delete S.clothes.own[id];
   for (const [k, id] of Object.entries(S.clothes.wear)) if (id && !(S.clothes.own[id] || START_CLOTH.has(id))) delete S.clothes.wear[k];
   if (isObj(S.clothes.tint)) for (const id of Object.keys(S.clothes.tint)) if (!S.clothes.own[id]) delete S.clothes.tint[id];
+  if (innN(S) > innN(P)) S.inn = isObj(P.inn) ? { ...P.inn } : undefined; // 숙소 (#270): 값을 못 냈으면 묵지 않은 것으로
+  if (S.inn === undefined) delete S.inn;
   S.rides.own = S.rides.own.filter((id) => P.rides.own.includes(id)); if (!S.rides.own.includes(S.rides.cur)) S.rides.cur = S.rides.own[S.rides.own.length - 1] || null;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
   if (S.backs) { for (const id of Object.keys(S.backs.own)) if (!backOwn(P)[id]) delete S.backs.own[id]; if (!S.backs.own[S.backs.cur]) S.backs.cur = null; }
@@ -222,6 +247,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
     for (const [k, id] of Object.entries(S.clothes.wear)) if (id && WEEKLY_IDS.has(id) && !S.clothes.own[id]) delete S.clothes.wear[k];
   }
   { const tk = tokenCheck(P, S, cred, t, dt); cred = tk.cred; for (const f of tk.fixed) fixed.push(f); } // 징표 (#255): 귤과 따로
+  innCheck(P, S, t, fixed); // 숙소 (#270)
   let spent = spentOf(P, S) + sx.spent;
   if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
   const gain = S.coins + spent - P.coins;
@@ -230,7 +256,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   bank -= fromBank; credit -= used - fromBank - fromSwarm;
   let lvCut = 0;
   if (isObj(S.lv) && !lvNew) { /* 레벨 (#202): 경험치(번 귤)는 이번에 받아 준 귤 가운데 판 귤을 뺀 만큼만 늘 수 있음 (운영자 귤·철 선물·받은 귤은 used 에 없음) */
-    const cap = (Number(P.lv?.xp) || 0) + Math.max(0, used - Math.min(used, rc.why.sold));
+    const cap = (Number(P.lv?.xp) || 0) + Math.max(0, used - Math.min(used, rc.why.sold)) * innXp(P, S, t); /* #270 개운함 경험치 */
     if (S.lv.xp > cap) { lvCut = S.lv.xp - cap; S.lv.xp = Math.max(0, Math.floor(cap)); checkLv(S); fixed.push('lvxp'); }
   }
   const pg = S.trash.total - P.trash.total;

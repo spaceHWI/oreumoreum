@@ -91,7 +91,7 @@ function endRun(why) {
     bonus = Math.min(R.bonusMax[r.zone] || 0, Math.round(r.gyul * R.bonus));
     const at = Date.now(); SV.rest[r.zone] = at + R.rest * 1000; SV.won[r.zone] = { at, b: bonus };
     if (bonus > 0) { save.coins += bonus; late.gyulShower?.(bonus); updateStats(); }
-    late.sound?.fanfare?.(); persist();
+    late.sound?.fanfare?.(); persist(); late.onRunWin?.(r.zone); /* #270 숙소 곁가지 퀘스트 */
   } else if (why === 'leave') { SV.rest[r.zone] = Date.now() + R.rest * A.leaveRest * 1000; persist(); } /* 터를 벗어나 끝 (#231): 덤 없음, 쉬는 시간 절반 */
   if (late.swarm) late.swarm.last = { why, wall: Math.round(r.wall), kills: r.kills, gyul: Math.round(r.gyul), bonus, waves: r.waves.slice() };
   if (r.t < 4 && !r.kills && !win) return;

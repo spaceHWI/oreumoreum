@@ -28,6 +28,7 @@ const MAP = {
   // 능력치·버프
   per: 'stack-2', rate: 'clock', reach: 'arrows-horizontal', speed: 'gauge', dmg: 'swords', magnet: 'magnet', rare: 'sparkles',
   guard: 'shield', regen: 'heart-plus', quick: 'bolt',
+  bed: 'bed', zzz: 'zzz', // 숙소 오피스제주 (#270): 숙박하기 · 개운함 버프
   // 도구·탈것 (그림이 없을 때 대신)
   hand: 'hand-stop', vacuum: 'vacuum-cleaner', skate: 'skateboard', horse: 'horse',
   // 날씨

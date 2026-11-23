@@ -60,7 +60,7 @@ export function buildHalla(scene) {
   const b = HALLA.bearing * Math.PI / 180, dx = Math.sin(b), dz = -Math.cos(b), rot = Math.atan2(-dx, -dz);
   const U = { main: { value: new T.Color() }, front: { value: new T.Color() }, cloud: { value: new T.Color() } }, hor = { value: new T.Color() };
   const group = new T.Group(); group.name = 'halla';
-  const L = ['cloud', 'main', 'front'].map((k, i) => { const cfg = HALLA[k], m = layer(k, cfg, U[k], hor); m.rotation.y = rot; m.renderOrder = -5 + i; group.add(m); return { m, cfg }; });
+  const L = ['cloud', 'main', 'front'].map((k, i) => { const cfg = HALLA[k], m = layer(k, cfg, U[k], hor); m.rotation.y = rot; m.renderOrder = 990 + i; /* #272: 땅 다음, 하늘 앞 (깊이를 써서 순서는 그림에 영향 없음) */ group.add(m); return { m, cfg }; });
   scene.add(group);
   const tmp = new T.Color();
   return {

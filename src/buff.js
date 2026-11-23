@@ -5,7 +5,8 @@ import { STONE, MANJOK, MEALS } from './balance.js';
 const SEC = { stone: STONE.buffSec, manjok: MANJOK.buffSec };
 export const mealSec = (m) => m.sec || SEC[m.shop] || STONE.buffSec;
 
-export function createBuff({ save, persist, onEnd }) {
+// more(kind): 다른 버프의 배수 (#270 숙소 '개운함', game/inn.js). 식사 버프와 곱해짐
+export function createBuff({ save, persist, onEnd, more = null }) {
   const item = () => (save.buff && MEALS.find((m) => m.id === save.buff.id)) || null;
   if (save.buff && (!item() || !(save.buff.left > 0))) delete save.buff; // 예전·깨진 저장
   let saveT = 0, last = 0;
@@ -21,7 +22,7 @@ export function createBuff({ save, persist, onEnd }) {
   // 종류 kind 의 v (없으면 0). 버프 본 것과 also 를 함께 봄
   function add(kind) { const m = save.buff && item(); if (!m) return 0; return m.buff === kind ? m.v : m.also?.[kind] || 0; }
   // kind: speed·bag·dmg·pick 은 1 + v, regen 은 v 배. 해당 없으면 1
-  function mul(kind) { const v = add(kind); if (!v) return 1; return kind === 'regen' ? v : 1 + v; }
+  function mul(kind) { const v = add(kind), k = more ? more(kind) || 1 : 1; if (!v) return k; return (kind === 'regen' ? v : 1 + v) * k; }
   const now = () => { const m = save.buff && item(); return m ? { item: m, left: save.buff.left, total: mealSec(m) } : null; };
   return { give, tick, mul, add, now, clear: () => { delete save.buff; persist(); } };
 }

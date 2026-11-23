@@ -2,7 +2,7 @@
 // 데이터만 (그림·DOM·three 없음). 틀·필드 설명은 src/cases/index.js 맨 위, 게임 연결은 src/game/cases.js, 모양·장면은 src/game/caseprops.js (neck·rings·post·log·hose)
 // 자리(at)는 남송이오름 좌표 [x, z] (임의값). 굼부리 바닥 가운데 약 [48, -420], 서바이벌 터 [84, -440] (#253). 초소 일지는 굼부리 관리 초소(금고 0404, game/mystery.js) 곁이라 구역 5 (z: 5)
 export default {
-  id: 'c4', n: 4, zone: 4, lv: 12, name: '굼부리 괴물', giver: 'b:crater',
+  id: 'c4', n: 4, zone: 4, lv: 13, name: '굼부리 괴물', giver: 'b:crater',
   rumor: '안개 낀 날 굼부리에서 뭔가 솟는대요', /* 앞 구역을 끝냈을 때 구역 완료 창의 실마리 한 줄 (#256) */
   // 목격: 안개 속 긴 목 그림자가 솟았다 내려감. gone: 대면을 끝내면 치움
   see: { at: [48, -420], r: 52, prop: 'neck', say: '방금… 뭐가 솟았다 들어갔지?', gone: true },
