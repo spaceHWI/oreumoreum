@@ -1099,6 +1099,8 @@ body.looking .hud, body.looking .dock, body.looking .pad, body.looking .hint, bo
 .nk-lab { flex: 1 1 100%; text-align: center; font: 800 16px var(--display); color: #fff; } /* #230 처음 시작할 때 이름 단계: 맨 위에 크게 */
 .look-nick .nk-in { max-width: min(300px, calc(100% - 56px)); height: 50px; font-size: 20px; }
 .look-nick .nk-in::placeholder { color: rgba(255,255,255,.55); }
+.nk-title { flex: 1 1 100%; margin: 0; text-align: center; font: 800 18px var(--display); color: #fff; }
+.nk-lab2 { display: block; margin: 0 0 4px; font: 700 13px var(--body); color: var(--ink-soft); }
 .nk-hint { flex: 1 1 100%; margin: 0; text-align: center; font-size: 12px; color: var(--ink-soft); }
 .pop-menu .m-nick { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 14px; background: rgba(255,255,255,.08); border: 1px solid var(--hair); font: 700 14px var(--body); color: var(--ink); } /* #230 메뉴 맨 위 이름 줄 */
 .pop-menu .m-nick span { color: var(--ink-soft); font-weight: 600; }
@@ -2059,9 +2061,10 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 
 <!-- 이름 바꾸기 (#162): 처음 한 번 무료, 그다음 귤. 하루 한 번. 로그인했으면 서버가 확인하고 귤을 뺌 -->
 <div class="overlay dim" id="nickwin" hidden>
-  <div class="panel pop nk-pop" role="dialog" aria-label="이름 바꾸기">
-    <div class="pop-head"><h2>이름 바꾸기</h2><button type="button" class="btn small" id="nickwin-close">닫기</button></div>
+  <div class="panel pop nk-pop" role="dialog" aria-label="아이디 만들기">
+    <div class="pop-head"><h2>아이디 만들기</h2><button type="button" class="btn small" id="nickwin-close">닫기</button></div>
     <div class="pop-body">
+      <label class="nk-lab2" for="nick-new">이름</label>
       <div class="nk-row"><input type="text" id="nick-new" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="새 이름" aria-describedby="nick-new-err"><button type="button" class="nk-dice" id="nick-new-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button></div>
       <p class="nk-err" id="nick-new-err" role="alert" hidden></p>
       <p class="muted nk-note" id="nick-new-note"></p>
@@ -2233,7 +2236,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <!-- 캐릭터 고르기 (#51): 가운데 캐릭터가 돌아가며 보이고, 아래 카드에서 기본 머리(성별)·피부색을 고름 -->
 <div id="look" hidden>
   <div class="panel look-card" role="dialog" aria-label="캐릭터 고르기">
-    <div class="look-nick" id="look-nickrow"><label class="nk-lab" for="look-nick">이름을 정해 주세요</label><input type="text" id="look-nick" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-describedby="look-nick-hint look-nick-err"><button type="button" class="nk-dice" id="look-nick-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button><p class="nk-hint" id="look-nick-hint">이름은 설정에서 바꿀 수 있어요</p><p class="nk-err" id="look-nick-err" role="alert" hidden>이 이름은 쓸 수 없어요</p></div>
+    <div class="look-nick" id="look-nickrow"><h2 class="nk-title">아이디 만들기</h2><label class="nk-lab" for="look-nick">이름</label><input type="text" id="look-nick" class="nk-in" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-describedby="look-nick-hint look-nick-err"><button type="button" class="nk-dice" id="look-nick-dice" aria-label="다른 이름 뽑기" title="다른 이름"><svg data-i="dice"></svg></button><p class="nk-hint" id="look-nick-hint">이름은 설정에서 바꿀 수 있어요</p><p class="nk-err" id="look-nick-err" role="alert" hidden>이 이름은 쓸 수 없어요</p></div>
     <div class="look-top">
       <div class="look-sex" id="look-sex" role="radiogroup" aria-label="기본 모습"></div>
       <div class="look-skin" id="look-skin" role="radiogroup" aria-label="피부색"></div>
