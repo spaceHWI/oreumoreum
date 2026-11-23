@@ -40,12 +40,22 @@ export const director = createDirector({
   save, persist,
   hooks: {
     facts: () => Object.fromEntries(Object.entries(FACTS).map(([k, f]) => { let v = 0; try { v = f(); } catch { v = 0; } return [k, v]; })),
-    busy: () => !state.sessionOn || document.hidden || !!late.tut?.active || panelOpen() || cam.mode === 'wardrobe' || !!late.mealS?.on || !!late.cutS?.on
-      || msgBusy() || !!state.photoState, /* #252: 메시지 줄에 감독 글이 아닌 알림이 떠 있으면 기다림 */
-    fight: () => !!player.down || !!late.pace?.threat?.() || (state.tension || 0) > 0.3 || !!late.bossFight?.() || !!life?.enemies?.near?.(player.pos, 25),
+    busy: () => busyWhy() !== '',
+    fight: () => fightWhy() !== '',
   },
 });
 late.director = director;
+/* 감독이 기다리는 바깥 사정 이름 (#286 검사에서 무엇이 막는지 보려고). '' 이면 한가함 */
+export const fightWhy = () => (player.down ? 'down' : late.pace?.threat?.() ? 'threat' : (state.tension || 0) > 0.3 ? 'tension' : late.bossFight?.() ? 'boss' : life?.enemies?.near?.(player.pos, 25) ? 'enemy' : '');
+export function busyWhy() {
+  if (!state.sessionOn) return 'session'; if (document.hidden) return 'hidden'; if (late.tut?.active) return 'tut';
+  if (panelOpen()) return 'panel'; if (cam.mode === 'wardrobe') return 'wardrobe'; if (late.mealS?.on) return 'meal'; if (late.cutS?.on) return 'cut';
+  if (msgBusy()) return 'msg'; if (state.photoState) return 'photo'; /* #252: 메시지 줄에 감독 글이 아닌 알림이 떠 있으면 기다림 */
+  return '';
+}
+/* dev·검사: 그 종류가 지금 왜 못 나가나 { d 감독 까닭, busy, fight } */
+export const directorWhy = (k) => ({ d: director.why(k), busy: busyWhy(), fight: fightWhy() });
+late.directorWhy = directorWhy;
 
 // 토스트 한 줄을 감독을 거쳐 (opt: ttl·queue·then). 이야기·퀘스트 안내는 안내서 목소리로 한 글자씩 (#224 game/talkfx.js)
 const TYPED = new Set(['story', 'quest']);

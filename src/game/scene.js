@@ -27,7 +27,10 @@ import { $, clamp, save, MAP_ID } from './save.js';
 // ---------- 렌더러 ----------
 export const canvas = $('view');
 const PHONE_GL = isMobile(); // 폰 (#271): 그림자 거친 PCF (만들 때 정해야 하는 것). 안티에일리어싱은 PERF.aaPhone (#276 기본 켬)
-export const renderer = new THREE.WebGLRenderer({ canvas, antialias: PERF.aaPhone || !(PHONE_GL || TIER === 0), powerPreference: 'default' });
+/* 검사용 스위치 (#286): 주소 ?aa=0 끔·?aa=1 켬. 없으면 file:// (tools/ 가 여는 test.html) 은 끔: 소프트웨어 GL 에서 안티에일리어싱이 프레임을 절반으로 깎아 검사가 2배 느려짐 */
+const AA_Q = (/[?&]aa=([01])/.exec(location.search) || [])[1];
+export const AA_ON = AA_Q ? AA_Q === '1' : location.protocol === 'file:' ? false : PERF.aaPhone || !(PHONE_GL || TIER === 0);
+export const renderer = new THREE.WebGLRenderer({ canvas, antialias: AA_ON, powerPreference: 'default' });
 renderer.outputColorSpace = NSMODE ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;

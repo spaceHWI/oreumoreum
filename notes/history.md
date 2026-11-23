@@ -2097,3 +2097,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 원인: #261 손님 안내(`pickup.js guestNudge`)가 `trash.totalCount()` 를 불렀는데 그 함수는 `trash.store` 에 있음. 서버 주소가 있어 계정이 생기고 로그인하지 않은 손님이 주울 때마다(안내를 아직 안 본 동안) 프레임 오류 → 그 줍기의 `store.commit`·화면 갱신·콤보가 건너뛰어짐. `trash.store.totalCount()` 로 고침. 같은 실수는 다른 곳에 없음
 - 검사가 못 잡은 까닭: `smoke.js` 는 서버 주소 없이(계정 없음) 돌고, `online.js` 는 `store.takeOne` 으로 바로 꺼내 줍기 길(`takeNow`)을 지나지 않음. `smoke.js` 에 '4) 손님 줍기' 를 더함(닿지 않는 `?server=` 로 손님 계정을 만들고 진짜 줍기 한 번, 프레임 오류는 콘솔 글로 봄). 고치기 전 빌드에서 FAIL 확인
 - #277 숙소 오피스제주 건물 색: 벽 산호빛 붉은색(#d8695c)·창틀/난간/문틀 청록(#1f8f8a)·2층 창마다 청록 커튼·1층 뒷벽 파란 블라인드 한 면. 같은 재질 묶음 안이라 그리는 수 그대로 (src/inn.js 맨 위 색 상수). 앞뒤 그림은 못 찍음
+
+## #286 casefin: 다섯 사건 뒤 엔딩이 시작되지 않음 (2026-11-23)
+- 원인은 **검사 속도**(게임 아님). 부하가 걸린 소프트웨어 GL 에서 프레임이 1~2fps 로 떨어지고 프레임 dt 가 잘려, 실제 90초 동안 감독 시계는 10초 남짓만 흐름. 그동안 감독은 '퀘스트 소개 → 간격 → 메시지 줄 알림(busy msg)' 을 차례로 기다리는 중이었고 막힌 것은 없었음(재장전·탄 표시는 busy·줄에 걸리지 않음). casefin d·m 을 동시에 돌려 재현, 게임 시계 기준으로 기다리면 게임 7~8초 만에 엔딩이 시작
+- `src/director.js why(kind)`: 지금 못 나가는 까닭('cur:<id>'·'gap'·'busy'·'fight'·'queue:<id>', 빈 글이면 나갈 수 있음). `game/director.js busyWhy()`·`fightWhy()` 가 바깥 사정 이름을 돌려줌(hooks.busy·fight 도 이것으로). dev: `__oreum.director.why('story')` → `{ d, busy, fight }`
+- 안티에일리어싱 검사 스위치 (`game/scene.js AA_ON`): 주소 `?aa=0` 끔·`?aa=1` 켬. 없으면 **file:// (tools/ 가 여는 test.html) 은 끔**, 실서버·dev 는 그대로(#276). 소프트웨어 GL 에서 3.4fps vs 1.7fps (2배). 그래서 95개 검사 도구 주소를 하나하나 고치지 않음. `tools/perfrun.js` 는 실제처럼 재려고 `&aa=1`
+- `tools/casefin.js`: '창을 닫으면 엔딩 시작' 을 실제 90초 대신 감독 시계 60초(실제로는 10분까지) 기다림. 실패하면 감독이 왜 기다렸는지(why·줄·로그)를 함께 찍음
