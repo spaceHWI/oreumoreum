@@ -242,6 +242,7 @@ function tickFollow(dt, time) {
   const turn = DP.turn[palLv()], dp = palD();
   pal.state = 'follow';
   if (state.cave) { pal.speed = 0; pal.state = 'graze'; return; } // 동굴: 밖에서 기다림
+  if (late.innBusy?.()) { pal.speed = 0; pal.state = 'graze'; return; } // 숙소에서 묵는 동안 (#270): 앞마당에서 기다림
   if (calling) { // 휘파람: 곧장 달려옴
     if (dp < 2.2) { calling = false; pal.speed = 0; pal.heading = Math.atan2(player.pos.x - pal.pos.x, player.pos.z - pal.pos.z); return; }
     if (dp > DP.tp) teleport(); moveTo(player.pos.x, player.pos.z, DP.run * 1.1, dt, 8); ci = -1; return;

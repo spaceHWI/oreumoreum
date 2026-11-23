@@ -71,6 +71,7 @@ BADGES.push(
   { id: 'b-fish-night', ev: 'fish-night', goal: 1, name: '밤낚시', desc: '밤에 낚시를 했어요', color: '#3d4a7a', reward: 10 },
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
   { id: 'b-eye', ev: 'myst-safe', goal: 1, name: '눈썰미', desc: '관리 초소 금고를 열었어요', color: '#5a5f3a', reward: 20 }, // #212 금고
+  { id: 'b-inn-5', ev: 'inn-stay', goal: 5, name: '단골 투숙객', desc: '오피스제주에서 다섯 번 묵었어요', color: '#4f7fa8', reward: 30 }, // #270 숙소 (game/inn.js 가 묵을 때마다 사건을 냄)
 );
 BADGES.push(...CASE_BADGES); // 사건 파일 (#232): 사건을 종결하면 game/cases.js 가 late.titles.give 로 사건을 냄
 BADGES.push({ id: 'b-case-all', ev: 'case-all', goal: 1, name: '수석 조사관', desc: '증거 사진 다섯 장을 빨간 실로 이었어요', color: '#8a2a2a', reward: 0 }); // #237 사건 파일 끝 (game/casefinale.js)

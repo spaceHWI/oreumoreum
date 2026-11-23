@@ -43,6 +43,7 @@ import { placeAt } from './where.js'; // #153
 state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0, reports: 0 };
 state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히 도는 이슈와 부딪혀서 따로
 state.ticks.deerPal = 0; // 노루 친구 (#247)
+state.ticks.inn = 0; // 숙소 오피스제주 (#270)
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -427,6 +428,7 @@ function step(now) {
   late.tickSummit?.(dt); // 정상 첫 실마리 (#208, game/summit.js): 엔딩 뒤 (cine 자리를 같이 씀)
   late.tickMyst?.(dt); // 4:04·금고 (#212, game/mystery.js)
   late.tickCases?.(dt); // 사건 파일 (#232, game/cases.js): 목격·증거·숨어 보기 장면
+  if (late.tickInn) { late.tickInn(dt); state.ticks.inn++; } /* 숙소 (#270, game/inn.js): 개운함 시간·묵는 연출 */
   late.tickTube?.(dt); // 수거 관 (#248, game/tube.js): 빨려 들어감·관 속·튀어나옴 (updatePlayer 뒤라 몸 자리·크기를 덮어씀)
   late.tickReports?.(dt); // 매일 미확인 제보 (#238, game/reports.js)
   late.tickTraces?.(dt); // 발자국·크롭서클·뒤돌아보면 (#212, game/traces.js)

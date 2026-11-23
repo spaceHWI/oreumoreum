@@ -44,6 +44,7 @@ const USED = {
   salon: () => (life().haircut || 0) > 0,
   leap: () => (life()['clothes-buy'] || 0) > 0,
   ride: () => Array.isArray(save.rides?.own) && save.rides.own.length > 0,
+  inn: () => (save.inn?.n | 0) > 0, // 숙소 (#270)
 };
 export const gate = createShopGate({
   save, persist, defs: DEFS,
