@@ -131,7 +131,7 @@ void main(){ gl_FragColor=vec4(uCol,uA*vA*smoothstep(0.0,0.35,vY)*smoothstep(1.0
       const j = await r.json(); setReal(classify(j.current || {})); lastOk = Date.now();
     } catch { if (!lastOk || Date.now() - lastOk > WEATHER.keepMin * 60000) setReal('clear'); } // #147: 앞에 받은 날씨가 있으면 keepMin 분까지 그대로
   }
-  fetchNow(); setInterval(fetchNow, WEATHER.pollMin * 60000);
+  fetchNow(); setInterval(() => { if (typeof document === 'undefined' || !document.hidden) fetchNow(); }, WEATHER.pollMin * 60000); // 탭이 숨어 있으면 받지 않음 (#271)
 
   const settled = () => NUM.every((n) => Math.abs(cur[n] - WX[target][n]) < 0.003);
   return { cur, update, snap, setFx, get fx() { return fx; }, get settled() { return settled(); }, set, setReal, calm, onChange: (f) => listeners.push(f), get kind() { return target; }, get real() { return real; }, get forced() { return forced; }, get drawn() { return { rain: streaks.visible ? rg.instanceCount : 0, snow: pts.visible ? geo.drawRange.count : 0 }; } };

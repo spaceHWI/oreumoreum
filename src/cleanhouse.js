@@ -102,7 +102,7 @@ export function createCleanhouse({ scene, height, x, z, rot, low, trashGeos }) {
   const bump = [0, 0, 0, 0, 0];
   function update(dt, night) {
     markT += dt; mark.position.y = markY + Math.sin(markT * 2.2) * 0.18;
-    bulbMat.emissiveIntensity = night * 1.5; poolMat.opacity = night * 0.55;
+    bulbMat.emissiveIntensity = night * 1.5; poolMat.opacity = night * 0.55; pool.visible = night > 0.02; /* #272 */
     if (light) light.intensity = night * 22;
     for (let i = 0; i < 5; i++) { if (bump[i] <= 0) continue; bump[i] = Math.max(0, bump[i] - dt * 4); const k = Math.sin(bump[i] * Math.PI); lids[i].position.y = 1.37 + k * 0.18; lids[i].rotation.x = -k * 0.25; }
   }
@@ -150,7 +150,7 @@ export function createMiniCleanhouse({ scene, height, x, z, rot, low, trashGeos 
   const center = toWorld(0, 0, 0);
   const bump = [0, 0, 0, 0];
   function update(dt, night) {
-    bulbMat.emissiveIntensity = night * 1.5; poolMat.opacity = night * 0.5;
+    bulbMat.emissiveIntensity = night * 1.5; poolMat.opacity = night * 0.5; pool.visible = night > 0.02; /* #272 */
     for (let i = 0; i < 4; i++) { if (bump[i] <= 0) continue; bump[i] = Math.max(0, bump[i] - dt * 4); const k = Math.sin(bump[i] * Math.PI); lids[i].position.y = lidY + k * 0.15; lids[i].rotation.x = -k * 0.25; }
   }
   return { root, binTop, front, center, shopFront: null, stallTop: null, update, pop: (k) => { bump[MAP[k]] = 1; }, types: TRASH_TYPES, small: true };
