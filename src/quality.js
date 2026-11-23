@@ -17,7 +17,15 @@ export function autoTier() {
   const ua = navigator.userAgent, mobile = isMobile() || /Android|iPhone|iPad/.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua)); /* 모바일 화면으로 보기 틀 안도 폰 단계 (#220) */
   const cores = navigator.hardwareConcurrency || 8, mem = navigator.deviceMemory || 8;
   if (cores <= 2 || mem <= 2 || PERF.weakGpu.test(gpuName())) return 0;
-  return mobile || cores <= 4 ? 1 : 2;
+  const t = mobile || cores <= 4 ? 1 : 2;
+  return Math.max(0, t - (lowHint() ? 1 : 0)); // 처음부터 한 칸 낮게 (#271). 배터리는 비동기라 game/fps.js 가 시작 뒤에 내림
+}
+// 메모리 PERF.start.mem 이하·움직임 줄이기·데이터 절약이면 한 칸 낮게 (#271)
+export function lowHint() {
+  try {
+    const m = navigator.deviceMemory, rm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return (m != null && m <= PERF.start.mem) || !!rm || !!navigator.connection?.saveData;
+  } catch { return false; }
 }
 const q = typeof location !== 'undefined' ? location.search : '';
 const forced = /[?&]tier=([012])/.exec(q)?.[1];

@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
   const shot = (n) => SHOT && p.screenshot({ path: `dist/manjok-${n}.jpg`, type: 'jpeg', quality: 60, timeout: 150000 });
   await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await W(5000);
   // 옛 저장(장화 칸 없음, 이상한 값)으로 시작
-  await E(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: o.save.look || { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1, mealFree: 1 }); o.save.equip.boots = 'x'; o.save.buff = { id: 'nope', left: 30 }; const k = Object.keys(localStorage).find((k) => k.startsWith('oreumoreum.v')) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
+  await E(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: o.save.look || { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1, mealFree: 1, shopGate: { init: 1, open: { gear: 1, manjok: 1, stone: 1, salon: 1, leap: 1 } } }); /* #206 뒤로 가게가 차례로 열림: 확인할 가게는 열어 둠 (#270 에서 낡은 검사 고침) */ o.save.equip.boots = 'x'; o.save.buff = { id: 'nope', left: 30 }; const k = Object.keys(localStorage).find((k) => k.startsWith('oreumoreum.v')) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
   await p.reload(); await W(5000); await p.click('#enter').catch(() => {}); await W(5000);
   if (await E(() => !document.getElementById('look').hidden)) { await p.click('#look-ok'); await W(1500); }
   ok(await E(() => window.__oreum.save.equip.boots === 0 && !window.__oreum.save.buff), '옛·깨진 저장: 장화 0, 버프 지움');

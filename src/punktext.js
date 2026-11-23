@@ -85,6 +85,7 @@ export const SWARM_TEXT = {
   },
   elite: '덩치 큰',
   leader: '떼 대장',
+  surge: '한쪽에서 몰려와요! 화살표 쪽을 봐요', /* #273 몰려옴 */
   leaderCome: '마지막 큰 물결! 떼 대장을 쫓아내면 보물 상자',
   chest: '떼 대장을 쫓아냈어요! 보물 상자가 열려요',
   quiet: '숨 돌릴 틈. 이 둘레는 잠시 조용해요',
@@ -284,6 +285,7 @@ export const TITLES = [
   { t: '설인의 후배', badge: 'b-case-c5' },
   { t: '호스를 본 사람', badge: 'b-case-c4' }, // #235 (멀티 번호가 바뀌지 않게 뒤에)
   { t: '수석 조사관', badge: 'b-case-all' }, // #237 다섯 사건 종결 ('조사관' 한 벌, game/casefinale.js)
+  { t: '단골 투숙객', badge: 'b-inn-5' }, // #270 숙소 오피스제주 다섯 번
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');

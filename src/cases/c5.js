@@ -2,7 +2,7 @@
 // 데이터만 (그림·DOM·three 없음). 틀·필드 설명은 src/cases/index.js 맨 위, 게임 연결은 src/game/cases.js
 // 자리(at)는 남송이오름 좌표 [x, z]. 정상 더미는 (0, 0) 둘레 30 m 안, 우두머리 빈터는 (60, -12)
 export default {
-  id: 'c5', n: 5, zone: 5, lv: 15, name: '설인', giver: 'jigi',
+  id: 'c5', n: 5, zone: 5, lv: 17, name: '설인', giver: 'jigi',
   rumor: '정상에 커다란 발자국이 났대요', /* 앞 구역을 끝냈을 때 구역 완료 창의 실마리 한 줄 (#256) */
   // 목격: 큰 발자국. trail 은 발자국 한 줄의 꺾이는 점 (MYST.foot 모양을 크게, game/traces.js late.caseFoot). 더미 곁 → 더미 곁 → 대면 자리
   see: { at: [-16, -3], r: 14, prop: 'print', say: '발자국이… 내 발 세 개만 하다.' },

@@ -7,6 +7,9 @@ const SAVES = {
   tokBad: { nick: '징표 사람', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, tok: { n: -5, got: 'x', own: { rapid: 9, zzz: 1 }, arm: 'zzz', rec: 'q', kit: { fight: { wear: 5, arm: 'blast' }, pick: 3 }, rv: 'z' } },
   tokWear: { nick: '징표 옷', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, tok: { n: 12, got: 30, own: { pierce: 2 }, arm: 'pierce', rec: { 2: { at: 5, n: 99, win: 1 } } }, clothes: { own: { 'top:t-gong': 1, 'vest:t-gong': 1 }, wear: { top: 'top:t-gong', vest: 'vest:t-gong' } } },
   tokStr: { nick: '징표 글', coins: 40, tok: 'abc' },
+  // #270 숙소: 깨진 기록·남은 시간이 넘치는 기록·문자열
+  innBad: { nick: '숙소 사람', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, inn: { d: 404, n: 'x', left: 99999 }, shopGate: { init: 1, open: { inn: 1 } } },
+  innStr: { nick: '숙소 글', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, inn: 'abc' },
   v0: { nick: '예전 사람', coins: 321, equip: { tool: 3 }, outfit: { hat: { type: 'cap', color: '#222222' } }, owned: { 'shirt:tee:#ff0000': 1 }, totalSteps: 999, nsV1: 1, ach: { done: {} } },
   broken: { nick: '깨진 사람', coins: 'abc', equip: 5, clothes: 3, rides: 'x', trash: { srv: 1, bag: null, dex: 7 }, ach: { daily: 3, life: null, badges: [] }, tut: 'x', look: { sex: 'q', skin: 99 }, hairs: 2, buff: { id: 'nope', left: 5 }, recycle: [], server: 'nope', wishes: null, story: { done: 'x', wait: [1, 'nope', 'mom'], cans: [[1, 'a'], null], box: 3 } },
   old8: { nick: '8일 전 사람', coins: 777, music: 0, gfx: 'low', lastSeen: Date.now() - 8 * 864e5 },

@@ -76,6 +76,8 @@ async function shoot(p, tag, cond) {
   /* 1) 받는 중: 자료(모양)는 왔고 텍스처 그림은 아직 */
   { const { p, errs, ctx } = await open(b, true);
     await p.waitForFunction(() => window.__npcs.every((e) => !e.m || e.m.loaded.hi), null, { timeout: 60000 }).catch(() => {});
+    /* 러너 몸 텍스처(runner.js modelTex)는 #269 에서 '첫 화면 전에 받는 것' 이라 회색 막이 없음: 그 그림(이것도 blob 이라 늦춰짐)이 온 뒤에 셈 (#271: 프레임 상한으로 로딩이 빨라져 9초 전에 세던 일) */
+    await p.waitForFunction(() => { let ok = true; window.__oreum.scene.traverseVisible((m) => { if (m.isSkinnedMesh) for (const mt of [].concat(m.material || [])) if (mt.map && !mt.map.image && !mt.userData?.texOn) ok = false; }); return ok; }, null, { timeout: 30000 }).catch(() => {});
     const blk = await p.evaluate(() => window.__blackMesh());
     check(blk.length === 0, '받는 중 텍스처 없이 그려지는 메시 ' + blk.length + (blk.length ? ' (' + [...new Set(blk)].slice(0, 6).join(',') + ')' : ''));
     if (process.env.ONLY === 'blk') { console.log(blk); process.exit(0); }

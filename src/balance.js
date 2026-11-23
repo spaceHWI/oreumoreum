@@ -37,8 +37,8 @@ export const HEAP = {
 export const FIELD_HEAPS = { 1: { mt: 1 }, 2: { mt: 1 }, 3: { l: 2, mt: 1 }, 4: { xl: 1, mt: 1 }, 5: { xl: 1, mt: 1 } };
 // 구역 (#45): src/zones.js zoneAt 이 위치로 번호를 구함. heaps 더미 크기별 수, min 목표 시간(권장 장비로 혼자, 클린하우스 왕복 포함)
 // rec 권장 장비 점수 (#137, GROWTH.score 로 셈. 칸 10개가 모두 n단계면 구역 n 쯤). gear 권장 장비 단계(도구·배낭·신발, 시간 계산용)
-// recLv 권장 레벨 (#251): 플레이어에게 보이는 기준. node tools/econ.js 의 '권장 레벨'(장비 점수가 rec 에 닿는 레벨 가운데 값, 여유 25%) 4·5·7·10·13 에서 구역 1 은 1.
-//   사건 파일 열림 레벨(3·6·10·12·15, #243)보다 낮거나 같게(사건이 열릴 때는 이미 권장 레벨). 안쪽 셈(적 세기·slowNew 등)은 그대로 rec
+// recLv 권장 레벨 (#251): 플레이어에게 보이는 기준. node tools/econ.js 의 '권장 레벨'(장비 점수가 rec 에 닿는 레벨 가운데 값, 여유 25%) 4·5·8·11·14 (#275 값 곡선. 전 4·5·7·10·13) 에서 구역 1 은 1.
+//   사건 파일 열림 레벨(3·6·10·13·17, #275. 전 3·6·8·12·15)보다 낮거나 같게(사건이 열릴 때는 이미 권장 레벨). 안쪽 셈(적 세기·slowNew 등)은 그대로 rec
 // gv 이 구역 쓰레기 귤 배수 (#137: 구역마다 벌이가 약 2.5배. 클린하우스에서 받는 귤 = TRASH_TYPES gyul × gv)
 //   #138 들판 더미·쓰레기 산이 더해져 하루 1시간을 다 쓰게 되어 1·1·2·8·14 로 낮춤 (전 4·4.5·8·18·30, tools/econ.js 흐름 통과)
 // mix 나오는 쓰레기 종류 비율(TRASH_TYPES 순서: 캔·페트병·비닐·스티로폼·폐어구)
@@ -49,9 +49,9 @@ export const FIELD_HEAPS = { 1: { mt: 1 }, 2: { mt: 1 }, 3: { l: 2, mt: 1 }, 4: 
 export const ZONES = [
   { id: 1, name: '오름 자락 숲길', heaps: { s: 12 }, min: 5, rec: 10, recLv: 1, gv: 1, gear: { tool: 2, bag: 1, shoes: 1 }, mix: [0.36, 0.36, 0.28, 0, 0], maxD: 215 },
   { id: 2, name: '남쪽 사면', heaps: { s: 10, l: 4 }, min: 8, rec: 25, recLv: 5, gv: 1, gear: { tool: 3, bag: 3, shoes: 2 }, mix: [0.3, 0.3, 0.2, 0.13, 0.07], chMax: 90 },
-  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, recLv: 7, gv: 2, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11], chMax: 80 },
-  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, recLv: 10, gv: 8, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16], chMax: 90 },
-  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, recLv: 13, gv: 14, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 }, chMax: 80 },
+  { id: 3, name: '능선', heaps: { l: 10 }, min: 12, rec: 60, recLv: 8, gv: 2, gear: { tool: 3, bag: 5, shoes: 3 }, mix: [0.26, 0.26, 0.2, 0.17, 0.11], chMax: 80 },
+  { id: 4, name: '굼부리', heaps: { l: 8, xl: 3 }, min: 15, rec: 140, recLv: 11, gv: 8, gear: { tool: 4, bag: 5, shoes: 5 }, mix: [0.22, 0.22, 0.18, 0.22, 0.16], chMax: 90 },
+  { id: 5, name: '정상', heaps: { xl: 8 }, min: 20, rec: 320, recLv: 14, gv: 14, gear: { tool: 5, bag: 5, shoes: 5 }, mix: [0.2, 0.2, 0.16, 0.24, 0.2], amt: { xl: 140 }, chMax: 80 },
 ];
 // 성장 수치 (#137, notes/growth-loop.md 3절): 장비 점수. src/gearscore.js 가 읽음
 // score[단계] = 칸 하나 점수 (0 = 없음·호주머니). 칸 10개(도구·배낭·신발·무기 + 옷 6칸)의 합이 장비 점수
@@ -66,7 +66,9 @@ export const GROWTH = {
   /* #251 보이는 색은 레벨 차이로: 내 레벨이 권장보다 lvRed 이상 낮으면 빨강, 권장 이상이면 초록, 사이는 노랑. 레벨은 됐는데 장비 점수가 권장의 gearLow 아래면 그 구역에 들어갈 때 한 번 '장비점에 들러요' */
   lvRed: 2, gearLow: 0.6,
   // 단계별 값 (도구·배낭·신발·무기 같은 곡선, 단계마다 약 4배). 1단계는 배낭(호주머니 → 배낭)만 값이 있음
-  price: [0, 50, 200, 800, 3200, 13000, 30000],
+  price: [0, 50, 200, 1000, 5000, 35000, 200000],
+  /* #275 장비 판 귤(loot.js sellValue)은 값이 오르기 전 곡선 그대로 (값을 올려도 떨어진 장비를 팔아 버는 귤·서버 earn.js 인정은 안 늘게) */
+  sellBase: [0, 50, 200, 800, 3200, 13000, 30000],
   wearK: 1, // 옷 6칸 값 = price × wearK (같은 곡선)
 };
 // 구역 경계 모양 (src/zones.js)
@@ -147,9 +149,14 @@ export const SWARM = {
   ring: [18, 26], gap: 0.25,
   /* 한 판 (#202): 서바이벌 터 징으로 시작(#231, 아래 arena), t[구역] 초 동안 물결 waves 번(물결마다 n[0] → n[1] 마리, 구역이 하나 깊을수록 × (1 + deep)). 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결
      시간이 다 되면 '버텼다!' + 그 판에서 번 귤의 bonus 덤(서버는 bonusMax[구역]까지, 쉬는 시간 안에 두 번 인정하지 않음 earn.js). 끝나면 그 구역 들판은 rest 초 조용함(사람마다·구역마다, save.swarm.rest) */
-  run: { t: [0, 180, 195, 210, 225, 240], waves: 6, n: [10, 45], deep: 0.12, bigT: 30, breath: 4, bonus: 0.2, bonusMax: [0, 60, 200, 700, 1500, 3000], rest: 480 }, /* #254 n 6·30 → 10·45, breath 물결 사이 숨 고르기(초, 첫 물결·마지막 큰 물결 빼고) */
+  run: { t: [0, 180, 195, 210, 225, 240], waves: 6, n: [14, 45], deep: 0.12, bigT: 30, breath: 2, bonus: 0.2, bonusMax: [0, 60, 200, 700, 1500, 3000], rest: 480, /* #254 n 6·30 → 10·45, #273 10 → 14 · breath 4 → 2 (물결 시간이 다 됐는데 몹이 바닥값 넘게 남았을 때만 숨 고르기) */
+    /* 나오는 텀 (#273, game/swarmwave.js): 물결 몫의 trickle 은 trickEvery 초마다 trickN 마리씩 졸졸(저사양 간격 × lowK), 나머지는 첫머리에 한꺼번에
+       첫머리를 다 낸 뒤 살아 있는 몹 < max(floorMin, 물결 몫 × floor) 이면 pull 초 뒤 다음 물결을 당겨 부름 (바닥값은 동시 상한의 절반까지)
+       surge 몰려옴: every 초마다(마지막 큰 물결 전까지) 한쪽에서 물결 몫 × k 마리 한꺼번에, 화면 가장자리 화살표 show 초. few 남은 몹이 이보다 적으면 포위·던지기도 다가옴, stuck 초 넘게 제자리면 물러나고 다시 나옴 */
+    pace: { trickle: 0.45, trickEvery: [2, 3], trickN: [2, 3], lowK: 1.6, floor: 0.3, floorMin: 4, pull: 1.5, surge: { every: 30, k: 0.4, show: 2.2 }, few: 3, stuck: 4 } },
   cap: { pc: 36, phone: 24, low: 14, lowHp: 1.25 }, /* #254 24·16·10 → 36·24·14. lowHp: 저사양은 수가 적은 만큼 한 마리 기운 × */
-  mob: { hp: 0.3, dmg: [0, 0.5, 0.42, 0.36, 0.34, 0.33], gyul: [0, 0.05, 0.17, 0.25, 0.32, 0.12], size: 0.95, life: 80 }, // #202 한 판 덤(run.bonus)만큼 낮춤. gyul 구역별: 25% 로 두면 구역 1·2 는 길가의 2.5배라 1~3 은 길가와 비슷하게, 4·5 는 서버 ③(NET.swarmPerSec) 안으로 (tools/econ.js, 소수 몫은 확률로 1)
+  /* mob.gyul #273 구역 2~5: 0.17·0.25·0.32·0.12 → 0.15·0.22·0.29·0.11 (빈 시간이 없어져 판마다 쫓아내는 수가 늘어난 만큼, tools/swarm.js 판 귤 ±10%) */
+  mob: { hp: 0.3, dmg: [0, 0.5, 0.42, 0.36, 0.34, 0.33], gyul: [0, 0.05, 0.15, 0.22, 0.29, 0.11], size: 0.95, life: 80 }, // #202 한 판 덤(run.bonus)만큼 낮춤. gyul 구역별: 25% 로 두면 구역 1·2 는 길가의 2.5배라 1~3 은 길가와 비슷하게, 4·5 는 서버 ③(NET.swarmPerSec) 안으로 (tools/econ.js, 소수 몫은 확률로 1)
   elite: { hp: 2, k: 1.3 }, /* #254 k: 정예는 보통 적 크기 × k (떼 몹 0.95 보다 뚜렷이) */
   leader: { k: 1.9, hp: 3, chest: [0, 8, 22, 220, 600, 1650] } /* #202 한 판 끝 큰 물결에 한 번 (5분마다 → 판마다라 반으로) */,
   kinds: { 1: [['piglet', 1]], 2: [['dog', 1]], 3: [['boar', 0.65], ['crow', 0.35]], 4: [['rabid', 1]], 5: [['drone', 1]] },
@@ -894,6 +901,20 @@ export const MANJOK = {
   r: 6.5, // 평상 가운데에서 이 거리 안이면 상호작용이 '식사'
   eatT: 4.5, walkMax: 3,
 };
+// 숙소 오피스제주 O-Peace (#270): 가게 거리 7번 터(골목 끝 앞, 오름 쪽 줄)의 2층 워케이션 호텔. 하루(한국 날짜)에 한 번 묵으면 기운 가득 + 버프 '개운함'. 수치·이름 모두 임의
+// 건물은 코드로 만든 임시 모양 src/inn.js (실제 로고·사진은 쓰지 않음, 간판 글자만). 로직은 game/inn.js. 저장 save.inn = { d 마지막 묵은 날, n 묵은 수, left 버프 남은 놀이 초 }
+// price: 값 = base + 레벨 × perLv (첫 숙박은 × first). buff: 이동 speed·줍기 pick·피해 dmg·최대 기운 hp·경험치 xp 더하는 비율, 식사 버프와 곱해짐
+export const INN = {
+  name: '오피스제주 O-Peace', short: '오피스제주', tag: '일이 많은 당신의 안녕을 바랍니다',
+  price: { base: 50, perLv: 30, first: 0.5 },
+  buffSec: 1800, warnSec: 60, // 개운함 30분(놀이 시간, 접속 중에만 줄어듦), 끝나기 1분 전 한 줄
+  buff: { speed: 0.15, pick: 0.25, dmg: 0.25, hp: 0.3, xp: 0.2 },
+  sleep: { dark: 1.0, zzz: 2.2, sun: 1.6, out: 0.6 }, // 연출(초): 어두워짐 → zzz → 아침 햇살 → 밝아짐 (합 5.4초, 건너뛸 수 없음)
+  W: 13.6, D: 8.2, H1: 3.4, H2: 3.0, fore: 3.2, // 건물 폭·깊이·1층·2층 높이 (m), 터 앞에서 앞벽까지 (앞마당)
+  r: 6.5, // 앞마당 가운데에서 이 거리 안이면 상호작용 '숙박'
+  litRooms: [1, 4, 5], // 2층 객실 창 여섯 칸 중 밤에 불이 켜지는 칸 (0부터)
+  // 주인은 퀘스트 주는 사람 QUESTS.givers['shop:inn'] (안녕 매니저, game/quest.js 가 가게 문 옆에 세움)
+};
 export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
 
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
@@ -903,22 +924,23 @@ export const SHOP_ST = {
   d: 84, // 들머리 길에서 갈라지는 자리 (시작에서 길 따라 m. 클린하우스 TUT.cleanD 94 바로 앞, 길 건너편)
   half: 2.6, // 골목 반폭 (현무암 판석)
   gap: 0.6, // 골목 가장자리와 터 앞 사이
-  end: 46, // 골목 끝 s
+  end: 70, // 골목 끝 s (#270: 46 → 70, 숙소 터)
   lots: [
     { s: 11, side: 1, w: 10, d: 9 }, // 1 루이네미장원 (#58)
     { s: 11, side: -1, w: 10, d: 9 }, // 2 LEAP (#59)
     { s: 23, side: 1, w: 10, d: 9 }, // 3 빈 터
     { s: 23, side: -1, w: 10, d: 9 }, // 4 장비점 (#128)
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
-    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝)
+    { s: 75.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝. #270 에서 골목을 늘려 끝이 46 → 70)
+    { s: 58, side: 1, w: 20, d: 13 }, // 7 숙소 오피스제주 (#270, 다른 가게 2배. 스톤 앞(개울 쪽)을 가리지 않게 오름 쪽 줄)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
   keepPad: 22, // 거리 둘레 이만큼 몹이 나오지 않음 (쓰레기 더미는 오름에만이라 원래 없음)
   // 골목 가장자리 꾸밈 [s, 쪽(1 오름 쪽 / -1 시작 쪽)]: 터 앞을 막지 않는 틈에만
-  lamps: [[3, 1], [30, -1], [44, -1]],
-  benches: [[33.5, -1], [39.5, -1]],
-  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1]],
+  lamps: [[3, 1], [30, -1], [44, -1], [56, -1], [66, -1]],
+  benches: [[33.5, -1], [39.5, -1], [61, -1]],
+  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1], [52, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
   // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
   roofSize: 2.3, roofGap: 0.6, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
@@ -939,6 +961,7 @@ export const SHOP_ST = {
     { id: 'salon', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '골목 어귀 루이네 미장원이 문을 열었어요' },
     { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
     { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요' },
+    { id: 'inn', need: [{ zone: 3 }, { lv: 8 }], how: '능선에 들어서거나 레벨 8이 되면', say: '골목 안쪽 숙소 오피스제주가 문을 열었어요 · 하룻밤 묵으면 개운해져요' }, // #270 (#275 레벨 7 → 8: 능선 권장 Lv 에 맞춤)
   ],
   gate: {
     fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)
@@ -960,6 +983,7 @@ export const SHOPS = [
   { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride', sells: '탈것' }, // #69 (임시 모양)
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
   { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
+  { id: 'inn', name: '오피스제주', lot: 7, act: '숙박', ic: 'bed', pop: 'inn', sells: '하룻밤·개운함 버프' }, // #270 (코드로 만든 임시 모양 src/inn.js)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -1472,6 +1496,18 @@ export const PERF = {
   weakGpu: /swiftshader|llvmpipe|softpipe|mali-4|mali-t[0-7]|adreno \(tm\) [2-4]\d\d|powervr sgx|intel.*hd graphics [2-5]\d\d0?\b/i,
   // 자동일 때 느리면 한 칸씩 내림: 프레임이 slowDt 넘게 slowT 초 이어지면 (픽셀 배율 → 그림자 끔), fastDt 아래로 fastT 초면 되돌림
   slowDt: 0.045, slowT: 2.5, fastDt: 0.02, fastT: 20,
+  // 폰 발열 줄이기 (#271, game/fps.js). 값은 모두 임의
+  // 프레임 상한: 설정 '화면 부드럽게' 절약(eco)·부드럽게(smooth). 고른 적 없으면 폰은 절약, PC 는 부드럽게. 싸움(fight) 중 상한, 6초(idleT) 넘게 입력이 없으면 idle, 창이 화면을 덮으면 cover
+  // fight: 재 보니 30 에서도 swarm.js 버팀 비율이 그대로라 절약에서는 30 그대로 둠 (부드럽게면 60). tol: 상한 간격보다 이 ms 일찍 온 rAF 도 그림 (60Hz 화면 흔들림)
+  fps: { eco: 30, smooth: 60, fight: 30, idle: 20, cover: 15, idleT: 6, still: 0.3, tol: 2 },
+  aaPhone: false,               // 폰·낮음 단계는 안티에일리어싱 끔 (렌더러를 만들 때 정함). 픽셀 배율은 그대로 (올리면 그리는 픽셀이 늘어 더 비쌈)
+  // 그림자 지도 다시 그리기: 폰은 every 프레임에 한 번, 플레이어가 서 있으면 still 프레임에 한 번, fast(m/s) 넘게 빠르면 매 프레임 (내 그림자가 끊겨 보이지 않게)
+  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7 },
+  // 발열 지킴 (자동 단계일 때만): 이어서 논 시간 at 초마다 한 칸, 프레임 셈 시간이 trendGap 초 사이 trendUp 넘게 늘면 한 칸 (그리는 수가 비슷할 때만), rest 초 쉬면 되돌림
+  // 칸: 1 픽셀 배율 × prMul (prMin 아래로는 안 내림) → 2 그림자 끔 → 3 풀·먼지 밀도 × grassK
+  heat: { at: [600, 1200], win: 60, trendGap: 180, trendUp: 0.15, trendMin: 0.5, callsSame: 0.2, rest: 300, prMul: 0.8, prMin: 0.85, grassK: 0.5, max: 3 },
+  start: { battery: 0.2, mem: 4 }, // 처음부터 한 칸 낮게: 충전 안 하는 배터리가 이 아래, deviceMemory 가 이 이하, 움직임 줄이기, 데이터 절약
+  heatLog: { every: 10, total: 1200, base: 120 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
 };
 
 // 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)
@@ -1696,6 +1732,7 @@ export const CRASHES = {
 // 사건 파일 Tripo 모델 (#262, casemodels.js): scale 모델 키 0.98 → 게임 키. near 이 거리 안에 오면 큰 모델을 받음(그 전엔 멀리용 1,500 삼각형), far 이 거리 밖이면 멀리용을 그림
 export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
+  release: 90, releaseT: 30, relEvery: 3, // #272: 큰 모델이 있는 것이 모두 이 m 밖에 releaseT 초 넘게 있으면 그 큰 모델을 GPU 에서 내림(다시 오면 저절로 다시 올림). relEvery: 살피는 간격(초)
   scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
 };
 // 검은 NPC (#269): Tripo 모델(사건 모델·노루·하르방·들개·외계인·가게·가로등) 텍스처 그림이 오기 전 회색으로 그리고 fadeIn 초에 걸쳐 텍스처로.
@@ -1840,7 +1877,7 @@ export const LOOT = {
   grade: { enemy: [0.45, 0.4, 0.15, 0], den: [0.35, 0.45, 0.2, 0], treasure: [0.15, 0.45, 0.3, 0.1], boss: [0, 0.5, 0.38, 0.12] },
   legendZ: 4,
   gradeName: ['보통', '좋은', '귀한', '전설'], gradeColor: ['#e8e4d8', '#5fd36a', '#4fa3ff', '#ff9a2e'],
-  enh: { mats: [2, 3, 5, 8, 12], rare: [0, 0, 0, 0, 1], gyul: [0.05, 0.08, 0.12, 0.18, 0.25] },
+  enh: { mats: [3, 5, 8, 12, 20], rare: [0, 0, 0, 1, 1], gyul: [0.05, 0.08, 0.12, 0.18, 0.25] },
   statK: { tool: 1, bag: 1, weapon: 1, shoes: 0.35, hat: 0.5, top: 0.5, bottom: 0.5, vest: 0.5, jacket: 0.5, socks: 0.5 },
   sell: [0.06, 0.15, 0.3, 0.6], sellEnh: 0.25, spareMax: 30,
   fx: {
@@ -1880,6 +1917,7 @@ export const QUESTS = {
     'shop:salon': { name: '루이네 원장', shop: 'salon', look: { shirt: '#c9879b', pants: '#3a2f3a', shoes: '#2a222a' }, hello: ['바람에 머리가 다 날렸네', '앞머리 다듬어 줄까요?', '바람은 예약 없이 와요'] },
     'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요', '오늘의 메뉴: 오늘 거예요'] },
     'note:top': { name: '정상 쪽지' }, // #208 주는 사람 없이 쪽지를 읽으면 받는 퀘스트 (game/summit.js)
+    'shop:inn': { name: '안녕 매니저', shop: 'inn', look: { shirt: '#e9ecef', pants: '#3a4150', shoes: '#26262b', hat: 'hat:short' }, hello: ['일이 많은 당신의 안녕을 바랍니다', '체크인은 지금, 걱정은 체크아웃 때 두고 가요', '와이파이 비밀번호요? 귤이에요'] }, // #270 숙소 오피스제주
     'shop:satis': { name: '만족한상회 사장', shop: 'satis', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b' }, hello: ['갈치 드실래요?', '뼈는 없고 정만 있어요'] },
   },
   main: [
@@ -1898,20 +1936,20 @@ export const QUESTS = {
     { id: 'note', z: 2, giver: 'b:slope', name: '떨어진 쪽지', say: ['[표지판] 남쪽 사면 투기꾼 1명 쫓아낼 것. 봉투가 전보다 큼.', '쫓으면 뭔가 떨어뜨릴지도. 안 떨어뜨려도 보수는 있음.'], task: '남쪽 사면 투기꾼 1명 쫓기', ask: { k: 'dumper', n: 1 }, fin: ['투기꾼이 쪽지를 떨어뜨렸어요: \'굼부리로 가져오면 귤로 쳐 줌\'', '한 봉지에 귤 셋. 쓰레기를 사 가는 쪽이 있어요. 누가, 왜?'], got: '구겨진 쪽지를 주웠어요 · 조금 축축해요', reward: { gyul: 30 } },
     { id: 'heap2', z: 2, giver: 'b:slope', name: '사면 대청소', say: ['[표지판] 남쪽 사면 더미 현황: 많음.', '치우는 사람 구함. 사면 더미 3곳. 보수: 귤. 경력 무관, 허리 유관.'], task: '남쪽 사면 더미 3곳 치우기', ask: { k: 'heap@2', n: 3 }, go: 'heap@2', fin: ['[표지판] 더미 현황: 조금 덜 많음. 정확히는 3곳만큼 덜.'], reward: { gyul: 60 } },
     { id: 'dog5', z: 2, giver: 'b:slope', name: '들개 주의', say: ['[표지판] 남쪽 사면 들개 5마리 쫓아낼 것. 들개 터 둘레에 많음.', '귤을 아주 싫어함. 이 표지판도 싫어함(이빨 자국 3개 참고).'], task: '남쪽 사면 들개 5마리 쫓기', ask: { k: 'repel:dog', n: 5 }, go: 'den@2', fin: ['[표지판] 들개 출몰 → 들개 가끔 출몰. 고쳐 씀. 이빨 자국은 그대로 3개.'], reward: { gyul: 80 } },
-    { id: 'gear2', z: 2, giver: 'b:slope', name: '한 단계 위로', say: ['[표지판] 이 위 능선은 레벨 7 권장. 장비도 점검 권장.', '가게 거리 장비점에서 아무 칸이나 두 번 올리고 오시오. 맨손 등반자 통계는 없음. 없는 게 다행임.'], task: '장비점에서 장비 2칸 올리기', ask: { k: 'gearAll', n: 2 }, go: 'shop:gear', fin: ['[표지판] 장비 점검 끝. 든든함. 표지판도 덩달아 든든함.'], reward: { gyul: 80 }, need: 'shop:gear' },
+    { id: 'gear2', z: 2, giver: 'b:slope', name: '한 단계 위로', say: ['[표지판] 이 위 능선은 레벨 8 권장. 장비도 점검 권장.', '가게 거리 장비점에서 아무 칸이나 두 번 올리고 오시오. 맨손 등반자 통계는 없음. 없는 게 다행임.'], task: '장비점에서 장비 2칸 올리기', ask: { k: 'gearAll', n: 2 }, go: 'shop:gear', fin: ['[표지판] 장비 점검 끝. 든든함. 표지판도 덩달아 든든함.'], reward: { gyul: 80 }, need: 'shop:gear' },
     { id: 'den2', z: 2, giver: 'b:slope', name: '들개 무리 터', say: ['[표지판] 남쪽 사면 들개 터 1곳 닫을 것. 들개 5마리가 거기서 나왔음.', '터를 닫으면 사면이 한결 조용해짐. 표지판이 물리는 일도 줆.'], task: '남쪽 사면 소굴 1곳 닫기', ask: { k: 'den@2', n: 1 }, go: 'den@2', fin: ['[표지판] 터 정리 끝. 이제 그 큰 놈만 남음.'], reward: { gyul: 100 } },
     { id: 'boss2', z: 2, giver: 'b:slope', name: '사면의 주인', say: ['[표지판] 사면 더미가 거의 치워지면 우두머리 들개 1마리가 나옴.', '쫓아내면 남쪽 사면도 당신 담당. 담당 구역이 둘이 됨을 축하함(위로함).'], task: '남쪽 사면 우두머리 1마리 쫓기', ask: { k: 'boss@2', n: 1, ever: true }, go: 'boss@2', fin: ['[표지판] 사면의 주인이 바뀜. 전 주인은 이의 신청 안 함.'], reward: { gyul: 200 } },
-    { id: 'z3', z: 2, giver: 'b:slope', to: 'b:rest', name: '밤의 불빛', say: ['[표지판] 능선 위에 불빛이 뜬다는 소문. 새벽 4시 4분부터 4분쯤.', '능선 쉼터 표지판에 가 보시오. 레벨 7 권장. 해 지기 전에.'], task: '능선 쉼터 표지판 읽기', ask: { k: 'zone', n: 3, ever: true }, go: 'b:rest', fin: ['[표지판] 능선. 새벽에 하늘을 보면 뭔가 멈춰 있음.', '비행기는 멈추지 않음.'], reward: { gyul: 40 } },
+    { id: 'z3', z: 2, giver: 'b:slope', to: 'b:rest', name: '밤의 불빛', say: ['[표지판] 능선 위에 불빛이 뜬다는 소문. 새벽 4시 4분부터 4분쯤.', '능선 쉼터 표지판에 가 보시오. 레벨 8 권장. 해 지기 전에.'], task: '능선 쉼터 표지판 읽기', ask: { k: 'zone', n: 3, ever: true }, go: 'b:rest', fin: ['[표지판] 능선. 새벽에 하늘을 보면 뭔가 멈춰 있음.', '비행기는 멈추지 않음.'], reward: { gyul: 40 } },
     // ----- 3장 능선 '밤의 불빛' -----
     { id: 'heap3', z: 3, giver: 'b:rest', name: '내려놓고 간 것', say: ['[표지판] 능선 더미 3곳 치울 것. 불빛이 멈췄던 자리 밑에 생김.', '멧돼지가 사나워진 것도 그 더미 탓이라는 말이 있음. 멧돼지는 말이 없음.'], task: '능선 더미 3곳 치우기', ask: { k: 'heap@3', n: 3 }, go: 'heap@3', fin: ['[표지판] 더미 속에 그 캔이 잔뜩. 누가 하늘에서 버리고 감.', '그럼 그 쪽지의 \'굼부리\'는?'], reward: { gyul: 150 } },
     { id: 'den3', z: 3, giver: 'b:rest', name: '사나운 굴', say: ['[표지판] 능선 멧돼지 굴 1곳 닫을 것.', '캔 냄새를 맡고 모여든다고 함. 캔에서 무슨 냄새가 나는지는 아무도 모름.'], task: '능선 소굴 1곳 닫기', ask: { k: 'den@3', n: 1 }, go: 'den@3', fin: ['[표지판] 굴이 잠잠해짐. 냄새도 덜 남.'], reward: { gyul: 200 } },
     { id: 'boss3', z: 3, giver: 'b:rest', name: '능선의 주인', say: ['[표지판] 능선 큰 멧돼지 1마리가 굼부리 가는 길을 막고 있음.', '레벨 7 넘으면 해 볼 만함. 녀석도 굼부리 쪽이 궁금한 눈치.'], task: '능선 우두머리 1마리 쫓기', ask: { k: 'boss@3', n: 1, ever: true }, go: 'boss@3', fin: ['[표지판] 능선이 열림. 굼부리로 가는 길도. 길은 원래 거기 있었음.'], reward: { gyul: 500 } },
-    { id: 'z4', z: 3, giver: 'b:rest', to: 'b:crater', name: '굼부리로', say: ['[표지판] 쪽지가 말한 곳, 굼부리. 레벨 10 권장.', '굼부리 들머리 표지판에서 기다리겠음. 표지판은 원래 기다리는 게 일임.'], task: '굼부리 표지판 읽기', ask: { k: 'zone', n: 4, ever: true }, go: 'b:crater', fin: ['[표지판] 굼부리 바닥에 낯선 표지판이 하나 더 있다고 함.', '누가 세웠는지 아무도 모름.'], reward: { gyul: 80 } },
+    { id: 'z4', z: 3, giver: 'b:rest', to: 'b:crater', name: '굼부리로', say: ['[표지판] 쪽지가 말한 곳, 굼부리. 레벨 11 권장.', '굼부리 들머리 표지판에서 기다리겠음. 표지판은 원래 기다리는 게 일임.'], task: '굼부리 표지판 읽기', ask: { k: 'zone', n: 4, ever: true }, go: 'b:crater', fin: ['[표지판] 굼부리 바닥에 낯선 표지판이 하나 더 있다고 함.', '누가 세웠는지 아무도 모름.'], reward: { gyul: 80 } },
     // ----- 4장 굼부리 '클린하우스' -----
     { id: 'heap4', z: 4, giver: 'b:crater', name: '굼부리 바닥', say: ['[표지판] 굼부리 바닥 더미 3곳 치울 것. 바닥이 안 보임.', '치우다 보면 낯선 표지판이 보일 것. 겁먹지 말 것. 표지판일 뿐임.'], task: '굼부리 더미 3곳 치우기', ask: { k: 'heap@4', n: 3 }, go: 'heap@4', fin: ['낯선 표지판을 찾았어요. 우리 클린하우스와 똑같은 모양이에요.', '거기 적힌 이름은… \'지구\'. 지구와 오름이 통째로 외계인의 클린하우스였어요.'], reward: { gyul: 400 } },
     { id: 'den4', z: 4, giver: 'b:crater', name: '착륙 자국', say: ['[표지판] 우리가 귤로 바꿔 주던 클린하우스도 원래 그들이 세운 것.', '굼부리의 굴부터 닫아 버리시오. 그쪽 민원 창구도 늘 닫혀 있었으니 공평함.'], task: '굼부리 소굴 1곳 닫기', ask: { k: 'den@4', n: 1 }, go: 'den@4', fin: ['[표지판] 굴 하나 닫힘. 그들이 알아챘을 것. 답장은 기대하지 말 것.'], reward: { gyul: 500 } },
     { id: 'boss4', z: 4, giver: 'b:crater', name: '굼부리의 주인', say: ['[표지판] 굼부리를 지키는 녀석이 1마리 있음.', '이걸 넘으면 정상. 그들이 기다리는 곳. 번호표를 뽑고.'], task: '굼부리 우두머리 1마리 쫓기', ask: { k: 'boss@4', n: 1, ever: true }, go: 'boss@4', fin: ['[표지판] 정상으로 가는 길이 열림. 오름 사람들이 귤을 챙기는 중.'], reward: { gyul: 1200 } },
-    { id: 'z5', z: 4, giver: 'b:crater', to: 'b:rest', name: '저항', say: ['[표지판] 오름지기, 가게 주인들, 동료들 모두 정상으로 감.', '능선 쉼터 표지판에서 모이기로 함. 정상은 레벨 13 권장.'], task: '정상 구역에 들어서기', ask: { k: 'zone', n: 5, ever: true }, go: 'b:rest', fin: ['[표지판] 모두 모였음. 귤 장전 완료. 회의는 생략함.'], reward: { gyul: 200 } },
+    { id: 'z5', z: 4, giver: 'b:crater', to: 'b:rest', name: '저항', say: ['[표지판] 오름지기, 가게 주인들, 동료들 모두 정상으로 감.', '능선 쉼터 표지판에서 모이기로 함. 정상은 레벨 14 권장.'], task: '정상 구역에 들어서기', ask: { k: 'zone', n: 5, ever: true }, go: 'b:rest', fin: ['[표지판] 모두 모였음. 귤 장전 완료. 회의는 생략함.'], reward: { gyul: 200 } },
     // ----- 5장 정상 '저항' → 끝 '사과' -----
     { id: 'heap5', z: 5, giver: 'b:rest', name: '규정대로 버렸을 뿐', say: ['외계인들이 말해요: \'저희는 규정대로 버렸을 뿐이십니다.\'', '규정이 틀렸다는 걸 보여 줘요. 정상 더미부터. 서류는 그쪽이, 청소는 우리가.'], task: '정상 더미 3곳 치우기', ask: { k: 'heap@5', n: 3 }, go: 'heap@5', fin: ['외계인들이 웅성거려요. 깨끗한 클린하우스는 처음 봤대요. 규정에 없는 광경이래요.'], reward: { gyul: 1000 } },
     { id: 'den5', z: 5, giver: 'b:rest', name: '착륙장 봉쇄', say: ['정상에 그들의 착륙 자국이 1곳 있어요. 그게 소굴이에요.', '거길 막으면 더는 못 내려와요. 주차 위반 딱지도 한 장 붙여 두고요.'], task: '정상 소굴 1곳 닫기', ask: { k: 'den@5', n: 1 }, go: 'den@5', fin: ['착륙장이 막혔어요. 이제 남은 건 대장뿐.'], reward: { gyul: 1200 } },
@@ -1944,6 +1982,9 @@ export const QUESTS = {
     { id: 'c-full', giver: 'shop:stone', door: 'shopQuests', after: 'c-fish', name: '든든하게 한 판', say: ['밥 먹었으면 힘 써야죠.', '식사 버프가 남아 있을 때 아무 구역에서나 적 10마리. 소화도 시킬 겸.'], task: '버프 중 적 10마리 쫓기', ask: { k: 'repelBuff', n: 10 }, fin: ['역시 밥심! 에이드는 내가 쏠게요.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
     // 만족한상회 사장 (#167 가게가 들어오면)
     { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?', '여기서 만족한상 한 번만 먹어 봐요. 뼈 걱정은 하지 마요.'], task: '만족한상회 한 상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
+    // 숙소 오피스제주 안녕 매니저 (#270, 숙소가 열리면). 첫 숙박은 반값(INN.price.first)
+    { id: 'i-stay', giver: 'shop:inn', door: 'shopQuests', name: '일이 많은 당신에게', say: ['일이 많아 보이네요. 얼굴에 다 써 있어요.', '오피스제주에서 하룻밤만 묵어 봐요. 첫 숙박은 반값이에요. 안녕은 원래 값이 없지만요.'], task: '오피스제주에서 1번 묵기', ask: { k: 'innStay', n: 1 }, go: 'shop:inn', fin: ['개운하죠? 그 얼굴이 우리 간판이에요.'], reward: { gyul: 20 }, need: 'shop:inn' },
+    { id: 'i-run', giver: 'shop:inn', door: 'shopQuests', after: 'i-stay', name: '개운할 때 일하기', say: ['개운함이 남아 있을 때가 일하기 제일 좋아요.', '버프가 있는 동안 아무 구역 서바이벌 터에서 1판 버텨 봐요. 퇴근은 그다음이에요.'], task: '버프 중 서바이벌 터 1판 버티기', ask: { k: 'innRun', n: 1 }, fin: ['역시. 다음 숙박은 우리가 기다릴게요.'], reward: { gyul: 30 }, need: 'shop:inn' },
     // ----- 이야기 이벤트 뒤 (#168): '오름지기에게 이야기하기'. 이벤트를 끝냈으면(need·ask 'story:id') 오름지기가 실마리를 한 줄 -----
     { id: 'st-mom', giver: 'jigi', name: '엄마 멧돼지', say: ['엄마 멧돼지 입에 캔 조각이 묻어 있었다고요?', '…그 캔, 짐승들도 먹나 보네요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:mom', n: 1, ever: true }, fin: ['…밤에 능선 쪽을 한번 봐요. 말은 거기까지.'], reward: { gyul: 5 }, need: 'story:mom' },
     { id: 'st-pair', giver: 'jigi', name: '둘이 다니는 투기꾼', say: ['투기꾼이 귤 세 개를 흘리고 갔다고요?', '한 봉지에 귤 셋이라. 누가 그런 장사를 할까요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:pair', n: 1, ever: true }, fin: ['쪽지 같은 걸 흘리면 꼭 주워 와요. 쓰레기라도 정보는 정보예요.'], reward: { gyul: 5 }, need: 'story:pair' },
@@ -2209,7 +2250,7 @@ export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win:
 // cam: 카메라 거리·최대·숙임 · lamp: 헤드랜턴(반경 r m) · fog: 안개 [시작, 끝] m (그 밖은 검게, 멀리 그리지 않음)
 // fade·hold: 들어가고 나올 때 어두워지는 시간(초) · near: 입구·줄·구멍 상호작용 거리 · moss·crystal: 발광 이끼·수정 수(층마다)
 export const CAVE = {
-  open: 'admin', minLv: 12, needZone: 3, /* 모두에게 여는 것(true)은 사용자 결정 뒤. 'admin' = 개발자 메뉴만 */
+  open: 'admin', minLv: 14, needZone: 4, /* 모두에게 여는 것(true)은 사용자 결정 뒤. 'admin' = 개발자 메뉴만 */
   x0: 3200, z0: 3200, floorGap: 300,
   floors: 3, rooms: [3, 4], extra: 1, grid: 84, cell: 1.5,
   roomR: [6, 10], bossR: 13, corrW: 1.8, ceil: { corr: 3.8, room: [4.6, 7.5] }, wobble: 0.32,

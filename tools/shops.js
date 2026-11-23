@@ -11,7 +11,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     const W = (ms) => p.waitForTimeout(ms), E = (f, a) => p.evaluate(f, a);
     const shot = (n) => SHOT && p.screenshot({ path: `dist/shop-${mode}-${n}.jpg`, type: 'jpeg', quality: 60, timeout: 150000 });
     await p.goto('file://' + process.cwd() + '/dist/test.html#namsongi'); await W(5000);
-    await E(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: o.save.look || { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1 }); try { localStorage.removeItem('oreumoreum.shopSeen'); } catch (_) {} const k = Object.keys(localStorage).find((k) => k.startsWith('oreumoreum.v')) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
+    await E(() => { const o = window.__oreum; Object.assign(o.save, { entered: 1, look: o.save.look || { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1, shopGate: { init: 1, open: { gear: 1, manjok: 1, stone: 1, salon: 1, leap: 1, ride: 1, inn: 1 } } }); /* #206 뒤로 가게가 차례로 열림: 모두 열어 둠 (#270 에서 낡은 검사 고침) */ try { localStorage.removeItem('oreumoreum.shopSeen'); } catch (_) {} const k = Object.keys(localStorage).find((k) => k.startsWith('oreumoreum.v')) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
     await p.reload(); await W(5000); await p.click('#enter').catch(() => {}); await W(5000);
     if (await E(() => !document.getElementById('look').hidden)) { await p.click('#look-ok'); await W(1500); }
     if (await E(() => { const f = document.getElementById('fs-tip'); return f && !f.hidden; })) { await p.click('#fs-tip-x').catch(() => {}); await W(400); } /* 폰: 전체 화면 안내(#189)가 처음 한 번 뜨며 화면을 덮음 (#193) */
@@ -68,11 +68,11 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     // 지붕 간판 수
     ok(await E(() => Object.keys(window.__oreum.street.roof.signs).length) >= 5, '지붕 간판 5개');
     // 지붕 간판 (#182): 들머리·골목 가운데·골목 끝(오름 쪽에서 돌아봄) 세 자리에서 다섯 간판이 화면 안에 있고 가려지지 않음(또는 맨 위에 그림)
-    for (const [n, st, back] of [['4-street', 2, 0], ['5-mid', 24, 0], ['6-end', 47, 1]]) {
+    for (const [n, st, back] of [['4-street', 2, 0], ['5-mid', 24, 0], ['6-end', 71, 1]]) {
       await E(([st, back]) => { const o = window.__oreum, L = o.street.layout; o.street.go(0, st); o.player.heading = Math.atan2(L.ax, L.az) + (back ? Math.PI : 0); o.cam.yaw = o.player.heading + Math.PI; o.cam.pitch = 0.32; o.snap(); }, [st, back]); await W(1500);
       const v = await E(() => { const o = window.__oreum, R = o.street.roof, c = o.camObj, out = {}; c.updateMatrixWorld(); const seen = R.seen(c.position.clone());
         for (const [k, s] of Object.entries(R.signs)) { const q = s.pos.clone().project(c), inView = Math.abs(q.x) < 1 && Math.abs(q.y) < 1 && q.z < 1; out[k] = inView && (seen[k] || s.onTop) ? 'ok' : inView ? '가림' : '화면밖'; } return out; });
-      const bad = Object.entries(v).filter(([k, r]) => r === '가림' || (mode === 'd' && r === '화면밖' && (n === '4-street' || (n === '6-end' && k !== 'stone')))); // 골목 가운데에선 앞 두 집이, 골목 끝에선 스톤이 등 뒤. 폰 세로 화면은 좁아 가림만 봄
+      const bad = Object.entries(v).filter(([k, r]) => r === '가림' || (mode === 'd' && r === '화면밖' && (n === '4-street' || (n === '6-end' && !['manjok', 'inn'].includes(k))))); // 골목 가운데에선 앞 두 집이, 골목 끝(#270 에서 46 → 70)에선 만족한상회가 등 뒤·숙소가 바로 옆. 폰 세로 화면은 좁아 가림만 봄
       ok(!bad.length, `${n} 지붕 간판 보임 ${JSON.stringify(v)}`);
       await shot(n);
     }
