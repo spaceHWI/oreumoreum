@@ -1,5 +1,5 @@
 // 다음 할 일 (#142, notes/growth-loop.md 7절): 퀘스트 추적 줄(game/quest.js #quest-track)에 얹는 안내. 파일 순서는 quest 뒤 (src/modules.js)
-// (나) 잠깐 바뀌는 안내 (퀘스트보다 먼저, 주황 !): HP 가 낮으면 '스톤에서 식사' → 배낭이 차면 '클린하우스로' → 귤이 새로 다음 장비 값에 닿으면 '장비점으로'(그 전엔 권하지 않음)
+// (나) 잠깐 바뀌는 안내 (퀘스트보다 먼저, 주황 !): HP 가 낮으면 '스톤에서 식사' → (#270) 그다음 오늘 안 묵었으면 '오피스제주에서 하룻밤' → 배낭이 차면 '클린하우스로' → 귤이 새로 다음 장비 값에 닿으면 '장비점으로'(그 전엔 권하지 않음)
 // (가) 줄기 퀘스트가 끝난 사람(또는 받을 퀘스트가 없을 때)에게 이어 줄 것 (흰 ›): 그 구역의 사건 → 터 → 우두머리(#256, 여정 2-1절) → 강화 → 전설 우두머리 → 제보 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑. 할 일이 없다는 줄은 없다
 // 안내 하나 = { k, text, prog, mark: 'tmp'|'next', pos() 갈 곳, arrive() 도착하면, tap() 누르면 (갈 곳 없이 창만), near }. 누르면 dump.js startAutoGo 로 걸어감 (quest.js trackGo)
 // 수치는 balance.js NEXT_HINT. dev: __oreum.quest.next (why()·after()·reset())
@@ -33,6 +33,10 @@ function hpLow() {
   if (!hpUntil && k < N.hpLow && (state.tension || 0) <= N.calm) hpUntil = t + N.hpT;
   if (!hpUntil || (state.tension || 0) > N.calm) return null; // 싸우는 중엔 그대로 (적부터)
   return { k: 'hp', text: '스톤에서 식사하기', prog: '', mark: 'tmp', pos: () => st.door.clone(), near: Math.max(1.5, (st.r || 3) * 0.6), arrive: () => late.openShopPop?.('stone') };
+}
+function innLow() { /* #270 스톤 다음 차례: 기운이 낮은데 스톤 안내가 없을 때(이미 먹었거나 지나감) 오늘 안 묵었으면 숙소 (game/inn.js late.innHint) */
+  if (!late.innHint || !(hp.max > 0) || hp.isDown || hp.pending || (state.tension || 0) > N.calm) return null;
+  return late.innHint(hp.hp / hp.max < N.hpLow);
 }
 function bagFull() {
   if (!trash || !CHS.length || bagRoom() >= N.bagRoom) return null;
@@ -112,7 +116,7 @@ function after() { for (const k of N.after) { if (skip.has(k)) continue; const h
 // base = 퀘스트 줄(없으면 null). ctx.open 감독 문 quest(정낭을 나섬)
 late.nextHint = (base, ctx = {}) => {
   if (late.tut?.active || !save.tut?.done) { why = 'tut'; return null; }
-  const tmp = off ? null : hpLow() || bagFull() || (base?.ready ? null : gearAfford()); // 보상 받으러 돌아가는 중엔 장비점을 끼우지 않음
+  const tmp = off ? null : hpLow() || innLow() || bagFull() || (base?.ready ? null : gearAfford()); // 보상 받으러 돌아가는 중엔 장비점을 끼우지 않음
   if (tmp) { why = tmp.k; return tmp; }
   if (base) { why = 'quest'; return null; }
   if (!ctx.open) { why = 'closed'; return null; } // 정낭을 나서기 전 (감독이 이끄는 동안)

@@ -374,6 +374,12 @@ async function main() {
         const g = (C.quests || []).reduce((a, q) => a + (q.reward?.gyul || 0), 0), earn = day < 99 ? med(runs.map((x) => x.days[day - 1]?.earned || 0)) : 0, pct = earn ? g / earn * 100 : 0;
         return { id: C.id, lv: C.lv, day, g, pct, ok: day <= END_D && pct < 5 && (C.id !== CASES[CASES.length - 1].id || day >= END_D - 2) }; }); /* #275 마지막 사건은 9~10일(엔딩 10~12시간) */
       verdict.push(`${title}: 사건 파일 ${rows.every((x) => x.ok) ? '통과' : '✗'} (${rows.map((x) => `${x.id} 레벨 ${x.lv} ${x.day < 99 ? x.day + '일' : '못 엶'}·귤 ${x.g} ${x.pct.toFixed(1)}%${x.ok ? '' : '✗'}`).join(' / ')})`); }
+    // 숙소 오피스제주 (#270): 하루 한 번 묵는 값(base + 하루 끝 레벨 × perLv)이 그날 벌이의 10% 안 (5번 가운데). 열리는 날 = SHOP_ST.unlock inn (레벨·구역). #275 10일까지 봄
+    { const { INN } = await import('../src/balance.js'), med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
+      const IU = B.SHOP_ST.unlock.find((u) => u.id === 'inn').need, iLv = IU.find((n) => n.lv)?.lv ?? 99, iZ = IU.find((n) => n.zone)?.zone ?? 99;
+      const rows = Array.from({ length: END_D }, (_, d) => d).map((d) => { const lv = med(runs.map((x) => x.days[d]?.lv || 0)), earn = med(runs.map((x) => x.days[d]?.earned || 0)), zone = med(runs.map((x) => ZONES.filter((Z) => (x.days[d]?.score || 0) >= Z.rec * GROWTH.red).length));
+        const open = lv >= iLv || zone >= iZ, price = INN.price.base + lv * INN.price.perLv, pct = earn ? price / earn * 100 : 0; return { d: d + 1, lv, open, price, pct, ok: !open || pct <= 10 }; });
+      verdict.push(`${title}: 숙소 ${rows.every((x) => x.ok) ? '통과' : '✗'} (${rows.map((x) => `${x.d}일 ${x.open ? `Lv ${x.lv} 귤 ${x.price} ${x.pct.toFixed(1)}%${x.ok ? '' : '✗'}` : '닫힘'}`).join(' / ')})`); }
     // 단계별 도달 시각 (5번 돌린 가운데)
     const keys = [...new Set(r.buys.map((b) => b.k + b.tier))];
     const med = (k) => { const ts = runs.map((x) => (x.buys.find((b) => b.k + b.tier === k) || { at: Infinity }).at).sort((a, b) => a - b); return ts[2]; };

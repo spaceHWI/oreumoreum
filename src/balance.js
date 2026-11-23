@@ -890,6 +890,20 @@ export const MANJOK = {
   r: 6.5, // 평상 가운데에서 이 거리 안이면 상호작용이 '식사'
   eatT: 4.5, walkMax: 3,
 };
+// 숙소 오피스제주 O-Peace (#270): 가게 거리 7번 터(골목 끝 앞, 오름 쪽 줄)의 2층 워케이션 호텔. 하루(한국 날짜)에 한 번 묵으면 기운 가득 + 버프 '개운함'. 수치·이름 모두 임의
+// 건물은 코드로 만든 임시 모양 src/inn.js (실제 로고·사진은 쓰지 않음, 간판 글자만). 로직은 game/inn.js. 저장 save.inn = { d 마지막 묵은 날, n 묵은 수, left 버프 남은 놀이 초 }
+// price: 값 = base + 레벨 × perLv (첫 숙박은 × first). buff: 이동 speed·줍기 pick·피해 dmg·최대 기운 hp·경험치 xp 더하는 비율, 식사 버프와 곱해짐
+export const INN = {
+  name: '오피스제주 O-Peace', short: '오피스제주', tag: '일이 많은 당신의 안녕을 바랍니다',
+  price: { base: 50, perLv: 30, first: 0.5 },
+  buffSec: 1800, warnSec: 60, // 개운함 30분(놀이 시간, 접속 중에만 줄어듦), 끝나기 1분 전 한 줄
+  buff: { speed: 0.15, pick: 0.25, dmg: 0.25, hp: 0.3, xp: 0.2 },
+  sleep: { dark: 1.0, zzz: 2.2, sun: 1.6, out: 0.6 }, // 연출(초): 어두워짐 → zzz → 아침 햇살 → 밝아짐 (합 5.4초, 건너뛸 수 없음)
+  W: 13.6, D: 8.2, H1: 3.4, H2: 3.0, fore: 3.2, // 건물 폭·깊이·1층·2층 높이 (m), 터 앞에서 앞벽까지 (앞마당)
+  r: 6.5, // 앞마당 가운데에서 이 거리 안이면 상호작용 '숙박'
+  litRooms: [1, 4, 5], // 2층 객실 창 여섯 칸 중 밤에 불이 켜지는 칸 (0부터)
+  // 주인은 퀘스트 주는 사람 QUESTS.givers['shop:inn'] (안녕 매니저, game/quest.js 가 가게 문 옆에 세움)
+};
 export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
 
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
@@ -899,22 +913,23 @@ export const SHOP_ST = {
   d: 84, // 들머리 길에서 갈라지는 자리 (시작에서 길 따라 m. 클린하우스 TUT.cleanD 94 바로 앞, 길 건너편)
   half: 2.6, // 골목 반폭 (현무암 판석)
   gap: 0.6, // 골목 가장자리와 터 앞 사이
-  end: 46, // 골목 끝 s
+  end: 70, // 골목 끝 s (#270: 46 → 70, 숙소 터)
   lots: [
     { s: 11, side: 1, w: 10, d: 9 }, // 1 루이네미장원 (#58)
     { s: 11, side: -1, w: 10, d: 9 }, // 2 LEAP (#59)
     { s: 23, side: 1, w: 10, d: 9 }, // 3 빈 터
     { s: 23, side: -1, w: 10, d: 9 }, // 4 장비점 (#128)
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
-    { s: 51.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝)
+    { s: 75.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝. #270 에서 골목을 늘려 끝이 46 → 70)
+    { s: 58, side: 1, w: 20, d: 13 }, // 7 숙소 오피스제주 (#270, 다른 가게 2배. 스톤 앞(개울 쪽)을 가리지 않게 오름 쪽 줄)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
   keepPad: 22, // 거리 둘레 이만큼 몹이 나오지 않음 (쓰레기 더미는 오름에만이라 원래 없음)
   // 골목 가장자리 꾸밈 [s, 쪽(1 오름 쪽 / -1 시작 쪽)]: 터 앞을 막지 않는 틈에만
-  lamps: [[3, 1], [30, -1], [44, -1]],
-  benches: [[33.5, -1], [39.5, -1]],
-  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1]],
+  lamps: [[3, 1], [30, -1], [44, -1], [56, -1], [66, -1]],
+  benches: [[33.5, -1], [39.5, -1], [61, -1]],
+  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1], [52, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
   // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
   roofSize: 2.3, roofGap: 0.6, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
@@ -935,6 +950,7 @@ export const SHOP_ST = {
     { id: 'salon', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '골목 어귀 루이네 미장원이 문을 열었어요' },
     { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
     { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요' },
+    { id: 'inn', need: [{ zone: 3 }, { lv: 8 }], how: '능선에 들어서거나 레벨 8이 되면', say: '골목 안쪽 숙소 오피스제주가 문을 열었어요 · 하룻밤 묵으면 개운해져요' }, // #270 (#275 레벨 7 → 8: 능선 권장 Lv 에 맞춤)
   ],
   gate: {
     fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)
@@ -956,6 +972,7 @@ export const SHOPS = [
   { id: 'ride', name: '탈것 가게', lot: 3, act: '탈것', ic: 'ride', pop: 'ride', sells: '탈것' }, // #69 (임시 모양)
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
   { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
+  { id: 'inn', name: '오피스제주', lot: 7, act: '숙박', ic: 'bed', pop: 'inn', sells: '하룻밤·개운함 버프' }, // #270 (코드로 만든 임시 모양 src/inn.js)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -1889,6 +1906,7 @@ export const QUESTS = {
     'shop:salon': { name: '루이네 원장', shop: 'salon', look: { shirt: '#c9879b', pants: '#3a2f3a', shoes: '#2a222a' }, hello: ['바람에 머리가 다 날렸네', '앞머리 다듬어 줄까요?', '바람은 예약 없이 와요'] },
     'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요', '오늘의 메뉴: 오늘 거예요'] },
     'note:top': { name: '정상 쪽지' }, // #208 주는 사람 없이 쪽지를 읽으면 받는 퀘스트 (game/summit.js)
+    'shop:inn': { name: '안녕 매니저', shop: 'inn', look: { shirt: '#e9ecef', pants: '#3a4150', shoes: '#26262b', hat: 'hat:short' }, hello: ['일이 많은 당신의 안녕을 바랍니다', '체크인은 지금, 걱정은 체크아웃 때 두고 가요', '와이파이 비밀번호요? 귤이에요'] }, // #270 숙소 오피스제주
     'shop:satis': { name: '만족한상회 사장', shop: 'satis', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b' }, hello: ['갈치 드실래요?', '뼈는 없고 정만 있어요'] },
   },
   main: [
@@ -1953,6 +1971,9 @@ export const QUESTS = {
     { id: 'c-full', giver: 'shop:stone', door: 'shopQuests', after: 'c-fish', name: '든든하게 한 판', say: ['밥 먹었으면 힘 써야죠.', '식사 버프가 남아 있을 때 아무 구역에서나 적 10마리. 소화도 시킬 겸.'], task: '버프 중 적 10마리 쫓기', ask: { k: 'repelBuff', n: 10 }, fin: ['역시 밥심! 에이드는 내가 쏠게요.'], reward: { coupon: ['ade', 1] }, need: 'shop:stone' },
     // 만족한상회 사장 (#167 가게가 들어오면)
     { id: 'm-eat', giver: 'shop:satis', door: 'shopQuests', name: '갈치는 뼈가 없다', say: ['우리 갈치 먹어 봤어요?', '여기서 만족한상 한 번만 먹어 봐요. 뼈 걱정은 하지 마요.'], task: '만족한상회 한 상 먹기', ask: { k: 'satisMeal', n: 1 }, go: 'shop:satis', fin: ['그쵸? 뼈가 없죠?'], reward: { coupon: ['satis', 1] }, need: 'shop:satis' },
+    // 숙소 오피스제주 안녕 매니저 (#270, 숙소가 열리면). 첫 숙박은 반값(INN.price.first)
+    { id: 'i-stay', giver: 'shop:inn', door: 'shopQuests', name: '일이 많은 당신에게', say: ['일이 많아 보이네요. 얼굴에 다 써 있어요.', '오피스제주에서 하룻밤만 묵어 봐요. 첫 숙박은 반값이에요. 안녕은 원래 값이 없지만요.'], task: '오피스제주에서 1번 묵기', ask: { k: 'innStay', n: 1 }, go: 'shop:inn', fin: ['개운하죠? 그 얼굴이 우리 간판이에요.'], reward: { gyul: 20 }, need: 'shop:inn' },
+    { id: 'i-run', giver: 'shop:inn', door: 'shopQuests', after: 'i-stay', name: '개운할 때 일하기', say: ['개운함이 남아 있을 때가 일하기 제일 좋아요.', '버프가 있는 동안 아무 구역 서바이벌 터에서 1판 버텨 봐요. 퇴근은 그다음이에요.'], task: '버프 중 서바이벌 터 1판 버티기', ask: { k: 'innRun', n: 1 }, fin: ['역시. 다음 숙박은 우리가 기다릴게요.'], reward: { gyul: 30 }, need: 'shop:inn' },
     // ----- 이야기 이벤트 뒤 (#168): '오름지기에게 이야기하기'. 이벤트를 끝냈으면(need·ask 'story:id') 오름지기가 실마리를 한 줄 -----
     { id: 'st-mom', giver: 'jigi', name: '엄마 멧돼지', say: ['엄마 멧돼지 입에 캔 조각이 묻어 있었다고요?', '…그 캔, 짐승들도 먹나 보네요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:mom', n: 1, ever: true }, fin: ['…밤에 능선 쪽을 한번 봐요. 말은 거기까지.'], reward: { gyul: 5 }, need: 'story:mom' },
     { id: 'st-pair', giver: 'jigi', name: '둘이 다니는 투기꾼', say: ['투기꾼이 귤 세 개를 흘리고 갔다고요?', '한 봉지에 귤 셋이라. 누가 그런 장사를 할까요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:pair', n: 1, ever: true }, fin: ['쪽지 같은 걸 흘리면 꼭 주워 와요. 쓰레기라도 정보는 정보예요.'], reward: { gyul: 5 }, need: 'story:pair' },

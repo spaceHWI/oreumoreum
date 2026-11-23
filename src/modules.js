@@ -144,6 +144,7 @@ import './game/casesuit.js'; // 사건 3 대면 장면의 검은 양복 (#234)
 import './game/casefinale.js'; // 사건 파일 끝 '버리는 자' (#237): 다 종결 → 빨간 실이 하늘로 → 엔딩
 import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
 import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
+import './game/inn.js'; // 숙소 오피스제주 (#270): 숙박·개운함 버프·곁가지 퀘스트 (shopgate 앞: 가게 표가 먼저)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/start.js';
 import './game/ufo.js'; // 첫 화면 UFO (#150)
