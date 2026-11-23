@@ -1,5 +1,6 @@
 // 사건 파일 Tripo 모델 검사 (#262): node tools/casemodels.js [dist 폴더=dist] [출력 폴더=notes/shots/262]
 // 다섯 모델을(사진사는 #268 에서 빠짐) 플레이어 앞 한 줄에 세워 모델이 뜨는지(큰 모델·멀리용), 모션마다 뼈가 움직이는지, 그리는 수(draw call)가 모델마다 2 이하인지 보고 찍음
+// #272: 멀어지면 큰 모델을 GPU 에서 내리고 다시 오면 올리는지도 봄
 // 찍는 것: all-front.jpg(한 줄 앞), all-side.jpg(옆), <모델>.jpg(앞·옆·모션 둘 한 장에). 실패하면 exit 1
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -63,6 +64,21 @@ const bad = []; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL '
     require('child_process').execFileSync('python3', ['-c', `import sys\nfrom PIL import Image\nims=[Image.open(f) for f in sys.argv[2:]]\no=Image.new('RGB',(300*len(ims),360))\nfor i,im in enumerate(ims): o.paste(im,(300*i,0))\no.save(sys.argv[1], quality=72, optimize=True)`, path.join(OUT, n + '.jpg'), ...shots]);
     shots.forEach((f) => fs.unlinkSync(f));
   }
+  /* #272: 멀어지면 큰 모델을 GPU 에서 내리고, 다시 가까이 가면 저절로 다시 올림 */
+  const rel = await p.evaluate(async () => {
+    const o = window.__oreum, G = o.caseModel.gpu, mem = () => ({ ...o.renderer.info.memory }), fr = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    window.__cm.forEach((m) => { m.root.visible = true; m.near(false); });
+    await fr(); const m0 = mem();
+    const c = o.camObj, P = window.__cm[0].root.position, keep = c.position.clone(); c.position.set(P.x + 400, P.y + 30, P.z); c.lookAt(P.x + 500, P.y, P.z);
+    await fr(); for (let i = 0; i < 20; i++) G.tick();
+    await fr(); const m1 = mem(), st = G.state(), far = window.__cm.map((m) => m.far);
+    c.position.copy(keep); c.lookAt(P.x, P.y + 1, P.z); window.__cmCam(false);
+    for (let i = 0; i < 4; i++) await fr(); G.tick(); await fr(); const m2 = mem();
+    return { m0, m1, m2, st, far, hiBack: window.__cm.filter((m) => !m.far).length };
+  });
+  check(Object.values(rel.st).every((e) => !e.on && e.n >= 1) && rel.far.every(Boolean), '멀어지면 큰 모델을 GPU 에서 내림 ' + JSON.stringify(rel.st));
+  check(rel.m1.textures < rel.m0.textures && rel.m1.geometries < rel.m0.geometries, `내린 뒤 텍스처 ${rel.m0.textures}→${rel.m1.textures} · 지오메트리 ${rel.m0.geometries}→${rel.m1.geometries}`);
+  check(rel.hiBack > 0 && rel.m2.textures > rel.m1.textures, `다시 가까이 가면 다시 올림 (큰 모델 ${rel.hiBack}개, 텍스처 ${rel.m1.textures}→${rel.m2.textures})`);
   check(!errs.length, '페이지 오류 없음 ' + errs.slice(0, 2).join(' | '));
   await b.close(); server.close();
   console.log(bad.length ? `실패 ${bad.length}` : '모두 통과');
