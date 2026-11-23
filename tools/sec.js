@@ -177,7 +177,7 @@ async function startServers() {
       const P = { ...S0, coins: 1000, lv: { xp: 0, v: LEVEL.v } }, price = Math.round((INN.price.base + levelOf(0).lv * INN.price.perLv) * INN.price.first);
       let r = checkSave(P, { ...P, coins: 1000 - price, inn: { d: today, n: 1, left: INN.buffSec } }, acc(), t);
       ok(!r.fixed.includes('coins') && !r.fixed.includes('inn') && r.save.inn.n === 1, `첫 숙박 반값 ${price} 받아 줌 (${r.fixed})`);
-      r = checkSave(P, { ...P, coins: 1000 + 50, inn: { d: today, n: 1, left: INN.buffSec } }, { ...acc(), credit: 0 }, t);
+      r = checkSave(P, { ...P, coins: 1000 + 50, inn: { d: today, n: 1, left: INN.buffSec } }, { ...acc(), credit: 0, savedAt: t }, t);
       ok(r.fixed.includes('coins') && r.save.coins <= 1000 - price, `값을 안 내고 묵으면 귤을 깎음 (${r.save.coins})`);
       const P1 = { ...P, coins: 500, inn: { d: today, n: 1, left: 100 } };
       r = checkSave(P1, { ...P1, coins: 100, inn: { d: today, n: 2, left: INN.buffSec } }, acc(), t);
