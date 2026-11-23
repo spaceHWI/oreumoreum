@@ -2092,3 +2092,7 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 글자 '닫기' 버튼(내 가방·업적·사건 파일 등 `-close`)도 가게 창과 같은 동그라미 X 로 보임. 글은 남겨 둠(도구·화면 읽기)
 - 폰 LEAP 창이 화면을 넘던 것, 가게 이름이 글자 중간에서 끊기던 것 고침. 위쪽 줄 개운함 칸은 식사 버프와 같은 `.bpill`
 - `tools/winshot.js`: 창 한 장 모음 + 규격 표 (PC·폰·360×640·가로폰). 그림은 `notes/shots/283/before`·`after`
+
+## #285 [오류] 손님이 주울 때 'totalCount is not a function' (2026-11-23)
+- 원인: #261 손님 안내(`pickup.js guestNudge`)가 `trash.totalCount()` 를 불렀는데 그 함수는 `trash.store` 에 있음. 서버 주소가 있어 계정이 생기고 로그인하지 않은 손님이 주울 때마다(안내를 아직 안 본 동안) 프레임 오류 → 그 줍기의 `store.commit`·화면 갱신·콤보가 건너뛰어짐. `trash.store.totalCount()` 로 고침. 같은 실수는 다른 곳에 없음
+- 검사가 못 잡은 까닭: `smoke.js` 는 서버 주소 없이(계정 없음) 돌고, `online.js` 는 `store.takeOne` 으로 바로 꺼내 줍기 길(`takeNow`)을 지나지 않음. `smoke.js` 에 '4) 손님 줍기' 를 더함(닿지 않는 `?server=` 로 손님 계정을 만들고 진짜 줍기 한 번, 프레임 오류는 콘솔 글로 봄). 고치기 전 빌드에서 FAIL 확인
