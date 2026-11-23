@@ -6,6 +6,7 @@ import { createFootprints } from '../footprints.js';
 import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, SCREEN, CRASH, WEATHER } from '../balance.js';
 import { crashNote, reportCrash } from '../crash.js';
 import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
+import { isMobile } from '../mview.js';
 import { STREET } from '../streetlayout.js';
 import { createRetro } from '../retro.js';
 import * as THREE from 'three';
@@ -25,12 +26,13 @@ import { $, clamp, save, MAP_ID } from './save.js';
 
 // ---------- 렌더러 ----------
 export const canvas = $('view');
-export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'default' });
+const PHONE_GL = isMobile(); // 폰 (#271): 안티에일리어싱 끔·그림자 거친 PCF (만들 때 정해야 하는 것)
+export const renderer = new THREE.WebGLRenderer({ canvas, antialias: !((PHONE_GL && !PERF.aaPhone) || TIER === 0), powerPreference: 'default' });
 renderer.outputColorSpace = NSMODE ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = PHONE_GL ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 // WebGL 을 잃은 바로 그 프레임 (#197): 브라우저가 webglcontextlost 를 알리기 전에는 three 가 잃은 줄 모르고 그리는데, 이때 처음 쓰이는 셰이더의
 // 링크 확인(three WebGLProgram onFirstUse)에서 getProgramInfoLog·getShaderInfoLog 가 글 대신 null 을 돌려줘 .trim 에서 멈춘다. 잃은 동안은 빈 글로 돌려준다
 { const gl = renderer.getContext(); for (const k of ['getProgramInfoLog', 'getShaderInfoLog']) { const f = gl[k].bind(gl); gl[k] = (o) => f(o) ?? ''; } }
@@ -51,7 +53,7 @@ state.glLost = false;
   $('gl-reload').addEventListener('click', () => location.reload());
 }
 state.farCull = null; // 멀리 있는 작은 물체 감추기 (#79), 맨 끝에서 만듦
-export const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)
+export const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF, heat: 0 }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)
 export const retro = createRetro(renderer);
 export const post = createPost(renderer, LOW);
 if (!save.gfxV3) { save.gfx = 'smooth'; save.gfxV3 = 1; } retro.on = save.gfx === 'toon' || save.gfx === 'retro'; retro.setMode(save.gfx === 'retro' ? 'retro' : 'toon');
@@ -81,6 +83,7 @@ export function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   const cap = quality.level === 2 ? (w < 700 ? PERF.prNarrow : PERF.pr[2]) : PERF.pr[quality.level];
   quality.pr = Math.min(window.devicePixelRatio || 1, cap);
+  if (quality.heat >= 1) quality.pr = Math.max(Math.min(quality.pr, PERF.heat.prMin), quality.pr * PERF.heat.prMul); /* 발열 지킴 1칸 (#271, game/fps.js) */
   renderer.setPixelRatio(quality.pr);
   renderer.setSize(w, h, false);
   retro.setSize(w * quality.pr, h * quality.pr); post.setSize(w * quality.pr, h * quality.pr);
@@ -100,9 +103,11 @@ if (NSW) NSW.setupShadow(sun);
 const SHADOW_DEF = sun.shadow.mapSize.x;
 // 성능 단계 적용 (#79): 그림자 지도 크기·그림자 켜고 끄기(낮음은 끔)·픽셀 배율
 export function applyQuality() {
-  const L = quality.level, ms = PERF.shadow[L] || SHADOW_DEF, sh = L > 0;
+  const L = quality.level, ms = PERF.shadow[L] || SHADOW_DEF, sh = L > 0 && !(quality.heat >= 2); /* 발열 지킴 2칸: 그림자 끔 (#271) */
   if (sun.shadow.mapSize.x !== ms) { sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
   if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; sun.castShadow = sh; }
+  renderer.shadowMap.needsUpdate = true; /* 그림자 지도를 띄엄띄엄 다시 그리니(#271) 단계가 바뀌면 바로 한 번 */
+  try { heatDensity(quality.heat >= 3 ? PERF.heat.grassK : 1); } catch (e) { /* 풀을 만들기 전 */ }
   if (typeof resize === 'function' && camera) resize();
 }
 scene.add(sun); scene.add(sun.target);
@@ -125,6 +130,11 @@ scene.fog.color = FOG; G.fogC.value = FOG; const FOG_N = scene.fog.near, FOG_F =
 const TERR_EXT = terrain.geometry.parameters.width / 2 - 2;
 export const grass = NSW ? NSW.grass : createGrass({ scene, height, colorAt: groundColor, low: LOW, canGrow: (x, z) => (Math.abs(x) > TERR_EXT || Math.abs(z) > TERR_EXT || surfaceAt(x, z) !== 0 || groundAt(x, z) - height(x, z) > 0.05) ? 0 : (MAP_ID === 'donnaeko' ? 0.55 : 1) });
 export const motes = createMotes({ scene, height, low: LOW });
+// 발열 지킴 3칸 (#271): 풀·먼지 밀도. 풀은 무작위 자리라 앞쪽 일부만 그려도 고르게 줄어듦
+function heatDensity(k) {
+  const g = grass?.mesh?.geometry; if (g && g.instanceCount != null) { g.userData.n0 ??= g.instanceCount; g.instanceCount = Math.round(g.userData.n0 * k); }
+  const mg = motes?.pts?.geometry; if (mg) { const n = mg.attributes.position.count; mg.setDrawRange(0, Math.round(n * k)); }
+}
 export const prints = createFootprints({ scene, height, surfaceAt, low: LOW }); // 발자국 (#21)
 if (PW && !NSW) createFlowers({ scene, height, extent: TERR_EXT, count: LOW ? 3200 : 6500, canGrow: (x, z) => (Math.abs(x) > TERR_EXT || Math.abs(z) > TERR_EXT || surfaceAt(x, z) !== 0 || groundAt(x, z) - height(x, z) > 0.05) ? 0 : 1 });
 export const spots = buildSpots(MAP_ID);

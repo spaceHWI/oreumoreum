@@ -2007,3 +2007,14 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - #268 사진사를 예전 모습으로·다듬기: Tripo `case-photographer`(·`-lo`)를 빼고 #262 전의 캐릭터 차림(선바이저·파란 바람막이·러닝 조끼, 비 오면 노란 우비)으로 되돌림. 모델 파일·packassets·casemodels(RIG·MOVES·ready/shoot/beckon)·balance scale 에서 지움, `tools/casemodels.js` 는 다섯 모델
 - 다듬기: 짐벌 → 큰 렌즈 손 카메라(주황 렌즈 링, 오른팔 뼈에 직접 붙여 손목 각을 동작마다 바꿈), 목 카메라를 키우고 어깨에서 V 로 내려오는 주황 끈(back:z-camstrap, 우비 위에도 보임) + 허리 렌즈 가방
 - 동작: `runner.animate` 에 `post(parts)` 를 더해 서 있는 자세 위에 섞음. 기다릴 땐 둘러보기 ↔ 카메라 만지작(3.5~6.5초마다), 다가오면 왼손 손짓, 찍을 땐 카메라를 눈에 대고 3·2·1 끝(PHOTOG.count×3)에 렌즈에서 번쩍. 그림 `notes/shots/268/`
+
+- #271 폰 발열 줄이기 1: 새 `src/game/fps.js`(프레임 상한·쉴 때 낮게·그림자 지도 띄엄띄엄·발열 지킴·배터리), `src/game/heatlog.js`(`?heat=1` 재기 창), `tools/perfrun.js`(앞·뒤 일의 양). 값은 balance.js `PERF.fps`·`aaPhone`·`shadowUp`·`heat`·`start`·`heatLog` (모두 임의)
+- 프레임 상한: update.js frame 이 rAF 마다 `fps.due(now)` 로 그릴 차례만 step. 폰 기본 30(설정 '화면 부드럽게' 절약/부드럽게, `save.fps`), PC 60. 120Hz 에서도 상한 넘게 안 그림. 게임 dt 는 실제 흐른 시간(상한 `fps.maxDt()` = max(0.05, 1.3/상한)), 시계가 뒤로 가면 0
+- 쉴 때: 6초 입력 없고 움직이지 않으면 20, 창(PANELS·내 가방)이 덮으면 15. 싸움(서바이벌 판·우두머리·적 가까이·긴장)은 PERF.fps.fight — swarm.js 구역 1 --fast 3판이 60·30(--eco) 모두 버팀 100% 라 절약에서는 30 그대로. 튜토리얼·state.cine·사진·따라가기 아닌 카메라는 쉬는 상태 아님
+- 자동 단계 내림(adaptQuality)의 빠름·느림 기준을 상한 간격에 맞춤 (30 상한이면 33ms 가 '빠름')
+- 렌더러: 폰·낮음 단계는 antialias 끔, 폰 그림자 PCFShadowMap. 그림자 지도 autoUpdate 끔 → 폰 2프레임(서 있으면 3)에 한 번, 7m/s 넘게 빠르거나 마차·장면이면 매번, PC 매번. 단계가 바뀌면 바로 한 번
+- 후처리 retro·post 는 남송이(NSW) 길에서는 쓰지 않음(renderer.render 바로) — 바꿀 것 없음
+- 발열 지킴(자동 단계만, 사용자가 품질을 고르면 안 함): 이어 논 10·20분에 한 칸, 1분 평균 셈 시간이 3분 전보다 15%(0.5ms) 넘게 늘면 한 칸(그리는 수 ±20% 안일 때만). 칸: 픽셀 배율 ×0.8 → 그림자 끔 → 풀·먼지 ×0.5 (scene.js applyQuality·heatDensity). 5분 쉬면(탭 숨김·쉬는 중·입력 없음) 되돌림
+- 처음부터 낮게: quality.js autoTier 가 deviceMemory ≤4·움직임 줄이기·데이터 절약이면 한 칸, 배터리(충전 안 함 20% 아래)는 비동기라 fps.js 가 시작 뒤 quality.level 한 칸
+- 탭이 숨으면: rAF 멈춤(그리기·네트워크 보내기·게임 셈), 소리는 start.js 가 suspend, 음악 tick 은 suspend 면 그냥 돌아감. 날씨 30분 폴링만 숨었을 때 건너뛰게 함
+- 확인 `__oreum.fps.state()`·`set()`·`heat(k)`·`pick('eco')`, 재기 `node tools/perfrun.js --base origin/dev`(Playwright 가짜 시계로 60Hz rAF 흉내, 화면 픽셀 + 그림자 지도 픽셀을 '일' 로)
