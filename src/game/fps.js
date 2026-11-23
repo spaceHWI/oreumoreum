@@ -50,8 +50,14 @@ function capNow(now) {
 }
 
 // ---------- 그릴 차례 ----------
-let cap = F[fpsPref()], lastDraw = -1e9, capT = 0;
+let cap = F[fpsPref()], lastDraw = -1e9, capT = 0, drawW = 0, drawH = 0, forced = 0, skipped = 0;
 export function due(now) {
+  const cv = renderer.domElement;
+  if (cv.width !== drawW || cv.height !== drawH) { drawW = cv.width; drawH = cv.height; lastDraw = now; forced++; return true; } /* #280: 크기·배율을 바꾸면(resize·발열 지킴·배터리) 캔버스가 비워지니 이 rAF 는 꼭 그림. 건너뛰면 빈 캔버스가 한 프레임 보여 깜박임 */
+  if (!dueCap(now)) { skipped++; return false; }
+  return true;
+}
+function dueCap(now) {
   if ((capT -= 1) <= 0) { capT = 6; cap = capNow(now); } // 상한 판단은 rAF 6번에 한 번이면 충분 (입력이 오면 아래에서 바로)
   if (mode === 'idle' && now - lastIn < 200) cap = capNow(now);
   const iv = 1000 / cap; if (now < lastDraw) lastDraw = -1e9; /* 시계가 뒤로 감(재기 도구의 가짜 시계 등) */
@@ -121,7 +127,7 @@ function pickFps(v) { if (fpsPref() === v && save.fps === v) return; save.fps = 
 fpsSeg();
 
 late.fps = {
-  state: () => ({ cap, mode, pref: fpsPref(), idle: (performance.now() - lastIn) / 1000, downs: downs.size, heat: quality.heat, level: quality.level, lowStart: quality.lowStart || '', playT: Math.round(heat.playT), restT: Math.round(heat.restT), log: [...heat.log], drawn, shadowAuto: renderer.shadowMap.autoUpdate }),
+  state: () => ({ cap, mode, pref: fpsPref(), idle: (performance.now() - lastIn) / 1000, downs: downs.size, heat: quality.heat, level: quality.level, lowStart: quality.lowStart || '', playT: Math.round(heat.playT), restT: Math.round(heat.restT), log: [...heat.log], drawn, skipped, forced, shadowAuto: renderer.shadowMap.autoUpdate }),
   set: (o) => Object.assign(F, o), heat: (k) => heatSet(k, '확인'), play: (s) => { heat.playT = s; }, pick: pickFps, poke,
 };
 if (HEATLOG) import('./heatlog.js').catch(() => {});

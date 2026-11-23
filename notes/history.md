@@ -2117,3 +2117,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 차림: NPC 전용 앞치마(`vest:npc-apron`)·머릿수건(`hat:npc-kerchief`, clothes2.js 새 kind apron·kerchief, gear.js `npc: true` 라 가게 목록에 안 나옴). 주는 사람 look 에 vest 를 줄 수 있게(game/quest.js person)
 - 대사: 인사·창 열기·샀을 때·모자랄 때는 #278 그대로, 식사를 마치면 주인 머리 위 말풍선 `ate` 3줄(npclines satis, npctalk late.npcAte)
 - 훑기: 탈것 가게도 주인이 없었음 → `shop:ride` '탈것 가게 사장'(빨간 티·모자, 인사 2줄) 더함. `tools/shopgate.js` 가 일곱 가게마다 문 7m 안 주인·닫힌 만족한상회 주인 없음·열리면 나옴·평상 자리 안 막음을 봄. `tools/manjok.js` 에 퀘스트 셈·할인권·식사 뒤 말풍선. 그림 `tools/manjokowner.js` → notes/shots/279
+
+## #280 새로고침하면 화면이 깜박임
+- 원인(재현함): 캔버스 `#view` 의 CSS 바탕이 낮 하늘색 `#cfe0dc` 였음. 다시 받을 때 밤색 바탕(body) → 게임이 첫 그림을 그리기 전 2~3초 동안 캔버스 바탕(밝은 하늘색) → 밤(저녁) 첫 화면 순서로 밝기가 위아래로 튀어 깜박여 보임. 저녁·밤에만 크게 보임(사용자 17:44 보고). 노트북 크롬도 같음
+- 고침: `#view` 바탕을 body 와 같은 `var(--night)`, 첫 그린 프레임 전에는 캔버스를 감추고(`#view:not(.drawn)`) 첫 그림에 0.3초로 보임(update.js frame)
+- 덤(폰·120Hz): 프레임 상한(#271)으로 rAF 를 건너뛸 때 그 사이 캔버스 크기·배율이 바뀌면(창 크기·돌리기·전체 화면·발열 지킴·배터리) 비워진 캔버스가 한 프레임 보였음 → `fps.js due` 가 캔버스 크기가 바뀌었으면 그 rAF 는 꼭 그림. `?heat=1` 창에 '건너뜀·캔버스 다시 잡음' 수
+- 검사: `tools/flicker.js d|m [dist]` (가: 밤에 다시 받기 screencast 밝기 되돌이, 나: 가짜 시계 60Hz·상한 30 에서 크기 바꿀 때 비운 채 지나간 프레임). 앞 빌드 m 튐 3 → 0, d 튐 0. perfrun 일의 양 그대로(1.0)
+- 로딩 중 첫 화면 카드가 로고 없이 먼저 뜨고 자리가 바뀌는 것은 #281(로딩 창)에서
