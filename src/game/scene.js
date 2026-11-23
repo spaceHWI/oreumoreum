@@ -26,8 +26,8 @@ import { $, clamp, save, MAP_ID } from './save.js';
 
 // ---------- 렌더러 ----------
 export const canvas = $('view');
-const PHONE_GL = isMobile(); // 폰 (#271): 안티에일리어싱 끔·그림자 거친 PCF (만들 때 정해야 하는 것)
-export const renderer = new THREE.WebGLRenderer({ canvas, antialias: !((PHONE_GL && !PERF.aaPhone) || TIER === 0), powerPreference: 'default' });
+const PHONE_GL = isMobile(); // 폰 (#271): 그림자 거친 PCF (만들 때 정해야 하는 것). 안티에일리어싱은 PERF.aaPhone (#276 기본 켬)
+export const renderer = new THREE.WebGLRenderer({ canvas, antialias: PERF.aaPhone || !(PHONE_GL || TIER === 0), powerPreference: 'default' });
 renderer.outputColorSpace = NSMODE ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
