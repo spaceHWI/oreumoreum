@@ -1,7 +1,7 @@
 // 가게를 퀘스트 순서대로 열기 (#206) 확인. 먼저 node build.mjs. node tools/shopgate.js
 // 1) 튜토리얼을 막 마친 저장: 장비점만 열림, 나머지는 셔터·꺼진 간판·준비 중·주인 없음 (마차는 탐, #244)
 // 2) 첫 배낭 가득 → 버림 → 만족한상회 알림·셔터 올라감 / 구역 1 우두머리 → 스톤 / 레벨·구역 2 → 미장원·LEAP / 구역 2 우두머리 → 탈것 가게
-// 3) 옛 저장(구역 2 끝·식사한 적 있음): 처음부터 모두 열림(알림 없이) · 4) 어드민 '가게 모두 열기'
+// 3) 옛 저장(구역 2 끝·식사한 적 있음): 처음부터 모두 열림(알림 없이), 일곱 가게마다 주인(#279) · 4) 어드민 '가게 모두 열기'
 const { chromium } = require('playwright');
 const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };
@@ -31,6 +31,7 @@ async function page(b, data) {
     ok(await E(() => window.__oreum.shopGate.shutter('stone')?.visible && !window.__oreum.shopGate.shutter('gear')?.visible), '스톤 문 앞 셔터, 장비점은 셔터 없음');
     ok(await E(() => window.__oreum.street.roof.signs.stone.off === true && !window.__oreum.street.roof.signs.gear.off), '스톤 지붕 간판 꺼짐');
     ok(await E(() => window.__oreum.quest.givers.get('shop:stone')?.root.visible === false), '스톤 주인 NPC 없음');
+    ok(await E(() => window.__oreum.quest.givers.get('shop:satis')?.root.visible === false), '닫힌 만족한상회 주인 없음 (#279)');
     // 가까이 가면 준비 중
     await E(() => window.__oreum.stone.go());
     await until(() => /준비 중/.test(document.getElementById('msg-log').textContent), 4000);
@@ -57,6 +58,7 @@ async function page(b, data) {
     ok(/만족한상회가 문을 열었어요/.test(msg), `열림 알림: ${msg}`);
     ok(await E(() => window.__oreum.save.shopGate.fd === 1), '첫 배낭 가득 → 버림 기록');
     ok(await until(() => window.__oreum.shopGate.shutter('manjok')?.visible === false, 25000), '셔터가 올라감');
+    await E(() => window.__oreum.manjok.go()); ok(await until(() => window.__oreum.quest.givers.get('shop:satis')?.root.visible === true, 3000), '만족한상회 주인 NPC 나옴 (#279)');
     // 스톤: 구역 1 우두머리
     await E(() => { const s = window.__oreum.save; s.boss = s.boss || {}; s.boss.done = { ...(s.boss.done || {}), 1: 1 }; });
     ok(await until(() => window.__oreum.shopGate.isOpen('stone'), 60000), '구역 1 우두머리 뒤 스톤이 열림');
@@ -74,9 +76,17 @@ async function page(b, data) {
   }
   // ----- 3) 옛 저장 -----
   {
-    const { ctx, E, errs } = await page(b, VET);
+    const { ctx, E, W, errs } = await page(b, VET);
     const st = await E(() => { const g = window.__oreum.shopGate; return Object.fromEntries(['gear', 'manjok', 'stone', 'salon', 'leap', 'ride'].map((id) => [id, g.isOpen(id)])); });
     ok(Object.values(st).every(Boolean), `옛 저장은 처음부터 모두 열림 ${JSON.stringify(st)}`);
+    // 가게마다 주인 (#279): 일곱 가게 모두 문 가까이에 주인 NPC 가 서 있음
+    const own = await E(() => { const o = window.__oreum, G = [...o.quest.givers.values()]; return o.street.shops.map((sh) => { const g = G.find((x) => x.def.shop === sh.id); return [sh.id, g ? +Math.hypot(g.pos.x - sh.door.x, g.pos.z - sh.door.z).toFixed(1) : -1]; }); });
+    const ids = own.map(([id]) => id);
+    ok(['gear', 'stone', 'salon', 'leap', 'manjok', 'ride', 'inn'].every((id) => ids.includes(id)), `가게 일곱 ${ids.join(',')}`);
+    ok(own.every(([, d]) => d >= 0 && d < 7), `가게마다 문 옆에 주인 ${JSON.stringify(own)}`);
+    await E(() => window.__oreum.manjok.go()); await W(600);
+    ok(await E(() => window.__oreum.quest.givers.get('shop:satis')?.root.visible === true), '만족한상회 주인이 보임');
+    ok(await E(() => { const o = window.__oreum, g = o.quest.givers.get('shop:satis'), A = o.manjok.api, d = o.street.shops.find((s) => s.id === 'manjok').door; return Math.hypot(g.pos.x - A.seatGo.x, g.pos.z - A.seatGo.z) > 1 && Math.hypot(g.pos.x - d.x, g.pos.z - d.z) > 1.2; }), '주인이 평상 자리·입구를 막지 않음');
     ok(await E(() => !/문을 열었어요/.test(document.getElementById('msg-log').textContent)), '옛 저장은 알림 없음');
     ok(errs() === 0, `페이지 오류 ${errs()}`);
     await ctx.close();

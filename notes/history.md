@@ -2110,3 +2110,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 가게 창 위 칸 아래 한 줄(#shoppop-say)에 주인 말: 열 때·귤이 줄면(샀을 때)·'모자라' 알림이 뜨면. 창을 닫으면 주인 머리 위 말풍선. 가게 코드는 건드리지 않고 창 클릭·귤 변화·알림 줄(msgLog.last)을 봄
 - 흡연자(나타남·쫓김)·투기꾼(쫓김) 말풍선 새로. 사진사·관광객 줄 다듬음, 동료 인사(greet)만 손봄(동료는 꺼져 있음)
 - 검사: `storytext.mjs` 에 NPC 줄(28자·금지 낱말·종류마다 조건 없는 줄 둘·인사 상황 줄 셋), 새 `tools/npctalk.js`
+
+## #279 만족한상회 주인 NPC (2026-11-23)
+- 원인: #158(퀘스트, 11/21)이 주인을 `shop: 'satis'` 로 먼저 적었고, 같은 날 #167 이 가게를 `manjok` id 로 지음. 주는 사람 자리(game/quest.js)가 가게를 못 찾아 처음부터 주인이 없었음(#270 골목 이동 때 빠진 것 아님). 곁가지 '갈치는 뼈가 없다'(m-eat)도 `need: 'shop:satis'` 라 한 번도 안 나왔고, 셈(satisMeal)·할인권(satis)도 이어져 있지 않았음
+- 고침: 주는 사람 `shop:satis` 의 가게를 `manjok` 로(주는 사람 id·대사 id 'satis' 는 그대로), m-eat 의 go·need 도. 만족한상회 식사(`meal-manjok`) → satisMeal 셈, 할인권 '고등어구이 한 번'은 고등어구이 주문 때 씀(stores.js). 혼잣말 `hasSatis` 도 manjok 로
+- 차림: NPC 전용 앞치마(`vest:npc-apron`)·머릿수건(`hat:npc-kerchief`, clothes2.js 새 kind apron·kerchief, gear.js `npc: true` 라 가게 목록에 안 나옴). 주는 사람 look 에 vest 를 줄 수 있게(game/quest.js person)
+- 대사: 인사·창 열기·샀을 때·모자랄 때는 #278 그대로, 식사를 마치면 주인 머리 위 말풍선 `ate` 3줄(npclines satis, npctalk late.npcAte)
+- 훑기: 탈것 가게도 주인이 없었음 → `shop:ride` '탈것 가게 사장'(빨간 티·모자, 인사 2줄) 더함. `tools/shopgate.js` 가 일곱 가게마다 문 7m 안 주인·닫힌 만족한상회 주인 없음·열리면 나옴·평상 자리 안 막음을 봄. `tools/manjok.js` 에 퀘스트 셈·할인권·식사 뒤 말풍선. 그림 `tools/manjokowner.js` → notes/shots/279

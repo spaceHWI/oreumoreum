@@ -38,7 +38,7 @@ const zoneAt = (x, z) => (trash ? trash.zoneAt(x, z) || 0 : 0);
 const shopOf = (id) => shopsBuilt.find((sh) => sh.id === id) || null;
 
 /* ---------- 셈 ---------- */
-const EV = { trash: 'trash', recycle: 'recycle', 'enemy-repel': 'repel', 'dumper-repel': 'dumper', fish: 'fish', stone: 'stone', meal: 'meal', haircut: 'haircut', 'clothes-buy': 'clothes', photo: 'photo', emote: 'emote', 'satis-meal': 'satisMeal' };
+const EV = { trash: 'trash', recycle: 'recycle', 'enemy-repel': 'repel', 'dumper-repel': 'dumper', fish: 'fish', stone: 'stone', meal: 'meal', haircut: 'haircut', 'clothes-buy': 'clothes', photo: 'photo', emote: 'emote', 'satis-meal': 'satisMeal', 'meal-manjok': 'satisMeal' }; /* #279 만족한상회 식사는 stores.js 가 meal-manjok 로 알림 */
 const VAL = {
   gearTB: () => (save.equip.tool | 0) + (save.equip.bag | 0),
   gearAll: () => (save.equip.tool | 0) + (save.equip.bag | 0) + (save.equip.weapon | 0),
@@ -123,7 +123,7 @@ function addGiver(id, pos, root, h, runner = null, face = 0) {
 }
 function person(id, pos, face) {
   const d = Q.givers[id], L = d.look || {}, run = buildRunner(), o = DEFAULT_OUTFIT;
-  run.apply({ ...o, shirt: { ...o.shirt, color: L.shirt || o.shirt.color }, pants: { ...o.pants, color: L.pants || o.pants.color }, shoes: { ...o.shoes, color: L.shoes || o.shoes.color }, gear: { hat: L.hat || 'hat:straw', back: 'back:none', hand: 'hand:none' } });
+  run.apply({ ...o, shirt: { ...o.shirt, color: L.shirt || o.shirt.color }, pants: { ...o.pants, color: L.pants || o.pants.color }, shoes: { ...o.shoes, color: L.shoes || o.shoes.color }, gear: { hat: L.hat || 'hat:straw', back: 'back:none', hand: 'hand:none', ...(L.vest ? { vest: L.vest } : {}) } }); /* 앞치마 등 (#279) */
   run.root.position.copy(pos); run.root.rotation.y = face; scene.add(run.root);
   if (col) col.add(pos.x, pos.z, 0.5);
   return addGiver(id, pos, run.root, 2.95, run, face);

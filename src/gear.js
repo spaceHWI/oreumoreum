@@ -201,6 +201,9 @@ Object.assign(ACCESSORIES, {
       return G(tw, bd, net, ring(0.43 - 0.02 * k, 0.1 * k), ring(0.36 - 0.03 * k, 0.135 * k), ring(0.29 - 0.04 * k, 0.11 * k), CY(0.008, 0.008, 0.16, r, 0, 0.47, -0.24)); } };
 });
 addClothes(ACCESSORIES);
+/* NPC 전용 옷 (#279 만족한상회 사장): 가게 목록(CLOTHES)에 없어 팔지 않음. game/quest.js 의 주는 사람 look.hat·look.vest */
+ACCESSORIES['vest:npc-apron'] = { ...clothAcc({ slot: 'vest', name: '앞치마' }, { kind: 'apron', main: '#f3efe4', acc: '#c8452c' }), npc: true };
+ACCESSORIES['hat:npc-kerchief'] = { ...clothAcc({ slot: 'hat', name: '머릿수건' }, { kind: 'kerchief', main: '#e9eef2', acc: '#3a6ea8' }), npc: true };
 // 처음 고르는 기본 옷 색 (#155): 기본 모자·반팔·반바지·쓰레빠의 색 바꾼 장비 'id~번호' (0번 = 원래 id). src/lookcolors.js 가 고름
 for (const k of ['hat', 'top', 'bottom']) {
   const c = CLOTHES.find((x) => x.id === LOOK_COLORS.ids[k]);
