@@ -5,7 +5,10 @@ import { onestore } from './onestore.js';
 import { loadCore } from './assets.js';
 import { listenCrashes, reportCrash } from './crash.js';
 import { mframeTop, frameSafe } from './mview.js';
+import { bootP, bootReady, bootFail } from './bootbar.js';
 listenCrashes(); // #108: 처리 못 한 오류를 의견함으로 (보낼 곳은 panels.js 가 붙임)
 onestore.progress(10);
 /* 모바일 화면으로 보기 (#220): 켜져 있으면 바깥 창은 폰 틀만 그리고 게임은 틀 안에서 돈다 */
-if (!mframeTop()) { frameSafe(); loadCore().then(() => { onestore.progress(60); return import('./modules.js'); }).then(() => onestore.progress(85)).catch((e) => reportCrash(e, 'load')); }
+bootP(40, 58); /* 로딩 창 (#281): 게임 코드 받음 → 내 캐릭터 모델 → 게임 모듈 → 셰이더·첫 그림(update.js 가 걷음) */
+if (!mframeTop()) { frameSafe(); loadCore().then(() => { onestore.progress(60); bootP(60, 80); return import('./modules.js'); }).then(() => { onestore.progress(85); bootP(82, 96); }).catch((e) => { reportCrash(e, 'load'); bootFail(); }); }
+else bootReady(); /* 모바일 화면으로 보기 바깥 창: 게임은 틀 안에서 돎 (#220) */

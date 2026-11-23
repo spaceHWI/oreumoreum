@@ -2,6 +2,30 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&display=swap">
+<!-- 로딩 창 (#281): 스크립트·모델을 받기 전부터 덮고, 첫 그림이 온전히 그려진 뒤 걷힌다 (src/bootscreen.js). 그 전에는 캔버스·첫 화면 글·버튼이 비치지 않게 -->
+<style>
+html { background: #24251f; }
+#boot { position: fixed; inset: 0; z-index: 2147482000; background: #24251f; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 24px 16px; box-sizing: border-box; font-family: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; text-align: center; transition: opacity .4s ease; }
+#boot.off { opacity: 0; pointer-events: none; }
+#boot[hidden] { display: none !important; }
+#boot .bt-logo { width: min(420px, 78vw); line-height: 0; }
+#boot .bt-logo svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 2px 8px rgba(0,0,0,.35)); }
+#boot .bt-slogan { margin: 14px 0 0; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: rgba(255,255,255,.72); }
+#boot .bt-track { width: min(260px, 64vw); height: 6px; margin: 34px 0 0; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+#boot .bt-bar { height: 100%; width: 100%; border-radius: inherit; background: #ff8a1f; transform-origin: 0 50%; transform: scaleX(0); transition: transform .2s linear; }
+#boot .bt-wit { min-height: 1.4em; margin: 14px 0 0; font-size: 13px; color: rgba(255,255,255,.6); }
+#boot .bt-slow { margin: 6px 0 0; font-size: 13px; font-weight: 700; color: #ffb766; }
+#boot .bt-retry { margin: 14px 0 0; padding: 10px 22px; border: 0; border-radius: 999px; background: #ff8a1f; color: #201000; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { #boot, #boot .bt-bar { transition: none; } }
+</style>
+<div id="boot" role="progressbar" aria-label="오름오름 불러오는 중" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="bt-logo">__BOOTLOGO__</div>
+  <p class="bt-slogan">힐링을 가장한 미스터리 메타버스</p>
+  <div class="bt-track"><div class="bt-bar" id="boot-bar"></div></div>
+  <p class="bt-wit" id="boot-wit" aria-live="polite"></p>
+  <p class="bt-slow" id="boot-slow" hidden>조금만 더요</p>
+  <button type="button" class="bt-retry" id="boot-retry" hidden>다시 시도</button>
+</div>
 <style>
 /* 레이아웃: 화면 전체 3D. 위: 장소·귤 | 오늘의 업적 | 체력. 아래 왼쪽: 조이스틱(터치), 아래 오른쪽: 상호작용 큰 버튼과 점프·귤·속도, 아래 가운데: 동작·말·업적·메뉴 */
 :root {
@@ -34,7 +58,9 @@
 html, body { height: 100%; }
 [hidden] { display: none !important; }
 body { background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
-#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: #cfe0dc; }
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; background: var(--night); transition: opacity .3s; }
+#view:not(.drawn) { opacity: 0; } /* #280: 첫 그림이 나오기 전 캔버스는 바탕(밤색)만. 예전 낮 하늘색(#cfe0dc) 바탕이 받는 동안 2~3초 보였다가 밤 첫 화면으로 바뀌어 깜박였음 */
+@media (prefers-reduced-motion: reduce) { #view { transition: none; } }
 #view:focus { outline: none; }
 .panel { background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: inset 0 0 0 2px #fff, 3px 4px 0 rgba(59, 58, 51, .22); }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -166,6 +192,15 @@ body.looking #pickmsg, body.hp-down #pickmsg, body.looking #combo, body.hp-down 
 .m-acct textarea { flex: 1 1 100%; font-size: 12px; padding: 6px; border-radius: 8px; resize: none; }
 .m-acct button { flex: 1 1 40%; padding: 8px 6px !important; font-size: 13px !important; }
 .acct-ask { z-index: 40; background: rgba(14,14,18,.4); }
+.acct-card { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 400px; box-sizing: border-box; padding: 8px 8px 8px 10px; border-radius: 16px; background: rgba(255,255,255,.07); border: 1px solid var(--hair); text-align: left; } /* 계정 칸 (#281) */
+.acct-av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--acc); color: var(--acc-fg); font: 800 16px/1 var(--display); }
+.acct-meta { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.acct-nick { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acct-mail { font-size: 11.5px; line-height: 1.35; color: var(--ink-soft); word-break: keep-all; overflow-wrap: anywhere; }
+.acct-card .acct-logout { flex: none; padding: 7px 12px; font-size: 12.5px; }
+#m-acct-card { flex: 1 1 100%; display: flex; justify-content: center; }
+#menu .opt-g .m-acct .acct-card button { flex: none; min-height: 36px; }
+.acct-ask-sub { font-size: 13px; color: var(--ink-soft); }
 .acct-ask .panel { max-width: 320px; padding: 18px; border-radius: 20px; text-align: center; }
 .acct-ask p { margin: 0 0 14px; line-height: 1.5; }
 .acct-ask .row { display: flex; gap: 8px; } .acct-ask .row .btn { flex: 1; }
@@ -1873,7 +1908,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="menu-dev">개발용 라벨</button>
   </div>
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
-  <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-out">로그아웃</button><button type="button" id="acct-del">내 기록 지우기</button></div>
+  <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-del">내 기록 지우기</button></div>
   <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg data-i="reset"></svg></button></div>
   <div class="m-dev" id="m-dev" hidden>
     <button type="button" id="adm-toggle" class="adm-head" aria-haspopup="dialog" aria-controls="admwin" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>

@@ -51,6 +51,15 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     ok(await E(([k]) => window.__oreum.stone.api && window.__oreum.save.buff && window.__oreum.stone.buff.add(k), [k]) === v, `${id} → ${k} ${v}`);
   }
   ok(await E(() => document.getElementById('buff-pill').title.includes('귤 모으는 범위')), '버프 표시 글');
+  // 주인 (#279): 문 옆 사장님, '갈치는 뼈가 없다' 퀘스트 셈·고등어구이 한 번 할인권·식사 뒤 말
+  const ow = await E(() => { const o = window.__oreum, g = o.quest.givers.get('shop:satis'); return g && { vis: g.root.visible, shop: g.def.shop, d: +Math.hypot(g.pos.x - o.manjok.api.terrace.x, g.pos.z - o.manjok.api.terrace.z).toFixed(1) }; });
+  ok(ow && ow.vis && ow.shop === 'manjok' && ow.d < 7, `만족한상회 주인이 가게 앞에 (${JSON.stringify(ow)})`);
+  const mq = await E(() => { const o = window.__oreum, Q = o.quest.api; const sq = o.save.quest; sq.done = (sq.done || []).filter((x) => x !== 'm-eat'); if (!Q.accept('m-eat')) sq.side['m-eat'] = { base: { satisMeal: sq.c?.satisMeal | 0 }, r: 0 }; /* 가게 퀘스트 문(shopQuests)이 아직이면 바로 받은 것으로 */ o.manjok.order('galchigui'); o.stone.finish(); const pr = Q.prog('m-eat'), rd = Q.ready('m-eat'); const r = o.quest.done('m-eat'); return { pr, rd, cp: o.save.quest.cp?.satis | 0, r: !!r }; });
+  ok(mq.pr === 1 && mq.rd && mq.r && mq.cp === 1, `만족한상회 식사가 퀘스트로 셈, 보상 할인권 (${JSON.stringify(mq)})`);
+  const cpu = await E(() => { const o = window.__oreum, c0 = o.save.coins; o.manjok.order('godeungeo'); const c1 = o.save.coins; o.stone.finish(); return { paid: c0 - c1, cp: o.save.quest.cp?.satis | 0 }; });
+  ok(cpu.paid === 0 && cpu.cp === 0, `할인권으로 고등어구이 한 번 (${JSON.stringify(cpu)})`);
+  ok(await E(() => { const o = window.__oreum, c0 = o.save.coins; o.manjok.order('godeungeo'); const d = c0 - o.save.coins; o.stone.finish(); return d === 150; }), '할인권을 쓴 뒤엔 값을 냄');
+  ok(await E(() => { const o = window.__oreum, so = o.social, f = so?.showBubble, said = []; if (!so) return false; so.showBubble = (k, r, t, y) => { said.push([k, t]); return f(k, r, t, y); }; o.manjok.order('galchigui'); o.stone.finish(); so.showBubble = f; return said.some(([k, t]) => k === 'npc-q-shop:satis' && /만족|뼈|쓰레기/.test(t)); }), '식사 뒤 사장님 말풍선');
   // 가게 겉모습
   await E(() => { const o = window.__oreum, m = o.manjok.api; o.player.pos.set(m.terrace.x, o.groundAt(m.terrace.x, m.terrace.z), m.terrace.z); o.player.heading = Math.atan2(m.center.x - m.terrace.x, m.center.z - m.terrace.z) + Math.PI; o.snap(); }); await W(800);
   await shot('4-shop');

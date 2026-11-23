@@ -5,6 +5,7 @@
 // - 쓰레기: 더미 남은 수는 방이 주인. trash 저장소의 takeOne·putBack·seen 을 방으로 이어 줌
 import { NET } from './balance.js';
 import { HEAP_SIG } from './trash.js';
+import { bootShow } from './bootbar.js';
 
 const BASE = __DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1';
 const SK = BASE + '.sess';
@@ -52,6 +53,13 @@ export function loadSave(key) {
 }
 export const stampGuest = (s) => { if (!sess) s.lastSeen = Date.now(); }; // 저장할 때마다 마지막 접속 갱신
 
+/* 첫 화면 계정 칸 (#281): 메일은 로그인할 때 구글 ID 토큰에서 읽어 '앞 3글자***@도메인' 으로만 이 기기 세션에 둔다 (원래 주소는 남기지 않음, 서버도 모름) */
+export const maskMail = (m) => { const s = String(m || ''), i = s.lastIndexOf('@'); return i < 1 || i === s.length - 1 ? '' : s.slice(0, Math.min(3, i)) + '***' + s.slice(i); };
+const mailOf = (cred) => {
+  if (typeof cred !== 'string') return '';
+  if (cred.startsWith('fake:')) return maskMail(cred.slice(5) + '@test.local'); /* 로컬 검사용 가짜 계정 */
+  try { const p = cred.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const j = JSON.parse(decodeURIComponent(escape(atob(p + '==='.slice((p.length + 3) % 4))))); return maskMail(j.email); } catch (e) { return ''; }
+};
 const subOf = (token) => { try { const p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(atob(p + '==='.slice((p.length + 3) % 4))).s; } catch (e) { return null; } };
 async function api(path, { method = 'GET', body, keepalive = false, token = sess?.t } = {}) {
   const r = await fetch(SRV + path, { method, keepalive, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
@@ -142,19 +150,26 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
   async function login(credential, { localSave, hasProgress, ask }) {
     const r = await api('/auth/google', { method: 'POST', body: { credential }, token: null });
     const sub = subOf(r.token);
-    const s = { t: r.token, exp: r.exp, srv: SRV, sub };
+    const s = { t: r.token, exp: r.exp, srv: SRV, sub, m: mailOf(credential) };
     let migrate = false;
     if (!r.hasSave && hasProgress) migrate = await ask(); // 처음 로그인한 계정이면 기기 기록을 옮길지 한 번 묻기
     if (migrate) await api('/save', { method: 'PUT', body: { save: strip(localSave), migrate: true }, token: r.token });
     const me = await api('/me', { token: r.token });
     sess = s; ls.set(SK, JSON.stringify(s));
     writeCache(me.save || { nick: localSave.nick }, me.rev, sub);
-    location.reload();
+    bootShow('계정 기록 불러오는 중'); location.reload();
   }
-  function logout() {
-    flush();
+  /* 로그아웃 (#281): 남은 저장을 서버에 먼저 보내고(3초까지), 서버 토큰을 버리고(POST /logout), 이 기기의 토큰·계정 사본을 지운 뒤 손님으로 다시 열기.
+     서버에 다 보냈는지 모르면 계정 사본은 남김(계정 번호가 붙어 있어 손님 저장과 섞이지 않고, 같은 계정으로 다시 로그인하면 이어짐) */
+  async function logout() {
+    if (!sess) return;
+    bootShow('로그아웃하는 중');
+    clearTimeout(timer); timer = 0;
+    let synced = false;
+    try { await Promise.race([push(), new Promise((r) => setTimeout(r, 3000))]); synced = !busy && lastBody === JSON.stringify(strip(getSave())); } catch (e) { synced = false; }
     const t = sess?.t; if (t) fetch(SRV + '/logout', { method: 'POST', keepalive: true, headers: { authorization: 'Bearer ' + t } }).catch(() => {}); // 이 토큰은 서버에서도 버림 (#84)
-    sess = null; ls.del(SK); location.reload();
+    sess = null; ls.del(SK); if (synced) ls.del(ACCT_KEY);
+    location.reload();
   }
   async function deleteMe() {
     if (!sess) return false;
@@ -176,7 +191,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
   const rank = (range, srv) => api(`/rank?range=${encodeURIComponent(range)}&srv=${encodeURIComponent(srv)}`);
   const rankMe = (srv) => api(`/rank/me?srv=${encodeURIComponent(srv)}`);
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
+  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get mail() { return sess?.m || ''; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
 }
 
 /* ---------- 로그인 화면 ---------- */
@@ -194,12 +209,36 @@ function askMigrate() {
     document.body.append(d);
   });
 }
-// box: 첫 화면 안 자리, enterBtn: '시작' 버튼
-export function mountLogin({ box, enterBtn, account, localSave, hasProgress, toast }) {
+// 로그아웃 묻기 (#281) → Promise<boolean>. 이 기기 저장이 어떻게 되는지 한 줄
+export function askLogout() {
+  return new Promise((done) => {
+    const d = document.createElement('div'); d.className = 'overlay acct-ask'; d.id = 'acct-ask-out'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', '로그아웃');
+    d.innerHTML = '<div class="panel"><p><b>로그아웃할까요?</b><br><span class="acct-ask-sub">계정 기록은 서버에 남아요. 이 기기는 손님으로 돌아가요</span></p><div class="row"><button type="button" class="btn" data-v="0">그대로 두기</button><button type="button" class="btn primary" data-v="1">로그아웃</button></div></div>';
+    d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b && e.target !== d) return; d.remove(); done(!!b && b.dataset.v === '1'); });
+    document.body.append(d);
+    d.querySelector('[data-v="0"]').focus();
+  });
+}
+// 계정 칸 (#281): 프로필 동그라미(이름 첫 글자, 사진은 쓰지 않음)·이름·'구글 계정으로 로그인됨'(가린 메일) + 로그아웃. 첫 화면과 설정 창이 같이 씀
+export function acctCard({ nick, mail, onLogout }) {
+  const c = document.createElement('div'); c.className = 'acct-card';
+  const n = String(nick || '').trim(), first = Array.from(n)[0] || '?';
+  const av = document.createElement('span'); av.className = 'acct-av'; av.setAttribute('aria-hidden', 'true'); av.textContent = first.toUpperCase();
+  const meta = document.createElement('span'); meta.className = 'acct-meta';
+  const b = document.createElement('b'); b.className = 'acct-nick'; b.textContent = n || '이름 없음';
+  const sm = document.createElement('small'); sm.className = 'acct-mail'; sm.textContent = '구글 계정으로 로그인됨' + (mail ? ' · ' + mail : '');
+  meta.append(b, sm);
+  const out = document.createElement('button'); out.type = 'button'; out.className = 'btn small acct-logout'; out.textContent = '로그아웃';
+  out.addEventListener('click', (e) => { e.stopPropagation(); onLogout?.(); });
+  c.append(av, meta, out);
+  return c;
+}
+// box: 첫 화면 안 자리, enterBtn: '시작' 버튼, onLogout: 로그아웃 단추(묻기는 부른 쪽이)
+export function mountLogin({ box, enterBtn, account, localSave, hasProgress, toast, onLogout }) {
   if (!ONLINE || !box) return;
   box.hidden = false;
-  const note = '<p class="acct-beta">7일 안에 다시 오지 않으면 기록이 사라져요.</p>';
-  if (account.loggedIn) { box.innerHTML = note + '<p class="acct-who">구글 계정으로 저장 중</p>'; return; }
+  if (account.loggedIn) { box.textContent = ''; box.append(acctCard({ nick: localSave.nick, mail: account.mail, onLogout })); return; }
+  const note = '<p class="acct-beta">손님으로 하는 중 · 로그인하면 기록이 남아요</p>';
   box.innerHTML = note + (NET.googleClientId ? '<div class="acct-gis" id="acct-gis"><div class="btn gbtn" aria-hidden="true"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span class="gtxt">Google 계정으로 로그인</span></div><div class="gov" id="acct-gov"></div></div>' : '');
   enterBtn.textContent = '손님으로 하기';
   enterBtn.classList.add('guest-go');

@@ -882,9 +882,9 @@ async function startServers() {
     { // 인라인 스크립트 (#97·#118): 원스토어 SDK 로더 한 줄과 인앱 브라우저 안내(src/inapp.js) 둘뿐이고, 둘 다 CSP 해시가 있어야 함
       const inl = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
       const hashOk = inl.every((c) => html.includes(`'sha256-${crypto.createHash('sha256').update(c, 'utf8').digest('base64')}'`));
-      const inapp = fs.readFileSync(path.join(__dirname, '..', 'src', 'inapp.js'), 'utf8').trim();
+      const inapp = fs.readFileSync(path.join(__dirname, '..', 'src', 'bootscreen.js'), 'utf8').trim() + '\n' + fs.readFileSync(path.join(__dirname, '..', 'src', 'inapp.js'), 'utf8').trim(); /* 로딩 창(#281)이 인앱 안내 앞에 붙음 (build.mjs) */
       const sdk = inl.filter((c) => /^import\{createSDK\}from"https:\/\/h5sdk\.onestore\.net\//.test(c)).length, app = inl.filter((c) => c === inapp).length;
-      ok(inl.length === 2 && sdk === 1 && app === 1 && hashOk, `인라인 스크립트는 원스토어 SDK 로더·인앱 안내 둘뿐, 둘 다 CSP 해시로만 허용 (#97·#118) (${inl.length}개, 해시 ${hashOk})`);
+      ok(inl.length === 2 && sdk === 1 && app === 1 && hashOk, `인라인 스크립트는 원스토어 SDK 로더·로딩 창+인앱 안내 둘뿐, 둘 다 CSP 해시로만 허용 (#97·#118·#281) (${inl.length}개, 해시 ${hashOk})`);
     }
     ok(!/ghp_[A-Za-z0-9]{20}|github_pat_|sk-[A-Za-z0-9]{20}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE|@gmail\.com|SESSION_SECRET\s*[:=]\s*['"]/.test(html), '빌드 결과에 비밀 값 없음');
   } finally {

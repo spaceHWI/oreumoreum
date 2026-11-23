@@ -4,7 +4,7 @@
 // - 옷 하나 = 그리기 한 번 (runner bake 가 조각을 정점 색으로 합침). 면 수는 기존 옷과 비슷하게 (조각 몇 개)
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { CLOTH_BUILD, KIND_COVER, KIND_HAT, COVER, HAT_CLIP, HC, TORSO, HIPS, ARM, LEG, legR, prof, frontZ, shell, tube, dark, tee, pants, vest, jacket, socks } from './clothes.js';
+import { CLOTH_BUILD, KIND_COVER, KIND_HAT, COVER, HAT_CLIP, HC, TORSO, HIPS, ARM, LEG, legR, prof, pw, frontZ, shell, tube, dark, tee, pants, vest, jacket, socks } from './clothes.js';
 
 const mesh = (g, m) => new THREE.Mesh(g, m);
 const both = (f) => [f(1), f(-1)];
@@ -164,6 +164,31 @@ function basket(mat, L) { // 등에 멘 귤 바구니: 등 뒤 대나무 바구�
   return G(out);
 }
 
+/* ---------- NPC 전용 (#279 만족한상회 사장, gear.js 가 'vest:npc-apron'·'hat:npc-kerchief' 로 붙임. 가게에서 팔지 않음) ---------- */
+function frontArc(T, y0, y1, pad, half, rows = 3, n = 6) { /* 몸 앞쪽만 감싸는 휜 판 (가운데 = 앞, 좌우 half 라디안) */
+  const pos = [], idx = [];
+  for (let r = 0; r <= rows; r++) { const y = y0 + (y1 - y0) * r / rows, [, hw, zf] = prof(T, y); for (let c = 0; c <= n; c++) { const th = Math.PI / 2 - half + 2 * half * c / n; pos.push((hw + pad) * pw(Math.cos(th)), y, (zf + pad) * pw(Math.sin(th))); } }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < n; c++) { const a = r * (n + 1) + c, b = a + n + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+function apron(mat, L) { /* 앞치마: 가슴 받이 + 허리 아래 치마 자락 + 허리끈·목끈 */
+  const M = side2(mat('main', L.main)), A = mat('acc', L.acc), out = [];
+  out.push(mesh(frontArc(TORSO, 0.43, 0.555, 0.03, 0.62), M));
+  out.push(mesh(frontArc(HIPS, 0.2, 0.43, 0.06, 1.05, 4), M));
+  out.push(band(A, 0.425, 0.447, 0.034));
+  both((s) => out.push(at(new THREE.BoxGeometry(0.022, 0.08, 0.012), A, s * 0.085, 0.585, frontZ(0.56, 0.02))));
+  out.push(at(new RoundedBoxGeometry(0.09, 0.06, 0.014, 2, 0.008), A, 0.06, 0.33, prof(HIPS, 0.33)[2] + 0.07));
+  return G(out);
+}
+HATS.kerchief = (mat, L) => { /* 머릿수건: 머리를 덮는 천 + 뒤 매듭과 자락 */
+  const M = mat('main', L.main), A = mat('acc', L.acc);
+  const d = at(new THREE.SphereGeometry(0.268, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2), M, 0, HC.y - 0.02, HC.z); d.scale.set(1, 0.9, 1.06);
+  const kz = HC.z - 0.27, k = at(new THREE.SphereGeometry(0.04, 8, 6), M, 0, HC.y + 0.04, kz);
+  const t1 = at(new THREE.BoxGeometry(0.05, 0.11, 0.012), M, 0.03, HC.y - 0.03, kz - 0.005); t1.rotation.z = -0.3;
+  const t2 = at(new THREE.BoxGeometry(0.05, 0.1, 0.012), M, -0.03, HC.y - 0.03, kz - 0.005); t2.rotation.z = 0.35;
+  return G(d, headband(A, HC.y + 0.0, 0.272, 0.028), k, t1, t2);
+};
+
 /* ---------- 양말 칸 ---------- */
 function socks2(mat, L) {
   const g = socks(mat, L);
@@ -181,6 +206,6 @@ function oddsocks(mat, L) { // 짝짝이 양말: 왼쪽 main, 오른쪽 acc, 목
 }
 
 Object.assign(CLOTH_BUILD, {
-  ...HATS, tee2, tank, mombbe, boxarmor, basket, oddsocks,
+  ...HATS, tee2, tank, mombbe, boxarmor, basket, oddsocks, apron,
   long: pants2, shorts: pants2, vest: vest2, jacket: jacket2, socks: socks2,
 });

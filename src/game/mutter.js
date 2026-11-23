@@ -38,7 +38,7 @@ const pp = () => player.pos;
 const dist = (x, z) => Math.hypot(x - pp().x, z - pp().z);
 const zoneNow = () => (trash ? trash.zoneAt(pp().x, pp().z) || 0 : 0);
 const todayStr = () => new Date().toDateString();
-const hasSatis = shopsBuilt.some((sh) => sh.id === 'satis');
+const hasSatis = shopsBuilt.some((sh) => sh.id === 'manjok'); /* #279 만족한상회 가게 id */
 
 // 큰 더미(xl·쓰레기 산) 근처
 function nearBig() { if (!trash) return false; for (const h of trash.heaps) if ((h.k === 'xl' || h.k === 'mt') && h.st >= 0 && dist(h.x, h.z) < M.near.heap + (h.r || 0)) return true; return false; }

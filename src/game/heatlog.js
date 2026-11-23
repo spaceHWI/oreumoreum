@@ -27,10 +27,10 @@ late.heatLog = (ms) => {
   const now = performance.now(), dt = (now - acc.t) / 1000;
   if (dt < 1) return;
   const f = late.fps?.state?.() || {};
-  last = { s: Math.round((now - t0) / 1000), fps: +(acc.n / dt).toFixed(1), ms: +(acc.ms / acc.n).toFixed(2), calls: Math.round(acc.calls / acc.n), tris: Math.round(acc.tris / acc.n), pr: +quality.pr.toFixed(2), lv: quality.level, heat: quality.heat, cap: f.cap, mode: f.mode, bat: batPct() };
+  last = { s: Math.round((now - t0) / 1000), fps: +(acc.n / dt).toFixed(1), ms: +(acc.ms / acc.n).toFixed(2), calls: Math.round(acc.calls / acc.n), tris: Math.round(acc.tris / acc.n), pr: +quality.pr.toFixed(2), lv: quality.level, heat: quality.heat, cap: f.cap, mode: f.mode, bat: batPct(), skip: f.skipped, re: f.forced };
   acc = { n: 0, ms: 0, calls: 0, tris: 0, t: now };
   if (!rows.length || last.s - rows[rows.length - 1].s >= L.every) rows.push(last);
-  if (!fold) nowEl.textContent = `${last.fps}fps (상한 ${last.cap} ${last.mode}) · 셈 ${last.ms}ms\n그리기 ${last.calls} · 삼각형 ${(last.tris / 1000).toFixed(0)}k · 배율 ${last.pr}\n단계 ${last.lv} 발열 ${last.heat} · 배터리 ${last.bat ?? '?'}% · ${Math.floor(last.s / 60)}분 ${last.s % 60}초`;
+  if (!fold) nowEl.textContent = `${last.fps}fps (상한 ${last.cap} ${last.mode}) · 셈 ${last.ms}ms\n그리기 ${last.calls} · 삼각형 ${(last.tris / 1000).toFixed(0)}k · 배율 ${last.pr}\n단계 ${last.lv} 발열 ${last.heat} · 배터리 ${last.bat ?? '?'}% · ${Math.floor(last.s / 60)}분 ${last.s % 60}초\n건너뜀 ${last.skip ?? '?'} · 캔버스 다시 잡음 ${last.re ?? '?'}`; /* #280 */
   if (!done && last.s >= L.total) summary();
 };
 
@@ -45,7 +45,7 @@ function summary() {
     `프레임 셈: 처음 ${L.base / 60}분 ${ms0.toFixed(2)}ms → 끝 ${ms1.toFixed(2)}ms (${ms0 ? ((ms1 / ms0 - 1) * 100).toFixed(0) : '?'}%)`,
     `fps: ${f0.toFixed(1)} → ${f1.toFixed(1)}`, `배터리: ${b0 ?? '?'}% → ${b1 ?? '?'}%${b0 != null && b1 != null ? ` (−${b0 - b1})` : ''}`,
     `내려간 때: ${drops.join(', ') || '없음'}`, `발열 기록: ${JSON.stringify(late.fps?.state?.().log || [])}`,
-    '— 10초마다 —', ...rows.map((r) => `${r.s}s ${r.fps}fps ${r.ms}ms c${r.calls} t${Math.round(r.tris / 1000)}k pr${r.pr} L${r.lv}h${r.heat} ${r.mode} b${r.bat ?? '-'}`)].join('\n');
+    '— 10초마다 —', ...rows.map((r) => `${r.s}s ${r.fps}fps ${r.ms}ms c${r.calls} t${Math.round(r.tris / 1000)}k pr${r.pr} L${r.lv}h${r.heat} ${r.mode} b${r.bat ?? '-'} s${r.skip ?? '-'} r${r.re ?? '-'}`)].join('\n');
   sumEl.textContent = txt; sumEl.hidden = false; cBtn.hidden = false; cBtn.onclick = () => { navigator.clipboard?.writeText(txt).then(() => { cBtn.textContent = '복사됨'; }).catch(() => { const r = document.createRange(); r.selectNodeContents(sumEl); getSelection().removeAllRanges(); getSelection().addRange(r); }); };
 }
 box.querySelector('.s').addEventListener('click', (e) => { e.stopPropagation(); summary(); });
