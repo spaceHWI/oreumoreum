@@ -121,6 +121,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | ufo.js | 첫 화면 UFO(#150): 시작 전 카메라 앞 하늘로 비행접시가 로고 윗선을 스치며 지나감(수치 balance.js `UFO`, 소리 `sound.ufo()`). 시작하면 없앰. `late.tickUfo`(update.js 카메라 뒤), `__oreum.ufo()`·`ufoInfo()` |
 | ufoseen.js | UFO 드러남 단계(#207): 끝낸 구역 수 → 단계 0~3(`balance.js UFO.reveal`). 하늘에 스치는 것 far(단계 0 밤 먼 불빛)·ridge(1·2 능선 너머 실루엣·먼 빛기둥)·close(2 한 번 머리 위·그림자)·clear(3 처음 또렷이 한 번), 아침의 흔적(0·1 풀이 둥글게 눌린 자리 → 혼잣말 `late.mutterEv('oddTrash')`). 저장 `save.ufo`. 단계 셈을 `src/ufoveil.js` 에 걸어 둠. dev `__oreum.ufoSeen` |
 | update.js | 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기. 게임 루프는 문장마다 한 줄(#193). `state.ticks` = 주요 갱신이 불린 셈(`__oreum.ticks`, `tools/smoke.js` 가 봄), `watchLoop` = 셈이 3초 멈춤·튜토리얼 30초 미시작을 오류 알림으로 |
+| fps.js | 폰 발열 줄이기(#271): 프레임 상한(`due(now)` 를 update.js frame 이 rAF 마다 물음. 설정 `save.fps` eco 30·smooth 60, 고른 적 없으면 폰 eco·PC smooth), 싸움 `PERF.fps.fight`·창이 덮으면 cover 15·6초 입력 없으면 idle 20 (튜토리얼·state.cine·사진·따라가기 아닌 카메라·움직이는 중은 쉬는 상태 아님). 게임 셈 dt 상한 `maxDt()`. 그림자 지도 `shadowMap.autoUpdate=false` + `PERF.shadowUp` 프레임마다 needsUpdate. 발열 지킴 `quality.heat` 0~3(이어 논 10·20분·셈 시간 추세, 5분 쉬면 0, 자동 단계만, 적용은 scene.js applyQuality). 배터리 낮으면 시작 뒤 한 칸 내림. `?heat=1` 이면 heatlog.js(재기 창). 확인 `__oreum.fps`, 재기 `tools/perfrun.js` |
 | where.js | 지금 있는 곳 이름(#153): `placeAt(x, z)` 가게 앞·가게 거리·클린하우스·돌탑·정상 전망대·개울가·정낭·구역 문턱('능선 들머리')·구역 이름. 반경은 `balance.js PLACE`. update.js 가 0.3초마다 위쪽 칸(`#where`)에 씀, 확인 `__oreum.where` |
 | debug.js | 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, `window.__oreum` |
 
