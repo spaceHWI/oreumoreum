@@ -78,7 +78,7 @@ function takeNow() {
 }
 /* #261: 로그인하지 않은 손님이 처음 RANK.guestNudge 개를 치우면 한 번 */
 function guestNudge() {
-  const a = state.account; if (!a || a.loggedIn || save.rankNudge || trash.totalCount() < RANK.guestNudge) return;
+  const a = state.account; if (!a || a.loggedIn || save.rankNudge || trash.store.totalCount() < RANK.guestNudge) return;
   save.rankNudge = 1; persist(); toast('로그인하면 순위에 올라가요', 3.5);
 }
 export function tickPick(dt) {

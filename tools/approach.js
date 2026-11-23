@@ -43,7 +43,7 @@ const { chromium } = require('playwright');
   await setup([[40, 0]]); await waitG(0.3); await tap(); await waitG(0.5); await p.evaluate(() => window.__oreum.trash?.press()); await waitG(0.2); const s4 = await st();
   out['줍기 누르면 풀림'] = { ...s4, ok: !s4.on };
   // 6) 손으로 못 잡는 외계인뿐이면 켜지지 않고 '무기가 필요해요'
-  await setup([[40, 0, 'alien']]); await waitG(0.3); await tap(); await waitG(0.3); const s6 = await st(); const t6 = await p.evaluate(() => document.getElementById('toast').textContent);
+  await setup([[40, 0, 'alien']]); await waitG(0.3); await tap(); await waitG(0.3); const s6 = await st(); const t6 = await p.evaluate(() => window.__oreum.msglog.state().lines.map((l) => l.text).join(' / ')); /* #252 뒤로 토스트는 #toast 가 아니라 메시지 줄 (#274 에서 고침) */
   out['외계인뿐(손)'] = { ...s6, toast: t6, ok: !s6.on && /무기가 필요/.test(t6) };
   // 7) 외계인과 아기 멧돼지가 같이 있으면 멧돼지부터
   await setup([[30, 0, 'alien'], [38, 6]]); await waitG(0.3); await tap(); await waitG(0.2); const s7 = await st();

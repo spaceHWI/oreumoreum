@@ -21,6 +21,8 @@ import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHold
 import { augV } from '../augments.js';
 import { slotUp } from '../gearscore.js';
 import { heatNew, heatStep, heatCanFire, heatMul } from '../laserheat.js';
+import { hasMag, magMul, magLine } from '../reload.js';
+import { reloadCan, reloadUse, reloading, tickReload, magOf } from './reload.js'; /* 탄창·재장전 (#274) */
 
 Object.assign(Sound.prototype, weaponSounds); // gun·mg·laser·lob·boom
 const sfx = () => late.sound;
@@ -70,10 +72,10 @@ function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } 
   if (t) { const p = aimPoint(t, from, w.speed), T = from.distanceTo(p) / w.speed; v = p.sub(from).divideScalar(T); v.y += 0.5 * w.grav * T; }
   else v = fwd().multiplyScalar(w.speed).setY(w.grav * 0.1);
   if (spread) { v.applyAxisAngle(THREE.Object3D.DEFAULT_UP, (Math.random() - 0.5) * 2 * spread); v.y += (Math.random() - 0.5) * spread * w.speed; }
-  const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1);
+  const dmg = (w.dps ? w.dmg / w.rate : w.dmg) * buff.mul('dmg') * weaponMul(save) * (ch?.mul || 1) * magMul(w); /* 탄창 보정 (#274): 재장전으로 잃는 시간만큼 한 발을 조금 세게 */
   const s = armFx.shoot(from, v, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size, pierce: w.pierce || 0 }); // 유도 (#148), 관통 (#255 징표 무기)
   if (twinRoll()) { const v2 = v.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, TWIN_YAW * 0.5), f2 = from.clone(); setTimeout(() => armFx.shoot(f2, v2, { dmg, grav: w.grav, life: w.range * (ch?.rng || 1) / w.speed + 0.15, peersFn: peers, quiet: !!w.dps, home: t, ch: ch?.k, size: ch?.size }), TWIN_MS * 0.5); } /* 쌍귤 (#159): 탄은 더 쓰지 않음 */
-  if (!ch) save.ammo[w.id] -= 1; A.kick = 1; persist();
+  if (!ch) save.ammo[w.id] -= 1; reloadUse(w); A.kick = 1; persist();
   if (w.id === 'gun') sfx()?.gun?.(); else sfx()?.mg?.();
   late.onShot?.(w.id, from); // 들판 증강 덤 귤 (#194, swarm.js)
   const tp = t ? aimPoint(t, from, 0) : from.clone().addScaledVector(v.clone().normalize(), w.range);
@@ -85,8 +87,8 @@ function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } 
 function fireArm() {
   const w = weaponNow();
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
-  if (w.id === 'gun') { if (A.cd > 0) return; if (!useAmmo(w)) return; shot(w); A.cd = w.cd; }
-  else if (w.id === 'mg') { if (A.cd > 0) return; if (!useAmmo(w)) return; shot(w, w.spread); A.cd = 1 / w.rate; A.held = true; }
+  if (w.id === 'gun') { if (A.cd > 0 || !reloadCan(w)) return; if (!useAmmo(w)) return; shot(w); A.cd = w.cd; }
+  else if (w.id === 'mg') { if (A.cd > 0 || !reloadCan(w)) return; if (!useAmmo(w)) return; shot(w, w.spread); A.cd = 1 / w.rate; A.held = true; }
   else if (w.id === 'laser') { if (!heatCanFire(HT)) return; /* 과열: 식을 때까지 못 쏨 (고리가 보여 줌) */ if (!A.lasing && ((save.ammo.laser || 0) > 0 || save.coins > 0)) { A.lasing = true; A.held = true; A.burstT = 0.15; A.tick = 0; A.seq++; } }
   else if (w.id === 'bomb') {
     if (A.bombCd > 0) { toast('폭탄을 다시 쥐는 중이에요'); return; }
@@ -185,8 +187,8 @@ function stopLaser() {
 // ---------- 모아 쏘기 (#129): game/charge.js 가 놓을 때 부름. ch = { k, mul, size, rng, units } ----------
 // 총: 큰 한 발(cd 무시). 머신건: 짧은 집중 연사(한 발마다 탄 × cost 배). 레이저: 굵은 줄기 t 초. 폭탄: 큰 폭탄(던지기 동작)
 export function chargedArm(w, ch) {
-  if (w.id === 'gun') { shot(w, 0, ch); A.cd = w.cd; sfx()?.chargeShot?.(ch.k); }
-  else if (w.id === 'mg') { const n = Math.max(2, Math.round(CHARGE.mg.n * ch.k)); A.mgB = { n, left: n, T: 0, ch }; sfx()?.chargeShot?.(ch.k); }
+  if (w.id === 'gun') { if (!reloadCan(w)) return; shot(w, 0, ch); A.cd = w.cd; sfx()?.chargeShot?.(ch.k); } /* 재장전 중엔 모아 쏜 한 발도 못 쏨 (#274) */
+  else if (w.id === 'mg') { if (!reloadCan(w)) return; const n = Math.max(2, Math.round(CHARGE.mg.n * ch.k)); A.mgB = { n, left: n, T: 0, ch }; sfx()?.chargeShot?.(ch.k); }
   else if (w.id === 'laser') {
     if (!heatCanFire(HT)) return; /* 과열 중에는 모아 쏜 줄기도 못 쏨 (#200) */
     A.thick = { t: Math.max(0.25, CHARGE.laser.t * ch.k), k: ch.k, mul: ch.mul };
@@ -205,6 +207,7 @@ function tickMgBurst(dt, w, ok) {
   if (!ok || w.id !== 'mg' || player.knock) { A.mgB = null; return; }
   B.T -= dt;
   while (B.T <= 0 && B.left > 0) {
+    if (!reloadCan(w)) { B.left = 0; break; } /* 탄창이 비면 연사도 끊김 (#274) */
     if (!spend(w, 1 + (CHARGE.cost - 1) * B.ch.k)) { B.left = 0; break; }
     shot(w, CHARGE.mg.spread, B.ch); B.left--; B.T += 1 / CHARGE.mg.rate;
   }
@@ -246,8 +249,9 @@ function tickArms(dt) {
   if (A.lasing) { A.burstT -= dt; if (ok && w.id === 'laser' && (holding() || A.burstT > 0)) tickLaser(dt, w); else stopLaser(); }
   if (A.mgB) tickMgBurst(dt, w, ok);
   tickHeat(dt);
+  tickReload(dt);
   if (A.held && w.id === 'mg') {
-    if (ok && holding() && armedFor(w)) { if (A.cd <= 0 && useAmmo(w)) { shot(w, w.spread); A.cd += 1 / w.rate; } }
+    if (ok && holding() && armedFor(w)) { if (A.cd <= 0 && reloadCan(w) && useAmmo(w)) { shot(w, w.spread); A.cd += 1 / w.rate; } }
     else { A.held = false; endBurst(); }
   } else if (A.held && w.id !== 'laser') A.held = false;
   // 누르고 있으면 쉬지 않고 이어서 (#148): 받혀 끊겼거나 손·활·총·폭탄이어도 다음 발. 폭탄은 다시 쥐면
@@ -255,7 +259,7 @@ function tickArms(dt) {
   const cont = !late.chargeOk?.() || (bowReady() && (w.id === 'mg' || w.id === 'laser'));
   if (cont && !A.mgB && holding() && state.ctxTarget === late.throwAct && !busy() && !player.knock && !A.lasing && !(A.held && w.id === 'mg') && player.pose !== 'throw' && player.pose !== 'bow' && !(w.id === 'bomb' && bowReady() && A.bombCd > 0)) fireWeapon();
   if (player.pose === 'aim') {
-    A.aimT -= dt;
+    A.aimT -= dt; if (reloading(w)) A.aimT = Math.max(A.aimT, 0.12); /* 재장전 동안 겨눈 자세로 갈아 끼우는 손 (#274) */
     if (A.aimT <= 0 || !ok) { player.pose = 'move'; state.throwAim = null; }
   }
   if (A.outT > 0) { A.outT -= dt; if (A.outT <= 0) A.out = null; }
@@ -267,16 +271,18 @@ function tickArms(dt) {
 let ammoKey = '';
 function armsAmmo(el) {
   const w = weaponNow();
-  let k, dots = 0;
-  if (w.id === 'gun') { dots = w.perGyul; k = save.ammo.gun || 0; }
+  let k, dots = 0, num = '';
+  const M = hasMag(w) && magOf(w); /* 탄창 (#274): 총은 점(탄창 수), 머신건류는 막대 + 남은 발. 재장전 중이면 하늘색으로 차오름 */
+  if (M) { const rk = M.t > 0 && M.T ? 1 - M.t / M.T : 0; if (w.mag <= 12) { dots = w.mag; k = M.t > 0 ? Math.floor(rk * w.mag) : M.n; } else { k = M.t > 0 ? rk : M.n / w.mag; num = M.t > 0 ? '' : String(M.n); } }
+  else if (w.id === 'gun') { dots = w.perGyul; k = save.ammo.gun || 0; }
   else if (w.id === 'mg') k = (save.ammo.mg || 0) / w.perGyul;
   else if (w.id === 'laser') k = save.ammo.laser || 0;
   else k = 1 - A.bombCd / w.cd;
-  const empty = !armedFor(w), key = `${w.id}|${dots ? k : Math.round(k * 40)}|${empty}`;
+  const empty = !armedFor(w), load = !!M && M.t > 0, key = `${w.id}|${dots ? k : Math.round(k * 40)}|${empty}|${num}|${load}|${dots}`;
   if (key === ammoKey && !A.flash && !el.hidden) return; ammoKey = key; // 활로 바꿨다 오면 감춰져 있음 (#178)
-  el.hidden = false; el.className = 'ammo' + (dots ? '' : ' bar') + (empty ? ' empty' : '');
+  el.hidden = false; el.className = 'ammo' + (dots ? '' : ' bar') + (empty ? ' empty' : '') + (load ? ' load' : '');
   if (dots) { if (el.childElementCount !== dots || el.firstElementChild?.tagName !== 'B' || el.dataset.w !== w.id) el.innerHTML = '<b></b>'.repeat(dots); [...el.children].forEach((b, i) => b.classList.toggle('on', i < k)); }
-  else { if (el.dataset.w !== w.id || el.childElementCount !== 1) el.innerHTML = '<b></b>'; el.style.setProperty('--k', String(Math.max(0, Math.min(1, k)))); }
+  else { if (el.dataset.w !== w.id || el.childElementCount !== 2) el.innerHTML = '<b></b><em></em>'; el.style.setProperty('--k', String(Math.max(0, Math.min(1, k)))); el.lastElementChild.textContent = num; }
   el.dataset.w = w.id;
   if (A.flash) { A.flash = 0; el.classList.remove('use'); void el.offsetWidth; el.classList.add('use'); }
 }
@@ -327,7 +333,7 @@ function visShot(e, kind, to) {
 
 // ---------- 무기 고르기: 예전 창(#armwin)은 내 가방(#166, bag.js) 무기 탭으로 합침. 던지기 버튼 옆 ▾ 가 그 탭을 엶 ----------
 const armMore = $('arm-more');
-export const armSub = (w) => w.id === 'hand' ? '귤 던지기 · 무료' : w.dps ? `초당 ${w.dmg} · ${w.range}m` : w.r ? `${w.dmg} · 반경 ${w.r}m` : `${w.dmg} · ${w.range}m`;
+export const armSub = (w) => (w.id === 'hand' ? '귤 던지기 · 무료' : w.dps ? `초당 ${w.dmg} · ${w.range}m` : w.r ? `${w.dmg} · 반경 ${w.r}m` : `${w.dmg} · ${w.range}m`) + (hasMag(w) ? `<br>${magLine(w)}` : ''); /* 탄창 한 줄 (#274) */
 export function openArmWin() { late.openBag?.('arm'); }
 export function chooseArm(tier) {
   if (tier < 1 || tier > save.equip.weapon) return;
@@ -348,6 +354,6 @@ updateArmBtn();
 export function armsChanged() { stopLaser(); A.held = false; A.cd = 0; A.mgB = null; late.chargeCancel?.(); setHoldBow(false); updateArmBtn(); }
 
 export const armsTime = () => A.gt || 0;
-const armReady = () => A.cd <= 0 && !A.mgB && !A.lasing && !(weaponNow().id === 'bomb' && A.bombCd > 0); // 다가가서 쏘기(#132)가 다음 발을 쏴도 되나
+const armReady = () => A.cd <= 0 && !A.mgB && !A.lasing && reloadCan() && !(weaponNow().id === 'bomb' && A.bombCd > 0); // 다가가서 쏘기(#132)가 다음 발을 쏴도 되나
 late.laserHeat = laserHeat; late.laserAuto = laserAuto; 
 Object.assign(late, { armReady, armsTime, fireArm, releaseBomb, tickArms, armsAmmo, openArmWin, armsChanged, armFx, chargedArm });

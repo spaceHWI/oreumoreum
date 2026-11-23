@@ -46,7 +46,7 @@ const SHOP_POP = {
   stone: { head: { logo: STONE_LOGO, name: 'Stone', tag: 'Maximize all the Pleasure', serif: true }, fill: (grid) => buildMealMenu(grid, 'stone'), when: stoneOpen, can: () => !!STN && !mealS.on },
   manjok: { head: { logo: MANJOK_LOGO, name: MANJOK.name, tag: MANJOK.tag }, fill: (grid) => buildMealMenu(grid, 'manjok'), when: stoneOpen, can: () => !!MANJ && !mealS.on && !cutS.on }, // #167
   salon: { head: { logo: salonLogo(), name: '루이네 미장원', wide: true }, fill: (grid) => buildSalonMenu(grid), when: stoneOpen, can: () => !!SAL && !!save.look && !cutS.on && !mealS.on },
-  inn: { head: { logo: INN_LOGO, name: INN.name, tag: INN.tag }, fill: (grid) => late.fillInn?.(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on && !late.innBusy?.() }, // #270 숙소 (game/inn.js 가 채움)
+  inn: { head: { logo: INN_LOGO, name: INN.name, tag: INN.tag, cls: 'inn' }, fill: (grid) => late.fillInn?.(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on && !late.innBusy?.() }, // #270 숙소 (game/inn.js 가 채움)
   ride: { head: { logo: RIDE_LOGO, name: '탈것 가게' }, fill: (grid) => buildRideMenu(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on }, // #69
   leap: { head: { logo: leapLogo(), name: 'LEAP', wide: true, cls: 'leap' }, tabs: (el) => buildLeapTabs(el), fill: (grid) => buildLeapCards(grid), onOpen: () => startLeap(), when: stoneOpen, can: () => !!LEAPB && !cutS.on && !mealS.on },
   // 장비점 (#128): 도구·배낭·무기 (game/shop.js 가 채움). #221 튜토리얼 집게·배낭 단계부터 가게 거리 장비점이 먼저 열림 (shopgate 가 셔터를 올림)
@@ -65,7 +65,7 @@ export function openShopPop(key) {
   const h = P.head, root = $('shoppop');
   $('shoppop-logo').src = h.logo || ''; $('shoppop-logo').alt = h.name; $('shoppop-logo').parentElement.hidden = !h.logo;
   $('shoppop-name').textContent = h.name; $('shoppop-tag').textContent = h.tag || ''; root.classList.toggle('serif', !!h.serif); root.classList.toggle('wide', !!h.wide); root.querySelector('.pop').setAttribute('aria-label', h.name);
-  for (const c of ['leap', 'gearshop', 'dir', 'tok']) root.classList.toggle(c, h.cls === c); /* tok: 징표 좌판 (#255) */
+  for (const c of ['leap', 'gearshop', 'dir', 'tok', 'inn']) root.classList.toggle(c, h.cls === c); /* tok: 징표 좌판 (#255) */
   P.onOpen?.(); refreshShopPop(); root.hidden = false; late.shopOpened?.(key); // 살 수 있는 새 물건 점 지우기 (#128)
 }
 export function refreshShopPop() { const P = SHOP_POP[shopPopNow]; if (!P) return; $('shoppop-coins').textContent = String(save.coins); const tabs = $('shoppop-tabs'); tabs.hidden = !P.tabs; tabs.innerHTML = ''; if (P.tabs) P.tabs(tabs); const grid = $('shoppop-cards'); grid.innerHTML = ''; grid.className = 'menu-grid'; grid.style.removeProperty('--n'); P.fill(grid); }

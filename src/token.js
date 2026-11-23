@@ -50,5 +50,5 @@ export function armDef(id, l, WEAPONS) {
   const a = TOK_ARM[id], L = a?.lv[l - 1]; if (!L) return null;
   const B = WEAPONS.find((w) => w.id === a.base); if (!B) return null;
   const { z, price, ...v } = L;
-  return { ...B, ...v, name: a.name, tok: id, lv: l, price: 0 };
+  return { ...B, ...(a.fix || {}), ...v, name: a.name, tok: id, lv: l, price: 0 }; /* fix: 단계와 상관없이 바꿀 값 (#274 탄창: 연발은 재장전이 조금 짧게, 관통 귤창은 창이라 탄창 없음) */
 }

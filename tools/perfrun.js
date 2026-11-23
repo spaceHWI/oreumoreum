@@ -2,6 +2,7 @@
 // 폰 화면(390×844, 배율 3, 터치)·보통 단계(?tier=1, 흔한 폰)로 dist/test.html 을 열고 장면마다 --sec 초 동안 잰다:
 //   그린 프레임 수, 그리는 수(draw call 평균), 그린 픽셀 수(그리기 버퍼 폭×높이 합), 그림자 지도 다시 그린 수와 그 픽셀(지도 크기²)
 //   '일' = 화면 픽셀 + 그림자 지도 픽셀. 목표 비교는 '일' 로 한다 (그림자 지도도 폰 GPU 가 그리는 픽셀)
+//   안티에일리어싱(MSAA)의 샘플은 '일' 에 넣지 않는다 (#276: 폰도 켬, PERF.aaPhone). 켜졌는지는 줄 끝 'AA' 로 따로 적는다
 // 소프트웨어 GL 은 1초에 10프레임 남짓이라 그대로는 상한(30)이 보이지 않는다. 그래서 Playwright 가짜 시계(page.clock)로
 //   60Hz rAF 를 흉내 내 '기기가 따라가 준다면' 몇 번 그리는지를 센다 (가짜 1초 = rAF 60번. 실제로는 더 오래 걸림)
 // 장면: field 들판을 W 누른 채 걷기(1초마다 방향 바꿈·포인터 움직임) · idle 들판에 서서 입력 없음 · street 가게 거리 걷기 · arena 서바이벌 판(구역 1)
@@ -51,7 +52,7 @@ async function measure(b, dist, scen) {
     await p.clock.runFor(1000);
   }
   if (walk) await p.keyboard.up('KeyW');
-  const r = await p.evaluate((f0) => { const o = window.__oreum, P = window.__pr; return { frames: o.renderer.info.render.frame - f0, px: P.px, spx: P.spx, calls: P.n ? P.calls / P.n : 0, sh: P.sh, pr: o.quality.pr, cap: o.fps?.state?.().cap ?? null, mode: o.fps?.state?.().mode ?? '' }; }, f0);
+  const r = await p.evaluate((f0) => { const o = window.__oreum, P = window.__pr; return { frames: o.renderer.info.render.frame - f0, px: P.px, spx: P.spx, calls: P.n ? P.calls / P.n : 0, sh: P.sh, pr: o.quality.pr, cap: o.fps?.state?.().cap ?? null, mode: o.fps?.state?.().mode ?? '', aa: !!o.renderer.getContext().getContextAttributes()?.antialias }; }, f0);
   r.real = Math.round((Date.now() - t0) / 1000); r.errs = errs.length;
   await p.close(); return r;
 }
@@ -64,7 +65,7 @@ async function measure(b, dist, scen) {
   const res = {};
   for (const scen of SCEN) for (const [tag, dist] of runs) {
     const r = await measure(b, dist, scen); (res[scen] ||= {})[tag] = r;
-    console.log(`${scen} ${tag}: 프레임 ${r.frames} (${(r.frames / SEC).toFixed(1)}/s, 상한 ${r.cap ?? '-'} ${r.mode}) · 그리기 ${r.calls.toFixed(0)} · 픽셀 ${(r.px / SEC / 1e6).toFixed(1)}M/s · 그림자 ${r.sh}번 ${(r.spx / SEC / 1e6).toFixed(1)}M/s · 배율 ${r.pr} · 실제 ${r.real}초${r.errs ? ' · 오류 ' + r.errs : ''}`);
+    console.log(`${scen} ${tag}: 프레임 ${r.frames} (${(r.frames / SEC).toFixed(1)}/s, 상한 ${r.cap ?? '-'} ${r.mode}) · 그리기 ${r.calls.toFixed(0)} · 픽셀 ${(r.px / SEC / 1e6).toFixed(1)}M/s · 그림자 ${r.sh}번 ${(r.spx / SEC / 1e6).toFixed(1)}M/s · 배율 ${r.pr} · AA ${r.aa ? '켬' : '끔'} · 실제 ${r.real}초${r.errs ? ' · 오류 ' + r.errs : ''}`);
   }
   await b.close(); base?.done();
   const rows = []; let bad = 0;

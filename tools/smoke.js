@@ -3,6 +3,7 @@
 // 1) 새 사용자: 들어가기 → 캐릭터 고르기 닫기 → 5초 안에 튜토리얼 첫 단계
 // 2) 게임 루프 셈(__oreum.ticks): 3초 동안 모든 칸이 늘었는지. 루프에 새 시스템을 붙이면 src/game/update.js 의 state.ticks 와 아래 LOOP 에 한 줄 더한다
 // 3) 튜토리얼을 건너뛴 저장: 걷기·줍기 한 번·던지기 한 번·가게 창 열고 닫기·내 가방 열고 닫기
+// 4) 손님(서버 주소 있음, 로그인 안 함) 줍기 한 번: 프레임 오류 없음·순위 안내 (#285)
 // 먼저 node build.mjs (dist/test.html 을 씀)
 const { chromium, devices } = require('playwright');
 const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk', 'cases', 'tube', 'reports'];
@@ -94,6 +95,25 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     const dead2 = LOOP.filter((k) => k !== 'tut' && !(c2[k] > a2[k]));
     ok(!dead2.length, `${tag} 놀고 난 뒤 루프 셈${dead2.length ? ' — 멈춤: ' + dead2.join(',') : ''}`);
     ok(errs === 0, `${tag} 페이지 오류 ${errs}`);
+    // ----- 4) 로그인 안 한 손님의 줍기 (#285): 서버 주소가 있으면 계정이 생기고(닿지 않아도 손님), 줍기 길의 손님 안내(#261)가 돎. 프레임 오류는 pageerror 가 아니라 콘솔로 나옴 -----
+    if (mode === modes[0]) {
+      const ferr = []; p.on('console', (m) => { if (/오름오름 오류/.test(m.text())) ferr.push(m.text().slice(0, 160)); });
+      await E(() => { const o = window.__oreum; delete o.save.rankNudge; o.save.trash = Object.assign(o.save.trash || {}, { total: 20 }); const k = ['oreumoreum.v1', 'oreumoreum.dev'].find((k) => localStorage.getItem(k)) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
+      await ctx.route(/^https?:\/\//, (r) => r.abort());
+      await p.goto(URL.replace('#', '?server=' + encodeURIComponent('http://127.0.0.1:9') + '#')); await ready(); await p.click('#enter').catch(() => {}); await W(2500);
+      const guest = await E(() => { const a = window.__oreum.online?.account?.(); return !!a && !a.loggedIn; });
+      await E(() => { window.__oreum.trash.goHeap(0); }); await W(600);
+      const g0 = await E(() => window.__oreum.trash.state().picked); let gp = false;
+      if (mode === 'm') await p.tap('#btn-pick').catch(() => {}); else await E(() => window.__oreum.trash.press());
+      for (let i = 0; i < 4 && !gp; i++) {
+        if (mode !== 'm') await p.keyboard.down('e');
+        gp = await until((n) => window.__oreum.trash.state().picked > n, 6000, g0);
+        if (mode !== 'm') await p.keyboard.up('e');
+        if (!gp && mode === 'm') await p.tap('#btn-pick').catch(() => {});
+      }
+      await W(400);
+      ok(guest && gp && !ferr.length && await E(() => window.__oreum.save.rankNudge === 1), `${tag} 손님 줍기에 오류 없고 순위 안내 한 번 (손님 ${guest}, 주움 ${gp}${ferr.length ? ' — ' + ferr[0] : ''})`);
+    }
     await ctx.close();
   }
   console.log(`${fails ? 'FAIL ' + fails : 'ALL OK'} (${((Date.now() - t0) / 1000).toFixed(0)}초)`);
