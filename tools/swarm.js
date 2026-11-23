@@ -1,4 +1,4 @@
-// 들판 떼 자동 판 (#173): node tools/swarm.js [zone...] [--sec 300] [--speed 3] [--still]
+// 들판 떼 자동 판 (#173): node tools/swarm.js [zone...] [--sec 300] [--speed 3] [--still] [--inn] (--inn: 숙소 개운함 버프를 켠 채, #270)
 // dist/test.html 남송이 전투 오름에서 구역마다 권장 장비(칸 10개가 구역 번호 단계)로 들판에 서서 __oreum.swarm.start(구역) → 직접 던지며 버팀 (#194 자동 던지기 없음)
 // 던지기: 구역 1~3(손·활·총)은 게임 시간 --tap 초마다 한 번 누름(기본 1초), 4·5(머신건·레이저)는 F 를 누른 채. --lv N: 레벨 N 에서 시작(경험치를 그 레벨 처음으로)
 // 터 밖으로 밀리면 가운데 쪽으로 달리며 뛰어넘음. --fast: 그리지 않음(셈만, 빠름). --runs N: 구역마다 N 판 (버틴 비율), --down N: 장비를 구역보다 N 단계 낮게 (#254). 기본 상한 --cap 36 (PC)
@@ -9,7 +9,7 @@
 const { chromium } = require('playwright');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : +args[i + 1]; };
 const ZONES = args.filter((a, i) => /^\d$/.test(a) && !/^--/.test(args[i - 1] || '')).map(Number); if (!ZONES.length) ZONES.push(1, 2, 3, 4, 5);
-const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes('--still'), CAP = arg('--cap', 36), RUNS = arg('--runs', 1), DOWN = arg('--down', 0), FAST = args.includes('--fast'), LV = arg('--lv', 6), TAP = arg('--tap', 1), T0 = arg('--t0', 0), TRACE = args.includes('--trace'), MIX = arg('--mix', 0); /* --cap: 동시 마릿수 (기본 PC 24, 헤드리스는 저사양이라 바꿔 둠). --tap: 누르는 간격(게임 초), 기본 1초는 움직이며 누르니 fight.js(0.65초)보다 느리게 */
+const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes('--still'), CAP = arg('--cap', 36), RUNS = arg('--runs', 1), DOWN = arg('--down', 0), FAST = args.includes('--fast'), INNB = args.includes('--inn'), LV = arg('--lv', 6), TAP = arg('--tap', 1), T0 = arg('--t0', 0), TRACE = args.includes('--trace'), MIX = arg('--mix', 0); /* --cap: 동시 마릿수 (기본 PC 24, 헤드리스는 저사양이라 바꿔 둠). --tap: 누르는 간격(게임 초), 기본 1초는 움직이며 누르니 fight.js(0.65초)보다 느리게 */
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
@@ -26,8 +26,8 @@ const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--spee
     const gt = Math.max(1, zn - DOWN), wear0 = wearIds.filter((w) => w.tier === gt), slots = [...new Set(wear0.map((w) => w.slot))];
     /* --mix N (#243): 옷 N 칸만 한 단계 낮게 (장비 점수 80% 쯤 = 옷 3칸) */
     const wear = slots.map((sl, i) => (i < MIX && gt > 1 && wearIds.find((w) => w.slot === sl && w.tier === gt - 1)) || wear0.find((w) => w.slot === sl));
-    const ok = await p.evaluate(({ zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST, ECO }) => {
-      const o = window.__oreum; o.enemies.test.clear(); document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
+    const ok = await p.evaluate(({ zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST, ECO, INNB }) => {
+      const o = window.__oreum; o.inn?.left(INNB ? 1800 : 0); /* --inn: 숙소 개운함 버프 (#270) */ o.enemies.test.clear(); document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
       o.pace.pacing.test.soon(1e6);
       Object.assign(o.save.equip, { tool: gt, bag: gt, shoes: gt }); o.save.equip.weapon = Math.max(1, gt); o.weapon.use(gt); o.save.coins = 3000; o.save.bowAmmo = 0; o.save.ammo = { gun: 0, mg: 0, laser: 0 };
       for (const w of wear) { o.clothes.give(w.id); o.clothes.wear(w.slot, w.id); }
@@ -38,12 +38,12 @@ const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--spee
       if (FAST && !o.__noDraw) { o.__noDraw = o.renderer.render; o.renderer.render = () => {}; } /* --fast: 그리지 않고 셈만 (소프트웨어 GL 에서 판을 여러 번 잴 때, #254) */
       const at = o.swarm.start(zn); if (!at) return false; window.__zn = zn;
       o.swarm.speed(SPEED); o.swarm.setCap(CAP); if (ECO) o.fps?.pick('eco'); /* --eco: 프레임 상한 30 (#271) */ if (T0) o.swarm.t(T0);
-      const C = (window.__c = { lost: 0, down: 0, last: o.hp.hp, t0: o.weapon.t(), coins0: o.save.coins, max: o.hp.max, peak: 0, augs: 0, leader: 0, lv0: o.level.state().lv, next: 0, taps: 0 });
+      const C = (window.__c = { lost: 0, down: 0, last: o.hp.hp, t0: o.weapon.t(), coins0: o.save.coins, max: o.hp.max, peak: 0, augs: 0, leader: 0, lv0: o.level.state().lv, next: 0, taps: 0, low: 0, lt: 0 });
       const loop = () => {
         const gt = o.weapon.t() - C.t0; if (!hold && gt >= C.next) { o.weapon.fire(); C.taps++; C.next = gt + TAP; } /* 손으로 누름: charge.js 를 거치지 않는 짧은 누름과 같음 */
-        const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s && s.zone === window.__zn) { C.s = s; C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; } requestAnimationFrame(loop); };
+        const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s && s.zone === window.__zn) { C.s = s; { const g = o.weapon.t(); if (C.lt && s.n < 3) C.low += g - C.lt; C.lt = g; } /* #273 몹 3마리 아래인 게임 초 */ C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; } requestAnimationFrame(loop); };
       requestAnimationFrame(loop); return hold ? 'hold' : true;
-    }, { zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST, ECO });
+    }, { zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST, ECO, INNB });
     if (!ok) { console.log('구역', zn, '들판 자리를 못 찾음'); continue; }
     if (!STILL) await p.keyboard.down('w');
     if (ok === 'hold') await p.keyboard.down('f');
@@ -60,9 +60,9 @@ const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--spee
           P.heading = best;
           { const c = o.swarm.at(z0), R = o.arena.list()[0].r, dc = Math.hypot(P.pos.x - c[0], P.pos.z - c[1]); if (dc > R - 4) P.heading = Math.atan2(c[0] - P.pos.x, c[1] - P.pos.z); P.moveH = P.heading; o.cam.yaw = P.heading + Math.PI; } /* W 는 카메라 앞으로 가므로 카메라도 같은 쪽 */ /* 터 가장자리면 가운데로 (#254: 밀려 나가 '터 밖' 으로 끝나지 않게) */
         }
-        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n, kn: !!P.knock, aim: P.pose === 'aim' };
+        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n, kn: !!P.knock, aim: P.pose === 'aim', low: Math.round(window.__c.low) };
       }, { STILL });
-      if (TRACE && (i % 25 === 0 || r.out)) console.log('  trace', JSON.stringify({ t: +r.t.toFixed(1), dc: r.dc, y: r.y, out: r.out, n: r.n })); /* --trace: 터 가운데에서 거리 (#243) */
+      if (TRACE && (i % 25 === 0 || r.out)) console.log('  trace', JSON.stringify({ t: +r.t.toFixed(1), dc: r.dc, y: r.y, out: r.out, n: r.n, low: r.low })); /* --trace: 터 가운데에서 거리 (#243) */
       if (r.out && !STILL) await p.keyboard.press(' '); /* 터 밖으로 밀렸으면 떼를 뛰어넘어 돌아옴 (#254) */
       t = r.t; if (t >= SEC || !r.on || r.down) break;
       await p.waitForTimeout(120);
@@ -72,14 +72,14 @@ const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--spee
     const c = await p.evaluate(() => { const o = window.__oreum, C = window.__c; o.swarm.speed(1); return { ...C, coins: o.save.coins - C.coins0, lvUp: o.level.state().lv - C.lv0, sc: o.gearScore?.()?.total ?? null }; });
     const s = c.s || {};
     const why = await p.evaluate(() => window.__oreum.swarm.last?.why || (window.__oreum.swarm.state() ? '시간' : '-'));
-    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader };
+    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader, '3 아래(초)': Math.round(c.low), 물결수: s.wave ?? null };
     console.log(JSON.stringify(row)); res.push(row);
     await p.evaluate(() => { const o = window.__oreum; o.swarm.stop(); o.enemies.test.clear(); });
     await p.waitForFunction(() => { const h = window.__oreum.hp; return !h.isDown && !h.pending && h.hp > 0; }, null, { timeout: 120000, polling: 500 }).catch(() => {});
     await p.waitForTimeout(500);
   }
   console.table(res);
-  for (const zn of ZONES) { const R = res.filter((r) => r.구역 === zn); if (R.length > 1) console.log(`구역 ${zn}: ${R.length}판 중 버팀 ${R.filter((r) => r.끝 === 'win').length} (${Math.round(100 * R.filter((r) => r.끝 === 'win').length / R.length)}%), 번 귤 평균 ${Math.round(R.reduce((a, r) => a + (r['번 귤(판)'] || 0), 0) / R.length)}, 최대 마릿수 ${Math.max(...R.map((r) => r['최대 마릿수'] || 0))}`); }
+  for (const zn of ZONES) { const R = res.filter((r) => r.구역 === zn); if (R.length > 1) console.log(`구역 ${zn}: ${R.length}판 중 버팀 ${R.filter((r) => r.끝 === 'win').length} (${Math.round(100 * R.filter((r) => r.끝 === 'win').length / R.length)}%), 번 귤 평균 ${Math.round(R.reduce((a, r) => a + (r['번 귤(판)'] || 0), 0) / R.length)}, 최대 마릿수 ${Math.max(...R.map((r) => r['최대 마릿수'] || 0))}, 3 아래 평균 ${Math.round(R.reduce((a, r) => a + (r['3 아래(초)'] || 0), 0) / R.length)}초`); }
   console.log(errs.length ? `페이지 오류 ${errs.length}` : '페이지 오류 없음');
   await b.close();
 })();

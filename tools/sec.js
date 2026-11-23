@@ -170,6 +170,30 @@ async function startServers() {
     const big = await req('dev', '/save', { method: 'PUT', token: A.token, body: { save: { ...S0, coins: c + NET.earnBurst * 2 } } });
     ok(big.j.fixed.includes('coins'), '옛 저장 되돌리기도 몫 안에서만');
     ok((await req('dev', '/save', { method: 'PUT', token: A.token, body: '{"save":' + '"' + 'x'.repeat(260000) + '"}' })).status >= 400, '아주 큰 저장 거절');
+    /* ---------- 숙소 오피스제주 (#270): 값을 셈에 넣음·값 없이 묵기·하루 두 번·날만 바꾸기 거절, 개운함 경험치는 묵은 날만 (순수 함수) ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js'), { INN, LEVEL } = await import('../src/balance.js'), { kstDate } = await import('../src/daily.js'), { levelOf } = await import('../src/augments.js');
+      const t = Date.now(), today = kstDate(t), acc = () => ({ credit: 1000, pickCredit: 0, bank: 0, savedAt: t - 60000 });
+      const P = { ...S0, coins: 1000, lv: { xp: 0, v: LEVEL.v } }, price = Math.round((INN.price.base + levelOf(0).lv * INN.price.perLv) * INN.price.first);
+      let r = checkSave(P, { ...P, coins: 1000 - price, inn: { d: today, n: 1, left: INN.buffSec } }, acc(), t);
+      ok(!r.fixed.includes('coins') && !r.fixed.includes('inn') && r.save.inn.n === 1, `첫 숙박 반값 ${price} 받아 줌 (${r.fixed})`);
+      r = checkSave(P, { ...P, coins: 1000 + 50, inn: { d: today, n: 1, left: INN.buffSec } }, { ...acc(), credit: 0, savedAt: t }, t);
+      ok(r.fixed.includes('coins') && r.save.coins <= 1000 - price, `값을 안 내고 묵으면 귤을 깎음 (${r.save.coins})`);
+      const P1 = { ...P, coins: 500, inn: { d: today, n: 1, left: 100 } };
+      r = checkSave(P1, { ...P1, coins: 100, inn: { d: today, n: 2, left: INN.buffSec } }, acc(), t);
+      ok(r.fixed.includes('inn') && r.save.inn.n === 1, '같은 날 두 번 묵기 거절');
+      const P2 = { ...P, inn: { d: '2026-01-01', n: 1, left: 0 } };
+      r = checkSave(P2, { ...P2, inn: { d: today, n: 1, left: INN.buffSec } }, acc(), t);
+      ok(r.fixed.includes('inn') && r.save.inn.d === '2026-01-01', '값 없이 날만 바꾸기 거절');
+      r = checkSave(P2, { ...P2, inn: { d: '2099-01-01', n: 2, left: INN.buffSec }, coins: 0 }, acc(), t);
+      ok(r.fixed.includes('inn') && r.save.inn.n === 1, '앞날 숙박 거절');
+      const P3 = { ...P, inn: { d: today, n: 1, left: 900 } }, gain = 100, xp = Math.floor(gain * (1 + INN.buff.xp));
+      r = checkSave(P3, { ...P3, coins: P3.coins + gain, lv: { ...P3.lv, xp } }, acc(), t);
+      ok(!r.fixed.includes('lvxp') && r.save.lv.xp === xp, `개운함 경험치 +${Math.round(INN.buff.xp * 100)}% 받아 줌 (${r.save.lv.xp})`);
+      const P4 = { ...P, inn: { d: '2026-01-01', n: 1, left: 900 } };
+      r = checkSave(P4, { ...P4, coins: P4.coins + gain, lv: { ...P4.lv, xp } }, acc(), t);
+      ok(r.fixed.includes('lvxp') && r.save.lv.xp === gain, `묵은 날이 아니면 경험치는 번 만큼만 (${r.save.lv.xp})`);
+    }
     /* ---------- 철 이벤트 (#180): 달력 날짜 속이기·트리 합계 부풀리기 ---------- */
     {
       const { xmasDay, calReward, treeGoal } = await import('../src/seasoncal.js');

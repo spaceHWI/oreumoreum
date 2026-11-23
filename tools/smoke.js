@@ -8,6 +8,7 @@ const { chromium, devices } = require('playwright');
 const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 'tut', 'lamps', 'season', 'quest', 'ufoseen', 'summit', 'myst', 'traces', 'talk', 'cases', 'tube', 'reports'];
 LOOP.push('msg'); // 메시지 줄 (#252)
 LOOP.push('deerPal'); // 노루 친구 (#247)
+LOOP.push('inn'); // 숙소 오피스제주 (#270)
 LOOP.push('fps'); // 프레임 상한·발열 지킴 (#271)
 const modes = process.argv[2] ? [process.argv[2]] : ['d', 'm'];
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };
