@@ -428,9 +428,9 @@ late.questUse = (shop) => quests.useCoupon(shop);
 function wave(g) { if (g.runner) { g.pose = 'wave'; g.poseT = 0; } }
 late.questWave = (shop) => { for (const g of givers.values()) if (g.def.shop === shop) { g.root.visible = true; greet(g, true); } }; // 가게가 문을 열면 주인이 나와 손 흔듦 (#206)
 function greet(g, force = false) {
-  const h = [...(g.def.hello || []), ...(late.caseHello?.(g.id) || [])]; if (!h.length || !social) return; /* 종결한 사건의 말 (#233) */
+  const cl = late.caseHello?.(g.id) || [], h = [...(g.def.hello || []), ...cl]; if (!h.length || !social) return; /* 종결한 사건의 말 (#233) */
   if (!force && g.greet > 0) return; g.greet = 14 + Math.random() * 10;
-  social.showBubble('npc-q-' + g.id, g.root, h[Math.floor(Math.random() * h.length)], 3.6); wave(g);
+  social.showBubble('npc-q-' + g.id, g.root, late.npcGreet?.(g.id, cl) || h[Math.floor(Math.random() * h.length)], 3.6); wave(g); /* 말버릇·상황 받아치기 (#278, game/npctalk.js) */
 }
 
 /* ---------- 매 프레임 ---------- */
