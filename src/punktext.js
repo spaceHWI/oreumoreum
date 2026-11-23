@@ -85,6 +85,7 @@ export const SWARM_TEXT = {
   },
   elite: '덩치 큰',
   leader: '떼 대장',
+  surge: '한쪽에서 몰려와요! 화살표 쪽을 봐요', /* #273 몰려옴 */
   leaderCome: '마지막 큰 물결! 떼 대장을 쫓아내면 보물 상자',
   chest: '떼 대장을 쫓아냈어요! 보물 상자가 열려요',
   quiet: '숨 돌릴 틈. 이 둘레는 잠시 조용해요',

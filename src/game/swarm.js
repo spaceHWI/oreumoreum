@@ -32,7 +32,8 @@ import { toast, updateStats } from './hud.js';
 import { director } from './director.js';
 import { weaponNow, bowReady } from './throw.js';
 import { icon } from '../icons.js';
-import { pickPat, patOver, patLook, patDmg, tickPat, clearPat, patState } from './swarmpat.js';
+import { pickPat, patOver, patLook, patDmg, tickPat, clearPat, patState, patMode } from './swarmpat.js';
+import { waveN, paceStart, paceTick, paceFew } from './swarmwave.js';
 
 const S = SWARM, E = life.enemies;
 /* ---------- 저장 ---------- */
@@ -41,7 +42,6 @@ const SV = (() => { const o = save.swarm = isO(save.swarm) ? save.swarm : {}; de
 const R = S.run;
 const restLeft = (z) => Math.max(0, Math.min(R.rest, ((+SV.rest[z] || 0) - Date.now()) / 1000)); // 초 (시계를 되돌려도 rest 를 넘지 않음)
 const runT = (z) => R.t[z] || R.t[1];
-const waveN = (z, i) => Math.max(1, Math.round((R.n[0] + (R.n[1] - R.n[0]) * i / Math.max(1, R.waves - 1)) * (1 + R.deep * Math.max(0, z - 1))));
 let CAP = LOW ? S.cap.low : isTouch ? S.cap.phone : S.cap.pc;
 const live = (e) => e.state !== 'flee' && e.state !== 'leave';
 
@@ -73,7 +73,7 @@ function canStart(z) {
 }
 function startRun(zone) {
   leaveT = 0; leaveS = -1;
-  run = { zone, T: runT(zone), t: 0, wall: 0, kills: 0, gyul: 0, shards: 0, stage: 0, maxStage: 0, eliteW: -1, leader: null, leaderDone: false, spawnT: S.firstT, pk: -Math.floor(Math.random() * 1e6) - 10, rainT: 0, slow: 0, waves: [0], best0: SV.best[zone] ? { ...SV.best[zone] } : null };
+  run = { zone, T: runT(zone), t: 0, wall: 0, kills: 0, gyul: 0, shards: 0, stage: 0, maxStage: 0, eliteW: -1, leader: null, leaderDone: false, spawnT: S.firstT, pk: -Math.floor(Math.random() * 1e6) - 10, rainT: 0, slow: 0, waves: [], best0: SV.best[zone] ? { ...SV.best[zone] } : null }; paceStart(run);
   hud(true);
   late.sound?.gong?.();
   if (!SV.seen) { SV.seen = 1; persist(); toast(SWARM_TEXT.first, 4); } // 처음 한 번 (문이 열리기 전에도)
@@ -84,7 +84,7 @@ let lastZone = 0, lastEnd = -1e9;
 function endRun(why) {
   const r = run; if (!r) return; run = null; lastEnd = clock; hud(false);
   for (const e of E.list) if (e.def.swarm && live(e)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 남은 떼는 흩어져 달아남
-  orbitHide(); clearPat(); state.swarmSlow = 0;
+  orbitHide(); clearPat(); patMode.few = false; state.swarmSlow = 0;
   const win = why === 'win';
   let bonus = 0;
   if (win) { /* 버텼다 (#202): 덤 귤 · 쉬는 시간. 덤은 서버가 아는 귤(earn.js swarm, save.swarm.won)이라 earn(③)에 넣지 않음 */
@@ -95,10 +95,10 @@ function endRun(why) {
   } else if (why === 'leave') { SV.rest[r.zone] = Date.now() + R.rest * A.leaveRest * 1000; persist(); } /* 터를 벗어나 끝 (#231): 덤 없음, 쉬는 시간 절반 */
   if (late.swarm) late.swarm.last = { why, wall: Math.round(r.wall), kills: r.kills, gyul: Math.round(r.gyul), bonus, waves: r.waves.slice() };
   if (r.t < 4 && !r.kills && !win) return;
-  const b = SV.best[r.zone] || {}, nb = { k: Math.max(b.k || 0, r.kills), t: Math.max(b.t || 0, Math.round(r.wall)), w: Math.max(b.w || 0, r.maxStage + 1) };
+  const b = SV.best[r.zone] || {}, nb = { k: Math.max(b.k || 0, r.kills), t: Math.max(b.t || 0, Math.round(r.wall)), w: Math.max(b.w || 0, r.wave + 1) }; /* w: 물결 번호(#273 당겨 부르면 waves 보다 많음) */
   const rec = r.kills > (b.k || 0) && (b.k || 0) > 0;
   SV.best[r.zone] = nb; persist();
-  const line = `${r.kills}마리, 귤 +${Math.round(r.gyul)}, 최고 물결 ${r.maxStage + 1}` + (rec ? ' · 새 기록!' : ` · 이 구역 최고 ${nb.k}마리`);
+  const line = `${r.kills}마리, 귤 +${Math.round(r.gyul)}, 물결 ${r.wave + 1}` + (rec ? ' · 새 기록!' : ` · 이 구역 최고 ${nb.k}마리`);
   toast(win ? `${SWARM_TEXT.win} ${line} · 덤 귤 +${bonus}` : why === 'down' ? `쓰러졌어요. ${line}` : why === 'leave' ? `${SWARM_TEXT.left} ${line}` : line, win ? 5 : 4.2);
   if (win) banner();
   late.swarmEnd?.(r);
@@ -117,11 +117,12 @@ function pickKind(zone) {
   for (const [k, w] of L) { x -= w; if (x <= 0) return k; } return L[0][0];
 }
 const _f = new THREE.Vector3();
-function spawnSpot(zone, all = false) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
+const front = () => { camera.getWorldDirection(_f); return Math.atan2(_f.x, _f.z); }; /* #273 첫 물결은 카메라 앞에서 (징 뒤 곧 눈에 보이게) */
+function spawnSpot(zone, all = false, dir = null) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
   const c = AT(zone); if (!c) return null;
   camera.getWorldDirection(_f); const back = Math.atan2(-_f.x, -_f.z);
   for (let k = 0; k < 24; k++) {
-    const a = k < 8 && !all ? back + (Math.random() - 0.5) * 3.6 : Math.random() * 6.283, r = A.r + A.spawn[0] + Math.random() * (A.spawn[1] - A.spawn[0]);
+    const a = dir != null && k < 18 ? dir + (Math.random() - 0.5) * 0.9 : k < 8 && !all ? back + (Math.random() - 0.5) * 3.6 : Math.random() * 6.283, r = A.r + A.spawn[0] + Math.random() * (A.spawn[1] - A.spawn[0]);
     const x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r;
     if (Math.hypot(x - player.pos.x, z - player.pos.z) < 7) continue; // 바로 옆에서 튀어나오지 않게
     if (spots.enemyOk && !spots.enemyOk(x, z)) continue;
@@ -132,8 +133,8 @@ function spawnSpot(zone, all = false) { /* 터 테두리 밖 (#231): 카메라 �
   return null;
 }
 // type: 'mob' | 'elite' | 'leader'
-function spawn(type, all = false) { /* 떼 몹(mob)은 패턴(#254 swarmpat.js)에 따라. 무리(pack)는 여러 마리 → 나온 수를 돌려줌 */
-  const r = run, kind = pickKind(r.zone), B = ENEMIES[kind], at = spawnSpot(r.zone, all); if (!at || !B) return null;
+function spawn(type, all = false, dir = null) { /* 떼 몹(mob)은 패턴(#254 swarmpat.js)에 따라. 무리(pack)는 여러 마리 → 나온 수를 돌려줌 */
+  const r = run, kind = pickKind(r.zone), B = ENEMIES[kind], at = spawnSpot(r.zone, all, dir ?? (r.wave <= 0 && r.t < 6 ? front() : null)); if (!at || !B) return null;
   const M = S.mob, T = SWARM_TEXT, hk = LOW ? S.cap.lowHp : 1, md = M.dmg[r.zone] ?? M.dmg[1];
   const gk = M.gyul[r.zone] ?? 0.25, rg = (g) => Math.floor(g) + (Math.random() < g % 1 ? 1 : 0); // 귤 보상 (소수 몫은 확률로)
   let over, k;
@@ -163,18 +164,16 @@ function tickWaves(dt) {
   r.t += dt; r.wall += dt; /* 한 판 시간은 늘 같음 (초보 보호는 나오는 간격만 늘림) */
   if (r.t >= T) { endRun('win'); return; }
   const wi = waveOf(r.t, T), si = doorOpen() ? wi : 0; r.stage = wi; // 문이 열리기 전엔 첫 물결 세기로
-  if (wi > r.maxStage) { r.maxStage = wi; r.waves[wi] = 0; const h = aval('heal'); if (h && !hp.isDown) { hp.set(hp.hp + h); toast(`${AUG_BY.heal.name} · 기운 +${h}`, 1.4); } } // 귤즙 (#194): 물결이 세질 때마다
+  if (wi > r.maxStage) { r.maxStage = wi; const h = aval('heal'); if (h && !hp.isDown) { hp.set(hp.hp + h); toast(`${AUG_BY.heal.name} · 기운 +${h}`, 1.4); } } // 귤즙 (#194): 물결이 세질 때마다
   if (inQuiet(player.pos.x, player.pos.z)) return;
-  const big = doorOpen() && r.t >= T - R.bigT, into = r.t - wi * T / R.waves;
+  const big = doorOpen() && r.t >= T - R.bigT;
   if (big && !r.leaderDone) { r.leaderDone = true; spawn('leader', true); } // 마지막 큰 물결: 떼 대장 하나
-  if (wi > 0 && !big && into < R.breath) { r.spawnT = Math.min(r.spawnT, 0.3); return; } // 물결 사이 숨 고르기 (#254)
   if (r.leader && !live(r.leader)) { if (r.leader.state === 'flee') chest(r.leader.pos.clone()); r.leader = null; }
-  if (si >= 2 && si % 2 === 0 && r.eliteW !== si) { r.eliteW = si; spawn('elite'); } // 물결 3·5 첫머리에 정예 하나
-  if ((r.spawnT -= dt) > 0) return;
-  const n = waveN(r.zone, si) * denMod() * (big ? 1.5 : 1), every = (T / R.waves - (wi > 0 ? R.breath : 0)) / Math.max(1, n) / slow;
-  const got = swarmN() < CAP ? spawn('mob', big) : 0;
-  if (got) { r.waves[wi] = (r.waves[wi] || 0) + got; r.spawnT = Math.max(S.gap, every * got); } else r.spawnT = 0.2; /* 마지막 큰 물결은 사방에서 (#254) */ // 자리를 못 찾았거나 꽉 찼으면 곧 다시
+  if (si >= 2 && si % 2 === 0 && r.eliteW !== si) { r.eliteW = si; spawn('elite'); } // 세기 3·5 첫머리에 정예 하나
+  paceTick(r, dt, { n: swarmN, cap: CAP, spawn, slow, big, n0: Math.round(waveN(r.zone, si) * denMod() * (big ? 1.5 : 1)) }); /* 나오는 텀 (#273 swarmwave.js) */
+  paceFew(r, dt, { n: swarmN, list: liveMobs, leave: (e) => { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } });
 }
+const liveMobs = () => E.list.filter((e) => e.def.swarm === 'mob' && live(e));
 function chest(p) {
   const g = S.leader.chest[run.zone] || 0;
   if (g) { life.scatterTangerines(p.setY(p.y + 0.8), g, 12); earn(g); }
@@ -374,15 +373,15 @@ st.textContent = `
 `;
 document.head.appendChild(st);
 const bar = document.createElement('div'); bar.id = 'swarm-bar'; bar.className = 'panel'; bar.hidden = true; bar.setAttribute('role', 'status');
-bar.innerHTML = icon('field') + '<span id="sb-t">0:00</span><span class="sb-bar" title="남은 시간"><i id="sb-a"></i></span><span class="sb-n" id="sb-k">0</span><span>마리 ·</span><span>물결 <b id="sb-w">1</b>/' + R.waves + '</span>';
+bar.innerHTML = icon('field') + '<span id="sb-t">0:00</span><span class="sb-bar" title="남은 시간"><i id="sb-a"></i></span><span class="sb-n" id="sb-k">0</span><span>마리 ·</span><span>물결 <b id="sb-w">1</b></span>';
 document.body.appendChild(bar);
 let hudN = -1, hudS = -1;
 function hud(on) { bar.hidden = !on; document.body.classList.toggle('swarm-on', on); hudN = -1; }
 function tickHud() {
   if (!run) return;
   const left = Math.max(0, Math.ceil(run.T - run.t)); if (left !== hudS) { hudS = left; $('sb-t').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; $('sb-a').style.width = `${(100 * left / run.T).toFixed(1)}%`; bar.classList.toggle('big', doorOpen() && left <= R.bigT); } /* 남은 시간 띠 (#202) */
-  const key = run.kills * 100 + run.stage; if (key === hudN) return; hudN = key;
-  $('sb-k').textContent = run.kills; $('sb-w').textContent = run.stage + 1;
+  const key = run.kills * 1000 + run.wave; if (key === hudN) return; hudN = key;
+  $('sb-k').textContent = run.kills; $('sb-w').textContent = Math.max(1, run.wave + 1);
   bar.hidden = !!late.bossFight?.() || !!late.raidFight?.();
 }
 const winEl = document.createElement('div'); winEl.id = 'swarm-win'; winEl.textContent = SWARM_TEXT.win; document.body.appendChild(winEl);
@@ -473,7 +472,7 @@ late.swarm = {
   aug(id) { if (!AUG_BY[id] || !late.level) return 0; const n = Math.min(AUGMENTS.max, augN(save, id) + 1); late.level.set({ ...save.lv.aug, [id]: n }); return n; },
   pick: (i) => late.level?.pick(i), picking: () => { const L = late.level?.state(); return L?.open ? L.draw : null; }, shards: () => shards.length, shardsAt: () => shards.map((q) => [q.p.x, q.p.z]),
   shots: () => shots.length,
-  state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, T: run.T, waves: run.waves.slice(), n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, lv: levelOf(save.lv?.xp || 0).lv, aug: Object.fromEntries(AUGMENTS.list.filter((a) => a.field && augN(save, a.id)).map((a) => [a.id, augN(save, a.id)])), leader: !!run.leader, pats: patCount(), ...patState(), inside: arenaD(run.zone) <= A.r, leaveT: +leaveT.toFixed(1) },
+  state: () => run && { zone: run.zone, t: +run.t.toFixed(1), wall: +run.wall.toFixed(1), stage: run.stage + 1, wave: run.wave + 1, few: patMode.few, q: run.wq, T: run.T, waves: run.waves.slice(), n: swarmN(), cap: CAP, kills: run.kills, gyul: Math.round(run.gyul), shards: run.shards, lv: levelOf(save.lv?.xp || 0).lv, aug: Object.fromEntries(AUGMENTS.list.filter((a) => a.field && augN(save, a.id)).map((a) => [a.id, augN(save, a.id)])), leader: !!run.leader, pats: patCount(), ...patState(), inside: arenaD(run.zone) <= A.r, leaveT: +leaveT.toFixed(1) },
   best: () => ({ ...SV.best }), rest: (z) => (z ? restLeft(z) : Object.fromEntries(Object.keys(SV.rest).map((k) => [k, +restLeft(+k).toFixed(1)]))), won: () => JSON.parse(JSON.stringify(SV.won)),
   clearRest(z) { if (z) delete SV.rest[z]; else SV.rest = {}; restT = 0; }, /* 쉬는 시간 지우기 (확인용) */
   ageRest(sec) { for (const k of Object.keys(SV.rest)) SV.rest[k] -= sec * 1000; restT = 0; }, /* 쉬는 시간을 sec 초 앞당김 */ get cap() { return CAP; }, setCap(n) { CAP = n; }, // tools/swarm.js: 헤드리스는 저사양이라 PC 상한으로 바꿔 잼
