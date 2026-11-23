@@ -101,6 +101,7 @@ function spawn() {
   d.root.position.copy(d.pos); group.add(d.root); list.push(d);
   warnEl.start({ x: at[0], z: at[1] });
   if (!say('tip', 'smoker', SAY, 2.8, { queue: false })) toast(SAY, 2.8); // 감독이 바쁘면 바로 (그 자리 반응)
+  late.npcBark?.('smoker', d, 'come'); /* #278 핑계 한마디 */
   return d;
 }
 function remove(d) { const i = list.indexOf(d); if (i >= 0) list.splice(i, 1); group.remove(d.root); }
@@ -108,7 +109,7 @@ function repel(d) {
   d.state = 'startle'; d.st = 0; d.sign.visible = false;
   dropButts(d.pos.x, d.pos.z, 1);
   life.scatterTangerines(d.pos.clone(), S.reward);
-  sound.beep?.(true); toast('흡연자가 놀라 도망가요. 꽁초는 주워요', 2.4);
+  sound.beep?.(true); toast('흡연자가 놀라 도망가요. 꽁초는 주워요', 2.4); late.npcBark?.('smoker', d, 'repel');
   ach.emit('smoker-repel'); late.pace?.note('repel');
 }
 function beginFade(d) { if (d.fade != null) return; d.fade = 1; d.root.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.transparent = true; } }); }

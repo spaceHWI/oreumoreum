@@ -839,6 +839,11 @@ body.hp-down #tut-toast, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.h
 #shoppop .shop-title b { font-family: var(--display); font-size: 24px; font-weight: 800; line-height: 1; letter-spacing: .5px; }
 #shoppop .shop-title small { font-size: 12px; opacity: .72; }
 #shoppop .shop-title small:empty { display: none; }
+#shoppop .shop-say { margin: 0; padding: 7px 14px; font-size: 13px; line-height: 1.35; border-bottom: 1px solid var(--hair); } /* 주인 한마디 (#278 game/npctalk.js) */
+#shoppop .shop-say[hidden] { display: none; }
+#shoppop .shop-say b { font-weight: 800; opacity: .62; margin-right: 4px; }
+#shoppop .shop-say.say-in { animation: saySlide .25s ease-out; }
+@keyframes saySlide { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 #shoppop.serif .shop-title b { font-family: Georgia, "Times New Roman", serif; font-size: 26px; }
 #shoppop.serif .shop-title small { font-family: Georgia, serif; font-style: italic; }
 #shoppop.wide .shop-logo { width: 168px; height: 46px; border-radius: 8px; background: #fff; overflow: hidden; } /* 루이네 미장원 (#58): 줄무늬 테두리 간판이 곧 로고 */
@@ -1991,6 +1996,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <div class="overlay dim" id="shoppop" hidden>
   <div class="panel pop" role="dialog" aria-label="가게">
     <div class="shop-head"><span class="shop-logo"><img id="shoppop-logo" alt=""></span><span class="shop-title"><b id="shoppop-name"></b><small id="shoppop-tag"></small></span><span class="coins-pill"><i></i><span id="shoppop-coins">0</span></span><button type="button" class="btn small" id="shoppop-close" aria-label="닫기"><svg data-i="close"></svg></button></div>
+    <p id="shoppop-say" class="shop-say" hidden></p>
     <div id="shoppop-tabs" hidden></div>
     <div class="pop-body"><div class="menu-grid" id="shoppop-cards"></div></div>
   </div>

@@ -55,6 +55,17 @@ for (const [kind, list] of [['main', QUESTS.main], ['side', QUESTS.side]]) for (
 add('quest.took', '퀘스트 받을 때 알림 앞말 (#223)', QUESTS.took, { max: 8 });
 for (const t of TASKS) { add(`daily.${t.id}.name`, '오늘의 할 일', t.name, { max: 28 }); add(`daily.${t.id}.q`, '오늘의 할 일 한 마디 (#223)', t.q, { max: 22 }); }
 for (const [id, g] of Object.entries(QUESTS.givers)) (g.hello || []).forEach((s, i) => add(`npc.${id}.hello.${i}`, `${g.name} 인사 말풍선`, s, { max: 28 }));
+/* NPC 대사 (#278, src/npclines.js): 인물마다 말의 종류별 줄. 말풍선·가게 창 한 줄 28자 */
+const { NPC_TALK } = await import('../src/npclines.js');
+const KIND = { first: '처음 만남', hello: '지나갈 때', open: '가게 창 열 때', buy: '샀을 때', poor: '귤이 모자랄 때', close: '창 닫을 때', beckon: '손짓', come: '나타날 때', repel: '쫓길 때', truck: '트럭 쫓길 때' };
+const talkBad = [];
+for (const [id, P] of Object.entries(NPC_TALK)) for (const [k, L] of Object.entries(P)) {
+  if (!Array.isArray(L)) continue;
+  L.forEach(([w, t], i) => add(`talk.${id}.${k}.${i}${w ? ' (' + w + ')' : ''}`, `${P.name} · ${KIND[k] || k}`, t, { max: 28 }));
+  const plain = L.filter(([w]) => !w).length; /* 같은 말을 잇달아 하지 않게: 조건 없는 줄이 둘 넘게 (처음 만남은 한 번뿐이라 하나도 됨) */
+  if (k !== 'first' && plain < 2) talkBad.push(`talk.${id}.${k} 조건 없는 줄 ${plain}개 < 2`);
+  if (k === 'hello' && L.filter(([w]) => w).length < 3) talkBad.push(`talk.${id}.hello 상황 받아치는 줄 3개 아래`);
+}
 MEET.hb.lines.forEach((s, i) => add(`hareubang.${i}`, '하르방 하이파이브 말풍선', s, { max: 28 }));
 for (const k of ['lines', 'thanks', 'sorry']) MEET.tourist[k].forEach((s, i) => add(`tourist.${k}.${i}`, '관광객 말풍선', s, { max: 28 }));
 for (const [k, s] of Object.entries(CAVE.lines)) add(`cave.${k}`, '동굴 알림', s, { pre: false });
@@ -88,6 +99,7 @@ for (const q of [...QUESTS.main, ...QUESTS.side]) {
   if (!NO_NUM(q) && !(NUM.test(q.task) && NUM.test(all))) bad(`구체성 (몇 개): quest.${q.id} · ${q.task}`);
   if (!NO_PLACE(q) && !(PLACE.test(q.task) && PLACE.test(all))) bad(`구체성 (어디서): quest.${q.id} · ${q.task}`);
 }
+talkBad.forEach(bad);
 if (!QUESTS.main.find((q) => q.id === 'boss5' && q.ending === '불편을 줘서 죄송합니다.') || STORY_TEXT.end.big !== '불편을 줘서 죄송합니다.') bad('엔딩 사과 한 줄이 바뀜');
 console.log(`${fail ? '실패' : '통과'} 이야기 글 ${rows.length}줄 · 단계 3 전 ${rows.filter((r) => r.pre).length}줄 · 금지 낱말·길이 검사`);
 if (process.argv.includes('--md')) {
