@@ -115,7 +115,7 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, opacity: 0 })); s.scale.set(3.2, 0.8, 1); s.position.y = 2.85; run.root.add(s); return s; })();
   const st = { pose: 'move', t: 0, greetCd: 6, beckon: 0, idle: 0, act: 'look', actT: 0, w: { fid: 0, look: 0, wave: 0, shoot: 0 }, shootT: 0, flash: 0 };
   const say = (text) => social?.showBubble('npc-photog', run.root, text, 3.5);
-  function beckon() { st.beckon = PHOTOG.beckon; st.pose = 'wave'; st.t = 0; say('여기 서 보세요!'); }
+  function beckon() { st.beckon = PHOTOG.beckon; st.pose = 'wave'; st.t = 0; say(PHOTOG.beckonLine?.() || '여기 서 보세요!'); } /* #278 npctalk */
   function setRain(on) { on = !!on; if (on === rain) return; rain = on; dress(); }
   function update(dt, player, { shooting = false, hide = false } = {}) {
     const d = player.pos.distanceTo(pos);
@@ -124,7 +124,7 @@ export function createPhotographer({ scene, social, P, out, tan, spot, height, b
     st.t += dt; st.greetCd -= dt;
     const op = d < 10 ? 1 : d < 18 ? 1 - (d - 10) / 8 : 0; label.material.opacity = op;
     if (st.beckon > 0) { st.beckon -= dt; if (st.beckon <= 0) { st.pose = 'move'; st.t = 0; } }
-    else if (!shooting && d < PHOTOG.greetR && st.greetCd <= 0) { st.greetCd = PHOTOG.greetCd + rnd() * PHOTOG.greetCd; st.pose = 'wave'; st.t = 0; st.beckon = 2.2; say(PHOTOG.lines[Math.floor(rnd() * PHOTOG.lines.length)]); }
+    else if (!shooting && d < PHOTOG.greetR && st.greetCd <= 0) { st.greetCd = PHOTOG.greetCd + rnd() * PHOTOG.greetCd; st.pose = 'wave'; st.t = 0; st.beckon = 2.2; say(PHOTOG.line?.() || PHOTOG.lines[Math.floor(rnd() * PHOTOG.lines.length)]); }
     // 찍는 동안엔 사진 자리를, 아니면 가까이 온 사람을 봄
     const want = shooting ? faceTo(spot) : d < PHOTOG.greetR ? faceTo(player.pos) : faceTo(spot);
     let dh = want - heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); heading += dh * Math.min(1, dt * 5); run.root.rotation.y = heading;

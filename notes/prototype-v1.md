@@ -19,7 +19,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 
 빌드는 먼저 `tools/lint.js` 로 줄 중간 `//` 주석(주석 안에 코드)·300자 넘는 줄의 `//` 를 찾아 있으면 멈춘다 (#193). 긴 줄에는 `/* */` 만.
 
-빌드 결과: `dist/index.html` + `main-<해시>.js` + `a/*.bin` (Pages), `dist/test.html`·`oreumoreum.html` 은 모델까지 한 파일 (tools/ 가 file:// 로 엶). 홈 화면 추가용 `manifest.webmanifest`·아이콘 PNG 4장(`src/icons/`, `tools/icons.mjs` 로 구움, #91)도 dist 에 함께 나간다.
+빌드 결과: `dist/index.html` + `main-<해시>.js` + `a/*.bin` (Pages), `dist/test.html`·`oreumoreum.html` 은 모델까지 한 파일 (tools/ 가 file:// 로 엶. file:// 은 안티에일리어싱을 끔, `?aa=1` 로 켬 #286). 홈 화면 추가용 `manifest.webmanifest`·아이콘 PNG 4장(`src/icons/`, `tools/icons.mjs` 로 구움, #91)도 dist 에 함께 나간다.
 
 | 파일 | 하는 일 |
 |---|---|
@@ -48,6 +48,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 | reports.js | 매일 미확인 제보 (#238, 데이터 `src/cases/reports.js`·수치 `REPORT`): 날짜로 고른 제보(헛소문 30%·사건 실마리는 열린 사건만), 그 구역 길가 더미 곁 흔적 모양·바닥 표시·상호작용 → 한 줄·귤. 쪽지 창 `#report-note`, 오늘의 할 일 줄(`late.reportRow`, hud.js)·사건 파일 칸(`late.reportBoard`, cases.js)·다음 할 일(`late.reportHint`, nexthint.js). 저장 save.report, 서버 earn.js 하루 한 번. dev `__oreum.reports` |
 | inn.js | 숙소 오피스제주 (#270, 건물 `src/inn.js`·수치 `INN`): 가게 팝업 'inn' 채우기 `late.fillInn`·묵는 연출 `#inn-sleep`(실제 시간 5초, `state.cine`)·개운함 `save.inn.left`(놀이 초)·배수 `late.innMul`(buff.js more·hp maxMul·level.js 경험치)·위쪽 줄 `#inn-pill`(레벨 곁)·남의 화면 `late.innExtra`/`innPeer`(room.js)·어디서 시작 `late.innWake`(zonedone.js)·다음 할 일 `late.innHint`(nexthint.js)·곁가지 퀘스트 `innStay`/`innRun`(swarm.js `late.onRunWin`). dev `__oreum.inn` |
 | shopgate.js | 가게를 퀘스트 순서대로 열기 (#206): `src/shopgate.js` 를 게임에 붙임. 닫힌 가게 문 앞 셔터·꺼진 지붕 간판(shops.js `roofSigns.off`)·'준비 중 — ○○ 열려요' 한 줄, 조건을 채우면 감독 `say('intro', …, { then })` 차례에 알림 + 셔터 올림 + 주인 손 흔듦(`late.questWave`). `late.shopOpen(id)`·`late.shopWhy(id)` 를 stores.js SHOP_POP when·openShopPop, shop.js 지도·가게 안내, quest.js 주인·need shop:, dump.js·ride.js 마차, hud.js 팁, nexthint.js 가 봄. 어드민 '가게 모두 열기'(이 기기만)·촬영 모드는 모두 열림. dev `__oreum.shopGate` |
+| npctalk.js | NPC 대사 고르기 (#278, 글은 `src/npclines.js` 인물·말버릇·말의 종류·조건 줄): 주는 사람 인사 `late.npcGreet`(game/quest.js greet), 가게 창 위 한 줄 `#shoppop-say`(열 때·귤이 줄면 buy·'모자라' 알림이면 poor, 닫으면 주인 말풍선), 사진사 `PHOTOG.line`, 흡연자·투기꾼 `late.npcBark`. 처음 만남 `save.npcMet`. `late.tickQuest` 뒤에 붙음. 확인 `__oreum.npcTalk`·`node tools/npctalk.js` |
 | gyuladmin.js | 귤 맞춤 기록·운영자 귤 보내기 (#188): 어드민 개발자 메뉴 "귤 맞춤·보내기" 패널 (`adminApi` → `GET /admin/clamps`·`GET /admin/grants`·`POST /admin/grant`) |
 | metricsadmin.js | 이용 통계 표 (#121): 어드민 개발자 메뉴 "수치" 패널. `adminApi.metrics` → `GET /admin/metrics`, 줄(잴 것) × 칸(날짜), 출처 단추 실서버·dev·어드민 |
 | inbox.js | 받은 의견 보기 (#96): 어드민 개발자 메뉴 "받은 의견" 패널·새 글 점 (`getFeedback`, 마지막 본 id 는 기기 `oreumoreum.inbox.seen`) |

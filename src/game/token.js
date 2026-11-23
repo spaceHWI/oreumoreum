@@ -188,6 +188,7 @@ function placeStalls() {
 }
 placeStalls();
 let keeper = null;
+late.tokKeeper = () => keeper; /* 좌판 주인 말풍선 (#278 npctalk) */
 function npc() {
   if (keeper) return keeper;
   keeper = caseModel('arena-keeper'); /* Tripo 망고 좌판 주인 (#262): 손 흔들기·징 채·망고 내밀기 */

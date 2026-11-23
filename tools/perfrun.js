@@ -25,7 +25,7 @@ function buildBase(ref) {
 async function measure(b, dist, scen) {
   const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message.slice(0, 200)));
-  const url = 'file://' + path.join(dist, 'test.html') + '?tier=1#namsongi';
+  const url = 'file://' + path.join(dist, 'test.html') + '?tier=1&aa=1#namsongi' /* file:// 는 기본 AA 끔 (#286): 재기는 실제처럼 켜고 */;
   const ready = () => p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 180000 });
   await p.clock.install(); await p.clock.resume(); /* 가짜 시계를 처음부터 (흐르는 채로): 재기 시작 때 performance.now 가 뒤로 가지 않게 (앞 빌드는 뒤로 가면 dt 가 음수) */
   await p.goto(url); await ready();

@@ -47,7 +47,18 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
       ok(await ev(() => window.__oreum.story.state().wait.includes('end') || window.__oreum.story.state().cur === 'end'), '엔딩이 줄에 섬');
       await ev(() => window.__oreum.director.open('aliens')); /* 감독 문 (구역 4 에 닿으면 열림) */
       await p.click('#case-file-close').catch(() => {});
-      const st = await until(() => window.__oreum.story.state().cur === 'end' || window.__oreum.story.state().done.includes('end'), 90000);
+      const t0 = Date.now(), why = [], c0 = await ev(() => window.__oreum.director.api.clock);
+      /* 실제 시간 대신 게임 시계로 60초 (#286: 느린 소프트웨어 GL 에서는 실제 90초가 게임 10초도 안 됨). 실제로는 10분까지 */
+      let st = false;
+      while (Date.now() - t0 < 600000) {
+        const r = await ev((c0) => { const o = window.__oreum, s = o.story.state(), c = o.director.api.clock;
+          if (!window.__w || c - window.__w > 5) { window.__w = c; (window.__why = window.__why || []).push({ t: Math.round(performance.now() / 1000), c: +c.toFixed(1), w: o.director.why?.('story'), q: o.director.state().waiting.map((x) => x.id), sw: s.wait }); }
+          return s.cur === 'end' || s.done.includes('end') ? 'ok' : c - c0 > 60 ? 'late' : ''; }, c0).catch(() => '');
+        if (r) { st = r === 'ok'; break; }
+        await W(250);
+      }
+      why.push(...await ev(() => (window.__why || []).slice(-8)));
+      console.log('   기다린 시간', Math.round((Date.now() - t0) / 1000) + '초 (게임 ' + Math.round((await ev(() => window.__oreum.director.api.clock)) - c0) + '초)', st ? '' : JSON.stringify({ why, log: await ev(() => window.__oreum.director.log.slice(-12)) }));
       ok(st, `창을 닫으면 엔딩 시작 ${JSON.stringify(await ev(() => ({ s: window.__oreum.story.state(), door: window.__oreum.director.state().open.includes('aliens'), can: window.__oreum.director.can('story'), cur: window.__oreum.director.state().cur })))}`);
       const rs = await ev(() => { const k = Object.keys(localStorage).find((x) => /^oreumoreum\.(dev|v1)$/.test(x) && JSON.parse(localStorage.getItem(x)).caseFin); return { f: window.__oreum.caseFin.state(), ls: k && JSON.parse(localStorage.getItem(k)).caseFin }; });
       ok(rs.f.t > 0 && !rs.f.run && rs.ls?.t > 0, `연출은 한 번 (저장 ${JSON.stringify(rs.ls)})`);
