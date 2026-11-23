@@ -61,7 +61,7 @@ export function createLamps({ scene, positions, height }) {
   const lights = Array.from({ length: 3 }, () => { const l = new THREE.PointLight('#ffc27a', 0, 16, 2); l.visible = false; scene.add(l); return l; });
   function update(playerPos, nightK) {
     night.value = nightK * LIFE_MODELS.lamp.glow;
-    ballMat.emissiveIntensity = nightK * 1.4; poolMat.opacity = nightK * 0.5;
+    ballMat.emissiveIntensity = nightK * 1.4; poolMat.opacity = nightK * 0.5; pools.visible = nightK > 0.02; /* #272: 낮에 0 으로 그리지 않음 */
     haloMat.opacity = nightK * 0.14; halos.visible = nightK > 0.02;
     // 빛 수가 바뀌면 모든 재질 셰이더를 다시 만들어 끊기므로(#79) 밤 동안은 3개를 늘 켜 두고 멀면 세기만 0
     const on = nightK >= 0.02 && pts.length > 0;

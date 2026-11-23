@@ -146,6 +146,24 @@ export const caseMoves = (name) => Object.keys(MOVES[name] || {});
 
 /* ---------- 하나 만들기 ---------- */
 const tmpV = new THREE.Vector3();
+/* #272: 큰 모델 GPU 자료 놓아 주기. 큰 모델(hi)이 있는 것이 모두 카메라에서 CM.release m 밖에 CM.releaseT 초 넘게 있으면 그 모델의 geometry·텍스처를 GPU 에서 내림.
+   자료(정점·이미지)는 JS 에 남아 있어 다시 가까이 가면 three 가 저절로 다시 올림. 카메라는 마지막으로 그려 준 것(seen) */
+const HI = new Map(), relS = { cam: null, timer: 0, freed: {} };
+function relTick() {
+  const cam = relS.cam; if (!cam) return;
+  for (const [A, set] of HI) {
+    let use = false;
+    for (const inst of set) { if (inst.forced() || !inst.inScene()) { if (inst.forced()) use = true; continue; } inst.rig.getWorldPosition(tmpV); if (tmpV.distanceTo(cam.position) < CM.release) use = true; }
+    const e = relS.freed[A] || (relS.freed[A] = { away: 0, n: 0, on: true });
+    if (use) { e.away = 0; e.on = true; continue; }
+    e.away += CM.relEvery; if (!e.on || e.away < CM.releaseT) continue;
+    for (const inst of set) inst.toLo();
+    geoCache.get(A)?.dispose(); for (const [k, m] of matCache) if (k.startsWith(A + '|')) m.map?.dispose();
+    e.on = false; e.n++;
+  }
+}
+const hiAdd = (A, inst) => { if (!HI.has(A)) HI.set(A, new Set()); HI.get(A).add(inst); if (!relS.timer && typeof setInterval !== 'undefined') relS.timer = setInterval(relTick, CM.relEvery * 1000); };
+export const caseGpu = { tick: relTick, state: () => Object.fromEntries([...HI].map(([A, set]) => [A, { n: set.size, ...(relS.freed[A] || { away: 0, n: 0, on: true }) }])) };
 export function caseModel(name, { glow = null, shadow = true } = {}) {
   const R = RIG[name]; if (!R) throw new Error('없는 사건 모델 ' + name);
   const names = R.kind === 'chain' ? CHAIN : BONES, A = 'case-' + name, ALO = A + '-lo';
@@ -161,9 +179,11 @@ export function caseModel(name, { glow = null, shadow = true } = {}) {
   let hi = null, lo = null, wantLo = false, wantHi = false, far = true, forceNear = false, hiTex = false;
   const pick = () => { const useHi = hi && (!far || forceNear) && (hiTex || !lo); if (hi) hi.visible = !!useHi; if (lo) lo.visible = !useHi; tmp.visible = !hi && !lo; };
   const getLo = () => { if (wantLo) return; wantLo = true; whenAsset(ALO, (D) => { lo = mk(ALO, D); pick(); }, { lazy: true }); want(ALO); };
-  const getHi = () => { if (wantHi) return; wantHi = true; whenAsset(A, (D) => { hi = mk(A, D); pick(); }, { lazy: true }); want(A); };
+  const getHi = () => { if (wantHi) return; wantHi = true; whenAsset(A, (D) => { hi = mk(A, D); pick(); hiAdd(A, relInst); }, { lazy: true }); want(A); };
+  const relInst = { rig, forced: () => forceNear, inScene: () => { let q = root; while (q.parent) q = q.parent; return !!q.isScene; }, toLo: () => { far = true; pick(); } };
   const seen = (r, s, cam) => {
     if (!cam?.isPerspectiveCamera) return; /* 그림자 카메라는 빼고 */
+    relS.cam = cam;
     getLo(); rig.getWorldPosition(tmpV); const d = tmpV.distanceTo(cam.position);
     if (hi && !hiTex && hi.material.map?.userData.ready) { hiTex = true; pick(); }
     if (d < CM.near) getHi();
@@ -202,7 +222,7 @@ export function caseModel(name, { glow = null, shadow = true } = {}) {
   function update(dt) { if (!root.visible) return; st.t += dt; pose(dt); }
   /* 손 뼈를 따라가는 것을 붙일 때 (사진사 번쩍 등): 그 뼈의 자식으로, 모델 좌표 p 자리에 */
   function attach(bone, obj, p) { const j = R.J[bone]; obj.position.set(p[0] - j[0], p[1] - j[1], p[2] - j[2]); B[bone].add(obj); return obj; }
-  function dispose() { root.removeFromParent(); }
+  function dispose() { root.removeFromParent(); HI.get(A)?.delete(relInst); }
   const api = { name, root, bones: B, play, update, attach, dispose, near: (on = true) => { forceNear = on; if (on) { getLo(); getHi(); } pick(); }, /* 장면처럼 곧 가까이 볼 때: 큰 모델을 미리 받아 둠 */
     lookAt: (p) => { st.look = p ? (st.look || new THREE.Vector3()).copy(p) : null; },
     get clip() { return st.clip; }, get done() { return st.done; }, get flash() { return st.flash; }, get loaded() { return { lo: !!lo, hi: !!hi }; }, get far() { return far; } };

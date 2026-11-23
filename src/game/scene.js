@@ -202,7 +202,7 @@ function applyWx(el) {
   sun.intensity *= c.light; hemi.intensity *= c.amb; fill.intensity *= c.light;
   gr(sun.color, c.sky * 0.8); gr(hemi.color, c.sky * 0.6); gr(hemi.groundColor, c.sky * 0.6); // 구름 아래 빛은 노을빛·하늘빛이 거의 빠진 회색
   sun.shadow.intensity = 1 - 0.75 * Math.max(c.sky, c.wet); // 흐린 날은 그림자를 흐리게
-  bodies.stars.material.opacity *= 1 - c.sky; // 구름에 가린 밤하늘엔 별 없음
+  bodies.stars.material.opacity *= 1 - c.sky; bodies.stars.visible = bodies.stars.material.opacity > 0.005; // 구름에 가린 밤하늘엔 별 없음. #272: 0 이면 그리지 않음
   scene.fog.near *= 0.25 + 0.75 * Math.min(1, c.fog * 1.3); scene.fog.far *= c.fog; fogBase.n = scene.fog.near; fogBase.f = scene.fog.far; applyZoneFog();
   wxTop.copy(c.top).multiplyScalar(dim); wxHor.copy(c.hor).multiplyScalar(dim); wxCl.copy(c.cl).multiplyScalar(dim);
   gr(FOG, c.gray * 0.8); FOG.lerp(wxHor, c.sky); G.fogC.value.copy(FOG);
