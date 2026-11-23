@@ -7,6 +7,7 @@ import { state, late } from './state.js';
 import { $, persist, writeLocal } from './save.js';
 import { busy } from './hud.js';
 import { life, player } from './place.js';
+import { bootShow } from '../bootbar.js';
 
 export const NEWVER = { pollSec: 300, snoozeMin: 30, snoozeJitter: 0.5 };
 const myMain = document.querySelector('script[data-main]')?.getAttribute('data-main') || ''; // 한 파일(test.html)이면 비어 있음 → 확인 안 함
@@ -22,6 +23,7 @@ document.body.append(box);
 
 async function reload() {
   const b = $('newver-go'); b.disabled = true;
+  box.hidden = true; bootShow('새 버전 받는 중'); /* 로딩 창을 다시 덮고 넘어감: 흰 화면·깜박임 없이 새 페이지의 같은 창으로 이어짐 (#281) */
   try { persist(); await Promise.race([state.account?.push?.(), new Promise((r) => setTimeout(r, 3000))]); writeLocal(); } catch (e) { /* 저장 실패해도 이 기기 기록은 이미 씀 */ }
   location.reload();
 }

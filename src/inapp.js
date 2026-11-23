@@ -1,6 +1,10 @@
 (function () {
   var cs = document.currentScript, mainSrc = cs && cs.getAttribute('data-main');
-  window.__loadMain = function () { if (!mainSrc) return; var m = document.createElement('script'); m.src = mainSrc; document.body.appendChild(m); mainSrc = ''; };
+  window.__loadMain = function () {
+    if (!mainSrc) return; var src = mainSrc; mainSrc = '';
+    var add = function () { var m = document.createElement('script'); m.src = src; m.onerror = function () { if (window.__boot) window.__boot.fail(); }; document.body.appendChild(m); };
+    if (window.__boot) window.__boot.fetchMain(src, add); else add(); /* 받은 양을 로딩 창 막대로 (#281, bootscreen.js) */
+  };
   var ua = navigator.userAgent || '';
   /* 앱별 안내 표 (#239): re=UA 판별, name=앱 이름, steps=따라 하기 단계, auto=자동으로 넘기는 앱 */
   var APPS = [

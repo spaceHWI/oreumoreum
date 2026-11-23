@@ -40,6 +40,7 @@ import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
 import * as fps from './fps.js'; // 프레임 상한·발열 지킴 (#271)
+import { bootReady, bootP } from '../bootbar.js'; // 로딩 창 (#281)
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
 state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shops: 0, buff: 0, tut: 0, lamps: 0, season: 0, quest: 0, ufoseen: 0, summit: 0, shopGate: 0, myst: 0, traces: 0, talk: 0, cases: 0, tube: 0, reports: 0, fps: 0 };
 state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히 도는 이슈와 부딪혀서 따로
@@ -274,8 +275,17 @@ function frame(now) {
     if (stepErr > 1) try { renderer.render(scene, camera); } catch (_) { /* 그리기도 못 하면 다음 프레임 */ } // 같은 곳에서 계속 나면 그리기만이라도
   }
   if (!shown) { shown = true; renderer.domElement.classList.add('drawn'); } /* 첫 그린 프레임에 캔버스를 보임 (#280, page.html #view) */
+  if (!bootUp) bootTick(now);
 }
 let shown = false;
+/* 로딩 창 걷기 (#281, src/bootscreen.js): 셰이더 준비가 끝난 뒤 두 장을 더 그리면. 셰이더 준비가 아주 늦는 기기(소프트웨어 GL 등)는 첫 그림 뒤 BOOT_MAX 에 걷음 */
+const BOOT_MAX = 8000;
+let bootUp = false, bootN = 0, bootT0 = 0;
+function bootTick(now) {
+  if (!bootT0) bootT0 = now;
+  if (state.shadersReady) bootN++;
+  if (bootN >= 2 || now - bootT0 > BOOT_MAX) { bootUp = true; bootReady(); }
+}
 function step(now) {
   mtFrame(); // 이용 통계 평균 fps (#121): 숫자 하나 더하기
   if (state.osPaused || state.idleRest) { last = now; return; } // 원스토어 앱이 멈춤(pause)을 보냄 (#97)·오래 멈춰 쉬는 중 (#157, idle.js): 그리지도 움직이지도 않음
@@ -458,7 +468,7 @@ function step(now) {
 let warmed = false;
 function warm() {
   const prep = () => prepShaders().catch(() => {});
-  prep().then(() => { state.shadersReady = true; onestore.ready(); }); // 첫 화면 준비 끝 → 원스토어 startGameAsync (#97)
+  prep().then(() => { state.shadersReady = true; bootP(97, 99); onestore.ready(); }); // 첫 화면 준비 끝 → 원스토어 startGameAsync (#97)
   setTimeout(() => onestore.ready(), 3000); // 셰이더 준비가 늦어도 앱 로딩 화면이 오래 남지 않게
   startAssets();
   let t = 0; onAnyAsset(() => { clearTimeout(t); t = setTimeout(prep, 250); });
