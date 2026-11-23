@@ -605,12 +605,13 @@ export const ENEMY_PACK = {
 // 무기 (#38, 3~6단계 #123): 전투 오름에서만. 상점 무기 탭에서 순서 없이 삼(#111). 저장은 save.equip.weapon = 가진 가장 높은 단계(1 = 손), save.weaponUse = 골라 쓰는 단계
 // dmg 한 발 피해(dps 면 초당 피해), range 자동 조준 사거리(수평 m), speed 탄 속도(m/s), grav 탄에 걸리는 중력, perGyul 귤 하나로 쏘는 발 수 (활 1: 한 발에 귤 하나 #178)
 // cd 다음 발까지(초), rate 누르고 있으면 초당 발 수(머신건), spread 퍼짐(rad), gyulPerSec 레이저가 쓰는 귤(초당), tick 레이저 피해를 나눠 주는 간격(초)
+// mag 탄창(한 번에 쏠 수 있는 발 수, 다 쏘면 저절로 재장전), reload 재장전 초 (#274, 총 종류만. 셈 src/reload.js, 탄창의 셈은 RELOAD)
 // r 폭탄 반경(m), cost 폭탄 한 번에 쓰는 귤. 값은 성장 곡선(GROWTH.price). 피해는 notes/growth-loop.md 4절 (총 7 · 머신건 초당 16 · 레이저 초당 40 · 폭탄 광역 90)
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
-  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, price: GROWTH.price[3] },
-  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, price: GROWTH.price[4] },
+  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, mag: 8, reload: 1.2, price: GROWTH.price[3] },
+  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, mag: 30, reload: 2.2, price: GROWTH.price[4] },
   { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
     /* 과열 (#200, src/laserheat.js): full 계속 쏘면 열이 가득 차는 초, wait 쏘기를 멈추고 식기 시작할 때까지 초, cool 그 뒤 초당 식는 몫,
        lock 과열되면 못 쏘는 초(그동안 1 에서 0 으로 식음), hot 이 열부터 피해 × hotMul, shake 이 열부터 고리가 떨림, grade 장비 등급 하나마다 full × (1 + grade).
@@ -631,6 +632,11 @@ export const WEAPON_FX = {
   low: 0.5,
   peerSeq: 1.5, // 다른 사람에게 보내는 한 발 사건을 이 초 동안 실어 둠 (그 뒤 빼서 보내는 양을 줄임)
 };
+// 탄창·재장전 (#274, src/reload.js·game/reload.js): 탄창은 '한 번에 쏠 수 있는 묶음', 귤 탄(save.ammo)은 '가진 총알'. 재장전은 귤을 더 쓰지 않음
+// keep: 계속 쏠 때 시간당 피해를 탄창 넣기 전의 이 몫으로 맞춤 (탄창 안 한 발 피해 × keep / (탄창 쏘는 시간 / (그 시간 + 재장전)), 1 아래로는 안 내림)
+// quick: 증강 '빠른 손'(quick) 겹친 값 1 마다 재장전 시간 × (1 - 값 × quick), min 이보다 짧아지지 않음(배수). manual 손 재장전은 탄창이 이 몫 아래일 때만(가득이면 못 함)
+// low: 저사양에서도 시간은 같음(초 기준, 프레임과 상관없음)
+export const RELOAD = { keep: 0.95, quick: 1, min: 0.5, manual: 1 };
 // 귤 활 연출 (#38)
 export const BOW = {
   release: 0.3, total: 0.62, // 당겨서 놓는 순간·동작 전체 (초)
@@ -2097,7 +2103,7 @@ export const AUGMENTS = {
     { id: 'twin', br: 'fight', name: '쌍귤', ic: 'twin', v: 0.04, say: '가끔 **두 개** 나가요', text: '{v}% 확률로 한 발 더 (귤은 그대로)' },
     { id: 'burst', br: 'fight', name: '터지는 귤', ic: 'burst', v: 0.04, r: 1.5, say: '맞으면 **펑** 터져요', text: '맞은 둘레 1.5m 에 피해 {v}%' },
     { id: 'sour', br: 'fight', name: '신 귤', ic: 'sour', v: 0.1, sec: 1.5, say: '맞은 적이 **느려요**', text: '맞은 적 1.5초 {v}% 느려짐' },
-    { id: 'quick', br: 'fight', name: '빠른 손', ic: 'quick', v: 0.08, say: '모으기가 **빨라요**', text: '모아 쏘기 시간 -{v}%' },
+    { id: 'quick', br: 'fight', name: '빠른 손', ic: 'quick', v: 0.08, say: '모으기·장전이 **빨라요**', text: '모아 쏘기·재장전 시간 -{v}%' },
     { id: 'bite', br: 'live', name: '귤 한 입', ic: 'bite', v: 2, say: '쫓으면 **기운** 차요', text: '적을 쫓아내면 기운 +{v}' },
     { id: 'light', br: 'live', name: '가벼운 발', ic: 'light', v: 0.02, say: '조금 **빨라져요**', text: '이동 +{v}%' },
     { id: 'jacket', br: 'live', name: '솜잠바', ic: 'jacket', v: 0.03, say: '덜 **아파요**', text: '받는 피해 -{v}%' },
@@ -2317,9 +2323,9 @@ export const TOKEN = {
   earn: { win: 3, leader: 2, clean: 1, part: 0.5, partMax: 2 },
   server: { perSec: 0.06, burst: 40, restK: 0.9, migrateMax: 40 },
   arms: [
-    { id: 'rapid', name: '연발 귤총', base: 'mg', desc: '빠르게 여러 발 · 한 발은 약함',
+    { id: 'rapid', name: '연발 귤총', base: 'mg', desc: '빠르게 여러 발 · 한 발은 약함', fix: { reload: 1.8 },
       lv: [{ z: 1, price: 16, dmg: 9, rate: 8, spread: 0.06, perGyul: 40, range: 32 }, { z: 2, price: 30, dmg: 20, rate: 8, spread: 0.055, perGyul: 40, range: 34 }, { z: 4, price: 50, dmg: 48, rate: 9, spread: 0.05, perGyul: 45, range: 36 }] },
-    { id: 'pierce', name: '관통 귤창', base: 'gun', desc: '한 줄로 여럿을 뚫음',
+    { id: 'pierce', name: '관통 귤창', base: 'gun', desc: '한 줄로 여럿을 뚫음', fix: { mag: 0 },
       lv: [{ z: 2, price: 24, dmg: 9, cd: 0.7, pierce: 3, perGyul: 8, range: 42, speed: 85 }, { z: 3, price: 40, dmg: 20, cd: 0.62, pierce: 4, perGyul: 9, range: 44, speed: 90 }, { z: 5, price: 70, dmg: 46, cd: 0.55, pierce: 5, perGyul: 10, range: 46, speed: 95 }] },
     { id: 'blast', name: '폭발 귤포', base: 'bomb', desc: '느리지만 둘레가 다 터짐',
       lv: [{ z: 3, price: 36, dmg: 40, r: 4.5, cd: 2.2, cost: 1, range: 30 }, { z: 4, price: 55, dmg: 70, r: 5.5, cd: 2.1, cost: 1, range: 30 }, { z: 5, price: 90, dmg: 108, r: 6.5, cd: 2, cost: 2, range: 32 }] },

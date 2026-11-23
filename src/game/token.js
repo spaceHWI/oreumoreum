@@ -15,6 +15,7 @@ import { TOKEN, WEAPONS, SWARM } from '../balance.js';
 import { clothSvg } from '../clothicons.js';
 import { normTok, runTokens, TOK_ARMS, TOK_ARM, TOK_CLOTHES, TOK_CLOTH, armDef, armPrice, stallArms, stallCloth, LV_MAX } from '../token.js';
 import { gradHard } from '../toon.js';
+import { hasMag, magLine } from '../reload.js';
 import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
 import { caseModel } from '../casemodels.js';
@@ -64,7 +65,7 @@ function holdArm(id) {
   const t = TK(); if (id && !t.own[id]) return;
   t.arm = id || null; persist(); late.armsChanged?.(); syncEquipGear(); runner.apply(save.outfit); late.net?.send(true);
 }
-const armLine = (d) => (d.dps ? `초당 ${d.dmg} · ${d.range}m` : d.r ? `${d.dmg} · 반경 ${d.r}m` : `${d.dmg}${d.pierce ? ` · ${d.pierce}마리 관통` : ''} · ${d.range}m`);
+const armLine = (d) => (d.dps ? `초당 ${d.dmg} · ${d.range}m` : d.r ? `${d.dmg} · 반경 ${d.r}m` : `${d.dmg}${d.pierce ? ` · ${d.pierce}마리 관통` : ''} · ${d.range}m`) + (hasMag(d) ? ` · ${magLine(d)}` : ''); /* 탄창 (#274) */
 
 /* ---------- 옷: 입은 칸은 싸움 값 ---------- */
 const FIGHT_STAT = { hp: 'hp', regen: 'regen', guard: 'guard' };
