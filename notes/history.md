@@ -2001,3 +2001,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 - #266 (오류 알림): 서바이벌 판 중 터 밖으로 나갔다 돌아온 프레임에 `late.msgLog?.unpin('leave')` 가 "is not a function" 으로 멈추던 것 (0.50.0). `unpin` 은 `msglog.js` 가 따로 export 한 함수인데 `late.msgLog` 객체에는 없었다(#252 에서 고정 한 줄을 만들 때 빠짐). `msgLog` 에 `unpin` 을 넣음. 다른 `late.msgLog?.…` 부름(`hud.js` drop)은 있는 함수
 - 검사: `tools/arena.js` 에 '터 밖 → 돌아옴: 고정 줄 걷힘·판 이어짐' 한 줄(고치기 전엔 실패). 같은 파일의 '터 밖 경고'·'처음 들어간 구역 안내' 는 #252 뒤로 비어 있는 `#toast` 를 봐서 실패하던 낡은 검사라 고정 한 줄·`#msg-log` 를 보게 고침
+
+- #267 검사 도구: tuberun.js 가 낡은 #toast 대신 #msg-log 를 읽게 고침. 같은 낡은 읽기가 있던 wish·reportrun·shopgate·punkmeet·heatrun·cartrun·pace 도 #msg-log 로 바꿈(문법만 확인, tuberun d·m 통과). talkshot·questrun 의 #toast hidden 대기는 그대로.
+
+- #268 사진사를 예전 모습으로·다듬기: Tripo `case-photographer`(·`-lo`)를 빼고 #262 전의 캐릭터 차림(선바이저·파란 바람막이·러닝 조끼, 비 오면 노란 우비)으로 되돌림. 모델 파일·packassets·casemodels(RIG·MOVES·ready/shoot/beckon)·balance scale 에서 지움, `tools/casemodels.js` 는 다섯 모델
+- 다듬기: 짐벌 → 큰 렌즈 손 카메라(주황 렌즈 링, 오른팔 뼈에 직접 붙여 손목 각을 동작마다 바꿈), 목 카메라를 키우고 어깨에서 V 로 내려오는 주황 끈(back:z-camstrap, 우비 위에도 보임) + 허리 렌즈 가방
+- 동작: `runner.animate` 에 `post(parts)` 를 더해 서 있는 자세 위에 섞음. 기다릴 땐 둘러보기 ↔ 카메라 만지작(3.5~6.5초마다), 다가오면 왼손 손짓, 찍을 땐 카메라를 눈에 대고 3·2·1 끝(PHOTOG.count×3)에 렌즈에서 번쩍. 그림 `notes/shots/268/`

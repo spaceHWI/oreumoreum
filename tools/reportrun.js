@@ -74,7 +74,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
     const ctx = await ev(() => document.querySelector('#btn-ctx')?.textContent || document.getElementById('btn-ctx')?.getAttribute('aria-label') || '');
     s = await RS(); ok(s.near && s.act, `곁에 오면 상호작용 (${ctx.trim()})`);
     if (i === 0) await shot('spot');
-    await ev(() => { window.__toasts = []; const t = document.getElementById('toast'); window.__tob?.disconnect(); window.__tob = new MutationObserver(() => window.__toasts.push(t.textContent)); window.__tob.observe(t, { childList: true, characterData: true, subtree: true }); });
+    await ev(() => { window.__toasts = []; const t = document.getElementById('msg-log'); window.__tob?.disconnect(); window.__tob = new MutationObserver(() => window.__toasts.push(t.textContent)); window.__tob.observe(t, { childList: true, characterData: true, subtree: true }); });
     await p.keyboard.press('f'); await W(900);
     s = await RS(); const c1 = await ev(() => window.__oreum.save.coins), toastT = await ev(() => window.__toasts.join(' / '));
     ok(s.got && c1 - c0 === REPORT.gyul && toastT.includes(R.find), `F → 한 줄·귤 +${c1 - c0} ('${toastT}')`);

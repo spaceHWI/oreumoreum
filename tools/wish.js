@@ -28,7 +28,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     await p.evaluate((n) => { window.__old = 1; window.__oreum.online.fake(n); }, 'wish-' + name + '-' + Date.now());
     await p.waitForFunction(() => document.querySelector('#acct-ask [data-v="1"]'), null, { timeout: 15000 }).then(() => p.evaluate(() => document.querySelector('#acct-ask [data-v="1"]').click())).catch(() => {});
     await until(p, () => !window.__old && !!(window.__oreum?.online?.account?.()?.loggedIn && window.__oreum.renderer.info.render.frame > 2), null, 180000);
-    await p.evaluate(() => { window.__toasts = []; new MutationObserver(() => { const e = document.getElementById('toast'); if (e && e.textContent) window.__toasts.push(e.textContent); }).observe(document.body, { subtree: true, childList: true, characterData: true }); });
+    await p.evaluate(() => { window.__toasts = []; new MutationObserver(() => { const e = document.getElementById('msg-log'); if (e && e.textContent) window.__toasts.push(e.textContent); }).observe(document.body, { subtree: true, childList: true, characterData: true }); });
     for (let k = 0; k < 20 && (await p.evaluate(() => !document.getElementById('intro').hidden)); k++) { await p.evaluate(() => document.getElementById('enter').click()).catch(() => {}); await wait(p, 1500); }
     await until(p, () => window.__oreum.net.ready, null, 30000);
     await wait(p, 1500); await p.evaluate(() => { const o = window.__oreum; if (o.look.state().open) o.look.close(); });
@@ -72,7 +72,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   const a0 = await A.p.evaluate(() => window.__oreum.save.coins);
   await A.p.evaluate(() => { window.__old = 1; location.reload(); });
   await until(A.p, () => !window.__old && window.__oreum?.renderer?.info.render.frame > 2, null, 180000);
-  await A.p.evaluate(() => { window.__toasts = []; new MutationObserver(() => { const e = document.getElementById('toast'); if (e && e.textContent) window.__toasts.push(e.textContent); }).observe(document.body, { subtree: true, childList: true, characterData: true }); });
+  await A.p.evaluate(() => { window.__toasts = []; new MutationObserver(() => { const e = document.getElementById('msg-log'); if (e && e.textContent) window.__toasts.push(e.textContent); }).observe(document.body, { subtree: true, childList: true, characterData: true }); });
   for (let k = 0; k < 20 && (await A.p.evaluate(() => !document.getElementById('intro').hidden)); k++) { await A.p.evaluate(() => document.getElementById('enter').click()).catch(() => {}); await wait(A.p, 1500); }
   ok(await until(A.p, () => (window.__toasts || []).some((t) => t.includes('함께 빌어 줬어요')), null, 20000), "A: 다시 들어오면 '1명이 내 소원에 함께 빌어 줬어요'");
   ok(await until(A.p, ([c, g]) => window.__oreum.save.coins >= c + g, [a0, WISH.gotGyul], 5000), `A: 쓴 사람 귤 +${WISH.gotGyul}`);

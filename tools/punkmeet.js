@@ -77,13 +77,13 @@ const ok = (c, m) => { console.log((c ? '통과 ' : '실패 ') + m); if (!c) pro
     const o = window.__oreum, W = (ms) => new Promise((r) => setTimeout(r, ms)), P = o.punk, out = {};
     o.guard?.go?.(1) || o.cleanhouse.go(); await W(300);
     const vol = () => o.trash.api.bagVol();
-    P.crow(); out.v0 = vol(); out.warn = P.state().crow?.state; out.tip = document.getElementById('toast').textContent;
+    P.crow(); out.v0 = vol(); out.warn = P.state().crow?.state; out.tip = document.getElementById('msg-log').textContent;
     for (let i = 0; i < 150 && P.state().crow?.state !== 'circle'; i++) await W(200);
     out.circle = P.state().crow; out.v1 = vol();
     window.__rw.length = 0;
     for (let i = 0; i < 90 && P.state().crow?.state === 'circle'; i++) { o.aim.throw(); for (let k = 0; k < 20 && o.player.pose === 'throw'; k++) await W(150); await W(300); }
     out.hit = P.state().crow?.state; const tt = []; const d0 = o.life.tangerines.filter((q) => q.drop).length; let dmax = 0;
-    for (let i = 0; i < 160 && P.state().crow; i++) { await W(250); const x = document.getElementById('toast'); if (!x.hidden && !tt.includes(x.textContent)) tt.push(x.textContent); dmax = Math.max(dmax, o.life.tangerines.filter((q) => q.drop).length - d0); }
+    for (let i = 0; i < 160 && P.state().crow; i++) { await W(250); const x = document.getElementById('msg-log'); if (!x.hidden && !tt.includes(x.textContent)) tt.push(x.textContent); dmax = Math.max(dmax, o.life.tangerines.filter((q) => q.drop).length - d0); }
     out.toasts = tt; out.drops = dmax;
     out.v2 = vol(); 
     // 안 맞힘: 1개 잃음

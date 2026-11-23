@@ -1,4 +1,4 @@
-// 사건 파일 Tripo 모델 (#262): 설인·검은 양복·흰 작업복·터지기·사진사·호스. model/bake-case.py 로 줄이고 구워 model/extract-prop.js 로 src/model-case-*.js
+// 사건 파일 Tripo 모델 (#262): 설인·검은 양복·흰 작업복·터지기·호스 (사진사는 #268 에서 예전 차림으로 되돌림). model/bake-case.py 로 줄이고 구워 model/extract-prop.js 로 src/model-case-*.js
 // - 자료는 가까이 갔을 때만 받는다(assets.js meta.lazy). 처음엔 멀리용(-lo, 1,500 삼각형·텍스처 128), CASE_MODELS.near 안이면 큰 모델(캐릭터 7,500·호스 1,500)
 // - 뼈대: 사람 꼴·설인은 지금 캐릭터처럼 뼈 7개(hips·chest·head·armL·armR·legL·legR), 호스는 8마디. 가중치는 정점과 뼈 선분 사이 거리로 계산(+손에 든 것은 손 뼈로)
 // - 듀얼 쿼터니언 스키닝(dqskin.js). 큰 모델과 멀리용이 같은 뼈를 씀 → 캐릭터마다 그리는 것 1개(+그림자)
@@ -35,9 +35,6 @@ const RIG = {
   'arena-keeper': human({ hips: [-0.05, 0.15, 0], chest: [-0.05, 0.35, 0], neck: [-0.05, 0.56, 0], top: [-0.05, 0.95, 0], shL: [0.12, 0.49, 0], handL: [0.24, 0.44, 0.15], shR: [-0.22, 0.49, 0], handR: [-0.34, 0.26, 0],
     hipL: [0.03, 0.12, 0], footL: [0.03, 0.02, 0.02], hipR: [-0.15, 0.12, 0], footR: [-0.15, 0.02, 0.02], headY: 0.56, gate: [0.15, 0.19],
     hold: [['armL', [0.15, 0.36, 0.06], [1, 0.64, 1]]], extra: { armL: [[[0.24, 0.44, 0.15], [0.27, 0.55, 0.14]]] } }), /* 왼손 망고 */
-  photographer: human({ hips: [0, 0.25, 0], chest: [0, 0.4, 0], neck: [0, 0.62, 0], top: [0, 0.97, 0], shL: [0.16, 0.53, -0.02], handL: [0.1, 0.6, 0.2], shR: [-0.16, 0.53, -0.02], handR: [-0.1, 0.6, 0.2],
-    hipL: [0.08, 0.24, 0], footL: [0.08, 0.02, 0], hipR: [-0.08, 0.24, 0], footR: [-0.08, 0.02, 0], headY: 0.62,
-    hold: [['armR', [-0.14, 0.48, 0.13], [0.085, 0.62, 1]], ['armR', [-0.14, 0.6, 0.15], [0.085, 0.72, 1]]] }), /* 두 손으로 든 카메라(오른팔을 따름, 왼손은 왼팔: 손짓할 때 떨어짐) */
   hose: (() => { /* 뒤 끝(땅, -z)에서 아치를 넘어 앞의 주황 나팔 입(+z)까지 9점 → 8마디 */
     const P = [[0, 0, -0.44], [0, 0.3, -0.42], [0, 0.6, -0.33], [0, 0.8, -0.15], [0, 0.83, 0.05], [0, 0.7, 0.24], [0, 0.45, 0.33], [0, 0.2, 0.37], [0, 0.12, 0.47]];
     const J = {}, seg = {}, parent = {};
@@ -131,9 +128,6 @@ const CLIPS = {
   gong: (B, t) => { const h = Math.pow(S(t * 3.6) * 0.5 + 0.5, 3); armUp(B, 'armR', -0.95 + h * 0.75, -0.2); B.chest.rotation.x += h * 0.1; B.chest.rotation.y -= 0.15; },
   offer: (B, t) => { const k = sstep(0, 0.5, t % 3) * (1 - sstep(2.2, 3, t % 3)); armUp(B, 'armL', -0.55 * k, -0.15 * k); B.chest.rotation.x += 0.12 * k; B.hips.position.y += S(t * 5) * 0.004; B.head.rotation.z -= 0.08 * k; },
   /* 사진사: 쉼 자세(모델 그대로)가 카메라를 눈에 댄 모습. 몸과 붙은 한 덩어리 모델이라 팔은 조금만 움직임(크게 내리면 카메라·턱이 늘어남) */
-  ready: (B, t) => { B.chest.rotation.x += S(t * 1.9) * 0.012; B.head.rotation.y += S(t * 0.5) * 0.06; },
-  shoot: (B, t, s) => { const u = t % 3, up = sstep(0, 0.4, u) * (1 - sstep(2.3, 2.9, u)); armUp(B, 'armR', 0.1 * (1 - up), 0); armUp(B, 'armL', 0.1 * (1 - up), 0); B.chest.rotation.x -= 0.05 * up; B.head.rotation.x += 0.08 * up; s.flash = u > 1.1 && u < 1.25 ? 1 : Math.max(0, (s.flash || 0) - 0.08); },
-  beckon: (B, t) => { armUp(B, 'armL', -0.2 + S(t * 8) * 0.25, 0.3); B.head.rotation.z += 0.08 + S(t * 4) * 0.04; B.chest.rotation.y += 0.12; },
   /* 호스: 뼈 8마디 (h0 땅 → h7 나팔) */
   wriggle: (B, t) => { CHAIN.forEach((b, i) => { B[b].rotation.x += S(t * 2.6 - i * 0.8) * 0.12; B[b].rotation.z += S(t * 1.7 - i * 0.6) * 0.1; }); },
   spew: (B, t) => { CHAIN.forEach((b, i) => { B[b].rotation.x += S(t * 31 + i) * 0.03 + (i > 4 ? 0.08 : 0); B[b].rotation.z += S(t * 27 - i) * 0.03; }); B.h0.position.y += S(t * 40) * 0.006; },
@@ -146,7 +140,6 @@ const MOVES = {
   mib: { idle: 'stand', stand: 'stand', talk: 'talk', walk: 'shuffle', bow: 'bow' },
   'ghost-keeper': { idle: 'idle', walk: 'glide', glide: 'glide', pinch: 'pinch', lookback: 'turnback' },
   'arena-keeper': { idle: 'idle', wave: 'wave1', gong: 'gong', offer: 'offer' },
-  photographer: { idle: 'ready', shoot: 'shoot', beckon: 'beckon', wave: 'beckon' },
   hose: { idle: 'wriggle', wriggle: 'wriggle', spew: 'spew', rise: 'rise', sink: 'sink' },
 };
 export const caseMoves = (name) => Object.keys(MOVES[name] || {});
