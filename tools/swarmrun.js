@@ -15,7 +15,7 @@ const wait = (p, fn, arg0, ms = 400, max = 600) => (async () => { for (let i = 0
   await p.evaluate(() => { const o = window.__oreum; Object.assign(o.save, { server: 'battle', entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 }, jeong: 1, soundOff: 1, recycle: { visits: 3 }, swarm: { seen: 1, best: {} } }); const k = Object.keys(localStorage).find((k) => k.startsWith('oreumoreum')) || 'oreumoreum.v1'; localStorage.setItem(k, JSON.stringify(o.save)); });
   await p.reload(); await p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 120000 });
   await p.click('#enter', { timeout: 20000 }).catch(() => {}); await p.waitForTimeout(1500);
-  console.log('들어옴'); await p.evaluate(() => { const o = window.__oreum; o.pace.pacing.test.first.done = true; o.pace.pacing.test.first.bloomed = true; o.setTod(13); o.setWeather('clear'); o.director.open('field'); o.director.open('level'); });
+  console.log('들어옴'); await p.evaluate(() => { const o = window.__oreum; o.pace.pacing.test.first.done = true; o.pace.pacing.test.first.bloomed = true; o.setTod(13); o.setWeather('clear'); o.director.open('field'); o.director.open('level'); o.idle?.set({ warn: 1e6, rest: 1e6, hidden: 1e6 }); }); /* #273: 조작 없이 판 두 개를 돌면 '오래 멈춤' 쉬는 화면(#157)이 떠 게임이 멈췄음 */
   const res = [];
   for (const zn of ZONES) {
     const ok = await p.evaluate(({ zn, SPEED, GOD }) => {
