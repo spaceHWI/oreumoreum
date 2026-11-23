@@ -34,6 +34,9 @@ export const weaponSounds = {
   hiss() { if (!this.on || !this.sfxOn) return; const c = this.ctx, t = c.currentTime;
     const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3200;
     const g = c.createGain(); env(c, g, t, 0.01, 0.12, 0.7); s.connect(f); f.connect(g); g.connect(this.sfx); s.start(t, Math.random()); s.stop(t + 0.75); },
+  /* 탄창 (#274): 빼는 '착'(낮고 짧게), 다 끼우면 '딸깍' */
+  reloadOut() { if (!this.on || !this.sfxOn) return; pop(this, 520, 300, 0.07, 0.05); },
+  reloadIn() { if (!this.on || !this.sfxOn) return; pop(this, 1900, 1100, 0.11, 0.035); },
   heatReady() { if (!this.on || !this.sfxOn) return; pop(this, 2400, 1500, 0.08, 0.03); },
   lob() { if (!this.on || !this.sfxOn) return; const c = this.ctx, t = c.currentTime;
     const s = c.createBufferSource(); s.buffer = this.noise; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 3;

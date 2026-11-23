@@ -7,6 +7,7 @@ import { LOW } from '../gfx2.js';
 import { clothSvg, WEAR_STAT_ICON, wearStatText } from '../clothicons.js';
 import { SHOP_ICON } from '../shops.js';
 import { ic } from '../icons.js';
+import { hasMag } from '../reload.js';
 import { state, late } from './state.js';
 import { $, save, CLOTH, CL, wearV, syncEquipGear, persist } from './save.js';
 import { LEAPB, street, shopsBuilt, roofSigns, CH, runner, player } from './place.js';
@@ -43,13 +44,14 @@ const STAT_ICON = {
   speed: ic('speed'), // 빠르기
   dmg: ic('dmg'), // 피해
   gyul: ic('magnet'), // 귤 모으는 범위 (#151)
+  mag: ic('reroll'), // 탄창·재장전 (#274)
 };
-const STAT_TITLE = { per: '한 번에 줍는 수', rate: '초당 줍는 수', r: '닿는 거리', cap: '배낭 용량', speed: '빠르기', dmg: '피해', gyul: '귤 모으는 범위' }; late.STAT_ICON = STAT_ICON;
+const STAT_TITLE = { per: '한 번에 줍는 수', rate: '초당 줍는 수', r: '닿는 거리', cap: '배낭 용량', speed: '빠르기', dmg: '피해', gyul: '귤 모으는 범위', mag: '탄창 · 재장전 초' }; late.STAT_ICON = STAT_ICON;
 // 장비 점수 (#137): 칸마다 지금 것 대비 ▲/▼ 점수 차, 고른 것의 점수
 const SCORE_IC = ic('score');
 export function gdBadge(d) { return d ? `<i class="gd ${d > 0 ? 'up' : 'down'}" aria-label="장비 힘 ${d > 0 ? '+' : ''}${d}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</i>` : ''; }
 export function scoreChip(sc, d) { return `<span class="gs" title="장비 힘">${SVG_A}>${SCORE_IC}</svg>${sc}${d ? ` ${gdBadge(d)}` : ''}</span>`; }
-const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`]] : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
+const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t.dmg}/s` : t.r ? `${t.dmg}·${t.r}m` : String(t.dmg)], ['r', `${t.range}m`], ...(hasMag(t) ? [['mag', `${t.mag}·${+t.reload.toFixed(1)}s`]] : [])] /* 탄창·재장전 초 (#274) */ : k === 'tool' ? [t.rate ? ['rate', `${t.rate}/s`] : ['per', `×${t.per}`], ['r', `${t.r}m`]]
   : k === 'bag' ? [['cap', String(t.cap)], ['gyul', `${gyulPickR({ equip: { bag: t.tier } })}m`]] : [['speed', `×${String(t.speed.toFixed(2)).replace(/0$/, '')}`]];
 // 순서 없이 사기 (#111): 귤만 충분하면 어느 단계든 바로 산다. 산 단계 아래는 '가짐'
 // 튜토리얼 집게·배낭 단계에서는 그 물건(바로 다음 단계)만
