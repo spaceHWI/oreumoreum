@@ -21,7 +21,7 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     const ready = () => p.waitForFunction(() => window.__oreum && window.__oreum.renderer.info.render.frame > 2, null, { timeout: 120000 });
     const enter = async () => {
       await p.click('#enter').catch(() => {}); await p.click('#srv-go').catch(() => {}); await W(5000);
-      await E(() => { const O = window.__oreum; try { O.look.close(); } catch { /* 없음 */ } document.body.classList.remove('tut'); for (const id of ['fs-hint', 'simple-hint']) { const el = document.getElementById(id); if (el) el.hidden = true; } });
+      await E(() => { const O = window.__oreum; try { O.look.close(); } catch { /* 없음 */ } document.body.classList.remove('tut'); for (const id of ['fs-tip']) { const el = document.getElementById(id); if (el) el.hidden = true; } });
     };
     await p.goto(URL); await ready();
     // 옛 저장 + 깨진 숙소 기록: 레벨 1, 구역 1, 귤 넉넉
