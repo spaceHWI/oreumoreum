@@ -284,6 +284,7 @@ export const TITLES = [
   { t: '설인의 후배', badge: 'b-case-c5' },
   { t: '호스를 본 사람', badge: 'b-case-c4' }, // #235 (멀티 번호가 바뀌지 않게 뒤에)
   { t: '수석 조사관', badge: 'b-case-all' }, // #237 다섯 사건 종결 ('조사관' 한 벌, game/casefinale.js)
+  { t: '단골 투숙객', badge: 'b-inn-5' }, // #270 숙소 오피스제주 다섯 번
 ];
 // 멀티에서 받은 칭호 번호 → 글 (목록에 있는 것만. 없으면 '')
 export const titleText = (n) => (Number.isInteger(n) && n >= 0 && n < TITLES.length ? TITLES[n].t : '');

@@ -96,7 +96,7 @@ late.coinsSync = () => { seen = Math.max(0, save.coins | 0); skip = 0; };
 function watchCoins() {
   const c = Math.max(0, save.coins | 0), d = c - seen; seen = c;
   const e = Math.max(0, d - skip); skip = 0;
-  if (e > 0) gain(e);
+  if (e > 0) gain(e * (late.innMul?.('xp') ?? 1)); /* #270 개운함: 경험치 + (서버 validate.js 가 숙박한 날만 그만큼 받아 줌) */
 }
 function gain(n) {
   const x = Math.max(0, Math.round(n)); if (!x) return 0;
