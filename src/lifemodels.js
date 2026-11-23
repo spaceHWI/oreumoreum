@@ -3,7 +3,7 @@
 // 노루는 멧돼지·들개(enemymodels.js)처럼 한 덩어리 모델에 위치로 뼈 가중치(몸·머리·꼬리·다리 4)를 붙여 움직임
 import * as THREE from 'three';
 import { LOW } from './gfx2.js';
-import { LIFE_MODELS as LM } from './balance.js';
+import { LIFE_MODELS as LM, NPC_LIGHT } from './balance.js';
 import { unpackProp, propGeometry, propMaterial } from './propmodel.js';
 import { whenAsset, want, placeholderGeo, placeholderMat } from './assets.js';
 
@@ -35,7 +35,7 @@ function deerShared(D) {
   deerGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); deerGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); deerGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   deerGeo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); deerGeo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); deerGeo.setIndex(new THREE.BufferAttribute(idx, 1));
   deerGeo.computeBoundingSphere(); deerGeo.boundingSphere.radius *= 1.3;
-  deerMat = propMaterial('deer');
+  deerMat = propMaterial('deer', { minLight: NPC_LIGHT.floor }); /* 밤에도 읽히게 (#269) */
 }
 // 받기 전 임시 모양: 모델 크기의 타원체를 몸 뼈에 붙임
 function deerTemp() {
@@ -90,7 +90,7 @@ export function buildHareubang() {
   const root = new THREE.Group(), sway = new THREE.Group(); root.add(sway);
   const mesh = new THREE.Mesh(placeholderGeo('hareubang', 'box'), placeholderMat('#5e5a55'));
   mesh.scale.setScalar(S); mesh.castShadow = true; mesh.receiveShadow = true; sway.add(mesh);
-  whenAsset('hareubang', (M) => { mesh.geometry = propGeometry(M); mesh.material = hbMat || (hbMat = propMaterial('hareubang', { glow: 0.12 })); });
+  whenAsset('hareubang', (M) => { mesh.geometry = propGeometry(M); mesh.material = hbMat || (hbMat = propMaterial('hareubang', { glow: 0.12, minLight: NPC_LIGHT.floor })); });
   return { root, head: sway, hat: new THREE.Object3D() };
 }
 // 맞은 뒤 흔들림 (hitT 1 → 0)

@@ -2003,3 +2003,13 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 검사: `tools/arena.js` 에 '터 밖 → 돌아옴: 고정 줄 걷힘·판 이어짐' 한 줄(고치기 전엔 실패). 같은 파일의 '터 밖 경고'·'처음 들어간 구역 안내' 는 #252 뒤로 비어 있는 `#toast` 를 봐서 실패하던 낡은 검사라 고정 한 줄·`#msg-log` 를 보게 고침
 
 - #267 검사 도구: tuberun.js 가 낡은 #toast 대신 #msg-log 를 읽게 고침. 같은 낡은 읽기가 있던 wish·reportrun·shopgate·punkmeet·heatrun·cartrun·pace 도 #msg-log 로 바꿈(문법만 확인, tuberun d·m 통과). talkshot·questrun 의 #toast hidden 대기는 그대로.
+
+## #269 NPC 가 까맣게 보임 (2026-11-23)
+- 재현: `tools/npcdark.js` 로 텍스처 그림 풀기를 늦추면(느린 폰과 같음) 검은 양복·흰 옷이 **새까만 실루엣**(`notes/shots/269/before-loading-d.jpg`). 원인: Tripo 모델 재질(`propmodel.js` propMaterial ← `assets.js` lazyTexture)은 자료(모양)가 오자마자 그리는데, 텍스처 그림은 그 뒤에 따로 풀림 → 그 사이 GPU 에 없는 텍스처를 읽어 검정. 사건 모델은 멀리용 → 큰 모델로 바꾸는 순간에도 큰 모델 텍스처가 아직이라 한 번 더 검게 깜빡임. 같은 틀을 쓰는 노루·하르방·들개·외계인·가게·가로등도 같음
+- 고침: lazyTexture 에 `userData.texOn`(0→1)·`ready`. 재질은 셰이더에서 texOn 0 동안 회색(`NPC_LIGHT.wait`)으로 그리고, 그림이 오면 `NPC_LIGHT.fadeIn`(0.35초)에 걸쳐 텍스처로. 사건 모델은 큰 모델 텍스처가 올라간 뒤에 멀리용과 바꿈(`casemodels.js` hiTex). 그림 풀기 실패는 두 번 더 해 보고, 그래도 안 되면 오류 알림 `[오류 tex] 검은 NPC: 텍스처 풀기 실패 <이름>`
+- 머리 모델(`gear.js` fromData: 단발·똥머리 등, NPC·남의 캐릭터 머리)도 그림이 풀리기 전에 붙여 검게 보이던 것 → 풀린 뒤에 붙임
+- 남의 캐릭터(`net.js`): 러너 기본 재질(바지·신발·조끼·모자)이 검정이라 옷 자료가 오기 전엔 검은 몸 → 만들 때 기본 옷부터 입힘
+- 밤 최소 밝기: 사건 모델·노루·하르방 재질에 `NPC_LIGHT.floor` 0.3(텍스처 색 × 0.3 보다 어둡지 않게). 낮엔 이미 더 밝아 바뀌지 않음. 건물·적은 0(그대로)
+- 셰이더 컴파일 실패는 `scene.js` renderer.debug.onShaderError 로 오류 알림 `[오류 gl] 검은 NPC: 셰이더 컴파일 실패 …` (WebGL 을 잃은 동안은 뺌)
+- 러너 몸 텍스처(`runner.js` modelTex)·멧돼지·돌담도 같은 TextureLoader 틀이지만 첫 화면 전에 받는 것·적·벽이라 그대로 둠
+- 검사 `node tools/npcdark.js [d|m]`: 받는 중(그림 9초 늦춤)·낮·안개·밤·밤 비에서 모델마다 픽셀 평균 밝기 ≥ `testFloor`(40)·`testNight`(28), 받는 중 텍스처 없이 그려지는 메시 0. 그림은 `notes/shots/269/`
