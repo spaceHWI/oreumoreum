@@ -2001,3 +2001,5 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 - #266 (오류 알림): 서바이벌 판 중 터 밖으로 나갔다 돌아온 프레임에 `late.msgLog?.unpin('leave')` 가 "is not a function" 으로 멈추던 것 (0.50.0). `unpin` 은 `msglog.js` 가 따로 export 한 함수인데 `late.msgLog` 객체에는 없었다(#252 에서 고정 한 줄을 만들 때 빠짐). `msgLog` 에 `unpin` 을 넣음. 다른 `late.msgLog?.…` 부름(`hud.js` drop)은 있는 함수
 - 검사: `tools/arena.js` 에 '터 밖 → 돌아옴: 고정 줄 걷힘·판 이어짐' 한 줄(고치기 전엔 실패). 같은 파일의 '터 밖 경고'·'처음 들어간 구역 안내' 는 #252 뒤로 비어 있는 `#toast` 를 봐서 실패하던 낡은 검사라 고정 한 줄·`#msg-log` 를 보게 고침
+
+- #267 검사 도구: tuberun.js 가 낡은 #toast 대신 #msg-log 를 읽게 고침. 같은 낡은 읽기가 있던 wish·reportrun·shopgate·punkmeet·heatrun·cartrun·pace 도 #msg-log 로 바꿈(문법만 확인, tuberun d·m 통과). talkshot·questrun 의 #toast hidden 대기는 그대로.

@@ -16,7 +16,7 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     const W = (ms) => p.waitForTimeout(ms);
     const until = async (f, ms, a) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await E(f, a).catch(() => false)) return true; await W(100); } return false; };
     const act = async () => { if (mode === 'm') await p.tap('#btn-ctx', { force: true }).catch(() => {}); else await p.keyboard.press('f'); };
-    const toast = () => E(() => { const t = document.getElementById('toast'); return t.hidden ? '' : t.textContent; });
+    const toast = () => E(() => document.getElementById('msg-log')?.textContent || ''); /* #252 뒤로 알림은 #msg-log (#267) */
     await p.goto(URL); await W(6000);
     await p.click('#enter').catch(() => {}); await p.click('#srv-go').catch(() => {}); await W(6000);
     await E(() => {
@@ -45,7 +45,7 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     // 남쪽 사면에도 버림 → 둘
     await dumpAt(1);
     ok(await until(() => window.__oreum.tube.linked().includes('slope'), 30000), '남쪽 사면에 버리니 연결됨');
-    ok(await until(async () => (document.getElementById('toast').textContent || '').includes('수거 관 연결됨'), 60000), '토스트: 수거 관 연결됨');
+    ok(await until(async () => (document.getElementById('msg-log').textContent || '').includes('수거 관 연결됨'), 60000), '토스트: 수거 관 연결됨');
     await E(() => window.__oreum.tube.stand('slope')); await W(600);
     ok(await until(() => window.__oreum.aim.ctx() === 'tube', 3000), '남쪽 사면 투입구 앞: 수거 관');
     await act();

@@ -27,7 +27,7 @@ const { chromium } = require('playwright');
   await p.waitForTimeout(150);
   res['폴짝 중 높이'] = await p.evaluate(() => { const O = window.__oreum; return { hop: O.player.cart?.hop != null, y: +(O.player.pos.y - O.rides.cart.ground(O.player.pos.x, O.player.pos.z)).toFixed(2) }; });
   await p.waitForTimeout(1200);
-  res['앉음'] = await p.evaluate(() => { const O = window.__oreum, c = O.rides.cart.api; if (!O.player.cart) return { off: window.__st, toast: document.getElementById('toast').textContent }; const s = c.seat(O.player.cart.seat); return { hop: O.player.cart.hop, off: +Math.hypot(s.x - O.player.pos.x, s.z - O.player.pos.z).toFixed(2), code: O.rides.state().code, btn: O.aim.ctx() }; });
+  res['앉음'] = await p.evaluate(() => { const O = window.__oreum, c = O.rides.cart.api; if (!O.player.cart) return { off: window.__st, toast: document.getElementById('msg-log').textContent }; const s = c.seat(O.player.cart.seat); return { hop: O.player.cart.hop, off: +Math.hypot(s.x - O.player.pos.x, s.z - O.player.pos.z).toFixed(2), code: O.rides.state().code, btn: O.aim.ctx() }; });
   // 달리는 중 내리기
   res['내리기'] = await p.evaluate(() => {
     const O = window.__oreum, c = O.rides.cart.api, m = c.state.moving; O.rides.cart.leave(false);
@@ -50,7 +50,7 @@ const { chromium } = require('playwright');
       for (let i = 0; i < 4; i++) { const s = c.seat(i); net.test.fake({ peer: 'fake' + i, presence: { x: s.x, z: s.z, rd: 'cart', nick: 'p' + i } }); }
       const h = c.heading; O.tp(c.pos.x + Math.cos(h) * 2.4, c.pos.z - Math.sin(h) * 2.4, h);
       const solo = net.solo; O.rides.cart.board(); const on = !!O.player.cart;
-      const toast = document.getElementById('toast')?.textContent || '';
+      const toast = document.getElementById('msg-log')?.textContent || '';
       for (let i = 1; i < 4; i++) net.test.drop('fake' + i);
       if (on) O.rides.cart.leave(false);
       O.tp(c.pos.x + Math.cos(c.heading) * 2.4, c.pos.z - Math.sin(c.heading) * 2.4, c.heading);

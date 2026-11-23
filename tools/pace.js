@@ -88,7 +88,7 @@ const path = require('path'), fs = require('fs');
         O.dumpers.state().forEach((d, i) => O.dumpers.hit(i));
         O.enemies.list.slice().forEach((e) => { if (e.state === 'flee' || e.state === 'leave') return; e.state = 'flee'; O.life.hooks.enemyRepel(e.kind, e.pos, e.def); });
         P.update(1.5); const end = P.events.filter((e) => e.kind === 'end').pop();
-        return { phase: P.phase, end, coins: O.save.coins - c0, toast: document.getElementById('toast').textContent, nextIn: Math.round(P.nextIn), tip: P.canTip(), jack: P.canJack() };
+        return { phase: P.phase, end, coins: O.save.coins - c0, toast: document.getElementById('msg-log').textContent, nextIn: Math.round(P.nextIn), tip: P.canTip(), jack: P.canJack() };
       });
       console.log(srv, L.map((x) => `${x.tag} ${x.phase} 긴장${x.ten} ${x.dump}${x.en}`).join(' | '));
       console.log(srv, '긴장 화면', vis); console.log(srv, '끝', L2);

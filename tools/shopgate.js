@@ -33,8 +33,8 @@ async function page(b, data) {
     ok(await E(() => window.__oreum.quest.givers.get('shop:stone')?.root.visible === false), '스톤 주인 NPC 없음');
     // 가까이 가면 준비 중
     await E(() => window.__oreum.stone.go());
-    await until(() => /준비 중/.test(document.getElementById('toast').textContent), 4000);
-    const t = await E(() => document.getElementById('toast').textContent);
+    await until(() => /준비 중/.test(document.getElementById('msg-log').textContent), 4000);
+    const t = await E(() => document.getElementById('msg-log').textContent);
     ok(/준비 중 — 숲길 우두머리를 쫓아내면 열려요/.test(t), `닫힌 가게 앞 한 줄: ${t}`);
     ok(await E(() => window.__oreum.aim.ctx() !== '식사'), '닫힌 스톤 상호작용 없음');
     await E(() => window.__oreum.street.open('stone')); await W(300);
@@ -51,9 +51,9 @@ async function page(b, data) {
     await E(() => { window.__oreum.save.recycle.visits++; }); await W(300);
     const opened = await until(() => window.__oreum.shopGate.isOpen('manjok'), 60000);
     ok(opened, '버린 뒤 만족한상회가 열림');
-    if (!opened) for (let i = 0; i < 6; i++) { console.log(await E(() => { const o = window.__oreum; return JSON.stringify({ cur: o.director.state().cur, can: o.director.can('intro'), mut: o.director.can('mutter'), ten: o.state?.tension, toast: !document.getElementById('toast').hidden && document.getElementById('toast').textContent, banner: !document.getElementById('banner').hidden, en: o.enemies?.near?.(o.player.pos, 25) ? 1 : 0, pace: o.pace?.threat?.() }); })); await W(1000); }
+    if (!opened) for (let i = 0; i < 6; i++) { console.log(await E(() => { const o = window.__oreum; return JSON.stringify({ cur: o.director.state().cur, can: o.director.can('intro'), mut: o.director.can('mutter'), ten: o.state?.tension, toast: !document.getElementById('msg-log').hidden && document.getElementById('msg-log').textContent, banner: !document.getElementById('banner').hidden, en: o.enemies?.near?.(o.player.pos, 25) ? 1 : 0, pace: o.pace?.threat?.() }); })); await W(1000); }
     if (!opened) console.log(await E(() => JSON.stringify({ can: window.__oreum.director.can('intro'), st: window.__oreum.director.state(), chk: window.__oreum.shopGate.check(), sg: window.__oreum.save.shopGate, panels: [...document.querySelectorAll('.panel,[id]')].filter((e) => !e.hidden && e.offsetParent && /^(quest|shoppop|menu|zdone|banner|toast)$/.test(e.id)).map((e) => e.id) })));
-    const msg = await E(() => document.getElementById('toast').textContent);
+    const msg = await E(() => document.getElementById('msg-log').textContent);
     ok(/만족한상회가 문을 열었어요/.test(msg), `열림 알림: ${msg}`);
     ok(await E(() => window.__oreum.save.shopGate.fd === 1), '첫 배낭 가득 → 버림 기록');
     ok(await until(() => window.__oreum.shopGate.shutter('manjok')?.visible === false, 25000), '셔터가 올라감');
@@ -77,7 +77,7 @@ async function page(b, data) {
     const { ctx, E, errs } = await page(b, VET);
     const st = await E(() => { const g = window.__oreum.shopGate; return Object.fromEntries(['gear', 'manjok', 'stone', 'salon', 'leap', 'ride'].map((id) => [id, g.isOpen(id)])); });
     ok(Object.values(st).every(Boolean), `옛 저장은 처음부터 모두 열림 ${JSON.stringify(st)}`);
-    ok(await E(() => !/문을 열었어요/.test(document.getElementById('toast').textContent)), '옛 저장은 알림 없음');
+    ok(await E(() => !/문을 열었어요/.test(document.getElementById('msg-log').textContent)), '옛 저장은 알림 없음');
     ok(errs() === 0, `페이지 오류 ${errs()}`);
     await ctx.close();
   }
