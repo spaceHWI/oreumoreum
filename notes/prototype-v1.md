@@ -19,7 +19,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 
 빌드는 먼저 `tools/lint.js` 로 줄 중간 `//` 주석(주석 안에 코드)·300자 넘는 줄의 `//` 를 찾아 있으면 멈춘다 (#193). 긴 줄에는 `/* */` 만.
 
-빌드 결과: `dist/index.html` + `main-<해시>.js` + `a/*.bin` (Pages), `dist/test.html`·`oreumoreum.html` 은 모델까지 한 파일 (tools/ 가 file:// 로 엶). 홈 화면 추가용 `manifest.webmanifest`·아이콘 PNG 4장(`src/icons/`, `tools/icons.mjs` 로 구움, #91)도 dist 에 함께 나간다.
+빌드 결과: `dist/index.html` + `main-<해시>.js` + `a/*.bin` (Pages), `dist/test.html`·`oreumoreum.html` 은 모델까지 한 파일 (tools/ 가 file:// 로 엶. file:// 은 안티에일리어싱을 끔, `?aa=1` 로 켬 #286). 홈 화면 추가용 `manifest.webmanifest`·아이콘 PNG 4장(`src/icons/`, `tools/icons.mjs` 로 구움, #91)도 dist 에 함께 나간다.
 
 | 파일 | 하는 일 |
 |---|---|

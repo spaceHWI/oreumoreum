@@ -52,6 +52,16 @@ export function createDirector({ save, persist = () => {}, hooks = {}, today = (
     if (!ignoreQueue && queue.some((q) => q.exp > clock && pri(q.kind) < p)) return false; // 더 높은 것이 기다리는 중
     return true;
   }
+  // 왜 지금 못 나가나 (검사·dev 용, #286): '' 이면 나갈 수 있음
+  function why(kind) {
+    const p = pri(kind);
+    if (cur && !(p < J.preempt && p < pri(cur.kind))) return 'cur:' + cur.id;
+    if (!cur && clock - lastEnd < (p > lastPrio ? J.gap : J.quick)) return 'gap';
+    if (p > 0 && busy()) return 'busy';
+    if (p >= J.fightMax && fight()) return 'fight';
+    const q = queue.find((x) => x.exp > clock && pri(x.kind) < p); if (q) return 'queue:' + q.id;
+    return '';
+  }
   function finish(why = 'end') {
     if (!cur) return;
     rec(why, cur.kind, cur.id, { len: +(clock - cur.t0).toFixed(2) });
@@ -147,7 +157,7 @@ export function createDirector({ save, persist = () => {}, hooks = {}, today = (
   }
 
   return {
-    ask, can: (k) => can(k), begin, end, tick, note, isOpen, open: (id) => open(id), register(r) { regs.set(r.id, r); gateT = 0; return r; },
+    ask, can: (k) => can(k), why, begin, end, tick, note, isOpen, open: (id) => open(id), register(r) { regs.set(r.id, r); gateT = 0; return r; },
     get busy() { return !!cur; }, get cur() { return cur ? { ...cur } : null; }, get clock() { return clock; }, get idle() { return idle; },
     state() {
       const j = S();
