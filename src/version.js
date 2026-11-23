@@ -1,5 +1,5 @@
 // 버전·릴리스 노트 (새 버전은 맨 위에 추가)
-export const VERSION = '0.53.1';
+export const VERSION = '0.54.0';
 export const RELEASE_NOTES = [
   { v: '0.54.0', date: '2026-11-23', items: [
     '귤 총과 머신건에 탄창이 생겼어요. 다 쏘면 저절로 재장전하고, 미리 갈아 끼우려면 R (폰은 던지기 버튼 옆 작은 단추)',
