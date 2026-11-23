@@ -1,4 +1,4 @@
-// 들판 떼 자동 판 (#173): node tools/swarm.js [zone...] [--sec 300] [--speed 3] [--still]
+// 들판 떼 자동 판 (#173): node tools/swarm.js [zone...] [--sec 300] [--speed 3] [--still] [--inn] (--inn: 숙소 개운함 버프를 켠 채, #270)
 // dist/test.html 남송이 전투 오름에서 구역마다 권장 장비(칸 10개가 구역 번호 단계)로 들판에 서서 __oreum.swarm.start(구역) → 직접 던지며 버팀 (#194 자동 던지기 없음)
 // 던지기: 구역 1~3(손·활·총)은 게임 시간 --tap 초마다 한 번 누름(기본 1초), 4·5(머신건·레이저)는 F 를 누른 채. --lv N: 레벨 N 에서 시작(경험치를 그 레벨 처음으로)
 // 터 밖으로 밀리면 가운데 쪽으로 달리며 뛰어넘음. --fast: 그리지 않음(셈만, 빠름). --runs N: 구역마다 N 판 (버틴 비율), --down N: 장비를 구역보다 N 단계 낮게 (#254). 기본 상한 --cap 36 (PC)
@@ -8,7 +8,7 @@
 const { chromium } = require('playwright');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : +args[i + 1]; };
 const ZONES = args.filter((a, i) => /^\d$/.test(a) && !/^--/.test(args[i - 1] || '')).map(Number); if (!ZONES.length) ZONES.push(1, 2, 3, 4, 5);
-const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes('--still'), CAP = arg('--cap', 36), RUNS = arg('--runs', 1), DOWN = arg('--down', 0), FAST = args.includes('--fast'), LV = arg('--lv', 6), TAP = arg('--tap', 1), T0 = arg('--t0', 0), TRACE = args.includes('--trace'), MIX = arg('--mix', 0); /* --cap: 동시 마릿수 (기본 PC 24, 헤드리스는 저사양이라 바꿔 둠). --tap: 누르는 간격(게임 초), 기본 1초는 움직이며 누르니 fight.js(0.65초)보다 느리게 */
+const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes('--still'), CAP = arg('--cap', 36), RUNS = arg('--runs', 1), DOWN = arg('--down', 0), FAST = args.includes('--fast'), INNB = args.includes('--inn'), LV = arg('--lv', 6), TAP = arg('--tap', 1), T0 = arg('--t0', 0), TRACE = args.includes('--trace'), MIX = arg('--mix', 0); /* --cap: 동시 마릿수 (기본 PC 24, 헤드리스는 저사양이라 바꿔 둠). --tap: 누르는 간격(게임 초), 기본 1초는 움직이며 누르니 fight.js(0.65초)보다 느리게 */
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
@@ -25,8 +25,8 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
     const gt = Math.max(1, zn - DOWN), wear0 = wearIds.filter((w) => w.tier === gt), slots = [...new Set(wear0.map((w) => w.slot))];
     /* --mix N (#243): 옷 N 칸만 한 단계 낮게 (장비 점수 80% 쯤 = 옷 3칸) */
     const wear = slots.map((sl, i) => (i < MIX && gt > 1 && wearIds.find((w) => w.slot === sl && w.tier === gt - 1)) || wear0.find((w) => w.slot === sl));
-    const ok = await p.evaluate(({ zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST }) => {
-      const o = window.__oreum; o.enemies.test.clear(); document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
+    const ok = await p.evaluate(({ zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST, INNB }) => {
+      const o = window.__oreum; o.inn?.left(INNB ? 1800 : 0); /* --inn: 숙소 개운함 버프 (#270) */ o.enemies.test.clear(); document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
       o.pace.pacing.test.soon(1e6);
       Object.assign(o.save.equip, { tool: gt, bag: gt, shoes: gt }); o.save.equip.weapon = Math.max(1, gt); o.weapon.use(gt); o.save.coins = 3000; o.save.bowAmmo = 0; o.save.ammo = { gun: 0, mg: 0, laser: 0 };
       for (const w of wear) { o.clothes.give(w.id); o.clothes.wear(w.slot, w.id); }
@@ -42,7 +42,7 @@ const SEC = arg('--sec', 300), SPEED = arg('--speed', 3), STILL = args.includes(
         const gt = o.weapon.t() - C.t0; if (!hold && gt >= C.next) { o.weapon.fire(); C.taps++; C.next = gt + TAP; } /* 손으로 누름: charge.js 를 거치지 않는 짧은 누름과 같음 */
         const v = o.hp.hp; if (v < C.last - 1e-6) C.lost += C.last - v; C.last = v; if (o.hp.isDown || o.hp.pending) C.down = 1; const s = o.swarm.state(); if (s && s.zone === window.__zn) { C.s = s; C.peak = Math.max(C.peak, s.n); if (s.leader) C.leader = 1; } if (o.swarm.picking()) { o.swarm.pick(0); C.augs++; } requestAnimationFrame(loop); };
       requestAnimationFrame(loop); return hold ? 'hold' : true;
-    }, { zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST });
+    }, { zn, gt, wear, SPEED, CAP, LV, TAP, T0, FAST, INNB });
     if (!ok) { console.log('구역', zn, '들판 자리를 못 찾음'); continue; }
     if (!STILL) await p.keyboard.down('w');
     if (ok === 'hold') await p.keyboard.down('f');
