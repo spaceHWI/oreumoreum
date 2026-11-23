@@ -81,7 +81,7 @@ export function canEquip(save, it) {
 // 견주기: 이 장비를 입으면 점수가 얼마나 달라지나
 export const diffPts = (save, it) => itemPts(it) - itemPts(curItem(save, it.s));
 // 귤로 바꾸면 받는 귤
-export const sellValue = (it) => Math.max(1, Math.round((GROWTH.price[Math.max(1, it.t)] || 0) * (LOOT.sell[it.g] || 0) * (1 + LOOT.sellEnh * (it.e || 0))));
+export const sellValue = (it) => Math.max(1, Math.round(((GROWTH.sellBase || GROWTH.price)[Math.max(1, it.t)] || 0) * (LOOT.sell[it.g] || 0) * (1 + LOOT.sellEnh * (it.e || 0))));
 // 전설 효과 이름 (칸에 따라)
 export const fxOf = (k) => Object.keys(LOOT.fx).find((f) => LOOT.fx[f].slots.includes(k)) || null;
 
