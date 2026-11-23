@@ -1690,7 +1690,7 @@ export const CRASHES = {
 // 사건 파일 Tripo 모델 (#262, casemodels.js): scale 모델 키 0.98 → 게임 키. near 이 거리 안에 오면 큰 모델을 받음(그 전엔 멀리용 1,500 삼각형), far 이 거리 밖이면 멀리용을 그림
 export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
-  scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, photographer: 2.5, hose: 3.2 },
+  scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
 };
 export const LIFE_MODELS = {
   deer: { scale: 1.9, near: 140, seatY: 1.0, seatZ: -0.62 }, // 키 약 1.86m. near: 이 거리 안에 노루가 오면 모델을 받음. 탈 때 러너를 등 높이·뒤쪽으로

@@ -557,7 +557,7 @@ export function buildRunner(opts = {}) {
         chest.scale.setScalar(1 + Math.sin(t * 1.1) * 0.025); break; }
     }
   }
-  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2, kick = 0 }) {
+  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2, kick = 0, post = null }) {
     if (model) tickEyes(dt, face, lid, pose);
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
     const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'aim' || pose === 'carry');
@@ -708,6 +708,7 @@ export function buildRunner(opts = {}) {
       const pen = (lg) => { const th = lg.rotation.x, hy = base + hips.position.y - HIP, f = -L * Math.sin(th); return st.slope * f - (hy - L * Math.cos(th)); };
       hips.position.y += Math.max(0, pen(legL), pen(legR));
     }
+    if (post) post(root.userData.parts); /* 부른 쪽이 자세를 더 고침 (사진사 #268) */
     if (model) syncModel();
   }
 
