@@ -58,11 +58,13 @@ export function patDmg(e) {
   return c > P.shield.cos ? P.shield.front : P.shield.side;
 }
 
+export const patMode = { few: false }; /* #273 swarmwave.js: 남은 몹이 적으면 포위·던지기도 곧장 다가옴 */
 const turn = (e, h, k) => { e.heading += wrapA(h - e.heading) * k; };
 
 /* 포위: 둘레를 돌다 등 뒤에서 들어옴. -1 이면 보통 쫓기 (받은 뒤 쉬는 동안 다시 돎) */
 function circleCtl(e, dt, time, d, to) {
   const c = P.circle, d0 = e.def;
+  if (patMode.few) return -1;
   if (!e.ps || (e.ps.go && e.rest > 0)) e.ps = { t: 0, go: false, dir: Math.random() < 0.5 ? 1 : -1 };
   const s = e.ps; if (s.go) return -1;
   s.t += dt;
@@ -76,6 +78,7 @@ function circleCtl(e, dt, time, d, to) {
 /* 던지기: 거리를 두고 옆으로 걷다 때마다 멈춰 썩은 귤 */
 function throwCtl(e, dt, time, d, to) {
   const c = P.throw, d0 = e.def;
+  if (patMode.few && !(e.ps?.aim > 0)) return -1;
   if (!e.ps) e.ps = { cd: rnd(1.2, c.every[1]), aim: 0, side: Math.random() < 0.5 ? 1 : -1 };
   const s = e.ps, face = Math.atan2(to.x, to.z);
   if (s.aim > 0) { s.aim -= dt; turn(e, face, Math.min(1, dt * 8)); if (s.aim <= 0) lob(e); return 0; }
