@@ -45,14 +45,8 @@ late.innMul = (k) => (on() && INN.buff[k] ? 1 + INN.buff[k] : 1);
 /* ---------- 위쪽 줄 칸 (레벨 곁) ---------- */
 const css = document.createElement('style');
 css.textContent = `
-#inn-pill { gap: 5px; padding: 0 10px 0 4px; }
-#inn-pill .ring { position: relative; width: 26px; height: 26px; flex: none; }
-#inn-pill .ring svg.r { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-#inn-pill .ring svg.r circle { fill: none; stroke-width: 3; }
-#inn-pill .ring svg.r .bg { stroke: rgba(255,255,255,.18); } #inn-pill .ring svg.r .fg { stroke: #8fd3ff; stroke-linecap: round; transition: stroke-dashoffset .5s linear; }
-#inn-pill .ring svg:not(.r) { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
-#inn-pill b { font-size: 12px; } #inn-pill.end b { color: var(--acc); }
-@media (max-width: 600px) { #inn-pill b { font-size: 11px; } #inn-pill { padding-right: 8px; } }
+/* 위쪽 줄 칸은 식사 버프(#buff-pill)와 같은 꼴 (#283, page.html 의 .bpill). 개운함만 하늘색 */
+#inn-pill .ring svg.r .fg { stroke: #8fd3ff; } #inn-pill.end b { color: var(--acc); }
 #inn-sleep { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: grid; place-items: center; background: #0b1020; opacity: 0; transition: opacity .9s ease, background 1.2s ease; }
 #inn-sleep.on { opacity: 1; }
 #inn-sleep.sun { background: radial-gradient(ellipse at 70% 20%, #fff3c4 0%, #ffd28a 35%, #f6a560 70%, #c97a4a 100%); }
@@ -62,17 +56,19 @@ css.textContent = `
 #inn-sleep .m { position: absolute; bottom: 22%; left: 0; right: 0; text-align: center; font: 800 18px/1.4 var(--display, sans-serif); color: #fff; opacity: 0; transition: opacity .5s; text-shadow: 0 1px 6px rgba(0,0,0,.35); }
 #inn-sleep.zz .z, #inn-sleep.sun .m { opacity: 1; }
 @keyframes innZ { 0%, 100% { transform: translateY(0); opacity: .4; } 50% { transform: translateY(-10px); opacity: 1; } }
-.inn-card { display: grid; gap: 10px; padding: 4px 2px; grid-column: 1 / -1; }
-.inn-card .ib { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; }
-.inn-card .ib span { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 10px; background: rgba(255,255,255,.07); font-weight: 700; font-size: 13px; }
-.inn-card .ib svg { width: 16px; height: 16px; flex: none; color: #8fd3ff; }
-.inn-card .btn { width: 100%; }
-.inn-card .btn .price { margin-left: 6px; }
-.inn-card small.note { opacity: .75; text-align: center; }
+.inn-card { display: grid; gap: 10px; grid-column: 1 / -1; } /* #283 창 규격: 카드 한 장(값·하루 한 번·버프) + 아래 버튼 줄 */
+.inn-card .io { display: grid; gap: 8px; padding: 12px 14px; border-radius: var(--card-r); background: var(--card-bg); }
+.inn-card .io-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.inn-card .io-top b { font: 800 var(--btn-fs)/1.3 var(--display); }
+.inn-card .io-sub { margin: 0; font-size: 12.5px; opacity: .72; }
+.inn-card .ib { display: flex; flex-wrap: wrap; gap: 6px; }
+.inn-card .ib span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border-radius: 999px; background: rgba(143,211,255,.14); font: 800 12px var(--display); }
+.inn-card .ib svg { width: 14px; height: 14px; flex: none; color: #8fd3ff; }
+.inn-card small.note { opacity: .72; text-align: center; font-size: 12.5px; }
 `;
 document.head.appendChild(css);
-const pill = document.createElement('div'); pill.className = 'panel tpill'; pill.id = 'inn-pill'; pill.hidden = true; pill.setAttribute('role', 'button'); pill.tabIndex = 0;
-pill.innerHTML = `<span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg>${icon('bed')}</span><b></b>`;
+const pill = document.createElement('div'); pill.className = 'panel tpill bpill'; pill.id = 'inn-pill'; pill.hidden = true; pill.setAttribute('role', 'button'); pill.tabIndex = 0;
+pill.innerHTML = `<span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg>${icon('bed').replace('<svg', '<svg class="ic"')}</span><b></b>`;
 { const lv = $('lv-pill'); if (lv) lv.after(pill); else $('topbar')?.querySelector('.tb-l')?.append(pill); }
 const WORD = { speed: '이동', pick: '줍기', dmg: '피해', hp: '최대 기운', xp: '경험치' };
 const BIC = { speed: 'speed', pick: 'pick', dmg: 'dmg', hp: 'hp', xp: 'star' }; /* icons.js */
@@ -94,11 +90,12 @@ function paintPill() {
 late.fillInn = (grid) => {
   const c = document.createElement('div'); c.className = 'inn-card';
   const p = innPrice(), done = stayedToday(), poor = save.coins < p, first = !I().n;
-  c.innerHTML = `<p style="margin:0;text-align:center;font-weight:700">하룻밤 묵으면 기운 가득 · 개운함 ${Math.round(INN.buffSec / 60)}분</p>`
-    + `<div class="ib">${Object.entries(INN.buff).map(([k, v]) => `<span>${icon(BIC[k])}${WORD[k]} +${Math.round(v * 100)}%</span>`).join('')}</div>`
-    + `<button type="button" class="btn primary" id="inn-stay"${done || poor ? ' disabled' : ''}>${icon('bed')} ${done ? '오늘은 묵었어요 · 내일 또 와요' : `숙박하기<span class="price"><i></i>${p}</span>`}</button>`
-    + `<small class="note">${done ? '체크아웃은 내일 아침이에요. 마음만 먼저 두고 가요' : poor ? `귤이 ${p - save.coins}개 모자라요` : first ? '첫 숙박은 반값이에요' : '하루에 한 번 · 놀이 시간으로 셈'}</small>`
-    + (late.cases?.on ? `<button type="button" class="btn" id="inn-board">${icon('notes')} 로비 책상 · 수사 보드</button>` : '');
+  c.innerHTML = `<div class="io"><div class="io-top"><b>하룻밤 묵으면 기운 가득</b><span class="price"><i></i>${p}</span></div>`
+    + `<p class="io-sub">개운함 ${Math.round(INN.buffSec / 60)}분 · 하루에 한 번 · 놀이 시간으로 셈</p>`
+    + `<div class="ib">${Object.entries(INN.buff).map(([k, v]) => `<span>${icon(BIC[k])}${WORD[k]} +${Math.round(v * 100)}%</span>`).join('')}</div></div>`
+    + `<div class="win-acts"><button type="button" class="btn primary" id="inn-stay"${done || poor ? ' disabled' : ''}>${icon('bed')}${done ? '오늘은 묵었어요 · 내일 또 와요' : '숙박하기'}</button>`
+    + (late.cases?.on ? `<button type="button" class="btn" id="inn-board">${icon('notes')}로비 책상 · 수사 보드</button>` : '') + '</div>'
+    + (done || poor || first ? `<small class="note">${done ? '체크아웃은 내일 아침이에요. 마음만 먼저 두고 가요' : poor ? `귤이 ${p - save.coins}개 모자라요` : '첫 숙박은 반값이에요'}</small>` : '');
   grid.append(c);
   c.querySelector('#inn-stay')?.addEventListener('click', () => stay());
   c.querySelector('#inn-board')?.addEventListener('click', () => openBoard());
