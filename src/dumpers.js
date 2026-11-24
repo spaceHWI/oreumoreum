@@ -75,7 +75,8 @@ function makeBar() {
 // hooks: canSpawn() 지금 와도 되나(튜토리얼 중엔 안 옴), appear(d) 나타남, dumped(d, n) 쌓음, repel(kind, pos, def, d) 쫓아냄, offline(n, sec) 접속 안 한 동안 쌓인 양
 // avoid(x, z): 트럭이 지나지 않을 곳 (들머리 튜토리얼 쪽)
 // 연출 감독(#89)이 있으면 hooks.paced = true 로 스스로 오지 않고 come() 으로만 옴. hooks.heapW(i) 더미 고르는 무게 배율(0 이면 뺌), hit(pos, dead) 맞음
-export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, avoid = null, rnd = Math.random }) {
+// makeWalker(): 걷는 투기꾼 모습을 바꿈 (#291 game/villain.js: 지금 캐릭터 + 옷·소품). 돌려준 것에 anim(dt, time, d) 가 있으면 팔다리는 그쪽이 움직이고, dropMesh() 는 떨군 자루, 사라질 땐 작아짐
+export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, avoid = null, rnd = Math.random, makeWalker = null }) {
   const group = new THREE.Group(); scene.add(group);
   const list = [];
   let players = DUMP.players, timer = Math.min(60, DUMP.every), sound = null, player = null;
@@ -142,10 +143,10 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       if (!s) { const b = wallNear(h.x, h.z); if (!b) return null; s = outsideOf(b[0], b[1]); }
       route = [s, edgeOf(h, s[0], s[1], 1.0)];
     }
-    const m = kind === 'truck' ? buildTruck() : buildWalker();
+    const m = kind === 'truck' ? buildTruck() : (makeWalker?.() || buildWalker());
     const [sx, sz] = route[0];
     const d = { ...m, kind, def, heap: hi, amt: opts.amt ?? DUMP_AMT[kind], hold: opts.hold || 0, route, ri: 1, wpT: 0, pos: new THREE.Vector3(sx, height(sx, sz), sz), heading: 0, speed: 0, state: 'come', st: 0, hp: def.hp, flash: 0, phase: rnd() * 6, pitch: 0, roll: 0, bar: null };
-    d.heading = Math.atan2(route[1][0] - sx, route[1][1] - sz);
+    d.heading = Math.atan2(route[1][0] - sx, route[1][1] - sz); d.heapPos = { x: h.x, z: h.z };
     if (def.hp > 1) { d.bar = makeBar(); d.bar.g.position.set(0, m.h + 0.8, 0); d.bar.g.visible = false; d.root.add(d.bar.g); }
     hooks.dress?.(d); // 철 이벤트 차림 (#180 산타 투기꾼)
     d.root.position.copy(d.pos); group.add(d.root);
@@ -179,7 +180,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   // 맞고 쫓겨남 (#68): 깜짝 놀람(펄쩍·덜컹) → 봉투 떨굼 → 뒤돌아 도망 → 멀어지면 서서히 사라짐
   function repel(d) {
     d.state = 'startle'; d.st = 0; d.fleeD = 0; d.puffT = 0; if (d.bar) d.bar.g.visible = false;
-    if (d.kind === 'walker') { dropBag(d); d.arms[1].rotation.x = 0; }
+    if (d.kind === 'walker') { dropBag(d); if (!d.anim) d.arms[1].rotation.x = 0; }
     goBack(d);
     hooks.repel?.(d.kind, d.pos.clone(), d.def, d);
   }
@@ -187,7 +188,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   const drops = [];
   function dropBag(d) {
     d.bag.visible = false;
-    const m = new THREE.Group(); m.add(...d.bag.children.map((c) => c.clone())); m.position.set(d.pos.x + Math.sin(d.heading) * 0.5, height(d.pos.x, d.pos.z) + 0.38, d.pos.z + Math.cos(d.heading) * 0.5); m.rotation.z = 1.3; m.scale.setScalar(1.1);
+    const m = d.dropMesh ? d.dropMesh() : new THREE.Group(); if (!d.dropMesh) m.add(...d.bag.children.map((c) => c.clone())); /* #291 새 모습은 세상 크기 자루 */ m.position.set(d.pos.x + Math.sin(d.heading) * 0.5, height(d.pos.x, d.pos.z) + 0.38, d.pos.z + Math.cos(d.heading) * 0.5); m.rotation.z = 1.3; m.scale.setScalar(1.1);
     group.add(m); drops.push({ m, t: DUMP.bagStay });
     const n = DUMP.bagDrop; if (!trash.drop(d.pos.x, d.pos.z, n, 40)) trash.refill(d.heap, n);
     trash.store.commit();
@@ -206,6 +207,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   // 서서히 사라짐 시작 (재질은 공유라 이 몹만 복제해 투명하게)
   function beginFade(d) {
     if (d.fade != null) return; d.fade = 1;
+    if (d.anim) return; /* #291 새 모습: 작아지며 사라짐(재질 공유) */
     d.root.traverse((o) => { if (o.isMesh && o.material && !o.userData.sprite) { o.material = o.material.clone(); o.material.transparent = true; } });
   }
 
@@ -216,20 +218,20 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     if (d.state === 'startle') {
       // 깜짝: 투기꾼은 펄쩍 뛰며 팔을 듦, 트럭은 덜컹. 끝나면 도망
       want = 0; const u = Math.min(1, d.st / DUMP.startleT);
-      if (d.kind === 'walker') { d.hop = Math.sin(u * Math.PI) * 0.9; d.arms[0].rotation.x = d.arms[1].rotation.x = -2.4 * Math.sin(u * Math.PI); }
+      if (d.kind === 'walker') { d.hop = Math.sin(u * Math.PI) * 0.9; if (!d.anim) d.arms[0].rotation.x = d.arms[1].rotation.x = -2.4 * Math.sin(u * Math.PI); }
       else d.hop = Math.sin(u * Math.PI * 4) * 0.12 * (1 - u);
-      if (d.st >= DUMP.startleT) { d.state = 'flee'; d.st = 0; d.hop = 0; if (d.kind === 'walker') { d.arms[0].rotation.x = d.arms[1].rotation.x = 0; } }
+      if (d.st >= DUMP.startleT) { d.state = 'flee'; d.st = 0; d.hop = 0; if (d.kind === 'walker' && !d.anim) { d.arms[0].rotation.x = d.arms[1].rotation.x = 0; } }
     } else if (d.state === 'dump') {
       want = 0; const h = trash.heaps[d.heap]; d.heading += wrapA(Math.atan2(h.x - d.pos.x, h.z - d.pos.z) + (d.kind === 'truck' ? Math.PI : 0) - d.heading) * Math.min(1, dt * 4); // 트럭은 짐칸을 더미 쪽으로
       const u = Math.min(1, d.st / DUMP.dumpT);
       if (d.kind === 'truck') d.bed.rotation.x = -Math.sin(Math.min(1, u * 1.6) * Math.PI / 2) * 0.7 * (u > 0.85 ? (1 - u) / 0.15 : 1);
-      else { d.arms[1].rotation.x = -1.2 * Math.sin(Math.min(1, u * 2) * Math.PI / 2); d.bag.position.y = -0.72 - Math.max(0, u - 0.6) * 1.6; }
+      else if (!d.anim) { d.arms[1].rotation.x = -1.2 * Math.sin(Math.min(1, u * 2) * Math.PI / 2); d.bag.position.y = -0.72 - Math.max(0, u - 0.6) * 1.6; }
       if (d.st >= DUMP.dumpT) {
         const h2 = trash.heaps[d.heap], far = !h2 || Math.hypot(h2.x - d.pos.x, h2.z - d.pos.z) > h2.r + 6; // 서둘러 버리면(#89) 그 자리 가까운 더미에
         const got = (d.hurried && far && trash.drop(d.pos.x, d.pos.z, d.amt, 40)) || trash.refill(d.heap, d.amt); trash.store.commit();
         hooks.dumped?.(d, got);
         d.state = 'leave'; d.st = 0; if (d.bar) d.bar.g.visible = false;
-        if (d.kind === 'walker') { d.bag.visible = false; d.arms[1].rotation.x = 0; } else { d.load.visible = false; d.bed.rotation.x = 0; }
+        if (d.kind === 'walker') { d.bag.visible = false; if (!d.anim) d.arms[1].rotation.x = 0; } else { d.load.visible = false; d.bed.rotation.x = 0; }
         goBack(d);
       }
     } else {
@@ -263,7 +265,7 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
     d.pos.set(nx, height(nx, nz), nz);
     d.phase += dt * d.speed * (d.kind === 'truck' ? 2.4 : 3.2);
     // 그리기
-    if (d.fade != null) { d.fade -= dt / DUMP.fadeT; if (d.fade <= 0) { remove(d); return; } d.root.traverse((o) => { if (o.isMesh && o.material && o.material.transparent) o.material.opacity = d.fade; }); }
+    if (d.fade != null) { d.fade -= dt / DUMP.fadeT; if (d.fade <= 0) { remove(d); return; } if (d.anim) d.root.scale.setScalar(Math.max(0.05, Math.min(1, d.fade * 1.6))); else d.root.traverse((o) => { if (o.isMesh && o.material && o.material.transparent) o.material.opacity = d.fade; }); }
     d.flinch = Math.max(0, (d.flinch || 0) - dt);
     d.root.position.copy(d.pos); d.root.position.y += (d.hop || 0) + (d.flinch > 0 ? Math.sin(d.flinch / 0.3 * Math.PI) * 0.25 : 0); d.root.rotation.order = 'YXZ'; d.root.rotation.y = d.heading;
     if (d.kind === 'truck') {
@@ -275,7 +277,8 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
       d.root.rotation.x = d.pitch; d.root.rotation.z = d.roll;
       d.wheels.forEach((w) => { w.rotation.x = d.phase; });
       d.body.position.y = Math.sin(time * 18 + d.phase) * 0.02 * Math.min(1, d.speed / 4);
-    } else {
+    } else if (d.anim) d.anim(dt, time, d); /* #291 새 모습 (game/villain.js) */
+    else {
       const a = Math.min(0.8, d.speed * 0.25), s = Math.sin(d.phase);
       d.legs[0].rotation.x = s * a; d.legs[1].rotation.x = -s * a;
       if (d.state !== 'startle') d.arms[0].rotation.x = -s * a * 0.8; if (d.state !== 'dump' && d.state !== 'startle') d.arms[1].rotation.x = d.state === 'flee' ? -s * a : 0.15;

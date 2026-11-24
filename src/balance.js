@@ -330,6 +330,9 @@ export const DUMP = {
   crowdExp: 1, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
+  // 걷는 투기꾼 모습 (#291, src/game/villain.js): 지금 캐릭터에 옷·소품·동작. style 'A' 만화 도둑(검은 복면·줄무늬 긴팔·어깨 자루), 'B' 후드·선글라스·마스크(손에 봉투), 'C' 중절모·트렌치코트·검은 봉지 여럿. '' 면 예전 상자 모양
+  // lookout: 이야기 '망보는 짝'(#168 b.lookout)은 모자·줄무늬 색만 다르게. sneak 살금살금 숙임, look 두리번 세기, throwAt 버리는 시간 중 던지는 때(0~1), night 손전등 보이는 해 높이(도)
+  look: { style: 'A', sneak: 0.22, look: 0.6, throwAt: 0.72, night: -4 },
 };
 // 흡연자 (#156, src/game/smoker.js): 오름 들머리에 가끔 나와 담배를 피움. 플레이어를 공격하지 않음. 귤을 한 번 맞히면 놀라 꽁초 1개를 떨구고 도망 (투기꾼 DUMP.startleT·fleeDist·fadeT 그대로)
 // near 들머리 클린하우스에서 이 거리(m) 안, 탐방로에서 off[0]~off[1] m 비켜난 자리. playerR 플레이어가 들머리 클린하우스 이 거리 안에 있을 때만 every[0]~[1] 초마다 한 명(한 번에 한 명)

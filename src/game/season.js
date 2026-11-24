@@ -154,7 +154,7 @@ function tickCal() {
 
 /* ---------- 산타 투기꾼·선물 상자 ---------- */
 const gifts = [];
-function dress(d) { if (!xmasOn() || d.kind !== 'walker' || Math.random() >= X.santa.p) return; try { dressSanta(d); } catch (e) { /* 모양만 */ } }
+function dress(d) { if (!xmasOn() || d.kind !== 'walker' || Math.random() >= X.santa.p) return; try { if (d.villain) d.villain.santa(d); else dressSanta(d); } catch (e) { /* 모양만 */ } } /* #291 새 모습은 villain.js 가 산타 차림 */
 function repel(d, pos) {
   if (!d?.santa) return;
   const xs = XS(), day = calDay() || kst(nowMs()).d; if (xs.gd !== day) { xs.gd = day; xs.gn = 0; }
