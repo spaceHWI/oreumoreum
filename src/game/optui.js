@@ -8,7 +8,7 @@ import { $ } from './save.js';
 import { icon } from '../icons.js';
 
 const GROUPS = [
-  ['sound', '소리', ['menu-sound', 'menu-music', 'music-vol', 'menu-radio']],
+  ['sound', '소리', ['menu-sound', 'menu-music', 'music-vol', 'sfx-vol', 'menu-radio']],
   ['screen', '화면', ['menu-gfx', 'menu-perf', 'menu-fps', 'menu-simple', 'menu-fs', 'menu-rainfx', 'menu-calmfx', 'menu-boxview', 'menu-fightcam', 'menu-typing']],
   ['ctl', '조작', ['menu-tips', 'menu-vib', 'menu-stick', 'menu-help']],
   ['with', '함께', ['menu-mates', 'menu-gift', 'menu-mutter']],
@@ -56,6 +56,7 @@ const CSS = `
 #menu .opt.seg .seg-b button[aria-pressed="true"] { background: var(--acc) !important; color: var(--acc-fg); }
 #menu .opt-range { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px 0 40px; }
 #menu .opt-range input { flex: 1 1 auto; }
+#menu .opt-range small { flex: none; min-width: 42px; font-size: 12px; color: var(--ink-soft); }
 #menu .opt-g .m-acct { padding: 4px 2px; }
 #menu .opt-g .m-acct button { min-height: var(--opt-h); border: 1px solid var(--hair) !important; border-radius: 12px !important; background: rgba(255,255,255,.08) !important; font-weight: 700 !important; }
 #menu .opt-g .m-acct button:active { transform: scale(.98); }
@@ -77,7 +78,7 @@ const CSS = `
 `;
 
 const groupOf = new Map(); for (const [g, , ids] of GROUPS) for (const id of ids) groupOf.set(id, g);
-groupOf.set('opt-music-vol', 'sound');
+groupOf.set('opt-music-vol', 'sound'); groupOf.set('opt-sfx-vol', 'sound'); /* 음악·효과음 크기 줄 (#292) */
 const kindOf = (b) => (b.classList.contains('seg') ? 'seg' : GO.has(b.id) ? 'go' : b.hasAttribute('aria-pressed') ? 'sw' : 'go');
 
 // 버튼 하나를 줄 모양으로: [아이콘] 이름 [스위치 | ›]. 주인이 textContent 를 바꾸면(.ol 이 없어짐) 다시 그림
@@ -122,19 +123,21 @@ if (menu && more) {
   const box = {};
   for (const [g, name] of GROUPS) { const s = document.createElement('section'); s.className = 'opt-g'; s.dataset.g = g; s.innerHTML = `<h4>${esc(name)}</h4>`; box[g] = s; }
   // 소리·팁은 바둑판에서 설정으로 (켜고 끄는 것은 스위치로, #201). 배경 음악 크기는 그 아래 슬라이더 줄
-  const mv = $('music-vol'); let range = null;
-  if (mv) { range = document.createElement('div'); range.className = 'opt-range'; range.id = 'opt-music-vol'; range.append(mv); }
+  const ranges = [['music-vol', '음악'], ['sfx-vol', '효과음']].map(([id, name]) => { /* 크기 줄 둘 (#292): 이름 + 슬라이더 */
+    const el = $(id); if (!el) return null;
+    const r = document.createElement('div'); r.className = 'opt-range'; r.id = 'opt-' + id; const s = document.createElement('small'); s.textContent = name; r.append(s, el); return r;
+  }).filter(Boolean);
   const place = (el) => {
     if (!el || el.parentElement?.classList.contains('opt-g')) return;
     const g = box[groupOf.get(el.id) || OTHER];
     // 표 순서대로 끼움 (표에 없는 것은 묶음 끝)
     const ids = GROUPS.find((x) => x[0] === g.dataset.g)[2], i = ids.indexOf(el.id);
-    const after = i < 0 ? null : [...g.children].find((c) => { const j = ids.indexOf(c.id === 'opt-music-vol' ? 'music-vol' : c.id); return j > i; });
+    const after = i < 0 ? null : [...g.children].find((c) => { const j = ids.indexOf(c.classList?.contains('opt-range') ? c.id.slice(4) : c.id); return j > i; });
     g.insertBefore(el, after || null);
     if (el.tagName === 'BUTTON') render(el);
   };
   for (const id of ['menu-sound', 'menu-music', 'menu-tips', 'm-guest', 'm-acct']) place($(id));
-  if (range) place(range);
+  for (const r of ranges) place(r);
   for (const el of [...more.children]) place(el);
   for (const [g] of GROUPS) more.append(box[g]);
   $('menu-more')?.classList.remove('ph'); // 데스크톱도 '설정' 버튼으로 엶

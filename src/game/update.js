@@ -39,6 +39,7 @@ import { tickDirector } from './director.js'; // #176
 import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
+import { tickMusicPlace } from './musicplace.js'; // 음악 곳 (#292)
 import * as fps from './fps.js'; // 프레임 상한·발열 지킴 (#271)
 import { bootReady, bootP } from '../bootbar.js'; // 로딩 창 (#281)
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
@@ -451,7 +452,7 @@ function step(now) {
   late.tickReports?.(dt); // 매일 미확인 제보 (#238, game/reports.js)
   late.tickTraces?.(dt); // 발자국·크롭서클·뒤돌아보면 (#212, game/traces.js)
   tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); if (late.tickQuest) { late.tickQuest(dt); state.ticks.quest++; } late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
-  if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
+  if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); tickMusicPlace(dt, sound); } /* 배경 음악 (#64)·곳 (#292) */
   enemyWarn.update(dt); dumpWarn.update(dt);
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }

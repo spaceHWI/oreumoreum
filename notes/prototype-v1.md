@@ -186,7 +186,7 @@ Cloudflare: Workers 배포용 API 토큰 oreumoreum-deploy(90일, 2027-02-05 만
 - 오류 알림 읽기 (#122): 서버 `GET /crashes?days=3`(로그인·Origin 없이, server/src/crashes.js 가 버전+오류 글로 묶음, 내보내는 칸은 오류 글·버전·기기 종류·브라우저/OS·마지막 한 일만, 60초 캐시, 값은 balance.js CRASHES). 자리 찾기 `node tools/crashmap.js <버전> <main-해시.js:줄:칸>`(그 버전 커밋을 임시 worktree 에서 소스맵 켜고 dev·release 빌드해 해시가 같은 것으로 원래 파일·줄·함수)
 - 바닥 표시 (#151): drape.js — 평평한 고리·원을 점마다 땅 높이에 맞춰 휨(튜토리얼 원·가는 곳 marker·타겟 aimMark·줍기 pickMark·돌진 조짐). 귤 모으는 범위는 gearscore.js `gyulPickR(save)` 하나(life.js 떨어진 귤·흩어진 귤, tutorial.js 귤, 가게 배낭 설명)
 - 글: punktext.js (이름·말투 표, #173 들판 떼 SWARM_TEXT 부터. 오름펑크 #165 가 이어서)
-- UI: tutorial.js(#221 집게·배낭은 가게 거리 장비점) · tips.js · uitips.js · game/newver.js(새 버전 알림, #134) · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · music.js · page.html
+- UI: tutorial.js(#221 집게·배낭은 가게 거리 장비점) · tips.js · uitips.js · game/newver.js(새 버전 알림, #134) · devlabels.js · logo.js · version.js · audio.js/stepsamples.js · wind.js(바람·억새·빗소리, #292) · music.js(평소·긴장 음악, 스케줄러 tick)·musiccalm.js(가락 조각·화음·음색, #292) · game/musicplace.js(음악 곳, #292) · page.html
 
 ## 결정 사항
 - 풍경 바닥은 Pigs and Wolf 방식(2026-11-12 사용자 결정): 풀잎 없이 지형에 붓질 명암(G.paint, cloudShadow 안) + 꽃 무리(createFlowers). 억새는 오름 사면에만 포기 단위. 예전 풀잎은 ?blades 로만

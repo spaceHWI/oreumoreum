@@ -99,6 +99,8 @@ $('menu-sound').addEventListener('click', () => { if (late.sound.on) late.sound.
 $('menu-music').addEventListener('click', () => { save.music.on = save.music.on ? 0 : 1; late.sound.setMusic(save.music.on); if (save.music.on && !late.sound.on) late.sound.start(); late.setSoundUI(); persist(); });
 $('music-vol').addEventListener('input', (e) => { save.music.vol = Math.round(+e.target.value) / 100; late.sound.setMusicVol(save.music.vol); if (save.music.vol > 0 && !save.music.on) { save.music.on = 1; late.sound.setMusic(1); } late.setSoundUI(); });
 $('music-vol').addEventListener('change', () => persist());
+$('sfx-vol')?.addEventListener('input', (e) => { save.music.sfx = Math.round(+e.target.value) / 100; late.sound.setSfxVol(save.music.sfx); }); /* 효과음·자연 소리 크기 (#292) */
+$('sfx-vol')?.addEventListener('change', () => { persist(); late.sound.coin?.(); });
 $('act-chat').addEventListener('click', () => late.openChat());
 // 동작(이모트) (#76): 동작 버튼 → 바퀴 메뉴. 목록·말풍선·방향 표시는 emotes.js
 export const emoRiding = () => !!(player.riding || player.ride || player.cart);

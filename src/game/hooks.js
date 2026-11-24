@@ -30,7 +30,8 @@ export const sound = new Sound(); late.sound = sound;
 sound.forest = MAP_ID === 'donnaeko';
 if (!save.music || typeof save.music !== 'object') save.music = { on: 1, vol: MUSIC.vol }; // 예전 저장엔 없음 (#64)
 save.music.vol = Math.max(0, Math.min(1, Number.isFinite(+save.music.vol) ? +save.music.vol : MUSIC.vol));
-sound.setMusic(save.music.on); sound.setMusicVol(save.music.vol); setSoundUI();
+save.music.sfx = Math.max(0, Math.min(1, Number.isFinite(+save.music.sfx) ? +save.music.sfx : MUSIC.sfx)); /* 효과음 크기 (#292, 예전 저장엔 없음) */
+sound.setMusic(save.music.on); sound.setMusicVol(save.music.vol); sound.setSfxVol(save.music.sfx); setSoundUI();
 life.bind(player, sound);
 life.hooks.enemyHit = (dir, def) => {
   if (state.cine) return; // 엔딩 시네마틱 동안은 모두 무적 (#168)
@@ -169,6 +170,7 @@ export function setSoundUI() {
   $('menu-sound').setAttribute('aria-pressed', String(sound.on));
   $('menu-music').setAttribute('aria-pressed', String(!!(sound.on && save.music.on)));
   $('music-vol').value = String(Math.round(save.music.vol * 100));
+  if ($('sfx-vol')) $('sfx-vol').value = String(Math.round(save.music.sfx * 100));
 }
 // 적 근처면 긴장 음악 (#64): 몹·멧돼지(enemies) + 투기꾼·투기 트럭(dumpers)
 export function threatNear() {

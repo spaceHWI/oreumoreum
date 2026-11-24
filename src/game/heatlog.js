@@ -27,10 +27,10 @@ late.heatLog = (ms) => {
   const now = performance.now(), dt = (now - acc.t) / 1000;
   if (dt < 1) return;
   const f = late.fps?.state?.() || {};
-  last = { s: Math.round((now - t0) / 1000), fps: +(acc.n / dt).toFixed(1), ms: +(acc.ms / acc.n).toFixed(2), calls: Math.round(acc.calls / acc.n), tris: Math.round(acc.tris / acc.n), pr: +quality.pr.toFixed(2), lv: quality.level, heat: quality.heat, cap: f.cap, mode: f.mode, bat: batPct(), skip: f.skipped, re: f.forced };
+  last = { s: Math.round((now - t0) / 1000), fps: +(acc.n / dt).toFixed(1), ms: +(acc.ms / acc.n).toFixed(2), calls: Math.round(acc.calls / acc.n), tris: Math.round(acc.tris / acc.n), pr: +quality.pr.toFixed(2), lv: quality.level, heat: quality.heat, cap: f.cap, mode: f.mode, bat: batPct(), skip: f.skipped, re: f.forced, snd: late.sound?.voices?.() | 0 }; /* snd: 지금 울리는 음악 음 수 (#292) */
   acc = { n: 0, ms: 0, calls: 0, tris: 0, t: now };
   if (!rows.length || last.s - rows[rows.length - 1].s >= L.every) rows.push(last);
-  if (!fold) nowEl.textContent = `${last.fps}fps (상한 ${last.cap} ${last.mode}) · 셈 ${last.ms}ms\n그리기 ${last.calls} · 삼각형 ${(last.tris / 1000).toFixed(0)}k · 배율 ${last.pr}\n단계 ${last.lv} 발열 ${last.heat} · 배터리 ${last.bat ?? '?'}% · ${Math.floor(last.s / 60)}분 ${last.s % 60}초\n건너뜀 ${last.skip ?? '?'} · 캔버스 다시 잡음 ${last.re ?? '?'}`; /* #280 */
+  if (!fold) nowEl.textContent = `${last.fps}fps (상한 ${last.cap} ${last.mode}) · 셈 ${last.ms}ms\n그리기 ${last.calls} · 삼각형 ${(last.tris / 1000).toFixed(0)}k · 배율 ${last.pr}\n단계 ${last.lv} 발열 ${last.heat} · 배터리 ${last.bat ?? '?'}% · ${Math.floor(last.s / 60)}분 ${last.s % 60}초\n건너뜀 ${last.skip ?? '?'} · 캔버스 다시 잡음 ${last.re ?? '?'} · 음 ${last.snd}`; /* #280 */
   if (!done && last.s >= L.total) summary();
 };
 
