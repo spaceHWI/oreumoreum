@@ -209,7 +209,7 @@ body.looking #pickmsg, body.hp-down #pickmsg, body.looking #combo, body.hp-down 
 #menu-music { flex: none; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; }
 #menu-music svg { display: block !important; width: 20px; height: 20px; }
 #menu-music[aria-pressed="false"] { color: var(--ink-soft); opacity: .6; }
-#music-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
+#music-vol, #sfx-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
 #menu-reset { --p: 0; position: relative; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; color: var(--ink-soft); background: transparent; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #menu-reset::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), rgba(128,128,128,.35) 0); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 #menu-reset svg { width: 18px; height: 18px; }
@@ -1781,7 +1781,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-8247cd56ef.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
+<script data-main="main-fd26805b30.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
    빌드(build.mjs)가 inapp.js 앞에 붙여 맨 처음 도는 인라인 스크립트로 넣는다. 게임 쪽은 src/bootbar.js 로 부른다.
    window.__boot: p(값, 천천히 올라갈 끝) · fetchMain(주소, 다 되면) · ready() · fail() · show(글) · state() */
 (function () {
@@ -2008,7 +2008,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   </div>
   <div class="m-music">
     <button type="button" id="menu-music" aria-pressed="true" aria-label="배경 음악 켜기/끄기" title="배경 음악"><svg data-i="music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M13 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M9 17v-13h10v13"/><path d="M9 8h10"/></svg></button>
-    <input type="range" id="music-vol" min="0" max="100" step="5" value="60" aria-label="배경 음악 크기">
+    <input type="range" id="music-vol" min="0" max="100" step="5" value="45" aria-label="배경 음악 크기">
+    <input type="range" id="sfx-vol" min="0" max="100" step="5" value="100" aria-label="효과음 크기">
   </div>
   <div class="m-more">
     <button type="button" id="menu-nick">이름 바꾸기</button>
