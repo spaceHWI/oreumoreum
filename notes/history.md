@@ -2151,3 +2151,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 가게 지붕 간판 아래 막대는 숨기고(`shops.js` pole.visible=false) 간격 roofGap 0.6→0.2 (`balance.js`). 검사 `tools/shops.js` 간격 줄도 0.2 로
 - 상호작용: 표지판(`ic:'sign'`)은 사람·다른 것이 닿으면 뒤로 (`dump.js updateContext`). 이야기 버튼 글은 '<이름> 이야기' (`quest.js`). 오름지기 자리는 그대로(안내판 옆 2.8m, 우선 규칙으로 충분)
 - 확인: build·smoke·err·innrun d·tutrun d/m·questrun d·shops 통과. 앞뒤 그림은 못 찍음(자동 실행)
+
+## #299 스톤 셰프를 실제 셰프 닮게 (2026-11-24)
+- 차림(`src/chefnpc.js`, NPC 전용): 짧은 머리 Tripo 머리 + 모자 칸 `hat:npc-bald`(clip 0.835 로 머리카락을 자르고 살색 정수리 캡·옆뒤 띠를 얹음, skinTint 라 얼굴과 같은 피부색) · 얼굴 칸 `face:npc-beard`(입 둘레 짧은 수염·콧수염·짙은 눈썹) · 흰 조리복 `top:npc-chef`(서 있는 깃·단추) · 짙은 앞치마 `vest:npc-apron-dark` · 러닝 반바지 `bottom:npc-run`(옆 줄) · 트레일화 `shoes:s3` · 왼 손목 러닝 시계 `hand:npc-watch`
+- 볕에 그을린 피부(SKIN_TONES[1]), 다부진 체격(가로 1.08배). 주는 사람 look 에 skin·wide·gear 를 받게(game/quest.js person). 이름 '스톤 셰프' 그대로, Tripo 새 모델 안 씀
+- 대사: 인사·창 열기에 러너 한 줄씩(npclines stone, balance 주는 사람 hello)
+- 화자 프로필(#224)은 3D 모델을 구워 그리므로 같은 모습. 그림 `tools/stonechef.js` → notes/shots/299 (앞·옆·가까이·멀리). 멀리서도 검지 않음
+- 확인: build·err·smoke·npcdark d·shops 통과
