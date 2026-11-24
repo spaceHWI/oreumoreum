@@ -2145,8 +2145,16 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 - #284 이름 정하기 글: 화면에 '닉네임' 글자는 이미 없었음(주석·서버·개인정보 글만). 첫 이름 칸 라벨 '이름을 정해 주세요' → '이름', 창 aria-label → '아이디 만들기'. 이름 바꾸기 창은 그대로.
 
+- #295 망고 상인(사건 모델 전부)이 줌 아웃하면 검게 보임: 원인은 멀리용(`model-case-*-lo.js`) 텍스처 5개가 통째로 검게 구워져 있던 것(`bake-case.py` 의 `img.copy()` 가 굽는 그림을 못 옮김, 평균 밝기 0). 같은 UV 라 큰 텍스처를 128 로 줄여 다시 채움(`model/lotex.py`), `bake-case.py` 는 픽셀을 직접 옮기게 고침(Blender 로는 못 돌려 봄: 다시 구우면 `lotex.py` 로 채울 것). `tools/npcdark.js` 에 '멀리 낮·밤'(24m 밖 망원)·'놓아 줬다가 다시 가까이' 줄 추가(이전 값: 멀리용 밝기 2~14 → 고친 뒤 낮 67~218·밤 27~108).
 ## #288 위쪽 줄 순서·건물 아이콘 막대·안내판보다 사람 먼저
 - 위쪽 줄: 레벨 → 귤 → 배낭 → 쓰레기 정도 → 버프(숙소 개운함 아이콘은 버프 곁으로). 줄이 좁아지면 버프 쪽부터 줄어드는 기존 f1~f7 규칙 그대로
 - 가게 지붕 간판 아래 막대는 숨기고(`shops.js` pole.visible=false) 간격 roofGap 0.6→0.2 (`balance.js`). 검사 `tools/shops.js` 간격 줄도 0.2 로
 - 상호작용: 표지판(`ic:'sign'`)은 사람·다른 것이 닿으면 뒤로 (`dump.js updateContext`). 이야기 버튼 글은 '<이름> 이야기' (`quest.js`). 오름지기 자리는 그대로(안내판 옆 2.8m, 우선 규칙으로 충분)
 - 확인: build·smoke·err·innrun d·tutrun d/m·questrun d·shops 통과. 앞뒤 그림은 못 찍음(자동 실행)
+
+## #299 스톤 셰프를 실제 셰프 닮게 (2026-11-24)
+- 차림(`src/chefnpc.js`, NPC 전용): 짧은 머리 Tripo 머리 + 모자 칸 `hat:npc-bald`(clip 0.835 로 머리카락을 자르고 살색 정수리 캡·옆뒤 띠를 얹음, skinTint 라 얼굴과 같은 피부색) · 얼굴 칸 `face:npc-beard`(입 둘레 짧은 수염·콧수염·짙은 눈썹) · 흰 조리복 `top:npc-chef`(서 있는 깃·단추) · 짙은 앞치마 `vest:npc-apron-dark` · 러닝 반바지 `bottom:npc-run`(옆 줄) · 트레일화 `shoes:s3` · 왼 손목 러닝 시계 `hand:npc-watch`
+- 볕에 그을린 피부(SKIN_TONES[1]), 다부진 체격(가로 1.08배). 주는 사람 look 에 skin·wide·gear 를 받게(game/quest.js person). 이름 '스톤 셰프' 그대로, Tripo 새 모델 안 씀
+- 대사: 인사·창 열기에 러너 한 줄씩(npclines stone, balance 주는 사람 hello)
+- 화자 프로필(#224)은 3D 모델을 구워 그리므로 같은 모습. 그림 `tools/stonechef.js` → notes/shots/299 (앞·옆·가까이·멀리). 멀리서도 검지 않음
+- 확인: build·err·smoke·npcdark d·shops 통과
