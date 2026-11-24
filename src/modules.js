@@ -149,6 +149,7 @@ import './game/inn.js'; // 숙소 오피스제주 (#270): 숙박·개운함 버�
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/npctalk.js'; // NPC 대사 (#278): 말버릇·상황 받아치기·가게 창 주인 말 (글은 src/npclines.js)
 import './game/start.js';
+import './game/rankboard.js'; // 큰 순위판 (#289): 들머리 광장·가게 거리 입구 (start.js 의 rank 뒤)
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
 import './game/debug.js';
