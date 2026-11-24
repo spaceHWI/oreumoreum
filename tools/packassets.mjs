@@ -2,8 +2,15 @@
 // build.mjs 가 부른다. 원본 자료 파일(src/model-*.js, boarmodel.js, gear/head-*.js, stepsamples.js)은 그대로 두고 게임 코드는 더 이상 import 하지 않는다
 // 파일 하나 = [u32 머리 길이][머리 JSON][조각들]. 머리: { meta, chunks: [{ k, o, l, c, n, s, e }] }
 //   c: 'raw'(그대로: 텍스처 jpg·소리 mp3), 'v'(meshopt 정점 압축: n 개, 한 개 s 바이트(4의 배수로 채움), 실제 e 바이트), 'i'(meshopt 삼각형 인덱스: n 개, s=2|4)
-// 압축은 손실 없음(값이 원본과 똑같이 풀림) → 화질 차이 없음. 텍스처는 jpg 그대로 (KTX2 는 #85 코멘트 참고)
+// 정점 압축은 손실 없음(값이 원본과 똑같이 풀림). 텍스처는 jpg, 또는 더 작고 거의 같은 webp 가 구워져 있으면 webp (#293, KTX2 는 #85 코멘트 참고)
 import { MeshoptEncoder } from 'meshoptimizer';
+import fs from 'fs'; import path from 'path'; import crypto from 'crypto'; import { fileURLToPath } from 'url';
+/* 텍스처 webp (#293): tools/texwebp.mjs 가 구워 둔 assets/tex/<jpg 해시>.webp 가 있으면 그것을, 없으면 jpg 그대로 */
+const TEX_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets/tex');
+export function texOf(mime, jpg) {
+  const f = path.join(TEX_DIR, crypto.createHash('sha256').update(jpg).digest('hex').slice(0, 16) + '.webp');
+  return fs.existsSync(f) ? { mime: 'image/webp', data: fs.readFileSync(f) } : { mime, data: jpg };
+}
 
 const b64 = (s) => Buffer.from(s, 'base64');
 // 자료 모양별 칸: [이름, 한 개 요소 바이트, 칸 수] (정점 압축 단위 = 요소 × 칸)
@@ -74,7 +81,7 @@ export async function packAssets(srcDir) {
       const ibuf = isz === 2 ? Buffer.from(Uint16Array.from(idx).buffer) : Buffer.from(idx.buffer);
       for (const [k, v] of Object.entries(M)) {
         if (typeof v !== 'string') { meta[k] = v; continue; }
-        if (k === 'tex') { const m = /^data:([^;]+);base64,(.*)$/.exec(v); chunks.push({ k, c: 'raw', mime: m[1], data: b64(m[2]) }); continue; }
+        if (k === 'tex') { const m = /^data:([^;]+);base64,(.*)$/.exec(v); chunks.push({ k, c: 'raw', ...texOf(m[1], b64(m[2])) }); continue; }
         if (k === 'idx') chunks.push({ k, ...ichunk(ibuf, isz) });
         else if (shape[k]) chunks.push({ k, ...vchunk(vtx(b64(v), shape[k][0] * shape[k][1]), shape[k]) });
         else throw new Error('모르는 칸 ' + name + '.' + k);

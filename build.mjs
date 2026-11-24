@@ -36,7 +36,9 @@ const inapp = (fs.readFileSync('src/bootscreen.js', 'utf8').trim() + '\n' + fs.r
 const inappHash = crypto.createHash('sha256').update(inapp, 'utf8').digest('base64');
 const { logoSvg } = await import('./src/logo.js');
 const { fillIcons } = await import('./src/icons.js'); // #184: <svg data-i="id"></svg> → 아이콘 세트 그림
-const page0 = fillIcons(fs.readFileSync('src/page.html', 'utf8')).replace('__BOOTLOGO__', () => logoSvg({ dark: true, label: '오름오름' })); /* 로딩 창 로고 (#281): 스크립트를 받기 전에 보이게 빌드 때 그려 넣음 */
+/* 용량 (#293): page.html 의 <style> 은 주석·빈칸을 줄이고(esbuild css minify), HTML 주석은 뺀다. 스크립트 자리(__INAPP__·__BUNDLE__)는 그대로 */
+const slimPage = async (h) => { let o = ''; let k = 0; for (const m of h.matchAll(/<style>([\s\S]*?)<\/style>/g)) { o += h.slice(k, m.index) + '<style>' + (await esbuild.transform(m[1], { loader: 'css', minify: true, target: ['chrome87', 'safari14'] })).code.trim() + '</style>'; k = m.index + m[0].length; } return (o + h.slice(k)).replace(/<!--[\s\S]*?-->/g, ''); };
+const page0 = (await slimPage(fillIcons(fs.readFileSync('src/page.html', 'utf8')))).replace('__BOOTLOGO__', () => logoSvg({ dark: true, label: '오름오름' })); /* 로딩 창 로고 (#281): 스크립트를 받기 전에 보이게 빌드 때 그려 넣음 */
 const page = page0.replace('<script>__INAPP__</script>', `<script>${inapp}</script>`);
 const i = page.indexOf('__BUNDLE__');
 const body = page.slice(0, i) + js + page.slice(i + 10);

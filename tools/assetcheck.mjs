@@ -1,6 +1,6 @@
 // 모델 압축 확인 (#85): node tools/assetcheck.mjs → 따로 받는 모델을 wasm·JS 디코더로 풀어 원본과 삼각형(위치·법선·uv)·텍스처가 똑같은지
 // 압축 전후 같은지: 삼각형마다 (위치·법선·uv) 묶음을 문자열로 만들어 정렬 비교
-import { packAssets, ASSET_SRC } from './packassets.mjs';
+import { packAssets, ASSET_SRC, texOf } from './packassets.mjs';
 import { MeshoptDecoder as W } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { MeshoptDecoder as J } from 'meshoptimizer/meshopt_decoder_reference.js';
 import path from 'path';
@@ -23,5 +23,5 @@ for (const a of packed) {
   const sh = src[3], sizes = { pos: sh.pos[0] * 3, nor: 3, uv: sh.uv[0] * 2 }, isz = (M.idx16 || sh.pos[0] === 2 || a.name === 'boar') ? 2 : 4;
   const orig = { pos: b64(M.pos), nor: b64(M.nor), uv: b64(M.uv), idx: b64(M.idx) };
   const T0 = tris(orig, sizes, isz);
-  for (const [nm, D] of [['wasm', W], ['js', J]]) { const d = unpack(a.buf, D); console.log(a.name, nm, tris(d, sizes, isz) === T0 ? 'same' : 'DIFF', Buffer.compare(Buffer.from(d.tex), Buffer.from(M.tex.split(',')[1], 'base64')) === 0 ? 'tex same' : 'tex DIFF'); }
+  for (const [nm, D] of [['wasm', W], ['js', J]]) { const d = unpack(a.buf, D); console.log(a.name, nm, tris(d, sizes, isz) === T0 ? 'same' : 'DIFF', Buffer.compare(Buffer.from(d.tex), texOf('image/jpeg', Buffer.from(M.tex.split(',')[1], 'base64')).data) === 0 ? 'tex same' : 'tex DIFF'); }
 }

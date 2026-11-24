@@ -2173,3 +2173,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 소품 틀 `src/tripoprop.js`: 받기·LOD·텍스처 뒤 바꾸기는 사건 모델과 같고, 임시 모양(ph)·모프 하나. 좌판(token.js): 예전 코드 모양이 임시, 판 위 망고 한 알. 징(arena.js): 돌 고리와 떼어 따로(터마다 그리기 1 → 2), 치면 징판만 흔들림(모프: 매단 높이 둘레로 돌린 모양, 무게 음수도) `CASE_MODELS.gong`. 투입구(tubemodel.js): 모델은 덮개가 열린 채 → 경첩 둘레로 돌려 닫힌 모양을 기본으로, 원래(열림)를 모프로 (`CASE_MODELS.chute`), 입은 위쪽(`INTAKE.holeY`)
 - 망고: 받으면 머리 위로 튀었다 떨어지는 망고(`TOKEN.pop`, 몇 알 돌려 씀), 아이콘은 모델을 구운 64px 그림(`model/icon-mango.py` → `src/mangoicon.js`, `late.mangoIcon`): 내 가방 아래 망고 수·'지금 있는 곳' 옆 망고 칸. 무기 카드 그림(gsvg)은 그대로
 - 검사 `node tools/props305.js`(늦게 받기·좌판·징 흔들림·투입구 여닫기·튀는 망고·망고 그림, 그림 notes/shots/305/props.jpg), `node tools/jigishot.js T notes/shots/305`, `tools/casemodels.js` 는 여섯 모델(오름지기 포함)
+
+## #293 전체 용량 재고 줄이기
+- 재기 `node tools/sizereport.mjs [--md]` → `notes/size.md` (첫 화면까지·게임 시작까지·한 시간 전부, 원래·gzip·brotli, main 안 큰 것 20). Pages 는 gzip 만, 모든 파일 max-age=600
+- 텍스처 webp: `node tools/texwebp.mjs`(Pillow)가 `assets/tex/<jpg 해시>.webp` 를 굽고, `packassets.mjs texOf` 가 있을 때만 씀(원본 jpg 가 바뀌면 저절로 jpg). 기준 jpg 85% 이하·PSNR 36dB 이상, 14장. 텍스처 합 -13%, 내 캐릭터 190→123KB
+- index.html: `<style>` css minify·HTML 주석 뺌 (gzip 61→49KB)
+- 앞뒤(gzip): 첫 화면 1477→1398KB, 시작 2887→2745KB, 전부 3990→3799KB (각 -5%). 목표(70%·80%)는 못 닿음: 남은 큰 몫은 three 673KB(한 파일이라 tree-shaking 안 됨)와 게임 코드 1.6MB(iife 한 파일이라 조각 못 냄). 다음 후보와 잰 값은 `notes/size.md`
