@@ -1915,7 +1915,7 @@ export const QUESTS = {
     'shop:gear': { name: '철물 삼춘', shop: 'gear', look: { shirt: '#4c5a6e', pants: '#3b3b40', shoes: '#26262b', hat: 'hat:straw' }, hello: ['집게는 손목으로 쓰는 거여', '연장이 좋아야 일이 즐겁지', '환불은 안 혀. 수리는 혀'] },
     'shop:leap': { name: 'LEAP 점원', shop: 'leap', look: { shirt: '#f2f2f2', pants: '#24262c', shoes: '#f2f2f2' }, hello: ['오늘 핏 좋네요', '오름도 패션이에요', '멧돼지도 뒤돌아볼 핏이에요'] },
     'shop:salon': { name: '루이네 원장', shop: 'salon', look: { shirt: '#c9879b', pants: '#3a2f3a', shoes: '#2a222a' }, hello: ['바람에 머리가 다 날렸네', '앞머리 다듬어 줄까요?', '바람은 예약 없이 와요'] },
-    'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { shirt: '#f6f4ee', pants: '#2b2b30', shoes: '#26262b' }, hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요', '오늘의 메뉴: 오늘 거예요'] },
+    'shop:stone': { name: '스톤 셰프', shop: 'stone', look: { skin: '#c98a5e', wide: 1.08, hat: 'hat:npc-bald', gear: { hair: 'hat:short', face: 'face:npc-beard', top: 'top:npc-chef', vest: 'vest:npc-apron-dark', bottom: 'bottom:npc-run', shoes: 'shoes:s3', hand: 'hand:npc-watch' } }, /* #299 실제 셰프를 닮게: 민머리·수염·흰 조리복·짙은 앞치마·러닝 반바지·트레일화·시계 (src/chefnpc.js) */ hello: ['배고프면 싸움도 못 해요', '오늘 파스타 잘 나왔어요', '오늘의 메뉴: 오늘 거예요', '오름은 뛰어서 넘는 거예요. 밥 먹고요'] },
     'note:top': { name: '정상 쪽지' }, // #208 주는 사람 없이 쪽지를 읽으면 받는 퀘스트 (game/summit.js)
     'shop:inn': { name: '안녕 매니저', shop: 'inn', look: { shirt: '#e9ecef', pants: '#3a4150', shoes: '#26262b', hat: 'hat:short' }, hello: ['일이 많은 당신의 안녕을 바랍니다', '체크인은 지금, 걱정은 체크아웃 때 두고 가요', '와이파이 비밀번호요? 귤이에요'] }, // #270 숙소 오피스제주
     'shop:ride': { name: '탈것 가게 사장', shop: 'ride', look: { shirt: '#e0443a', pants: '#2b2b30', shoes: '#26262b', hat: 'hat:w-cap' }, hello: ['오늘 바람은 순풍이에요', '빠른 건 우리가, 조심은 당신이'] }, /* #279 탈것 가게에도 주인이 없었음 */
