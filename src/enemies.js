@@ -12,7 +12,7 @@ import { height } from './world.js';
 import { drape } from './drape.js';
 import { buildEnemyModel, buildBolt } from './enemymodels.js';
 import { veilKind, veilOn, veilModel, veilName } from './ufoveil.js';
-import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS } from './balance.js';
+import { BOAR, COLLIDE, ENEMIES, ENEMY_SPAWN, ENEMY_PACK, COMBAT, CHARGE, ZONE_BOSS, TWO_PATHS } from './balance.js';
 import { createPack, slotGoal, bodyR } from './enemypack.js';
 import { reportCrash, crashNote } from './crash.js';
 
@@ -100,6 +100,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   function planWave(force = false, forceKind = null, group = null) {
     if (!okAt || !player) return null;
     if (!force && !okAt(player.pos.x, player.pos.z)) return null;
+    if (!force && hooks.trailSafe?.()) return null; /* #298 길 위에서는 보통 적이 생기지 않음 */
     const room = ENEMY_SPAWN.max - list.length; if (room <= 0) return null;
     const k0 = kindAt(player.pos.x, player.pos.z), zone = typeof k0 === 'object' ? k0.zone : null;
     const kind = forceKind || (typeof k0 === 'object' ? k0.kind : k0);
@@ -109,7 +110,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     let c = null;
     for (const rr of [ENEMY_SPAWN.r, ENEMY_SPAWN.near]) for (let k = 0; k < 16 && !c; k++) { const a = rnd() * Math.PI * 2, r = range(rnd, rr), x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r; if (sameZone(x, z)) c = [x, z]; }
     if (!c) return null;
-    return { kind, n, x: c[0], z: c[1], zone, forceKind: !!forceKind };
+    return { kind, n, x: c[0], z: c[1], zone, forceKind: !!forceKind, wild: !forceKind }; /* wild: 보통 들판 적 = 길 안전을 따름 (#298) */
   }
   function spawnPlan(P, quiet = false) {
     if (!P || !player) return null;
@@ -118,7 +119,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const r0 = BOAR.bodyR * ENEMIES[P.kind].size, free = (x, z) => list.every((o) => o.state === 'flee' || o.state === 'leave' || Math.hypot(o.pos.x - x, o.pos.z - z) >= r0 + bodyR(o) + ENEMY_PACK.spawnGap); // 처음 자리도 겹치지 않게 (#146)
     let made = 0;
     for (let i = 0; i < n; i++) {
-      for (let k = 0; k < 16; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * (4 + k * 0.3), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if ((k < 12 ? sameZone(x, z) : okAt(x, z)) && (k < 14 ? free(x, z) : true)) { const e = spawnOne(P.kind, x, z, null, pk); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
+      for (let k = 0; k < 16; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * (4 + k * 0.3), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if ((k < 12 ? sameZone(x, z) : okAt(x, z)) && (k < 14 ? free(x, z) : true)) { const e = spawnOne(P.kind, x, z, null, pk); e.wild = !!P.wild; e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
     }
     if (!made) return null;
     const info = { kind: P.kind, n: made, x: P.x, z: P.z, zone: P.zone, pack: pk };
@@ -145,6 +146,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     if (!e.remoteHurt) e.mine = true; // 내가 맞힘 (#205 동굴 칸 주인 보상)
     if (e.remoteHurt) { e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
     e.calmT = 0; // 쉬며 차던 기운이 멈춤 (#183)
+    e.prov = TWO_PATHS.path.provokeT; /* #298 먼저 맞힌 적은 길 위에서도 잠깐 쫓음 */
     if (hooks.dmgIn) dmg *= hooks.dmgIn(e); /* 받는 피해 배수: 단단한 귤 증강 #194 (game/swarm.js) */
     const stag = e.state === 'stagger'; if (stag) dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     hooks.dmgNum?.(e, dmg, stag, ch); // 머리 위 피해 숫자 (#141, game/feel.js)
@@ -203,6 +205,10 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const to = _to.set(tp.x - e.pos.x, 0, tp.z - e.pos.z); let d = to.length();
     if (!e.net && (e.state === 'wander' || e.state === 'root' || AGGRO.has(e.state)) && (pDown || e.life <= 0)) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } // 쓰러뜨렸거나 시간이 다 됨
     let want = 0;
+    if (e.prov > 0) e.prov -= dt;
+    const safe = e.wild && !e.net && !(e.prov > 0) && !pDown && !!hooks.trailSafe?.(); /* #298 길 안전: 길 위 플레이어는 보통 들판 적이 쫓지 않음 */
+    if (safe && AGGRO.has(e.state)) { e.state = 'wander'; e.st = 0; e.speed *= 0.3; e.heading = Math.atan2(-to.x, -to.z); hooks.trailGrowl?.(e); }
+    else if (safe && e.state === 'wander' && d < d0.sight) turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 2)); /* 길 가장자리에서 돌아감 */
     if (e.net) { // 동굴 적 받는 쪽 (#205, game/caveshare.js): 자리·상태·기운은 칸 주인 값. 쏘는 적은 내 화면에서 나를 쏨
       want = e.net(e, dt);
       const R = d0.ranged; if (R && e.state === 'charge' && !(e.fl > 0) && (e.shotT -= dt) <= 0 && d < R.range && !player.down) { e.shotT = R.every * (0.85 + rnd() * 0.3); shoot(e); }
@@ -253,14 +259,14 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       want = 0;
       if (!e.dropped && e.st > d0.rootT * 0.5) { e.dropped = true; hooks.enemyRoot?.(e.kind, e.pos.clone(), irange(rnd, d0.rootTrash)); }
       if (e.st >= d0.rootT) { e.state = 'wander'; e.st = 0; e.rootT = range(rnd, d0.rootEvery); }
-      if (d < d0.sight && !pDown) { e.state = 'charge'; e.st = 0; }
+      if (d < d0.sight && !pDown && !safe) { e.state = 'charge'; e.st = 0; }
     } else if (e.state === 'calm') { // #168 모여 있음: 제자리에서 두리번, 가까이 오면 흩어짐
       want = 0; turnTo(e, e.heading + Math.sin(time * 0.7 + e.seed) * 0.6, Math.min(1, dt));
       if (d < e.calmR) scatter(e);
     } else { // wander
       want = d0.walk; if (rnd() < dt * 0.3) e.heading += (rnd() - 0.5) * 1.5;
       e.rootT -= dt; if (e.rootT <= 0) { e.state = 'root'; e.st = 0; e.dropped = false; }
-      if (d < d0.sight && !pDown) { e.state = 'charge'; e.st = 0; }
+      if (d < d0.sight && !pDown && !safe) { e.state = 'charge'; e.st = 0; }
     }
     if (e.state === 'charge' || e.state === 'wander') { // #146 저마다 빠르기를 조금씩 다르게, 앞에 붙은 적이 있으면 뒤에서 기다림
       want *= 1 + ENEMY_PACK.vary * Math.sin(e.phase * 0.23 + e.seed);

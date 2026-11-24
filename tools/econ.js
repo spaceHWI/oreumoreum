@@ -206,8 +206,8 @@ async function main() {
     const skipK = (k) => SKIP && st.tutDone && (k === 'weapon' || GEAR.includes(k));
     const cur = (k) => (k === 'weapon' ? st.weapon : e[k]);
     const next = (k) => {
-      if (skipK(k)) { const L = k === 'weapon' ? (battle ? WEAPONS : []) : LIST[k], i = topOf(k); return cur(k) <= i && L[i] ? { ...L[i], tier: L[i].tier ?? i + 1 } : null; }
-      if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon ? WEAPONS[st.weapon] : null;
+      if (skipK(k)) { const L = k === 'weapon' ? (battle ? WEAPONS : []) : LIST[k], i = topOf(k); return cur(k) <= i && L[i] && !(L[i].lv > st.lv) ? { ...L[i], tier: L[i].tier ?? i + 1 } : null; }
+      if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon && !(WEAPONS[st.weapon]?.lv > st.lv) ? WEAPONS[st.weapon] : null; /* 무기 열리는 레벨 (#298) */
       if (WS[k]) { const c = clothOf(k, e[k] + 1); return c && { tier: c.tier, name: c.name, price: wearPrice(c) }; }
       if (k === 'ride') return NORIDE ? null : RIDES.list[e.ride] && { tier: e.ride + 1, ...RIDES.list[e.ride] };
       return LIST[k][k === 'bag' ? e.bag : e[k]];
@@ -410,6 +410,8 @@ async function main() {
       ...[1, 2, 3, 4, 5].flatMap((z) => [[`구역 ${z} 열림`, `장비 점수 ${Math.round(ZONES[z - 1].rec * GROWTH.red)}`, z === 1 ? () => 0 : M('open' + z)], [`구역 ${z} 처음 다 치움`, '', M('clear' + z)], [`구역 ${z} 우두머리`, `${Math.round(ZONE_BOSS.appear * 100)}% 치움`, M('boss' + z)]]),
       ...[2, 3, 4, 5].map((t) => [`장비 ${t}단계 (도구·배낭·신발)`, `${GROWTH.price[t].toLocaleString()} 귤씩`, tierAll(t)]), ['무기 6단계 (마지막 칸)', `${GROWTH.price[6].toLocaleString()} 귤`, M('weapon6')],
       ...['stone', 'salon', 'ride'].map((id) => [`가게: ${id}`, SU[id]?.how || '', shopAt(id)]),
+      ...WEAPONS.filter((w) => w.tier >= 3).map((w) => [`무기 열리는 때: ${w.name} (#298)`, `Lv ${w.lv || 1} · ${w.price.toLocaleString()} 귤 · 산 때 ${w.tier}단계`, w.lv ? M('lv' + w.lv) : () => 0]),
+      ...WEAPONS.filter((w) => w.tier >= 3 && w.tier < 6).map((w) => [`무기 ${w.tier}단계 산 때: ${w.name}`, '', M('weapon' + w.tier)]),
       ['노루 친구', `구역 ${B.DEERPAL.zone} 열림`, M('open' + B.DEERPAL.zone)], ['수거 관 (구역 4 클린하우스까지)', '구역 4 열림', M('open4')],
       ...CASES.map((C) => [`사건 ${C.n} '${C.name}'`, `레벨 ${C.lv} · 구역 ${C.zone}`, mx(M('lv' + C.lv), C.zone === 1 ? () => 0 : M('open' + C.zone))]),
       [`동굴 (어드민만, #195)`, `레벨 ${CAVE.minLv} · 구역 ${CAVE.needZone} 다 치움`, M('cave')],

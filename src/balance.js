@@ -613,15 +613,27 @@ export const ENEMY_PACK = {
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
-  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, mag: 8, reload: 1.2, price: GROWTH.price[3] },
-  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, mag: 30, reload: 2.2, price: GROWTH.price[4] },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
+  { tier: 3, id: 'gun', name: '귤 총', lv: 6, dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, mag: 8, reload: 1.2, price: GROWTH.price[3] },
+  { tier: 4, id: 'mg', name: '귤 머신건', lv: 11, dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, mag: 30, reload: 2.2, price: GROWTH.price[4] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', lv: 14, dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
     /* 과열 (#200, src/laserheat.js): full 계속 쏘면 열이 가득 차는 초, wait 쏘기를 멈추고 식기 시작할 때까지 초, cool 그 뒤 초당 식는 몫,
        lock 과열되면 못 쏘는 초(그동안 1 에서 0 으로 식음), hot 이 열부터 피해 × hotMul, shake 이 열부터 고리가 떨림, grade 장비 등급 하나마다 full × (1 + grade).
        full 4→5·lock 2.5→1.5 는 계속 쏠 때 시간당 피해가 과열 전의 80% 쯤 되게 tools/heat.js 로 맞춘 값 */
     heat: { full: 5, wait: 0.5, cool: 0.35, lock: 1.5, hot: 0.7, hotMul: 1.15, shake: 0.7, grade: 0.1 } },
-  { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
+  { tier: 6, id: 'bomb', name: '귤 폭탄', lv: 16, dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
+/* 무기 열리는 때 (#298): lv 는 장비점에서 살 수 있는 레벨(값과 따로). 목표 놀이 시간 귤 총 1시간쯤·머신건 3~4시간·레이저 6~7시간·폭탄 8시간 뒤 (tools/econ.js '무기 열리는 때'). 이미 가진 무기는 그대로 */
+// 두 길 (#298, src/game/twopaths.js): 구역 점수 = 깨끗함(줍기) + 싸움 몫. 한쪽만으로도 100% 를 채우고, 섞으면 가장 빠름
+// fight.need[구역] 싸움 몫 100% 에 드는 점수, fight.pts 쫓아낸 적 하나의 점수(보통·들판 떼·떼 대장·정예). 몫은 사람마다(save.zfight), 깨끗함은 오름 전체
+// calm: 구역 깨끗함이 이 값 이상이면 우두머리를 싸우지 않고 달래 보냄(빈터 calmR m 안에 calmT 초 머물면 떠남, 때리면 싸움)
+// path: 길 안전 — 탐방로(길 반폭 + side m) 위에서는 보통 적이 생기지 않고 길 위 플레이어를 쫓지 않음. 길에서 먼저 때린 적은 provokeT 초 동안 쫓음. growlT 으르렁 간격
+// balance: 그날 줍기·싸움을 둘 다 일정량(pick 개·fight 마리) 하면 귤 +bonus, sec 초 동안(놀이 시간)
+export const TWO_PATHS = {
+  fight: { need: { 1: 30, 2: 40, 3: 55, 4: 70, 5: 90 }, pts: { mob: 1, swarm: 0.35, leader: 4, elite: 3 } },
+  calm: { clean: 1, calmR: 14, calmT: 3 },
+  path: { side: 6, provokeT: 8, growlT: 2.5 },
+  balance: { pick: 60, fight: 15, bonus: 0.15, sec: 1800 },
+};
 // 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
 // aimT 총을 겨눈 채로 있는 시간(초), kick 반동 시간, life 탄이 아무것도 안 맞고 날아가는 최대 시간은 range / speed
 // laser: w 줄기 굵기, wet 맞은 적이 젖어 보이는 시간(초), drip 초당 떨어지는 방울 수

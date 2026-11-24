@@ -17,7 +17,7 @@ import { net } from './room.js';
 import { updateTrashUI } from './pickup.js';
 import { SHOP_POP, openShopPop, refreshShopPop, shopPopNow } from './stores.js';
 import { startAutoGo } from './dump.js';
-import { itemScore, scoreDiff, gyulPickR, abilityCloth } from '../gearscore.js';
+import { itemScore, scoreDiff, gyulPickR, abilityCloth, myLv } from '../gearscore.js';
 import { LOOK_COLORS } from '../balance.js';
 import { colorDots, lcIndex } from '../lookcolors.js'; // 기본 옷 색 (#155)
 
@@ -56,7 +56,8 @@ const tierStats = (k, t) => t.soon ? [] : k === 'weapon' ? [['dmg', t.dps ? `${t
 // 순서 없이 사기 (#111): 귤만 충분하면 어느 단계든 바로 산다. 산 단계 아래는 '가짐'
 // 튜토리얼 집게·배낭 단계에서는 그 물건(바로 다음 단계)만
 const tutOnly = (k) => { const s = late.tut?.active && late.tut.step; return (s === 'tongs' && k === 'tool') || (s === 'bag' && k === 'bag'); };
-const buyable = (k, i) => { const t = GEAR_ROWS[k].list[i]; return !!t && !t.soon && i >= save.equip[k] && (!tutOnly(k) || i === save.equip[k]); };
+const lvShort = (t) => (t?.lv && myLv(save) < t.lv ? t.lv : 0); // 무기 열리는 레벨 (#298, balance.js WEAPONS lv)
+const buyable = (k, i) => { const t = GEAR_ROWS[k].list[i]; return !!t && !t.soon && i >= save.equip[k] && (!tutOnly(k) || i === save.equip[k]) && !lvShort(t); };
 export const canBuyGear = () => gearKeys().filter((k) => GEAR_ROWS[k].list.some((t, i) => buyable(k, i) && save.coins >= t.price)); late.canBuyGear = canBuyGear;
 let gearTab = 'tool', justKey = '', justT = 0; // gearTab: 폰에서 보이는 묶음, justKey: 방금 산 카드('장착했어요')
 export const gearTabNow = () => (!$('shoppop').hidden && shopPopNow === 'gear' ? gearTab : null); // 튜토리얼이 누를 곳을 고를 때
@@ -87,7 +88,7 @@ function spendFx(toEl, price, from, pill = document.querySelector('#shoppop .coi
 }
 export function buyGear(k, i = save.equip[k]) { // i: 살 단계 (목록 칸 번호, 없으면 바로 다음 단계)
   const row = GEAR_ROWS[k]; if (!row) return; const next = row.list[i];
-  if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); return; }
+  if (!buyable(k, i)) { if (next && !next.soon && i > save.equip[k] && tutOnly(k)) toast(`지금은 ${row.list[save.equip[k]].name}부터 사요`); else if (lvShort(next)) toast(`Lv ${next.lv}부터 살 수 있어요 · ${next.name}`); return; }
   const off = late.questOff?.('gear', next.price) || 0, pay = next.price - off; // 퀘스트 할인권 (#158)
   if (save.coins < pay) { toast(`귤이 ${pay - save.coins}개 모자라요`); return; }
   const from = save.coins;
@@ -137,7 +138,7 @@ function gearGroup(k) {
     else if (t.soon) act.innerHTML = '';
     else {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'tier-buy buy-btn' + (poor ? ' short' : '');
-      b.innerHTML = !ok ? `지금은 ${row.list[cur]?.name || ''}부터` : save.coins < t.price ? `${(t.price - save.coins).toLocaleString()}귤 더 필요` : `<i class="g"></i>${t.price.toLocaleString()} 사기`;
+      b.innerHTML = lvShort(t) ? `Lv ${t.lv}부터` : !ok ? `지금은 ${row.list[cur]?.name || ''}부터` : save.coins < t.price ? `${(t.price - save.coins).toLocaleString()}귤 더 필요` : `<i class="g"></i>${t.price.toLocaleString()} 사기`;
       b.setAttribute('aria-label', `${t.name} 사기 · 귤 ${t.price}`); b.addEventListener('click', () => buyGear(k, i)); act.append(b);
     }
     c.append(act); g.append(c);

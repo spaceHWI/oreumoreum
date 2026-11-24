@@ -203,15 +203,16 @@ export function updateTrashUI(bump) {
   const pk = save.equip.bag === 0; if ($('bag-pill').classList.contains('pocket') !== pk) { $('bag-pill').classList.toggle('pocket', pk); $('bag-pill').title = pk ? '호주머니: 담은 양 / 용량' : '배낭: 담은 양 / 용량 (부피)'; } // 배낭이 없으면 호주머니 아이콘 (#31)
   if (key !== lastTrashUI) { lastTrashUI = key; $('bag-n').textContent = vol; $('bag-cap').textContent = cap; $('clean-n').textContent = cs; $('clean-ring').setAttribute('stroke-dasharray', `${(Math.min(100, c) / 100 * 37.7).toFixed(1)} 37.7`); $('bag-pill').classList.toggle('full', vol >= cap); topFit.dirty(); }
   // 지금 구역 번호·깨끗한 정도 (#45). 들머리(0)에서는 숨김
-  const zc = zoneNow ? Math.floor(trash.zoneClean(zoneNow) * 100) : 0;
+  const zp = zoneNow ? (late.zoneParts ? late.zoneParts(zoneNow) : { clean: trash.zoneClean(zoneNow), fight: 0, total: trash.zoneClean(zoneNow) }) : null; /* #298 구역 점수 = 줍기(흰) + 싸움(귤색) */
+  const zc = zp ? Math.floor(zp.total * 100 + 1e-6) : 0, zcc = zp ? zp.clean * 37.7 : 0, zcf = zp ? zp.fight * 37.7 : 0;
   // 화면의 깨끗함은 지금 구역 값으로, 있는 곳 이름 옆에 (#196). 구역 밖(마을·가게 거리·길)은 감춤. 오름 전체 값은 오름 지도
-  const wk = zoneNow ? String(zc) : '';
-  if (wk !== whereCK) { whereCK = wk; const w = $('where-c'); w.hidden = !zoneNow; $('where-cn').textContent = wk; $('where-ring').setAttribute('stroke-dasharray', `${(zc / 100 * 37.7).toFixed(1)} 37.7`); w.classList.toggle('done', zc >= 100); topFit.dirty(); }
+  const wk = zoneNow ? `${zc}/${zcf.toFixed(1)}` : '';
+  if (wk !== whereCK) { whereCK = wk; const w = $('where-c'); w.hidden = !zoneNow; $('where-cn').textContent = String(zc); $('where-ring').setAttribute('stroke-dasharray', `${zcc.toFixed(1)} 37.7`); $('where-fring').setAttribute('stroke-dasharray', `0 ${zcc.toFixed(1)} ${zcf.toFixed(1)} 37.7`); w.classList.toggle('done', zc >= 100); topFit.dirty(); }
   const zb = bloom ? bloom.bloomed().join('') : '', tone = zoneNow ? zoneToneLv(save, zoneNow) : '', zk = `${zoneNow}/${zc}/${zb}/${tone}`;
   if (zk !== state.lastZoneUI) { state.lastZoneUI = zk; $('zone-pill').hidden = !zoneNow; $('zone-n').textContent = zoneNow; $('zone-pill').dataset.c = zc;
     // 권장 레벨과 견준 색 (#137 → #251 레벨 차이): 빨강 낮음 · 노랑 맞음 · 초록 넘음. 좁은 화면에서 구역이 좌표와 합쳐지면 좌표 칸에
     for (const el of [$('zone-pill'), $('xy-pill')]) { if (tone) el.dataset.tone = tone; else delete el.dataset.tone; }
-    $('zone-pill').dataset.rec = zoneNow ? zoneRecLv(zoneNow) : ''; $('zone-pill').classList.toggle('done', zc >= 100); $('xy-pill').classList.toggle('inzone', !!zoneNow);
+    $('zone-pill').dataset.rec = zoneNow ? zoneRecLv(zoneNow) : ''; $('zone-pill').classList.toggle('done', !!zp && zp.clean >= 1 - 1e-9); $('xy-pill').classList.toggle('inzone', !!zoneNow);
     // 꽃 아이콘 (#46): 지금 구역이 다 피었으면 꽃 모양(귤색), 깨끗한 정도 옆엔 다 핀 구역마다 작은 점. 색은 흰색·귤색만 (#75)
     const bl = !!(bloom && zoneNow && bloom.isBloomed(zoneNow)); $('zone-pill').classList.toggle('bloom', bl);
     const row = $('bloom-row'); row.hidden = !zb; row.innerHTML = [...zb].map((z) => `<i title="${z}구역 ${BLOOM.zones[z].name}"></i>`).join(''); topFit.dirty(); }
