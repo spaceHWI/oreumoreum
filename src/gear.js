@@ -15,7 +15,8 @@ import { TEXCS } from './boot.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { bytesAs as dec, whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 머리 3종(src/gear/head-*.js)은 따로 받음
 import { addClothes, clothAcc, slippers, dark, CLOTH_BUILD, COVER } from './clothes.js';
-import './clothes2.js'; // 겉모습 옷 모양 (#179): CLOTH_BUILD 에 새 kind 를 더함 (addClothes 전에)
+import './clothes2.js';
+import { addChef } from './chefnpc.js'; // #299 스톤 셰프 차림 (NPC 전용) // 겉모습 옷 모양 (#179): CLOTH_BUILD 에 새 kind 를 더함 (addClothes 전에)
 import { CLOTHES, LOOK_COLORS, BOOTS } from './balance.js';
 
 // 장비 데이터(model/extract-gear.js 로 만든 것) → build 함수. 텍스처가 있으면 그대로, 없으면 재질 기본색
@@ -204,6 +205,7 @@ addClothes(ACCESSORIES);
 /* NPC 전용 옷 (#279 만족한상회 사장): 가게 목록(CLOTHES)에 없어 팔지 않음. game/quest.js 의 주는 사람 look.hat·look.vest */
 ACCESSORIES['vest:npc-apron'] = { ...clothAcc({ slot: 'vest', name: '앞치마' }, { kind: 'apron', main: '#f3efe4', acc: '#c8452c' }), npc: true };
 ACCESSORIES['hat:npc-kerchief'] = { ...clothAcc({ slot: 'hat', name: '머릿수건' }, { kind: 'kerchief', main: '#e9eef2', acc: '#3a6ea8' }), npc: true };
+addChef(ACCESSORIES);
 // 처음 고르는 기본 옷 색 (#155): 기본 모자·반팔·반바지·쓰레빠의 색 바꾼 장비 'id~번호' (0번 = 원래 id). src/lookcolors.js 가 고름
 for (const k of ['hat', 'top', 'bottom']) {
   const c = CLOTHES.find((x) => x.id === LOOK_COLORS.ids[k]);

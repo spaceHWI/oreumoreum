@@ -72,7 +72,7 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     ok(Math.abs(st.mul.speed - 1.15) < 1e-6 && Math.abs(st.mul.dmg - 1.25) < 1e-6 && Math.abs(st.mul.pick - 1.25) < 1e-6 && Math.abs(st.mul.xp - 1.2) < 1e-6, `배수 ${JSON.stringify(st.mul)}`);
     ok(await E(() => window.__oreum.stone.mul('speed') === 1.15 && window.__oreum.stone.mul('dmg') === 1.25), '이동·피해 버프가 게임 배수(buff.mul)에 들어감');
     ok(!st.hidden && /^(30|29):\d\d$/.test(st.pill || ''), `레벨 곁 아이콘·남은 시간 (${st.pill})`);
-    ok(await E(() => { const a = document.getElementById('lv-pill'), b = document.getElementById('inn-pill'); return !!a && a.nextElementSibling === b; }), '아이콘이 레벨 바로 곁');
+    ok(await E(() => { const a = document.getElementById('buff-pill'), b = document.getElementById('inn-pill'); return !!a && a.nextElementSibling === b; }), '아이콘이 버프 바로 곁');
     ok((await log()).includes('개운해요'), '일어나면 한 줄');
     await shot('4-buff');
     // 하루 한 번

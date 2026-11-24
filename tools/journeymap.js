@@ -30,6 +30,7 @@ const OUT = process.argv[2] || 'notes/shots/256';
     (F.bosses || []).forEach((q) => P('boss', `우두머리 ${q.zone}`, q.x, q.z));
     (o.cleanhouse?.all || []).forEach((c, i) => { const q = c.center || c.front || c; P('ch', `클린하우스 ${c.id || i}`, q.x, q.z, 'ch:' + (c.id || i)); });
     for (const [id, g] of o.quest?.givers || []) P('npc', `NPC ${id}`, g.pos.x, g.pos.z);
+    { const rb = o.rankBoard?.state?.(); if (rb?.big) P('board', '순위판', rb.big.x, rb.big.z); if (rb?.small) P('board', '순위판 작은', rb.small.x, rb.small.z); } /* #289 */
     (o.cairns || []).forEach((c, i) => P('cairn', `돌탑 ${i}`, c.pos?.x ?? c.x, c.pos?.z ?? c.z));
     try { const cr = o.traces?.cropAt; if (cr) { const seen = new Set(); for (let id = 0; id < 60; id++) { const q = cr(id); if (!q) continue; const key = Math.round(q.x / 10) + ':' + Math.round(q.z / 10); if (seen.has(key)) continue; seen.add(key); pts.push({ k: 'crop', name: '크롭서클', x: +q.x.toFixed(1), z: +q.z.toFixed(1), zone: Z(q.x, q.z), unit: 'crop', soft: 1 }); } } } catch (e) { /* 없음 */ }
     /* 길: 탐방로·들머리 길 모두 (namsongi pathIdx). 3m 격자로 길 칸을 모아 거리 셈 */
@@ -77,6 +78,10 @@ const OUT = process.argv[2] || 'notes/shots/256';
     let minGap = 9; for (let i = 0; i < ang.length; i++) { const g = ((ang[(i + 1) % ang.length] - ang[i]) + Math.PI * 4) % (Math.PI * 2) || Math.PI * 2; minGap = Math.min(minGap, g); }
     if (minGap < Math.PI / 6) flag(ev[0], `사건 ${id} 증거 셋이 한 줄로 몰림 (사이 각 ${Math.round(minGap * 57.3)}도)`, 1);
   }
+  /* 순위판 (#289): 오름지기·NPC·돌탑·클린하우스와 6m 안이면 어긋남, 큰 판은 정낭에서 40m 안 */
+  for (const q of R.pts.filter((w) => w.k === 'board')) {
+    for (const c of R.pts) if (['npc', 'cairn', 'ch'].includes(c.k) && Math.hypot(q.x - c.x, q.z - c.z) < 6) flag(q, `${q.name} ↔ ${c.name} ${Math.hypot(q.x - c.x, q.z - c.z).toFixed(1)}m (6 안)`);
+  }
   /* 몰림 */
   const KEY = new Set(['see', 'ev', 'face', 'arena', 'stall', 'boss', 'ch', 'npc', 'cairn']);
   const keys = R.pts.filter((q) => KEY.has(q.k));
@@ -123,8 +128,8 @@ const OUT = process.argv[2] || 'notes/shots/256';
   }
   /* ---------- 그림 ---------- */
   fs.mkdirSync(OUT, { recursive: true });
-  const COL = { see: '#e0533d', ev: '#f2a23a', face: '#9b3fd1', arena: '#2f6fd6', stall: '#59a5ff', boss: '#111', ch: '#2c9b57', npc: '#c04b8f', cairn: '#8b6d4a', crop: '#d9c84a' };
-  const LBL = { see: '목격', ev: '증거', face: '대면', arena: '터', stall: '좌판', boss: '우두머리', ch: '클린하우스·관', npc: 'NPC', cairn: '돌탑', crop: '크롭서클' };
+  const COL = { board: '#6b4a2a', see: '#e0533d', ev: '#f2a23a', face: '#9b3fd1', arena: '#2f6fd6', stall: '#59a5ff', boss: '#111', ch: '#2c9b57', npc: '#c04b8f', cairn: '#8b6d4a', crop: '#d9c84a' };
+  const LBL = { board: '순위판', see: '목격', ev: '증거', face: '대면', arena: '터', stall: '좌판', boss: '우두머리', ch: '클린하우스·관', npc: 'NPC', cairn: '돌탑', crop: '크롭서클' };
   const page2 = await b.newPage({ viewport: { width: 760, height: 820 } });
   for (let zone = 1; zone <= 5; zone++) {
     const cells = R.cells.filter((c) => c[2] === zone); if (!cells.length) continue;

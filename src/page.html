@@ -703,12 +703,20 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
 .rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
-.rk-row.medal .rk-no { background: var(--gyul); color: var(--acc-fg); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
-.rk-row.m2 .rk-no { filter: saturate(.75) brightness(1.08); } .rk-row.m3 .rk-no { filter: saturate(.55) brightness(.92); }
+.rk-row.medal .rk-no { background: var(--gyul); color: #2a1d08; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
+/* #289 1~3위 금·은·동 (값은 balance.js RANK.medalColor 와 같이) */
+.rk-row.m1 .rk-no { background: #f2c14e; } .rk-row.m2 .rk-no { background: #c9d1d8; } .rk-row.m3 .rk-no { background: #d08a56; }
+.rk-row.medal { background: rgba(255,255,255,.1); } .rk-row.m1 .rk-nick, .rk-row.m1 .rk-n { color: #ffd77a; }
+/* #289 순위 창 크게: PC 는 넓은 창 폭, 폰은 화면의 92%. 줄 글자도 조금 크게 */
+#rank .pop { width: min(var(--win-w), 92vw); max-height: calc(100% - 24px); }
+#rank .rk-row { font-size: 16px; padding: 8px 12px 8px 8px; grid-template-columns: 34px 34px 1fr auto; }
+#rank .rk-no { width: 30px; height: 30px; font-size: 14px; } #rank .rk-face svg { width: 34px; height: 34px; }
+#rank .rk-n { font-size: 17px; }
+@media (max-width: 600px) { #rank .pop { width: 92vw; max-height: calc(100% - var(--safe-t, 0px) - var(--safe-b, 0px) - 16px); } }
 .rk-face svg { width: 30px; height: 30px; display: block; border-radius: 50%; background: rgba(255,255,255,.14); }
 .rk-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rk-n { font-family: var(--display); font-weight: 800; font-variant-numeric: tabular-nums; }
-.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #3a2a18; box-shadow: inset 0 0 0 2px var(--acc); }
+.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #4a3218; box-shadow: inset 0 0 0 2px var(--acc), 0 4px 14px rgba(0,0,0,.35); } /* #289 내 줄 더 또렷이 */
 .rk-row.me .rk-nick { font-weight: 700; }
 .rk-row.out { margin-top: 6px; }
 .rk-list.local { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1780,8 +1788,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <!-- 위쪽 한 줄 (#75): 왼쪽 귤·배낭·깨끗한 정도 | 가운데 HP·버프 | 오른쪽 구역·좌표·오늘의 업적. 이름 대신 숫자만, 누르면 토스트(#60) -->
 <div id="topbar" class="topbar" data-fit="0">
   <div class="tb-g tb-l">
-    <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="lv-pill" role="button" tabindex="0" title="레벨 · 경험치 · 누르면 증강" hidden><small class="lvl">Lv</small><b id="lv-n">1</b><i class="xp" aria-hidden="true"><i id="lv-xp"></i></i><s id="lv-pend" class="lv-pend" hidden aria-label="고를 증강"></s></div>
+    <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg data-i="pocket" class="pk"></svg><svg data-i="bag" class="bg"></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
   </div>
@@ -1862,6 +1870,10 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="rec-row"><button type="button" id="rec-share" hidden>공유</button><button type="button" id="rec-dl">내려받기</button><button type="button" id="rec-x" aria-label="닫기">✕</button></div>
 </div>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
+  <div class="m-dev" id="m-dev" hidden>
+    <button type="button" id="menu-mview" class="adm-head" aria-pressed="false" hidden>모바일 UI 로 하기: 끔</button>
+    <button type="button" id="adm-toggle" class="adm-head" aria-haspopup="dialog" aria-controls="admwin" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
+  </div>
   <div class="grab ph"></div>
   <button type="button" id="menu-nickline" class="m-nick" aria-label="이름 바꾸기"><span>이름</span><b id="menu-nick-now"></b><em>바꾸기 ›</em></button>
   <button type="button" id="menu-feedback" class="m-fb"><svg data-i="feedback"></svg>의견 보내기</button>
@@ -1912,9 +1924,6 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
   <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-del">내 기록 지우기</button></div>
   <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg data-i="reset"></svg></button></div>
-  <div class="m-dev" id="m-dev" hidden>
-    <button type="button" id="adm-toggle" class="adm-head" aria-haspopup="dialog" aria-controls="admwin" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
-  </div>
 </nav>
 <!-- 어드민 창 (#220): 탭으로 나눠 한 화면에. 어드민에게만 (menu.js enableDev). 탭·모바일 화면으로 보기는 admwin.js -->
 <div class="overlay dim" id="admwin" hidden>
@@ -1923,6 +1932,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <div class="adm-tabs" role="tablist" aria-label="어드민 탭"><button type="button" role="tab" data-tab="state">상태</button><button type="button" role="tab" data-tab="gyul">귤·계정</button><button type="button" role="tab" data-tab="try">해 보기</button><button type="button" role="tab" data-tab="fb">의견<i class="badge-dot" id="inbox-dot4" hidden></i></button><button type="button" role="tab" data-tab="etc">기타</button></div>
     <div class="pop-body adm-body" id="adm-body">
       <div class="adm-pane" data-pane="state" role="tabpanel">
+        <div class="adm-sec adm-wide adm-mvsec"><div class="adm-row adm-t"><span>모바일 UI 로 하기</span></div><div class="adm-row adm-btns"><button type="button" class="btn adm-mv" id="adm-mview" aria-pressed="false">모바일 UI 로 하기: 끔</button></div><p class="adm-note" id="adm-mview-note">이 기기만. 켜면 폰 틀 안에서 폰처럼 돌고 마우스가 손가락 노릇. 주소 ?m=1 로도 켬.</p></div>
         <div class="adm-sec" id="adm-onl-sec" hidden><button type="button" class="adm-row adm-t adm-onl" id="adm-onl" aria-expanded="false" aria-controls="adm-onl-d"><span>지금 접속</span><b><span id="adm-onl-n">–</span>명 <i class="adm-onl-car" aria-hidden="true">▾</i></b></button>
 <div class="adm-onl-d" id="adm-onl-d" hidden></div></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>버전·서버</span></div><div class="adm-kv" id="adm-info"></div></div>
@@ -1943,7 +1953,6 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <div class="adm-row adm-btns"><button type="button" class="btn small" data-season="" aria-pressed="true">기간대로</button><button type="button" class="btn small" data-season="on" aria-pressed="false">켜기</button><button type="button" class="btn small" data-season="off" aria-pressed="false">끄기</button></div></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>동굴 카메라</span></div>
 <div class="adm-row adm-btns"><button type="button" class="btn small" data-cavecam="a" aria-pressed="false">A 내려다보기</button><button type="button" class="btn small" data-cavecam="b" aria-pressed="false">B 넓은 굴</button><button type="button" class="btn small" data-cavecam="c" aria-pressed="false">지금</button></div></div>
-        <div class="adm-sec"><div class="adm-row adm-t"><span>모바일 화면으로 보기</span></div><div class="adm-row adm-btns"><button type="button" class="btn small" id="adm-mview" aria-pressed="false">폰 틀로 보기</button></div><p class="adm-note" id="adm-mview-note">이 기기만. 주소 ?m=1 로도 켬. 틀 안은 폰처럼 돌고 마우스가 손가락 노릇 (키보드 이동도 남아 있음).</p></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>건너뛰기</span></div><div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" class="btn small" id="dev-shops" aria-pressed="false">가게 모두 열기</button><button type="button" class="btn small" id="adm-lv">레벨 +1</button><button type="button" class="btn small" id="adm-xy" aria-pressed="false">좌표 보기</button></div></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>바로 띄우기</span></div><div class="adm-row adm-btns"><button type="button" class="btn small" id="adm-ufo">UFO</button><button type="button" class="btn small" id="adm-safe">4:04 금고</button><button type="button" class="btn small" id="adm-quake">흔들림</button><select id="adm-story" aria-label="이야기 이벤트 띄우기"><option value="">이야기…</option></select></div></div>
       </div>
