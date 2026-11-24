@@ -703,12 +703,20 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
 .rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
-.rk-row.medal .rk-no { background: var(--gyul); color: var(--acc-fg); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
-.rk-row.m2 .rk-no { filter: saturate(.75) brightness(1.08); } .rk-row.m3 .rk-no { filter: saturate(.55) brightness(.92); }
+.rk-row.medal .rk-no { background: var(--gyul); color: #2a1d08; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
+/* #289 1~3위 금·은·동 (값은 balance.js RANK.medalColor 와 같이) */
+.rk-row.m1 .rk-no { background: #f2c14e; } .rk-row.m2 .rk-no { background: #c9d1d8; } .rk-row.m3 .rk-no { background: #d08a56; }
+.rk-row.medal { background: rgba(255,255,255,.1); } .rk-row.m1 .rk-nick, .rk-row.m1 .rk-n { color: #ffd77a; }
+/* #289 순위 창 크게: PC 는 넓은 창 폭, 폰은 화면의 92%. 줄 글자도 조금 크게 */
+#rank .pop { width: min(var(--win-w), 92vw); max-height: calc(100% - 24px); }
+#rank .rk-row { font-size: 16px; padding: 8px 12px 8px 8px; grid-template-columns: 34px 34px 1fr auto; }
+#rank .rk-no { width: 30px; height: 30px; font-size: 14px; } #rank .rk-face svg { width: 34px; height: 34px; }
+#rank .rk-n { font-size: 17px; }
+@media (max-width: 600px) { #rank .pop { width: 92vw; max-height: calc(100% - var(--safe-t, 0px) - var(--safe-b, 0px) - 16px); } }
 .rk-face svg { width: 30px; height: 30px; display: block; border-radius: 50%; background: rgba(255,255,255,.14); }
 .rk-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rk-n { font-family: var(--display); font-weight: 800; font-variant-numeric: tabular-nums; }
-.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #3a2a18; box-shadow: inset 0 0 0 2px var(--acc); }
+.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #4a3218; box-shadow: inset 0 0 0 2px var(--acc), 0 4px 14px rgba(0,0,0,.35); } /* #289 내 줄 더 또렷이 */
 .rk-row.me .rk-nick { font-weight: 700; }
 .rk-row.out { margin-top: 6px; }
 .rk-list.local { grid-template-columns: repeat(3, 1fr); gap: 8px; }
