@@ -1733,7 +1733,13 @@ export const CRASHES = {
 export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
   release: 90, releaseT: 30, relEvery: 3, // #272: 큰 모델이 있는 것이 모두 이 m 밖에 releaseT 초 넘게 있으면 그 큰 모델을 GPU 에서 내림(다시 오면 저절로 다시 올림). relEvery: 살피는 간격(초)
-  scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
+  scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2, jigi: 2.5 },
+  /* #305 움직이지 않는 Tripo 소품 (tripoprop.js): 키 0.98 모델을 몇 배로. stall 폭 약 2.1m·gong 폭 약 2.5m·chute 높이(닫힘) 약 1.2m·mango 한 알 */
+  prop: { stall: 2.45, gong: 2.6, chute: 1.9, mango: 0.26 },
+  chute: { hinge: [0.42, 0.635], shut: 0.42, lidY: 0.645 }, /* 투입구 덮개: 모델은 열린 채 → 경첩(모델 x, y) 둘레로 shut 라디안 돌려 닫힌 모양을 만듦. lidY 위 정점이 덮개 */
+  gong: { disc: [0.07, 0.75], xMax: 0.29, hang: 0.74, swing: 0.16, damp: 1.6, freq: 7 }, /* 징 흔들림: 모델 y disc 사이·|x|<xMax 정점이 징판, 매단 높이 hang 둘레로 흔듦 (최대 rad·줄어드는 빠르기·흔들림 빠르기) */
+  jigiDelay: 6, /* 오름지기 모델·#305 소품은 들어온 뒤 이 초가 지나야 받기 시작 (그 전엔 안 C 러너 차림·예전 코드 모양) */
+  jigiGlow: { at: [0.3, 0.33, -0.1], color: '#9dff8a', size: 0.32, night: 0.55 }, /* 오름지기 어깨 가방에서 새는 초록빛 (모델 좌표·크기, 밤 세기) */
 };
 // 검은 NPC (#269): Tripo 모델(사건 모델·노루·하르방·들개·외계인·가게·가로등) 텍스처 그림이 오기 전 회색으로 그리고 fadeIn 초에 걸쳐 텍스처로.
 // floor: 빛이 모자란 곳(밤·그림자·동굴)에서 텍스처 색의 이 비율보다는 어둡지 않게 (얼굴·옷 색이 읽히게. 낮에는 이미 이보다 밝아 바뀌지 않음)
@@ -1908,7 +1914,7 @@ export const QUESTS = {
   took: '접수 완료',
   shopNpc: { side: 1.5, in: 0.6, gap: 3 }, // #190 가게 주인 자리: 문 오른쪽 side m · 터 앞 선에서 안쪽 in m · 다른 NPC·다른 가게 문과 gap m 넘게 (game/quest.js)
   givers: {
-    jigi: { name: '오름지기', style: 'A', /* #282 차림 안 A·B·C (game/jigi.js) */ at: 'sign', side: -2.8, fwd: -1.2, alt: [[-4, -1.2], [-2.8, 0.9], [2.6, -2]], hbGap: 6.5, /* #213: 안내판 옆 조금 뒤, 입구 하르방에서 약 8m(전에는 side 2.6·fwd 0.9 로 5.1m). 하르방과 hbGap m 안이면 alt [side, fwd] 순서로 */ look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요. 늘요', '천천히 둘러봐요. 새벽만 빼고', '당황하지 말고, 귤은 아껴요'] },
+    jigi: { name: '오름지기', style: 'T', /* #282 차림 안 A·B·C (game/jigi.js), #305 'T' = Tripo 모델(안 C 그림) */ at: 'sign', side: -2.8, fwd: -1.2, alt: [[-4, -1.2], [-2.8, 0.9], [2.6, -2]], hbGap: 6.5, /* #213: 안내판 옆 조금 뒤, 입구 하르방에서 약 8m(전에는 side 2.6·fwd 0.9 로 5.1m). 하르방과 hbGap m 안이면 alt [side, fwd] 순서로 */ look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요. 늘요', '천천히 둘러봐요. 새벽만 빼고', '당황하지 말고, 귤은 아껴요'] },
     'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
     'b:rest': { name: '능선 쉼터 표지판', board: 'rest' },
     'b:crater': { name: '굼부리 표지판', board: 'crater' },
@@ -2340,7 +2346,8 @@ export const TOKEN = {
     { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '망고 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
   ],
   suit: { hp: 0.5 },
-  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6 },
+  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6, mangoY: 1.06, mangoZ: 0.34 }, /* mangoY·Z: 판 위 망고 한 알 자리 (#305) */
+  pop: { max: 5, t: 1.1, scale: 1.6 }, /* 받을 때 튀는 망고 (#305): 몇 알까지·한 알 시간(초)·크기 배수 */
   quest: { n: 10, gyul: 20 },
 };
 CLOTHES.push(...TOKEN.cloth.map(({ z, tok, ...c }) => ({ tier: 0, style: true, tok: true, tokZ: z, tokStat: tok, ...c, price: 0, tokPrice: c.price })));

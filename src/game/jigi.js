@@ -4,7 +4,8 @@
 //   → 사건 2 흰 옷(casemodels.js 'ghost-keeper': 짙은 회색 눈썹·은색 긴 집게·봉지)과 같은 사람으로 보이게. 사건 2 를 종결하면 허리 봉지 뭉치가 흰 자루로 바뀜(그 전엔 티 안 남)
 // - 동작: 기다릴 땐 둘러보기 ↔ 허리 두드리기 ↔ 집게 딸깍, 다가오면 모자를 살짝 들어 인사(quest.js wave → g.pose 'wave'), 말할 땐(퀘스트 창) 수첩에 적음(집게는 허리 고리), 밤엔 손전등
 // - 모자·집게·수첩·손전등은 뼈에 직접 붙인 한 덩어리씩(움직여야 해서 장비 칸 아님). 나머지는 NPC 전용 장비(npc: true, 옷장·가게에 안 나옴)
-// 바꾸는 법: src/balance.js QUESTS.givers.jigi.style 를 'A'·'B'·'C' 중 하나로. dev: __oreum.jigi (set('B')·style·state()·test('night'|'note'|'hat'|'back'|'click'|null))
+// - #305 안 T(기본): Tripo 모델 (사용자가 고른 안 C 그림: 벙거지·회색 콧수염·곁눈질·주황 안전 조끼·쌍안경·집게·보온병·초록빛 새는 어깨 가방). 아래 dressT
+// 바꾸는 법: src/balance.js QUESTS.givers.jigi.style 를 'T'·'A'·'B'·'C' 중 하나로. dev: __oreum.jigi (set('B')·style·state()·test('night'|'note'|'hat'|'back'|'click'|null))
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -15,8 +16,12 @@ import { gradHard } from '../toon.js';
 import { TEXCS } from '../boot.js';
 import { LOW } from '../gfx2.js';
 import { DEFAULT_OUTFIT } from '../runner.js';
-import { late } from './state.js';
+import { state, late } from './state.js';
 import { sunState } from './scene.js';
+import { caseModel } from '../casemodels.js';
+import { CASE_MODELS } from '../balance.js';
+import { glowSprite } from '../propmodel.js';
+import { setPropGate } from '../tripoprop.js';
 
 const D = QUESTS.givers.jigi || {};
 const M = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; };
@@ -24,11 +29,12 @@ const G = (...ms) => { const g = new THREE.Group(); ms.flat(3).forEach((m) => m 
 
 /* ---------- 안 ---------- */
 const STYLE = {
+  T: { name: 'Tripo', tripo: true }, /* #305: 사용자가 고른 안 C 그림을 Tripo 로 만든 모델(casemodels.js 'jigi'). 러너는 숨기고 모델만 */
   A: { name: '밀짚모자', hat: 'straw', main: '#e6cc8a', band: '#a8553a', shirt: '#8b8a6c', pants: '#5c4c38', vest: '#e2894c', vestAcc: '#c56f36', towel: '#f4f1e6', stripe: '#5a86b8', boots: '#2f3a33', pack: '#9a8a62' },
   B: { name: '정당벌립', hat: 'beollip', main: '#5e4a33', band: '#3d3022', shirt: '#b8733e', pants: '#8e5a30', vest: '#e8935a', vestAcc: '#c9773f', towel: '#f2e6b8', stripe: '#b8733e', boots: '#33302c', pack: '#7d6a4c' },
   C: { name: '농모', hat: 'farm', main: '#cdbf92', band: '#8e8466', shirt: '#7c8189', pants: '#4b5242', vest: '#ee8f45', vestAcc: '#d9dde2', towel: '#e8f0e0', stripe: '#4e9a5e', boots: '#24282c', pack: '#6f7a5a', cuffs: '#d96a7a', bands: true },
 };
-let style = STYLE[D.style] ? D.style : 'A';
+let style = STYLE[D.style] ? D.style : 'T';
 const S = () => STYLE[style];
 
 /* ---------- 장비 칸 것 (모델 기본 자세 좌표, 키 0.98) ---------- */
@@ -45,8 +51,8 @@ Object.assign(ACCESSORIES, {
       return G(ring, brow(1), brow(-1), mus(1), mus(-1)); } },
 });
 // 안마다 옷 (조끼·윗옷·바지·장화·배낭은 색만 다름 → 안을 바꿀 때 다시 만듦)
-function defineStyle(st) {
-  const k = 'jigi' + style;
+function defineStyle(st, sk = style) {
+  const k = 'jigi' + sk;
   ACCESSORIES['top:' + k] = { slot: 'top', label: '긴팔', skin: true, covers: COVER.teeLong, npc: true, build: (mat) => CLOTH_BUILD.tee(mat, { long: true, main: st.shirt, acc: st.shirt }) };
   ACCESSORIES['bottom:' + k] = { slot: 'bottom', label: '작업 바지', skin: true, covers: COVER.long, npc: true, build: (mat) => CLOTH_BUILD.long(mat, { kind: 'long', main: st.pants, acc: st.pants, knee: true, pockets: true }) };
   ACCESSORIES['vest:' + k] = { slot: 'vest', label: '오름지기 조끼', skin: true, npc: true, build: (mat) => CLOTH_BUILD.vest(mat, { main: st.vest, acc: st.vestAcc, pockets: 2, bands: !!st.bands }) };
@@ -136,8 +142,13 @@ function jointOf(bone) { const j = new THREE.Vector3(); for (let b = bone; b && 
 function attach(bone, at, rz) { const p = new THREE.Group(); if (!bone) return p; const j = jointOf(bone); p.position.set(at[0] - j.x, at[1] - j.y, at[2] - j.z); p.rotation.z = rz; bone.add(p); return p; }
 let J = null; // { g, run, hat, hatP, tongs, hip, book, light, sack, st }
 function dress(g) {
-  const run = g.runner, root = g.root, st = S(), o = DEFAULT_OUTFIT;
-  run.apply({ ...o, shirt: { ...o.shirt, color: st.shirt }, pants: { ...o.pants, color: st.pants }, shoes: { ...o.shoes, color: st.boots }, gear: defineStyle(st) });
+  if (T) { T.m.dispose(); T = null; for (const c of g.root.children) c.visible = true; }
+  if (S().tripo) { dressRun(g, STYLE.C); return dressT(g); } /* 모델이 올 때까지는 안 C 러너 차림 */
+  return dressRun(g, S());
+}
+function dressRun(g, st) {
+  const run = g.runner, root = g.root, o = DEFAULT_OUTFIT;
+  run.apply({ ...o, shirt: { ...o.shirt, color: st.shirt }, pants: { ...o.pants, color: st.pants }, shoes: { ...o.shoes, color: st.boots }, gear: defineStyle(st, st === STYLE.C ? 'C' : style) });
   if (J) [J.hatP, J.handR, J.handL, J.hip].forEach((x) => x.removeFromParent());
   const B = (n) => root.getObjectByName(n);
   const head = B('head'), chest = B('chest');
@@ -156,6 +167,45 @@ function dress(g) {
   J = { g, run, hat: hatPiv, hatP, handR, handL, hip, tongs: tg, hipTongs, book, light, sack: sk, st };
   vis(); return J;
 }
+/* ---------- 안 T: Tripo 모델 (#305) ---------- */
+// 러너(퀘스트 주는 사람 틀)는 그대로 두고 메시만 숨김 → quest.js 의 자리·돌아보기·표시는 그대로. 모델은 root 맨 앞 자식(프로필 굽기가 'head' 뼈를 이 모델에서 찾게)
+// 수첩은 왼손 뼈에, 가방 초록빛(밤에만)은 엉덩이 뼈에. 받기·LOD 는 casemodels.js 가 저절로 (첫 화면에 받는 양은 그대로)
+let T = null; // { g, m, book, glow, wait, ready }
+// 받기는 늦게 (#304 와 같은 때): 들어온 뒤 jigiDelay 초가 지나야 멀리용을 받기 시작하고, 오면 러너(안 C 차림)와 바꿈. 첫 화면에 올리는 모델 양은 그대로
+function dressT(g) {
+  const m = caseModel('jigi');
+  g.root.add(m.root); g.root.children.splice(g.root.children.indexOf(m.root), 1); g.root.children.unshift(m.root); m.root.visible = false;
+  const book = notebook(); book.scale.setScalar(1 / CASE_MODELS.scale.jigi * 1.1); book.rotation.set(-1.25, 0.2, 0); book.visible = false; m.attach('armL', book, [0.2, 0.25, 0.09]);
+  const G = CASE_MODELS.jigiGlow, glow = glowSprite(G.color, G.size); glow.material.opacity = 0; glow.visible = false; m.attach('hips', glow, G.at);
+  T = { g, m, book, glow, gl: 0, wait: 0, ready: false, asked: false }; return T;
+}
+function swapT() {
+  const g = T.g; T.ready = true;
+  if (J) { [J.hatP, J.handR, J.handL, J.hip].forEach((x) => x.removeFromParent()); J = null; }
+  for (const c of g.root.children) c.visible = c === g.mark || c === T.m.root;
+  g.h = D.markH || 3.3; g.mark.position.y = g.h;
+}
+let sessT = 0;
+const lateOk = () => { if (!state.sessionOn) return false; const n = performance.now(); if (!sessT) sessT = n; return n - sessT > CASE_MODELS.jigiDelay * 1000; };
+setPropGate(lateOk); /* 좌판·징·투입구·망고(tripoprop.js)도 같은 때부터 받음 */
+function waitT(dt) {
+  if (state.sessionOn) T.wait += dt;
+  if (!T.asked && (T.wait > CASE_MODELS.jigiDelay || lateOk())) { T.asked = true; T.m.warm(); }
+  if (T.m.loaded.lo || T.m.loaded.hi) swapT();
+}
+function animT(dt, d) {
+  const g = T.g, m = T.m; st.t += dt;
+  const f = st.force, talking = f === 'note' || (!f && late.questDebug?.win?.()?.who === 'jigi'), greet = f === 'hat' || (!f && g.pose === 'wave');
+  const night = st.night ?? (f === 'night' || (sunState?.el ?? 30) < -4);
+  if ((st.actT -= dt) <= 0) { st.i = (st.i + 1) % TA.length; st.act = TA[st.i]; st.actT = A.gap[0] + Math.random() * (A.gap[1] - A.gap[0]); }
+  const clip = talking ? 'note' : greet ? 'wave' : f === 'glance' ? 'glance' : st.act;
+  m.play(clip); T.book.visible = clip === 'note';
+  m.update(dt); /* 돌아보기는 quest.js 가 root 를 돌림 */
+  T.gl += ((night ? 1 : 0) - T.gl) * Math.min(1, dt * 2);
+  const G = CASE_MODELS.jigiGlow; T.glow.material.opacity = T.gl * G.night * (0.75 + Math.sin(st.t * 1.7) * 0.15 + Math.sin(st.t * 5.3) * 0.1); T.glow.visible = T.gl > 0.02;
+  st.w.note = clip === 'note' ? 1 : 0; st.w.hat = clip === 'wave' ? 1 : 0; st.w.light = T.gl;
+}
+const TA = ['idle', 'glance', 'idle', 'idle', 'glance'];
 function vis() { if (!J) return; J.book.visible = false; J.light.visible = false; J.hipTongs.visible = false; J.sack.visible = caseDone; }
 
 /* ---------- 동작 ---------- */
@@ -176,6 +226,8 @@ const A = D.acts || { gap: [3.5, 6.5], list: ['look', 'back', 'look', 'click'] }
 const st = { t: 0, act: 'look', actT: 3, i: 0, w: { look: 0, back: 0, click: 0, hat: 0, note: 0, light: 0 }, force: null, night: null };
 let caseDone = false, caseT = 0;
 function anim(dt, d) {
+  if (T && !T.ready) waitT(dt);
+  if (T?.ready) return animT(dt, d);
   const g = J?.g; if (!g) return;
   st.t += dt; const W = st.w, f = st.force;
   if ((caseT -= dt) <= 0) { caseT = 3; const c = !!late.cases?.state?.('c2')?.closed; if (c !== caseDone) { caseDone = c; J.sack.visible = c; } }
@@ -202,5 +254,7 @@ late.jigiApi = {
   get style() { return style; }, styles: Object.keys(STYLE),
   set: (k) => { if (!STYLE[k]) return false; style = k; const g = giver(); if (g?.runner) dress(g); return true; },
   test: (m = null) => { st.force = m === 'idle' ? null : m; st.night = m === 'night' ? true : m === 'idle' ? false : null; return m; },
-  state: () => ({ style, act: st.act, w: Object.fromEntries(Object.entries(st.w).map(([k, v]) => [k, +v.toFixed(2)])), book: !!J?.book.visible, light: !!J?.light.visible, sack: !!J?.sack.visible, tongs: !!J?.tongs.visible }),
+  model: () => T?.m || null,
+  go: () => { if (T && !T.ready) { T.wait = 1e9; } return !!T; }, /* 확인용: 기다리지 않고 바로 받기 */
+  state: () => (T ? { style, ready: T.ready, act: st.act, clip: T.m.clip, loaded: T.m.loaded, far: T.m.far, book: T.book.visible, glow: +T.glow.material.opacity.toFixed(2) } : { style, act: st.act, w: Object.fromEntries(Object.entries(st.w).map(([k, v]) => [k, +v.toFixed(2)])), book: !!J?.book.visible, light: !!J?.light.visible, sack: !!J?.sack.visible, tongs: !!J?.tongs.visible }),
 };

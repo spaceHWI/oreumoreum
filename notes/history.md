@@ -2163,3 +2163,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 어드민 창 첫 탭(상태) 맨 위와 설정 메뉴 맨 위(어드민만)에 같은 토글 "모바일 UI 로 하기: 켬/끔". 예전 '해 보기' 탭 자리는 없앰. 켜면 새로고침 한 번(#287 과 무관)·이 기기에 유지
 - 폰 틀 오른쪽 위 띠에 "데스크톱으로 돌아가기" 항상 보임, 크기 고르기에 "작은 폰 360x640" 추가(가로·80%·안전 영역은 그대로)
 - mview.js 검사에 토글 자리 한 줄. 어드민 아니면 안 보이고 ?m=1 도 어드민만(그대로). CAVE.open·버전 그대로
+
+## #305 Tripo 새 모델 다섯: 오름지기 C·망고 좌판·징·투입구·망고 (2026-11-24)
+- 원본 `assets` 브랜치 `case/{jigi-c,mango-stall,gong,chute,mango}.glb` → `python3 model/bake-case.py <원본> <삼각형> <텍스처> <LOD 삼각형> <LOD 텍스처> 큰.glb 멀리용.glb`(`pip install bpy`) → `node model/extract-prop.js … src/model-case-<이름>[-lo].js <이름>_M|_LO "…" <품질>`. 오름지기 7,500·512 / 1,500·128(품질 70), 좌판 3,000·512 / 800·128, 징 2,500·512 / 600·128, 투입구 2,000·512 / 500·128(셋 품질 55), 망고 700·256 / 160·64
+- 받기: `tools/packassets.mjs` 에 `case-jigi·stall·gong·chute·mango`(·`-lo`, meta.lazy). 따로 받는 모델 2,645KB(24개) → 2,940KB(34개 표시는 build 셈), 늘어난 양 약 +455KB 모두 늦게 받음. 첫 화면 받는 양 그대로
+- 늦게 받기(#304 와 같이): 들어온 뒤 `CASE_MODELS.jigiDelay`(6초) 전엔 받지 않음 (`tripoprop.js setPropGate`, 게임 쪽은 jigi.js). 그 전엔 예전 코드 모양(좌판·징·투입구)·안 C 러너 차림(오름지기)
+- 오름지기: `QUESTS.givers.jigi.style` 기본 'T'. 러너 메시를 숨기고 `caseModel('jigi')` 를 root 맨 앞 자식으로(프로필 굽기 #224 가 이 모델 'head' 뼈를 찾음). 뼈 가중치: 집게는 오른손, 어깨 가방은 엉덩이만. 모션 idle·talk·note(왼손 가슴 앞 + 수첩을 손 뼈에)·wave(왼손)·glance(가끔 고개 휙). 밤엔 가방 초록빛(`CASE_MODELS.jigiGlow`, 더하기 스프라이트). 이름·대사·퀘스트 그대로, 예전 안 A·B·C 는 `__oreum.jigi.set('A')` 로
+- 소품 틀 `src/tripoprop.js`: 받기·LOD·텍스처 뒤 바꾸기는 사건 모델과 같고, 임시 모양(ph)·모프 하나. 좌판(token.js): 예전 코드 모양이 임시, 판 위 망고 한 알. 징(arena.js): 돌 고리와 떼어 따로(터마다 그리기 1 → 2), 치면 징판만 흔들림(모프: 매단 높이 둘레로 돌린 모양, 무게 음수도) `CASE_MODELS.gong`. 투입구(tubemodel.js): 모델은 덮개가 열린 채 → 경첩 둘레로 돌려 닫힌 모양을 기본으로, 원래(열림)를 모프로 (`CASE_MODELS.chute`), 입은 위쪽(`INTAKE.holeY`)
+- 망고: 받으면 머리 위로 튀었다 떨어지는 망고(`TOKEN.pop`, 몇 알 돌려 씀), 아이콘은 모델을 구운 64px 그림(`model/icon-mango.py` → `src/mangoicon.js`, `late.mangoIcon`): 내 가방 아래 망고 수·'지금 있는 곳' 옆 망고 칸. 무기 카드 그림(gsvg)은 그대로
+- 검사 `node tools/props305.js`(늦게 받기·좌판·징 흔들림·투입구 여닫기·튀는 망고·망고 그림, 그림 notes/shots/305/props.jpg), `node tools/jigishot.js T notes/shots/305`, `tools/casemodels.js` 는 여섯 모델(오름지기 포함)
