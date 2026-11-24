@@ -1773,7 +1773,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-a7580ca382.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
+<script data-main="main-6b34799f29.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
    빌드(build.mjs)가 inapp.js 앞에 붙여 맨 처음 도는 인라인 스크립트로 넣는다. 게임 쪽은 src/bootbar.js 로 부른다.
    window.__boot: p(값, 천천히 올라갈 끝) · fetchMain(주소, 다 되면) · ready() · fail() · show(글) · state() */
 (function () {
@@ -1975,6 +1975,10 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="rec-row"><button type="button" id="rec-share" hidden>공유</button><button type="button" id="rec-dl">내려받기</button><button type="button" id="rec-x" aria-label="닫기">✕</button></div>
 </div>
 <nav class="panel pop-menu" id="menu" hidden aria-label="메뉴">
+  <div class="m-dev" id="m-dev" hidden>
+    <button type="button" id="menu-mview" class="adm-head" aria-pressed="false" hidden>모바일 UI 로 하기: 끔</button>
+    <button type="button" id="adm-toggle" class="adm-head" aria-haspopup="dialog" aria-controls="admwin" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
+  </div>
   <div class="grab ph"></div>
   <button type="button" id="menu-nickline" class="m-nick" aria-label="이름 바꾸기"><span>이름</span><b id="menu-nick-now"></b><em>바꾸기 ›</em></button>
   <button type="button" id="menu-feedback" class="m-fb"><svg data-i="feedback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10"/><path d="M3 7l9 6l9 -6"/></svg>의견 보내기</button>
@@ -2025,9 +2029,6 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   <div class="m-acct" id="m-guest" hidden><span id="guest-days"></span></div>
   <div class="m-acct" id="m-acct" hidden><span id="acct-days"></span><button type="button" id="acct-id">계정 번호 복사</button><button type="button" id="acct-del">내 기록 지우기</button></div>
   <div class="m-reset"><button type="button" id="menu-reset" title="처음부터 다시 (2초 꾹)" aria-label="처음부터 다시 하기 (2초 동안 꾹 누르기)"><svg data-i="reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.06 13a9 9 0 1 0 .49 -4.09"/><path d="M3 4v5h5"/><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg></button></div>
-  <div class="m-dev" id="m-dev" hidden>
-    <button type="button" id="adm-toggle" class="adm-head" aria-haspopup="dialog" aria-controls="admwin" style="position:relative">어드민 설정<i class="badge-dot" id="inbox-dot3" hidden></i></button>
-  </div>
 </nav>
 <!-- 어드민 창 (#220): 탭으로 나눠 한 화면에. 어드민에게만 (menu.js enableDev). 탭·모바일 화면으로 보기는 admwin.js -->
 <div class="overlay dim" id="admwin" hidden>
@@ -2036,6 +2037,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <div class="adm-tabs" role="tablist" aria-label="어드민 탭"><button type="button" role="tab" data-tab="state">상태</button><button type="button" role="tab" data-tab="gyul">귤·계정</button><button type="button" role="tab" data-tab="try">해 보기</button><button type="button" role="tab" data-tab="fb">의견<i class="badge-dot" id="inbox-dot4" hidden></i></button><button type="button" role="tab" data-tab="etc">기타</button></div>
     <div class="pop-body adm-body" id="adm-body">
       <div class="adm-pane" data-pane="state" role="tabpanel">
+        <div class="adm-sec adm-wide adm-mvsec"><div class="adm-row adm-t"><span>모바일 UI 로 하기</span></div><div class="adm-row adm-btns"><button type="button" class="btn adm-mv" id="adm-mview" aria-pressed="false">모바일 UI 로 하기: 끔</button></div><p class="adm-note" id="adm-mview-note">이 기기만. 켜면 폰 틀 안에서 폰처럼 돌고 마우스가 손가락 노릇. 주소 ?m=1 로도 켬.</p></div>
         <div class="adm-sec" id="adm-onl-sec" hidden><button type="button" class="adm-row adm-t adm-onl" id="adm-onl" aria-expanded="false" aria-controls="adm-onl-d"><span>지금 접속</span><b><span id="adm-onl-n">–</span>명 <i class="adm-onl-car" aria-hidden="true">▾</i></b></button>
 <div class="adm-onl-d" id="adm-onl-d" hidden></div></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>버전·서버</span></div><div class="adm-kv" id="adm-info"></div></div>
@@ -2056,7 +2058,6 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <div class="adm-row adm-btns"><button type="button" class="btn small" data-season="" aria-pressed="true">기간대로</button><button type="button" class="btn small" data-season="on" aria-pressed="false">켜기</button><button type="button" class="btn small" data-season="off" aria-pressed="false">끄기</button></div></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>동굴 카메라</span></div>
 <div class="adm-row adm-btns"><button type="button" class="btn small" data-cavecam="a" aria-pressed="false">A 내려다보기</button><button type="button" class="btn small" data-cavecam="b" aria-pressed="false">B 넓은 굴</button><button type="button" class="btn small" data-cavecam="c" aria-pressed="false">지금</button></div></div>
-        <div class="adm-sec"><div class="adm-row adm-t"><span>모바일 화면으로 보기</span></div><div class="adm-row adm-btns"><button type="button" class="btn small" id="adm-mview" aria-pressed="false">폰 틀로 보기</button></div><p class="adm-note" id="adm-mview-note">이 기기만. 주소 ?m=1 로도 켬. 틀 안은 폰처럼 돌고 마우스가 손가락 노릇 (키보드 이동도 남아 있음).</p></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>건너뛰기</span></div><div class="adm-row adm-btns"><button type="button" class="btn small" id="dev-tut" aria-label="튜토리얼 건너뛰기">튜토리얼 건너뛰기</button><button type="button" class="btn small" id="dev-shops" aria-pressed="false">가게 모두 열기</button><button type="button" class="btn small" id="adm-lv">레벨 +1</button><button type="button" class="btn small" id="adm-xy" aria-pressed="false">좌표 보기</button></div></div>
         <div class="adm-sec"><div class="adm-row adm-t"><span>바로 띄우기</span></div><div class="adm-row adm-btns"><button type="button" class="btn small" id="adm-ufo">UFO</button><button type="button" class="btn small" id="adm-safe">4:04 금고</button><button type="button" class="btn small" id="adm-quake">흔들림</button><select id="adm-story" aria-label="이야기 이벤트 띄우기"><option value="">이야기…</option></select></div></div>
       </div>
