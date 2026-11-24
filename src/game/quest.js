@@ -118,7 +118,7 @@ function addGiver(id, pos, root, h, runner = null, face = 0) {
   const d = Q.givers[id]; const sp = new THREE.Sprite(MARK['!']); sp.scale.set(0.9, 0.9, 1); sp.position.y = h; sp.visible = false; root.add(sp);
   const g = { id, name: d.name, def: d, pos, root, mark: sp, h, runner, face, heading: face, t: Math.random() * 6, greet: 0, cur: null };
   givers.set(id, g);
-  interactables.push({ label: '이야기', ic: 'quest', pos, r: Q.r, when: () => !late.tut?.active && !!g.cur && (!d.shop || late.shopOpen?.(d.shop) !== false), act: () => openGiver(id) });
+  interactables.push({ label: `${d.name} 이야기`, ic: 'quest', pos, r: Q.r, when: () => !late.tut?.active && !!g.cur && (!d.shop || late.shopOpen?.(d.shop) !== false), act: () => openGiver(id) });
   return g;
 }
 function person(id, pos, face) {
