@@ -18,6 +18,7 @@ import { wx, sunState } from './scene.js';
 import { CAT_NAME, RUN_DAYS } from '../daily.js';
 import { DAILY } from '../balance.js';
 import { msg, msgBusy, tickMsg } from './msglog.js';
+import { MANGO_ICON } from '../mangoicon.js';
 export { tickMsg };
 
 Object.assign(late, { toast, closePanels, gyulExpect: (n) => gyulExpect(n) }); // 앞 파일에서 부르는 함수
@@ -129,7 +130,17 @@ export function gyulLand(n, plus) {
 function gyulCheck() { if (chkT) return; chkT = setTimeout(() => { chkT = 0; // 효과를 못 받은 얻은 귤은 화면 가운데에서 날려 보냄
   const x = Math.min(uncov, covered); uncov -= x; covered = 0; const n = uncov; uncov = 0; if (n > 0) late.gyulFly?.(n); }, 80); }
 document.addEventListener('visibilitychange', () => { if (document.hidden || held > 0) gyulSnap(); }); // 탭을 숨겼다 돌아오면 바로 맞춤
+let lastMango = -1; /* 망고 칸 (#301): save.tok.n, 한 번이라도 얻었으면(tok.got) 0 이어도 보임 */
+function paintMango() {
+  const t = save.tok, n = t ? t.n : 0, p = $('mango-pill'); if (!p) return;
+  const on = !!t && (n > 0 || t.got > 0); if (p.hidden === on) { p.hidden = !on; topFit.dirty(); }
+  if (n === lastMango) return; const first = lastMango < 0; lastMango = n;
+  const img = p.querySelector('img'); if (!img.src) img.src = MANGO_ICON;
+  const el = $('mango-n'), c = String(n); if (el.textContent.length !== c.length) topFit.dirty(); el.textContent = c;
+  if (!first) { p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); }
+}
 export function updateStats() {
+  paintMango();
   if (save.coins !== lastCoins) {
     const d = lastCoins < 0 ? 0 : save.coins - lastCoins; lastCoins = save.coins; const c = String(save.coins);
     $('m-coins').textContent = c; $('ach-coins').textContent = c; late.shopCoinsChanged?.();
