@@ -67,6 +67,7 @@ export function sitDown() {
   });
 }
 export function standUp() {
+  if (late.fireSit?.()) { late.fireStand(); return; } // 불멍 의자에서 (#290, game/firepit.js)
   if (late.mealS.on) { late.finishMeal(); return; } // 식사 중이면 건너뛰기 (#50)
   if (late.cutS.on) { late.finishCut(); return; } // 머리 깎는 중이면 건너뛰기 (#58)
   player.pose = 'move'; cam.mode = 'follow';

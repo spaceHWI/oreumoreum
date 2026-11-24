@@ -78,7 +78,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     }
     const R = await E(() => Object.fromEntries(Object.entries(window.__oreum.street.roof.signs).map(([k, s]) => [k, { y: +(s.pos.y - window.__oreum.height(s.x, s.z)).toFixed(2), top: +(s.top - window.__oreum.height(s.x, s.z)).toFixed(2), onTop: s.onTop }])));
     console.log('   지붕 간판 높이(땅에서 m)', JSON.stringify(R));
-    ok(Object.values(R).every((r) => r.y - r.top >= 0.6 + 1.1), '지붕 간판이 건물 꼭대기 + 반지름 + 0.6m 위');
+    ok(Object.values(R).every((r) => r.y - r.top >= 0.2 + 1.1), '지붕 간판이 건물 꼭대기 + 반지름 + 0.2m (#288 막대 없앰) 위');
     ok(errs === 0, `${mode} 페이지 오류 ${errs}`);
     await ctx.close();
   }

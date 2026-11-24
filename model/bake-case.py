@@ -45,7 +45,7 @@ bpy.ops.object.duplicate(); far = bpy.context.active_object
 m = far.modifiers.new('dec', 'DECIMATE'); m.ratio = LODT / max(1, tris(far))
 bpy.ops.object.modifier_apply(modifier='dec')
 print('lod tris', tris(far))
-small = img.copy(); small.scale(LODTEX, LODTEX)
+small = bpy.data.images.new('small', img.size[0], img.size[1]); small.pixels = list(img.pixels); small.scale(LODTEX, LODTEX) # #295: img.copy() 는 굽는 그림을 못 옮겨 검게 나왔음. 못 믿으면 model/lotex.py 로 다시 채움
 m2 = mat.copy(); m2.node_tree.nodes.active.image = small
 far.data = far.data.copy(); far.data.materials.clear(); far.data.materials.append(m2)
 for o in bpy.context.scene.objects: o.select_set(False)

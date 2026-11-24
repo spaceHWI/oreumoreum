@@ -98,7 +98,7 @@ export function createRoofSigns({ scene, height, street, shops }) {
     sp.scale.setScalar(S.roofSize); sp.renderOrder = 3; scene.add(sp);
     const dot = new THREE.Sprite(dotMat.clone()); dot.renderOrder = 4; dot.visible = false; scene.add(dot);
     const glow = glowSprite('#ffcf7a', 1); glow.renderOrder = 2; scene.add(glow);
-    const pole = new THREE.Mesh(poleGeo, poleMat); pole.castShadow = false; scene.add(pole);
+    const pole = new THREE.Mesh(poleGeo, poleMat); pole.castShadow = false; pole.visible = false; scene.add(pole); /* #288 막대 없앰 */
     const meshes = []; for (const o of sh.objs || []) o.traverseVisible((m) => { if (m.isMesh && !m.isSprite) meshes.push(m); }); // 숨긴 것(머리 자르기 효과·접시)은 뺌
     // 모델이 없으면(objs 없음) 터 가운데 위 6m
     const k = L.d * 0.45;

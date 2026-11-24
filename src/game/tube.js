@@ -1,4 +1,4 @@
-// 수거 관 (#248): 클린하우스 옆 투입구로 들어가 다른 클린하우스 배출구로 나옴 (같은 투입구가 배출구)
+// 수거 관 (#248): 클린하우스 옆 투입구로 들어가 다른 클린하우스 배출구로 나옴 (같은 투입구가 배출구). 투입구 모양은 #305 Tripo 모델(초록 뚜껑, 입이 위쪽)
 // - 열림: 그 클린하우스에 쓰레기를 한 번이라도 버린 곳만 목록에 (save.tube = 가 본 곳 id 목록. 들머리 것은 'gate').
 //   옛 저장(save.tube 없음)은 버린 적이 있으면 이미 지난 구역(save.journey.maxZ) 안의 클린하우스로 미루어 채움
 // - 값: 탈 때마다 귤 TUBE.drop × 구역 거리(한 칸 이상) × 높은 쪽 구역 gv 를 관 속에 떨굼. 모자라면 가진 만큼(0개여도 탐). 쿨타임 없음
@@ -254,4 +254,6 @@ late.tubeApi = {
   state: () => ({ run: run && { from: run.from.id, to: run.to.id, t: +run.t.toFixed(2), n: run.n, paid: run.paid, warped: run.warped }, tb, peel: peelT > 0, lastT: +lastT.toFixed(2), pick: !win.hidden, ride: !ride.hidden, cine: !!state.cine, lid: tubes.map((t) => +t.lid.toFixed(2)), coins: save.coins }),
   whyNot,
   show: (v) => tubes.forEach((t) => { t.m.visible = v; }), // draw call 재기
+  props: () => tubes.map((t) => ({ id: t.id, lid: +t.m.morphTargetInfluences[0].toFixed(2), ...t.m.userData.prop.loaded })), /* #305 Tripo 투입구 */
+  lid: (id, v) => { const t = byId(id); if (t) t.lidTo = v; return !!t; },
 };

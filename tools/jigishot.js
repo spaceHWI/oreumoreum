@@ -1,4 +1,4 @@
-// 오름지기 그림 (#282): node tools/jigishot.js [안들=A,B,C] [출력=notes/shots/282] [d|m]
+// 오름지기 그림 (#282): node tools/jigishot.js [안들=A,B,C (#305 Tripo 모델은 T)] [출력=notes/shots/282] [d|m]
 // 튜토리얼을 마친 저장으로 들어가 오름지기 앞에서 안마다 낮(가까이)·밤(손전등)·흰 옷(ghost-keeper) 나란히를 찍어 한 장(<안>.jpg)으로 붙임
 // m: 폰(가로 844×390)으로 이름표·말풍선·모자가 겹치지 않는지 한 장(phone.jpg). 페이지 오류가 있으면 exit 1
 const { chromium, devices } = require('playwright');
@@ -33,6 +33,7 @@ fs.mkdirSync(OUT, { recursive: true });
   for (const L of LOOKS) {
     const has = await E((L) => { const j = window.__oreum.jigi; if (!j) return false; j.set(L); return true; }, L);
     if (!has && L !== '0') console.log('note: __oreum.jigi 없음 → 지금 모습만');
+    if (L === 'T') { await E(() => window.__oreum.jigi.go?.()); await E(() => new Promise((r) => { const t = Date.now(); const k = () => { const s = window.__oreum.jigi.state(); return s.ready && s.loaded.hi || Date.now() - t > 30000 ? r() : setTimeout(k, 300); }; k(); })); } /* #305 Tripo 모델: 기다리지 않고 받기 */
     const shots = [['close', 14, 1.9, -0.25], ['day', 14, 3.0, -0.45], ['side', 14, 3.2, -1.3], ['night', 22, 3.4, -0.6], ['ghost', 22, 5.5, -0.75, true]];
     for (const [n, h, d, y, gh] of shots) {
       await view(h, d, y, !!gh); if (n === 'night' || n === 'ghost') await E(() => { const j = window.__oreum.jigi; j?.test?.('night'); });
