@@ -2208,3 +2208,4 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티: 투기꾼은 각자 화면 것이라 보낼 것 없음. 말풍선(#278)·안내(guide)·도감은 d.root 기준이라 그대로. 얼굴 그림(talkfx·thumbs)에 투기꾼은 없음
 
 - #301 위쪽 줄 망고 칸: 귤 칸 바로 뒤 `#mango-pill`(src/page.html), 값은 save.tok.n, 한 번도 얻은 적 없으면(tok.n·tok.got 0) 숨김. 갱신·튀는 효과는 hud.js paintMango (updateStats 안, topFit.dirty). 그림 notes/shots/301-pc.png·301-phone.png (360 폭 줄 안 넘침)
+- #302 다 건너뛰기: 재현해 보니 코드는 이미 정낭(jeong)을 열고 `save.jeong` 저장·칸 담 제거·새로고침 뒤에도 열림(`place.js` 의 `save.tut.done` 열기). 멀티는 튜토리얼·정낭 상태를 보내지 않아 바꿀 것 없음. 빠진 검사만 더함: `tools/skipgate.js d|m`(건너뛰기→열림→새로고침), `tools/oldsave.js skipStuck`(done 인데 jeong 0 인 저장).
