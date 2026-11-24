@@ -8,10 +8,15 @@ import { $, persist, writeLocal } from './save.js';
 import { busy } from './hud.js';
 import { life, player } from './place.js';
 import { bootShow } from '../bootbar.js';
+import { reloadFor } from '../reloadwhy.js';
+/* 같은 탭에서 이 버전으로 이미 새로고침했는데 아직 예전 버전이면(낡은 index.html 캐시·CDN 지연) 이 방문에서는 다시 권하지 않음 (#287) */
+const TRIED = 'oreumoreum.newver';
+const ssGet = () => { try { return sessionStorage.getItem(TRIED) || ''; } catch (e) { return ''; } };
+const ssSet = (v) => { try { sessionStorage.setItem(TRIED, v); } catch (e) { /* 무시 */ } };
 
 export const NEWVER = { pollSec: 300, snoozeMin: 30, snoozeJitter: 0.5 };
 const myMain = document.querySelector('script[data-main]')?.getAttribute('data-main') || ''; // 한 파일(test.html)이면 비어 있음 → 확인 안 함
-let pending = false, forced = false, shown = false, snooze = 0, lastPoll = 0, polling = false;
+let target = '', pending = false, forced = false, shown = false, snooze = 0, lastPoll = 0, polling = false;
 
 const num = (s) => String(s || '').split('.').map((n) => parseInt(n, 10) || 0);
 export const verLess = (a, b) => { const x = num(a), y = num(b); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; };
@@ -25,7 +30,8 @@ async function reload() {
   const b = $('newver-go'); b.disabled = true;
   box.hidden = true; bootShow('새 버전 받는 중'); /* 로딩 창을 다시 덮고 넘어감: 흰 화면·깜박임 없이 새 페이지의 같은 창으로 이어짐 (#281) */
   try { persist(); await Promise.race([state.account?.push?.(), new Promise((r) => setTimeout(r, 3000))]); writeLocal(); } catch (e) { /* 저장 실패해도 이 기기 기록은 이미 씀 */ }
-  location.reload();
+  if (target) ssSet(target);
+  reloadFor('newver');
 }
 $('newver-go').addEventListener('click', reload);
 $('newver-x').addEventListener('click', () => { box.hidden = true; shown = false; snooze = NEWVER.snoozeMin * 60 * (1 - NEWVER.snoozeJitter / 2 + Math.random() * NEWVER.snoozeJitter); });
@@ -38,7 +44,7 @@ async function poll() {
     const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) return;
     const j = await r.json();
-    if (j && typeof j.main === 'string' && j.main && j.main !== myMain) want();
+    if (j && typeof j.main === 'string' && j.main && j.main !== myMain && j.main !== ssGet()) { target = j.main; want(); }
   } catch (e) { /* 못 받으면 조용히 넘어감 */ } finally { polling = false; }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastPoll > 10000) poll(); });

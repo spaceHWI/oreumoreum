@@ -1,4 +1,5 @@
 // 캐릭터 고르기·머리, 표지판, 탐방로 고르기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { reloadFor } from '../reloadwhy.js'; /* 새로고침 까닭 남기기 (#287) */
 import { HAIR } from '../balance.js';
 import { SKIN_TONES } from '../runner.js';
 import { MAPS } from '../maps.js';
@@ -83,7 +84,7 @@ $('sign-body').innerHTML = spots.sign.html;
 
 // 탐방로 고르기
 export let introMap = MAP_ID;
-export function switchMap(id) { save.prevMap = MAP_ID; save.map = id; persist(); location.hash = id; location.reload(); }
+export function switchMap(id) { save.prevMap = MAP_ID; save.map = id; persist(); location.hash = id; reloadFor('map'); }
 export let leaving = false;
 export function leaveTo(id) {
   leaving = true; player.target = null; player.onArrive = null;

@@ -1,4 +1,5 @@
 // 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { reloadFor } from '../reloadwhy.js'; /* 새로고침 까닭 남기기 (#287) */
 import { WX, wxIcon } from '../weather.js';
 import { ONLINE } from '../online.js';
 import { state, late } from './state.js';
@@ -27,7 +28,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
     const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, rainFx: save.rainFx, vib: save.vib, calmFx: save.calmFx, introSound: save.introSound, music: save.music, nickSet: save.nickSet, nickRen: save.nickRen, reset: 1, _rev: save._rev, _acct: save._acct }; /* reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7) */
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
-    location.reload();
+    reloadFor('reset');
   };
   const tick = () => { if (!t0) return; const p = Math.min(1, (performance.now() - t0) / HOLD); b.style.setProperty('--p', p); if (p >= 1) { t0 = 0; doReset(); } else raf = requestAnimationFrame(tick); };
   b.addEventListener('pointerdown', (e) => { if (e.button) return; e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } t0 = performance.now(); raf = requestAnimationFrame(tick); });
@@ -75,7 +76,7 @@ export function enableDev() {
       if (!rc) { rc = 1; $('dev-reset').textContent = '정말 지울까요? 한 번 더'; setTimeout(() => { rc = 0; $('dev-reset').textContent = '모두 리셋'; }, 4000); return; }
       state.resetting = true;
       try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); localStorage.removeItem(TK); } catch (e) { /* 무시 */ }
-      location.reload();
+      reloadFor('devreset');
     });
     // 들어오기 다시 (#99): 들어오기를 본 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
     $('dev-intro').addEventListener('click', () => {
@@ -84,7 +85,7 @@ export function enableDev() {
       if (keep.pace) keep.pace = { ...keep.pace, hint: 0 }; // #135 투기꾼 안내도 다시
       delete keep.journey; // #176 감독의 문·소개도 처음부터
       try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
-      location.reload();
+      reloadFor('devintro');
     });
     $('dev-tut').addEventListener('click', () => { late.tut.skipAll(); toast('튜토리얼 건너뛰기'); }); // #62 건너뛰기는 개발자 버튼에만
     $('dev-gyul').addEventListener('click', () => { late.notEarned?.(10000); save.coins += 10000; persist(); updateStats(); late.sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈

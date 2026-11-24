@@ -1,4 +1,5 @@
 // 렌더러·장면·빛·성능 단계 적용, 실제 제주 시각의 해·하늘, 날씨 반영 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { reloadFor } from '../reloadwhy.js'; /* 새로고침 까닭 남기기 (#287) */
 import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong, nsPaths } from '../namsongi.js';
 import { aimLamps } from '../lampaim.js';
@@ -59,7 +60,7 @@ state.glLost = false;
     state.glLost = false; clearTimeout(lostT); $('gl-lost').hidden = true; crashNote('WebGL 되살아남');
     setTimeout(() => { try { prepShaders().catch(() => {}); } catch (e) { /* 다음 그릴 때 준비됨 */ } }, 50);
   });
-  $('gl-reload').addEventListener('click', () => location.reload());
+  $('gl-reload').addEventListener('click', () => reloadFor('gl'));
 }
 state.farCull = null; // 멀리 있는 작은 물체 감추기 (#79), 맨 끝에서 만듦
 export const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF, heat: 0 }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)

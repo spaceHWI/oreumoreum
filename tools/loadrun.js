@@ -4,6 +4,7 @@
 // 2. 새 버전 다시 받기: '새로고침' → 바로 '새 버전 받는 중' 로딩 창 → 새 페이지도 로딩 창부터 (html 바탕은 밤색)
 // 3. 로그인(가짜 계정) → 첫 화면 계정 칸(첫 글자·이름·가린 메일·로그아웃), 설정 창에도 같은 칸
 // 4. 로그아웃: 한 번 더 묻고 → 서버 /logout → 토큰·계정 사본 지움 → 손님 첫 화면. 다른 계정으로 다시 로그인하면 그 계정 이름, 손님 저장은 그대로
+// 6. 문서 이동 수 (#287): 처음 방문(손님)·낡은 index(새 버전이 나옴)은 20초 동안 1번. 로그인: 서버 rev 만 앞서고 내용이 같으면 1번, 다른 기기 기록이면 2번(한 번만 다시 열고 되풀이 없음)
 // 5. 받지 못함(main 404) → 바로 '다시 시도'. 응답이 멈춤 → 10초 '조금만 더요', 30초 '다시 시도' (시계를 빨리 감아 봄)
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium, devices } = require('playwright');
@@ -11,11 +12,12 @@ const MODE = process.argv[2] === 'm' ? 'm' : 'd', SHOT = process.argv[3] || '';
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) { fails++; process.exitCode = 1; } };
 const DIST = path.resolve('dist'), SRV = 'https://oreumoreum.spacehwi.workers.dev';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let MAIN_MS = 4000, MAIN_404 = false, MAIN_HANG = false;
+let MAIN_MS = 4000, MAIN_404 = false, MAIN_HANG = false, VER_OTHER = false, SV = null; /* SV: 상태 있는 가짜 서버 { rev, save } (#287) */
 const srv = http.createServer(async (q, r) => {
   const u = decodeURIComponent(q.url.split('?')[0]), f = path.join(DIST, u);
   if (!f.startsWith(DIST) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
   const ct = f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.js') ? 'text/javascript' : f.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+  if (VER_OTHER && u === '/version.json') { r.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' }); r.end(JSON.stringify({ v: '9.9.9', main: 'main-ffffffffff.js' })); return; }
   const buf = fs.readFileSync(f), main = /\/main-[^/]+\.js$/.test(u);
   if (main && MAIN_404) { r.writeHead(404); r.end(); return; }
   if (main && MAIN_HANG) return; /* 응답 없이 멈춤 */
@@ -41,6 +43,8 @@ const NICKS = { 'fake-tester': '한라봉', 'fake-other': '다른이' };
       calls.push(rt.request().method() + ' ' + u.pathname + (sub ? ' ' + sub : ''));
       const J = (o) => rt.fulfill({ status: 200, headers: h, contentType: 'application/json', body: JSON.stringify(o) });
       if (u.pathname === '/auth/google') { const c = JSON.parse(rt.request().postData() || '{}').credential || '', s = 'fake-' + c.slice(5); return J({ token: tok(s), exp: Date.now() + 864e6, hasSave: true, nick: NICKS[s] }); }
+      if (SV && u.pathname === '/me') return J({ admin: false, keepUntil: Date.now() + 864e6, save: SV.save, rev: SV.rev });
+      if (SV && u.pathname === '/save') { SV.rev++; SV.save = JSON.parse(rt.request().postData() || '{}').save; return J({ rev: SV.rev, keepUntil: Date.now() + 864e6 }); }
       if (u.pathname === '/me') return sub ? J({ admin: false, keepUntil: Date.now() + 864e6, save: { nick: NICKS[sub] || '누구', coins: 77, entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 } }, rev: 1 }) : rt.fulfill({ status: 401, headers: h, body: '{}' });
       if (u.pathname === '/save') return J({ rev: 2, keepUntil: Date.now() + 864e6 });
       return J({});
@@ -131,6 +135,44 @@ const NICKS = { 'fake-tester': '한라봉', 'fake-other': '다른이' };
     ok(await p.evaluate(() => window.__oreum.save.coins) === 77, '그 계정 저장을 불러옴 (손님 귤과 섞이지 않음)');
     ok(p.errs === 0, '로그인·로그아웃: 페이지 오류 없음');
     await ctx.close(); }
+
+  // ---- 6. 문서 이동 수 (#287) ----
+  const navs = (p) => { p.navs = 0; p.on('framenavigated', (f) => { if (f === p.mainFrame()) p.navs++; }); };
+  const sit = async (p, ms, enter) => { const t1 = Date.now(); let clicked = false; while (Date.now() - t1 < ms) { if (enter && !clicked) clicked = await p.evaluate(() => { const b = document.getElementById('enter'); if (!b || b.disabled || document.getElementById('intro').hidden) return false; b.click(); return true; }).catch(() => false); await sleep(300); } };
+  const reasons = (p) => p.evaluate(() => { try { return JSON.parse(sessionStorage.getItem('oreumoreum.reloads') || '[]').map((r) => r.why); } catch (e) { return ['?']; } }).catch(() => ['?']);
+  for (const [tag, other] of [['처음 방문', false], ['처음 방문·새 버전이 막 나옴(낡은 index)', true]]) {
+    const { ctx, p } = await mk(); MAIN_MS = 1500; VER_OTHER = other; navs(p);
+    await p.goto(URL0, { waitUntil: 'commit' }); await watch(p); await sit(p, 20000, true);
+    ok(p.navs === 1 && p.errs === 0, `${tag}: 20초 동안 문서 이동 ${p.navs}번 (1번이어야), 까닭 ${JSON.stringify(await reasons(p))}`);
+    VER_OTHER = false; await ctx.close(); }
+  /* 로그인된 기기: 사본(rev 1)을 미리 넣고 연다. 서버는 PUT /save 마다 rev 를 올림 */
+  const BASES = ['oreumoreum.v1', 'oreumoreum.dev'], SUB = 'fake-tester';
+  const seed = async (ctx, cache) => { const p0 = await ctx.newPage(); await p0.goto(URL0.replace(/index\.html.*$/, 'version.json')); await p0.evaluate(([bases, sess, c]) => { for (const b of bases) { localStorage.setItem(b + '.sess', JSON.stringify(sess)); localStorage.setItem(b + '.acct', JSON.stringify(c)); } }, [BASES, { t: tok(SUB), exp: Date.now() + 864e6, srv: SRV, sub: SUB, m: 'tes***@test.local' }, cache]); await p0.close(); };
+  const base0 = { nick: '한라봉', coins: 77, entered: 1, look: { sex: 'm', skin: 0 }, tut: { step: 99, done: true, v: 3 } };
+  { /* 가. 지난번 나갈 때 보낸 저장의 응답을 못 받음: 서버 rev 만 앞서고 내용은 같음 */
+    SV = { rev: 1, save: { ...base0 } };
+    const { ctx, p } = await mk(); MAIN_MS = 600;
+    await seed(ctx, { ...base0, _rev: 1, _acct: SUB });
+    await p.goto(URL0, { waitUntil: 'commit' }); await watch(p); await sit(p, 8000, false); /* 한 번 열어 기본값이 채워진 저장을 서버에 보냄 */
+    const full = await p.evaluate(() => { const o = { ...window.__oreum.save }; delete o._rev; delete o._acct; delete o.lastSeen; return o; });
+    await ctx.close();
+    SV = { rev: 9, save: full };
+    const c2 = await mk(); navs(c2.p);
+    await seed(c2.ctx, { ...full, _rev: 8, _acct: SUB });
+    await c2.p.goto(URL0, { waitUntil: 'commit' }); await watch(c2.p); await sit(c2.p, 20000, false);
+    ok(c2.p.navs === 1, `로그인·서버 rev 만 앞섬(내용 같음): 문서 이동 ${c2.p.navs}번 (1번이어야), 까닭 ${JSON.stringify(await reasons(c2.p))}`);
+    ok(await c2.p.evaluate(() => window.__oreum.save._rev >= 9), '그 rev 를 받아 씀');
+    await c2.ctx.close(); }
+  { /* 나. 다른 기기에서 더 해 둔 기록: 한 번만 다시 열고, 떠나는 페이지가 낡은 저장을 보내 rev 를 또 올리지 않음 */
+    SV = { rev: 5, save: { ...base0, coins: 500 } };
+    const { ctx, p } = await mk(); MAIN_MS = 600; navs(p);
+    await seed(ctx, { ...base0, coins: 10, _rev: 2, _acct: SUB });
+    await p.goto(URL0, { waitUntil: 'commit' }); await watch(p); await sit(p, 20000, false);
+    const rs = await reasons(p);
+    ok(p.navs === 2 && rs.join() === 'rev', `로그인·다른 기기 기록: 문서 이동 ${p.navs}번 (2번이어야), 까닭 ${JSON.stringify(rs)}`);
+    ok(await p.evaluate(() => window.__oreum.save.coins) === 500, '다른 기기 기록(귤 500)을 불러옴');
+    ok(p.errs === 0, '문서 이동 검사: 페이지 오류 없음');
+    await ctx.close(); SV = null; }
 
   // ---- 5. 받지 못함·느림 ----
   { const { ctx, p } = await mk(); MAIN_404 = true;

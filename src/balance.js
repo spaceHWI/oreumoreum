@@ -1746,6 +1746,9 @@ export const CRASH = {
   perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
   acts: 6,            // '마지막 한 일' 기억하는 수
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
+
+  reloadGap: 60000,   // 스스로 새로고침(사용자가 누르지 않은 것)은 이 탭에서 이만큼(ms) 안에 두 번 하지 않음 (#287, src/reloadwhy.js)
+  reloadRep: 2,       // 하루 새로고침이 이만큼 넘거나 스스로 한 것이 있으면 다음에 열 때 'reload: 까닭' 한 줄을 오류 알림으로
 };
 
 // 이용 통계 (#121): 클라이언트는 숫자만 세다가 flushS 마다·나갈 때 묶음 하나(sendBeacon)로 POST /m. 서버는 날짜별 합계만 (Accounts DO 표 mt)

@@ -1,4 +1,5 @@
 // 튜토리얼·낚시 연결, 개발용 라벨, 성능 단계 메뉴, window.__oreum (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { reloadFor } from '../reloadwhy.js'; /* 새로고침 까닭 남기기 (#287) */
 import { gearScore, gyulPickR, abilityCloth } from '../gearscore.js';
 import { DEX_LIST } from '../trash.js';
 import { assetInfo } from '../assets.js';
@@ -139,7 +140,7 @@ perfSeg();
 function pickPerf(next) {
   const cur = save.perf ?? 'auto'; if (cur === next) return; const t = perfTierOf(next);
   save.perf = next; persist(); perfSeg();
-  if ((t < 2) !== LOW) { toast(`${perfLabel()} · 다시 불러와요`); setTimeout(() => location.reload(), 700); return; }
+  if ((t < 2) !== LOW) { toast(`${perfLabel()} · 다시 불러와요`); setTimeout(() => reloadFor('perf'), 700); return; }
   quality.auto = next === 'auto'; quality.tier = quality.level = t; applyQuality(); toast(perfLabel());
 }
 applyGfx();
