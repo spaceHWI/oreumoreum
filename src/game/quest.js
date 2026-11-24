@@ -123,8 +123,8 @@ function addGiver(id, pos, root, h, runner = null, face = 0) {
 }
 function person(id, pos, face) {
   const d = Q.givers[id], L = d.look || {}, run = buildRunner(), o = DEFAULT_OUTFIT;
-  run.apply({ ...o, shirt: { ...o.shirt, color: L.shirt || o.shirt.color }, pants: { ...o.pants, color: L.pants || o.pants.color }, shoes: { ...o.shoes, color: L.shoes || o.shoes.color }, gear: { hat: L.hat || 'hat:straw', back: 'back:none', hand: 'hand:none', ...(L.vest ? { vest: L.vest } : {}) } }); /* 앞치마 등 (#279) */
-  run.root.position.copy(pos); run.root.rotation.y = face; scene.add(run.root);
+  run.apply({ ...o, ...(L.skin ? { skin: { color: L.skin } } : {}), shirt: { ...o.shirt, color: L.shirt || o.shirt.color }, pants: { ...o.pants, color: L.pants || o.pants.color }, shoes: { ...o.shoes, color: L.shoes || o.shoes.color }, gear: { hat: L.hat || 'hat:straw', back: 'back:none', hand: 'hand:none', ...(L.vest ? { vest: L.vest } : {}), ...(L.gear || {}) } }); /* 앞치마 등 (#279), 셰프 차림 통째(#299 look.gear·skin) */
+  run.root.position.copy(pos); run.root.rotation.y = face; if (L.wide) run.root.scale.set(L.wide, 1, L.wide); scene.add(run.root); /* 다부진 체격 (#299) */
   if (col) col.add(pos.x, pos.z, 0.5);
   return addGiver(id, pos, run.root, 2.95, run, face);
 }
