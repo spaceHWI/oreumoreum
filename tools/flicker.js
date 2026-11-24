@@ -4,8 +4,11 @@
 //     (예전: 밤색 바탕 → 받는 동안 캔버스 바탕 낮 하늘색 #cfe0dc 2~3초 → 밤 첫 화면)
 // 나. 건너뛴 프레임: 가짜 시계 60Hz 에서 상한을 절약(30)으로 두고 창 크기·발열 단계(픽셀 배율)를 바꾸며, 캔버스가 비워진 뒤(setSize)
 //     그리지 않고 지나간 rAF 를 센다 (빈 캔버스가 한 프레임 보이는 것, game/fps.js due)
+// 다. 처음 방문 (#287 사용자 메모 '첫 화면 로딩될 때'): dist 를 http 로 띄워 Pages 빌드(index.html, 로딩 창 #boot)를 캐시·저장 없는 새 프로필로 열고
+//     문서 이동부터 로딩 창이 걷히고 3초 뒤까지 프레임을 받아 색 평균(RGB)을 잰다. 앞뒤 프레임 사이(서서히 바뀜)에서 벗어난 짧은 프레임 묶음(3장 이하)을 '번쩍임' 으로 센다
+//     (하늘색·흰색·검은색 등 이름을 붙여 적음). 밤·낮 둘 다. 노트북이면 아래 '나' 와 같은 크기
 const { chromium } = require('playwright');
-const path = require('path');
+const path = require('path'), http = require('http'), fs = require('fs');
 const MODE = process.argv[2] === 'm' ? 'm' : 'd';
 const DEV = MODE === 'm' ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 760 } };
 const DIST = process.argv[3] || 'dist'; /* 앞 빌드와 견줄 때: node tools/flicker.js d <다른 dist 폴더> */
@@ -58,6 +61,63 @@ async function reloadTest(b) {
   await ctx.close(); return r.n + errs.length;
 }
 
+async function rgbOf(p, jpgs) { /* 색 평균 [r,g,b] */
+  return p.evaluate(async (list) => {
+    const c = document.createElement('canvas'), x = c.getContext('2d', { willReadFrequently: true }), out = [];
+    for (const b64 of list) {
+      const im = new Image(); im.src = 'data:image/jpeg;base64,' + b64; await im.decode();
+      c.width = 96; c.height = Math.max(1, Math.round(96 * im.height / im.width)); x.drawImage(im, 0, 0, c.width, c.height);
+      const d = x.getImageData(0, 0, c.width, c.height).data; const s = [0, 0, 0];
+      for (let i = 0; i < d.length; i += 4) { s[0] += d[i]; s[1] += d[i + 1]; s[2] += d[i + 2]; }
+      const n = d.length / 4; out.push(s.map((v) => Math.round(v / n)));
+    }
+    return out;
+  }, jpgs);
+}
+const cdist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const cname = (c) => { const [r, g, b] = c, m = (r + g + b) / 3; if (m > 225) return '흰색'; if (m < 18) return '검은색'; if (m > 120 && b > r + 8 && g > r) return '하늘색'; return `rgb(${c.join(',')})`; };
+function flashes(cs, T = 40, maxRun = 3) { /* 앞뒤 프레임을 잇는 선(서서히 바뀜)에서 T 넘게 벗어난 짧은 묶음 */
+  const out = [];
+  for (let i = 1; i < cs.length - 1; i++) {
+    for (let L = 1; L <= maxRun && i + L < cs.length; L++) {
+      const a = cs[i - 1], z = cs[i + L], run = cs.slice(i, i + L);
+      if (run.every((c) => cdist(c, a) + cdist(c, z) > cdist(a, z) + T)) { out.push({ at: i, n: L, c: cname(run[0]) }); i += L - 1; break; }
+    }
+  }
+  return out;
+}
+function serveDist() {
+  const DIR = path.resolve(DIST);
+  const srv = http.createServer((q, r) => {
+    const u = decodeURIComponent(q.url.split('?')[0]), f = path.join(DIR, u);
+    if (!f.startsWith(DIR) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
+    const ct = f.endsWith('.html') ? 'text/html; charset=utf-8' : f.endsWith('.js') ? 'text/javascript' : f.endsWith('.json') ? 'application/json' : f.endsWith('.css') ? 'text/css' : 'application/octet-stream';
+    r.writeHead(200, { 'content-type': ct, 'cache-control': 'no-cache' }); r.end(fs.readFileSync(f));
+  });
+  return new Promise((res) => srv.listen(0, '127.0.0.1', () => res(srv)));
+}
+async function firstVisit(b, srv, when, tag) {
+  const ctx = await b.newContext(DEV), p = await ctx.newPage(), aux = await ctx.newPage();
+  await ctx.route(/^https:\/\//, (rt) => rt.abort()); /* 글꼴·로그인·서버: 손님 처음 방문, 막힌 환경에서 멈추지 않게 */
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message.slice(0, 160)));
+  await p.clock.install({ time: when }); await p.clock.resume();
+  const cdp = await ctx.newCDPSession(p), frames = [];
+  cdp.on('Page.screencastFrame', (f) => { frames.push({ t: Date.now(), d: f.data }); cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {}); });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 60, maxWidth: 360, maxHeight: 360, everyNthFrame: 1 });
+  await p.waitForTimeout(300);
+  const tNav = Date.now(); await p.goto(`http://127.0.0.1:${srv.address().port}/index.html#namsongi`, { waitUntil: 'commit' });
+  await p.waitForFunction(() => { const e = document.getElementById('boot'); return e && e.hidden; }, null, { timeout: 240000, polling: 200 });
+  const tOff = Date.now(); await p.waitForTimeout(3000);
+  await cdp.send('Page.stopScreencast');
+  let cs = await rgbOf(aux, frames.filter((f) => f.t >= tNav).map((f) => f.d));
+  { let i = 0; while (i < cs.length && Math.min(...cs[i]) > 250) i++; cs = cs.slice(i); } /* 새 문서가 칠해지기 전 about:blank 흰 쪽은 뺌 */
+  const fl = flashes(cs), names = [...new Set(cs.map(cname).filter((n) => !n.startsWith('rgb')))];
+  console.log(`다. 처음 방문 ${tag} [${MODE}] 프레임 ${cs.length} · 로딩 창 걷힘 ${((tOff - tNav) / 1000).toFixed(1)}s · 첫 프레임 ${cname(cs[0] || [0, 0, 0])} · 마지막 ${cname(cs[cs.length - 1] || [0, 0, 0])}`);
+  console.log(`   번쩍임 ${fl.length}${fl.length ? ' ' + JSON.stringify(fl) : ''}${names.length ? ' · 이름 붙은 색이 보인 프레임: ' + names.join(',') : ''}${errs.length ? ' · 오류 ' + errs.join(' | ') : ''}`);
+  if (process.env.FLK_LOG) console.log('   ' + cs.map((c) => c.join('/')).join(' '));
+  await ctx.close(); return fl.length + errs.length;
+}
+
 async function skipTest(b) {
   const ctx = await b.newContext(DEV), p = await ctx.newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(e.message.slice(0, 160)));
@@ -91,7 +151,12 @@ async function skipTest(b) {
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   let bad = 0;
-  try { bad += await reloadTest(b); bad += await skipTest(b); } finally { await b.close(); }
+  const only = process.env.FLK_ONLY || ''; /* 'first' 면 다만 */
+  const srv = await serveDist();
+  try {
+    if (!only) { bad += await reloadTest(b); bad += await skipTest(b); }
+    if (!only || only === 'first') { bad += await firstVisit(b, srv, NIGHT, '밤'); bad += await firstVisit(b, srv, new Date('2026-11-24T13:00:00+09:00'), '낮'); }
+  } finally { await b.close(); srv.close(); }
   console.log(bad ? `실패: 튐 ${bad}` : '통과: 튐 0');
   process.exit(bad ? 1 : 0);
 })();
