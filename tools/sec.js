@@ -193,6 +193,12 @@ async function startServers() {
       const P4 = { ...P, inn: { d: '2026-01-01', n: 1, left: 900 } };
       r = checkSave(P4, { ...P4, coins: P4.coins + gain, lv: { ...P4.lv, xp } }, acc(), t);
       ok(r.fixed.includes('lvxp') && r.save.lv.xp === gain, `묵은 날이 아니면 경험치는 번 만큼만 (${r.save.lv.xp})`);
+      /* #290 마당 불멍: 귤이 오가지 않음 — 기록은 남고(모양만 바로잡음), 귤·숙박 수는 그대로 */
+      const P5 = { ...P, inn: { d: '', n: 0, left: 0 } };
+      r = checkSave(P5, { ...P5, inn: { d: '', n: 0, left: 0, fire: { d: today, n: 1, until: INN.fire.buffSec, t: 1 } } }, acc(), t);
+      ok(!r.fixed.includes('inn') && !r.fixed.includes('coins') && r.save.inn.fire?.n === 1 && r.save.inn.fire.until === INN.fire.buffSec, `불멍 기록이 서버 저장에 남음 (${JSON.stringify(r.save.inn?.fire)})`);
+      r = checkSave(P5, { ...P5, inn: { d: '', n: 0, left: 0, fire: { d: 'x', n: 99, until: 1e9, t: -3 } } }, acc(), t);
+      ok(r.save.inn.fire.n === INN.fire.perDay && r.save.inn.fire.until === INN.fire.buffSec + INN.fire.pair && r.save.inn.fire.d === '' && r.save.inn.fire.t === 0, `깨진 불멍 기록은 한도 안으로 (${JSON.stringify(r.save.inn.fire)})`);
     }
     /* ---------- 철 이벤트 (#180): 달력 날짜 속이기·트리 합계 부풀리기 ---------- */
     {

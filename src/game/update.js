@@ -46,6 +46,7 @@ state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shop
 state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히 도는 이슈와 부딪혀서 따로
 state.ticks.deerPal = 0; // 노루 친구 (#247)
 state.ticks.inn = 0; // 숙소 오피스제주 (#270)
+state.ticks.fire = 0; // 숙소 마당 불멍 (#290)
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -161,7 +162,7 @@ function updatePlayer(dt) {
     countSteps(moved);
     checkViewpoint();
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
-  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
+  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : late.fireSeatY?.() ?? benchPos.y; /* #290 불멍 의자 */
   late.tickSwim?.(dt); // 테왁 배낭으로 물에 뜸 (#164, game/punk.js): 높이를 물낯에
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
@@ -364,7 +365,7 @@ function step(now) {
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
   if (player.ride && (player.pose === 'sit' || mealS.on || cutS.on || state.photoState || state.fishing?.active || cam.mode === 'leap' || hp.isDown || player.rescue || player.knock)) dismountRide(); // 다른 일을 시작하면 내림 (#69)
-  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
+  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose === 'sit' && late.fireSit?.() ? 'warm' : player.pose; /* #290 불멍: 앉아 손을 쬠 */
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
@@ -445,6 +446,7 @@ function step(now) {
   late.tickMyst?.(dt); // 4:04·금고 (#212, game/mystery.js)
   late.tickCases?.(dt); // 사건 파일 (#232, game/cases.js): 목격·증거·숨어 보기 장면
   if (late.tickInn) { late.tickInn(dt); state.ticks.inn++; } /* 숙소 (#270, game/inn.js): 개운함 시간·묵는 연출 */
+  if (late.tickFire) { late.tickFire(dt); state.ticks.fire++; } /* 마당 불멍 (#290, game/firepit.js): 화로 불·앉기·버프 '멍' */
   late.tickTube?.(dt); // 수거 관 (#248, game/tube.js): 빨려 들어감·관 속·튀어나옴 (updatePlayer 뒤라 몸 자리·크기를 덮어씀)
   late.tickReports?.(dt); // 매일 미확인 제보 (#238, game/reports.js)
   late.tickTraces?.(dt); // 발자국·크롭서클·뒤돌아보면 (#212, game/traces.js)
