@@ -405,7 +405,12 @@ export function createTutorial({ save, persist, player, isTouch, camDist, gyulR,
   }
   function complete() { endUI(false); }
   // 건너뛰기(개발자 버튼): 정낭이 열리고 UI 가 전부 나옴 (첫 보너스는 나중에 처음 버릴 때 그대로)
-  function skipAll() { if (S.done) return; openJeong(); endUI(true); }
+  function skipAll() { /* #302 다 건너뛰기: 칸 정낭·가게 쪽 정낭을 모두 연 상태로 끝냄(상태 읽는 쪽도 '열림'), 정낭 앞 안내도 지움 */
+    if (S.done) return;
+    for (const J of penGate) J?.open?.(false);
+    if (shopGate) { shopGate.open = true; shopJ?.open?.(false); }
+    openJeong(false); endUI(true);
+  }
   return { update, notify, skipAll, gyulNear, takeGyul, get active() { return !S.done; }, get step() { return cur; }, get hits() { return S.hits; }, gyuls, board: stand, focus: () => focused,
     toast: () => (tEl.hidden ? null : { text: tEl.querySelector('span')?.textContent || '', n: tEl.querySelector('.n')?.textContent || '', easy, shake: tEl.classList.contains('shake') }),
     idle: () => idle, setIdle: (v) => { idle = v; }, finger: () => !focusEl.hidden && focusEl.classList.contains('idle'),
