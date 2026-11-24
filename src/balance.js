@@ -913,6 +913,15 @@ export const INN = {
   W: 13.6, D: 8.2, H1: 3.4, H2: 3.0, fore: 3.2, // 건물 폭·깊이·1층·2층 높이 (m), 터 앞에서 앞벽까지 (앞마당)
   r: 6.5, // 앞마당 가운데에서 이 거리 안이면 상호작용 '숙박'
   litRooms: [1, 4, 5], // 2층 객실 창 여섯 칸 중 밤에 불이 켜지는 칸 (0부터)
+  // 마당 불멍 (#290, 모양 src/firepit.js·로직 game/firepit.js). 무료, 의자에 sit 초 앉아 있으면 버프 '멍' buffSec 초(놀이 시간). 하루 perDay 번. 둘이 같이 앉으면 + pair 초
+  // buff: pickR 귤 모으는 범위 ×(1+v) · rare 드문 쓰레기 확률 ×(1+v) · down 쓰러졌을 때 대기 ×(1+v) · see 밤·안개 최소 밝기(하늘빛 더함)·안개 먼 끝 ×(1+fog). 싸움 수치는 없음 (숙박·식사 몫)
+  // 자리(로컬, 숙소 터 앞 가운데 기준): side 쪽(1 = 오른쪽) 옆마당 잔디, x = side × (W/2 + out), z = -fore - D/2 + back. lit: 해 질 무렵부터(밤 정도 litNight 넘으면) 불이 붙음
+  fire: {
+    name: '멍', sit: 20, buffSec: 1200, perDay: 3, pair: 300, pairR: 4, warnSec: 60,
+    buff: { pickR: 0.4, rare: 0.15, down: -0.3, see: 0.35, fog: 0.25 },
+    side: 1, out: 2.3, back: 0, litNight: 0.15, chairR: 1.55, r: 1.6, far: 60, soundR: 14, sayGap: [5, 8],
+    camYaw: 1.25, camPitch: 0.26, camDist: 8, // 앉으면 카메라: 옆(앉은 방향에서 camYaw 라디안 돈 쪽)·낮게·가까이
+  },
   // 주인은 퀘스트 주는 사람 QUESTS.givers['shop:inn'] (안녕 매니저, game/quest.js 가 가게 문 옆에 세움)
 };
 export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)

@@ -619,12 +619,13 @@ export function buildRunner(opts = {}) {
       armL.rotation.set(-2.7 * k + Math.sin(t * 14) * 0.18, 0, 0.45 * k); armR.rotation.set(-2.7 * k - Math.sin(t * 14) * 0.18, 0, -0.45 * k);
       legL.rotation.set(-hop * 0.4, 0, 0.06); legR.rotation.set(-hop * 0.4, 0, -0.06);
       head.rotation.x = -0.18 * k; torso.rotation.x = -0.06 * k;
-    } else if (pose === 'sit') {
+    } else if (pose === 'sit' || pose === 'warm') { // warm: 불멍 (#290) 앉아 두 손을 불 쪽으로 내밀어 쬠
       hips.position.y = 0.5 - LIFT;
       legL.rotation.set(-1.45, 0, 0.08); legR.rotation.set(-1.45, 0, -0.08);
       armL.rotation.set(-0.3, 0, 0.25); armR.rotation.set(-0.3, 0, -0.25);
       torso.rotation.x = -0.08;
       chest.scale.setScalar(1 + Math.sin(t * 1.2) * 0.02);
+      if (pose === 'warm') { const w = Math.sin(t * 1.7) * 0.05; armL.rotation.set(-1.2 + w, 0, -0.18); armR.rotation.set(-1.2 - w, 0, 0.18); torso.rotation.x = 0.14; head.rotation.x = 0.12; }
     } else if (pose === 'board') { // 스케이트보드 (#69): 무릎을 살짝 굽히고 두 팔을 벌려 균형
       const w = Math.sin(st.clock * 2.2) * 0.06;
       hips.position.y = HIP - 0.06; legL.rotation.set(-0.22, 0, 0.12); legR.rotation.set(0.12, 0, -0.12);

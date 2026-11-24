@@ -108,6 +108,8 @@ export const SWARM_TEXT = {
 
 // 캐릭터 혼잣말 (#169, game/mutter.js): 다음에 할 만한 일·숨은 재미를 넌지시. 답을 직접 말하지 않는다. 조건은 mutter.js LINES
 export const MUTTER_TEXT = {
+  fire1: '불은 봐도 봐도 안 질린다.', fire2: '타닥. 머릿속도 같이 비워진다.', fire3: '연기가 정상 쪽으로만 간다.', fire4: '불 앞인데 그 캔은 아직 차갑다.', /* #290 불멍 혼잣말 (game/firepit.js) */
+  fire5: '새벽 4시 4분까지 버텨 볼까.', fire6: '불티가 동그라미 셋을 그렸다.', fire7: '내일 치울 더미를 세어 본다.', fire8: '별 하나가 아까부터 그대로다.',
   glint: '방금… 저 아래에서 뭔가 빛났는데?', // #208 정상 첫 장면 끝 (game/summit.js 가 부름)
   num404: '또 4시 4분이네.', // #212 4:04 를 여러 곳에서 본 뒤 한 번 (game/mystery.js)
   cropMid: '풀이 누웠네. 바람이 둥글게 불었나?', // #212 크롭서클 가운데 (game/traces.js)

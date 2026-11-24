@@ -146,6 +146,7 @@ import './game/casefinale.js'; // 사건 파일 끝 '버리는 자' (#237): 다 
 import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
 import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
 import './game/inn.js'; // 숙소 오피스제주 (#270): 숙박·개운함 버프·곁가지 퀘스트 (shopgate 앞: 가게 표가 먼저)
+import './game/firepit.js'; // 숙소 마당 불멍 (#290): 화로·앉기·버프 '멍' (inn 뒤: innExtra·innPeer 를 감쌈)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/npctalk.js'; // NPC 대사 (#278): 말버릇·상황 받아치기·가게 창 주인 말 (글은 src/npclines.js)
 import './game/start.js';
