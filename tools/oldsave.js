@@ -10,6 +10,9 @@ const SAVES = {
   // #270 숙소: 깨진 기록·남은 시간이 넘치는 기록·문자열
   innBad: { nick: '숙소 사람', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, inn: { d: 404, n: 'x', left: 99999 }, shopGate: { init: 1, open: { inn: 1 } } },
   innStr: { nick: '숙소 글', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, inn: 'abc' },
+  // #290 불멍: 깨진 불멍 기록·넘치는 수·문자열
+  fireBad: { nick: '불멍 사람', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, jeong: 1, inn: { d: '', n: 0, left: 0, fire: { d: 7, n: 99, until: 1e9, t: 'x' } }, shopGate: { init: 1, open: { inn: 1 } } },
+  fireStr: { nick: '불멍 글', coins: 40, entered: 1, tut: { step: 99, done: true, v: 3 }, inn: { fire: 'abc' } },
   v0: { nick: '예전 사람', coins: 321, equip: { tool: 3 }, outfit: { hat: { type: 'cap', color: '#222222' } }, owned: { 'shirt:tee:#ff0000': 1 }, totalSteps: 999, nsV1: 1, ach: { done: {} } },
   broken: { nick: '깨진 사람', coins: 'abc', equip: 5, clothes: 3, rides: 'x', trash: { srv: 1, bag: null, dex: 7 }, ach: { daily: 3, life: null, badges: [] }, tut: 'x', look: { sex: 'q', skin: 99 }, hairs: 2, buff: { id: 'nope', left: 5 }, recycle: [], server: 'nope', wishes: null, story: { done: 'x', wait: [1, 'nope', 'mom'], cans: [[1, 'a'], null], box: 3 } },
   old8: { nick: '8일 전 사람', coins: 777, music: 0, gfx: 'low', lastSeen: Date.now() - 8 * 864e5 },

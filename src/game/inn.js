@@ -28,7 +28,7 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 function norm() {
   if (save.inn === undefined) return;
   const o = isO(save.inn) ? save.inn : {};
-  save.inn = { d: typeof o.d === 'string' && DAY_RE.test(o.d) ? o.d : '', n: Number.isFinite(+o.n) ? Math.max(0, Math.min(1e6, Math.floor(+o.n))) : 0, left: Number.isFinite(+o.left) ? Math.max(0, Math.min(INN.buffSec, +o.left)) : 0 };
+  save.inn = { d: typeof o.d === 'string' && DAY_RE.test(o.d) ? o.d : '', n: Number.isFinite(+o.n) ? Math.max(0, Math.min(1e6, Math.floor(+o.n))) : 0, left: Number.isFinite(+o.left) ? Math.max(0, Math.min(INN.buffSec, +o.left)) : 0, ...(isO(o.fire) ? { fire: o.fire } : {}) }; /* 불멍 기록(#290)은 game/firepit.js 가 바로잡음 */
 }
 norm();
 const I = () => save.inn || { d: '', n: 0, left: 0 };
@@ -93,6 +93,7 @@ late.fillInn = (grid) => {
   c.innerHTML = `<div class="io"><div class="io-top"><b>하룻밤 묵으면 기운 가득</b><span class="price"><i></i>${p}</span></div>`
     + `<p class="io-sub">개운함 ${Math.round(INN.buffSec / 60)}분 · 하루에 한 번 · 놀이 시간으로 셈</p>`
     + `<div class="ib">${Object.entries(INN.buff).map(([k, v]) => `<span>${icon(BIC[k])}${WORD[k]} +${Math.round(v * 100)}%</span>`).join('')}</div></div>`
+    + (late.fireCard?.() || '') /* 마당 불멍 한 줄 (#290, game/firepit.js) */
     + `<div class="win-acts"><button type="button" class="btn primary" id="inn-stay"${done || poor ? ' disabled' : ''}>${icon('bed')}${done ? '오늘은 묵었어요 · 내일 또 와요' : '숙박하기'}</button>`
     + (late.cases?.on ? `<button type="button" class="btn" id="inn-board">${icon('notes')}로비 책상 · 수사 보드</button>` : '') + '</div>'
     + (done || poor || first ? `<small class="note">${done ? '체크아웃은 내일 아침이에요. 마음만 먼저 두고 가요' : poor ? `귤이 ${p - save.coins}개 모자라요` : '첫 숙박은 반값이에요'}</small>` : '');
