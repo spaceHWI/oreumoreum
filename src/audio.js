@@ -1,9 +1,10 @@
 import { whenAsset } from './assets.js'; // #85: 발소리 샘플(stepsamples.js)은 따로 받음 ('steps'). 오기 전에는 합성 발소리
 import { Music } from './music.js';
+import { Wind } from './wind.js'; // #292
 import { MUSIC } from './balance.js';
 // Web Audio 합성 사운드 — 외부 음원 없이 억새 바람·까마귀·말 방울·발소리·숨소리
 export class Sound {
-  constructor() { this.ctx = null; this.on = false; this.ambOn = true; this.sfxOn = true; this.forest = false; this.day = 1; this.musicOn = true; this.musicVol = MUSIC.vol; this.duck = false; this.music = null; }
+  constructor() { this.ctx = null; this.on = false; this.ambOn = true; this.sfxOn = true; this.forest = false; this.day = 1; this.musicOn = true; this.musicVol = MUSIC.vol; this.sfxVol = MUSIC.sfx; this.duck = false; this.cine = false; this.music = null; }
 
   start() {
     if (!this.ctx) {
@@ -16,12 +17,12 @@ export class Sound {
       this.mus = this.ctx.createGain(); this.mus.gain.value = 0; this.mus.connect(this.master);
       this.noise = this._noiseBuffer();
       this._loadSteps();
-      this._wind();
+      this.wind = new Wind(this.ctx, this.amb, this.noise, this.forest); if (this.rainV) this.wind.setRain(this.rainV);
       this._scheduleCrow();
       if (!this.forest) this._scheduleBell();
       this._scheduleBird();
-      this._gusts();
       this.music = new Music(this.ctx, this.mus, this.noise); this.music.day = this.day; this.music.winter = !!this.winter; if (this.zoneAmb) this.setZoneAmb(...this.zoneAmb);
+      this._iv = setInterval(() => this._sched(), 200);
     }
     this.wake();
     this.on = true;
@@ -46,15 +47,17 @@ export class Sound {
   // 배경 음악 (#64): 켜기/끄기·크기(0~1)·줄이기(가게 안 식사·머리 손질)·적 근처
   setMusic(v) { this.musicOn = !!v; this._applyGains(); }
   setMusicVol(v) { this.musicVol = Math.max(0, Math.min(1, v)); this._applyGains(); }
+  setSfxVol(v) { this.sfxVol = Math.max(0, Math.min(1, v)); this._applyGains(); } // 효과음·자연 소리 크기 (#292)
   setDuck(v) { if (this.duck === !!v) return; this.duck = !!v; this._applyGains(); }
   setThreat(v) { if (this.music) this.music.threat = !!v; }
   swell(sec) { if (this.music && this.on && this.musicOn) this.music.swell(sec); } // 꽃이 필 때 음악 한 겹 (#89)
   _applyGains() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.amb.gain.setTargetAtTime(this.on && this.ambOn ? 1 : 0, t, 0.3);
-    this.sfx.gain.setTargetAtTime(this.on && this.sfxOn ? 1 : 0, t, 0.05);
-    const mv = this.on && this.musicOn ? MUSIC.gain * this.musicVol * this.musicVol * (this.duck ? MUSIC.duck : 1) : 0; // 크기는 제곱(귀에 고르게)
+    const fx = this.sfxVol * this.sfxVol; // 크기는 제곱(귀에 고르게)
+    this.amb.gain.setTargetAtTime(this.on && this.ambOn ? fx : 0, t, 0.3);
+    this.sfx.gain.setTargetAtTime(this.on && this.sfxOn ? fx : 0, t, 0.05);
+    const mv = this.on && this.musicOn ? MUSIC.gain * this.musicVol * this.musicVol * (this.duck ? MUSIC.duck : 1) * (this.cine ? MUSIC.cine : 1) : 0;
     this.mus.gain.setTargetAtTime(mv, t, 0.4);
     if (this.music) this.music.active = mv > 0;
   }
@@ -66,52 +69,23 @@ export class Sound {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     return b;
   }
-  _src() { const s = this.ctx.createBufferSource(); s.buffer = this.noise; s.loop = true; return s; }
 
-  _wind() {
-    const c = this.ctx;
-    // 낮은 바람
-    const s1 = this._src(); const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
-    const g1 = c.createGain(); g1.gain.value = 0.16; this.windGain = g1; this.windLP = lp;
-    const lfo = c.createOscillator(); lfo.frequency.value = 0.07; const lg = c.createGain(); lg.gain.value = 0.1;
-    lfo.connect(lg); lg.connect(g1.gain);
-    // 구역마다 바람·억새 소리 세기 (#136): setZoneAmb
-    this.windZ = c.createGain(); this.windZ.connect(this.amb); this.reedZ = c.createGain(); this.reedZ.connect(this.amb);
-    s1.connect(lp); lp.connect(g1); g1.connect(this.windZ);
-    // 억새 사각거림
-    const s2 = this._src(); const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 4200; bp.Q.value = 0.8;
-    const g2 = c.createGain(); g2.gain.value = 0.02;
-    const lfo2 = c.createOscillator(); lfo2.frequency.value = 0.13; const lg2 = c.createGain(); lg2.gain.value = 0.018;
-    lfo2.connect(lg2); lg2.connect(g2.gain);
-    s2.connect(bp); bp.connect(g2); g2.connect(this.reedZ);
-    // 빗소리: 좁은 대역 잡음 두 겹 (평소엔 0)
-    const s3 = this._src(), s4 = this._src(); const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
-    const bp2 = c.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 600; bp2.Q.value = 0.5;
-    const rg = c.createGain(); rg.gain.value = 0; this.rainGain = rg;
-    s3.connect(hp); hp.connect(rg); s4.connect(bp2); bp2.connect(rg); rg.connect(this.amb); s3.start(); s4.start();
-    [s1, s2, lfo, lfo2].forEach((n) => n.start());
-  }
-  // 구역 소리 (#136): 바람·억새 배율, 평소 음악 크기·밝기 배율. 천천히 바뀜
+  // 구역 소리 (#136): 바람·억새 배율, 평소 음악 크기·밝기 배율. 천천히 바뀜. 바람은 src/wind.js (#292)
   setZoneAmb(wind = 1, reed = 1, music = 1, lp = 1) {
     this.zoneAmb = [wind, reed, music, lp]; if (!this.ctx) return;
-    const t = this.ctx.currentTime; this.windZ?.gain.setTargetAtTime(wind, t, 1.5); this.reedZ?.gain.setTargetAtTime(reed, t, 1.5); this.music?.setZone(music, lp);
+    this.wind?.setZone(wind, reed); this.music?.setZone(music, lp);
   }
-  setRain(v) { if (this.rainGain) this.rainGain.gain.setTargetAtTime(v * 0.1, this.ctx.currentTime, 0.8); }
+  setRain(v) { this.rainV = v; this.wind?.setRain(v); }
+  // 곳 (#292, game/musicplace.js): 음악 곳(bright·calm·sparse·top·fire)·정상이면 바람 조금 더·사건 장면이면 음악 줄임
+  setPlace(p, cine = false) {
+    if (this.music) this.music.place = p;
+    this.wind?.setTop(p === 'top');
+    if (this.cine !== !!cine) { this.cine = !!cine; this._applyGains(); }
+  }
+  // 스케줄러 하나 (#292): 바람 물결·돌풍과 음악을 AudioContext 시계로 미리 잡음. 탭이 숨으면 ctx 가 멈춰 같이 멈춤
+  _sched() { const c = this.ctx; if (!c || c.state !== 'running') return; const t = c.currentTime; if (this.on && this.ambOn) this.wind?.tick(t); this.music?.tick(t); }
+  voices() { return this.music ? this.music.voices() : 0; }
 
-  // 바람이 가끔 세게 불었다 잦아듦
-  _gusts() {
-    const next = 6000 + Math.random() * 12000;
-    setTimeout(() => {
-      if (this.ctx && this.windLP) {
-        const t = this.ctx.currentTime, up = 1.5 + Math.random() * 2;
-        this.windLP.frequency.cancelScheduledValues(t);
-        this.windLP.frequency.setValueAtTime(this.windLP.frequency.value, t);
-        this.windLP.frequency.linearRampToValueAtTime(this.forest ? 520 : 760, t + up);
-        this.windLP.frequency.linearRampToValueAtTime(this.forest ? 260 : 380, t + up + 3 + Math.random() * 3);
-      }
-      this._gusts();
-    }, next);
-  }
   // 새소리: 낮에는 작은 새(휘파람새·동박새 느낌), 숲에서는 더 자주. 밤에는 가끔 소쩍새 같은 낮은 소리
   _scheduleBird() {
     const base = this.forest ? 3500 : 9000;

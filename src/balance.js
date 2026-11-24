@@ -1210,16 +1210,42 @@ export const wearPrice = (c) => c.price != null ? c.price : c.tier === 1 && WEAR
 export const MUSIC = {
   gain: 0.6,         // 크기 100% 일 때 음악 버스 (효과음보다 작게). 크기 슬라이더는 제곱으로 들어감
   tense: 1.6,        // 긴장 음악 층 크기 (평소 층 1 에 견줘)
-  vol: 0.6,          // 처음 크기 (0~1)
+  vol: 0.45,         // 처음 크기 (0~1). #292 0.6 → 0.45 (기본은 작게)
+  sfx: 1,            // 효과음·자연 소리 처음 크기 (0~1, #292). 크기는 제곱으로 들어감
   fadeIn: 2.5,       // 적이 다가오면 긴장 음악으로 바뀌는 시간(초)
   holdOut: 5,        // 적이 사라지고 원래 음악으로 돌아가기까지 기다리는 시간(초)
-  fadeOut: 4,        // 원래 음악으로 돌아가는 시간(초)
+  fadeOut: 3,        // 원래 음악으로 돌아가는 시간(초) (#292 4 → 3)
   near: 30,          // 이 거리 안의 몹·멧돼지·투기꾼·트럭이면 '적 근처'
   duck: 0.45,        // 가게 안 식사·머리 손질 중 음악 배율
   nightK: 0.35,      // setDaylight 값이 이보다 작으면 밤 분위기
-  chord: { day: 9, night: 12 },        // 화음 하나 길이(초)
-  note: { day: [2.5, 6], night: [4, 9] }, // 드문드문 음 사이 간격(초)
   bpm: 92,           // 긴장 음악 빠르기
+  cine: 0.35,        // 사건 장면·엔딩(state.cine) 중 음악 배율 (#292)
+  voices: 8,         // 동시에 울리는 음 상한 (평소·긴장 합쳐. 넘으면 새 가락 음을 건너뜀)
+  /* 평소 음악 (#292, src/musiccalm.js): 장조 5음 음계(key 가 으뜸음, MIDI). 가락 조각(한 마디 8분음표 8칸)을 엮어 4마디 악구, 마지막 마디는 맺는 조각.
+     play 초 동안 연주하고 rest 초 쉼(앞뒤 fade 초). 곳(place)마다 빠르기·옥타브·가락이 나올 확률(fill)·음을 빼는 확률(drop)·크기·밝기(lp)·패드 크기·음색(inst)·여운(decay 배율) */
+  calm: {
+    key: 60, play: [120, 180], rest: 60, fade: 5, echo: 0.38,
+    places: {
+      bright: { bpm: 72, oct: 0, fill: 0.9, drop: 0.12, vol: 1, lp: 1.25, pad: 0.9, inst: 'kalimba', decay: 1 },   // 들머리·가게 거리
+      calm: { bpm: 66, oct: 0, fill: 0.75, drop: 0.25, vol: 0.9, lp: 1, pad: 1, inst: 'marimba', decay: 1.1 },     // 숲길·사면
+      sparse: { bpm: 63, oct: 0, fill: 0.45, drop: 0.55, vol: 0.75, lp: 0.8, pad: 0.6, inst: 'kalimba', decay: 1.3 }, // 능선·굼부리
+      top: { bpm: 66, oct: 12, fill: 0.4, drop: 0.6, vol: 0.8, lp: 1.2, pad: 0.55, inst: 'bell', decay: 1.6 },     // 정상
+      night: { bpm: 60, oct: -12, fill: 0.55, drop: 0.4, vol: 0.8, lp: 0.6, pad: 1.1, inst: 'marimba', decay: 1.5 }, // 밤
+      fire: { bpm: 64, oct: -12, fill: 1, drop: 0.15, vol: 0.85, lp: 0.8, pad: 0.5, inst: 'pluck', decay: 1, arp: true }, // 숙소 불멍
+    },
+  },
+};
+
+// 바람·억새·빗소리 (#292, src/wind.js). base: 바람 크기(구역 배율 1 일 때, #292 전 0.16 의 절반 아래), lp: 바람 로우패스(Hz) [숲, 오름],
+// cut: 마지막 깎기(그 위 대역을 두 번 거름), wave: 세기 물결 한 바퀴(초) [최소, 최대]·waveLo~waveHi 세기, gust: 돌풍 사이(초)·오르는 시간·필터 여는 배율·세기 배율
+// reed: 억새 사각거림 대역(Hz)·크기, rain: 빗소리 크기(비 1 일 때)·위 깎기, topK: 정상에서 더하는 몫, rainK: 비 올 때 바람에 더하는 몫
+export const WIND = {
+  base: 0.06, lp: [420, 520], cut: 1500,
+  wave: [5, 12], waveLo: 0.4, waveHi: 1,
+  gust: { gap: [14, 30], up: [1.5, 3.5], open: 1.6, lift: 1.25 },
+  reed: { f: 1300, g: 0.012 },
+  rain: 0.1, rainLp: 4500,
+  topK: 0.3, rainK: 0.5,
 };
 
 // 연출 감독 (#89, src/pacing.js): 힐링 시간(줍기·꽃·낚시)이 바탕이고 공격 시간(투기꾼·트럭·몹)은 짧고 또렷한 사건

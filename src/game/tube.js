@@ -140,7 +140,7 @@ function go(from, to) {
   const why = whyNot(); if (why) { toast(why); return false; }
   win.hidden = true; closePanels();
   const n = Math.min(Math.max(0, Math.floor(save.coins)), dropOf(from, to));
-  run = { from, to, t: 0, n, paid: 0, warped: false, out: false, p0: player.pos.clone(), rolls: [], ups: 0 };
+  run = { kind: 'tube', from, to, t: 0, n, paid: 0, warped: false, out: false, p0: player.pos.clone(), rolls: [], ups: 0 }; /* kind: 음악이 사건 장면과 가름 (#292) */
   state.cine = run; player.target = null; player.onArrive = null; player.speed = 0; late.stopAutoGo?.();
   player.heading = Math.atan2(from.mouth.x - player.pos.x, from.mouth.z - player.pos.z);
   from.lidTo = 1; setTb('i');

@@ -209,7 +209,7 @@ body.looking #pickmsg, body.hp-down #pickmsg, body.looking #combo, body.hp-down 
 #menu-music { flex: none; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; }
 #menu-music svg { display: block !important; width: 20px; height: 20px; }
 #menu-music[aria-pressed="false"] { color: var(--ink-soft); opacity: .6; }
-#music-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
+#music-vol, #sfx-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
 #menu-reset { --p: 0; position: relative; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; color: var(--ink-soft); background: transparent; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #menu-reset::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), rgba(128,128,128,.35) 0); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 #menu-reset svg { width: 18px; height: 18px; }
@@ -1895,7 +1895,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   </div>
   <div class="m-music">
     <button type="button" id="menu-music" aria-pressed="true" aria-label="배경 음악 켜기/끄기" title="배경 음악"><svg data-i="music"></svg></button>
-    <input type="range" id="music-vol" min="0" max="100" step="5" value="60" aria-label="배경 음악 크기">
+    <input type="range" id="music-vol" min="0" max="100" step="5" value="45" aria-label="배경 음악 크기">
+    <input type="range" id="sfx-vol" min="0" max="100" step="5" value="100" aria-label="효과음 크기">
   </div>
   <div class="m-more">
     <button type="button" id="menu-nick">이름 바꾸기</button>
