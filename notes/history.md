@@ -2195,3 +2195,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
   - 새로고침하는 곳 표: rev·fix(online.js, 자동·막음) / login·logout·delete(online.js, 누를 때) / newver(newver.js, 누를 때) / reset·devreset·devintro(menu.js) / perf(debug.js 성능 단계) / map(look.js 탐방로) / gl(scene.js 화면 잃음 '다시 불러오기') / 로딩 창 '다시 시도'(bootscreen.js 인라인, 누를 때) / mview 틀(어드민) / 카카오톡 → 바깥 브라우저(inapp.js, #239 그대로). 처음 방문(손님)에는 하나도 돌지 않음: loadrun 6절 '문서 이동 1번'(처음 방문·낡은 index 둘 다).
   - 첫 화면 깜박임(사용자 메모 '첫 화면 로딩될 때'): `tools/flicker.js` 에 '다. 처음 방문' — Pages 빌드(index.html)를 새 프로필로 http 로 열어 로딩 창 → 첫 화면 프레임 색을 재고, 앞뒤 사이에서 벗어난 3장 이하 묶음(하늘색·흰색·검은색 등)을 셈. 밤·낮 × d·m 모두 번쩍임 0 (로딩 창 밤색 40/41/34 → 0.4초 서서히 첫 화면). `FLK_ONLY=first` 로 이것만
   - 릴리스 노트: 로그인한 채로 열면 한 번 더 새로고침되던 것을 고쳤어요.
+
+## #293 전체 용량 재고 줄이기
+- 재기 `node tools/sizereport.mjs [--md]` → `notes/size.md` (첫 화면까지·게임 시작까지·한 시간 전부, 원래·gzip·brotli, main 안 큰 것 20). Pages 는 gzip 만, 모든 파일 max-age=600
+- 텍스처 webp: `node tools/texwebp.mjs`(Pillow)가 `assets/tex/<jpg 해시>.webp` 를 굽고, `packassets.mjs texOf` 가 있을 때만 씀(원본 jpg 가 바뀌면 저절로 jpg). 기준 jpg 85% 이하·PSNR 36dB 이상, 14장. 텍스처 합 -13%, 내 캐릭터 190→123KB
+- index.html: `<style>` css minify·HTML 주석 뺌 (gzip 61→49KB)
+- 앞뒤(gzip): 첫 화면 1477→1398KB, 시작 2887→2745KB, 전부 3990→3799KB (각 -5%). 목표(70%·80%)는 못 닿음: 남은 큰 몫은 three 673KB(한 파일이라 tree-shaking 안 됨)와 게임 코드 1.6MB(iife 한 파일이라 조각 못 냄). 다음 후보와 잰 값은 `notes/size.md`
