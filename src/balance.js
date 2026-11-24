@@ -303,7 +303,7 @@ export const BLOOM_FX = {
 export const DUMP = {
   players: 1,
   every: 180, // 남송이는 연출 감독(#89 PACE)이 부름. every 는 접속 안 한 동안 쌓는 양(DUMP_AMT)의 기준으로만 minEvery: 20,
-  hourFrac: 0.25,
+  hourFrac: 0.4, // #300 급한 불: 0.25 → 0.4 (사람이 몰릴 때 모자람)
   truckP: 0.4, // 한 번 올 때 트럭일 확률
   zoneBase: 0.3,
   dumpT: 5, // 버리는 데 걸리는 시간(초)
@@ -327,7 +327,7 @@ export const DUMP = {
   // 같이 있는 사람 수 (#131, src/refill.js): 오름 전체 쌓는 속도 = 한 명 기준 × n^crowdExp. 각자 둘레 투기꾼이 한 사람 몫(n^crowdExp ÷ n)씩 쌓음
   // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
   // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
-  crowdExp: 0.8, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
+  crowdExp: 1, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
 };
