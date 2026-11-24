@@ -27,3 +27,36 @@ export function offlineAdds(left, full, zones, sec) {
   }
   return out;
 }
+
+// 바닥 보장 (#300): 여러 명이 한 구역에 몰리면 방이 직접 채움 (투기꾼을 기다리지 않음). 수치 balance.js DUMP.floor
+// H 남은 수, full 가득 찬 수, zones 더미 구역, act { 구역: 활동 인원 }, near 사람 가까이 있는 더미 번호 Set(채우지 않음),
+// up { 구역: true } 지킴이가 서 있는 구역(빈 더미는 되살리지 않음), dt 지난 초. 반환 [더미 번호, 더할 수] 목록
+// 구역 인원 n 이 minN 아래면 아무것도 안 함(혼자 할 때 그대로). 목표 = min(n × perHead, 구역 가득 × maxFrac), 한 번에 n × rate × dt 까지
+// 받을 수 있는 더미에 고르게 나눔 (차례는 아래)
+export function floorAdds(H, full, zones, act, near, up, dt) {
+  const F = DUMP.floor, out = [];
+  for (const [zs, n] of Object.entries(act)) {
+    const z = +zs; if (!(n >= F.minN)) continue;
+    let cur = 0, zf = 0; const idx = [];
+    for (let i = 0; i < full.length; i++) if (zones[i] === z) { cur += H[i] | 0; zf += full[i]; idx.push(i); }
+    const target = Math.min(n * F.perHead, Math.round(zf * F.maxFrac));
+    let budget = Math.min(target - cur, Math.ceil(n * F.rate * dt)); if (budget <= 0) continue;
+    const room = (i) => full[i] - (H[i] | 0) > 0, byRoom = (a, b) => (full[b] - H[b]) - (full[a] - H[a]);
+    // 차례: 멀리 있고 남은 게 있는 더미 → 멀리 있는 빈 더미(지킴이가 서 있지 않을 때만) → 그래도 남으면 가까이 있지만 남은 게 있는 더미(이미 보이는 더미가 조금 커짐)
+    let cand = idx.filter((i) => room(i) && !near.has(i) && H[i] > 0).sort(byRoom);
+    if (!up[z]) cand = cand.concat(idx.filter((i) => room(i) && !near.has(i) && !(H[i] > 0)).sort(byRoom));
+    cand = cand.concat(idx.filter((i) => room(i) && near.has(i) && H[i] > 0).sort(byRoom));
+    while (budget > 0 && cand.length) {
+      const each = Math.max(1, Math.ceil(budget / cand.length)), next = [];
+      for (const i of cand) {
+        if (budget <= 0) break;
+        const have = out.find((o) => o[0] === i), room = full[i] - (H[i] | 0) - (have ? have[1] : 0), k = Math.min(each, room, budget);
+        if (k <= 0) continue;
+        if (have) have[1] += k; else out.push([i, k]);
+        budget -= k; if (room - k > 0) next.push(i);
+      }
+      cand = next;
+    }
+  }
+  return out;
+}

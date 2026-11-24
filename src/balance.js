@@ -328,6 +328,10 @@ export const DUMP = {
   // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
   // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
   crowdExp: 1, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
+  // 바닥 보장 (#300, src/refill.js floorAdds, 방 server roomcore 이 floor.every 초마다): 한 구역 활동 인원 n 이 minN 이상이면 그 구역 남은 쓰레기를
+  // min(n × perHead, 구역 가득 × maxFrac) 아래로 안 내려가게 n × rate 개/초까지 채움. 사람에게서 away m 안 더미는 안 건드림(눈앞에 생기지 않게, 사람마다 nearMax 개까지 알림)
+  // 혼자(한 구역 1명)·손님·혼자 하기는 그대로. 깨끗함: 바닥 보장이 돈 구역은 '지킴이 뒤 주운 수 ≥ 구역 가득' 이어도 지킴이가 섬 (roomcore zonePick)
+  floor: { minN: 2, perHead: 20, maxFrac: 0.6, rate: 2, every: 3, away: 45, nearMax: 8 },
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
   // 걷는 투기꾼 모습 (#291, src/game/villain.js): 지금 캐릭터에 옷·소품·동작. style 'A' 만화 도둑(검은 복면·줄무늬 긴팔·어깨 자루), 'B' 후드·선글라스·마스크(손에 봉투), 'C' 중절모·트렌치코트·검은 봉지 여럿. '' 면 예전 상자 모양

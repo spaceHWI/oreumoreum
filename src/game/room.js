@@ -1,5 +1,5 @@
 // 함께(net·social), 이모트 연결, 사진사 NPC, 입장 세션 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
-import { PERF, NET, DAILY } from '../balance.js';
+import { PERF, NET, DAILY, DUMP } from '../balance.js';
 import { TIER } from '../quality.js';
 import { createPhotographer } from '../photographer.js';
 import * as THREE from 'three';
@@ -19,6 +19,16 @@ import { toast, nearestHeapPos, ach } from './hud.js';
 import { emoRiding, emoCan, doEmote, setActions } from './menu.js';
 import { rideCode, peerRide } from './ride.js';
 
+// 바닥 보장 (#300): 방이 구역 인원을 세고(zn) 사람 눈앞 더미(nh)는 채우지 않게. 1초에 한 번만 셈
+const floorSeen = { t: -1e9, v: {} };
+function floorPresence() {
+  if (!trash?.heaps) return {};
+  const t = performance.now(); if (t - floorSeen.t < 1000) return floorSeen.v;
+  floorSeen.t = t; const near = [], F = DUMP.floor, x = player.pos.x, z = player.pos.z;
+  trash.heaps.forEach((h, i) => { if (near.length < F.nearMax && Math.hypot(h.x - x, h.z - z) < F.away) near.push(i); });
+  floorSeen.v = { zn: trash.zoneAt(x, z) | 0, nh: near };
+  return floorSeen.v;
+}
 // ---------- 함께 (room) ----------
 export const net = createNet({
   scene, player, save, roomName: () => roomFor('oreum-' + MAP_ID), // 서버별 방 (#35)
@@ -43,7 +53,7 @@ export const net = createNet({
     room.on('pos', (m) => { if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || hp?.isDown) return; player.pos.set(m.x, height(m.x, m.z), m.z); player.visY = player.pos.y; player.speed = 0; if (player.riding) { player.riding.pos.copy(player.pos); player.riding.speed = 0; } late.placeRunner(); });
     room.on('kick', () => toast('연결이 잠시 끊겼어요. 조금 뒤에 다시 이어져요'));
   },
-  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...late.deerPal?.presence(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}), ...(late.swarmExtra ? late.swarmExtra() : {}), ...(late.tubeExtra ? late.tubeExtra() : {}), ...(late.innExtra ? late.innExtra() : {}) }), /* tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76) */
+  extra: () => ({ ...(late.idleBeat?.() ? { a: 1 } : {}), ...(NS_TUT && !save.tut?.done ? { tu: 1 } : {}), ...social.presenceExtra(), rd: rideCode(), ...late.deerPal?.presence(), ...(player.cart ? { cs: player.cart.seat } : {}), dr: player.riding?.id || '', ...(state.emo ? state.emo.presence() : {}), ...(late.armsPresence ? late.armsPresence() : {}), ...(late.chargePresence ? late.chargePresence() : {}), ...(late.giveExtra ? late.giveExtra() : {}), ...(late.swarmExtra ? late.swarmExtra() : {}), ...(late.tubeExtra ? late.tubeExtra() : {}), ...(late.innExtra ? late.innExtra() : {}), ...floorPresence() }), /* tu = 튜토리얼 중(방이 사람 수에서 뺌, #131), wf = 무기 사건 (#123), rd = 탈것 (#69), cs = 마차 자리 (#120), dr = 탄 노루 (#92), em = 동작 (#76) */
   rideHook: (e, dt) => late.innPeer?.(e, dt) || late.tubePeer?.(e, dt) || peerRide(e, dt), // #270 숙소에서 묵는 사람은 안 보임 · 수거 관 (#248): 작아짐·숨김·튀어나옴이 먼저
   overHook: (e) => state.emo?.overlayPeer(e),
   cull: () => state.farCull, animR: PERF.peerAnimR[TIER], shadowR: PERF.peerShadowR[TIER], // 멀리 있는 사람 (#79)

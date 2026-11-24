@@ -38,7 +38,7 @@
 //   {t:'cx', h:[[번호, 피해]…]} 칸 주인 아닌 사람 → 칸 주인에게만 {t:'cx', h(피해 ≤ bossHitMax), from}. 따로 셈(NET.cavePerSec·caveMax)
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg, np, fill} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP, GIVE, CAVE } from '../../src/balance.js';
-import { offlineAdds, crowdMul } from '../../src/refill.js';
+import { offlineAdds, crowdMul, floorAdds } from '../../src/refill.js';
 import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 import { TITLES } from '../../src/punktext.js';
@@ -74,6 +74,28 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   }
   // 구역 지킴이 (#119): 구역 → 세운 시각(ms). room.js 가 저장·불러옴
   const ZH = {}; HEAP_DEFS.forEach((d, i) => { (ZH[d.zone] ||= []).push(i); });
+  // 바닥 보장 (#300, src/refill.js floorAdds): 구역별 활동 인원(presence zn, 튜토리얼 빼고 최근 움직인 사람) → 모자라면 사람 가까이(nh) 아닌 더미부터 조용히 채움
+  // 깨끗함과 나눔: 바닥 보장이 돈 구역(zoneFloor)은 지킴이 뒤 주운 수(zonePick)가 구역 가득을 넘으면 더미가 다 비지 않아도 지킴이가 섬
+  const ZFULL = {}; HEAP_DEFS.forEach((d, i) => { ZFULL[d.zone] = (ZFULL[d.zone] || 0) + HEAP_FULL[i]; });
+  const zonePick = {}, zoneFloor = {}; let floorT = 0;
+  const floorStat = { adds: 0, ticks: 0 };
+  function floorTick(t) {
+    const dt = floorT ? Math.min(10, (t - floorT) / 1000) : DUMP.floor.every; floorT = t;
+    const act = {}, near = new Set();
+    for (const p of peers.values()) {
+      if (Array.isArray(p.nh)) for (const i of p.nh) near.add(i);
+      if (p.tu || !p.zn || t - p.actT >= DUMP.crowdActive * 1000) continue;
+      act[p.zn] = (act[p.zn] || 0) + 1;
+    }
+    const up = {}; for (const z of Object.keys(ZH)) up[z] = !!(G.get(+z) && t - G.get(+z) < holdMs());
+    let got = 0;
+    for (const [i, n] of floorAdds(H, HEAP_FULL, HZ, act, near, up, dt)) { H[i] = Math.min(HEAP_FULL[i], H[i] + n); got += n; heapOut.set(i, H[i]); const z = HEAP_DEFS[i].zone; zoneFloor[z] = (zoneFloor[z] || 0) + n; }
+    if (got) { heapsDirty = true; floorStat.adds += got; floorStat.ticks++; }
+  }
+  function zonePicked(z, n, t) {
+    zonePick[z] = (zonePick[z] || 0) + n;
+    if (zoneFloor[z] > 0 && zonePick[z] >= ZFULL[z]) raiseGuard(z, t);
+  }
   const G = new Map(); let guardsDirty = false;
   if (Array.isArray(guards)) for (const a of guards) if (Array.isArray(a) && ZH[a[0]] && isNum(a[1]) && a[1] > 0) G.set(a[0], a[1]);
   const holdMs = () => ZONE_GUARD.holdSec * 1000;
@@ -86,7 +108,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   function raiseGuard(z, t) {
     if (!ZH[z]) return;
     const at = G.get(z); if (at && t - at < holdMs()) return; // 서 있는 동안은 그대로
-    G.set(z, t); guardsDirty = true; guardOut.push([z, t]);
+    G.set(z, t); guardsDirty = true; guardOut.push([z, t]); zonePick[z] = 0; zoneFloor[z] = 0; // #300: 지킴이가 서면 바닥 보장 셈도 새로
   }
   let endDay = '', endMsg = null; // 엔딩 (#168): 오늘 모두에게 튼 날짜, 그 메시지 {at, by, names}
   const kstDay = (t) => new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
@@ -188,6 +210,9 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     // 움직임 (#131 사람 수): 마지막으로 센 자리에서 crowdMove m 넘게 가면 움직인 것으로. 처음 자리는 세지 않음
     if (!p.has) { p.ax = d.x; p.az = d.z; } else if (Math.hypot(d.x - p.ax, d.z - p.az) > DUMP.crowdMove) { p.ax = d.x; p.az = d.z; p.actT = t; }
     p.tu = !!d.tu;
+    // 바닥 보장 (#300): zn 지금 구역(0~5), nh 가까이 있는 더미 번호(DUMP.floor.nearMax 개까지). 방만 쓰고 남에게 안 보냄. 옛 클라이언트는 없음 → 구역 인원에 안 셈
+    if ('zn' in d) { p.zn = Number.isInteger(d.zn) && ZH[d.zn] ? d.zn : 0; delete d.zn; }
+    if ('nh' in d) { p.nh = Array.isArray(d.nh) ? d.nh.slice(0, DUMP.floor.nearMax).filter((i) => Number.isInteger(i) && i >= 0 && i < HEAP_FULL.length) : null; delete d.nh; }
     if ('tb' in d && d.tb !== 'i' && d.tb !== 'p' && d.tb !== 'o') delete d.tb; // 수거 관 단계 (#248): 이 셋만 남에게 보냄
     caveCell(p, d); // 동굴 칸 (#195)
     p.has = true; p.mx = d.x; p.mz = d.z; p.mT = t;
@@ -326,7 +351,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
         // 보낸 수(ask)는 그대로 세고 받는 수만 takeMax·남은 수·초당 몫으로 자름 (#144: 예전엔 takeMax 로 먼저 잘라 넘친 몫을 되돌리라고 알리지 않았음)
         const ask = Math.max(1, Math.min(NET.takeAsk, m.n | 0 || 1)), got = Math.max(0, Math.min(ask, NET.takeMax, H[h], Math.floor(p.takeTok)));
-        if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); if (!H[h]) zoneEmptied(HEAP_DEFS[h].zone, t); }
+        if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); zonePicked(HEAP_DEFS[h].zone, got, t); if (!H[h]) zoneEmptied(HEAP_DEFS[h].zone, t); }
         if (got < ask) { st.takeNo += ask - got; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: ask - got })); } // 늦게 온 마지막 것·너무 빠른 줍기: 주운 사람이 그만큼 되돌림
         break;
       }
@@ -368,6 +393,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     tick++; st.ticks++;
     if (peers.size) roomSeen = now();
     if (tick % 10 === 0) idleCheck(now());
+    if (peers.size > 1 && tick % Math.max(1, Math.round(DUMP.floor.every * 1000 / NET.tickMs)) === 0) floorTick(now()); /* 바닥 보장 (#300) */
     if (peers.size && tick % 10 === 0) { const t = now(); followCrowd(t); const v = r1(crowd); if (v !== npSent && t - npT >= 2000) { npSent = v; npT = t; all(JSON.stringify({ t: 'np', n: v })); } } // 사람 수 (#131): 1초마다 따라가고 바뀌면 알림
     if (heapOut.size) { all(JSON.stringify({ t: 'hs', hs: [...heapOut] })); heapOut.clear(); }
     for (const [z, at] of guardOut) all(JSON.stringify({ t: 'zg', z, at })); guardOut.length = 0;
@@ -396,6 +422,6 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
     guards: () => guardList(now()), guardsDirty() { const d = guardsDirty; guardsDirty = false; return d; },
     get seen() { return roomSeen; }, raid, caveHost: (ck) => caveHosts.get(ck) || null, stats: () => ({ n: peers.size, ...st }),
     counts() { let login = 0; for (const p of peers.values()) if (p.acct) login++; return { n: peers.size, login }; }, // 지금 접속 (#186): 사람 수·로그인 수만
-    get crowd() { return crowd; }, active: () => activeN(now()),
+    get crowd() { return crowd; }, active: () => activeN(now()), floor: () => ({ ...floorStat, pick: { ...zonePick }, added: { ...zoneFloor } }), /* #300 */
   };
 }
