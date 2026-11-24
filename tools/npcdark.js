@@ -93,6 +93,28 @@ async function shoot(p, tag, cond) {
       for (const [n, px, l] of r) check(px >= 50 && l >= f, `${tag} ${n}: 밝기 ${l.toFixed(0)} (픽셀 ${px}) ≥ ${f}`);
     }
     check(!errs.length, '페이지 오류 없음 ' + errs.slice(0, 2).join(' | ')); await ctx.close(); }
+  /* 3) 멀리용으로 바뀐 뒤 (#295): 멀리용 텍스처가 통째로 검게 구워졌던 일. 카메라를 CM.far 밖(24m)에 두고 망원으로 당겨 찍음. 놓아 줬다가(#272: 큰 모델 텍스처 GPU 에서 내림) 다시 가까이 와도 같은 검사 */
+  { const { p, errs, ctx } = await open(b, false);
+    await p.waitForFunction(() => window.__npcs.every((e) => !e.m || e.m.loaded.hi), null, { timeout: 60000 }).catch(() => {});
+    await p.waitForFunction(() => window.__blackMesh().length === 0, null, { timeout: 30000 }).catch(() => {});
+    const names = await p.evaluate(() => window.__npcs.map((e) => e.name));
+    const far = async (i) => p.evaluate((i) => { window.__npcs.forEach((e) => e.m && e.m.near(false)); window.__solo(i); const o = window.__oreum, e = window.__npcs[i], A = window.__at, c = o.camObj, hh = e.root.rotation.y, D = 24;
+      c.position.set(A.x + Math.sin(hh) * D, A.y + e.s * 0.55, A.z + Math.cos(hh) * D); c.lookAt(A.x, A.y + e.s * 0.42, A.z); c.fov = 2 * Math.atan(e.s * 0.7 / D) * 180 / Math.PI; c.updateProjectionMatrix(); }, i);
+    const lumOf = async (tag, i) => { const fa = path.join(OUT, `_${tag}${i}a.png`), fb = path.join(OUT, `_${tag}${i}b.png`);
+      await p.waitForTimeout(900); await p.screenshot({ path: fa }); await p.evaluate(() => window.__npcs.forEach((e) => { e.root.visible = false; })); await p.waitForTimeout(250); await p.screenshot({ path: fb });
+      const r = lum(fa, fb); fs.unlinkSync(fa); fs.unlinkSync(fb); return r; };
+    for (const [tag, at, f] of [['멀리 낮', ['clear', 13], floor], ['멀리 밤', ['clear', 23], nightFloor * 0.8]]) {
+      await p.evaluate(([w, t]) => { const o = window.__oreum; o.setWeather(w); o.setTod(t); window.__hideMe(); }, at);
+      for (let i = 0; i < names.length; i++) { if (names[i] === 'runner') continue;
+        await far(i); const far1 = await p.evaluate((i) => window.__npcs[i].m.far, i); const [n, l] = await lumOf('far', i);
+        check(far1 && n >= 50 && l >= f, `${tag} ${names[i]}: 멀리용 ${far1} 밝기 ${l.toFixed(0)} (픽셀 ${n}) ≥ ${f.toFixed(0)}`); }
+    }
+    /* 놓아 줬다가 다시 가까이: 큰 모델 텍스처를 GPU 에서 내리고(relTick 과 같은 일) 가까이 세워 찍음 */
+    await p.evaluate(() => { const o = window.__oreum; o.setWeather('clear'); o.setTod(13); o.scene.traverse((m) => { if (m.isSkinnedMesh && m.material.map && m.material.map.image) m.material.map.dispose(); }); });
+    for (let i = 0; i < names.length; i++) { if (names[i] === 'runner') continue;
+      await p.evaluate((i) => { window.__npcs.forEach((e) => e.m && e.m.near(true)); window.__solo(i); }, i); const [n, l] = await lumOf('back', i);
+      check(n >= 50 && l >= floor, `놓아 줬다가 다시 가까이 ${names[i]}: 밝기 ${l.toFixed(0)} (픽셀 ${n}) ≥ ${floor}`); }
+    check(!errs.length, '멀리 검사 페이지 오류 없음 ' + errs.slice(0, 2).join(' | ')); await ctx.close(); }
   await b.close(); server.close();
   console.log(bad.length ? `실패 ${bad.length}` : '모두 통과');
   process.exit(bad.length ? 1 : 0);
