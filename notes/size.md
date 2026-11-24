@@ -27,13 +27,13 @@
 <!-- 지금 -->
 | 묶음 | 파일 수 | 원래 | gzip (Pages) | brotli |
 |---|---|---|---|---|
-| 첫 화면까지 | 3 | 3433KB | 1398KB | 1186KB |
-| 게임 시작까지 | 16 | 4824KB | 2745KB | 2515KB |
-| 한 시간 전부 | 36 | 5921KB | 3799KB | 3552KB |
+| 첫 화면까지 | 3 | 3459KB | 1408KB | 1194KB |
+| 게임 시작까지 | 16 | 4850KB | 2754KB | 2523KB |
+| 한 시간 전부 | 36 | 5947KB | 3808KB | 3560KB |
 
 | 파일 | 언제 | 원래 | gzip | brotli |
 |---|---|---|---|---|
-| main.js | 첫 화면 | 2939KB | 1087KB | 887KB |
+| main.js | 첫 화면 | 2965KB | 1096KB | 895KB |
 | a/stone.bin | 시작 뒤 한가할 때 | 282KB | 276KB | 274KB |
 | a/runner.bin | 첫 화면 | 269KB | 262KB | 258KB |
 | a/salon.bin | 시작 뒤 한가할 때 | 256KB | 251KB | 249KB |
@@ -70,19 +70,19 @@
 | a/case-chute-lo.bin | 가까이 갈 때 | 12KB | 12KB | 12KB |
 | a/case-mango-lo.bin | 가까이 갈 때 | 5KB | 4KB | 4KB |
 
-**main 안의 몫** (minify 뒤): three 704KB · 박아 넣은 자료(지형·벽·글·그림) 597KB · 게임 코드 1634KB
+**main 안의 몫** (minify 뒤): three 704KB · 박아 넣은 자료(지형·벽·글·그림) 599KB · 게임 코드 1658KB
 
 | main 안 큰 것 20 | 크기 |
 |---|---|
 | node_modules/three/build/three.module.js | 673KB |
 | src/namsongidata.js | 220KB |
-| src/balance.js | 119KB |
+| src/balance.js | 120KB |
 | src/wallmodel.js | 68KB |
 | src/version.js | 42KB |
 | src/runner.js | 39KB |
-| src/namsongi.js | 35KB |
+| src/namsongi.js | 34KB |
 | src/punktext.js | 33KB |
-| src/audio.js | 30KB |
+| src/audio.js | 29KB |
 | src/icons.js | 26KB |
 | src/stonelogo.js | 23KB |
 | src/life.js | 23KB |
