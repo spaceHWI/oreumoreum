@@ -190,6 +190,7 @@ export function applySky() {
   const sc = 700 + g * 500; bodies.sunSprite.scale.set(sc, sc, 1);
   bodies.stars.material.opacity = THREE.MathUtils.smoothstep(-el, 6, 14) * 0.85; // 해가 지평선 아래 6° 지나면서 서서히, 14°쯤 다 보임
   nsAfter(); applyWx(el);
+  { const see = late.fireSee?.() || 0; if (see > 0) { hemi.intensity += see * (1 - k) * ex; fogBase.f *= late.fireFog?.() ?? 1; applyZoneFog(); } } /* #290 불멍 '멍': 밤·안개에서 조금 더 보임 */
   sunState = { el, az, k, golden: g };
   late.sound.setDaylight?.(k);
 }

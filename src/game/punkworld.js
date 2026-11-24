@@ -207,6 +207,7 @@ function giveNote(id, { quiet = false } = {}) { // 쪽지 한 장을 얻음. 싸
   openNote(id); return true;
 }
 // 까마귀가 떨어뜨리는 영수증 쪽지 (#163): 그 자리 구역의 안 주운 쪽지 하나. 떨궜으면 true
+late.radioSitu = (k, text) => { if (!radioOn()) return false; pushSitu(k, text); return true; }; /* 다른 파일의 상황 방송 (#289 순위판 1위). 방송이 꺼져 있으면 false */
 late.receiptDrop = (pos) => { const z = trash?.zoneAt(pos.x, pos.z) || 0; return z >= 1 && !!dropNote(z); };
 function dropNote(z) { // 그 구역에서 아직 안 주운 쪽지 하나 (구역 밖·다 모은 구역은 없음)
   const left = NOTES.filter((n) => n.z === z && !P.notes[n.id] && !veiled(n.t + n.from + n.b)); if (!left.length) return null; /* #207 단계 3 전엔 외계인 글 빼고 */

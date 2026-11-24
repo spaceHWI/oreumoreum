@@ -18,6 +18,12 @@ export const admTab = () => cur;
 
 const row = (k, v) => { const d = document.createElement('div'); d.className = 'r'; const a = document.createElement('span'); a.textContent = k; const b = document.createElement('b'); b.textContent = v; d.append(a, b); return d; };
 const hm = (t) => new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+/* 모바일 UI 토글 둘(어드민 창 첫 탭 맨 위·일반 설정 창 맨 위)이 같은 상태를 보임 (#297) */
+export function paintMview() {
+  const mvOn = IN_FRAME || mviewOn(), off = !IN_FRAME && isTouch; /* 진짜 터치 기기는 이미 모바일 화면 */
+  for (const id of ['adm-mview', 'menu-mview']) { const b = $(id); if (!b) continue; b.setAttribute('aria-pressed', String(mvOn)); b.textContent = mvOn ? '모바일 UI 로 하기: 켬' : '모바일 UI 로 하기: 끔'; b.disabled = off; }
+  $('adm-mview').closest('.adm-sec').hidden = off; $('menu-mview').hidden = off;
+}
 function paint() {
   const kind = IN_FRAME ? '폰 틀 (모바일 화면으로 보기)' : isTouch ? '터치 기기' : '데스크톱';
   $('adm-info').replaceChildren(row('버전', VERSION), row('서버', serverHost() || '혼자 하기'), row('맵·방', MAP_ID + (late.mpRoom ? ` · ${late.mpRoom.ch + 1}번 방` : '')), row('화면', `${innerWidth}×${innerHeight} · ${kind}`));
@@ -27,10 +33,7 @@ function paint() {
   const sub = state.account?.sub, sb = $('adm-sub');
   sb.closest('.adm-sec').hidden = !sub;
   if (sub) sb.textContent = sb.getAttribute('aria-pressed') === 'true' ? sub : '●●●●●● (누르면 보임)';
-  const mv = $('adm-mview'), mvOn = IN_FRAME || mviewOn();
-  mv.setAttribute('aria-pressed', String(mvOn)); mv.textContent = mvOn ? '폰 틀로 보기: 켬' : '폰 틀로 보기: 끔';
-  mv.disabled = !IN_FRAME && isTouch;
-  mv.closest('.adm-sec').hidden = mv.disabled; /* 진짜 터치 기기는 이미 모바일 화면 */
+  paintMview();
   const sel = $('adm-story'), ids = late.storyApi?.ids || [];
   if (sel.options.length !== ids.length + 1) { sel.replaceChildren(new Option('이야기…', '')); for (const id of ids) sel.append(new Option(id, id)); }
 }
@@ -60,7 +63,8 @@ export function initAdmWin() {
   });
   $('adm-go-inbox').addEventListener('click', () => $('dev-inbox').click());
   $('adm-sub').addEventListener('click', () => { const b = $('adm-sub'); b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); paint(); });
-  $('adm-mview').addEventListener('click', () => { if (!$('adm-mview').disabled) setMview(!(IN_FRAME || mviewOn())); });
+  for (const id of ['adm-mview', 'menu-mview']) $(id).addEventListener('click', () => { if (!$(id).disabled) setMview(!(IN_FRAME || mviewOn())); });
+  paintMview();
   $('adm-lv').addEventListener('click', () => {
     const L = late.level; if (!L) return; const s = L.state();
     if (!s.need) { toast('이미 가장 높은 레벨'); return; }

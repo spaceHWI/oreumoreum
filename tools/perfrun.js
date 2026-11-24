@@ -5,7 +5,7 @@
 //   안티에일리어싱(MSAA)의 샘플은 '일' 에 넣지 않는다 (#276: 폰도 켬, PERF.aaPhone). 켜졌는지는 줄 끝 'AA' 로 따로 적는다
 // 소프트웨어 GL 은 1초에 10프레임 남짓이라 그대로는 상한(30)이 보이지 않는다. 그래서 Playwright 가짜 시계(page.clock)로
 //   60Hz rAF 를 흉내 내 '기기가 따라가 준다면' 몇 번 그리는지를 센다 (가짜 1초 = rAF 60번. 실제로는 더 오래 걸림)
-// 장면: field 들판을 W 누른 채 걷기(1초마다 방향 바꿈·포인터 움직임) · idle 들판에 서서 입력 없음 · street 가게 거리 걷기 · arena 서바이벌 판(구역 1)
+// 장면: fire 숙소 마당 불멍(밤, 앉아서, #290) · field 들판을 W 누른 채 걷기(1초마다 방향 바꿈·포인터 움직임) · idle 들판에 서서 입력 없음 · street 가게 거리 걷기 · arena 서바이벌 판(구역 1)
 // --base <ref>: 그 커밋을 임시 폴더에 받아 빌드해 '앞' 으로 같이 재고 앞·뒤 표를 냄 (예: --base origin/dev). 열은 못 재니 '그린 픽셀 수' 를 일의 양으로 본다
 // 목표 (#271): 폰 기본 설정에서 초당 그린 픽셀 수가 앞의 절반 아래
 const { chromium } = require('playwright');
@@ -35,7 +35,7 @@ async function measure(b, dist, scen) {
   await p.evaluate((scen) => {
     const o = window.__oreum; document.querySelectorAll('.overlay').forEach((e) => { e.hidden = true; });
     o.setTod(13); o.setWeather('clear'); o.pace?.pacing && (o.pace.pacing.test.first.done = true);
-    if (scen === 'street') o.street?.go(0, 20); else if (scen === 'arena') { o.swarm?.start(1); } else o.tp(-60, 40, Math.PI / 2);
+    if (scen === 'street') o.street?.go(0, 20); else if (scen === 'arena') { o.swarm?.start(1); } else if (scen === 'fire') { o.shopGate?.open?.('inn'); o.setTod(21); if (o.fire) { o.fire.go(); o.fire.sit(); } else o.street?.go(0, 58); } /* #290 숙소 마당 불멍: 밤에 앉아 불을 봄 (예전 판은 숙소 앞) */ else o.tp(-60, 40, Math.PI / 2);
     if (o.hp) { o.hp.max = 1e6; o.hp.hp = 1e6; }
     const r = o.renderer, sm = r.shadowMap, r0 = sm.render; window.__pr = { sh: 0, spx: 0, px: 0, calls: 0, n: 0 };
     sm.render = function (...a) { if (sm.enabled && (sm.autoUpdate || sm.needsUpdate) && a[0]?.length) { window.__pr.sh++; for (const l of a[0]) if (l.castShadow) window.__pr.spx += l.shadow.mapSize.x * l.shadow.mapSize.y; } return r0.apply(this, a); };

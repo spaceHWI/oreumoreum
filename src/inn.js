@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { INN } from './balance.js';
 import { glowSprite } from './propmodel.js';
+import { createFirePit } from './firepit.js';
 
 const M4 = (x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
 function piece(g, color, m) {
@@ -131,6 +132,9 @@ export function createInn({ scene, height, site, low = false, col = null }) {
   const wait = toWorld(W / 2 - 1.2, 0.05, -0.6); // 노루가 기다리는 자리 (앞마당 오른쪽 끝)
   const center = toWorld(0, 0, zC);
   const signPos = toWorld(0, H + 1.0, zC);
+  /* 옆마당 불멍 화로 (#290, src/firepit.js): 건물 옆 잔디, 의자는 건물 깊이 쪽으로 마주 봄 */
+  const FP = INN.fire, [fx, fz] = wpt(FP.side * (W / 2 + FP.out), zC + FP.back);
+  const fire = createFirePit({ scene, height, x: fx, z: fz, rot: site.rot, low, col });
   let lit = -1;
   function update(dt, night) {
     const on = night > 0.01 ? 1 : 0;
@@ -140,5 +144,5 @@ export function createInn({ scene, height, site, low = false, col = null }) {
     for (const b of bulbs) b.material.opacity = night;
     poolMat.opacity = night * 0.45;
   }
-  return { root, center, door, inside, desk, wait, signPos, update, y0, rot: site.rot };
+  return { root, center, door, inside, desk, wait, signPos, update, y0, rot: site.rot, fire };
 }

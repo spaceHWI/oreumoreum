@@ -16,7 +16,7 @@ const RING = 2 * Math.PI * 40;
 // 들것 든 사람: 지금 그림체 캐릭터, 흰 옷(조끼 대신 흰 재킷)·흰 모자
 const CREW_OUTFIT = (base) => ({ ...base, hat: { type: 'cap', color: '#ecebe4', back: false }, shirt: { type: 'tee', color: '#f4f3ee' }, pants: { ...base.pants, color: '#3d4352' }, shoes: { ...base.shoes, color: '#2a2a30' }, gear: { back: 'back:none', hand: 'hand:none' } });
 
-export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, startAt = null, el, enabled, onDown, onUp, regenMul, maxMul, showBar = null }) {
+export function createHp({ scene, height, buildRunner, outfit, save, persist, start, startHeading, startAt = null, el, enabled, onDown, onUp, regenMul, maxMul, showBar = null, waitMul = null }) {
   const MAX = () => HP.max * (maxMul ? maxMul() : 1); // 티셔츠(#52) 최대 HP
   let hp = MAX(), sinceHit = 99, pending = false, down = null, flashT = 0;
   if (!save.hpDown || typeof save.hpDown !== 'object') save.hpDown = {};
@@ -98,7 +98,7 @@ export function createHp({ scene, height, buildRunner, outfit, save, persist, st
     if (L < 1) { ux = -Math.sin(h0); uz = -Math.cos(h0); } else { ux /= L; uz /= L; }
     // 머리가 u(시작 지점) 쪽으로 가게 뒤로 눕는다: 앞 = −u
     const h1 = Math.atan2(-ux, -uz);
-    down = { ph: 'fall', t: 0, wait: HP.waits[D.n], ux, uz, h0, h1, ang0: Math.min(LIE, ang0), fx: P.pos.x, fz: P.pos.z, cx: P.pos.x + ux * FOOT, cz: P.pos.z + uz * FOOT, dim: 0 };
+    down = { ph: 'fall', t: 0, wait: HP.waits[D.n] * (waitMul ? waitMul() : 1), ux, uz, h0, h1, ang0: Math.min(LIE, ang0), fx: P.pos.x, fz: P.pos.z, cx: P.pos.x + ux * FOOT, cz: P.pos.z + uz * FOOT, dim: 0 };
     P.knock = null; P.air = false; P.jumpY = 0; P.jumpV = 0; P.kb.set(0, 0, 0); P.target = null; P.onArrive = null; P.speed = 0; P.running = false; P.pose = 'move'; P.heading = h0;
     lie.ang = down.ang0;
     if (!crew) build();
