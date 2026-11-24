@@ -26,7 +26,8 @@ export const ASSET_SRC = [
   ['hair-bun', 'gear/head-bun.js', 'default', FLOAT],
   ['steps', 'stepsamples.js', 'STEP_SAMPLES', null],
   // 사건 파일 Tripo 모델 (#262): 가까이 갔을 때만 받음(meta.lazy → 한가할 때 받는 차례에 넣지 않음). -lo 는 멀리용(1,500 삼각형·텍스처 128)
-  ...['yeti', 'mib', 'ghost-keeper', 'arena-keeper', 'hose'].flatMap((n) => {
+  // #305: 오름지기(jigi)·망고 좌판(stall)·서바이벌 징(gong)·수거 관 투입구(chute)·망고(mango). 모두 가까이 갔을 때만
+  ...['yeti', 'mib', 'ghost-keeper', 'arena-keeper', 'hose', 'jigi', 'stall', 'gong', 'chute', 'mango'].flatMap((n) => {
     const N = n.toUpperCase().replace(/-/g, '_');
     return [['case-' + n, 'model-case-' + n + '.js', N + '_M', PROP, true], ['case-' + n + '-lo', 'model-case-' + n + '-lo.js', N + '_LO', PROP, true]];
   }),

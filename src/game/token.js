@@ -19,6 +19,9 @@ import { hasMag, magLine } from '../reload.js';
 import { height } from '../world.js';
 import { LOW } from '../gfx2.js';
 import { caseModel } from '../casemodels.js';
+import { tripoProp } from '../tripoprop.js';
+import { CASE_MODELS } from '../balance.js';
+import { MANGO_ICON } from '../mangoicon.js';
 import { state, late } from './state.js';
 import { $, save, persist, CL, WSLOT, syncEquipGear, wearV } from './save.js';
 import { scene } from './scene.js';
@@ -32,6 +35,8 @@ const TK = () => save.tok;
 
 /* ---------- 그림: 망고 ---------- */
 const GONG = '<path d="M12 5c5.5-.5 9 3.6 8 9-1 4.6-5 6.5-9 5.8C6.7 19 3.5 15.5 4.5 10.8 5.3 7.3 8.3 5.2 12 5z"/><path d="M12 5c0-1.800 1-3 3-3.300"/>';
+const mimg = (cls = '') => `<img class="tok-ic ${cls}" src="${MANGO_ICON}" alt="" aria-hidden="true" draggable="false">`; /* #305 망고 모델을 구운 그림 (model/icon-mango.py) */
+late.mangoIcon = mimg; /* #301 위쪽 줄 망고 개수 등에서 같이 씀 */
 const gsvg = (cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${GONG}</svg>`;
 const LOGO = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 56"><rect x="6" y="4" width="4" height="48" rx="2" fill="#5a4126"/><rect x="54" y="4" width="4" height="48" rx="2" fill="#5a4126"/><rect x="4" y="6" width="56" height="5" rx="2" fill="#5a4126"/><circle cx="32" cy="30" r="17" fill="#d8a63c" stroke="#8a6420" stroke-width="3"/><circle cx="32" cy="30" r="7" fill="none" stroke="#8a6420" stroke-width="2.5"/><rect x="14" y="48" width="36" height="5" rx="2" fill="#f08a24"/></svg>`);
 
@@ -39,6 +44,7 @@ const st = document.createElement('style');
 st.textContent = `
 .tok-n { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); font-weight: 800; color: #ffcf7a; }
 .tok-n svg { width: 14px; height: 14px; color: #ffcf7a; }
+.tok-n .tok-ic, #where-tok .tok-ic { width: 16px; height: 16px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
 #where-tok { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-weight: 800; color: #ffcf7a; }
 #where-tok svg { width: 13px; height: 13px; }
 #where-tok[hidden] { display: none; }
@@ -95,6 +101,26 @@ const reviveReady = () => suitFull() && !reviveUsed && Date.now() >= (TK().rv ||
   return h0(d);
 }; }
 
+/* ---------- 떨어지는 망고 (#305): 받으면 머리 위로 튀어 올랐다 발밑에 떨어지고 사라짐. 망고 모델(tripoprop) 몇 알을 돌려 씀, 끝나면 안 그림 ---------- */
+const pops = [];
+function popMango(n) {
+  for (let i = 0; i < n; i++) {
+    let p = pops.find((q) => q.t >= q.T); if (!p) { if (pops.length >= T.pop.max) break; p = { m: tripoProp('mango', { scale: CASE_MODELS.prop.mango * T.pop.scale, shadow: false }), t: 1, T: 1 }; p.m.root.visible = false; scene.add(p.m.root); pops.push(p); }
+    const a = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 0.7;
+    Object.assign(p, { t: -i * 0.12, T: T.pop.t, x: player.pos.x, z: player.pos.z, dx: Math.sin(a) * r, dz: Math.cos(a) * r, sp: (Math.random() - 0.5) * 9 });
+    p.m.near();
+  }
+}
+function tickPops(dt) {
+  for (const p of pops) {
+    if (p.t >= p.T) { p.m.root.visible = false; continue; }
+    p.t += dt; const u = Math.max(0, p.t) / p.T, R = p.m.root; R.visible = p.t > 0 && p.t < p.T;
+    const x = p.x + p.dx * u, z = p.z + p.dz * u, g = height(x, z);
+    R.position.set(x, g + 2.6 * 4 * u * (1 - u) + 1.4 * (1 - u) + 0.05, z); R.rotation.set(p.sp * u, p.sp * u * 0.7, 0.4);
+    R.scale.setScalar(u > 0.85 ? Math.max(0.01, (1 - u) / 0.15) : Math.min(1, 0.3 + u * 6));
+  }
+}
+
 /* ---------- 얻기 ---------- */
 let leaderOut = false, curRun = null;
 { const prev = life.hooks.enemyRepel; life.hooks.enemyRepel = (kind, pos, def, e) => { prev?.(kind, pos, def, e); if (def?.swarm === 'leader') leaderOut = true; }; }
@@ -103,7 +129,7 @@ function give(n, z, win, why) {
   t.n += n; t.got += n; t.rec[z] = { at: Date.now(), n, win: win ? 1 : 0 };
   ach.emit('token', n); late.questEv?.('token', n);
   if (!t.seen) { t.seen = 1; setTimeout(() => toast(`처음 얻은 ${T.name} · 터 문 옆 좌판에서 ${T.name}로만 사요`, 4), 2600); }
-  persist(); tagT = 0; late.bagRefresh?.();
+  persist(); tagT = 0; late.bagRefresh?.(); popMango(Math.min(T.pop.max, n));
   if (late.tokApi) late.tokApi.last = { n, z, win: !!win, why };
   return n;
 }
@@ -138,7 +164,7 @@ document.addEventListener('click', (e) => {
 late.tokFoot = () => {
   const t = TK(), lost = lostSlots(), d = suitDmg(), K = t.kit;
   const b = (op, name, txt) => `<button type="button" class="chip" data-tokkit="${op}:${name}">${txt}</button>`;
-  return `<div class="tok-foot"><span class="tok-n" title="${T.name}">${gsvg()}${t.n}</span>`
+  return `<div class="tok-foot"><span class="tok-n" title="${T.name}">${mimg()}${t.n}</span>`
     + (lost.length ? `<span class="lose">줍기 ▼ ${lost.join('·')}</span>` : '') + (d ? `<span class="fight">피해 +${Math.round(d * 100)}%</span>` : '') + (suitFull() ? '<span class="fight">한 벌 덤</span>' : '')
     + (K.pick ? b('wear', 'pick', '줍기 차림') : '') + (K.fight ? b('wear', 'fight', '싸움 차림') : '')
     + b('save', 'pick', K.pick ? '줍기 차림 ↻' : '지금을 줍기 차림으로') + b('save', 'fight', K.fight ? '싸움 차림 ↻' : '지금을 싸움 차림으로') + '</div>';
@@ -179,9 +205,13 @@ function placeStalls() {
   for (const a of late.arenaApi?.list?.() || []) {
     const f = [Math.sin(a.face), Math.cos(a.face)], tg = [Math.cos(a.face), -Math.sin(a.face)], R = A.r + T.stall.out;
     const x = a.x + f[0] * R + tg[0] * T.stall.side, z = a.z + f[1] * R + tg[1] * T.stall.side, y = height(x, z);
-    const mesh = new THREE.Mesh(geo, mat); mesh.position.set(x, y, z); mesh.rotation.y = a.face; mesh.castShadow = false; mesh.receiveShadow = !LOW; mesh.visible = false; mesh.matrixAutoUpdate = false; mesh.updateMatrix(); scene.add(mesh);
+    /* #305 Tripo 망고 좌판 (tripoprop.js: 가까이 가면 받음, 그 전엔 예전 코드 모양) + 판 위 망고 한 알 */
+    const ph = new THREE.Mesh(geo, mat); ph.castShadow = false; ph.receiveShadow = !LOW;
+    const P = tripoProp('stall', { scale: CASE_MODELS.prop.stall, ph, shadow: false }), mesh = P.root;
+    const mg = tripoProp('mango', { scale: CASE_MODELS.prop.mango, shadow: false }); mg.root.position.set(0.12, T.stall.mangoY, T.stall.mangoZ); mg.root.rotation.set(0.25, 0.7, -0.5); mesh.add(mg.root);
+    mesh.position.set(x, y, z); mesh.rotation.y = a.face; mesh.visible = false; mesh.matrixAutoUpdate = false; mesh.updateMatrix(); scene.add(mesh);
     const fx = x + f[0] * 1.3, fz = z + f[1] * 1.3, nx = x - f[0] * 0.75, nz = z - f[1] * 0.75;
-    const s = { zone: a.zone, x, z, rot: a.face, mesh, front: new THREE.Vector3(fx, height(fx, fz), fz), npc: new THREE.Vector3(nx, height(nx, nz), nz) };
+    const s = { zone: a.zone, x, z, rot: a.face, mesh, prop: P, front: new THREE.Vector3(fx, height(fx, fz), fz), npc: new THREE.Vector3(nx, height(nx, nz), nz) };
     s.act = { ic: 'shop', pos: s.front, r: T.stall.r, label: `${T.stall.npc} · ${T.name} 좌판`, when: () => !late.swarm?.state?.() && !state.cave && !late.tut?.active, act: () => openStall(s.zone) };
     interactables.push(s.act); stalls.push(s);
   }
@@ -258,11 +288,12 @@ late.tokFix = (tk) => { save.tok = tk; normTok(save); armK = '?'; persist(); lat
 const shopOpen = () => !$('shoppop').hidden && $('shoppop').classList.contains('tok');
 
 /* ---------- 매 프레임 (arena.js late.tickArena 를 감쌈) ---------- */
-const pill = document.createElement('span'); pill.id = 'where-tok'; pill.hidden = true; pill.title = T.name; pill.innerHTML = gsvg() + '<i></i>';
+const pill = document.createElement('span'); pill.id = 'where-tok'; pill.hidden = true; pill.title = T.name; pill.innerHTML = mimg() + '<i></i>';
 $('xy-pill')?.appendChild(pill);
 let tagT = 0, lastN = -1, shown = false, nearS = null;
 function tick(dt) {
   if (window.__oreum && !window.__oreum.tok) window.__oreum.tok = api;
+  if (pops.length) tickPops(dt);
   if (keeper?.root.visible) { const d = Math.hypot(keeper.root.position.x - player.pos.x, keeper.root.position.z - player.pos.z); keeper.play(d < T.stall.r + 1.5 ? 'offer' : d < 14 ? 'wave' : 'idle'); keeper.lookAt(d < 14 ? player.pos : null); keeper.update(dt); } /* 다가오면 손 흔들고, 좌판 앞이면 망고를 내밂 */
   const run = late.swarm?.state?.();
   if (run && !curRun) { curRun = run.zone; leaderOut = false; wasDown = false; reviveUsed = false; }
@@ -291,4 +322,6 @@ const api = late.tokApi = {
   runTokens, saveKit, wearKit, kit: () => JSON.parse(JSON.stringify(TK().kit)), asking: () => !ask.hidden, answer: (y) => ask.querySelector(`[data-a="${y ? 'y' : 'n'}"]`).click(),
   wearV: (k) => wearV(k), lost: lostSlots, go: (z = 1) => { const s = stalls.find((q) => q.zone === z); if (!s) return null; player.pos.copy(s.front); player.target = null; player.heading = s.rot + Math.PI; return { x: s.front.x, z: s.front.z }; },
   place: placeStalls, fix: (tk) => late.tokFix(tk),
+  pop: (n = 3) => popMango(n), pops: () => pops.map((p) => ({ on: p.m.root.visible, t: +p.t.toFixed(2), loaded: p.m.loaded })), /* #305 떨어지는 망고 */
+  stallProps: () => stalls.map((s) => ({ zone: s.zone, drawn: s.mesh.visible, ...s.prop.loaded })),
 };

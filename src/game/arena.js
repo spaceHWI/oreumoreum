@@ -1,5 +1,5 @@
 // 서바이벌 터 (#231): 구역마다 한 곳(balance.js SWARM.arena.at). 낮은 현무암 돌 고리 + 가운데 징. 징을 울려야(상호작용) 떼 한 판이 시작됨 (판 자체는 game/swarm.js)
-// - 그리기: 터마다 메시 하나(돌 고리·징을 정점 색으로 합침, toon 재질). 멀면 안 그림 → 화면에 1~2개, 터마다 그리기 1번
+// - 그리기: 터마다 메시 하나(돌 고리·바닥을 정점 색으로 합침, toon 재질) + 징(#305 Tripo 모델, 받기 전엔 예전 코드 모양). 멀면 안 그림 → 화면에 1~2개, 터마다 그리기 2번
 // - 징 위 글(#arena-tag): 가까우면 '서바이벌 시작 · 권장 레벨 · 버티는 시간', 쉬는 시간엔 남은 시간. 상호작용 버튼 글도 같음
 // - 알림: 그 구역에 처음 들어가면 한 번 터 쪽(카메라 기준 앞·오른쪽·뒤·왼쪽)과 거리 한 줄 (save.swarm.hint). 가장자리 표시(#arena-arrow)는 near~hintR m 일 때만, 다른 길 안내가 있으면 쉼 (#201)
 // - 지도: 큰 지도·미니맵에 터 아이콘(귤색 고리) (field.js drawIcons 가 late.arenaIcons 를 부름)
@@ -7,7 +7,8 @@
 // (파일 순서는 src/modules.js: swarm 뒤. update.js 가 late.tickArena 를 부름)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { SWARM, ZONES } from '../balance.js';
+import { SWARM, ZONES, CASE_MODELS } from '../balance.js';
+import { tripoProp } from '../tripoprop.js';
 import { SWARM_TEXT } from '../punktext.js';
 import { zoneRecLv, myLv } from '../gearscore.js';
 import { gradHard } from '../toon.js';
@@ -45,7 +46,10 @@ function faceOf(c) {
 // 구역 분위기 (#253): 고리 돌 색만 다름 (숲길 이끼·사면·능선 밝은 돌·굼부리 붉은 송이·정상 눈 덮인 돌). 메시 수는 같음
 const STONE = [null, ['#47514a', '#3f4a40'], ['#45464b', '#505157'], ['#5b5c60', '#66676a'], ['#5a4038', '#4d3a35'], ['#5f6266', '#8a8e93']];
 function arenaGeo(zone, c, face) {
-  const r = rnd0(2310 + zone * 97), out = [], n = Math.round(Math.PI * 2 * A.r / 1.7), sc = STONE[zone] || STONE[2];
+  const out = []; ringGeo(zone, c, face, out); floorGeo(zone, c, out); return mergeGeometries(out);
+}
+function ringGeo(zone, c, face, out) {
+  const r = rnd0(2310 + zone * 97), n = Math.round(Math.PI * 2 * A.r / 1.7), sc = STONE[zone] || STONE[2];
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2; let da = Math.atan2(Math.sin(a - face), Math.cos(a - face)); if (Math.abs(da) < 0.12) continue; // 문
     const x = c[0] + Math.sin(a) * A.r, z = c[1] + Math.cos(a) * A.r, R = 0.32 + r() * 0.16;
@@ -58,20 +62,41 @@ function arenaGeo(zone, c, face) {
     out.push(paint(new THREE.CylinderGeometry(0.06, 0.08, 2.6, 5).translate(x, y + 1.3, z), '#5a4126'));
     out.push(paint(new THREE.BoxGeometry(0.04, 0.5, 0.8).translate(0, 0, 0.4).rotateY(a + s * 1.2).translate(x, y + 2.25, z), '#f08a24'));
   }
-  // 징: 두 기둥 + 가로대 + 둥근 놋쇠판 (길 쪽을 봄)
-  const y0 = height(c[0], c[1]), G = [];
+}
+// 징: 두 기둥 + 가로대 + 둥근 놋쇠판 (길 쪽을 봄). 가운데·땅 0 기준
+function oldGongGeo(zone) {
+  const r = rnd0(4410 + zone * 31), G = [];
   for (const s of [-1, 1]) G.push(paint(new THREE.CylinderGeometry(0.1, 0.13, 3.1, 6).translate(s * 1.05, 0.95, 0), '#6b4a2a', r, 0.1)); // 기둥 밑은 땅에 묻힘 (비탈, #253)
   G.push(paint(new THREE.BoxGeometry(2.5, 0.16, 0.18).translate(0, 2.45, 0), '#5a3d22'));
   G.push(paint(new THREE.CylinderGeometry(0.72, 0.72, 0.09, 18).rotateX(Math.PI / 2).translate(0, 1.45, 0), '#c9a24a'));
   G.push(paint(new THREE.CylinderGeometry(0.26, 0.26, 0.14, 12).rotateX(Math.PI / 2).translate(0, 1.45, 0.02), '#e2bf62'));
   for (const s of [-1, 1]) G.push(paint(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 3).translate(s * 0.45, 2.15, 0), '#2b2218'));
-  const gong = mergeGeometries(G).rotateY(face).translate(c[0], y0, c[1]);
-  out.push(gong);
+  return mergeGeometries(G);
+}
+function floorGeo(zone, c, out) {
+  const r = rnd0(2310 + zone * 97 + 7);
+  /* 징은 #305 부터 Tripo 모델(gongProp). 이 모양은 받기 전 임시 모양으로만 (가운데 기준) */
   // 밟힌 흙 바닥: 땅 높이를 따름 (비탈에서 뜨거나 묻히지 않게, #253)
   const fl = new THREE.CylinderGeometry(1.6, 1.8, 0.12, 10).translate(c[0], 0.02, c[1]), fp = fl.attributes.position;
   for (let i = 0; i < fp.count; i++) fp.setY(i, fp.getY(i) + height(fp.getX(i), fp.getZ(i)));
   out.push(paint(fl, '#6d6a52', r, 0.08));
-  return mergeGeometries(out);
+}
+/* #305 Tripo 징: 돌기둥에 매달린 징 + 채. 칠 때 징판만 흔들림(모프 타깃 하나: 매단 높이 둘레로 U 라디안 돌린 모양, 무게 = 지금 각 / U, 음수도 씀) */
+const GG = CASE_MODELS.gong, U = 0.3;
+function swayMorph(pos) {
+  const o = new Float32Array(pos), c = Math.cos(U), sn = Math.sin(U);
+  for (let i = 0; i < o.length; i += 3) {
+    const y = pos[i + 1]; if (y < GG.disc[0] || y > GG.disc[1] || Math.abs(pos[i]) > GG.xMax) continue;
+    const dy = y - GG.hang, z = pos[i + 2]; o[i + 1] = GG.hang + dy * c - z * sn; o[i + 2] = dy * sn + z * c;
+  }
+  return o;
+}
+function gongProp(zone, c, face) {
+  const ph = new THREE.Mesh(oldGongGeo(zone), mat); ph.castShadow = false; ph.receiveShadow = !LOW;
+  const P = tripoProp('gong', { scale: CASE_MODELS.prop.gong, ph, shadow: !LOW, morph: swayMorph });
+  const fx = Math.cos(face), fz = -Math.sin(face); let y = 1e9; for (const k of [-1.1, 0, 1.1]) y = Math.min(y, height(c[0] + fx * k, c[1] + fz * k)); /* 비탈: 낮은 쪽에 맞춰 조금 묻음 */
+  P.root.position.set(c[0], y - 0.05, c[1]); P.root.rotation.y = face; P.root.visible = false; scene.add(P.root);
+  P.amp = 0; P.t = 0; return P;
 }
 
 const mat = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: gradHard });
@@ -80,7 +105,7 @@ if (trash) for (let z = 1; z < A.at.length; z++) {
   const c = A.at[z]; if (!c) continue;
   const face = faceOf(c), mesh = new THREE.Mesh(arenaGeo(z, c, face), mat);
   mesh.castShadow = false; mesh.receiveShadow = !LOW; mesh.visible = false; mesh.matrixAutoUpdate = false; mesh.updateMatrix(); scene.add(mesh);
-  arenas.push({ zone: z, c, face, mesh, gong: new THREE.Vector3(c[0], height(c[0], c[1]), c[1]) });
+  arenas.push({ zone: z, c, face, mesh, gp: gongProp(z, c, face), gong: new THREE.Vector3(c[0], height(c[0], c[1]), c[1]) });
 }
 const DRAW = LOW ? 170 : 240;
 
@@ -93,7 +118,7 @@ for (const a of arenas) {
     get label() { return tagText(a.zone); },
     when: () => !!SW() && !SW().zone() && !state.cave && !late.tut?.active,
     act: () => {
-      const w = SW().start(a.zone); if (!w) return;
+      const w = SW().start(a.zone); if (!w) { ring(a); return; }
       if (w === 'rest') toast(`${T.restTag} · ${mmss(restOf(a.zone))} 뒤에 다시`, 2.2);
       else toast(T.why[w] || T.why.off, 2);
     },
@@ -178,13 +203,24 @@ late.arenaIcons = (x, uv, s, inC) => {
   }
 };
 
+/* ---------- 징 흔들림 (#305) ---------- */
+const ringing = new Set();
+function ring(a) { a.gp.amp = GG.swing; a.gp.t = 0; ringing.add(a); }
+function tickRing(dt) {
+  for (const a of ringing) {
+    const g = a.gp; g.t += dt; const ang = g.amp * Math.exp(-g.t * GG.damp) * Math.sin(g.t * GG.freq);
+    g.morph[0] = ang / U; if (g.t > 4) { g.morph[0] = 0; ringing.delete(a); }
+  }
+}
+
 /* ---------- 매 프레임 (update.js) ---------- */
 let chkT = 0, near = null, nearD = 1e9, lastZone = -1;
 late.tickArena = (dt) => {
   if (!arenas.length || !SW()) return;
+  if (ringing.size) tickRing(dt);
   if ((chkT -= dt) <= 0) {
     chkT = 0.25; near = null; nearD = 1e9;
-    for (const a of arenas) { const d = Math.hypot(a.c[0] - player.pos.x, a.c[1] - player.pos.z); a.mesh.visible = d < DRAW && !state.cave; if (d < nearD) { nearD = d; near = a; } }
+    for (const a of arenas) { const d = Math.hypot(a.c[0] - player.pos.x, a.c[1] - player.pos.z); a.mesh.visible = a.gp.root.visible = d < DRAW && !state.cave; if (d < nearD) { nearD = d; near = a; } }
     const z = state.sessionOn && !late.tut?.active && !state.cave && !state.cine ? zoneOf(player.pos.x, player.pos.z) : 0;
     if (z && z !== lastZone) hintZone(z);
     if (z) lastZone = z;
@@ -201,5 +237,6 @@ late.arenaApi = {
   ui: () => ({ tag: !tag.hidden && tag.textContent, arrow: !arrow.hidden }),
   hint: () => ({ ...H }), clearHint() { for (const k of Object.keys(H)) delete H[k]; lastZone = -1; },
   meshes: () => arenas.map((a) => a.mesh), /* tools/arenacheck.js (#253) */
+  ring: (z) => { const a = arenas.find((q) => q.zone === z) || near; if (a) ring(a); return !!a; }, gongs: () => arenas.map((a) => ({ zone: a.zone, drawn: a.gp.root.visible, sway: +a.gp.morph[0].toFixed(3), t: +a.gp.t.toFixed(2), ...a.gp.loaded })), /* #305 */
   act: (z) => interactables.find((i) => i.pos === arenas.find((a) => a.zone === z)?.gong),
 };
