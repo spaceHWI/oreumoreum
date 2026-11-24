@@ -1773,7 +1773,7 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
     <button type="button" id="inapp-stay" style="border:0;background:none;color:rgba(255,255,255,.5);font-size:12px;text-decoration:underline">그냥 여기서 하기</button>
   </div>
 </div>
-<script data-main="main-440c4a3f16.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
+<script data-main="main-5ba5ca5715.js">/* 로딩 창 (#281): 페이지가 열리면 바로 덮고(page.html #boot, 인라인 CSS), 첫 그림이 온전히 그려진 뒤 0.4초에 걸쳐 걷는다.
    빌드(build.mjs)가 inapp.js 앞에 붙여 맨 처음 도는 인라인 스크립트로 넣는다. 게임 쪽은 src/bootbar.js 로 부른다.
    window.__boot: p(값, 천천히 올라갈 끝) · fetchMain(주소, 다 되면) · ready() · fail() · show(글) · state() */
 (function () {
@@ -1893,8 +1893,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <!-- 위쪽 한 줄 (#75): 왼쪽 귤·배낭·깨끗한 정도 | 가운데 HP·버프 | 오른쪽 구역·좌표·오늘의 업적. 이름 대신 숫자만, 누르면 토스트(#60) -->
 <div id="topbar" class="topbar" data-fit="0">
   <div class="tb-g tb-l">
-    <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="lv-pill" role="button" tabindex="0" title="레벨 · 경험치 · 누르면 증강" hidden><small class="lvl">Lv</small><b id="lv-n">1</b><i class="xp" aria-hidden="true"><i id="lv-xp"></i></i><s id="lv-pend" class="lv-pend" hidden aria-label="고를 증강"></s></div>
+    <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg data-i="pocket" class="pk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14v7a7 7 0 0 1-14 0z"/><path d="M5 9h14"/></svg><svg data-i="bag" class="bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 18v-6a6 6 0 0 1 6 -6h2a6 6 0 0 1 6 6v6a3 3 0 0 1 -3 3h-8a3 3 0 0 1 -3 -3"/><path d="M10 6v-1a2 2 0 1 1 4 0v1"/><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4"/><path d="M11 10h2"/></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
   </div>
