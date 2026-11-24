@@ -69,7 +69,7 @@ css.textContent = `
 document.head.appendChild(css);
 const pill = document.createElement('div'); pill.className = 'panel tpill bpill'; pill.id = 'inn-pill'; pill.hidden = true; pill.setAttribute('role', 'button'); pill.tabIndex = 0;
 pill.innerHTML = `<span class="ring"><svg class="r" viewBox="0 0 28 28"><circle class="bg" cx="14" cy="14" r="12"/><circle class="fg" cx="14" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="0"/></svg>${icon('bed').replace('<svg', '<svg class="ic"')}</span><b></b>`;
-{ const lv = $('lv-pill'); if (lv) lv.after(pill); else $('topbar')?.querySelector('.tb-l')?.append(pill); }
+{ const bf = $('buff-pill'); if (bf) bf.after(pill); else $('topbar')?.querySelector('.tb-c')?.append(pill); } /* #288 버프 곁 */
 const WORD = { speed: '이동', pick: '줍기', dmg: '피해', hp: '최대 기운', xp: '경험치' };
 const BIC = { speed: 'speed', pick: 'pick', dmg: 'dmg', hp: 'hp', xp: 'star' }; /* icons.js */
 const buffLine = () => Object.entries(INN.buff).map(([k, v]) => `${WORD[k]} +${Math.round(v * 100)}%`).join(' · ');

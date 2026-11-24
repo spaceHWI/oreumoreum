@@ -201,7 +201,7 @@ export function updateContext() {
   else if (player.riding && !busy()) best = dismountAct;
   else if (player.cart) best = cartOffAct; // 마차 (#69): 내리기. 달리는 중에도 옆 길 위로 (#120), 점프는 뛰어내리기
   else if (!busy() && !player.onArrive) {
-    for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && d < bd) { bd = d; best = it; } }
+    for (const it of interactables) { if (it.when && !it.when()) continue; const d = it.pos.distanceTo(player.pos); if (d < it.r && (d + (it.ic === 'sign' ? 1e4 : 0)) < bd) { bd = d + (it.ic === 'sign' ? 1e4 : 0); best = it; } } /* #288 표지판은 사람·다른 것이 닿으면 뒤로 */
     const pa = late.deerPalAct?.(); /* 노루 친구 (#247): 내 노루 타기·들판 노루 귤 주기 */
     const d = pa ? null : life.nearestDeer(player.pos, 2.6);
     if (pa && !pa.mine) best = pa;
