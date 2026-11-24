@@ -2209,3 +2209,6 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 
 - #301 위쪽 줄 망고 칸: 귤 칸 바로 뒤 `#mango-pill`(src/page.html), 값은 save.tok.n, 한 번도 얻은 적 없으면(tok.n·tok.got 0) 숨김. 갱신·튀는 효과는 hud.js paintMango (updateStats 안, topFit.dirty). 그림 notes/shots/301-pc.png·301-phone.png (360 폭 줄 안 넘침)
 - #302 다 건너뛰기: 재현해 보니 코드는 이미 정낭(jeong)을 열고 `save.jeong` 저장·칸 담 제거·새로고침 뒤에도 열림(`place.js` 의 `save.tut.done` 열기). 멀티는 튜토리얼·정낭 상태를 보내지 않아 바꿀 것 없음. 빠진 검사만 더함: `tools/skipgate.js d|m`(건너뛰기→열림→새로고침), `tools/oldsave.js skipStuck`(done 인데 jeong 0 인 저장).
+- #307 [오류] 방 연결 InvalidStateError (iOS, 0.55.3 `src/online.js` presence): `open`(붙었음)이 옛 연결 것으로 남은 채 `ws` 만 새 연결(붙는 중)로 바뀌어 보내다 난 오류. 길 둘 — ① 서버가 오래 멈춤(idle)으로 내보낸 뒤 닫힘 알림이 오기 전에 화면을 눌러 다시 들어옴(`closed` 가 이미 참이라 `sleep()` 이 아무것도 안 했음) ② 끊겨서 다시 붙기 예약이 남은 채 쉬러 갔다 옴(쉬는 동안에도 붙고, 깨우면 연결이 둘)
+  - 고침: 연결은 늘 하나 — `connect()` 가 먼저 `drop()`(옛 연결 알림 떼고 닫기·예약 지움·붙어 있었으면 `gone()`), 서버 idle 도 받는 즉시 `drop()`, 다시 붙기 예약은 `again` 하나로 두고 쉬기·닫기에서 지움
+  - 검사 `node tools/wsrace.js`(가짜 WebSocket, 브라우저 없음. 고치기 전 InvalidStateError 재현). `tools/online.js` 의 낡은 '베타 안내 문구'(7일, #281 에서 글이 바뀜) 줄을 지금 글로
