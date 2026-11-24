@@ -18,8 +18,8 @@ const realTouch = !!W && ((W.matchMedia && matchMedia('(pointer: coarse)').match
 const MOBILE = realTouch || IN_FRAME;
 export const isMobile = () => MOBILE;
 export const mviewOn = () => !realTouch && isAdm() && ls.get(K) === '1';
-export const mviewOpt = () => { let o = null; try { o = JSON.parse(ls.get(OK) || 'null'); } catch (e) { /* 무시 */ } return { land: !!o?.land, small: o ? !!o.small : (W ? innerHeight < 900 : false), safe: o?.safe !== 0 }; }; /* 처음엔 창이 낮으면 80% */
-const setOpt = (o) => ls.set(OK, JSON.stringify({ land: o.land ? 1 : 0, small: o.small ? 1 : 0, safe: o.safe ? 1 : 0 }));
+export const mviewOpt = () => { let o = null; try { o = JSON.parse(ls.get(OK) || 'null'); } catch (e) { /* 무시 */ } return { land: !!o?.land, tiny: !!o?.tiny, small: o ? !!o.small : (W ? innerHeight < 900 : false), safe: o?.safe !== 0 }; }; /* 처음엔 창이 낮으면 80% */
+const setOpt = (o) => ls.set(OK, JSON.stringify({ land: o.land ? 1 : 0, tiny: o.tiny ? 1 : 0, small: o.small ? 1 : 0, safe: o.safe ? 1 : 0 }));
 const topReload = (url) => { const w = IN_FRAME ? W.parent : W; if (url && url !== w.location.href) w.location.href = url; else w.location.reload(); }; /* 주소가 같으면(해시만 같아도) 새로 고침 */
 // 스위치 (어드민 창). 켜고 끄면 바깥 창을 새로 고쳐 틀을 그리거나 걷음
 export function setMview(on) { if (on && !isAdm()) return; if (on) ls.set(K, '1'); else ls.del(K); const u = new URL((IN_FRAME ? W.parent : W).location.href); u.searchParams.delete('m'); topReload(u.href); }
@@ -53,19 +53,19 @@ export function mframeTop() {
     + '#mview .mv-land .mv-notch { left: 10px; top: 50%; width: 32px; height: 120px; margin: -60px 0 0; }'
     + '#mview .mv-land .mv-home { bottom: 6px; }'
     + '#mview .mv-nosafe .mv-notch, #mview .mv-nosafe .mv-home { display: none; }'
-    + '#mview .mv-bar { position: fixed; right: 16px; top: 16px; display: grid; gap: 6px; }'
+    + '#mview .mv-bar { position: fixed; right: 16px; top: 16px; display: grid; gap: 6px; z-index: 2; }'
     + '#mview .mv-bar button { min-height: 34px; padding: 6px 12px; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; background: rgba(255,255,255,.08); color: inherit; font: inherit; cursor: pointer; }'
     + '#mview .mv-bar button[aria-pressed="true"] { background: #f29a2e; color: #24251f; border-color: transparent; }'
     + '#mview .mv-bar .mv-x { border-color: rgba(255,110,96,.55); background: rgba(214,58,46,.28); color: #ffd6d1; }'
     + '#mview .mv-lab { position: fixed; left: 16px; top: 16px; opacity: .6; }'
     + '</style><div class="mv-lab">모바일 화면으로 보기 (어드민)</div>'
     + '<div class="mv-ph" id="mview-ph"><iframe id="mview-frame" title="오름오름 (폰 화면)" allow="fullscreen; clipboard-write; vibrate"></iframe><i class="mv-notch"></i><i class="mv-home"></i></div>'
-    + '<div class="mv-bar"><button type="button" data-k="land">가로</button><button type="button" data-k="small">80%</button><button type="button" data-k="safe">안전 영역</button><button type="button" class="mv-x" data-k="off">끄기</button></div>';
+    + '<div class="mv-bar"><button type="button" class="mv-x" data-k="off">데스크톱으로 돌아가기</button><button type="button" data-k="tiny">작은 폰 360×640</button><button type="button" data-k="land">가로</button><button type="button" data-k="small">80%</button><button type="button" data-k="safe">안전 영역</button></div>';
   document.body.append(box);
   const ph = box.querySelector('#mview-ph'), fr = box.querySelector('#mview-frame');
   let o = mviewOpt();
   const draw = () => {
-    const w = o.land ? 844 : 390, h = o.land ? 390 : 844;
+    const pw = o.tiny ? 360 : 390, ph2 = o.tiny ? 640 : 844, w = o.land ? ph2 : pw, h = o.land ? pw : ph2;
     ph.style.width = w + 'px'; ph.style.height = h + 'px'; ph.style.transform = o.small ? 'scale(.8)' : '';
     ph.classList.toggle('mv-land', o.land); ph.classList.toggle('mv-nosafe', !o.safe);
     for (const b of box.querySelectorAll('.mv-bar [data-k]')) if (b.dataset.k !== 'off') b.setAttribute('aria-pressed', String(!!o[b.dataset.k]));
