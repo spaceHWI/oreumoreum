@@ -106,7 +106,7 @@ export const dumpWarn = makeEdgeWarn('dump-warn', DUMP_IC, DUMP.warnT);
 late.edgeWarnOn = () => enemyWarn.t > 0 || dumpWarn.t > 0; // 같은 뜻(적 방향) 표시는 한 번에 하나 (#201, throw.js tickEdgeAim)
 state.introToast = null; // 첫 화면이 떠 있을 때 온 알림은 들어간 뒤 보여 줌 (#16)
 export const dumpers = trash ? createDumpers({
-  scene, trash, height, paths: nsPaths,
+  scene, trash, height, paths: nsPaths, makeWalker: () => late.makeVillain?.() || null, /* #291 악당 모습 (game/villain.js) */
   bound: { line: NSB.boundLine, insideBy: NSB.insideBy, center: NSB.BOUND_CENTER },
   avoid: NS_TUT ? (() => { const L = NSB.crossLine(TUT.gateD); return (x, z) => (x - L.c.x) * L.fx + (z - L.c.z) * L.fz < 6 && Math.hypot(x - L.c.x, z - L.c.z) < 260; })() : null, // 들머리 튜토리얼 쪽 길은 트럭이 안 지남
   hooks: {
