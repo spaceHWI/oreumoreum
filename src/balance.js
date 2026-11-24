@@ -330,6 +330,9 @@ export const DUMP = {
   crowdExp: 1, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
+  // 걷는 투기꾼 모습 (#291, src/game/villain.js): 지금 캐릭터에 옷·소품·동작. style 'A' 만화 도둑(검은 복면·줄무늬 긴팔·어깨 자루), 'B' 후드·선글라스·마스크(손에 봉투), 'C' 중절모·트렌치코트·검은 봉지 여럿. '' 면 예전 상자 모양
+  // lookout: 이야기 '망보는 짝'(#168 b.lookout)은 모자·줄무늬 색만 다르게. sneak 살금살금 숙임, look 두리번 세기, throwAt 버리는 시간 중 던지는 때(0~1), night 손전등 보이는 해 높이(도)
+  look: { style: 'A', sneak: 0.22, look: 0.6, throwAt: 0.72, night: -4 },
 };
 // 흡연자 (#156, src/game/smoker.js): 오름 들머리에 가끔 나와 담배를 피움. 플레이어를 공격하지 않음. 귤을 한 번 맞히면 놀라 꽁초 1개를 떨구고 도망 (투기꾼 DUMP.startleT·fleeDist·fadeT 그대로)
 // near 들머리 클린하우스에서 이 거리(m) 안, 탐방로에서 off[0]~off[1] m 비켜난 자리. playerR 플레이어가 들머리 클린하우스 이 거리 안에 있을 때만 every[0]~[1] 초마다 한 명(한 번에 한 명)
@@ -913,6 +916,15 @@ export const INN = {
   W: 13.6, D: 8.2, H1: 3.4, H2: 3.0, fore: 3.2, // 건물 폭·깊이·1층·2층 높이 (m), 터 앞에서 앞벽까지 (앞마당)
   r: 6.5, // 앞마당 가운데에서 이 거리 안이면 상호작용 '숙박'
   litRooms: [1, 4, 5], // 2층 객실 창 여섯 칸 중 밤에 불이 켜지는 칸 (0부터)
+  // 마당 불멍 (#290, 모양 src/firepit.js·로직 game/firepit.js). 무료, 의자에 sit 초 앉아 있으면 버프 '멍' buffSec 초(놀이 시간). 하루 perDay 번. 둘이 같이 앉으면 + pair 초
+  // buff: pickR 귤 모으는 범위 ×(1+v) · rare 드문 쓰레기 확률 ×(1+v) · down 쓰러졌을 때 대기 ×(1+v) · see 밤·안개 최소 밝기(하늘빛 더함)·안개 먼 끝 ×(1+fog). 싸움 수치는 없음 (숙박·식사 몫)
+  // 자리(로컬, 숙소 터 앞 가운데 기준): side 쪽(1 = 오른쪽) 옆마당 잔디, x = side × (W/2 + out), z = -fore - D/2 + back. lit: 해 질 무렵부터(밤 정도 litNight 넘으면) 불이 붙음
+  fire: {
+    name: '멍', sit: 20, buffSec: 1200, perDay: 3, pair: 300, pairR: 4, warnSec: 60,
+    buff: { pickR: 0.4, rare: 0.15, down: -0.3, see: 0.35, fog: 0.25 },
+    side: 1, out: 2.3, back: 0, litNight: 0.15, chairR: 1.55, r: 1.6, far: 60, soundR: 14, sayGap: [5, 8],
+    camYaw: 1.25, camPitch: 0.26, camDist: 8, // 앉으면 카메라: 옆(앉은 방향에서 camYaw 라디안 돈 쪽)·낮게·가까이
+  },
   // 주인은 퀘스트 주는 사람 QUESTS.givers['shop:inn'] (안녕 매니저, game/quest.js 가 가게 문 옆에 세움)
 };
 export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
@@ -943,7 +955,7 @@ export const SHOP_ST = {
   planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1], [52, -1]],
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
   // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
-  roofSize: 2.3, roofGap: 0.6, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
+  roofSize: 2.3, roofGap: 0.2, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
   roofMinPx: 28, roofMaxK: 2.6, // 화면에서 최소 이 px 로 보이게 멀수록 키움 (최대 roofSize × roofMaxK)
   roofSee: [8, 16, 28], roofSeeH: 3.5, roofNear: 30, roofFade: 0.82, roofTopNear: 12, roofTopFar: 70, // 둘레 이 거리(m)·눈높이에서 가려지면 그 간판만 맨 위에 그림(roofTopNear~roofTopFar 사이만: 가게 바로 앞에선 앞 간판을 덮지 않게), roofNear 안에선 roofFade 만큼 투명
   roofGlow: 0.5, // 밤 간판 뒤 따뜻한 빛 세기
@@ -1201,16 +1213,42 @@ export const wearPrice = (c) => c.price != null ? c.price : c.tier === 1 && WEAR
 export const MUSIC = {
   gain: 0.6,         // 크기 100% 일 때 음악 버스 (효과음보다 작게). 크기 슬라이더는 제곱으로 들어감
   tense: 1.6,        // 긴장 음악 층 크기 (평소 층 1 에 견줘)
-  vol: 0.6,          // 처음 크기 (0~1)
+  vol: 0.45,         // 처음 크기 (0~1). #292 0.6 → 0.45 (기본은 작게)
+  sfx: 1,            // 효과음·자연 소리 처음 크기 (0~1, #292). 크기는 제곱으로 들어감
   fadeIn: 2.5,       // 적이 다가오면 긴장 음악으로 바뀌는 시간(초)
   holdOut: 5,        // 적이 사라지고 원래 음악으로 돌아가기까지 기다리는 시간(초)
-  fadeOut: 4,        // 원래 음악으로 돌아가는 시간(초)
+  fadeOut: 3,        // 원래 음악으로 돌아가는 시간(초) (#292 4 → 3)
   near: 30,          // 이 거리 안의 몹·멧돼지·투기꾼·트럭이면 '적 근처'
   duck: 0.45,        // 가게 안 식사·머리 손질 중 음악 배율
   nightK: 0.35,      // setDaylight 값이 이보다 작으면 밤 분위기
-  chord: { day: 9, night: 12 },        // 화음 하나 길이(초)
-  note: { day: [2.5, 6], night: [4, 9] }, // 드문드문 음 사이 간격(초)
   bpm: 92,           // 긴장 음악 빠르기
+  cine: 0.35,        // 사건 장면·엔딩(state.cine) 중 음악 배율 (#292)
+  voices: 8,         // 동시에 울리는 음 상한 (평소·긴장 합쳐. 넘으면 새 가락 음을 건너뜀)
+  /* 평소 음악 (#292, src/musiccalm.js): 장조 5음 음계(key 가 으뜸음, MIDI). 가락 조각(한 마디 8분음표 8칸)을 엮어 4마디 악구, 마지막 마디는 맺는 조각.
+     play 초 동안 연주하고 rest 초 쉼(앞뒤 fade 초). 곳(place)마다 빠르기·옥타브·가락이 나올 확률(fill)·음을 빼는 확률(drop)·크기·밝기(lp)·패드 크기·음색(inst)·여운(decay 배율) */
+  calm: {
+    key: 60, play: [120, 180], rest: 60, fade: 5, echo: 0.38,
+    places: {
+      bright: { bpm: 72, oct: 0, fill: 0.9, drop: 0.12, vol: 1, lp: 1.25, pad: 0.9, inst: 'kalimba', decay: 1 },   // 들머리·가게 거리
+      calm: { bpm: 66, oct: 0, fill: 0.75, drop: 0.25, vol: 0.9, lp: 1, pad: 1, inst: 'marimba', decay: 1.1 },     // 숲길·사면
+      sparse: { bpm: 63, oct: 0, fill: 0.45, drop: 0.55, vol: 0.75, lp: 0.8, pad: 0.6, inst: 'kalimba', decay: 1.3 }, // 능선·굼부리
+      top: { bpm: 66, oct: 12, fill: 0.4, drop: 0.6, vol: 0.8, lp: 1.2, pad: 0.55, inst: 'bell', decay: 1.6 },     // 정상
+      night: { bpm: 60, oct: -12, fill: 0.55, drop: 0.4, vol: 0.8, lp: 0.6, pad: 1.1, inst: 'marimba', decay: 1.5 }, // 밤
+      fire: { bpm: 64, oct: -12, fill: 1, drop: 0.15, vol: 0.85, lp: 0.8, pad: 0.5, inst: 'pluck', decay: 1, arp: true }, // 숙소 불멍
+    },
+  },
+};
+
+// 바람·억새·빗소리 (#292, src/wind.js). base: 바람 크기(구역 배율 1 일 때, #292 전 0.16 의 절반 아래), lp: 바람 로우패스(Hz) [숲, 오름],
+// cut: 마지막 깎기(그 위 대역을 두 번 거름), wave: 세기 물결 한 바퀴(초) [최소, 최대]·waveLo~waveHi 세기, gust: 돌풍 사이(초)·오르는 시간·필터 여는 배율·세기 배율
+// reed: 억새 사각거림 대역(Hz)·크기, rain: 빗소리 크기(비 1 일 때)·위 깎기, topK: 정상에서 더하는 몫, rainK: 비 올 때 바람에 더하는 몫
+export const WIND = {
+  base: 0.06, lp: [420, 520], cut: 1500,
+  wave: [5, 12], waveLo: 0.4, waveHi: 1,
+  gust: { gap: [14, 30], up: [1.5, 3.5], open: 1.6, lift: 1.25 },
+  reed: { f: 1300, g: 0.012 },
+  rain: 0.1, rainLp: 4500,
+  topK: 0.3, rainK: 0.5,
 };
 
 // 연출 감독 (#89, src/pacing.js): 힐링 시간(줍기·꽃·낚시)이 바탕이고 공격 시간(투기꾼·트럭·몹)은 짧고 또렷한 사건
@@ -1658,6 +1696,22 @@ export const RANK = {
   medals: 3,          // 1~3위는 귤색 메달
   checkGapMs: 4000,   // 버린 뒤 내 순위 다시 보기 간격 (연달아 버려도 이만큼은 쉼)
   guestNudge: 10,     // 손님이 이만큼 치우면 '로그인하면 순위에 올라가요' 한 번 (#261)
+  medalColor: ['#f2c14e', '#c9d1d8', '#d08a56'], // 순위 창 1~3위 메달 색 (#289: 금·은·동)
+};
+// 큰 순위판 (#289, game/rankboard.js): 들머리 광장의 나무 게시판 + 가게 거리 입구 작은 판. 오늘 1~5위·치운 수·내 순위
+// at [들머리 길 approach 거리(정낭 TUT.gateD 에서), 쪽(1 = 오른쪽), 길 가운데에서 옆 m], alt 는 막혔거나 가까운 것이 있을 때 차례로
+// gap: 오름지기·안내판·하르방·돌탑·방송 기둥·마차 정류장과 이만큼은 떨어짐 · street 작은 판 자리 후보 [골목 s(-면 들머리 길 건너편), 오름 쪽 t] (streetlayout.js P). 길·가게 앞을 막지 않고 가로등·방송 기둥과 3.5m
+export const RANKBOARD = {
+  at: [30, 1, 7.5], alt: [[28, 1, 9.5], [32, -1, 8], [24, -1, 8.5]], gap: 6,
+  street: [[-6, -1.5], [-6.5, 1.5], [-7.5, -4], [7, 4.5]],
+  w: 3.0, h: 2.36, y: 2.5,  // 판 폭·높이·가운데 높이 (사람 키 1.8m 의 두 배쯤: 판 위 끝 3.7m, 지붕 4m)
+  small: 0.55,              // 가게 거리 판 배율
+  r: 4,                     // 이 안이면 상호작용 '순위판'
+  refreshMs: 300000,        // 판 글을 서버 순위로 다시 그리는 간격 (5분). 들어올 때 한 번 + 이 간격
+  firstMs: 3500,            // 들어온 뒤 첫 읽기 (rank.prime 2.5초 뒤)
+  cacheMs: 30000,           // 판이 읽은 오늘 순위를 순위 창이 이 안이면 다시 쓰지 않고 씀 (서버 호출 줄이기)
+  radioPerDay: 3,           // 1위가 바뀌었다는 오름 방송 하루 최대
+  tex: [640, 512],          // 캔버스 크기
 };
 
 // 돌탑 소원 글·함께 기도 (#127): 서버 server/src/wishes.js (계정 DO 안 SQLite). 쓰기는 로그인한 사람만, 읽기·기도·신고는 손님도
@@ -1695,6 +1749,9 @@ export const CRASH = {
   perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
   acts: 6,            // '마지막 한 일' 기억하는 수
   glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
+
+  reloadGap: 60000,   // 스스로 새로고침(사용자가 누르지 않은 것)은 이 탭에서 이만큼(ms) 안에 두 번 하지 않음 (#287, src/reloadwhy.js)
+  reloadRep: 2,       // 하루 새로고침이 이만큼 넘거나 스스로 한 것이 있으면 다음에 열 때 'reload: 까닭' 한 줄을 오류 알림으로
 };
 
 // 이용 통계 (#121): 클라이언트는 숫자만 세다가 flushS 마다·나갈 때 묶음 하나(sendBeacon)로 POST /m. 서버는 날짜별 합계만 (Accounts DO 표 mt)
@@ -1733,7 +1790,13 @@ export const CRASHES = {
 export const CASE_MODELS = {
   near: 45, far: 16, fade: 0.25,
   release: 90, releaseT: 30, relEvery: 3, // #272: 큰 모델이 있는 것이 모두 이 m 밖에 releaseT 초 넘게 있으면 그 큰 모델을 GPU 에서 내림(다시 오면 저절로 다시 올림). relEvery: 살피는 간격(초)
-  scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2 },
+  scale: { yeti: 3.0, mib: 2.5, 'ghost-keeper': 2.5, 'arena-keeper': 2.5, hose: 3.2, jigi: 2.5 },
+  /* #305 움직이지 않는 Tripo 소품 (tripoprop.js): 키 0.98 모델을 몇 배로. stall 폭 약 2.1m·gong 폭 약 2.5m·chute 높이(닫힘) 약 1.2m·mango 한 알 */
+  prop: { stall: 2.45, gong: 2.6, chute: 1.9, mango: 0.26 },
+  chute: { hinge: [0.42, 0.635], shut: 0.42, lidY: 0.645 }, /* 투입구 덮개: 모델은 열린 채 → 경첩(모델 x, y) 둘레로 shut 라디안 돌려 닫힌 모양을 만듦. lidY 위 정점이 덮개 */
+  gong: { disc: [0.07, 0.75], xMax: 0.29, hang: 0.74, swing: 0.16, damp: 1.6, freq: 7 }, /* 징 흔들림: 모델 y disc 사이·|x|<xMax 정점이 징판, 매단 높이 hang 둘레로 흔듦 (최대 rad·줄어드는 빠르기·흔들림 빠르기) */
+  jigiDelay: 6, /* 오름지기 모델·#305 소품은 들어온 뒤 이 초가 지나야 받기 시작 (그 전엔 안 C 러너 차림·예전 코드 모양) */
+  jigiGlow: { at: [0.3, 0.33, -0.1], color: '#9dff8a', size: 0.32, night: 0.55 }, /* 오름지기 어깨 가방에서 새는 초록빛 (모델 좌표·크기, 밤 세기) */
 };
 // 검은 NPC (#269): Tripo 모델(사건 모델·노루·하르방·들개·외계인·가게·가로등) 텍스처 그림이 오기 전 회색으로 그리고 fadeIn 초에 걸쳐 텍스처로.
 // floor: 빛이 모자란 곳(밤·그림자·동굴)에서 텍스처 색의 이 비율보다는 어둡지 않게 (얼굴·옷 색이 읽히게. 낮에는 이미 이보다 밝아 바뀌지 않음)
@@ -1908,7 +1971,7 @@ export const QUESTS = {
   took: '접수 완료',
   shopNpc: { side: 1.5, in: 0.6, gap: 3 }, // #190 가게 주인 자리: 문 오른쪽 side m · 터 앞 선에서 안쪽 in m · 다른 NPC·다른 가게 문과 gap m 넘게 (game/quest.js)
   givers: {
-    jigi: { name: '오름지기', style: 'A', /* #282 차림 안 A·B·C (game/jigi.js) */ at: 'sign', side: -2.8, fwd: -1.2, alt: [[-4, -1.2], [-2.8, 0.9], [2.6, -2]], hbGap: 6.5, /* #213: 안내판 옆 조금 뒤, 입구 하르방에서 약 8m(전에는 side 2.6·fwd 0.9 로 5.1m). 하르방과 hbGap m 안이면 alt [side, fwd] 순서로 */ look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요. 늘요', '천천히 둘러봐요. 새벽만 빼고', '당황하지 말고, 귤은 아껴요'] },
+    jigi: { name: '오름지기', style: 'T', /* #282 차림 안 A·B·C (game/jigi.js), #305 'T' = Tripo 모델(안 C 그림) */ at: 'sign', side: -2.8, fwd: -1.2, alt: [[-4, -1.2], [-2.8, 0.9], [2.6, -2]], hbGap: 6.5, /* #213: 안내판 옆 조금 뒤, 입구 하르방에서 약 8m(전에는 side 2.6·fwd 0.9 로 5.1m). 하르방과 hbGap m 안이면 alt [side, fwd] 순서로 */ look: { shirt: '#7d8f52', pants: '#5a4a36', shoes: '#3a3229' }, hello: ['오름은 늘 할 일이 있어요. 늘요', '천천히 둘러봐요. 새벽만 빼고', '당황하지 말고, 귤은 아껴요'] },
     'b:slope': { name: '남쪽 사면 표지판', board: 'slope' },
     'b:rest': { name: '능선 쉼터 표지판', board: 'rest' },
     'b:crater': { name: '굼부리 표지판', board: 'crater' },
@@ -2340,7 +2403,8 @@ export const TOKEN = {
     { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '망고 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
   ],
   suit: { hp: 0.5 },
-  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6 },
+  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6, mangoY: 1.06, mangoZ: 0.34 }, /* mangoY·Z: 판 위 망고 한 알 자리 (#305) */
+  pop: { max: 5, t: 1.1, scale: 1.6 }, /* 받을 때 튀는 망고 (#305): 몇 알까지·한 알 시간(초)·크기 배수 */
   quest: { n: 10, gyul: 20 },
 };
 CLOTHES.push(...TOKEN.cloth.map(({ z, tok, ...c }) => ({ tier: 0, style: true, tok: true, tokZ: z, tokStat: tok, ...c, price: 0, tokPrice: c.price })));

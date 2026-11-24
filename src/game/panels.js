@@ -6,7 +6,8 @@ import { MAPS } from '../maps.js';
 import { serverId } from '../server.js';
 import { postFeedback } from '../online.js';
 import { createFeedback } from '../feedback.js';
-import { setCrashSink } from '../crash.js';
+import { setCrashSink, reportNote } from '../crash.js';
+import { takeReloadNote } from '../reloadwhy.js';
 import { late, state } from './state.js';
 import { $, isTouch, save, MAP_ID } from './save.js';
 import { canvas } from './scene.js';
@@ -48,6 +49,7 @@ export const feedback = createFeedback({
 feedback.flush();
 // 오류 알림 (#108): 같은 의견함에 kind 'crash' 로 (좌표·닉네임 없이)
 setCrashSink(postFeedback, () => ({ ver: VERSION, srv: serverId(), map: MAP_ID, dev: isTouch ? (Math.min(innerWidth, innerHeight) <= 600 ? 'phone' : 'tablet') : 'desktop', w: innerWidth, h: innerHeight }));
+{ const rn = postFeedback && takeReloadNote(); if (rn) reportNote(rn); } /* 지난번 새로고침 까닭 묶음 (#287) */
 // 귤 맞춤 정보 (#188, start.js cutNotice): 하루 안에 깎였으면 의견 글 끝에 한 줄 붙임
 function cutNote() { const c = save.lastCut; if (!c || !(Date.now() - c.at < 864e5)) return ''; return `\n\n[귤 맞춤] -${c.n} (${c.why}) ${c.before} → ${c.after} · ${new Date(c.at).toISOString()} · v${c.ver || VERSION}`; }
 const fbLen = () => { $('feedback-len').textContent = `${$('feedback-input').value.length} / ${FEEDBACK.max}`; };

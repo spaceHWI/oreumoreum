@@ -10,6 +10,8 @@ const LOOP = ['frame', 'player', 'trash', 'arena', 'shops', 'shopGate', 'buff', 
 LOOP.push('msg'); // 메시지 줄 (#252)
 LOOP.push('deerPal'); // 노루 친구 (#247)
 LOOP.push('inn'); // 숙소 오피스제주 (#270)
+LOOP.push('fire'); // 숙소 마당 불멍 (#290)
+LOOP.push('villain'); // 투기꾼 악당 모습 (#291)
 LOOP.push('fps'); // 프레임 상한·발열 지킴 (#271)
 const modes = process.argv[2] ? [process.argv[2]] : ['d', 'm'];
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };

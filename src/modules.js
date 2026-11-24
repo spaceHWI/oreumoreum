@@ -104,6 +104,7 @@ import './game/raregyul.js'; // 귀한 귤 (#130): 한라봉·천혜향·레드�
 import './game/forge.js'; // 강화 (#140, 장비점 창)
 import './game/quest.js'; // 퀘스트 (#158): 오름지기·표지판·가게 주인, 추적 줄, 퀘스트 창
 import './game/jigi.js'; // 오름지기 차림·동작 (#282)
+import './game/villain.js'; // 투기꾼 악당 모습 (#291): 지금 캐릭터 + 옷·소품·동작 (dumpers.js makeWalker)
 import './game/dumperq.js'; // 투기꾼 퀘스트 보장 (#260)
 import './game/nexthint.js'; // 다음 할 일 (#142): 추적 줄에 잠깐 바뀌는 안내·퀘스트 뒤 이어 줄 것
 import './game/season.js'; // 철 이벤트 (#180 크리스마스)
@@ -146,9 +147,11 @@ import './game/casefinale.js'; // 사건 파일 끝 '버리는 자' (#237): 다 
 import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
 import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
 import './game/inn.js'; // 숙소 오피스제주 (#270): 숙박·개운함 버프·곁가지 퀘스트 (shopgate 앞: 가게 표가 먼저)
+import './game/firepit.js'; // 숙소 마당 불멍 (#290): 화로·앉기·버프 '멍' (inn 뒤: innExtra·innPeer 를 감쌈)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/npctalk.js'; // NPC 대사 (#278): 말버릇·상황 받아치기·가게 창 주인 말 (글은 src/npclines.js)
 import './game/start.js';
+import './game/rankboard.js'; // 큰 순위판 (#289): 들머리 광장·가게 거리 입구 (start.js 의 rank 뒤)
 import './game/ufo.js'; // 첫 화면 UFO (#150)
 import './game/update.js';
 import './game/debug.js';

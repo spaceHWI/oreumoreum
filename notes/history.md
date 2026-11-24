@@ -2144,3 +2144,71 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - #284 이름 정하기 글: 처음 시작 창에 제목 '아이디 만들기'·칸 위 라벨 '이름', 이름 창 제목을 '아이디 만들기'·칸 위에 '이름' 라벨. 화면에 '닉네임' 글자는 이미 없었음(남은 건 주석·어드민·개인정보 안내).
 
 - #284 이름 정하기 글: 화면에 '닉네임' 글자는 이미 없었음(주석·서버·개인정보 글만). 첫 이름 칸 라벨 '이름을 정해 주세요' → '이름', 창 aria-label → '아이디 만들기'. 이름 바꾸기 창은 그대로.
+
+- #295 망고 상인(사건 모델 전부)이 줌 아웃하면 검게 보임: 원인은 멀리용(`model-case-*-lo.js`) 텍스처 5개가 통째로 검게 구워져 있던 것(`bake-case.py` 의 `img.copy()` 가 굽는 그림을 못 옮김, 평균 밝기 0). 같은 UV 라 큰 텍스처를 128 로 줄여 다시 채움(`model/lotex.py`), `bake-case.py` 는 픽셀을 직접 옮기게 고침(Blender 로는 못 돌려 봄: 다시 구우면 `lotex.py` 로 채울 것). `tools/npcdark.js` 에 '멀리 낮·밤'(24m 밖 망원)·'놓아 줬다가 다시 가까이' 줄 추가(이전 값: 멀리용 밝기 2~14 → 고친 뒤 낮 67~218·밤 27~108).
+## #288 위쪽 줄 순서·건물 아이콘 막대·안내판보다 사람 먼저
+- 위쪽 줄: 레벨 → 귤 → 배낭 → 쓰레기 정도 → 버프(숙소 개운함 아이콘은 버프 곁으로). 줄이 좁아지면 버프 쪽부터 줄어드는 기존 f1~f7 규칙 그대로
+- 가게 지붕 간판 아래 막대는 숨기고(`shops.js` pole.visible=false) 간격 roofGap 0.6→0.2 (`balance.js`). 검사 `tools/shops.js` 간격 줄도 0.2 로
+- 상호작용: 표지판(`ic:'sign'`)은 사람·다른 것이 닿으면 뒤로 (`dump.js updateContext`). 이야기 버튼 글은 '<이름> 이야기' (`quest.js`). 오름지기 자리는 그대로(안내판 옆 2.8m, 우선 규칙으로 충분)
+- 확인: build·smoke·err·innrun d·tutrun d/m·questrun d·shops 통과. 앞뒤 그림은 못 찍음(자동 실행)
+
+## #299 스톤 셰프를 실제 셰프 닮게 (2026-11-24)
+- 차림(`src/chefnpc.js`, NPC 전용): 짧은 머리 Tripo 머리 + 모자 칸 `hat:npc-bald`(clip 0.835 로 머리카락을 자르고 살색 정수리 캡·옆뒤 띠를 얹음, skinTint 라 얼굴과 같은 피부색) · 얼굴 칸 `face:npc-beard`(입 둘레 짧은 수염·콧수염·짙은 눈썹) · 흰 조리복 `top:npc-chef`(서 있는 깃·단추) · 짙은 앞치마 `vest:npc-apron-dark` · 러닝 반바지 `bottom:npc-run`(옆 줄) · 트레일화 `shoes:s3` · 왼 손목 러닝 시계 `hand:npc-watch`
+- 볕에 그을린 피부(SKIN_TONES[1]), 다부진 체격(가로 1.08배). 주는 사람 look 에 skin·wide·gear 를 받게(game/quest.js person). 이름 '스톤 셰프' 그대로, Tripo 새 모델 안 씀
+- 대사: 인사·창 열기에 러너 한 줄씩(npclines stone, balance 주는 사람 hello)
+- 화자 프로필(#224)은 3D 모델을 구워 그리므로 같은 모습. 그림 `tools/stonechef.js` → notes/shots/299 (앞·옆·가까이·멀리). 멀리서도 검지 않음
+- 확인: build·err·smoke·npcdark d·shops 통과
+
+## #297 어드민 모바일 UI 토글 찾기 쉽게
+- 어드민 창 첫 탭(상태) 맨 위와 설정 메뉴 맨 위(어드민만)에 같은 토글 "모바일 UI 로 하기: 켬/끔". 예전 '해 보기' 탭 자리는 없앰. 켜면 새로고침 한 번(#287 과 무관)·이 기기에 유지
+- 폰 틀 오른쪽 위 띠에 "데스크톱으로 돌아가기" 항상 보임, 크기 고르기에 "작은 폰 360x640" 추가(가로·80%·안전 영역은 그대로)
+- mview.js 검사에 토글 자리 한 줄. 어드민 아니면 안 보이고 ?m=1 도 어드민만(그대로). CAVE.open·버전 그대로
+- #289 큰 순위판: 들머리 광장(정낭에서 오름 쪽 30m, 길 오른쪽 7.5m, 판 위 끝 3.7m·지붕 4m)에 나무 게시판 '오늘 가장 많이 치운 사람' 1~5위·치운 수(쓰레기 봉투 아이콘)·내 순위, 밤엔 판 위 등. 가게 거리 어귀(들머리 길 건너편) 0.55배 작은 판(같은 텍스처). 상호작용 '순위판' → 순위 창. 순위 창은 PC 560px·폰 92%, 1~3위 금·은·동, 내 줄 더 또렷이. 서버 호출은 늘리지 않음: rank.js 에 읽기 한곳(`fetch`, 30초 캐시, 버린 뒤 비움). 1위가 바뀌면 오름 방송 한 줄(하루 3번, 방송이 켜져 있을 때만 셈). 새 파일 `src/game/rankboard.js`, 수치 `RANKBOARD`, `journeymap.js` 가 순위판 자리도 그림·검사(오름지기·NPC·돌탑·클린하우스 6m).
+
+## #305 Tripo 새 모델 다섯: 오름지기 C·망고 좌판·징·투입구·망고 (2026-11-24)
+- 원본 `assets` 브랜치 `case/{jigi-c,mango-stall,gong,chute,mango}.glb` → `python3 model/bake-case.py <원본> <삼각형> <텍스처> <LOD 삼각형> <LOD 텍스처> 큰.glb 멀리용.glb`(`pip install bpy`) → `node model/extract-prop.js … src/model-case-<이름>[-lo].js <이름>_M|_LO "…" <품질>`. 오름지기 7,500·512 / 1,500·128(품질 70), 좌판 3,000·512 / 800·128, 징 2,500·512 / 600·128, 투입구 2,000·512 / 500·128(셋 품질 55), 망고 700·256 / 160·64
+- 받기: `tools/packassets.mjs` 에 `case-jigi·stall·gong·chute·mango`(·`-lo`, meta.lazy). 따로 받는 모델 2,645KB(24개) → 2,940KB(34개 표시는 build 셈), 늘어난 양 약 +455KB 모두 늦게 받음. 첫 화면 받는 양 그대로
+- 늦게 받기(#304 와 같이): 들어온 뒤 `CASE_MODELS.jigiDelay`(6초) 전엔 받지 않음 (`tripoprop.js setPropGate`, 게임 쪽은 jigi.js). 그 전엔 예전 코드 모양(좌판·징·투입구)·안 C 러너 차림(오름지기)
+- 오름지기: `QUESTS.givers.jigi.style` 기본 'T'. 러너 메시를 숨기고 `caseModel('jigi')` 를 root 맨 앞 자식으로(프로필 굽기 #224 가 이 모델 'head' 뼈를 찾음). 뼈 가중치: 집게는 오른손, 어깨 가방은 엉덩이만. 모션 idle·talk·note(왼손 가슴 앞 + 수첩을 손 뼈에)·wave(왼손)·glance(가끔 고개 휙). 밤엔 가방 초록빛(`CASE_MODELS.jigiGlow`, 더하기 스프라이트). 이름·대사·퀘스트 그대로, 예전 안 A·B·C 는 `__oreum.jigi.set('A')` 로
+- 소품 틀 `src/tripoprop.js`: 받기·LOD·텍스처 뒤 바꾸기는 사건 모델과 같고, 임시 모양(ph)·모프 하나. 좌판(token.js): 예전 코드 모양이 임시, 판 위 망고 한 알. 징(arena.js): 돌 고리와 떼어 따로(터마다 그리기 1 → 2), 치면 징판만 흔들림(모프: 매단 높이 둘레로 돌린 모양, 무게 음수도) `CASE_MODELS.gong`. 투입구(tubemodel.js): 모델은 덮개가 열린 채 → 경첩 둘레로 돌려 닫힌 모양을 기본으로, 원래(열림)를 모프로 (`CASE_MODELS.chute`), 입은 위쪽(`INTAKE.holeY`)
+- 망고: 받으면 머리 위로 튀었다 떨어지는 망고(`TOKEN.pop`, 몇 알 돌려 씀), 아이콘은 모델을 구운 64px 그림(`model/icon-mango.py` → `src/mangoicon.js`, `late.mangoIcon`): 내 가방 아래 망고 수·'지금 있는 곳' 옆 망고 칸. 무기 카드 그림(gsvg)은 그대로
+- 검사 `node tools/props305.js`(늦게 받기·좌판·징 흔들림·투입구 여닫기·튀는 망고·망고 그림, 그림 notes/shots/305/props.jpg), `node tools/jigishot.js T notes/shots/305`, `tools/casemodels.js` 는 여섯 모델(오름지기 포함)
+## #290 오피스제주 불멍과 버프
+- 숙소 옆마당(오른쪽 잔디)에 화로·캠핑 의자 둘·장작 더미 (`src/firepit.js`, 그리는 수 6). 숙소가 닫혀 있으면 덮개, 열리면 해 질 무렵(lampNight > 0.15)부터 불·불티·빛웅덩이, 낮에도 앉으면 붙고 일어난 뒤 1분 더 탐. 타닥 소리는 14m 안에서 가까울수록 큼(합성음)
+- [불멍](상호작용 아이콘 새로 `fire`, 위쪽 줄 `flame` — Tabler campfire·flame, tools/icongen.mjs): 빈 의자에 앉아 손을 쬠(runner 'warm'). 20초 앉으면 버프 '멍' 20분(놀이 시간), 중간에 일어나거나 움직이면 없음. 하루 3번(넘으면 앉기만). 앉는 동안 가장자리 어둠·UI 옅게·카메라 옆으로, 혼잣말 fire1~8 (punktext.js, 실마리 4:04·동그라미 셋·찬 캔)
+- '멍': 귤 모으는 범위 ×1.4 · 드문 쓰레기 ×1.15 · 쓰러짐 대기 ×0.7 · 밤·안개에 하늘빛 더함·안개 먼 끝 ×1.25. 싸움 수치 없음, 개운함·식사와 같이 걸림. 남이 의자에 앉아 있으면 +5분(남에게는 `mf` 로 앉은 자세가 보임)
+- 저장 `save.inn.fire = { d, n, until, t }`(t = 모두 앉은 수, 업적 '멍 장인' 용). 서버 validate.js 는 숙소 기록을 다시 만들 때 fire 를 지우던 것을 모양만 바로잡아 남기게 함(귤 없음)
+- 안녕 매니저 줄 둘, 숙소 창 카드 '마당 불멍 · 무료 · 오늘 n번'. 남은 것(이어지는 것): 업적 '멍 장인'·노루 친구 곁에 앉기·다음 할 일 '밤이면 불멍'
+
+## #292 바람 소리 다듬기·듣기 좋은 음악 (2026-11-24)
+- 바람을 `src/wind.js` 로 떼어 냄(audio.js 40KB 넘음): 로우패스 두 겹(420/520Hz) + 마지막 깎기(1.5kHz 두 번), 5~12초 세기 물결, 14~30초마다 돌풍(필터가 잠깐 열림). 억새는 4.2kHz '쉬—' → 1.3kHz 낮은 사각거림. 크기 `WIND.base` 0.06(전 0.16 바탕), 구역 배율·정상(+30%)·비(+50%)만 조금 더. 30초 재기: RMS 0.024 → 0.010, 2kHz 위 비율 0.12 → 0.004
+- 평소 음악을 장조 5음 음계로 다시(`src/music.js` 엮기·`src/musiccalm.js` 악보·음색): 가락 조각 12 + 맺는 조각 3을 4마디 악구로 엮고(최근 3개 피함·앞 끝음에 가까운 첫음·가끔 한 칸 옮김), 화음 진행 5가지, 패드 두 음. 2~3분 연주 → 1분 쉼
+- 곳(`game/musicplace.js`, 0.5초마다): 들머리·가게 거리 bright(72, 칼림바) · 초보·중수 구역 calm(66, 마림바) · 고수 구역·동굴 sparse(63, 비움) · 정상 top(높은 종) · 밤 night(60, 낮게) · 숙소 불멍 fire(기타 뜯기 아르페지오). 값 `MUSIC.calm.places`
+- 싸움 음악은 그대로, 돌아오는 시간 4 → 3초. 사건 장면·엔딩(`state.cine`, 수거 관 이동은 `kind: 'tube'` 로 뺌) 중 음악 ×0.35
+- 타이머는 Sound 의 스케줄러 하나(200ms)가 바람·음악 `tick(now)` 를 부름, 음은 AudioContext 시계로 1.2초 앞까지. 동시에 울리는 음 `MUSIC.voices` 8 (`Music._room`, 긴장 음도 같이 셈). `?heat=1` 표에 '음 n'
+- 설정: 효과음 크기 슬라이더(`#sfx-vol`, `save.music.sfx`, 효과음·자연 소리 버스), 음악 기본 크기 0.6 → 0.45
+- 검사 `node tools/musicrun.js`(OfflineAudioContext 30초 재기 앞뒤·곳·밤·싸움·쉼·되풀이·음 수, 본보기 `notes/sounds/day-forest.wav`·`night.wav`)
+
+- #287 처음 시작 새로고침 되풀이: 재현 — 로그인한 기기에서 열 때마다 한 번 더 새로고침(`tools/loadrun.js` 6절, 고치기 전 실패). 까닭: 나갈 때(pagehide) keepalive 로 보낸 저장의 응답을 못 받아 이 기기 사본의 `_rev` 가 서버보다 늘 하나 뒤 → 다음에 열면 `/me` 의 rev 가 앞서 '다른 기기 기록' 으로 보고 새로고침. 또 새로고침하는 그 페이지가 떠나는 동안 persist·flush 로 낡은 저장을 사본·서버에 되써서 rev 가 또 앞서 되풀이될 수 있었음.
+  - 고침: 열 때 읽은 사본 내용(키 순서 무시)이 서버 저장과 같으면 rev 만 받아 쓰고 새로고침 안 함. 다른 기기 기록이면 한 번만 새로고침하고, 떠나는 동안은 저장·전송 안 함(online.js `going`, start.js `onLeave` → state.resetting). 사용자가 누르지 않은 새로고침(rev·fix)은 탭에서 60초 안에 두 번 안 함(`src/reloadwhy.js`, CRASH.reloadGap). 새 버전 새로고침은 누를 때만, 그 버전으로 이미 새로고침했는데 낡은 index 면 이 탭에서 다시 권하지 않음(sessionStorage `oreumoreum.newver`).
+  - 까닭 기록: sessionStorage `oreumoreum.reloads`, 날짜별 셈 localStorage `oreumoreum.reloadlog` → 다음에 열 때 하루 한 번 오류 알림 'reload: rev×1 login×1 (날짜)' (스스로 한 것이 있거나 하루 CRASH.reloadRep 번 넘을 때).
+  - 새로고침하는 곳 표: rev·fix(online.js, 자동·막음) / login·logout·delete(online.js, 누를 때) / newver(newver.js, 누를 때) / reset·devreset·devintro(menu.js) / perf(debug.js 성능 단계) / map(look.js 탐방로) / gl(scene.js 화면 잃음 '다시 불러오기') / 로딩 창 '다시 시도'(bootscreen.js 인라인, 누를 때) / mview 틀(어드민) / 카카오톡 → 바깥 브라우저(inapp.js, #239 그대로). 처음 방문(손님)에는 하나도 돌지 않음: loadrun 6절 '문서 이동 1번'(처음 방문·낡은 index 둘 다).
+  - 첫 화면 깜박임(사용자 메모 '첫 화면 로딩될 때'): `tools/flicker.js` 에 '다. 처음 방문' — Pages 빌드(index.html)를 새 프로필로 http 로 열어 로딩 창 → 첫 화면 프레임 색을 재고, 앞뒤 사이에서 벗어난 3장 이하 묶음(하늘색·흰색·검은색 등)을 셈. 밤·낮 × d·m 모두 번쩍임 0 (로딩 창 밤색 40/41/34 → 0.4초 서서히 첫 화면). `FLK_ONLY=first` 로 이것만
+  - 릴리스 노트: 로그인한 채로 열면 한 번 더 새로고침되던 것을 고쳤어요.
+
+## #293 전체 용량 재고 줄이기
+- 재기 `node tools/sizereport.mjs [--md]` → `notes/size.md` (첫 화면까지·게임 시작까지·한 시간 전부, 원래·gzip·brotli, main 안 큰 것 20). Pages 는 gzip 만, 모든 파일 max-age=600
+- 텍스처 webp: `node tools/texwebp.mjs`(Pillow)가 `assets/tex/<jpg 해시>.webp` 를 굽고, `packassets.mjs texOf` 가 있을 때만 씀(원본 jpg 가 바뀌면 저절로 jpg). 기준 jpg 85% 이하·PSNR 36dB 이상, 14장. 텍스처 합 -13%, 내 캐릭터 190→123KB
+- index.html: `<style>` css minify·HTML 주석 뺌 (gzip 61→49KB)
+- 앞뒤(gzip): 첫 화면 1477→1398KB, 시작 2887→2745KB, 전부 3990→3799KB (각 -5%). 목표(70%·80%)는 못 닿음: 남은 큰 몫은 three 673KB(한 파일이라 tree-shaking 안 됨)와 게임 코드 1.6MB(iife 한 파일이라 조각 못 냄). 다음 후보와 잰 값은 `notes/size.md`
+## #291 투기꾼을 악당처럼 다시 그리기
+- 새 모델 없이 지금 캐릭터에 옷·소품·동작 (`src/game/villain.js`, 오름지기 #282 와 같은 방식). 안 셋 `notes/shots/291/*-{d,m}.jpg`(살금살금·두리번·던지기 준비·화들짝·주먹·밤): A 만화 도둑(검은 비니·흰 눈 복면·줄무늬 긴팔·어깨 자루) **적용**, B 후드·선글라스·흰 마스크(손 봉투), C 중절모·트렌치코트·검은 봉지 여럿. 바꾸기 `balance.js DUMP.look.style` ('' 면 예전 상자 모양), 미리 보기 `__oreum.villain.lineup()`
+- 동작: 오는 동안 숙이고 두리번 → 더미 앞에서 크게 두리번 → 자루를 뒤로 젖혔다 휙(자루가 더미로 날아감) → 돌아감. 맞으면 화들짝·자루 떨굼·줄행랑, 사라질 때 주먹 흔들며 작아짐. 밤엔 손전등(가린 빛). 망보는 짝(#168 lookout)은 모자·줄무늬 빨강
+- 차림은 실제 직업을 떠올리지 않게(형광 작업복 안은 후드로 바꿈). 트럭·흡연자·관광객은 그대로. 산타 투기꾼(#180)은 산타 모자·외투·바지 + 빨간 선물 자루
+- 멀티: 투기꾼은 각자 화면 것이라 보낼 것 없음. 말풍선(#278)·안내(guide)·도감은 d.root 기준이라 그대로. 얼굴 그림(talkfx·thumbs)에 투기꾼은 없음
+
+- #301 위쪽 줄 망고 칸: 귤 칸 바로 뒤 `#mango-pill`(src/page.html), 값은 save.tok.n, 한 번도 얻은 적 없으면(tok.n·tok.got 0) 숨김. 갱신·튀는 효과는 hud.js paintMango (updateStats 안, topFit.dirty). 그림 notes/shots/301-pc.png·301-phone.png (360 폭 줄 안 넘침)
+- #302 다 건너뛰기: 재현해 보니 코드는 이미 정낭(jeong)을 열고 `save.jeong` 저장·칸 담 제거·새로고침 뒤에도 열림(`place.js` 의 `save.tut.done` 열기). 멀티는 튜토리얼·정낭 상태를 보내지 않아 바꿀 것 없음. 빠진 검사만 더함: `tools/skipgate.js d|m`(건너뛰기→열림→새로고침), `tools/oldsave.js skipStuck`(done 인데 jeong 0 인 저장).
+- #307 [오류] 방 연결 InvalidStateError (iOS, 0.55.3 `src/online.js` presence): `open`(붙었음)이 옛 연결 것으로 남은 채 `ws` 만 새 연결(붙는 중)로 바뀌어 보내다 난 오류. 길 둘 — ① 서버가 오래 멈춤(idle)으로 내보낸 뒤 닫힘 알림이 오기 전에 화면을 눌러 다시 들어옴(`closed` 가 이미 참이라 `sleep()` 이 아무것도 안 했음) ② 끊겨서 다시 붙기 예약이 남은 채 쉬러 갔다 옴(쉬는 동안에도 붙고, 깨우면 연결이 둘)
+  - 고침: 연결은 늘 하나 — `connect()` 가 먼저 `drop()`(옛 연결 알림 떼고 닫기·예약 지움·붙어 있었으면 `gone()`), 서버 idle 도 받는 즉시 `drop()`, 다시 붙기 예약은 `again` 하나로 두고 쉬기·닫기에서 지움
+  - 검사 `node tools/wsrace.js`(가짜 WebSocket, 브라우저 없음. 고치기 전 InvalidStateError 재현). `tools/online.js` 의 낡은 '베타 안내 문구'(7일, #281 에서 글이 바뀜) 줄을 지금 글로

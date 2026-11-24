@@ -39,6 +39,7 @@ import { tickDirector } from './director.js'; // #176
 import { tickBuddies } from './buddies.js'; // 동료 (#172)
 import { deerNet } from './deernet.js';
 import { placeAt } from './where.js'; // #153
+import { tickMusicPlace } from './musicplace.js'; // 음악 곳 (#292)
 import * as fps from './fps.js'; // 프레임 상한·발열 지킴 (#271)
 import { bootReady, bootP } from '../bootbar.js'; // 로딩 창 (#281)
 // 게임 루프 셈 (#193): 프레임마다 각 갱신이 실제로 불렸는지. tools/smoke.js 와 실서버 감시(아래 watchLoop)가 읽는다
@@ -46,6 +47,8 @@ state.ticks = { frame: 0, player: 0, trash: 0, boss: 0, swarm: 0, arena: 0, shop
 state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히 도는 이슈와 부딪혀서 따로
 state.ticks.deerPal = 0; // 노루 친구 (#247)
 state.ticks.inn = 0; // 숙소 오피스제주 (#270)
+state.ticks.fire = 0; // 숙소 마당 불멍 (#290)
+state.ticks.villain = 0; // 투기꾼 악당 모습 (#291)
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -161,7 +164,7 @@ function updatePlayer(dt) {
     countSteps(moved);
     checkViewpoint();
   } else if (p.pose !== 'sit') p.pos.y = groundAt(p.pos.x, p.pos.z);
-  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : benchPos.y;
+  if (p.pose === 'sit') p.pos.y = mealS.on ? mealS.api.seat.y : cutS.on ? SAL.seat.y : late.fireSeatY?.() ?? benchPos.y; /* #290 불멍 의자 */
   late.tickSwim?.(dt); // 테왁 배낭으로 물에 뜸 (#164, game/punk.js): 높이를 물낯에
   if (p.kb.lengthSq() > 0.01) {
     let nx = p.pos.x + p.kb.x * dt, nz = p.pos.z + p.kb.z * dt;
@@ -354,6 +357,7 @@ function step(now) {
   if (state.sessionOn && !document.hidden) ab.tick(rawDt); // 서버별 플레이 시간 (#35)
   deerNet.tick(dt); // 멀티 노루 (#92)
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
+  if (late.villainTick) { late.villainTick(dt); state.ticks.villain++; } /* 투기꾼 악당 (#291, game/villain.js): 던진 자루 */
   if (late.tickDeerPal) { late.tickDeerPal(dt); state.ticks.deerPal++; } /* 노루 친구 (#247) */
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
   if (state.awe > 0) { state.awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (state.awe <= 0) state.aweBack = 2; }
@@ -364,7 +368,7 @@ function step(now) {
   runner.setTint(Date.now() < player.yellowUntil);
   if (net.hand.hitBy && net.hand.hitBy.at > (player.lastHitAt || 0)) { player.lastHitAt = net.hand.hitBy.at; player.yellowUntil = Date.now() + 6000; toast(`${net.hand.hitBy.nick}이(가) 던진 귤에 맞았어요`); net.send(true); }
   if (player.ride && (player.pose === 'sit' || mealS.on || cutS.on || state.photoState || state.fishing?.active || cam.mode === 'leap' || hp.isDown || player.rescue || player.knock)) dismountRide(); // 다른 일을 시작하면 내림 (#69)
-  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose;
+  const pose = player.flail ? 'flail' : player.riding ? 'ride' : player.cart ? 'sit' : player.ride ? rig.pose() || 'move' : player.pose === 'photo-wait' ? 'move' : player.pose === 'photo' ? photoPose : player.pose === 'sit' && late.fireSit?.() ? 'warm' : player.pose; /* #290 불멍: 앉아 손을 쬠 */
   const fx = Math.sin(player.heading) * 0.6, fz = Math.cos(player.heading) * 0.6; // 진행 방향 비탈 (오르막 +)
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
@@ -445,11 +449,12 @@ function step(now) {
   late.tickMyst?.(dt); // 4:04·금고 (#212, game/mystery.js)
   late.tickCases?.(dt); // 사건 파일 (#232, game/cases.js): 목격·증거·숨어 보기 장면
   if (late.tickInn) { late.tickInn(dt); state.ticks.inn++; } /* 숙소 (#270, game/inn.js): 개운함 시간·묵는 연출 */
+  if (late.tickFire) { late.tickFire(dt); state.ticks.fire++; } /* 마당 불멍 (#290, game/firepit.js): 화로 불·앉기·버프 '멍' */
   late.tickTube?.(dt); // 수거 관 (#248, game/tube.js): 빨려 들어감·관 속·튀어나옴 (updatePlayer 뒤라 몸 자리·크기를 덮어씀)
   late.tickReports?.(dt); // 매일 미확인 제보 (#238, game/reports.js)
   late.tickTraces?.(dt); // 발자국·크롭서클·뒤돌아보면 (#212, game/traces.js)
   tickDirector(dt); late.tickSimple?.(dt); late.tickMutter?.(dt); if (late.tickQuest) { late.tickQuest(dt); state.ticks.quest++; } late.tickPunkWorld?.(dt); tickTips(dt); tickPickMsg(dt); tickNewVer(dt);
-  if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); } // 배경 음악 (#64)
+  if (sound.music) { sound.setThreat(threatNear() || pace.threat()); sound.setDuck(mealS.on || cutS.on); tickMusicPlace(dt, sound); } /* 배경 음악 (#64)·곳 (#292) */
   enemyWarn.update(dt); dumpWarn.update(dt);
   updateStats();
   saveT += dt; if (saveT > 5) { saveT = 0; persist(); }

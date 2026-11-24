@@ -195,7 +195,7 @@ export const GEARB = shopsBuilt.find((sh) => sh.id === 'gear') || null; // 장�
 export const roofSigns = street ? createRoofSigns({ scene, height, street: STREET, shops: shopsBuilt }) : null; // 지붕 위 아이콘 간판 (#128)
 export const buff = createBuff({ save, persist, more: (k) => late.innMul?.(k) ?? 1, onEnd: (m) => { if (m) { late.toast('식사 버프가 끝났어요'); late.tips.event('buffEnd'); } } });
 // ---------- 쓰레기 (남송이): 오름 위(사면·능선·굼부리)에만 (#25) ----------
-export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], tutHeap: spots.tut?.heap || null, col, origin: spots.cleanhouse, chs: [spots.cleanhouse, ...(spots.cleanMinis || [])].filter(Boolean), entry: NS_TUT && spots.cleanhouse ? { pts: nsPaths.approach, from: TUT.gateD, ch: spots.cleanhouse, eye: nsAlong('approach', TUT.gateD + 2), walk: (x, z) => NSB.inBound(x, z, 6) } : null, rareMul: () => wearV('hat') * (state.paceRare || 1) }) : null; /* 구역마다 쓰레기 더미 (#45) */
+export const trash = NSW ? createTrash({ scene, store: createLocalTrashStore({ save, persist }), height, paths: NSB.oreumPaths, inBounds: NSB.onOreum, low: LOW, fixed: spots.tut?.trash || [], tutHeap: spots.tut?.heap || null, col, origin: spots.cleanhouse, chs: [spots.cleanhouse, ...(spots.cleanMinis || [])].filter(Boolean), entry: NS_TUT && spots.cleanhouse ? { pts: nsPaths.approach, from: TUT.gateD, ch: spots.cleanhouse, eye: nsAlong('approach', TUT.gateD + 2), walk: (x, z) => NSB.inBound(x, z, 6) } : null, rareMul: () => wearV('hat') * (state.paceRare || 1) * (late.fireMul?.('rare') ?? 1) }) : null; /* 구역마다 쓰레기 더미 (#45) */
 export const CH = trash && spots.cleanhouse ? createCleanhouse({ scene, height, ...spots.cleanhouse, low: LOW, trashGeos: trash.geos }) : null;
 if (CH && col) col.addBox(CH.boardAt.x, CH.boardAt.z, spots.cleanhouse.rot, 0.9, 0.2); // 랭킹 게시판 (#11)
 // 오름 안 작은 클린하우스 (#78). 충돌은 더미 자리를 정한 뒤에 등록(더미 자리·저장이 바뀌지 않게)
@@ -228,7 +228,7 @@ export const player = {
 };
 player.pos.y = height(player.pos.x, player.pos.z); player.visY = player.pos.y;
 // ---------- HP·쓰러짐·들것 귀환 (#36) ----------
-export const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, startAt: () => late.wakeAt?.(), enabled: () => state.sessionOn, showBar: () => (state.tension || 0) > 0.02, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top') * (late.innMul?.('hp') ?? 1), /* #270 개운함 최대 기운 */
+export const hp = createHp({ scene, height, buildRunner, outfit: DEFAULT_OUTFIT, save, persist, start: spots.start, startHeading: spots.startHeading, startAt: () => late.wakeAt?.(), enabled: () => state.sessionOn, showBar: () => (state.tension || 0) > 0.02, regenMul: () => buff.mul('regen') * wearV('socks'), maxMul: () => wearV('top') * (late.innMul?.('hp') ?? 1), waitMul: () => late.fireMul?.('down') ?? 1, /* #290 불멍 '멍': 쓰러짐 대기 */ /* #270 개운함 최대 기운 */
   el: { bar: $('hp-bar'), fill: $('hp-fill'), dim: $('hp-dim'), wait: $('hp-wait'), ring: $('hp-ring'), num: $('hp-num') },
   onDown: () => { late.closePanels(); if (player.riding) late.dismountDeer(); if (player.pose === 'sit') late.standUp(); state.emo?.stop(); late.ach.emit('down'); },
   onUp: () => late.tips.event('carried'), // 들것으로 돌아옴 (#66)

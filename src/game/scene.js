@@ -1,4 +1,5 @@
 // 렌더러·장면·빛·성능 단계 적용, 실제 제주 시각의 해·하늘, 날씨 반영 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { reloadFor } from '../reloadwhy.js'; /* 새로고침 까닭 남기기 (#287) */
 import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong, nsPaths } from '../namsongi.js';
 import { aimLamps } from '../lampaim.js';
@@ -59,7 +60,7 @@ state.glLost = false;
     state.glLost = false; clearTimeout(lostT); $('gl-lost').hidden = true; crashNote('WebGL 되살아남');
     setTimeout(() => { try { prepShaders().catch(() => {}); } catch (e) { /* 다음 그릴 때 준비됨 */ } }, 50);
   });
-  $('gl-reload').addEventListener('click', () => location.reload());
+  $('gl-reload').addEventListener('click', () => reloadFor('gl'));
 }
 state.farCull = null; // 멀리 있는 작은 물체 감추기 (#79), 맨 끝에서 만듦
 export const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF, heat: 0 }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)
@@ -190,6 +191,7 @@ export function applySky() {
   const sc = 700 + g * 500; bodies.sunSprite.scale.set(sc, sc, 1);
   bodies.stars.material.opacity = THREE.MathUtils.smoothstep(-el, 6, 14) * 0.85; // 해가 지평선 아래 6° 지나면서 서서히, 14°쯤 다 보임
   nsAfter(); applyWx(el);
+  { const see = late.fireSee?.() || 0; if (see > 0) { hemi.intensity += see * (1 - k) * ex; fogBase.f *= late.fireFog?.() ?? 1; applyZoneFog(); } } /* #290 불멍 '멍': 밤·안개에서 조금 더 보임 */
   sunState = { el, az, k, golden: g };
   late.sound.setDaylight?.(k);
 }

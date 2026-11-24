@@ -6,6 +6,7 @@
 import { NET } from './balance.js';
 import { HEAP_SIG } from './trash.js';
 import { bootShow } from './bootbar.js';
+import { reloadFor, canAuto } from './reloadwhy.js';
 
 const BASE = __DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1';
 const SK = BASE + '.sess';
@@ -49,8 +50,12 @@ export function loadSave(key) {
     }
     s.lastSeen = Date.now();
   }
+  if (sess) loadedSig = sig(strip(s)); /* 열 때 읽은 계정 사본 (#287): 서버 rev 만 앞서고 내용이 같으면 다시 열지 않음 */
   return s;
 }
+let loadedSig = '';
+const canon = (v) => (Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.keys(v).sort().reduce((o, k) => { o[k] = canon(v[k]); return o; }, {}) : v);
+const sig = (o) => { try { return JSON.stringify(canon(o)); } catch (e) { return ''; } };
 export const stampGuest = (s) => { if (!sess) s.lastSeen = Date.now(); }; // 저장할 때마다 마지막 접속 갱신
 
 /* 첫 화면 계정 칸 (#281): 메일은 로그인할 때 구글 ID 토큰에서 읽어 '앞 3글자***@도메인' 으로만 이 기기 세션에 둔다 (원래 주소는 남기지 않음, 서버도 모름) */
@@ -85,13 +90,16 @@ export const getOnline = ONLINE ? () => api('/admin/online') : null;
 export const metricsUrl = ONLINE ? SRV + '/m' : '';
 // 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
 export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
-const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
+function strip(s) { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; }
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 
 /* ---------- 계정 ---------- */
 // getSave: 지금 저장 객체, writeLocal: 이 기기에 바로 씀, onFix({coins,total}): 서버가 바로잡은 값, toast, entered(): 이미 입장했는지
 // ver: 게임 버전(귤 맞춤 기록용, #188), onGift(g): 운영자가 보낸 귤 { id, n, why } (#188)
-export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver = '', onGift = () => {} }) {
+export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, entered, ver = '', onGift = () => {}, onLeave = () => {} }) {
+  let going = false; /* 새로고침으로 떠나는 중 (#287): 이 페이지는 더 저장·전송하지 않음 (계정 사본·서버 rev 를 낡은 값으로 되쓰면 다음에 또 새로고침) */
+  const writeLocal = () => { if (!going) writeLocal0(); };
+  const leave = (why, auto, ms = 0) => { if (auto && !canAuto()) return false; going = true; clearTimeout(timer); timer = 0; onLeave(); if (ms) setTimeout(() => reloadFor(why, { auto }), ms); else reloadFor(why, { auto }); return true; };
   let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '', admin = false, checked = false;
   // 서버가 새 토큰을 주면 바꿔 끼움 (#84: 세션 수명 NET.sessionDays, 남은 날이 적으면 /me 가 새로 줌)
   const renew = (r) => { if (sess && r && typeof r.token === 'string' && r.exp > Date.now()) { sess = { ...sess, t: r.token, exp: r.exp }; ls.set(SK, JSON.stringify(sess)); } };
@@ -104,7 +112,11 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
       keepUntil = me.keepUntil; admin = !!me.admin; checked = true; renew(me); changed();
       const s = getSave();
       if (me.nickRen) s.nickRen = me.nickRen; // 이름 바꾼 횟수·날은 서버 값 (#162)
-      if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { writeCache(me.save, me.rev, sess.sub); location.reload(); return; } // 다른 기기에서 더 해 둔 기록
+      if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { /* 서버가 앞섬 */
+        if (loadedSig && loadedSig === sig(me.save)) { s._rev = me.rev; writeLocal(); } /* 내용은 같음: 지난번 나갈 때 보낸 저장의 응답을 못 받은 것 (#287) */
+        else if (canAuto()) { writeCache(me.save, me.rev, sess.sub); leave('rev', true); return; } /* 다른 기기에서 더 해 둔 기록 */
+        else { s._rev = me.rev; writeLocal(); } /* 방금 같은 까닭으로 다시 열었는데 또: 되풀이하지 않고 이 기기 기록으로 (#287) */
+      }
       gifts(me.gifts);
       if (!me.save) push();
     } catch (e) {
@@ -112,7 +124,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     }
   }
   async function push(keepalive = false) {
-    if (!sess) return;
+    if (!sess || going) return;
     if (busy && !keepalive) { again = true; return; }
     clearTimeout(timer); timer = 0; busy = true; lastPush = Date.now();
     const s = getSave(), body = JSON.stringify(strip(s));
@@ -123,7 +135,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
       gifts(r.gifts);
-      if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
+      if (r.fix?.reload && !going && canAuto()) { const me = await api('/me'); if (going) return; writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); leave('fix', true, 1200); return; }
       if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick || r.fix.gift || r.fix.lv || r.fix.tok)) onFix(r.fix);
       writeLocal();
       changed();
@@ -143,7 +155,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     if (any) { writeLocal(); dirty(); }
   }
   function dirty() { if (!sess || timer) return; timer = setTimeout(() => { timer = 0; push(); }, NET.saveDebounce); }
-  const flush = () => { if (sess && timer) push(true); };
+  const flush = () => { if (sess && timer && !going) push(true); };
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
@@ -157,7 +169,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     const me = await api('/me', { token: r.token });
     sess = s; ls.set(SK, JSON.stringify(s));
     writeCache(me.save || { nick: localSave.nick }, me.rev, sub);
-    bootShow('계정 기록 불러오는 중'); location.reload();
+    going = true; onLeave(); bootShow('계정 기록 불러오는 중'); reloadFor('login');
   }
   /* 로그아웃 (#281): 남은 저장을 서버에 먼저 보내고(3초까지), 서버 토큰을 버리고(POST /logout), 이 기기의 토큰·계정 사본을 지운 뒤 손님으로 다시 열기.
      서버에 다 보냈는지 모르면 계정 사본은 남김(계정 번호가 붙어 있어 손님 저장과 섞이지 않고, 같은 계정으로 다시 로그인하면 이어짐) */
@@ -169,13 +181,13 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     try { await Promise.race([push(), new Promise((r) => setTimeout(r, 3000))]); synced = !busy && lastBody === JSON.stringify(strip(getSave())); } catch (e) { synced = false; }
     const t = sess?.t; if (t) fetch(SRV + '/logout', { method: 'POST', keepalive: true, headers: { authorization: 'Bearer ' + t } }).catch(() => {}); // 이 토큰은 서버에서도 버림 (#84)
     sess = null; ls.del(SK); if (synced) ls.del(ACCT_KEY);
-    location.reload();
+    going = true; reloadFor('logout');
   }
   async function deleteMe() {
     if (!sess) return false;
     await api('/me', { method: 'DELETE' });
     sess = null; ls.del(SK); ls.del(ACCT_KEY);
-    location.reload();
+    going = true; onLeave(); reloadFor('delete');
     return true;
   }
   // 이름 바꾸기 (#162): 귤을 서버에 먼저 맞춘 뒤 POST /nick. 실패는 e.message(bad|same|day|price|coins), e.data.price
@@ -279,10 +291,13 @@ export function createWsLobby({ token = () => null } = {}) {
       const on = (t, f) => { (handlers[t] ||= []).push(f); };
       const fire = (t, m) => (handlers[t] || []).forEach((f) => { try { f(m); } catch (e) { /* 한 곳 오류가 다른 곳을 막지 않게 */ } });
       const known = new Map(); // id → presence
-      let ws = null, ch = 0, myId = null, host = null, backoff = 1000, closed = false, open = false;
+      let ws = null, ch = 0, myId = null, host = null, backoff = 1000, closed = false, open = false, again = 0;
       const me = () => ({ peer: myId, sameTab: true, isMe: true, kind: 'viewer', presence: {} });
       const emit = (joined, updated, left) => peersCb && peersCb({ peers: [me(), ...[...known].map(([peer, presence]) => ({ peer, presence, kind: 'viewer' }))], joined, updated, left });
+      // 연결은 늘 하나 (#307): 새로 붙기 전에 옛 연결의 알림을 떼고 닫는다. open·myId 는 지금 ws 의 것만 (옛 연결의 '붙었음' 이 남은 채 붙는 중인 새 연결에 보내면 InvalidStateError)
+      function drop() { clearTimeout(again); const w = ws; ws = null; if (w) { w.onmessage = null; w.onclose = null; try { w.close(1000, 'rest'); } catch (e) { /* 이미 닫힘 */ } } if (open) gone(); }
       function connect() {
+        drop();
         const q = new URLSearchParams({ room: String(name).toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40), ch: String(ch) });
         const tk = token();
         // 토큰은 주소창(서버 로그에 남음) 대신 하위 프로토콜로 (#84). 서버는 'oreum' 으로 답함
@@ -296,15 +311,15 @@ export function createWsLobby({ token = () => null } = {}) {
             emit(joined, updated, []);
           } else if (m.t === 'l') { if (known.delete(m.id)) emit([], [], [{ peer: m.id }]); }
           else if (m.t === 'host') { host = m.id; fire('host', m); }
-          else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; ws.onclose = null; ws.close(); connect(); } // 정원이 차면 다음 방(채널)
-          else if (m.t === 'idle') { closed = true; fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
+          else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; connect(); } // 정원이 차면 다음 방(채널)
+          else if (m.t === 'idle') { closed = true; drop(); fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
           else if (m.t === 'ban' || m.t === 'kick') { backoff = Math.max(backoff, (m.sec || 60) * 1000); fire(m.t, m); } // 끊김 (#84): 풀릴 때까지 기다렸다 다시
           else fire(m.t, m);
         };
         ws.onclose = (e) => {
           if (e?.code === 4004 && !closed) { closed = true; fire('idle', {}); } // idle 메시지를 못 받았어도 닫는 까닭 코드로 (#157)
           gone();
-          if (!closed) { setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }
+          if (!closed) { clearTimeout(again); again = setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }
         };
       }
       function gone() {
@@ -317,9 +332,9 @@ export function createWsLobby({ token = () => null } = {}) {
         onPeers(cb, onClose) { peersCb = cb; closeCb = onClose; },
         presence(obj) { if (open) ws.send(JSON.stringify({ t: 'p', d: obj })); return Promise.resolve(); },
         send(msg) { if (open) ws.send(JSON.stringify(msg)); return open; },
-        on, close() { closed = true; ws?.close(); },
+        on, close() { closed = true; clearTimeout(again); ws?.close(); },
         // 쉬러 가기 (#157): 방에서 나감(다시 붙지 않음) / 다시 들어옴 (같은 방·채널, 핸들러 그대로)
-        sleep() { if (closed) return; closed = true; const w = ws; if (w) { w.onmessage = null; w.onclose = null; try { w.close(1000, 'rest'); } catch (e) { /* 이미 닫힘 */ } } gone(); }, // 닫힘 알림을 기다리지 않고 바로 (다시 들어올 때 옛 연결 값이 섞이지 않게)
+        sleep() { if (closed) return; closed = true; const was = open; drop(); if (!was) gone(); }, // 닫힘 알림을 기다리지 않고 바로 (다시 들어올 때 옛 연결 값이 섞이지 않게)
         wake() { if (!closed) return; closed = false; backoff = 1000; connect(); },
         get asleep() { return closed; },
         get id() { return myId; }, get host() { return host; }, get isHost() { return !!myId && host === myId; }, get open() { return open; }, get ch() { return ch; },

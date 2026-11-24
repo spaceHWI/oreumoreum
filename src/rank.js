@@ -3,7 +3,7 @@
 // - 서버가 없거나 손님이면 이 기기의 내 기록(오늘·이번 주·전체)만 + '로그인하면 랭킹에 올라가요'
 // - 버린 뒤 오늘 순위가 오르면 작은 토스트, 오늘 10위·1위 안이면 업적 이벤트 rank-top10·rank-top1 (하루 한 번)
 // 닉네임은 늘 textContent 로만 (#84)
-import { RANK } from './balance.js';
+import { RANK, RANKBOARD } from './balance.js';
 import { kstDay } from './rankday.js';
 
 const RANGE_LABEL = { day: '오늘', week: '이번 주', all: '전체' };
@@ -13,7 +13,14 @@ const RANGE_LABEL = { day: '오늘', week: '이번 주', all: '전체' };
 const SRV = 'battle';
 // guests(): 지금 같은 방의 손님(로그인 안 한 사람) 수 (#261, 닉네임은 내보내지 않음)
 export function createRank({ account, store, face, toast, ach, save, persist, el, onOpen, guests }) {
-  const st = { srv: SRV, range: 'day', seq: 0, last: {}, lastCheck: 0, open: false };
+  const st = { srv: SRV, range: 'day', seq: 0, last: {}, lastCheck: 0, open: false, cache: {}, calls: 0 };
+  /* #289: 순위 읽기 한곳. 큰 순위판(game/rankboard.js)과 순위 창이 같이 씀. RANKBOARD.cacheMs 안이면 서버에 다시 묻지 않음. 버린 뒤(afterDump)에는 비움 */
+  async function fetchRank(range, fresh) {
+    const c = st.cache[range], t = Date.now();
+    if (!fresh && c && t - c.t < RANKBOARD.cacheMs) return c.r;
+    st.calls++; const r = await account.rank(range, st.srv);
+    st.cache[range] = { t: Date.now(), r }; return r;
+  }
   const gl = document.createElement('p'); gl.className = 'muted rk-note rk-guest'; gl.hidden = true; el.note.after(gl);
   function guestLine() { /* #261: 같이 노는 손님은 순위표에 없으니 한 줄로 알려 줌. 0명이면 줄 없음 */
     const n = online() ? Math.max(0, Math.floor(Number(guests?.()) || 0)) : 0;
@@ -56,7 +63,7 @@ export function createRank({ account, store, face, toast, ach, save, persist, el
     el.list.classList.remove('local');
     el.note.textContent = '불러오는 중…';
     try {
-      const r = await account.rank(st.range, st.srv);
+      const r = await fetchRank(st.range);
       if (seq !== st.seq) return;
       el.list.innerHTML = '';
       r.top.forEach((x) => el.list.append(row(x)));
@@ -94,12 +101,12 @@ export function createRank({ account, store, face, toast, ach, save, persist, el
     try {
       let prev = st.last[srv]?.d === d ? st.last[srv].rank : null;
       if (prev == null) prev = (await account.rankMe(srv)).day.rank || 0; // 처음이면 보내기 전 순위를 먼저
-      await account.push();
+      await account.push(); st.cache = {}; /* #289 판·창이 다음에 새로 읽음 */
       const me = (await account.rankMe(srv)).day;
       noteDay(srv, me);
       st.last[srv] = { d, rank: me.rank || 0 };
       if (me.rank && (!prev || me.rank < prev)) toast(prev ? `오늘 ${prev}위 → ${me.rank}위` : `오늘 ${me.rank}위`);
     } catch (e) { /* 순위는 다음에 */ }
   }
-  return { open, render, afterDump, prime, state: () => ({ ...st, online: online() }) };
+  return { open, render, afterDump, prime, fetch: (range = 'day', fresh = false) => (online() ? fetchRank(range, fresh) : Promise.resolve(null)), online, state: () => ({ ...st, online: online() }) };
 }

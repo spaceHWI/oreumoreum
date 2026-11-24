@@ -1,4 +1,5 @@
 // 처음부터 다시, 개발자 버튼, 배경 음악, 동작(이모트) 버튼 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
+import { reloadFor } from '../reloadwhy.js'; /* 새로고침 까닭 남기기 (#287) */
 import { WX, wxIcon } from '../weather.js';
 import { ONLINE } from '../online.js';
 import { state, late } from './state.js';
@@ -27,7 +28,7 @@ $('menu-more').addEventListener('click', () => $('menu').classList.toggle('more'
     const keep = { nick: save.nick, gfx: save.gfx, gfxV3: save.gfxV3, perf: save.perf, rainFx: save.rainFx, vib: save.vib, calmFx: save.calmFx, introSound: save.introSound, music: save.music, nickSet: save.nickSet, nickRen: save.nickRen, reset: 1, _rev: save._rev, _acct: save._acct }; /* reset: 처음 온 사람처럼 시작. _rev·_acct: 계정 사본이면 서버 기록으로 되돌아가지 않게 (#7) */
     for (const k of Object.keys(keep)) if (keep[k] === undefined) delete keep[k];
     try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
-    location.reload();
+    reloadFor('reset');
   };
   const tick = () => { if (!t0) return; const p = Math.min(1, (performance.now() - t0) / HOLD); b.style.setProperty('--p', p); if (p >= 1) { t0 = 0; doReset(); } else raf = requestAnimationFrame(tick); };
   b.addEventListener('pointerdown', (e) => { if (e.button) return; e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) { /* 무시 */ } t0 = performance.now(); raf = requestAnimationFrame(tick); });
@@ -75,7 +76,7 @@ export function enableDev() {
       if (!rc) { rc = 1; $('dev-reset').textContent = '정말 지울까요? 한 번 더'; setTimeout(() => { rc = 0; $('dev-reset').textContent = '모두 리셋'; }, 4000); return; }
       state.resetting = true;
       try { localStorage.setItem(KEY, JSON.stringify({ reset: 1 })); localStorage.removeItem(TK); } catch (e) { /* 무시 */ }
-      location.reload();
+      reloadFor('devreset');
     });
     // 들어오기 다시 (#99): 들어오기를 본 표시·캐릭터 고른 표시만 지우고 새로 고침. 장비·귤·치운 양·튜토리얼·로그인은 그대로 (_rev·_acct 도 남겨 서버 기록으로 되돌아가지 않게)
     $('dev-intro').addEventListener('click', () => {
@@ -84,7 +85,7 @@ export function enableDev() {
       if (keep.pace) keep.pace = { ...keep.pace, hint: 0 }; // #135 투기꾼 안내도 다시
       delete keep.journey; // #176 감독의 문·소개도 처음부터
       try { localStorage.setItem(KEY, JSON.stringify(keep)); } catch (e) { /* 저장 불가 환경 */ }
-      location.reload();
+      reloadFor('devintro');
     });
     $('dev-tut').addEventListener('click', () => { late.tut.skipAll(); toast('튜토리얼 건너뛰기'); }); // #62 건너뛰기는 개발자 버튼에만
     $('dev-gyul').addEventListener('click', () => { late.notEarned?.(10000); save.coins += 10000; persist(); updateStats(); late.sound.coin?.(); toast('귤 +10,000'); }); // 업적·귤 벌기 기록에는 안 셈
@@ -99,6 +100,8 @@ $('menu-sound').addEventListener('click', () => { if (late.sound.on) late.sound.
 $('menu-music').addEventListener('click', () => { save.music.on = save.music.on ? 0 : 1; late.sound.setMusic(save.music.on); if (save.music.on && !late.sound.on) late.sound.start(); late.setSoundUI(); persist(); });
 $('music-vol').addEventListener('input', (e) => { save.music.vol = Math.round(+e.target.value) / 100; late.sound.setMusicVol(save.music.vol); if (save.music.vol > 0 && !save.music.on) { save.music.on = 1; late.sound.setMusic(1); } late.setSoundUI(); });
 $('music-vol').addEventListener('change', () => persist());
+$('sfx-vol')?.addEventListener('input', (e) => { save.music.sfx = Math.round(+e.target.value) / 100; late.sound.setSfxVol(save.music.sfx); }); /* 효과음·자연 소리 크기 (#292) */
+$('sfx-vol')?.addEventListener('change', () => { persist(); late.sound.coin?.(); });
 $('act-chat').addEventListener('click', () => late.openChat());
 // 동작(이모트) (#76): 동작 버튼 → 바퀴 메뉴. 목록·말풍선·방향 표시는 emotes.js
 export const emoRiding = () => !!(player.riding || player.ride || player.cart);

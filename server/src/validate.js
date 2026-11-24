@@ -31,6 +31,9 @@ const TIERS = { tool: [1, TOOLS], bag: [0, BAGS], shoes: [1, SHOES] };
 
 export const FRESH = { coins: 5, equip: { tool: 1, bag: 0, shoes: 1, weapon: 1 }, clothes: { own: {}, wear: {} }, rides: { own: [], cur: null }, hairs: {}, trash: { total: 0 } };
 
+// 불멍 기록 (#290): d 그날(KST)·n 그날 앉은 수·until 버프 '멍' 남은 놀이 초·t 모두 앉은 수
+const fireNorm = (f) => ({ d: typeof f.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.d) ? f.d : '', n: Math.max(0, Math.min(INN.fire.perDay, Math.floor(Number(f.n)) || 0)), until: Math.max(0, Math.min(INN.fire.buffSec + INN.fire.pair, Number(f.until) || 0)), t: Math.max(0, Math.min(1e6, Math.floor(Number(f.t)) || 0)) });
+
 function norm(s) {
   s.coins = int(s.coins, 0, 1e9, 0);
   if (!isObj(s.equip)) s.equip = {};
@@ -80,7 +83,7 @@ function norm(s) {
     s.punk = { title: Number.isInteger(k.title) && k.title >= 0 && k.title < TITLES.length ? k.title : -1, notes, unread: Array.isArray(k.unread) ? k.unread.filter((id) => notes[id] !== undefined).slice(0, NOTES.length) : [], radio: k.radio === 0 ? 0 : 1,
       day: isObj(k.day) ? { d: typeof k.day.d === 'string' ? k.day.d.slice(0, 10) : '', n: int(k.day.n, 0, 1e6, 0) } : { d: '', n: 0 }, ev: isObj(k.ev) ? Object.fromEntries(Object.keys(k.ev).filter((e) => /^[a-z0-9-]{1,24}$/.test(e)).slice(0, 32).map((e) => [e, 1])) : {} };
   }
-  if (s.inn !== undefined) { const o = isObj(s.inn) ? s.inn : {}; s.inn = { d: typeof o.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.d) ? o.d : '', n: int(o.n, 0, 1e6, 0), left: Math.max(0, Math.min(INN.buffSec, Number(o.left) || 0)) }; } // 숙소 (#270): 마지막 묵은 날·묵은 수·개운함 남은 초
+  if (s.inn !== undefined) { const o = isObj(s.inn) ? s.inn : {}; s.inn = { d: typeof o.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.d) ? o.d : '', n: int(o.n, 0, 1e6, 0), left: Math.max(0, Math.min(INN.buffSec, Number(o.left) || 0)), ...(isObj(o.fire) ? { fire: fireNorm(o.fire) } : {}) }; } /* 숙소 (#270): 마지막 묵은 날·묵은 수·개운함 남은 초. fire = 마당 불멍 (#290, 귤이 오가지 않아 모양만 바로잡음) */
   normTok(s); // 징표 (#255, server/src/token.js)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;

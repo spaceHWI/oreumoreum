@@ -30,7 +30,8 @@ export const sound = new Sound(); late.sound = sound;
 sound.forest = MAP_ID === 'donnaeko';
 if (!save.music || typeof save.music !== 'object') save.music = { on: 1, vol: MUSIC.vol }; // 예전 저장엔 없음 (#64)
 save.music.vol = Math.max(0, Math.min(1, Number.isFinite(+save.music.vol) ? +save.music.vol : MUSIC.vol));
-sound.setMusic(save.music.on); sound.setMusicVol(save.music.vol); setSoundUI();
+save.music.sfx = Math.max(0, Math.min(1, Number.isFinite(+save.music.sfx) ? +save.music.sfx : MUSIC.sfx)); /* 효과음 크기 (#292, 예전 저장엔 없음) */
+sound.setMusic(save.music.on); sound.setMusicVol(save.music.vol); sound.setSfxVol(save.music.sfx); setSoundUI();
 life.bind(player, sound);
 life.hooks.enemyHit = (dir, def) => {
   if (state.cine) return; // 엔딩 시네마틱 동안은 모두 무적 (#168)
@@ -76,7 +77,7 @@ life.hooks.enemyRepel = (kind, pos, def) => {
   ach.emit('enemy-repel'); ach.emit('enemy-repel-' + kind); late.pace?.note('repel'); tips.event('charge'); // 첫 적을 쫓아낸 뒤 모아 쏘기 팁 (#129)
   if (kind === 'boar') ach.emit('boar-repel');
 };
-life.hooks.pickR2 = () => Math.max(gyulPickR(save) + augV(save, 'magnet') + buff.add('gyulR') + (late.punkPickR?.() || 0), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; // 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐) + 자석 귤 증강 (#159, 더함) + 하르방 기운 (#163). 싸우는 중엔 #148 값과 큰 쪽
+life.hooks.pickR2 = () => Math.max((gyulPickR(save) + augV(save, 'magnet') + buff.add('gyulR') + (late.punkPickR?.() || 0)) * (late.fireMul?.('pickR') ?? 1), life.enemies.active() ? COMBAT.autoPick : 0) ** 2; /* 귤 모으는 범위 (#151, 배낭 단계마다 넓어짐) + 자석 귤 증강 (#159, 더함) + 하르방 기운 (#163). 싸우는 중엔 #148 값과 큰 쪽 · #290 불멍 '멍' 곱함 */
 life.hooks.throwR2 = () => (life.enemies.active() ? COMBAT.autoPick ** 2 : 1.6); // 내가 던진 귤은 예전 범위 (노루가 먹으러 올 틈), 싸우는 중엔 넓게 (#148)
 life.hooks.paced = !!trash; life.hooks.hit = (p, dead) => late.pace?.hit(p, dead); // 몹도 연출 감독이 부름 (#89). 쓰레기 없는 맵은 예전대로
 life.hooks.enemyRoot = (kind, pos, n) => { if (trash) trash.drop(pos.x, pos.z, n, ENEMIES[kind]?.rootR || 14); };
@@ -105,7 +106,7 @@ export const dumpWarn = makeEdgeWarn('dump-warn', DUMP_IC, DUMP.warnT);
 late.edgeWarnOn = () => enemyWarn.t > 0 || dumpWarn.t > 0; // 같은 뜻(적 방향) 표시는 한 번에 하나 (#201, throw.js tickEdgeAim)
 state.introToast = null; // 첫 화면이 떠 있을 때 온 알림은 들어간 뒤 보여 줌 (#16)
 export const dumpers = trash ? createDumpers({
-  scene, trash, height, paths: nsPaths,
+  scene, trash, height, paths: nsPaths, makeWalker: () => late.makeVillain?.() || null, /* #291 악당 모습 (game/villain.js) */
   bound: { line: NSB.boundLine, insideBy: NSB.insideBy, center: NSB.BOUND_CENTER },
   avoid: NS_TUT ? (() => { const L = NSB.crossLine(TUT.gateD); return (x, z) => (x - L.c.x) * L.fx + (z - L.c.z) * L.fz < 6 && Math.hypot(x - L.c.x, z - L.c.z) < 260; })() : null, // 들머리 튜토리얼 쪽 길은 트럭이 안 지남
   hooks: {
@@ -169,6 +170,7 @@ export function setSoundUI() {
   $('menu-sound').setAttribute('aria-pressed', String(sound.on));
   $('menu-music').setAttribute('aria-pressed', String(!!(sound.on && save.music.on)));
   $('music-vol').value = String(Math.round(save.music.vol * 100));
+  if ($('sfx-vol')) $('sfx-vol').value = String(Math.round(save.music.sfx * 100));
 }
 // 적 근처면 긴장 음악 (#64): 몹·멧돼지(enemies) + 투기꾼·투기 트럭(dumpers)
 export function threatNear() {

@@ -209,7 +209,7 @@ body.looking #pickmsg, body.hp-down #pickmsg, body.looking #combo, body.hp-down 
 #menu-music { flex: none; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; }
 #menu-music svg { display: block !important; width: 20px; height: 20px; }
 #menu-music[aria-pressed="false"] { color: var(--ink-soft); opacity: .6; }
-#music-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
+#music-vol, #sfx-vol { flex: 1; min-width: 0; accent-color: var(--acc); height: 28px; }
 #menu-reset { --p: 0; position: relative; width: 40px; height: 40px; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; justify-content: center !important; color: var(--ink-soft); background: transparent; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #menu-reset::before { content: ""; position: absolute; inset: 0; border-radius: 50%; padding: 2px; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), rgba(128,128,128,.35) 0); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 #menu-reset svg { width: 18px; height: 18px; }
@@ -703,12 +703,20 @@ body.intro-help-on :is(.intro-logo, .intro-beta, #intro-expired, .intro-rn, #int
 .rk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .rk-row { display: grid; grid-template-columns: 30px 30px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 14px; }
 .rk-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 13px; color: var(--ink-soft); }
-.rk-row.medal .rk-no { background: var(--gyul); color: var(--acc-fg); box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
-.rk-row.m2 .rk-no { filter: saturate(.75) brightness(1.08); } .rk-row.m3 .rk-no { filter: saturate(.55) brightness(.92); }
+.rk-row.medal .rk-no { background: var(--gyul); color: #2a1d08; box-shadow: inset -2px -2px 0 rgba(0,0,0,.15), 0 0 0 2px rgba(255,255,255,.85); }
+/* #289 1~3위 금·은·동 (값은 balance.js RANK.medalColor 와 같이) */
+.rk-row.m1 .rk-no { background: #f2c14e; } .rk-row.m2 .rk-no { background: #c9d1d8; } .rk-row.m3 .rk-no { background: #d08a56; }
+.rk-row.medal { background: rgba(255,255,255,.1); } .rk-row.m1 .rk-nick, .rk-row.m1 .rk-n { color: #ffd77a; }
+/* #289 순위 창 크게: PC 는 넓은 창 폭, 폰은 화면의 92%. 줄 글자도 조금 크게 */
+#rank .pop { width: min(var(--win-w), 92vw); max-height: calc(100% - 24px); }
+#rank .rk-row { font-size: 16px; padding: 8px 12px 8px 8px; grid-template-columns: 34px 34px 1fr auto; }
+#rank .rk-no { width: 30px; height: 30px; font-size: 14px; } #rank .rk-face svg { width: 34px; height: 34px; }
+#rank .rk-n { font-size: 17px; }
+@media (max-width: 600px) { #rank .pop { width: 92vw; max-height: calc(100% - var(--safe-t, 0px) - var(--safe-b, 0px) - 16px); } }
 .rk-face svg { width: 30px; height: 30px; display: block; border-radius: 50%; background: rgba(255,255,255,.14); }
 .rk-nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rk-n { font-family: var(--display); font-weight: 800; font-variant-numeric: tabular-nums; }
-.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #3a2a18; box-shadow: inset 0 0 0 2px var(--acc); }
+.rk-row.me { position: sticky; top: 0; bottom: 0; z-index: 1; background: #4a3218; box-shadow: inset 0 0 0 2px var(--acc), 0 4px 14px rgba(0,0,0,.35); } /* #289 내 줄 더 또렷이 */
 .rk-row.me .rk-nick { font-weight: 700; }
 .rk-row.out { margin-top: 6px; }
 .rk-list.local { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -962,6 +970,9 @@ body.hp-down #tut-toast, body.hp-down #tut-arrow, body.hp-down #ch-arrow, body.h
 #gyul-pill { position: relative; }
 #gyul-pill .newdot { position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 2px #fff; text-decoration: none; }
 #gyul-pill .newdot[hidden] { display: none; }
+#mango-pill .mg { width: 16px; height: 16px; object-fit: contain; flex: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+#mango-pill b { color: #ffcf7a; }
+#mango-pill[hidden] { display: none; }
 @media (max-width: 600px) {
   #shoppop.gearshop #shoppop-tabs { display: flex; padding: 8px 12px 2px; }
   #shoppop.gearshop #shoppop-tabs button { min-height: 58px; } #shoppop.gearshop #shoppop-tabs button svg { width: 26px; height: 26px; } #shoppop.gearshop #shoppop-tabs button span { font-size: 13px; font-weight: 700; }
@@ -1780,8 +1791,9 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
 <!-- 위쪽 한 줄 (#75): 왼쪽 귤·배낭·깨끗한 정도 | 가운데 HP·버프 | 오른쪽 구역·좌표·오늘의 업적. 이름 대신 숫자만, 누르면 토스트(#60) -->
 <div id="topbar" class="topbar" data-fit="0">
   <div class="tb-g tb-l">
-    <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
     <div class="panel tpill" id="lv-pill" role="button" tabindex="0" title="레벨 · 경험치 · 누르면 증강" hidden><small class="lvl">Lv</small><b id="lv-n">1</b><i class="xp" aria-hidden="true"><i id="lv-xp"></i></i><s id="lv-pend" class="lv-pend" hidden aria-label="고를 증강"></s></div>
+    <div class="panel tpill gyul" id="gyul-pill" data-tut="gyul" role="button" tabindex="0" title="귤 · 가게 안내"><i></i><b id="coins">0</b><s id="gyul-dot" class="newdot" hidden aria-label="살 수 있는 새 물건"></s></div>
+    <div class="panel tpill" id="mango-pill" title="망고 · 서바이벌 터에서 얻어요" hidden><img class="mg" alt="" aria-hidden="true" draggable="false"><b id="mango-n">0</b></div>
     <div class="panel tpill" id="bag-pill" data-tut="bag" title="배낭: 담은 양 / 용량 (부피) · 누르면 내 가방 (B)" hidden><svg data-i="pocket" class="pk"></svg><svg data-i="bag" class="bg"></svg><b id="bag-n">0</b><small>/<span id="bag-cap">20</span></small></div>
     <div class="panel tpill" id="clean-pill" title="오름 전체가 깨끗해진 정도" hidden><svg class="ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="2.4"/><circle id="clean-ring" cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 37.7" transform="rotate(-90 8 8)"/></svg><b id="clean-n">0</b><small>%</small><span id="bloom-row" hidden></span></div>
   </div>
@@ -1887,7 +1899,8 @@ body.simple.win:not(.tut) .pad > * { visibility: hidden !important; }
   </div>
   <div class="m-music">
     <button type="button" id="menu-music" aria-pressed="true" aria-label="배경 음악 켜기/끄기" title="배경 음악"><svg data-i="music"></svg></button>
-    <input type="range" id="music-vol" min="0" max="100" step="5" value="60" aria-label="배경 음악 크기">
+    <input type="range" id="music-vol" min="0" max="100" step="5" value="45" aria-label="배경 음악 크기">
+    <input type="range" id="sfx-vol" min="0" max="100" step="5" value="100" aria-label="효과음 크기">
   </div>
   <div class="m-more">
     <button type="button" id="menu-nick">이름 바꾸기</button>

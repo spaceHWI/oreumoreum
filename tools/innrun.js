@@ -1,4 +1,4 @@
-// #270 숙소 오피스제주 확인: 닫힘 → 열림 → 숙박(귤 나감·연출·버프·아이콘·남에게 안 보임) → 하루 한 번 → 버프 끝 → 시작 자리 → 다시 읽기
+// #270 숙소 오피스제주 확인 (+ #290 마당 불멍: 덮개·앉기·20초·버프·하루 3번·다시 읽기): 닫힘 → 열림 → 숙박(귤 나감·연출·버프·아이콘·남에게 안 보임) → 하루 한 번 → 버프 끝 → 시작 자리 → 다시 읽기
 // 쓰기: node build.mjs && node tools/innrun.js [d|m] [--shot]   (그림은 dist/innrun-*.jpg, --shot 일 때만)
 const { chromium, devices } = require('playwright');
 const modes = process.argv[2] && !process.argv[2].startsWith('-') ? [process.argv[2]] : ['d', 'm'];
@@ -35,6 +35,7 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     await E(() => window.__oreum.inn.go()); await W(800);
     ok(await E(() => window.__oreum.aim.ctx()) !== 'bed', '닫힌 숙소 앞: 상호작용 없음');
     ok(await E(() => window.__oreum.shopGate.shutter('inn')?.visible), '닫힌 숙소 셔터');
+    ok(await until(() => window.__oreum.fire.state().covered && !window.__oreum.fire.state().lit, 3000), '닫힌 숙소: 마당 화로는 덮개 (#290)');
     // 열림: 능선에 들어섬 → 감독 차례로 알림
     await E(() => { window.__oreum.save.journey.maxZ = 3; });
     ok(await until(() => JSON.stringify(window.__oreum.director.state().waiting || []).includes('shop-inn'), 20000), '능선에 들어서면 열림 알림이 감독 줄에 섬');
@@ -72,7 +73,7 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     ok(Math.abs(st.mul.speed - 1.15) < 1e-6 && Math.abs(st.mul.dmg - 1.25) < 1e-6 && Math.abs(st.mul.pick - 1.25) < 1e-6 && Math.abs(st.mul.xp - 1.2) < 1e-6, `배수 ${JSON.stringify(st.mul)}`);
     ok(await E(() => window.__oreum.stone.mul('speed') === 1.15 && window.__oreum.stone.mul('dmg') === 1.25), '이동·피해 버프가 게임 배수(buff.mul)에 들어감');
     ok(!st.hidden && /^(30|29):\d\d$/.test(st.pill || ''), `레벨 곁 아이콘·남은 시간 (${st.pill})`);
-    ok(await E(() => { const a = document.getElementById('lv-pill'), b = document.getElementById('inn-pill'); return !!a && a.nextElementSibling === b; }), '아이콘이 레벨 바로 곁');
+    ok(await E(() => { const a = document.getElementById('buff-pill'), b = document.getElementById('inn-pill'); return !!a && a.nextElementSibling === b; }), '아이콘이 버프 바로 곁');
     ok((await log()).includes('개운해요'), '일어나면 한 줄');
     await shot('4-buff');
     // 하루 한 번
@@ -92,11 +93,50 @@ const URL = 'file://' + process.cwd() + '/dist/test.html#namsongi';
     st = await E(() => window.__oreum.inn.state());
     ok(!st.on && st.pill === false && st.mul.speed === 1, '버프 끝: 아이콘 사라짐·배수 1');
     ok((await log()).includes('개운함이 끝났어요'), '끝 한 줄');
+    // 마당 불멍 (#290): 앉기 → 20초 → 버프 '멍' → 하루 3번 → 다시 읽기
+    ok(await until(() => !window.__oreum.hp.isDown, 90000), '쓰러졌던 것에서 일어남');
+    await E(() => window.__oreum.fire.go()); await W(900);
+    let fs = await E(() => window.__oreum.fire.state());
+    ok(!fs.covered && fs.fire === null, `열린 숙소: 덮개 없음·불멍 기록 없음 (${JSON.stringify(fs.fire)})`);
+    ok(await until(() => window.__oreum.aim.ctx() === 'fire', 4000), `화로 앞: 상호작용 '불멍' (${await E(() => window.__oreum.aim.ctx())})`);
+    ok(await E(() => window.__oreum.fire.card().includes('마당 불멍 · 무료')), "숙소 창 카드에 '마당 불멍 · 무료'");
+    await E(() => window.__oreum.fire.sit()); await W(600);
+    fs = await E(() => window.__oreum.fire.state());
+    ok(fs.sit && fs.lit && fs.mung && fs.net?.mf === fs.sit.i + 1, `앉음: 불이 붙고 화면이 옅어짐·남에게 의자 번호 (${JSON.stringify({ sit: fs.sit, lit: fs.lit, net: fs.net })})`);
+    ok(await E(() => window.__oreum.player.pose === 'sit' && !document.getElementById('sitbar').hidden), '앉은 자세·일어나기 줄');
+    ok(await E(() => window.__oreum.fire.peer({ data: { mf: 1 } })?.pose === 'warm'), "남의 화면: 앉아 손 쬐는 자세 'warm'");
+    await E(() => window.__oreum.fire.stand()); await W(300);
+    fs = await E(() => window.__oreum.fire.state());
+    ok(!fs.sit && !fs.on && !fs.mung && (await log()).includes('조금 더 앉아'), `중간에 일어나면 버프 없음 (${JSON.stringify(fs.fire)})`);
+    await E(() => window.__oreum.fire.sit()); await W(300); await E(() => window.__oreum.fire.skip()); await W(800);
+    fs = await E(() => window.__oreum.fire.state());
+    ok(fs.on && fs.today === 1 && Math.abs(fs.fire.until - 1200) < 5 && fs.fire.t === 1, `20초 앉으면 '멍' 20분 (${JSON.stringify(fs.fire)})`);
+    ok(Math.abs(fs.mul.pickR - 1.4) < 1e-6 && Math.abs(fs.mul.rare - 1.15) < 1e-6 && Math.abs(fs.mul.down - 0.7) < 1e-6 && fs.see > 0, `배수 ${JSON.stringify(fs.mul)} · 밤눈 ${fs.see}`);
+    ok(/^(20|19):\d\d$/.test(fs.pill || '') && (await log()).includes('멍해졌어요'), `위쪽 줄 칸·한 줄 (${fs.pill})`);
+    ok(await E(() => window.__oreum.inn.state().mul.dmg === 1 && window.__oreum.stone.mul('dmg') === 1), '싸움 수치는 그대로');
+    await E(() => window.__oreum.fire.stand()); await E(() => window.__oreum.hp.kill());
+    ok(await until(() => window.__oreum.hp.waitSec != null, 8000), '멍 중에 쓰러짐');
+    { const w = await E(() => window.__oreum.hp.waitSec); ok([5, 10, 20, 30].some((v) => Math.abs(v * 0.7 - w) < 1e-6), `쓰러짐 대기 ×0.7 (${w}초)`); }
+    ok(await until(() => !window.__oreum.hp.isDown, 90000), '일어남');
+    await E(() => window.__oreum.fire.go()); await W(500); await E(() => window.__oreum.fire.sit()); await W(300); /* 다음 줄들이 앉은 채로 봄 */
+    const sid = (await E(() => window.__oreum.fire.state().sit?.i));
+    await E(() => window.__oreum.fire.stand());
+    for (let k = 0; k < 2; k++) { await E(() => window.__oreum.fire.sit()); await W(200); await E(() => window.__oreum.fire.skip()); await W(500); await E(() => window.__oreum.fire.stand()); }
+    fs = await E(() => window.__oreum.fire.state());
+    ok(fs.today === 3 && fs.fire.n === 3, `하루 세 번 (${JSON.stringify(fs.fire)})`);
+    await E(() => window.__oreum.fire.left(100)); await E(() => window.__oreum.fire.sit()); await W(200); await E(() => window.__oreum.fire.skip()); await W(500);
+    fs = await E(() => window.__oreum.fire.state());
+    ok(fs.today === 3 && fs.fire.until < 101 && fs.sit?.done, `네 번째는 버프 없이 앉기만 (${JSON.stringify(fs.fire)})`);
+    await E(() => window.__oreum.fire.stand());
+    ok(sid === 0 || sid === 1, '의자 둘 중 하나');
     // 다시 읽기: 기록이 남고, '어디서 시작' 에 오피스제주
+    await E(() => window.__oreum.fire.left(700));
     await E(() => { const O = window.__oreum; O.inn.left(900); O.street.go?.(0, 5); }); await W(6000);
     await p.reload(); await ready(); await enter();
     st = await E(() => window.__oreum.inn.state());
     ok(st.inn.n === 1 && st.today && st.inn.left > 800 && st.inn.left <= 900, `다시 읽어도 기록·남은 시간 (${JSON.stringify(st.inn)})`);
+    fs = await E(() => window.__oreum.fire.state());
+    ok(fs.today === 3 && fs.fire.until > 600 && fs.fire.until <= 700 && fs.on, `다시 읽어도 불멍 기록·'멍' 남은 시간 (${JSON.stringify(fs.fire)})`);
     ok(await until(() => !document.getElementById('wake-pick').hidden && !document.getElementById('wake-inn').hidden, 8000), "'어디서 시작' 에 오피스제주");
     await shot('5-wake');
     const d0 = await E(() => { const O = window.__oreum, d = O.inn.api.door; return Math.hypot(O.player.pos.x - d.x, O.player.pos.z - d.z); });

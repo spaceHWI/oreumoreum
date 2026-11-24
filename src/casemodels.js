@@ -1,4 +1,4 @@
-// 사건 파일 Tripo 모델 (#262): 설인·검은 양복·흰 작업복·터지기·호스 (사진사는 #268 에서 예전 차림으로 되돌림). model/bake-case.py 로 줄이고 구워 model/extract-prop.js 로 src/model-case-*.js
+// 사건 파일 Tripo 모델 (#262): 설인·검은 양복·흰 작업복·터지기·호스·오름지기(#305) (사진사는 #268 에서 예전 차림으로 되돌림). model/bake-case.py 로 줄이고 구워 model/extract-prop.js 로 src/model-case-*.js
 // - 자료는 가까이 갔을 때만 받는다(assets.js meta.lazy). 처음엔 멀리용(-lo, 1,500 삼각형·텍스처 128), CASE_MODELS.near 안이면 큰 모델(캐릭터 7,500·호스 1,500)
 // - 뼈대: 사람 꼴·설인은 지금 캐릭터처럼 뼈 7개(hips·chest·head·armL·armR·legL·legR), 호스는 8마디. 가중치는 정점과 뼈 선분 사이 거리로 계산(+손에 든 것은 손 뼈로)
 // - 듀얼 쿼터니언 스키닝(dqskin.js). 큰 모델과 멀리용이 같은 뼈를 씀 → 캐릭터마다 그리는 것 1개(+그림자)
@@ -35,6 +35,10 @@ const RIG = {
   'arena-keeper': human({ hips: [-0.05, 0.15, 0], chest: [-0.05, 0.35, 0], neck: [-0.05, 0.56, 0], top: [-0.05, 0.95, 0], shL: [0.12, 0.49, 0], handL: [0.24, 0.44, 0.15], shR: [-0.22, 0.49, 0], handR: [-0.34, 0.26, 0],
     hipL: [0.03, 0.12, 0], footL: [0.03, 0.02, 0.02], hipR: [-0.15, 0.12, 0], footR: [-0.15, 0.02, 0.02], headY: 0.56, gate: [0.15, 0.19],
     hold: [['armL', [0.15, 0.36, 0.06], [1, 0.64, 1]]], extra: { armL: [[[0.24, 0.44, 0.15], [0.27, 0.55, 0.14]]] } }), /* 왼손 망고 */
+  /* #305 오름지기(안 C): 벙거지·큰 콧수염, 오른손 집게(바깥으로 뻗음), 왼쪽 허리에 어깨 가방(초록빛) → 가방은 엉덩이 뼈만 따라감 */
+  jigi: human({ hips: [0, 0.2, 0], chest: [0, 0.33, 0], neck: [0, 0.52, 0.03], top: [0, 0.97, 0], shL: [0.15, 0.46, 0], handL: [0.21, 0.25, 0.04], shR: [-0.15, 0.46, 0], handR: [-0.23, 0.22, 0.03],
+    hipL: [0.07, 0.17, 0], footL: [0.08, 0.02, 0.02], hipR: [-0.07, 0.17, 0], footR: [-0.08, 0.02, 0.02], headY: 0.52, gate: [0.15, 0.15],
+    hold: [['armR', [-1, 0.08, -1], [-0.25, 0.3, 1]], ['hips', [0.235, -1, -1], [1, 0.39, 0.03]]] }), /* 집게 · 어깨 가방 */
   hose: (() => { /* 뒤 끝(땅, -z)에서 아치를 넘어 앞의 주황 나팔 입(+z)까지 9점 → 8마디 */
     const P = [[0, 0, -0.44], [0, 0.3, -0.42], [0, 0.6, -0.33], [0, 0.8, -0.15], [0, 0.83, 0.05], [0, 0.7, 0.24], [0, 0.45, 0.33], [0, 0.2, 0.37], [0, 0.12, 0.47]];
     const J = {}, seg = {}, parent = {};
@@ -127,6 +131,10 @@ const CLIPS = {
   wave1: (B, t) => { armUp(B, 'armL', -0.35 + S(t * 7) * 0.12, 0.25 + S(t * 7) * 0.3); B.head.rotation.z += 0.06; }, /* 망고 든 손을 흔듦 (늘어진 오른팔은 몸에 붙어 있어 크게 들면 앞치마가 늘어남) */
   gong: (B, t) => { const h = Math.pow(S(t * 3.6) * 0.5 + 0.5, 3); armUp(B, 'armR', -0.95 + h * 0.75, -0.2); B.chest.rotation.x += h * 0.1; B.chest.rotation.y -= 0.15; },
   offer: (B, t) => { const k = sstep(0, 0.5, t % 3) * (1 - sstep(2.2, 3, t % 3)); armUp(B, 'armL', -0.55 * k, -0.15 * k); B.chest.rotation.x += 0.12 * k; B.hips.position.y += S(t * 5) * 0.004; B.head.rotation.z -= 0.08 * k; },
+  /* 오름지기 (#305): 수첩 꺼내기는 왼손을 가슴 앞으로(수첩은 jigi.js 가 손 뼈에 붙임), 곁눈질은 가끔 고개만 휙 */
+  jnote: (B, t) => { armUp(B, 'armL', -0.95, -0.3); armUp(B, 'armR', -0.35 + S(t * 9) * 0.05, 0.12 + S(t * 13) * 0.04); B.head.rotation.x += 0.22 + S(t * 0.8) * 0.06; B.chest.rotation.x += 0.05; },
+  jwave: (B, t) => { armUp(B, 'armL', -0.45, 0.55 + S(t * 7) * 0.25); B.head.rotation.z -= 0.06; },
+  glance: (B, t) => { const u = t % 5.5, k = sstep(0, 0.18, u) * (1 - sstep(1.1, 1.35, u)); B.head.rotation.y += 0.55 * k; B.head.rotation.x -= 0.05 * k; B.chest.rotation.x += S(t * 1.9) * 0.012; },
   /* 사진사: 쉼 자세(모델 그대로)가 카메라를 눈에 댄 모습. 몸과 붙은 한 덩어리 모델이라 팔은 조금만 움직임(크게 내리면 카메라·턱이 늘어남) */
   /* 호스: 뼈 8마디 (h0 땅 → h7 나팔) */
   wriggle: (B, t) => { CHAIN.forEach((b, i) => { B[b].rotation.x += S(t * 2.6 - i * 0.8) * 0.12; B[b].rotation.z += S(t * 1.7 - i * 0.6) * 0.1; }); },
@@ -140,6 +148,7 @@ const MOVES = {
   mib: { idle: 'stand', stand: 'stand', talk: 'talk', walk: 'shuffle', bow: 'bow' },
   'ghost-keeper': { idle: 'idle', walk: 'glide', glide: 'glide', pinch: 'pinch', lookback: 'turnback' },
   'arena-keeper': { idle: 'idle', wave: 'wave1', gong: 'gong', offer: 'offer' },
+  jigi: { idle: 'idle', stand: 'idle', talk: 'talk', note: 'jnote', wave: 'jwave', glance: 'glance' },
   hose: { idle: 'wriggle', wriggle: 'wriggle', spew: 'spew', rise: 'rise', sink: 'sink' },
 };
 export const caseMoves = (name) => Object.keys(MOVES[name] || {});
@@ -223,7 +232,7 @@ export function caseModel(name, { glow = null, shadow = true } = {}) {
   /* 손 뼈를 따라가는 것을 붙일 때 (사진사 번쩍 등): 그 뼈의 자식으로, 모델 좌표 p 자리에 */
   function attach(bone, obj, p) { const j = R.J[bone]; obj.position.set(p[0] - j[0], p[1] - j[1], p[2] - j[2]); B[bone].add(obj); return obj; }
   function dispose() { root.removeFromParent(); HI.get(A)?.delete(relInst); }
-  const api = { name, root, bones: B, play, update, attach, dispose, near: (on = true) => { forceNear = on; if (on) { getLo(); getHi(); } pick(); }, /* 장면처럼 곧 가까이 볼 때: 큰 모델을 미리 받아 둠 */
+  const api = { name, root, bones: B, play, update, attach, dispose, warm: () => getLo(), /* 보이기 전에 멀리용만 받아 둠 (#305 오름지기) */ near: (on = true) => { forceNear = on; if (on) { getLo(); getHi(); } pick(); }, /* 장면처럼 곧 가까이 볼 때: 큰 모델을 미리 받아 둠 */
     lookAt: (p) => { st.look = p ? (st.look || new THREE.Vector3()).copy(p) : null; },
     get clip() { return st.clip; }, get done() { return st.done; }, get flash() { return st.flash; }, get loaded() { return { lo: !!lo, hi: !!hi }; }, get far() { return far; } };
   pose(0);
