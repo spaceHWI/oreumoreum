@@ -61,6 +61,8 @@ export function reportCrash(err, where = '') {
     pump();
   } catch (e) { /* 알림이 또 오류를 내지 않게 */ }
 }
+// 오류는 아니지만 알릴 한 줄 (#287 'reload: 까닭×수'): 하루 묶음은 부르는 쪽이 정함. 이용 통계 crash 수에는 안 셈
+export function reportNote(text) { try { q.push({ at: Date.now(), kind: 'crash', text: String(text).slice(0, 400) + ' · ' + uaShort(), ...meta() }); pump(); } catch (e) { /* 무시 */ } }
 // post(items) → Promise, metaFn() → { ver, srv, map, dev, w, h } (좌표·닉네임은 넣지 않음)
 export function setCrashSink(post, metaFn) { sink = post || null; if (metaFn) meta = metaFn; if (!sink) q.length = 0; pump(); }
 

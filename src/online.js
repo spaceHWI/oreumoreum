@@ -6,6 +6,7 @@
 import { NET } from './balance.js';
 import { HEAP_SIG } from './trash.js';
 import { bootShow } from './bootbar.js';
+import { reloadFor, canAuto } from './reloadwhy.js';
 
 const BASE = __DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1';
 const SK = BASE + '.sess';
@@ -49,8 +50,12 @@ export function loadSave(key) {
     }
     s.lastSeen = Date.now();
   }
+  if (sess) loadedSig = sig(strip(s)); /* 열 때 읽은 계정 사본 (#287): 서버 rev 만 앞서고 내용이 같으면 다시 열지 않음 */
   return s;
 }
+let loadedSig = '';
+const canon = (v) => (Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.keys(v).sort().reduce((o, k) => { o[k] = canon(v[k]); return o; }, {}) : v);
+const sig = (o) => { try { return JSON.stringify(canon(o)); } catch (e) { return ''; } };
 export const stampGuest = (s) => { if (!sess) s.lastSeen = Date.now(); }; // 저장할 때마다 마지막 접속 갱신
 
 /* 첫 화면 계정 칸 (#281): 메일은 로그인할 때 구글 ID 토큰에서 읽어 '앞 3글자***@도메인' 으로만 이 기기 세션에 둔다 (원래 주소는 남기지 않음, 서버도 모름) */
@@ -85,13 +90,16 @@ export const getOnline = ONLINE ? () => api('/admin/online') : null;
 export const metricsUrl = ONLINE ? SRV + '/m' : '';
 // 철 이벤트 (#180): 서버 날짜·모두의 트리 합계 (로그인 안 해도 됨)
 export const getSeason = ONLINE ? () => api('/season', { token: null }) : null;
-const strip = (s) => { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; };
+function strip(s) { const o = { ...s }; delete o._rev; delete o._acct; delete o.lastSeen; return o; }
 function writeCache(save, rev, sub) { ls.set(ACCT_KEY, JSON.stringify({ ...(save || {}), _rev: rev || 0, _acct: sub })); }
 
 /* ---------- 계정 ---------- */
 // getSave: 지금 저장 객체, writeLocal: 이 기기에 바로 씀, onFix({coins,total}): 서버가 바로잡은 값, toast, entered(): 이미 입장했는지
 // ver: 게임 버전(귤 맞춤 기록용, #188), onGift(g): 운영자가 보낸 귤 { id, n, why } (#188)
-export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver = '', onGift = () => {} }) {
+export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, entered, ver = '', onGift = () => {}, onLeave = () => {} }) {
+  let going = false; /* 새로고침으로 떠나는 중 (#287): 이 페이지는 더 저장·전송하지 않음 (계정 사본·서버 rev 를 낡은 값으로 되쓰면 다음에 또 새로고침) */
+  const writeLocal = () => { if (!going) writeLocal0(); };
+  const leave = (why, auto, ms = 0) => { if (auto && !canAuto()) return false; going = true; clearTimeout(timer); timer = 0; onLeave(); if (ms) setTimeout(() => reloadFor(why, { auto }), ms); else reloadFor(why, { auto }); return true; };
   let timer = 0, busy = false, again = false, keepUntil = 0, lastPush = 0, lastBody = '', admin = false, checked = false;
   // 서버가 새 토큰을 주면 바꿔 끼움 (#84: 세션 수명 NET.sessionDays, 남은 날이 적으면 /me 가 새로 줌)
   const renew = (r) => { if (sess && r && typeof r.token === 'string' && r.exp > Date.now()) { sess = { ...sess, t: r.token, exp: r.exp }; ls.set(SK, JSON.stringify(sess)); } };
@@ -104,7 +112,11 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
       keepUntil = me.keepUntil; admin = !!me.admin; checked = true; renew(me); changed();
       const s = getSave();
       if (me.nickRen) s.nickRen = me.nickRen; // 이름 바꾼 횟수·날은 서버 값 (#162)
-      if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { writeCache(me.save, me.rev, sess.sub); location.reload(); return; } // 다른 기기에서 더 해 둔 기록
+      if (me.save && (me.rev || 0) > (s._rev || 0) && !entered()) { /* 서버가 앞섬 */
+        if (loadedSig && loadedSig === sig(me.save)) { s._rev = me.rev; writeLocal(); } /* 내용은 같음: 지난번 나갈 때 보낸 저장의 응답을 못 받은 것 (#287) */
+        else if (canAuto()) { writeCache(me.save, me.rev, sess.sub); leave('rev', true); return; } /* 다른 기기에서 더 해 둔 기록 */
+        else { s._rev = me.rev; writeLocal(); } /* 방금 같은 까닭으로 다시 열었는데 또: 되풀이하지 않고 이 기기 기록으로 (#287) */
+      }
       gifts(me.gifts);
       if (!me.save) push();
     } catch (e) {
@@ -112,7 +124,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     }
   }
   async function push(keepalive = false) {
-    if (!sess) return;
+    if (!sess || going) return;
     if (busy && !keepalive) { again = true; return; }
     clearTimeout(timer); timer = 0; busy = true; lastPush = Date.now();
     const s = getSave(), body = JSON.stringify(strip(s));
@@ -123,7 +135,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
       lastBody = body; s._rev = r.rev; s._acct = sess.sub; keepUntil = r.keepUntil || keepUntil;
       if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
       gifts(r.gifts);
-      if (r.fix?.reload) { const me = await api('/me'); writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); setTimeout(() => location.reload(), 1200); return; }
+      if (r.fix?.reload && !going && canAuto()) { const me = await api('/me'); if (going) return; writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); leave('fix', true, 1200); return; }
       if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick || r.fix.gift || r.fix.lv || r.fix.tok)) onFix(r.fix);
       writeLocal();
       changed();
@@ -143,7 +155,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     if (any) { writeLocal(); dirty(); }
   }
   function dirty() { if (!sess || timer) return; timer = setTimeout(() => { timer = 0; push(); }, NET.saveDebounce); }
-  const flush = () => { if (sess && timer) push(true); };
+  const flush = () => { if (sess && timer && !going) push(true); };
   addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
@@ -157,7 +169,7 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     const me = await api('/me', { token: r.token });
     sess = s; ls.set(SK, JSON.stringify(s));
     writeCache(me.save || { nick: localSave.nick }, me.rev, sub);
-    bootShow('계정 기록 불러오는 중'); location.reload();
+    going = true; onLeave(); bootShow('계정 기록 불러오는 중'); reloadFor('login');
   }
   /* 로그아웃 (#281): 남은 저장을 서버에 먼저 보내고(3초까지), 서버 토큰을 버리고(POST /logout), 이 기기의 토큰·계정 사본을 지운 뒤 손님으로 다시 열기.
      서버에 다 보냈는지 모르면 계정 사본은 남김(계정 번호가 붙어 있어 손님 저장과 섞이지 않고, 같은 계정으로 다시 로그인하면 이어짐) */
@@ -169,13 +181,13 @@ export function createAccount({ getSave, writeLocal, onFix, toast, entered, ver 
     try { await Promise.race([push(), new Promise((r) => setTimeout(r, 3000))]); synced = !busy && lastBody === JSON.stringify(strip(getSave())); } catch (e) { synced = false; }
     const t = sess?.t; if (t) fetch(SRV + '/logout', { method: 'POST', keepalive: true, headers: { authorization: 'Bearer ' + t } }).catch(() => {}); // 이 토큰은 서버에서도 버림 (#84)
     sess = null; ls.del(SK); if (synced) ls.del(ACCT_KEY);
-    location.reload();
+    going = true; reloadFor('logout');
   }
   async function deleteMe() {
     if (!sess) return false;
     await api('/me', { method: 'DELETE' });
     sess = null; ls.del(SK); ls.del(ACCT_KEY);
-    location.reload();
+    going = true; onLeave(); reloadFor('delete');
     return true;
   }
   // 이름 바꾸기 (#162): 귤을 서버에 먼저 맞춘 뒤 POST /nick. 실패는 e.message(bad|same|day|price|coins), e.data.price

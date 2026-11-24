@@ -2144,3 +2144,9 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - #284 이름 정하기 글: 처음 시작 창에 제목 '아이디 만들기'·칸 위 라벨 '이름', 이름 창 제목을 '아이디 만들기'·칸 위에 '이름' 라벨. 화면에 '닉네임' 글자는 이미 없었음(남은 건 주석·어드민·개인정보 안내).
 
 - #284 이름 정하기 글: 화면에 '닉네임' 글자는 이미 없었음(주석·서버·개인정보 글만). 첫 이름 칸 라벨 '이름을 정해 주세요' → '이름', 창 aria-label → '아이디 만들기'. 이름 바꾸기 창은 그대로.
+
+- #287 처음 시작 새로고침 되풀이: 재현 — 로그인한 기기에서 열 때마다 한 번 더 새로고침(`tools/loadrun.js` 6절, 고치기 전 실패). 까닭: 나갈 때(pagehide) keepalive 로 보낸 저장의 응답을 못 받아 이 기기 사본의 `_rev` 가 서버보다 늘 하나 뒤 → 다음에 열면 `/me` 의 rev 가 앞서 '다른 기기 기록' 으로 보고 새로고침. 또 새로고침하는 그 페이지가 떠나는 동안 persist·flush 로 낡은 저장을 사본·서버에 되써서 rev 가 또 앞서 되풀이될 수 있었음.
+  - 고침: 열 때 읽은 사본 내용(키 순서 무시)이 서버 저장과 같으면 rev 만 받아 쓰고 새로고침 안 함. 다른 기기 기록이면 한 번만 새로고침하고, 떠나는 동안은 저장·전송 안 함(online.js `going`, start.js `onLeave` → state.resetting). 사용자가 누르지 않은 새로고침(rev·fix)은 탭에서 60초 안에 두 번 안 함(`src/reloadwhy.js`, CRASH.reloadGap). 새 버전 새로고침은 누를 때만, 그 버전으로 이미 새로고침했는데 낡은 index 면 이 탭에서 다시 권하지 않음(sessionStorage `oreumoreum.newver`).
+  - 까닭 기록: sessionStorage `oreumoreum.reloads`, 날짜별 셈 localStorage `oreumoreum.reloadlog` → 다음에 열 때 하루 한 번 오류 알림 'reload: rev×1 login×1 (날짜)' (스스로 한 것이 있거나 하루 CRASH.reloadRep 번 넘을 때).
+  - 새로고침하는 곳 표: rev·fix(online.js, 자동·막음) / login·logout·delete(online.js, 누를 때) / newver(newver.js, 누를 때) / reset·devreset·devintro(menu.js) / perf(debug.js 성능 단계) / map(look.js 탐방로) / gl(scene.js 화면 잃음 '다시 불러오기') / 로딩 창 '다시 시도'(bootscreen.js 인라인, 누를 때) / mview 틀(어드민) / 카카오톡 → 바깥 브라우저(inapp.js, #239 그대로). 처음 방문(손님)에는 하나도 돌지 않음: loadrun 6절 '문서 이동 1번'(처음 방문·낡은 index 둘 다).
+  - 릴리스 노트: 로그인한 채로 열면 한 번 더 새로고침되던 것을 고쳤어요.
