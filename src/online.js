@@ -291,10 +291,13 @@ export function createWsLobby({ token = () => null } = {}) {
       const on = (t, f) => { (handlers[t] ||= []).push(f); };
       const fire = (t, m) => (handlers[t] || []).forEach((f) => { try { f(m); } catch (e) { /* 한 곳 오류가 다른 곳을 막지 않게 */ } });
       const known = new Map(); // id → presence
-      let ws = null, ch = 0, myId = null, host = null, backoff = 1000, closed = false, open = false;
+      let ws = null, ch = 0, myId = null, host = null, backoff = 1000, closed = false, open = false, again = 0;
       const me = () => ({ peer: myId, sameTab: true, isMe: true, kind: 'viewer', presence: {} });
       const emit = (joined, updated, left) => peersCb && peersCb({ peers: [me(), ...[...known].map(([peer, presence]) => ({ peer, presence, kind: 'viewer' }))], joined, updated, left });
+      // 연결은 늘 하나 (#307): 새로 붙기 전에 옛 연결의 알림을 떼고 닫는다. open·myId 는 지금 ws 의 것만 (옛 연결의 '붙었음' 이 남은 채 붙는 중인 새 연결에 보내면 InvalidStateError)
+      function drop() { clearTimeout(again); const w = ws; ws = null; if (w) { w.onmessage = null; w.onclose = null; try { w.close(1000, 'rest'); } catch (e) { /* 이미 닫힘 */ } } if (open) gone(); }
       function connect() {
+        drop();
         const q = new URLSearchParams({ room: String(name).toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40), ch: String(ch) });
         const tk = token();
         // 토큰은 주소창(서버 로그에 남음) 대신 하위 프로토콜로 (#84). 서버는 'oreum' 으로 답함
@@ -308,15 +311,15 @@ export function createWsLobby({ token = () => null } = {}) {
             emit(joined, updated, []);
           } else if (m.t === 'l') { if (known.delete(m.id)) emit([], [], [{ peer: m.id }]); }
           else if (m.t === 'host') { host = m.id; fire('host', m); }
-          else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; ws.onclose = null; ws.close(); connect(); } // 정원이 차면 다음 방(채널)
-          else if (m.t === 'idle') { closed = true; fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
+          else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; connect(); } // 정원이 차면 다음 방(채널)
+          else if (m.t === 'idle') { closed = true; drop(); fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
           else if (m.t === 'ban' || m.t === 'kick') { backoff = Math.max(backoff, (m.sec || 60) * 1000); fire(m.t, m); } // 끊김 (#84): 풀릴 때까지 기다렸다 다시
           else fire(m.t, m);
         };
         ws.onclose = (e) => {
           if (e?.code === 4004 && !closed) { closed = true; fire('idle', {}); } // idle 메시지를 못 받았어도 닫는 까닭 코드로 (#157)
           gone();
-          if (!closed) { setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }
+          if (!closed) { clearTimeout(again); again = setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }
         };
       }
       function gone() {
@@ -329,9 +332,9 @@ export function createWsLobby({ token = () => null } = {}) {
         onPeers(cb, onClose) { peersCb = cb; closeCb = onClose; },
         presence(obj) { if (open) ws.send(JSON.stringify({ t: 'p', d: obj })); return Promise.resolve(); },
         send(msg) { if (open) ws.send(JSON.stringify(msg)); return open; },
-        on, close() { closed = true; ws?.close(); },
+        on, close() { closed = true; clearTimeout(again); ws?.close(); },
         // 쉬러 가기 (#157): 방에서 나감(다시 붙지 않음) / 다시 들어옴 (같은 방·채널, 핸들러 그대로)
-        sleep() { if (closed) return; closed = true; const w = ws; if (w) { w.onmessage = null; w.onclose = null; try { w.close(1000, 'rest'); } catch (e) { /* 이미 닫힘 */ } } gone(); }, // 닫힘 알림을 기다리지 않고 바로 (다시 들어올 때 옛 연결 값이 섞이지 않게)
+        sleep() { if (closed) return; closed = true; const was = open; drop(); if (!was) gone(); }, // 닫힘 알림을 기다리지 않고 바로 (다시 들어올 때 옛 연결 값이 섞이지 않게)
         wake() { if (!closed) return; closed = false; backoff = 1000; connect(); },
         get asleep() { return closed; },
         get id() { return myId; }, get host() { return host; }, get isHost() { return !!myId && host === myId; }, get open() { return open; }, get ch() { return ch; },

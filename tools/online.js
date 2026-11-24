@@ -93,7 +93,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     ok(hid && see && hid2 && back, `동굴 칸: 오름 B 에겐 동굴 A 가 안 보임 ${hid} · 같이 들어가면 보임 ${see} · A 가 아래층이면 안 보임 ${hid2} · 둘 다 나오면 다시 보임 ${back}`);
   };
   ok(await A.p.evaluate(() => document.getElementById('enter').textContent === '손님으로 하기' && !document.getElementById('acct-box').hidden), '첫 화면: 손님으로 하기·베타 안내');
-  ok(await A.p.evaluate(() => /7일/.test(document.getElementById('acct-box').textContent)), '베타 안내 문구');
+  ok(await A.p.evaluate(() => /로그인하면 기록이 남아요/.test(document.getElementById('acct-box').textContent)), '손님 안내 문구'); /* #281 에서 문구가 바뀜 ('7일 안에…' → '손님으로 하는 중 · 로그인하면 기록이 남아요') */
   for (const X of [A, B]) { await X.p.evaluate(() => document.getElementById('enter').click()) /* 화면 셋이 소프트웨어 GL 로 돌면 page.click 이 프레임을 기다리다 30초를 넘김 (#193) */; await wait(X.p, 500); }
   ok(await until(A, () => window.__oreum.net.ready && window.__oreum.net.count === 1), 'A 가 B 를 봄');
   ok(await until(B, () => window.__oreum.net.count === 1), 'B 가 A 를 봄');
