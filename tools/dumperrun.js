@@ -22,7 +22,7 @@ const mode = process.argv[2] || 'd'; let fails = 0; const ok = (c, m) => { conso
   while (g < 300) {
     await step(10); g += 5; await W(150);
     const s = await ev(() => { const o = window.__oreum; const d = o.dumpers.api.list; return { n: d.length, quest: d.some((x) => x.quest), left: o.dumperQ.left() }; });
-    if (s.n && !seen) { seen = g; ok(s.quest, `퀘스트용 투기꾼이 게임 시간 ${g}초에 나타남`); await step(10); await ev(() => window.__oreum.dumpers.hit(0)); }
+    if (s.n && !seen) { seen = g; ok(s.quest, `퀘스트용 투기꾼이 게임 시간 ${g}초에 나타남`); await step(10); { const v = await ev(() => window.__oreum.villain?.state()); ok(v && v.live.length && v.live.every((x) => x.style === v.style && x.bag), `#291 투기꾼이 악당 모습(${v && v.style})·자루를 멤 (${JSON.stringify(v && v.live)})`); } await ev(() => window.__oreum.dumpers.hit(0)); await step(1); { const v = await ev(() => window.__oreum.villain.state()); ok(v.live.every((x) => !x.bag), `#291 맞으면 자루를 떨굼 (${JSON.stringify(v.live)})`); } }
     if (seen && s.left === 0) { filled = true; break; }
   }
   console.log(JSON.stringify(await ev(() => { const q = window.__oreum.dumperQ; return { w: q.wait(), gap: q.gap(), ok: q.ok(), spot: q.spot(), why: q.why() }; })));
