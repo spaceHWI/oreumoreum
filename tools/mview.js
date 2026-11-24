@@ -81,6 +81,7 @@ const tok = (sub) => 'x.' + Buffer.from(JSON.stringify({ s: sub })).toString('ba
     ok(await ph.p.evaluate(() => document.getElementById('adm-mview').disabled), '폰: 진짜 터치 기기에서는 틀 스위치 꺼 둠');
     await ph.ctx.close(); }
   // 틀 켜기
+  ok(await p.evaluate(() => document.querySelector('#admwin [data-pane="state"] .adm-sec:first-child, #admwin [data-pane="state"] > .adm-sec')?.id !== 'x' && document.querySelector('#admwin [data-pane="state"] #adm-mview') !== null && !document.querySelector('#admwin [data-pane="try"] #adm-mview') && !!document.getElementById('menu-mview') && document.getElementById('m-dev').compareDocumentPosition(document.getElementById('menu').lastElementChild) !== 0), '#297 모바일 UI 토글: 어드민 첫 탭·설정 창에 있음');
   await p.evaluate(() => document.querySelector('#admwin [data-tab="try"]').click());
   await Promise.all([p.waitForEvent('load', { timeout: 30000 }).catch(() => {}), p.evaluate(() => document.getElementById('adm-mview').click())]);
   ok(await until(p, () => !!document.getElementById('mview-frame'), 15000), '스위치를 켜면 새로 고쳐 폰 틀');
