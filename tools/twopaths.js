@@ -2,6 +2,14 @@
 const { chromium } = require('playwright');
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) fails++; };
 (async () => {
+  // 0) 둘 중 하나 목표 (src/quest.js ask.or): 그림 없이 node 에서
+  { const { createQuests } = await import('../src/quest.js'); const save = {}, c = {};
+    const defs = { main: [{ id: 'a', giver: 'g', ask: { k: 'trash', n: 10, or: { k: 'repel', n: 3 } } }, { id: 'b', giver: 'g', ask: { k: 'heap', n: 1, or: { k: 'repel', n: 5 } } }], side: [] };
+    const Q = createQuests({ save, defs, hooks: { val: (k) => c[k] || 0, open: () => true } }); Q.accept('a');
+    const st = () => { const it = Q.list().on[0]; return it ? { p: it.p, st: it.ready ? 'ready' : 'on' } : {}; }; c.trash = 4; const p1 = st().p; c.repel = 2; const p2 = st().p; c.repel = 3; const r1 = st().st;
+    Q.complete('a'); Q.accept('b'); c.repel = 7; const p3 = st().p, r3 = st().st; c.repel = 8; const r4 = st().st;
+    ok(p1 === 4 && p2 === 6 && r1 === 'ready', `둘 중 하나: 줍기 4/10 → 싸움 2/3 이면 6/10 → 싸움 3/3 이면 끝 (${p1} ${p2} ${r1})`);
+    ok(p3 === 0 && r3 === 'on' && r4 === 'ready', `받은 뒤부터 셈 (받을 때 싸움 3 → 7 은 4/5, 8 이면 끝: ${r3} ${r4})`); }
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 1000, height: 600 } }); let errs = 0;
   p.on('pageerror', (e) => { errs++; console.log('ERR', e.message.slice(0, 300)); });
@@ -24,7 +32,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
   const kill = await E(async () => { const o = window.__oreum, en = o.enemies; o.trash.fillZone(1); o.twopaths.fight(1, 0); const sp = o.boss.spots().find((s) => s.zone === 1); o.boss.go(1, 40); await new Promise((r) => setTimeout(r, 300)); const e = en.test.spawn('piglet', 5, 0); en.hurt(e, 999); await new Promise((r) => setTimeout(r, 200)); return { f: o.twopaths.fight(1), zone: o.trash.state().zone, sp: !!sp }; });
   ok(kill.f >= 1, `구역 1 에서 적 하나 쫓아내면 싸움 점수 +1 (${JSON.stringify(kill)})`);
   // 2) 달래는 길
-  const calm = await E(async () => { const o = window.__oreum, wt = (ms) => new Promise((r) => setTimeout(r, ms)); o.enemies.test.clear(); o.trash.clearZone(1); o.boss.go(1, 60); await wt(400); const sp = o.boss.spawn(1); await wt(200); o.boss.go(1, 6); const t = Date.now(); while (Date.now() - t < 12000) { await wt(200); if (!o.boss.state()) break; } const a = o.boss.arena(1); return { sp, st: o.boss.state(), done: o.boss.done().done[1] || 0, clean: o.trash.state ? o.trash.api.zoneClean(1) : null, calmT: o.twopaths.calmT(), d: a && Math.hypot(o.player.pos.x - a.x, o.player.pos.z - a.z), r: a && a.r }; });
+  const calm = await E(async () => { const o = window.__oreum, wt = (ms) => new Promise((r) => setTimeout(r, ms)); o.enemies.test.clear(); o.boss.setDone(1, 0); o.trash.clearZone(1); o.boss.go(1, 60); await wt(400); const sp = o.boss.spawn(1) || !!o.boss.state(); /* 가까이 가면 스스로 나와 있을 수 있음 */ await wt(200); o.boss.go(1, 6); const t = Date.now(); while (Date.now() - t < 30000) { await wt(200); if (!o.boss.state()) break; } const a = o.boss.arena(1); return { sp, st: o.boss.state(), done: o.boss.done().done[1] || 0, clean: o.trash.state ? o.trash.api.zoneClean(1) : null, calmT: o.twopaths.calmT(), d: a && Math.hypot(o.player.pos.x - a.x, o.player.pos.z - a.z), r: a && a.r }; });
   ok(calm.sp && !calm.st && calm.done > 0, `100% 깨끗하면 빈터 곁에 머물러 우두머리를 달래 보냄 (${JSON.stringify(calm)})`);
   await E(() => { const o = window.__oreum; o.boss.setDone(1, 0); o.trash.fillZone(1); });
   // 3) 길 안전

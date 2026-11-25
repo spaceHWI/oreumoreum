@@ -479,6 +479,14 @@ async function main() {
   // 노루 친구 (#247): 1시간 내내 타고 달린다고 봄(안장 없음, 가장 많이 먹음) + 사귀기·친해짐 2단계까지 귤 한 번 → 구역 2~3 날 벌이의 5% 아래
   if (day2Rate) { const DP = B.DEERPAL, perH = Math.ceil(3600 / DP.hungerT / DP.meal), once = DP.bond[DP.bond.length - 1], pct = (perH + once) / day2Rate * 100; verdict.push(`노루 친구: 시간당 먹이 ${perH} + 사귀기·친해짐 ${once} = 구역 2~3 날 벌이 ${day2Rate.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
+  // 두 길 어림 (#298, balance.js TWO_PATHS): 구역 권장 장비·그 구역 무기로 우두머리가 나오는 구역 점수(ZONE_BOSS.appear)까지 걸리는 놀이 시간
+  //   줍기만 = appear × 다 치우는 시간 · 싸움만 = 적을 찾아다니며(무리 하나 HUNT 초마다) 싸움 몫 appear 까지 · 섞기 = 주우면서 감독이 부르는 무리(ENEMY_SPAWN.every 마다)도 쫓음
+  { const TP = B.TWO_PATHS, A = ZONE_BOSS.appear, HUNT = 40, G = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, ZW = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 5 }, out = [];
+    for (const Z of ZONES) { const z = zones.find((q) => q.id === Z.id), e = { tool: Z.gear.tool, bag: Z.gear.bag, shoes: Z.gear.shoes, ride: 0, ...START_W, enh: {}, aug: {} }, kind = ENEMY_SPAWN.byZone[Z.id] || 'boar';
+      const W = Math.min(ZW[Z.id], WEAPONS.length), mf = mobFight(kind, { weapon: W }), need = TP.fight.need[Z.id], pts = TP.fight.pts.mob, cT = clearT(z, e);
+      const tp = A * cT, tf = A * need / (G * pts / Math.max(HUNT, G * mf.t)), cyc = ENEMY_SPAWN.every, fT = Math.min(cyc, G * mf.t), sc = (cyc - fT) / cT + G * pts / need, tm = A / (sc / cyc);
+      out.push(`구역 ${Z.id}: 섞기 ${hm(tm)} · 줍기만 ${hm(tp)} (${(tp / tm).toFixed(2)}배) · 싸움만 ${hm(tf)} (${(tf / tm).toFixed(2)}배, ${WEAPONS[W - 1].name})`); }
+    console.log(`\n두 길 어림 (#298): 우두머리가 나오는 구역 점수 ${Math.round(A * 100)}% 까지, 구역 권장 장비 · 싸움만은 무리 하나 ${HUNT}초마다 찾는다고 봄\n` + out.join('\n')); }
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;
   const fg = F.odds.fish * F.fishGyul + F.odds.trash * 1 + F.odds.rare * (DEX.rareGyul + 2);

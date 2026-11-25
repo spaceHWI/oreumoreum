@@ -16,6 +16,8 @@ export const BADGES = [
   { id: 'b-deer-friend', ev: 'follower', goal: 5, name: '노루 친구', desc: '동물이 다섯 번 따라왔어요', glyph: '친', color: '#b8865a', reward: 30, item: 'vest:c:#c9a27a' },
   { id: 'b-stones', ev: 'stone', goal: 10, name: '돌탑 쌓는 사람', desc: '소원 돌 10개', glyph: '탑', color: '#4a4744', reward: 30 },
   { id: 'b-nosmoke', ev: 'smoker-repel', goal: 10, name: '금연 구역 지킴이', desc: '들머리 흡연자를 열 번 쫓았어요', glyph: '금', color: '#c4513f', reward: 30 }, // #156
+  { id: 'b-calm', ev: 'zone-pick-only', goal: 1, name: '달래는 사람', desc: '싸우지 않고 우두머리를 달래 보냈어요', glyph: '달', color: '#6c9a5a', reward: 30 }, // 두 길 (#298, game/twopaths.js)
+  { id: 'b-fightonly', ev: 'zone-fight-only', goal: 1, name: '쫓는 사람', desc: '쫓아낸 적만으로 우두머리를 불러냈어요', glyph: '쫓', color: '#b8513a', reward: 30 },
   { id: 'b-boar', ev: 'boar-repel', goal: 5, name: '멧돼지 조련사', desc: '멧돼지를 다섯 번 쫓았어요', glyph: '멧', color: '#4a3a30', reward: 30 },
   // 무기 첫 구매 (#123): 상점이 weapon-buy-<id> 를 알림
   { id: 'b-arm-bow', ev: 'weapon-buy-bow', goal: 1, name: '첫 귤 활', desc: '귤 활을 샀어요', glyph: '활', color: '#9a6b3a', reward: 20 },

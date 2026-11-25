@@ -6,13 +6,13 @@
 //   이벤트(이야기 적·우두머리·부하·레이드·사건·소굴·들판 떼·서바이벌 터)는 wild 가 아니라 그대로
 // - 균형: 그날(한국 시간) 줍기 balance.pick 개 + 쫓아내기 balance.fight 마리를 둘 다 하면 balance.sec 초(놀이 시간) 동안 줍는 힘·싸우는 힘 +bonus (inn.js late.innMul 을 감쌈)
 // 저장: save.zfight = {구역: 점수}, save.tp = { day, pick, fight, left(균형 남은 초), got(받은 날) }. 확인 window.__oreum.twopaths (파일 순서: inn 뒤)
-import { TWO_PATHS as TP, ZONES } from '../balance.js';
+import { TWO_PATHS as TP, ZONES, ZONE_BOSS } from '../balance.js';
 import { kstDay } from '../rankday.js';
 import { state, late } from './state.js';
 import { save, persist } from './save.js';
 import { NSW } from './scene.js';
 import { trash, player, life } from './place.js';
-import { toast } from './hud.js';
+import { toast, ach } from './hud.js';
 
 const ON = !!trash;
 const ZID = new Set(ZONES.map((z) => z.id));
@@ -39,7 +39,12 @@ if (ON) {
     today(); T.fight++; checkBalance(); persist();
   };
   const prevBoss = life.hooks.bossRepel;
-  life.hooks.bossRepel = (e) => { const z = late.bossNow?.()?.z; prevBoss?.(e); if (z != null && save.zfight[z]) { save.zfight[z] = 0; persist(); } }; // 우두머리를 끝내면 싸움 몫은 다시 처음부터
+  life.hooks.bossRepel = (e) => {
+    const z = late.bossNow?.()?.z; prevBoss?.(e); if (z == null) return;
+    /* 업적 둘 (#298): 달래서 끝냄 = 줍기만으로 · 싸움 몫만으로 우두머리를 부름 = 싸움만으로 */
+    if (calming) ach.emit('zone-pick-only'); else if (fightShare(z) >= ZONE_BOSS.appear - 1e-9) ach.emit('zone-fight-only');
+    calming = false; if (save.zfight[z]) { save.zfight[z] = 0; persist(); } // 우두머리를 끝내면 싸움 몫은 다시 처음부터
+  };
   trash.on((ev) => { if (ev !== 'trash' || late.tut?.active) return; today(); T.pick++; if (T.pick === TP.balance.pick) { checkBalance(); persist(); } });
 }
 
@@ -66,7 +71,7 @@ if (NSW) {
 }
 
 /* ---------- 달래는 길 ---------- */
-let calmT = 0;
+let calmT = 0, calming = false;
 late.bossCalmy = (c) => ON && !c.puppet && trash.zoneClean(c.z) >= TP.calm.clean - 1e-9 && c.e.hp >= c.max - 1e-6;
 function tickCalm(dt) {
   const c = late.bossNow?.(); if (!c || c.fight || !late.bossCalmy(c)) { calmT = 0; return; }
@@ -74,7 +79,7 @@ function tickCalm(dt) {
   if (Math.hypot(player.pos.x - a.x, player.pos.z - a.z) > a.r + TP.calm.calmR) { calmT = 0; return; }
   if (calmT === 0) toast('깨끗해진 구역을 둘러보는 중… 잠깐 곁에 있어 줘요', 2.6);
   calmT += dt;
-  if (calmT >= TP.calm.calmT) { calmT = 0; if (late.bossCalm?.()) toast('우두머리가 깨끗해진 구역을 보고 조용히 떠났어요', 3.2); }
+  if (calmT >= TP.calm.calmT) { calmT = 0; calming = true; const ok = late.bossCalm?.(); calming = false; if (ok) toast('우두머리가 깨끗해진 구역을 보고 조용히 떠났어요', 3.2); }
 }
 
 late.tickTwoPaths = (dt) => {
