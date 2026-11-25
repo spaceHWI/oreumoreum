@@ -8,7 +8,9 @@ import { mt } from './metrics.js';
 const KEY = 'oreumoreum.crash';
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 저장 불가 */ } } };
 const acts = []; // 마지막 한 일 (최근 CRASH.acts 개)
-const q = []; let sink = null, meta = () => ({}), busy = false, sent = 0;
+const q = []; let sink = null, meta = () => ({}), busy = false, sent = 0, ctx = () => '';
+export function setCrashCtx(fn) { ctx = fn || (() => ''); } /* 글 끝에 붙일 짧은 상태: 켠 지 몇 초·품질 단계·WebGL 잃음 (#304, scene.js) */
+const ctxText = () => { try { const c = String(ctx() || ''); return c ? ' · ' + c.slice(0, 60) : ''; } catch (e) { return ''; } };
 const seenRun = new Set(); // 이번에 이미 받은 오류 (매 프레임 같은 오류가 나도 한 번만)
 
 // 마지막 한 일 기록: '적 등장 dog×2' 같은 짧은 글
@@ -56,7 +58,7 @@ export function reportCrash(err, where = '') {
     if (sent >= CRASH.perRun || !allow(key)) return;
     sent++;
     const last = acts.length ? ' · 마지막: ' + acts.slice(-3).join(' / ') : '';
-    const ua = ' · ' + uaShort(); // 글이 길어도 브라우저/OS 이름은 끝에 남게 (#122: 서버가 끝 칸으로 나눔)
+    const ua = ctxText() + ' · ' + uaShort(); // 글이 길어도 브라우저/OS 이름은 끝에 남게 (#122: 서버가 끝 칸으로 나눔)
     q.push({ at: Date.now(), kind: 'crash', text: (text + last).slice(0, 500 - ua.length) + ua, ...meta() });
     pump();
   } catch (e) { /* 알림이 또 오류를 내지 않게 */ }

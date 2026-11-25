@@ -2,6 +2,7 @@
 // 맨 처음(다른 모듈보다 먼저) 정해져야 해서 저장소를 직접 읽는다. 주소 ?tier=0|1|2 는 확인용 강제, ?hi 는 높음
 import { PERF } from './balance.js';
 import { isMobile } from './mview.js';
+import { GL_START } from './glguard.js';
 
 const KEY = __DEV__ ? 'oreumoreum.dev' : 'oreumoreum.v1';
 function storedPref() { try { const v = JSON.parse(localStorage.getItem(KEY) || '{}').perf; return v === 0 || v === 1 || v === 2 ? v : 'auto'; } catch { return 'auto'; } }
@@ -31,7 +32,10 @@ const q = typeof location !== 'undefined' ? location.search : '';
 const forced = /[?&]tier=([012])/.exec(q)?.[1];
 export const PERF_PREF = forced != null ? +forced : /[?&]hi\b/.test(q) ? 2 : (typeof localStorage !== 'undefined' ? storedPref() : 'auto');
 export const PERF_AUTO = PERF_PREF === 'auto';
-export const TIER = PERF_AUTO ? autoTier() : PERF_PREF; // 시작할 때 정한 단계 (LOW 는 여기서 나옴 → 바꾸면 새로고침)
+const BASE = PERF_AUTO ? autoTier() : PERF_PREF;
+const GL_DROP = forced != null ? 0 : GL_START.drop; /* WebGL 을 잃은 기기는 한 칸씩 낮춤 (#304, glguard.js). 주소 ?tier= 는 그대로 */
+export const TIER = Math.max(0, BASE - GL_DROP); // 시작할 때 정한 단계 (LOW 는 여기서 나옴 → 바꾸면 새로고침)
+export const GL_PRLOW = BASE - GL_DROP < 0; // 단계 0 아래로 낮춤: 픽셀 배율도 줄임 (scene.js resize)
 export const PERF_LOCK = /[?&]perf\b/.test(q); // 재기용: 느려도 자동으로 내리지 않음
 
 // 멀리 있는 작은 물체 감추기: 레이어를 끄면 그리기·그림자에서 빠짐(제 코드가 쓰는 visible 은 건드리지 않음)
