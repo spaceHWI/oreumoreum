@@ -10,16 +10,16 @@ const shot = process.argv.includes('--shot');
 (async () => {
   /* ---------- 방 규칙 ---------- */
   const { createRoomCore } = await import('../server/src/roomcore.js');
-  const { HEAP_FULL } = await import('../server/src/heaps.js');
+  const { HEAP_FULL, HEAP_OWN } = await import('../server/src/heaps.js'); // #300 동료 줍기는 함께 더미만 방으로
   const { BUDDIES, NET } = await import('../src/balance.js');
   let T = 1e12; const core = createRoomCore({ now: () => T });
   const got = []; const p = core.join((s) => got.push(JSON.parse(s)), { acct: 'a1' });
-  const h = HEAP_FULL.findIndex((n) => n >= 10), keep = Math.ceil(HEAP_FULL[h] * BUDDIES.keep);
+  const h = HEAP_FULL.findIndex((n, i) => n >= 10 && !HEAP_OWN[i]), keep = Math.ceil(HEAP_FULL[h] * BUDDIES.keep);
   for (let i = 0; i < HEAP_FULL[h] + 5; i++) { T += 100; core.message(p, JSON.stringify({ t: 'btake', h })); }
   core.step();
   ok(core.heaps()[h] === keep, `방: btake 로 더미 ${HEAP_FULL[h]} → ${core.heaps()[h]} (마지막 ${keep} 남김)`);
   ok(core.takeEarned() === null, '방: btake 는 번 몫에 안 셈 (동료 몫이 내 귤로 안 잡힘)');
-  const h2 = HEAP_FULL.findIndex((n, i) => i !== h && n >= NET.takePerSec * 2);
+  const h2 = HEAP_FULL.findIndex((n, i) => i !== h && !HEAP_OWN[i] && n >= NET.takePerSec * 2);
   for (let i = 0; i < NET.takePerSec * 2; i++) core.message(p, JSON.stringify({ t: 'btake', h: h2 }));
   ok(HEAP_FULL[h2] - core.heaps()[h2] <= NET.takePerSec, `방: 한꺼번에 btake 는 줍기 몫(초당 ${NET.takePerSec}) 안에서만 (${HEAP_FULL[h2] - core.heaps()[h2]})`);
   T += 2000; core.message(p, JSON.stringify({ t: 'take', h: h2 })); core.step();

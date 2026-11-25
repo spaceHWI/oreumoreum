@@ -5,6 +5,7 @@
 // - 쓰레기: 더미 남은 수는 방이 주인. trash 저장소의 takeOne·putBack·seen 을 방으로 이어 줌
 import { NET } from './balance.js';
 import { HEAP_SIG } from './trash.js';
+import { HEAP_OWN } from './heapdefs.js';
 import { bootShow } from './bootbar.js';
 import { reloadFor, canAuto } from './reloadwhy.js';
 
@@ -345,18 +346,21 @@ export function createWsLobby({ token = () => null } = {}) {
 
 /* ---------- 쓰레기 더미를 방으로 ---------- */
 // 더미 남은 수·마지막 접속 시각은 방이 주인. 다시 쌓기(투기꾼·트럭)는 방장 화면에서만 (다른 사람 화면의 투기꾼은 모양만)
+// #300 내 것 더미(HEAP_OWN, 쓰레기 산 말고 모두)는 내 저장이 주인: 방 값으로 덮지 않고, 쌓기·동료 줍기도 보내지 않음. 줍기만 보냄(방이 번 몫·속도를 셈)
 export function linkTrash(trash, room) {
   const st = trash.store;
   const o = { takeOne: st.takeOne, putBack: st.putBack, seen: st.seen, setSeen: st.setSeen };
+  st.localSeen = o.seen; // 내 것 더미의 빈 동안 몫은 기기 시각으로 (dumpers.js)
   let seen = 0, live = false, queued = false;
   const relayout = () => { if (queued) return; queued = true; setTimeout(() => { queued = false; trash.relayout(); }, 0); };
   room.on('hi', (m) => {
     seen = m.seen || 0; live = m.sig === HEAP_SIG;
     if (!live) return; // 더미 구성이 다른 서버 → 혼자 하기처럼
-    m.heaps.forEach((n, h) => { if (st.left(h) !== n) st.setLeft(h, n); });
+    st.ownInit?.(); // #300 처음 한 번: 방을 따라 줄어 있던 내 것 더미를 가득으로 (옛 저장 옮기기)
+    m.heaps.forEach((n, h) => { if (!HEAP_OWN[h] && st.left(h) !== n) st.setLeft(h, n); });
     st.commit(); relayout();
   });
-  const one = (h, n) => { if (st.left(h) !== n) { st.setLeft(h, n); relayout(); } };
+  const one = (h, n) => { if (!HEAP_OWN[h] && Number.isFinite(n) && st.left(h) !== n) { st.setLeft(h, n); relayout(); } };
   room.on('h', (m) => { if (!live) return; one(m.h, m.n); const k = Math.min(NET.takeAsk, m.no === true ? 1 : m.no | 0); for (let i = 0; i < k; i++) trash.undoTake?.(m.h); }); // no: 방이 거절한 수 → 배낭에서 그만큼 되돌림 (#84, #137 여럿)
   room.on('hs', (m) => { if (live) for (const [h, n] of m.hs) one(h, n); });
   room.on('close', () => { live = false; });
@@ -365,10 +369,10 @@ export function linkTrash(trash, room) {
   const flush = () => { flushQ = false; if (live) for (const [h, n0] of pend) for (let n = n0; n > 0; n -= NET.takeMax) { const k = Math.min(n, NET.takeMax); room.send(k > 1 ? { t: 'take', h, n: k } : { t: 'take', h }); } pend.clear(); }; // 방이 한 메시지에 takeMax 개까지만 받으므로 나눠 보냄 (#144)
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) { pend.set(h, (pend.get(h) || 0) + 1); if (!flushQ) { flushQ = true; queueMicrotask(flush); } } return ok; };
   // 동료 줍기 (#172): 방에는 {t:'btake', h} 로 (번 몫에 안 셈, 서버도 마지막 BUDDIES.keep 은 남김). 옛 서버는 모르는 메시지라 넘김 → 다음 hs 로 되돌아옴
-  if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live) room.send({ t: 'btake', h }); return ok; }; }
+  if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live && !HEAP_OWN[h]) room.send({ t: 'btake', h }); return ok; }; }
   // 다시 쌓기 (#131): 방장만이 아니라 각자 둘레 투기꾼·몹이 쌓은 것을 보냄. 받아 줄지는 방이 정함(움직이는 사람·방 전체 한도), 못 받으면 {t:'h'} 로 되돌아옴
   st.putBack = (h, n) => {
-    if (!live) return o.putBack(h, n);
+    if (!live || HEAP_OWN[h]) return o.putBack(h, n); // #300 내 것 더미는 내 화면에만
     const add = o.putBack(h, n); if (add) room.send({ t: 'put', h, n: add }); return add;
   };
   st.seen = () => (live ? seen : o.seen());
