@@ -69,6 +69,16 @@ export class Accounts extends DurableObject {
   wishReport(who, id) { return wishReport(this.sql, who, id); }
   wishReported() { return wishReported(this.sql); }
   wishAdmin(id, act) { return wishAdmin(this.sql, id, act); }
+  /* 한 계정 한 접속 (#303): 계정마다 마지막으로 들어간 방·시각 (메모리만. 꺼졌다 켜지면 비어도 같은 방 안은 방이 막음).
+     앞 접속이 다른 방이면 그 방 이름(prev), 내가 더 늦게 도착한 옛 접속이면 stale */
+  claim(sub, room, at = Date.now()) {
+    if (typeof sub !== 'string' || typeof room !== 'string' || !/^[a-z0-9-]{1,48}#\d{1,2}$/.test(room)) return {};
+    const m = (this.live ||= new Map()), o = m.get(sub), t = Number.isFinite(at) ? at : Date.now();
+    if (o && o.at > t) return { stale: true };
+    m.set(sub, { room, at: t });
+    if (m.size > NET.liveMax) { const old = Date.now() - NET.liveKeepMs; for (const [k, v] of m) if (v.at < old) m.delete(k); }
+    return { prev: o && o.room !== room ? o.room : null };
+  }
   // 방이 알려 준 사람 수 (#186, room.js report). 0명이면 지움. 오래 소식이 없는 방(꺼진 방)은 빼고 셈
   roomCount(room, n, login, t = Date.now()) {
     if (typeof room !== 'string' || !/^[a-z0-9-]{1,48}#\d{1,2}$/.test(room)) return;

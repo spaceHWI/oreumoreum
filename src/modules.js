@@ -128,6 +128,7 @@ import './game/simple.js'; // 화면 단순하게·전체 화면 안내 (#189)
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
 import './game/idle.js'; // 오래 멈추면 쉬러 가기 (#157)
+import './game/bump.js'; // 같은 계정이 다른 곳에서 들어오면 밀려남 (#303)
 import './game/metrics.js'; // 이용 통계 (#121): 업적·쓰레기·적 후크를 감싸서 셈 (start.js 전)
 import './game/metricsadmin.js'; // 어드민 '수치' 표 (#121)
 import './game/cave.js'; // 동굴 탐험 (#195): 굼부리 용암 동굴, 별도 동굴 장면
