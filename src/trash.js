@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { gradHard } from './toon.js';
 import { TRASH_TYPES, TRASH, HEAP, ZONES, DEX, FISH, FIELD, BUDDIES, RARE_GYUL, FEEL } from './balance.js';
 import { zoneAt } from './zones.js';
-import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL } from './heapdefs.js';
+import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_TOTAL, HEAP_OWN } from './heapdefs.js';
 import { zoneLoops, placeSide } from './fieldplan.js';
 export { HEAP_DEFS, HEAP_SIG, HEAP_TOTAL };
 import { kstDay, weekStart, SRVS } from './rankday.js';
@@ -99,6 +99,8 @@ export function createLocalTrashStore({ save, persist }) {
     // 마지막 접속 시각 (#47, 서버별 ms). 0 이면 처음
     seen: () => Math.max(0, Number(S.seen) || 0),
     setSeen(t) { S.seen = t; },
+    // #300 방에 처음 붙을 때 한 번: 방을 따라 줄어 있던 내 것 더미(HEAP_OWN)를 가득으로. 옮겼으면 true
+    ownInit() { if (S.own) return false; S.own = 1; HEAP_OWN.forEach((on, i) => { if (on) S.heaps[i] = HEAP_FULL[i]; }); dirty = true; return true; },
     commit() { dirty = false; persist(); },
   };
 }

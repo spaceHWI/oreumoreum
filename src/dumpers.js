@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { gradHard } from './toon.js';
 import { DUMP, ZONES } from './balance.js';
 import { HEAP_TOTAL } from './trash.js';
+import { HEAP_OWN } from './heapdefs.js';
 import { buildTrailGraph } from './autowalk.js';
 import { crowdGap, offlineAdds } from './refill.js';
 
@@ -295,9 +296,10 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   }
 
   // 아무도 없던 동안 (sec 초, #131 src/refill.js): 구역마다 빈자리를 30분 절반·90분 가득 곡선으로 채움 (구역 1·2 먼저). 쌓은 수
-  function catchUp(sec) {
+  // ownOnly (#300): 방에 붙어 있으면 함께 더미는 방이 채우니 내 것 더미(HEAP_OWN)만, 기기 시각(localSeen)으로
+  function catchUp(sec, ownOnly = false) {
     if (!(sec > 0)) return 0;
-    const H = trash.heaps, left = H.map((h, i) => trash.store.left(i)), adds = offlineAdds(left, H.map((h) => h.n), H.map((h) => h.zone), sec);
+    const H = trash.heaps, left = H.map((h, i) => trash.store.left(i)), adds = offlineAdds(left, H.map((h) => h.n), H.map((h) => h.zone), sec).filter(([i]) => !ownOnly || HEAP_OWN[i]);
     let got = 0;
     for (const [i, n] of adds) got += trash.refill(i, n, true) || 0;
     if (got) { trash.relayout(); trash.store.commit(); }
@@ -305,16 +307,16 @@ export function createDumpers({ scene, trash, height, bound, paths, hooks = {}, 
   }
   let wallT = 0;
   function start(now = Date.now()) {
-    const seen = trash.store.seen();
+    const live = !!trash.store.roomLive?.(), seen = live ? trash.store.localSeen() : trash.store.seen();
     trash.store.setSeen(now);
-    if (seen > 0 && now - seen > DUMP.offlineMin * 1000) { const sec = (now - seen) / 1000, n = catchUp(sec); if (n) hooks.offline?.(n, sec); return n; }
+    if (seen > 0 && now - seen > DUMP.offlineMin * 1000) { const sec = (now - seen) / 1000, n = catchUp(sec, live); if (n) hooks.offline?.(n, sec); return n; }
     return 0;
   }
 
   function update(dt, time) {
     // 마지막 접속 시각 (탭이 오래 숨어 있었으면 그동안 몫을 한꺼번에)
     wallT += dt;
-    if (wallT > 5) { wallT = 0; const now = Date.now(), seen = trash.store.seen(); if (seen > 0 && now - seen > DUMP.offlineMin * 1000 && !trash.store.roomLive?.()) { const n = catchUp((now - seen) / 1000); if (n) hooks.offline?.(n, (now - seen) / 1000); } trash.store.setSeen(now); }
+    if (wallT > 5) { wallT = 0; const now = Date.now(), live = !!trash.store.roomLive?.(), seen = live ? trash.store.localSeen() : trash.store.seen(); if (seen > 0 && now - seen > DUMP.offlineMin * 1000) { const n = catchUp((now - seen) / 1000, live); if (n) hooks.offline?.(n, (now - seen) / 1000); } trash.store.setSeen(now); } /* #300 방에 붙어 있어도 내 것 더미는 기기 시각으로 */
     timer -= dt;
     if (timer <= 0) { timer = period(); if (!hooks.paced && (!hooks.canSpawn || hooks.canSpawn())) visit(); }
     for (let i = list.length - 1; i >= 0; i--) {
