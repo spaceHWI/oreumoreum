@@ -67,6 +67,7 @@ function hookRoom() { const r = net.room; if (!r?.on || r === hooked) return; ho
 
 for (const ev of ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart', 'touchmove']) {
   addEventListener(ev, (e) => {
+    if (state.bumped) return; /* 다른 곳에서 접속해 밀려난 동안은 bump.js 창이 맡음 (#303) */
     if (mode === 'rest') { if (ev === 'pointerdown' || ev === 'keydown' || ev === 'touchstart') { e.preventDefault?.(); e.stopPropagation?.(); wake(); } return; }
     act();
   }, { capture: true, passive: ev !== 'keydown' && ev !== 'pointerdown' && ev !== 'touchstart' });
@@ -75,6 +76,7 @@ document.addEventListener('visibilitychange', () => { hiddenAt = document.hidden
 
 function check() {
   hookRoom();
+  if (state.bumped) return; /* #303 */
   if (mode === 'rest') return;
   const t = Date.now();
   if (exempt() || state.osPaused) { lastAct = t; if (mode === 'warn') hide(); return; }
