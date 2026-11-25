@@ -14,7 +14,7 @@ import { social } from './room.js';
 import { msgLog } from './msglog.js';
 import { shopPopNow } from './stores.js';
 
-const POP = { gear: 'gear', stone: 'stone', manjok: 'satis', salon: 'salon', inn: 'inn', ride: 'ride', leap: 'leap', tok: 'tok' }; /* 가게 창 key → 말하는 사람 */
+const POP = { gear: 'gear', stone: 'stone', manjok: 'satis', salon: 'salon', inn: 'inn', bar: 'bar', ride: 'ride', leap: 'leap', tok: 'tok' }; /* 가게 창 key → 말하는 사람 */
 const nowS = () => performance.now() / 1000;
 let downAt = -1e9, wasDown = false;
 

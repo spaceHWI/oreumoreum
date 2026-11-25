@@ -4,7 +4,7 @@ import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong, nsPaths } from '../namsongi.js';
 import { aimLamps } from '../lampaim.js';
 import { createFootprints } from '../footprints.js';
-import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, INN, SCREEN, CRASH, WEATHER } from '../balance.js';
+import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, INN, BAR, SCREEN, CRASH, WEATHER } from '../balance.js';
 import { crashNote, reportCrash } from '../crash.js';
 import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
 import { isMobile } from '../mview.js';
@@ -73,7 +73,8 @@ scene.background = FOG;
 scene.fog = new THREE.Fog(FOG, MAP_ID === 'gate' ? 90 : 220, MAP_ID === 'donnaeko' ? 3200 : MAP_ID === 'gate' ? 900 : 2600);
 const leapLane = (() => { const sh = SHOPS.find((r) => r.id === 'leap'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(LEAP.fore - 0.2), at(LEAP.fore + LEAP.D + 0.2)], w: LEAP.W / 2 + 0.2, floor: 1 }]; })(); /* LEAP 바닥 밑 풀 없앰 (#59) */
 const innLane = (() => { const sh = SHOPS.find((r) => r.id === 'inn'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(0.1), at(INN.fore + INN.D + 0.2)], w: INN.W / 2 + 0.5, floor: 1 }]; })(); /* 숙소 앞마당·유리 1층 밑 풀 없앰 (#270) */
-export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane, ...innLane] }) : null; /* 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목 */
+const barLane = (() => { const sh = SHOPS.find((r) => r.id === 'bar'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(0.1), at(BAR.fore + BAR.D + 0.2)], w: BAR.W / 2 + 0.4, floor: 1 }]; })(); /* Bar 소설 툇마루·바닥 밑 풀 없앰 (#316) */
+export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane, ...innLane, ...barLane] }) : null; /* 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목 */
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 export const camera = new THREE.PerspectiveCamera(SCREEN.fov, 1, 0.5, NSW ? NSW.camFar : 14000);
@@ -191,7 +192,7 @@ export function applySky() {
   const sc = 700 + g * 500; bodies.sunSprite.scale.set(sc, sc, 1);
   bodies.stars.material.opacity = THREE.MathUtils.smoothstep(-el, 6, 14) * 0.85; // 해가 지평선 아래 6° 지나면서 서서히, 14°쯤 다 보임
   nsAfter(); applyWx(el);
-  { const see = late.fireSee?.() || 0; if (see > 0) { hemi.intensity += see * (1 - k) * ex; fogBase.f *= late.fireFog?.() ?? 1; applyZoneFog(); } } /* #290 불멍 '멍': 밤·안개에서 조금 더 보임 */
+  { const see = (late.fireSee?.() || 0) + (late.barSee?.() || 0); if (see > 0) { hemi.intensity += see * (1 - k) * ex; fogBase.f *= late.fireFog?.() ?? 1; applyZoneFog(); } } /* #290 불멍 '멍'·#316 '여운': 밤·안개에서 조금 더 보임 */
   sunState = { el, az, k, golden: g };
   late.sound.setDaylight?.(k);
 }

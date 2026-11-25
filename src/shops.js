@@ -3,8 +3,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gradHard } from './toon.js';
-import { SHOP_ST, SHOPS, STONE, SALON, LEAP, GEAR_SHOP, MANJOK, INN } from './balance.js';
+import { SHOP_ST, SHOPS, STONE, SALON, LEAP, GEAR_SHOP, MANJOK, INN, BAR } from './balance.js';
 import { createInn } from './inn.js';
+import { createBar } from './bar.js';
 import { createManjok, SPOON } from './manjok.js';
 import { createGearShop, HAMMER } from './hardware.js';
 import { createStone } from './stone.js';
@@ -29,6 +30,7 @@ export const SHOP_ICON = {
   gear: HAMMER, // 장비점 (#128)
   manjok: SPOON, // 만족한상회 (#167): 수저
   inn: ic('bed'), // 숙소 오피스제주 (#270): 침대
+  bar: ic('book'), // Bar 소설 (#316): 책
 };
 
 // 가게마다 건물 하나. lot = streetlayout 의 터, 반환 { door: 상호작용 자리, signPos: 가장자리 표시 기준, update?(dt, night), api }
@@ -64,6 +66,10 @@ export const SHOP_BUILD = {
   inn: ({ scene, height, lot, low, col }) => { // 숙소 오피스제주 (#270, 코드로 만든 임시 모양 inn.js). 원점 = 터 앞
     const api = createInn({ scene, height, site: { x: lot.front.x, z: lot.front.z, rot: lot.rot }, low, col });
     return { api, door: api.door, signPos: api.signPos, r: INN.r, update: (dt, night) => api.update(dt, night) };
+  },
+  bar: ({ scene, height, lot, low, col }) => { // Bar 소설 (#316, 코드로 만든 임시 모양 bar.js). 원점 = 터 앞
+    const api = createBar({ scene, height, site: { x: lot.front.x, z: lot.front.z, rot: lot.rot }, low, col });
+    return { api, door: api.door, signPos: api.signPos, r: BAR.r, update: (dt, night) => api.update(dt, night) };
   },
   ride: ({ scene, height, lot, low, col }) => { // 탈것 가게 (#69, 임시 모양)
     const k = RIDE_SHOP.fore + RIDE_SHOP.D / 2;

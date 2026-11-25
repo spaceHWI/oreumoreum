@@ -149,6 +149,7 @@ import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 
 import './game/inn.js'; // 숙소 오피스제주 (#270): 숙박·개운함 버프·곁가지 퀘스트 (shopgate 앞: 가게 표가 먼저)
 import './game/twopaths.js'; // 두 길 (#298): 구역 점수(줍기 + 싸움)·달래는 길·길 안전·균형 보너스 (inn 뒤: innMul 을 감쌈, boss 뒤: 후크를 감쌈)
 import './game/firepit.js'; // 숙소 마당 불멍 (#290): 화로·앉기·버프 '멍' (inn 뒤: innExtra·innPeer 를 감쌈)
+import './game/bar.js'; // Bar 소설 (#316): 밤에만 여는 책 읽는 바·버프 '여운' (firepit 뒤: innExtra·innPeer 를 감쌈)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/npctalk.js'; // NPC 대사 (#278): 말버릇·상황 받아치기·가게 창 주인 말 (글은 src/npclines.js)
 import './game/start.js';

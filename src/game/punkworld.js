@@ -217,7 +217,7 @@ if (trash) trash.on((ev) => {
   if (ev !== 'trash' || !state.sessionOn || late.tut?.active) return;
   // 하루 쓰레기 수 (칭호 '오늘도 무급')
   const d = kstDate(); if (P.day.d !== d) { P.day.d = d; P.day.n = 0; } P.day.n++; if (P.day.n >= PUNK.unpaid) once('trash-day-500'); else if (P.day.n % 25 === 0) persist();
-  if (Math.random() < PUNK.note.p) { const z = trash.zoneAt(player.pos.x, player.pos.z) || 0; if (z >= 1) dropNote(z); }
+  if (Math.random() < PUNK.note.p * (late.barMul?.('note') ?? 1)) { /* #316 '여운': 쪽지가 더 잘 나옴 */ const z = trash.zoneAt(player.pos.x, player.pos.z) || 0; if (z >= 1) dropNote(z); }
 });
 syncChip();
 // 도감 '주운 쪽지' 칸 (#140 의 재료·전설 칸 뒤)
