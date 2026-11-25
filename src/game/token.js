@@ -204,7 +204,7 @@ function placeStalls() {
   stalls.length = 0;
   for (const a of late.arenaApi?.list?.() || []) {
     const f = [Math.sin(a.face), Math.cos(a.face)], tg = [Math.cos(a.face), -Math.sin(a.face)], R = A.r + T.stall.out;
-    const x = a.x + f[0] * R + tg[0] * T.stall.side, z = a.z + f[1] * R + tg[1] * T.stall.side, y = height(x, z);
+    const sd = T.stall.sideZ?.[a.zone] ?? T.stall.side, x = a.x + f[0] * R + tg[0] * sd, z = a.z + f[1] * R + tg[1] * sd, y = height(x, z);
     /* #305 Tripo 망고 좌판 (tripoprop.js: 가까이 가면 받음, 그 전엔 예전 코드 모양) + 판 위 망고 한 알 */
     const ph = new THREE.Mesh(geo, mat); ph.castShadow = false; ph.receiveShadow = !LOW;
     const P = tripoProp('stall', { scale: CASE_MODELS.prop.stall, ph, shadow: false }), mesh = P.root;

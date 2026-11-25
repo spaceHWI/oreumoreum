@@ -1410,7 +1410,7 @@ export const CLUE = {
   turn: [1.5, 6.5], flash: { at: 6.8, dur: 0.6, size: 26 }, up: 30, fov: 32,
   note: { out: -1.5, tan: 0.5, r: 2.6 },
   rim: { in: 4, r: 9 },
-  scope: { out: 0.7, tan: -2.8, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
+  scope: { out: 0.8, tan: -4.2, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
 };
 
 // 미스터리 장치 (#212, game/mystery.js·game/traces.js). 단계는 UFO.reveal 의 드러남 단계(#207). 값은 임의
@@ -1418,8 +1418,9 @@ export const MYST = {
   // 1. 되풀이되는 숫자 4:04. 본 곳(방송·쪽지·시계·가로등·시간표·그 시각)이 say 곳 이상이면 혼잣말 한 번. near: 시계·번호판·시간표에 이 m 안이면 본 것
   //   시계: 가게 거리 골목 좌표 clock [s, 쪽] · 번호판: 가로등 lamp 번째 · 시간표: 마차 정류장 stop 번째. 그 시각 1분 동안 dustR m 안 더미에서 dustEvery 초마다 먼지, 단계 humStage 부터 먼 웅웅
   num: { h: 4, m: 4, say: 4, near: 6, dustR: 70, dustEvery: [4, 7], humStage: 1, lamp: 0, clock: [12, -1], stop: 0 },
-  // 금고: 굼부리 관리 초소(표지석 기준 out·tan m). 답 code, 열면 귤 gyul(서버 earn.js 가 계정마다 한 번) + 전리품(lootZ 구역 'treasure') + 쪽지 note + 칭호
-  safe: { out: -7.5, tan: 6.5, r: 2.6, code: '0404', gyul: 300, lootZ: 4, note: 'n404' },
+  // 금고: 굼부리 관리 초소. 자리는 남송이 길 path 의 d m 지점에서 옆(side 1/-1) off m (#308: 정상에서 빼서 굼부리 가는 길 끝·둘레 앞 길가로, 임의값)
+  //   답 code, 열면 귤 gyul(서버 earn.js 가 계정마다 한 번) + 전리품(lootZ 구역 'treasure') + 쪽지 note + 칭호
+  safe: { path: 'toCrater', d: 190, side: -1, off: 6.5, r: 2.6, code: '0404', gyul: 300, lootZ: 4, note: 'n404' },
   // 3. 발자국: 밤(18~6시)에 생겨 아침(6~12시)에 지워짐. 구역마다 한 줄(더미 → 더미 → 다음 쪽으로 가다 cut 비율에서 끊김), 걸음 step m(저사양 stepLow)
   foot: { from: 18, fadeFrom: 6, fadeTo: 12, step: 1.1, stepLow: 1.8, size: 0.5, cut: [0.55, 0.75], max: 3, maxLow: 2, seen: 3 },
   // 크롭서클: 단계 stage 부터, 구역 zones 의 평평한 풀밭. days 일마다 자리가 바뀜. 지름 r·2 m. 땅에선 흐리게(op[0]), 카메라가 high m 넘게 높으면 또렷이(op[1])
@@ -2403,7 +2404,7 @@ export const TOKEN = {
     { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '망고 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
   ],
   suit: { hp: 0.5 },
-  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6, mangoY: 1.06, mangoZ: 0.34 }, /* mangoY·Z: 판 위 망고 한 알 자리 (#305) */
+  stall: { side: 4.2, sideZ: { 5: -4.2 }, out: 2.2, near: 40, npc: '터지기', r: 2.6, mangoY: 1.06, mangoZ: 0.34 }, /* mangoY·Z: 판 위 망고 한 알 자리 (#305). sideZ: 구역별 옆 m (#308 터 5 좌판은 문 반대쪽 옆, 표지석에서 멀리) */
   pop: { max: 5, t: 1.1, scale: 1.6 }, /* 받을 때 튀는 망고 (#305): 몇 알까지·한 알 시간(초)·크기 배수 */
   quest: { n: 10, gyul: 20 },
 };
