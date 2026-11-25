@@ -128,7 +128,7 @@ export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, 
     if (!sess || going) return;
     if (busy && !keepalive) { again = true; return; }
     clearTimeout(timer); timer = 0; busy = true; lastPush = Date.now();
-    const s = getSave(), body = JSON.stringify(strip(s));
+    const s = getSave(), body = JSON.stringify(strip(s)), sg = s.gift && typeof s.gift === 'object' ? { in: s.gift.in | 0, out: s.gift.out | 0 } : { in: 0, out: 0 }; /* #312: 보낸 때의 받은·준 귤 누적 */
     if (body === lastBody) { busy = false; return; } // 바뀐 것이 없으면 보내지 않음
     const nSold = Array.isArray(s.sold) ? s.sold.length : 0; // 판 것 목록 (#188): 서버가 받으면 보낸 만큼 지움 (그사이 판 것은 남김)
     try {
@@ -137,6 +137,7 @@ export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, 
       if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
       gifts(r.gifts);
       if (r.fix?.reload && !going && canAuto()) { const me = await api('/me'); if (going) return; writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); leave('fix', true, 1200); return; }
+      if (r.fix && r.fix.coins != null && !r.fix.gift) r.fix.gift = sg; /* #312: 옛 서버가 귤만 맞춰 보내도 그사이 준·받은 귤을 덮어쓰지 않게 (start.js onFix 가 차이만큼 다시 뺌·더함) */
       if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick || r.fix.gift || r.fix.lv || r.fix.tok)) onFix(r.fix);
       writeLocal();
       changed();

@@ -67,6 +67,20 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   await A.p.evaluate(() => window.__oreum.online.account().push()); await B.p.evaluate(() => window.__oreum.online.account().push()); await wait(A.p, 1200);
   const a3 = await snap(A), b3 = await snap(B);
   ok(a3.c === a2.c && b3.c === b2.c, `저장 뒤에도 그대로 (A ${a3.c}, B ${b3.c})`);
+  // #312: 저장 응답이 오는 사이 준 귤 — 서버가 귤을 맞춰 보내도(깎임) 그사이 준 귤은 다시 생기지 않음
+  {
+    let fixC = null; const hold = (ms) => new Promise((r) => setTimeout(r, ms));
+    await A.p.route(/\/save$/, async (rt) => { const res = await rt.fetch(); const body = await res.text(); try { fixC = JSON.parse(body).fix?.coins ?? null; } catch (e) { fixC = null; } await hold(2500); await rt.fulfill({ response: res, body }); });
+    await A.p.evaluate(() => { const o = window.__oreum; o.save.coins += 900000; o.online.account().push(); }); /* 몫보다 크게 부풀려 서버가 깎게 */
+    await wait(A.p, 700); const b4 = await snap(B);
+    await A.p.evaluate(() => window.__oreum.give.press()); await wait(A.p, 3200);
+    await A.p.unroute(/\/save$/);
+    const a5 = await snap(A), b5 = await snap(B);
+    ok(fixC != null && b5.c - b4.c === 1 && a5.c === fixC - 1, `저장 응답을 기다리는 사이 준 1개는 깎인 값에서도 빠짐 (서버 ${fixC} → A ${a5.c}, B ${b4.c}→${b5.c})`);
+    await A.p.evaluate(() => window.__oreum.online.account().push()); await wait(A.p, 1500);
+    const a6 = await snap(A), me = await A.p.evaluate(async () => { const s = window.__oreum.online; return s.account().loggedIn; });
+    ok(me && a6.c === a5.c, `다시 저장해도 그대로 (A ${a6.c})`);
+  }
   // 받지 않기: B 가 메뉴에서 끄면 A 버튼이 사라짐
   await B.p.evaluate(() => document.getElementById('menu-gift').click());
   ok(await until(A, () => !window.__oreum.give.target(), null, 8000), "B 가 '귤 선물: 안 받음' 이면 A 에게 버튼이 안 나옴");
