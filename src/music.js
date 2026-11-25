@@ -107,7 +107,7 @@ export class Music {
     }
   }
   // 지금 곳 (밤이면 밤, 불멍은 밤에도 불멍)
-  _prof() { this.night = this.day < MUSIC.nightK; return this.place === 'fire' ? 'fire' : this.night ? 'night' : (MUSIC.calm.places[this.place] ? this.place : 'calm'); }
+  _prof() { this.night = this.day < MUSIC.nightK; return this.place === 'fire' || this.place === 'bar' ? this.place : this.night ? 'night' : (MUSIC.calm.places[this.place] ? this.place : 'calm'); }
   _bar(t) {
     const C = MUSIC.calm, name = this._prof(), P = C.places[name], c = this.c;
     const e8 = 30 / P.bpm, len = e8 * 8;

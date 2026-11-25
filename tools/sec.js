@@ -200,6 +200,37 @@ async function startServers() {
       r = checkSave(P5, { ...P5, inn: { d: '', n: 0, left: 0, fire: { d: 'x', n: 99, until: 1e9, t: -3 } } }, acc(), t);
       ok(r.save.inn.fire.n === INN.fire.perDay && r.save.inn.fire.until === INN.fire.buffSec + INN.fire.pair && r.save.inn.fire.d === '' && r.save.inn.fire.t === 0, `깨진 불멍 기록은 한도 안으로 (${JSON.stringify(r.save.inn.fire)})`);
     }
+    /* ---------- Bar 소설 (#316): 값을 셈에 넣음·값 없이 읽기·하루 한도·날만 바꾸기·앞날 거절, '여운' 경험치는 읽은 날만 (순수 함수) ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js'), { BAR, LEVEL } = await import('../src/balance.js'), { kstDate } = await import('../src/daily.js'), { levelOf } = await import('../src/augments.js');
+      const t = Date.now(), today = kstDate(t), acc = () => ({ credit: 1000, pickCredit: 0, bank: 0, savedAt: t - 60000 });
+      const P = { ...S0, coins: 1000, lv: { xp: 0, v: LEVEL.v } }, price = BAR.price.base + levelOf(0).lv * BAR.price.perLv, B1 = { d: today, n: 1, t: 1, left: 0, read: [], p: 1 };
+      let r = checkSave(P, { ...P, coins: 1000 - price, bar: B1 }, acc(), t);
+      ok(!r.fixed.includes('coins') && !r.fixed.includes('bar') && r.save.bar.t === 1, `한 잔 값 ${price} 받아 줌 (${r.fixed})`);
+      r = checkSave(P, { ...P, coins: 1000 + 50, bar: B1 }, { ...acc(), credit: 0, savedAt: t }, t);
+      ok(r.fixed.includes('coins') && r.save.coins <= 1000 - price, `값을 안 내고 읽으면 귤을 깎음 (${r.save.coins})`);
+      const P1 = { ...P, coins: 1000, bar: { d: today, n: 1, t: 1, left: 0, read: [], p: 1 } };
+      r = checkSave(P1, { ...P1, bar: { d: today, n: 1, t: 1, left: BAR.buffSec, read: [4] } }, acc(), t);
+      ok(!r.fixed.includes('bar') && !r.fixed.includes('coins') && r.save.bar.read[0] === 4 && r.save.bar.left === BAR.buffSec, '책갈피: 값을 낸 뒤 다 읽으면 편·여운이 남음 (귤 없음)');
+      const P2 = { ...P, coins: 1000, bar: { d: today, n: BAR.perDay, t: 5, left: 0, read: [] } };
+      r = checkSave(P2, { ...P2, coins: 1000 - price, bar: { d: today, n: BAR.perDay, t: 6, left: BAR.buffSec, read: [] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.t === 5, `하루 ${BAR.perDay}번 넘기 거절`);
+      const P3 = { ...P, bar: { d: '2026-01-01', n: 2, t: 2, left: 0, read: [] } };
+      r = checkSave(P3, { ...P3, bar: { d: today, n: 0, t: 2, left: BAR.buffSec, read: [] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.d === '2026-01-01', '값 없이 날만 바꾸기 거절');
+      r = checkSave(P3, { ...P3, coins: 0, bar: { d: '2099-01-01', n: 1, t: 3, left: BAR.buffSec, read: [] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.t === 2, '앞날 읽기 거절');
+      r = checkSave(P3, { ...P3, bar: { d: '2026-01-01', n: 2, t: 2, left: 0, read: [0, 1, 2, 3, 4] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.read.length === 2, `읽은 편은 값을 낸 수까지만 (${r.save.bar.read})`);
+      const P4 = { ...P, bar: { d: today, n: 1, t: 1, left: 900, read: [0] } }, gain = 100, xp = Math.floor(gain * (1 + BAR.buff.xp));
+      r = checkSave(P4, { ...P4, coins: P4.coins + gain, lv: { ...P4.lv, xp } }, acc(), t);
+      ok(!r.fixed.includes('lvxp') && r.save.lv.xp === xp, `'여운' 경험치 +${Math.round(BAR.buff.xp * 100)}% 받아 줌 (${r.save.lv.xp})`);
+      const P5 = { ...P, bar: { d: '2026-01-01', n: 1, t: 1, left: 900, read: [0] } };
+      r = checkSave(P5, { ...P5, coins: P5.coins + gain, lv: { ...P5.lv, xp } }, acc(), t);
+      ok(r.fixed.includes('lvxp') && r.save.lv.xp === gain, `읽은 날이 아니면 경험치는 번 만큼만 (${r.save.lv.xp})`);
+      r = checkSave(P, { ...P, bar: { d: 'x', n: 99, t: -3, left: 1e9, read: [1, 1, 'a', 99] } }, acc(), t);
+      ok(r.save.bar.n === 0 && r.save.bar.t === 0 && r.save.bar.d === '' && r.save.bar.left <= BAR.buffSec && r.save.bar.read.length === 0, `깨진 바 기록은 한도 안으로 (${JSON.stringify(r.save.bar)})`);
+    }
     /* ---------- 철 이벤트 (#180): 달력 날짜 속이기·트리 합계 부풀리기 ---------- */
     {
       const { xmasDay, calReward, treeGoal } = await import('../src/seasoncal.js');

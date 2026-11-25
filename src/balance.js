@@ -1000,6 +1000,24 @@ export const INN = {
   },
   // 주인은 퀘스트 주는 사람 QUESTS.givers['shop:inn'] (안녕 매니저, game/quest.js 가 가게 문 옆에 세움)
 };
+// Bar 소설 (#316): 가게 거리 8번 터의 책 읽는 바 (실제 가게 '책과 사람 그리고 술' 을 본뜸. 로고·사진은 쓰지 않고 이름 글자만). 해 질 무렵부터 밤에만 엶. 수치·이름 모두 임의
+// 건물은 코드로 만든 임시 모양 src/bar.js, 로직 game/bar.js, 짧은 소설·사장 대사는 src/bartext.js·src/npclines.js. 저장 save.bar = { d 마지막 읽은 날(KST), n 그날 읽은 수, t 모두 읽은 수, left '여운' 남은 놀이 초, read 읽은 편 번호[] }
+// [한 잔 하며 읽기]: 값 = base + 레벨 × perLv, 하루 perDay 번. 바에 앉아 read 초 책장을 넘기면 버프 '여운' buffSec 초(놀이 시간). 한 잔(귤 하이볼)·귤 에이드는 효과가 같음
+// buff: xp 경험치 ×(1+v) · mutter 혼잣말 사이 시간 ×(1+v) · note 까마귀·쓰레기 쪽지 나올 확률 ×(1+v) · see 밤 시야(하늘빛 더함). 싸움 수치는 없음. 식사·개운함·멍과 같이 걸림
+// openNight: 밤 정도(scene.js lampNight)가 이 값을 넘으면 엶(해 질 무렵), closeNight 아래로 내려가면 닫음(아침). 앉아 읽는 중엔 끝까지
+export const BAR = {
+  name: 'Bar 소설', short: '소설', tag: '책과 사람 그리고 술', buffName: '여운',
+  price: { base: 60, perLv: 20 }, perDay: 3,
+  read: 15, buffSec: 1500, warnSec: 60,
+  buff: { xp: 0.15, mutter: -0.4, note: 0.5, see: 0.2 },
+  drinks: [{ id: 'highball', name: '한 잔', sub: '귤 하이볼' }, { id: 'ade', name: '귤 에이드', sub: '술 없이' }],
+  openNight: 0.15, closeNight: 0.05,
+  W: 7.4, D: 5.4, H: 3.3, fore: 2.0, // 건물 폭·깊이·높이 (m), 터 앞에서 앞벽까지 (작은 툇마루)
+  r: 4.8, // 툇마루 가운데에서 이 거리 안이면 상호작용 '한 잔'
+  camYaw: 0.12, camPitch: 0.14, camDist: 4.6, // 앉으면 카메라: 앞(오른쪽 유리창 밖)에서 조금 비껴·낮게
+  sayGap: [4, 6], // 읽는 동안 혼잣말 사이(초)
+  title: '애독자', // 모든 편을 읽으면 칭호 (achievements.js b-bar-all)
+};
 export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
 
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
@@ -1018,6 +1036,7 @@ export const SHOP_ST = {
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
     { s: 75.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝. #270 에서 골목을 늘려 끝이 46 → 70)
     { s: 58, side: 1, w: 20, d: 13 }, // 7 숙소 오피스제주 (#270, 다른 가게 2배. 스톤 앞(개울 쪽)을 가리지 않게 오름 쪽 줄)
+    { s: 50, side: -1, w: 9, d: 8 }, // 8 Bar 소설 (#316, 숙소 맞은편 시작 쪽 줄. 스톤 앞 개울 쪽(s 28~46)은 비워 둠)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
@@ -1025,7 +1044,7 @@ export const SHOP_ST = {
   // 골목 가장자리 꾸밈 [s, 쪽(1 오름 쪽 / -1 시작 쪽)]: 터 앞을 막지 않는 틈에만
   lamps: [[3, 1], [30, -1], [44, -1], [56, -1], [66, -1]],
   benches: [[33.5, -1], [39.5, -1], [61, -1]],
-  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1], [52, -1]],
+  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1]], // #316 [52, -1] 은 Bar 소설 터라 뺌
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
   // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
   roofSize: 2.3, roofGap: 0.2, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
@@ -1047,6 +1066,7 @@ export const SHOP_ST = {
     { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
     { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요' },
     { id: 'inn', need: [{ zone: 3 }, { lv: 8 }], how: '능선에 들어서거나 레벨 8이 되면', say: '골목 안쪽 숙소 오피스제주가 문을 열었어요 · 하룻밤 묵으면 개운해져요' }, // #270 (#275 레벨 7 → 8: 능선 권장 Lv 에 맞춤)
+    { id: 'bar', need: [{ lv: 9 }, { zone: 4 }], how: '레벨 9가 되거나 굼부리에 들어서면', say: '숙소 맞은편 Bar 소설이 문을 열었어요 · 해가 지면 불이 켜져요' }, // #316 (숙소보다 조금 뒤)
   ],
   gate: {
     fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)
@@ -1069,6 +1089,7 @@ export const SHOPS = [
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
   { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
   { id: 'inn', name: '오피스제주', lot: 7, act: '숙박', ic: 'bed', pop: 'inn', sells: '하룻밤·개운함 버프' }, // #270 (코드로 만든 임시 모양 src/inn.js)
+  { id: 'bar', name: '소설', lot: 8, act: '한 잔', ic: 'book', pop: 'bar', sells: '한 잔·책·여운 버프 (밤에만)' }, // #316 (코드로 만든 임시 모양 src/bar.js)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -1308,6 +1329,7 @@ export const MUSIC = {
       top: { bpm: 66, oct: 12, fill: 0.4, drop: 0.6, vol: 0.8, lp: 1.2, pad: 0.55, inst: 'bell', decay: 1.6 },     // 정상
       night: { bpm: 60, oct: -12, fill: 0.55, drop: 0.4, vol: 0.8, lp: 0.6, pad: 1.1, inst: 'marimba', decay: 1.5 }, // 밤
       fire: { bpm: 64, oct: -12, fill: 1, drop: 0.15, vol: 0.85, lp: 0.8, pad: 0.5, inst: 'pluck', decay: 1, arp: true }, // 숙소 불멍
+      bar: { bpm: 54, oct: -12, fill: 0.5, drop: 0.35, vol: 0.65, lp: 0.55, pad: 1.2, inst: 'marimba', decay: 1.7 }, // Bar 소설 바에 앉아 읽는 동안 (#316): 낮고 느린 곡
     },
   },
 };
@@ -2072,6 +2094,7 @@ export const QUESTS = {
     'shop:inn': { name: '안녕 매니저', shop: 'inn', look: { shirt: '#e9ecef', pants: '#3a4150', shoes: '#26262b', hat: 'hat:short' }, hello: ['일이 많은 당신의 안녕을 바랍니다', '체크인은 지금, 걱정은 체크아웃 때 두고 가요', '와이파이 비밀번호요? 귤이에요'] }, // #270 숙소 오피스제주
     'shop:ride': { name: '탈것 가게 사장', shop: 'ride', look: { shirt: '#e0443a', pants: '#2b2b30', shoes: '#26262b', hat: 'hat:w-cap' }, hello: ['오늘 바람은 순풍이에요', '빠른 건 우리가, 조심은 당신이'] }, /* #279 탈것 가게에도 주인이 없었음 */
     'shop:satis': { name: '만족한상회 사장', shop: 'manjok', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b', hat: 'hat:npc-kerchief', vest: 'vest:npc-apron' }, hello: ['갈치 드실래요?', '뼈는 없고 정만 있어요'] }, /* #279 가게 id 는 manjok (전엔 'satis' 라 주인이 안 섰음). 앞치마·머릿수건은 gear.js NPC 전용 */
+    'shop:bar': { name: '소설 사장', shop: 'bar', look: { shirt: '#2a3550', pants: '#2b2b30', shoes: '#26262b', hat: 'hat:short' }, hello: ['책은 천천히, 잔은 더 천천히', '밤에 와요. 낮엔 저도 책 읽어요'] }, /* #316 Bar 소설 (말수 적고 한마디씩 웃김, 대사 npclines.js bar) */
   },
   /* #298 두 길: 줄기 퀘스트의 줍기·싸움 목표는 ask.or 로 '둘 중 하나' (줍기만·싸움만으로도 막히지 않게, src/quest.js). 셈 repel@구역 은 game/quest.js */
   main: [
@@ -2144,6 +2167,8 @@ export const QUESTS = {
     // 숙소 오피스제주 안녕 매니저 (#270, 숙소가 열리면). 첫 숙박은 반값(INN.price.first)
     { id: 'i-stay', giver: 'shop:inn', door: 'shopQuests', name: '일이 많은 당신에게', say: ['일이 많아 보이네요. 얼굴에 다 써 있어요.', '오피스제주에서 하룻밤만 묵어 봐요. 첫 숙박은 반값이에요. 안녕은 원래 값이 없지만요.'], task: '오피스제주에서 1번 묵기', ask: { k: 'innStay', n: 1 }, go: 'shop:inn', fin: ['개운하죠? 그 얼굴이 우리 간판이에요.'], reward: { gyul: 20 }, need: 'shop:inn' },
     { id: 'i-run', giver: 'shop:inn', door: 'shopQuests', after: 'i-stay', name: '개운할 때 일하기', say: ['개운함이 남아 있을 때가 일하기 제일 좋아요.', '버프가 있는 동안 아무 구역 서바이벌 터에서 1판 버텨 봐요. 퇴근은 그다음이에요.'], task: '버프 중 서바이벌 터 1판 버티기', ask: { k: 'innRun', n: 1 }, fin: ['역시. 다음 숙박은 우리가 기다릴게요.'], reward: { gyul: 30 }, need: 'shop:inn' },
+    // Bar 소설 소설 사장 (#316, 바가 열리면). 밤에만 엶
+    { id: 'b-read', giver: 'shop:bar', door: 'shopQuests', name: '한 쪽만', say: ['밤엔 책이 잘 읽혀요. 낮엔 오름이 잘 읽히고요.', '한 잔 하면서 한 쪽만 읽어 봐요. 한 쪽은 늘 두 쪽이 되지만요.'], task: '밤에 Bar 소설에서 한 번 읽기', ask: { k: 'barRead', n: 1 }, go: 'shop:bar', fin: ['여운 남죠? 그게 책값이에요.'], reward: { gyul: 20 }, need: 'shop:bar' },
     // ----- 이야기 이벤트 뒤 (#168): '오름지기에게 이야기하기'. 이벤트를 끝냈으면(need·ask 'story:id') 오름지기가 실마리를 한 줄 -----
     { id: 'st-mom', giver: 'jigi', name: '엄마 멧돼지', say: ['엄마 멧돼지 입에 캔 조각이 묻어 있었다고요?', '…그 캔, 짐승들도 먹나 보네요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:mom', n: 1, ever: true }, fin: ['…밤에 능선 쪽을 한번 봐요. 말은 거기까지.'], reward: { gyul: 5 }, need: 'story:mom' },
     { id: 'st-pair', giver: 'jigi', name: '둘이 다니는 투기꾼', say: ['투기꾼이 귤 세 개를 흘리고 갔다고요?', '한 봉지에 귤 셋이라. 누가 그런 장사를 할까요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:pair', n: 1, ever: true }, fin: ['쪽지 같은 걸 흘리면 꼭 주워 와요. 쓰레기라도 정보는 정보예요.'], reward: { gyul: 5 }, need: 'story:pair' },
@@ -2396,7 +2421,7 @@ export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win:
   /* 화자: bg 프로필 바탕색, p '톡' 높이(1 = 520Hz), ic 얼굴 대신 아이콘 (3D 모델이 없는 화자) */
   who: {
     jigi: { bg: '#cfe0a6', p: 0.9 }, 'shop:gear': { bg: '#b9c6d8', p: 0.75 }, 'shop:leap': { bg: '#e9e9ef', p: 1.25 }, 'shop:salon': { bg: '#f1c9d5', p: 1.35 },
-    'shop:stone': { bg: '#f4e6c4', p: 1.05 }, 'shop:satis': { bg: '#bcd6f0', p: 0.85 },
+    'shop:stone': { bg: '#f4e6c4', p: 1.05 }, 'shop:satis': { bg: '#bcd6f0', p: 0.85 }, 'shop:bar': { bg: '#c9cfe6', p: 0.8 }, /* #316 */
     'b:slope': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'b:rest': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'b:crater': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'note:top': { bg: '#f3ead2', p: 1, ic: 'notes' },
     guide: { bg: '#ffd9a8', p: 1.1, ic: 'notes' }, radio: { bg: '#ffe08a', p: 0.8, ic: 'radio' }, me: { bg: '#ffcf8a', p: 1.15 }, mate: { bg: '#c8e6ff', p: 1.2 }, peer: { bg: '#d7d2f4', p: 1.1 }, hidden: { bg: '#3b3d45', p: 0.7 },
   } };

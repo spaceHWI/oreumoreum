@@ -48,6 +48,7 @@ state.ticks.msg = 0; // 메시지 줄 (#252). 한 줄에 몰아 쓰면 나란히
 state.ticks.deerPal = 0; // 노루 친구 (#247)
 state.ticks.inn = 0; // 숙소 오피스제주 (#270)
 state.ticks.fire = 0; // 숙소 마당 불멍 (#290)
+state.ticks.bar = 0; // Bar 소설 (#316)
 state.ticks.villain = 0; // 투기꾼 악당 모습 (#291)
 state.ticks.twoPaths = 0; // 두 길 (#298)
 state.ticks.foes = 0; // 적 역할·정상 설인 (#296)
@@ -453,6 +454,7 @@ function step(now) {
   if (late.tickTwoPaths) { late.tickTwoPaths(dt); state.ticks.twoPaths++; } /* 두 길 (#298, game/twopaths.js): 길 안전·달래는 길·균형 보너스 */
   if (late.tickInn) { late.tickInn(dt); state.ticks.inn++; } /* 숙소 (#270, game/inn.js): 개운함 시간·묵는 연출 */
   if (late.tickFire) { late.tickFire(dt); state.ticks.fire++; } /* 마당 불멍 (#290, game/firepit.js): 화로 불·앉기·버프 '멍' */
+  if (late.tickBar) { late.tickBar(dt); state.ticks.bar++; } /* Bar 소설 (#316, game/bar.js): 밤에만 엶·읽기·버프 '여운' */
   late.tickTube?.(dt); // 수거 관 (#248, game/tube.js): 빨려 들어감·관 속·튀어나옴 (updatePlayer 뒤라 몸 자리·크기를 덮어씀)
   late.tickReports?.(dt); // 매일 미확인 제보 (#238, game/reports.js)
   late.tickTraces?.(dt); // 발자국·크롭서클·뒤돌아보면 (#212, game/traces.js)

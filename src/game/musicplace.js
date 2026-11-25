@@ -1,5 +1,5 @@
 // 음악이 고르는 곳 (#292): 0.5초마다 플레이어 자리를 보고 sound.setPlace(곳, 사건 장면) 를 부름. 곡은 src/music.js·musiccalm.js
-// 곳: 불멍(숙소 불가 앉음) fire · 정상 전망 top · 가게 거리·들머리(구역 밖) bright · 초보·중수 구역(숲길·사면) calm · 고수 구역(능선·굼부리)·동굴 sparse
+// 곳: Bar 소설 바에서 읽음 bar (#316) · 불멍(숙소 불가 앉음) fire · 정상 전망 top · 가게 거리·들머리(구역 밖) bright · 초보·중수 구역(숲길·사면) calm · 고수 구역(능선·굼부리)·동굴 sparse
 // 밤은 music.js 가 해 높이로 정함(불멍은 밤에도 불멍). 사건 장면·엔딩(state.cine, 수거 관 이동은 빼고)이면 음악을 MUSIC.cine 배로 줄임
 import { ZONE_LOOK } from '../balance.js';
 import { STREET } from '../streetlayout.js';
@@ -10,6 +10,7 @@ import { trash, player } from './place.js';
 let wait = 0, last = '';
 export function placeNow() {
   const p = player.pos;
+  if (document.body.classList.contains('reading')) return 'bar'; /* #316 Bar 소설에서 읽는 동안 */
   if (document.body.classList.contains('mung')) return 'fire';
   if (state.cave) return 'sparse';
   if (spots.isViewpoint?.(p)) return 'top';

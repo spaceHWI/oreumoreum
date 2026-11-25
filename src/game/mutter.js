@@ -102,6 +102,7 @@ function showBubble(text) { clearBubble(); const P = bubblePages(text), sp = mak
 function flipBubble() { const sp = makeBubble(bub.text, bub.next); sp.material.opacity = bub.sp.material.opacity; runner.root.add(sp); bub.sp.parent?.remove(bub.sp); bub.sp.material.map.dispose(); bub.sp.material.dispose(); bub.sp = sp; bub.next = null; }
 
 // ---------- 차례 ----------
+const gapK = () => late.barMul?.('mutter') ?? 1; /* #316 Bar 소설 '여운': 혼잣말 사이가 짧아짐 */
 let lastP = null, clock = 0, lastSay = -1e9, nextAt = M.gap * 0.5 + Math.random() * M.wait, lastClue = 0, chkT = 0, walked = 0, handPose = false, inBig = false, inStreet = false, inTop = false;
 const evAt = {}; // id → 일이 일어난 clock
 const evNow = (id) => clock - (evAt[id] ?? -1e9) < M.evTtl;
@@ -109,7 +110,7 @@ const isOff = () => !!S.off;
 
 function speak(l, force = false) {
   const text = textOf(l); if (!text) return false;
-  const fn = () => { showBubble(text); S.seen[l.id] = (S.seen[l.id] | 0) + 1; persist(); lastSay = clock; nextAt = clock + M.gap + Math.random() * M.wait; delete evAt[l.id]; if (l.id === 'legs') walked = 0; };
+  const fn = () => { showBubble(text); S.seen[l.id] = (S.seen[l.id] | 0) + 1; persist(); lastSay = clock; nextAt = clock + (M.gap + Math.random() * M.wait) * gapK(); delete evAt[l.id]; if (l.id === 'legs') walked = 0; };
   const sec = M.sec * bubblePages(text).length; // 두 장이면 그만큼 (#190)
   if (force) { director.begin('mutter', 'mutter:' + l.id, sec); fn(); return true; }
   return director.ask('mutter', 'mutter:' + l.id, fn, { sec, queue: false });
@@ -158,7 +159,7 @@ export function tickMutter(dt) {
   if (bub) { bub.t -= dt; if (bub.next && bub.t <= bub.T - M.sec) flipBubble(); bub.sp.material.opacity = Math.min(1, (bub.T - bub.t) * 4, bub.t * 2.5); if (bub.t <= 0 || isOff()) clearBubble(); }
   if (!trash || !state.sessionOn) return;
   if (!watch(dt) || !ready() || bub) return; // 조건은 checkSec 마다 한 번
-  if (clock - lastSay < M.gap) return;
+  if (clock - lastSay < M.gap * gapK()) return;
   const list = candidates(); if (!list.length) { if (clock >= nextAt) nextAt = clock + M.retry; return; }
   const hasEv = list[0].ev;
   if (!hasEv && clock < nextAt) return;

@@ -29,6 +29,7 @@ const MAP = {
   per: 'stack-2', rate: 'clock', reach: 'arrows-horizontal', speed: 'gauge', dmg: 'swords', magnet: 'magnet', rare: 'sparkles',
   guard: 'shield', regen: 'heart-plus', quick: 'bolt', fire: 'campfire', flame: 'flame', /* #290 불멍 */
   bed: 'bed', zzz: 'zzz', // 숙소 오피스제주 (#270): 숙박하기 · 개운함 버프
+  book: 'book', glass: 'glass-full', moon: 'moon', // Bar 소설 (#316): 가게·읽기 · 한 잔 · 버프 '여운'
   // 도구·탈것 (그림이 없을 때 대신)
   hand: 'hand-stop', vacuum: 'vacuum-cleaner', skate: 'skateboard', horse: 'horse',
   // 날씨

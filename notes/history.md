@@ -2280,3 +2280,15 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 고침: `STICK.dead 0.15 / deadOff 0.1`(여유)·`full 0.75`·`curve 1.15`·`minK 0.15` → `input.js joyShape` 가 `joy.on`·`joy.mag` 를 셈. update.js 걷기 = 5(달리기 10) × mag, 탈것·노루 = rideMin 0.4 부터. 단순 화면 달리기 runOn 0.92 / runOff 0.86. runner `soft` = 걷기 켬 0.25·끔 0.06, 느린 걸음은 다리를 덜 벌림 (내 캐릭터·멀티의 남). `PERF.shadowUp.walk 1`: 걷는 동안 폰도 그림자 매 프레임 (발열이 다시 문제면 2)
 - 멀티의 남: 받은 두 자리 사이 빠르기로 `NET.predT 0.15` 초까지 앞질러 그림 (10Hz 받는 사이 섰다 걸었다 보이던 것). 멈춘 꾸러미(자리 같음)면 바로 0
 - 확인: `node tools/stickslow.js [csv 폴더]` (폰 CDP 터치 10·20·30·100% 3초씩 ±3px 떨림, 프레임별 csv, 여유·곡선·걷기 여유 줄). 앞: 20% 3.97·30% 3.99m/s(같은 속도) → 뒤 1.23·1.88·100% 9.9
+
+## #316 Bar 소설 (2026-11-25)
+- 건물 `src/bar.js`(새 모델 없이 코드로, 단층 7.4×5.4m): 어두운 벽·짙은 남색 둥근 간판 흰 명조풍 '소설'(글자만), 앞 큰 유리창 둘 + 문, 안에 벽 가득 책장(책은 색 띠만)·긴 나무 바·높은 의자 둘·병 선반·촛불 잔·책 받침·펜던트 등. 낮엔 툇마루 입간판 '저녁에 열어요', 밤엔 창 등빛·간판 등·빛웅덩이. 그리는 수 7~8 (`tools/barshot.js`, 그림 `notes/shots/316/`)
+- 자리: 가게 거리 8번 터 `{ s: 50, side: -1, w: 9, d: 8 }`(숙소 맞은편 시작 쪽 줄, 스톤 앞 개울 쪽 s 28~46 은 비움). 화분 [52, -1] 뺌. 바닥 밑 풀은 `scene.js barLane`
+- 열림: `SHOP_ST.unlock bar` Lv 9 또는 굼부리(숙소 Lv 8·능선보다 조금 뒤) + 해 질 무렵부터 밤에만(`BAR.openNight` 0.15 넘으면 엶, 아침 `closeNight` 0.05 아래면 닫음). 주인 '소설 사장'(QUESTS.givers `shop:bar`, 대사 `npclines.js bar` 17줄)
+- [한 잔](귤 하이볼)·[귤 에이드](술 없이), 효과·값 같음. 값 60 + Lv × 20, 하루 3번. 주문하면 값·읽은 수(save.bar n·t)를 같이 저장 → 바 의자에 앉아(pose 'warm' = 두 손으로 책) 15초, 가장자리 어둠(불멍과 같은 body.mung)·짧은 소설 종이 카드 `#bar-page`·책장 소리·혼잣말(`bartext.js BAR_MUTTER`)·음악 곳 'bar'(낮고 느린 마림바). 다 읽으면 '여운' 25분. 중간에 일어나면 책갈피(save.bar.p): 그날 다시 앉으면 값 없이 이어 읽음
+- '여운'(`BAR.buff`): 경험치 +15%(level.js) · 혼잣말 사이 ×0.6(mutter.js) · 쪽지 나올 확률 ×1.5(punkworld.js) · 밤 시야 +0.2(scene.js applySky). 싸움 수치 없음, 식사·개운함·멍과 같이 걸림. 위쪽 줄 `#bar-pill`(달 아이콘)
+- 짧은 소설 20편(`src/bartext.js`, 새로 쓴 초단편, 실제 책 인용 없음, 단계 3 전 금지 낱말 없음 — storytext.mjs 가 검사). 안 읽은 편부터, 다 읽으면 업적 `b-bar-all` → 칭호 '애독자'. 곁가지 퀘스트 `b-read` '한 쪽만'(밤에 Bar 소설에서 한 번 읽기, 귤 20)
+- 서버 `server/src/bar.js`: 모양 바로잡기, 새로 읽은 수 × 값(지난 저장 레벨)을 산 값에 넣음(값을 안 내면 귤을 깎음·못 냈으면 되돌림), 읽은 수는 줄지 않고·하루 3번·날만 바꾸기·앞날 거절, 읽은 편은 값을 낸 수까지만, '여운' 경험치는 읽은 날(오늘·어제)만 × 1.15. `sec.js` 바 10줄
+- 멀티: 앉아 읽는 동안 presence `bs`(의자 번호 + 1) → 남의 화면에서 앉아 읽는 모습(innExtra·innPeer 감쌈)
+- 아이콘 Tabler `book`·`glass-full`·`moon` (icongen.mjs). 검사: 새 `tools/barrun.js d|m`, `tools/barshot.js`, `oldsave.js` barBad·barStr, `smoke.js` LOOP 'bar', `storytext.mjs` 바 글
+- 남은 것: 모양이 바뀌는 일이라 기획 세션이 그림을 사용자에게 보인 뒤 배포. 다음 할 일(nexthint) '밤이면 소설' 줄은 넣지 않음(퀘스트·저니 표로 대신). econ 표에 바 값 줄 없음(그날 벌이 대비 작음)
