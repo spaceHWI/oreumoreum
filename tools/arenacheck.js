@@ -105,6 +105,10 @@ const MODE = process.argv[2] || 'check', ONLY = +process.argv[3] || 0, HMAX = +(
       if (bad) fails++;
       console.log(`${bad ? 'FAIL' : 'ok  '} 구역 ${r.zone} 터 (${r.x}, ${r.z}) 문 ${r.face} · 안 겹침 ${nIn} ${JSON.stringify(r.inside)} · 띠 돌담 밖 ${r.outB}칸 · 띠 ${JSON.stringify(r.band)} · 높이 차 ${r.hRange}m · 길까지 ${r.trail}m · 다른 구역 ${r.zoneMiss}`);
     }
+    { /* #310 징 → 첫 적: 첫머리는 플레이어 앞 first m (징에서 치면 터 안·띠 안이라 위 겹침 검사 안에 듦). 시간은 tools/gongfirst.js */
+      const F = JSON.parse(require('fs').readFileSync('src/balance.js', 'utf8').match(/first: (\[[^\]]+\]), firstN/)[1]), R0 = res.rows[0]?.r ?? 22, good = F[0] >= 7 && F[1] < R0;
+      if (!good) fails++; console.log(`${good ? 'ok  ' : 'FAIL'} 징 → 첫 적 자리: 플레이어 앞 ${F[0]}~${F[1]}m (7m 밖, 터 반지름 ${R0}m 안)`);
+    }
   } else {
     for (const [z, v] of Object.entries(res.out)) { console.log(`구역 ${z}: 빠른 검사 통과 ${v.n}곳 · 걸린 까닭 ${JSON.stringify(v.why)}`); v.top.forEach((f) => console.log(`  (${f.x}, ${f.z}) 점수 ${f.score} 높이 차 ${f.hRange} 길 ${f.trail} 띠 ${JSON.stringify(f.band)} 다른 구역 ${f.zoneMiss}`)); }
   }
