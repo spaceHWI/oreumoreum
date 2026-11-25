@@ -29,8 +29,8 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
   const val = (k) => { const v = Number(call(hooks.val, k)); return Number.isFinite(v) ? v : 0; };
   const baseOf = (q) => { const b = {}; if (!q.ask.ever) { b[q.ask.k] = val(q.ask.k); if (q.ask.or) b[q.ask.or.k] = val(q.ask.or.k); } return b; };
   /* 둘 중 하나 (#298): ask.or = { k, n } 를 채워도 끝. 진행은 두 셈 중 더 많이 한 쪽(ask.n 에 맞춰 줄임). 옛 저장의 base 에 or 셈이 없으면 그때 값부터 */
-  const one = (k, n, ever, e) => { if (!ever && e?.base && !(k in e.base)) e.base[k] = val(k); return Math.max(0, Math.min(n, val(k) - (ever ? 0 : (+e?.base?.[k] || 0)))); };
-  function prog(q, e) { const { n, k, ever, or } = q.ask, a = one(k, n, ever, e); return Math.floor(or ? Math.max(a, one(or.k, or.n, ever, e) / or.n * n + 1e-9) : a); }
+  const one = (k, n, ever, e, fill) => { if (fill && !ever && e?.base && !(k in e.base)) e.base[k] = val(k); return Math.max(0, Math.min(n, val(k) - (ever ? 0 : (+e?.base?.[k] || 0)))); };
+  function prog(q, e) { const { n, k, ever, or } = q.ask, a = one(k, n, ever, e); return Math.floor(or ? Math.max(a, one(or.k, or.n, ever, e, true) / or.n * n + 1e-9) : a); }
   const entry = (q) => (isMain(q) ? (S().cur?.id === q.id ? S().cur : null) : S().side[q.id] || null);
   const ready = (q) => { const e = entry(q); return !!e && prog(q, e) >= q.ask.n; };
   function stuck(q, e = entry(q)) {
