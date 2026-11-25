@@ -54,8 +54,8 @@ const CAP = {
   upgrade: () => (upLeft() ? Infinity : quests.state().c.upgrade || 0),
   clothes: () => ((LEAP.slots || []).some((k) => { try { return leapItems(k).some((it) => !it.own); } catch { return true; } }) ? Infinity : quests.state().c.clothes || 0),
 };
-export const questCan = (k) => { const c = CAP[k]?.(); return c == null || !Number.isFinite(c) ? Infinity : c; };
-const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; if (k.startsWith('case:')) return +late.caseVal?.(k) || 0; /* #232 사건 파일 */ return quests.state().c[k] || 0; };
+export const questCan = (k) => { const c = k.startsWith('off@') ? late.offTotal?.(+k.slice(4)) : CAP[k]?.(); /* #294 길 밖 곳은 그 구역 수까지 */ return c == null || !Number.isFinite(c) ? Infinity : c; };
+const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; if (k.startsWith('case:')) return +late.caseVal?.(k) || 0; /* #232 사건 파일 */ if (k.startsWith('off@')) return +late.offFound?.(+k.slice(4)) || 0; /* #294 길 밖 곳 찾은 수 */ return quests.state().c[k] || 0; };
 const life = () => save.ach?.life || {};
 // 옛 저장에서 이미 한 것 (catchUp): 그 구역을 끝냈으면 그 구역 퀘스트는 모두, 아니면 평생 기록으로 어림
 function oldDone(q) {
@@ -312,6 +312,7 @@ function goPos(go) {
   if (go === 'cairn') { const c = nearest(cairns.map((c) => c.pos)); return c ? c.clone() : null; }
   if (go === 'cave') return late.caveEnt?.() || null; // 용암 동굴 입구 (#195)
   if (go === 'rimLook') return late.summitClue?.rimPos?.() || null; // 굼부리 가장자리 전망 자리 (#208)
+  if (go.startsWith('off@')) return late.offGo?.(+go.slice(4)) || null; // 아직 못 찾은 가장 가까운 길 밖 곳 (#294)
   if (go.startsWith('case:')) return late.casePos?.(go) || null; // 사건 파일 (#232): 아직 못 찾은 가장 가까운 증거·숨는 곳
   if (go === 'ch') { const c = nearest(CHS.map((c) => c.front)); return c ? c.clone() : null; }
   if (!trash) return null;

@@ -373,6 +373,16 @@ async function startServers() {
         const r3 = checkSave(P, { ...P, report: { d: DL.dateOfDay(DL.kstDayN(t) - 4), id: 'u01', got: 1 } }, acc, t), r4 = checkSave(P, { ...P, report: { d: date, id: 'zz9', got: 1 } }, acc, t);
         ok(r3.rec.why.report === 0 && r4.rec.why.report === 0, '지난 날짜·없는 제보는 인정 안 함');
       }
+      { // 길 밖 곳 (#294): save.field.sight 의 새 'sight:<list 뒤 번호>' 는 offGyul 인정(계정마다 한 번), 지웠다 다시 찾아도·없는 번호는 거절
+        const { FIELD, sightGyul } = await import('../src/balance.js'), L0 = FIELD.sight.list.length, j = FIELD.sight.off.findIndex((o) => o[0] === 2), id = `sight:${L0 + j}`, g = sightGyul(FIELD.sight.off[j]);
+        const f1 = checkSave(P, { ...P, coins: 100 + g, field: { ...(P.field || {}), sight: [id] } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!f1.fixed.length && f1.rec?.why?.sight === g, `길 밖 곳 ${id} 처음 찾음은 귤 ${g} 인정 (${f1.rec?.why?.sight})`);
+        let f2 = checkSave(f1.save, { ...f1.save, field: { ...f1.save.field, sight: [] } }, { ...f1.acc, savedAt: t + 1000 }, t + 2000);
+        f2 = checkSave(f2.save, { ...f2.save, coins: f2.save.coins + g, field: { ...f2.save.field, sight: [id] } }, { ...f2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
+        ok(f2.rec.why.sight === 0 && f2.fixed.includes('coins'), '길 밖 곳을 지웠다 다시 찾아 두 번 받기 거절');
+        const f3 = checkSave(P, { ...P, field: { ...(P.field || {}), sight: [`sight:${L0 + FIELD.sight.off.length}`] } }, acc, t);
+        ok(f3.rec.why.sight === 0, '없는 번호의 볼거리는 인정 안 함');
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };

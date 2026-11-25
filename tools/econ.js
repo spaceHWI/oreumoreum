@@ -475,6 +475,10 @@ async function main() {
   // 흡연자 (#156): 하루 1시간 벌이에서 흡연자 몫이 3% 아래 (가장 적게 버는 1일 기준)
   if (day1Rate) { const pct = SMOKE_H / day1Rate * 100; verdict.push(`흡연자 하루 귤 ${Math.round(SMOKE_H)} = 1일 벌이 ${day1Rate.toLocaleString()} 의 ${pct.toFixed(1)}% → 3% 아래 ${pct < 3 ? '통과' : '넘음'}`); }
   // 노루 친구 (#247): 1시간 내내 타고 달린다고 봄(안장 없음, 가장 많이 먹음) + 사귀기·친해짐 2단계까지 귤 한 번 → 구역 2~3 날 벌이의 5% 아래
+  if (day1Rate && day2Rate) { /* #294 길 밖 곳: 구역마다 찾는 귤 + 길 밖 곁가지 보상 합(한 번)이 그 구역 날 벌이의 5% 아래 (구역 1 은 1일차, 2 는 구역 2~3 날) */
+    const F = B.FIELD.sight, sum = (z) => F.off.filter((o) => o[0] === z).length * (F.offGyul[z] || 0) + B.QUESTS.side.filter((q) => q.ask.k === 'off@' + z).reduce((a, q) => a + (q.reward?.gyul || 0), 0);
+    const p1 = sum(1) / day1Rate * 100, p2 = sum(2) / day2Rate * 100;
+    verdict.push(`길 밖 곳: 구역 1 귤 ${sum(1)} = 1일 벌이의 ${p1.toFixed(1)}% · 구역 2 귤 ${sum(2)} = 구역 2~3 날 벌이의 ${p2.toFixed(1)}% → 5% 아래 ${p1 < 5 && p2 < 5 ? '통과' : '넘음'}`); }
   if (day2Rate) { const DP = B.DEERPAL, perH = Math.ceil(3600 / DP.hungerT / DP.meal), once = DP.bond[DP.bond.length - 1], pct = (perH + once) / day2Rate * 100; verdict.push(`노루 친구: 시간당 먹이 ${perH} + 사귀기·친해짐 ${once} = 구역 2~3 날 벌이 ${day2Rate.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
