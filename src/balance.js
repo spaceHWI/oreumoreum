@@ -1580,7 +1580,9 @@ export const PERF = {
   // 칸: 1 픽셀 배율 × prMul (prMin 아래로는 안 내림) → 2 그림자 끔 → 3 풀·먼지 밀도 × grassK
   heat: { at: [600, 1200], win: 60, trendGap: 180, trendUp: 0.15, trendMin: 0.5, callsSame: 0.2, rest: 300, prMul: 0.8, prMin: 0.85, grassK: 0.5, max: 3 },
   start: { battery: 0.2, mem: 4 }, // 처음부터 한 칸 낮게: 충전 안 하는 배터리가 이 아래, deviceMemory 가 이 이하, 움직임 줄이기, 데이터 절약
-  heatLog: { every: 10, total: 1200, base: 120 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
+  heatLog: { every: 10, total: 1200, base: 120 },
+  // 시작 때 나눠 받기 (#304, assets.js): 폰·낮음 단계는 첫 화면 뒤 delay ms 기다렸다 하나씩, 모델 사이 gap ms (WebGL 을 잃은 기기는 × lostK). PC 는 두 개씩 바로
+  load: { delay: 1500, gap: 700, lostK: 2, prepPhone: 600 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
 };
 
 // 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)
@@ -1783,7 +1785,10 @@ export const CRASH = {
   perDay: 3,          // 같은 오류는 기기당 하루 이만큼만 서버로
   perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
   acts: 6,            // '마지막 한 일' 기억하는 수
-  glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
+  glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 한 칸 낮춰 스스로 다시 불러옴(#304). 이미 했으면 '다시 불러오기' 단추
+  // WebGL 잃음 기억 (#304, src/glguard.js). 값은 임의: twiceS 초 안에 두 번 잃으면 한 칸 더 낮춤, 낮춤은 maxDrop 칸까지(단계 0 아래는 픽셀 배율 × prLow),
+  // 스스로 다시 불러오기는 탭 세션에 reloadOnceS 초 안 한 번, 기억은 keepDays 일 동안 잃지 않으면 지움
+  gl: { twiceS: 180, maxDrop: 3, prLow: 0.8, reloadOnceS: 600, keepDays: 7 },
 
   reloadGap: 60000,   // 스스로 새로고침(사용자가 누르지 않은 것)은 이 탭에서 이만큼(ms) 안에 두 번 하지 않음 (#287, src/reloadwhy.js)
   reloadRep: 2,       // 하루 새로고침이 이만큼 넘거나 스스로 한 것이 있으면 다음에 열 때 'reload: 까닭' 한 줄을 오류 알림으로

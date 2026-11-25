@@ -5,7 +5,7 @@ import { PERF, PLACE, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DE
 import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { mt, mtFrame } from '../metrics.js';
-import { startAssets, onAnyAsset } from '../assets.js';
+import { startAssets, onAnyAsset, loadPlan } from '../assets.js';
 import { onestore } from '../onestore.js';
 import { reportCrash } from '../crash.js';
 import * as THREE from 'three';
@@ -476,7 +476,7 @@ function warm() {
   prep().then(() => { state.shadersReady = true; bootP(97, 99); onestore.ready(); }); // 첫 화면 준비 끝 → 원스토어 startGameAsync (#97)
   setTimeout(() => onestore.ready(), 3000); // 셰이더 준비가 늦어도 앱 로딩 화면이 오래 남지 않게
   startAssets();
-  let t = 0; onAnyAsset(() => { clearTimeout(t); t = setTimeout(prep, 250); });
+  let t = 0; const wait = loadPlan().par === 1 ? PERF.load.prepPhone : 250; onAnyAsset(() => { clearTimeout(t); t = setTimeout(prep, wait); }); /* 폰은 모아서 한 번에 (#304) */
 }
 
 addEventListener('resize', resize);
