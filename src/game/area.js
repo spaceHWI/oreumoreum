@@ -26,7 +26,7 @@ const warned = new Set();
 const now = () => performance.now() / 1000;
 function showTitle(z) { /* #252: 큰 구역 이름 대신 메시지 줄 한 줄 (왼쪽 점이 구역 등급 색). #251 권장 레벨 */
   const rl = zoneRecLv(z), ml = myLv(save);
-  toast(`${zoneShort(z)} · ${tierName(z)} 구역 · 권장 Lv ${rl}${ml < rl ? ` (지금 Lv ${ml})` : ''}`, ZL.banner.sec, ml < rl ? 'warn' : 'info', { icon: `<b style="width:12px;height:12px;border-radius:50%;background:${tierColor(z)};box-shadow:0 0 0 2px rgba(255,255,255,.5)"></b>` });
+  toast(`${zoneShort(z)} · ${tierName(z)} 구역 · 권장 Lv ${rl}`, ZL.banner.sec, ml < rl ? 'warn' : 'info', { icon: `<b style="width:12px;height:12px;border-radius:50%;background:${tierColor(z)};box-shadow:0 0 0 2px rgba(255,255,255,.5)"></b>` });
   shownZ = z; shownAt = now();
 }
 // 구역 소리·안개 목표 (다 핀 구역은 안개가 걷힘)
@@ -46,7 +46,7 @@ late.zoneEnter = (z, prev) => {
   // 위 묶음으로 올라섰는데 레벨이 권장보다 낮음 (빨강, #251): 구역마다 한 번
   if (z && tierOf(z) >= 2 && tierOf(z) > tierOf(prev) && !warned.has(z) && zoneToneLv(save, z) === 'r') {
     warned.add(z); const en = enemyName(zoneEnemy(z));
-    setTimeout(() => say('danger', 'zoneWarn:' + z, `이 위는 ${en}${josaIGa(en)} 나와요. 권장 Lv ${zoneRecLv(z)} (지금 Lv ${myLv(save)})`, 4, { ttl: 10 }), 900);
+    setTimeout(() => say('danger', 'zoneWarn:' + z, `이 위는 ${en}${josaIGa(en)} 나와요. 권장 Lv ${zoneRecLv(z)}`, 4, { ttl: 10 }), 900);
   }
   /* 레벨은 됐는데 장비가 많이 모자람 (#251, GROWTH.gearLow): 구역마다 한 번 */
   if (z && z > 1 && !warned.has('g' + z) && gearShort(save, z, gearScore(save).total)) {
@@ -109,8 +109,8 @@ function fillMapText() {
   const lv = myLv(save), z = curZ;
   const zc = z ? Math.floor(trash.zoneClean(z) * 100) : 0, tn = z ? zoneToneLv(save, z) : '';
   const all = Math.floor(trash.clean() * 100); // 오름 전체 깨끗한 정도 (#196: 위쪽 줄은 지금 구역 값만)
-  $('omap-now').innerHTML = (z ? `<b style="color:${tierColor(z)}">${z} ${zoneShort(z)}</b><i>${tierName(z)} 구역</i><i>깨끗한 정도 ${zc}%</i><i><span class="tone" style="background:${TONE_C[tn] || '#fff'}"></span> 권장 Lv ${zoneRecLv(z)} (지금 Lv ${lv}) ${TONE[tn] || ''}</i><i>좌표 ${Math.round(player.pos.x)}, ${Math.round(player.pos.z)}</i>`
-    : `<b>들머리</b><i>지금 Lv ${lv}</i>`) + `<i>오름 전체 깨끗함 ${all}%</i>`;
+  $('omap-now').innerHTML = (z ? `<b style="color:${tierColor(z)}">${z} ${zoneShort(z)}</b><i>${tierName(z)} 구역</i><i>깨끗한 정도 ${zc}%</i><i><span class="tone" style="background:${TONE_C[tn] || '#fff'}"></span> 권장 Lv ${zoneRecLv(z)} ${TONE[tn] || ''}</i><i>좌표 ${Math.round(player.pos.x)}, ${Math.round(player.pos.z)}</i>`
+    : `<b>들머리</b>`) + `<i>오름 전체 깨끗함 ${all}%</i>`;
   $('omap-rows').innerHTML = ZONES.map((Z) => { const c = Math.floor(trash.zoneClean(Z.id) * 100); return `<div class="${Z.id === z ? 'now' : ''}"><span class="sw" style="background:${tierColor(Z.id)}"></span><b>${Z.id}</b><span>${zoneShort(Z.id)} · ${tierName(Z.id)}${late.swarmRestTxt?.(Z.id) || ''}</span>${enemySvg(zoneEnemy(Z.id))}<span class="pc${c >= 100 ? ' done' : ''}" title="깨끗한 정도">${c}%</span><span class="rec" data-tone="${zoneToneLv(save, Z.id)}" title="권장 레벨">Lv ${zoneRecLv(Z.id)}</span></div>`; }).join('');
 }
 let mapT = 0;

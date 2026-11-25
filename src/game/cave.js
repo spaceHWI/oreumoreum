@@ -62,7 +62,7 @@ export function caveCan() {
   if (CAVE.open === false) return [false, CAVE.lines.locked];
   if (devOn) return [true, ''];
   if (CAVE.open === 'admin') return [false, CAVE.lines.locked];
-  if (lvNow(save) < CAVE.minLv) return [false, `${CAVE.lines.locked} · 권장 Lv ${CAVE.minLv} (지금 Lv ${lvNow(save)})`]; /* #251 조건 글도 레벨로 */
+  if (lvNow(save) < CAVE.minLv) return [false, `${CAVE.lines.locked} · 권장 Lv ${CAVE.minLv}`]; /* #251 조건 글도 레벨로 */
   if (!isDone(CAVE.needZone)) return [false, CAVE.lines.locked];
   return [true, ''];
 }
