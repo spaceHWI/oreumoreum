@@ -125,7 +125,7 @@ const distA = (z, p) => { const a = ARENA.get(z); return a ? Math.hypot(p.x - a.
 
 function canSpawn(z) {
   if (!ON || !ARENA.has(z) || !B.list[z] || !state.sessionOn || late.tut?.active || !save.tut?.done) return false;
-  return trash.zoneClean(z) >= B.appear - 1e-9 && !recent(z);
+  return (late.zoneScore ? late.zoneScore(z) : trash.zoneClean(z)) >= B.appear - 1e-9 && !recent(z); /* #298 구역 점수 = 줍기 + 싸움 (game/twopaths.js) */
 }
 function spawn(z, puppet = false, at = null) {
   const a = ARENA.get(z), D = B.list[z]; if (!a || !D) return null;
@@ -433,7 +433,7 @@ function tickHost(dt) {
       const c = cur, a = ARENA.get(c.z), inL = ps.filter((p) => distA(c.z, p) < B.leash);
       if (!c.fight) {
         if (!ps.some((p) => distA(c.z, p) < B.despawn) || !canSpawn(c.z)) { if (live) room.send({ t: 'bs', z: c.z, gone: 1 }); despawn(); return; }
-        if (ps.some((p) => distA(c.z, p) < B.leash && (Math.hypot(p.x - c.e.pos.x, p.z - c.e.pos.z) < a.r + B.fight || distA(c.z, p) < a.r + B.fight))) { // 싸움 시작 (#183: 빈터 leash 안에서만, 풀린 뒤 따라 나온 우두머리 곁이라고 다시 붙지 않게)
+        if (!late.bossCalmy?.(c) && ps.some((p) => distA(c.z, p) < B.leash && (Math.hypot(p.x - c.e.pos.x, p.z - c.e.pos.z) < a.r + B.fight || distA(c.z, p) < a.r + B.fight))) { // 싸움 시작 (#183: 빈터 leash 안에서만, 풀린 뒤 따라 나온 우두머리 곁이라고 다시 붙지 않게)
           c.fight = true; c.gapT = 1.2; c.callT = 4; c.beamT = 2; c.partT = 0; c.awayT = -1; c.regen = false; c.e.calmT = 0;
           rescale(c, inL.length); c.ph = phaseOf(c.e.hp / c.max); // #183: 가득 채우지 않고 남은 비율 그대로
           roar(c, false); say('danger', 'bossFight', `${name(c.z)}${josaIGa(name(c.z))} 덤벼요! 바닥 경고를 보고 피해요`, 3, { ttl: 4 });
@@ -478,6 +478,8 @@ late.tickBoss = (dt) => {
 // state(): 지금 우두머리 · spots(): 빈터·빠른 마차·지름길 자리 · go(z): 빈터 앞으로 · ready(z): 그 구역을 80% 로 비움 · spawn(z) · fight() · hp(v) · act(k)
 // beat(z)/done(): 기록, summary(z): 요약 창 · fast(z)/cut(z): 빠른 마차·지름길 · wake(z): 깨어날 구역 · net(): 멀티 상태
 late.bossFight = () => !!cur?.fight;
+/* #298 달래는 길 (game/twopaths.js): 싸우지 않는 우두머리를 떠나보냄 = 쫓아낸 것과 같은 끝 */
+late.bossNow = () => cur; late.bossCalm = () => { const c = cur; if (!c || c.fight || c.puppet) return false; c.e.state = 'flee'; c.e.st = 0; c.e.ctl = null; life.hooks.bossRepel?.(c.e); return true; };
 late.boss = ON ? {
   state: () => cur && { zone: cur.z, hp: +cur.e.hp.toFixed(1), max: +cur.max.toFixed(1), ph: cur.ph, fight: cur.fight, n: cur.n, act: cur.act?.k || null, actT: cur.act ? +cur.act.t.toFixed(2) : null, puppet: cur.puppet, x: +cur.e.pos.x.toFixed(1), z: +cur.e.pos.z.toFixed(1), minions: cur.minions.length, state: cur.e.state, size: +cur.e.def.size.toFixed(2), regen: !!cur.regen, calm: +(cur.e.calmT || 0).toFixed(1), part: cur.partT > 0 && !cur.partDone },
   spots: () => [...ARENA].map(([z, a]) => ({ zone: z, x: Math.round(a.x), z: Math.round(a.z), r: a.r, fast: fastSpot(z) && { x: Math.round(fastSpot(z).x), z: Math.round(fastSpot(z).z) }, cut: cutSpot(z) && { x: Math.round(cutSpot(z).x), z: Math.round(cutSpot(z).z), to: { x: Math.round(cutSpot(z).to.x), z: Math.round(cutSpot(z).to.z) } }, wake: chSpot(z) && { x: Math.round(chSpot(z).x), z: Math.round(chSpot(z).z) } })),

@@ -26,6 +26,7 @@ export class Room extends DurableObject {
     let why = 'full';
     const p = this.core.join((s) => { if (s.startsWith('{"t":"ban"')) why = 'ban'; ws.send(s); }, { acct, key, adm, close: (c, r) => ws.close(c, r) });
     if (!p) { ws.close(why === 'ban' ? 4003 : 4001, why); return new Response(null, { status: 101, webSocket: client, headers }); }
+    if (acct && this.name) this.claim(acct, p);
     ws.addEventListener('message', (e) => this.core.message(p, typeof e.data === 'string' ? e.data : ''));
     this.report();
     let gone = false;
@@ -34,6 +35,18 @@ export class Room extends DurableObject {
     if (!this.timer) this.timer = setInterval(() => this.tick(), NET.tickMs);
     return new Response(null, { status: 101, webSocket: client, headers });
   }
+  /* 한 계정 한 접속 (#303): 계정 객체에 '이 계정은 지금 이 방' 을 알리고, 앞 접속이 다른 방(채널)이면 그 방에 내보내라고 함.
+     내가 더 늦게 물어 본 옛 접속이면(stale) 나를 내보냄 */
+  async claim(acct, p) {
+    if (!this.env?.ACCOUNTS) return;
+    try {
+      const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('all')).claim(acct, this.name, p.joinAt);
+      if (r?.stale) { this.core.bump(acct); return; }
+      if (r?.prev && r.prev !== this.name) await this.env.ROOM.get(this.env.ROOM.idFromName(r.prev)).bump(acct);
+    } catch (e) { /* 계정 객체가 바쁘면 같은 방만 막음 */ }
+  }
+  /* 다른 방이 부름 (#303): 이 방의 그 계정 접속을 내보냄 */
+  bump(acct) { return typeof acct === 'string' && this.core ? this.core.bump(acct) : 0; }
   tick() {
     this.core.step();
     if (++this.saveT >= 50) { this.saveT = 0; this.persist(); } // 5초마다 더미 상태 저장

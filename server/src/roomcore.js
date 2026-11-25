@@ -121,9 +121,23 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   }
   function pickHost() { let h = null; for (const p of peers.values()) if (!h || p.joinAt < h.joinAt) h = p; const id = h ? h.id : null; if (id !== host) { host = id; if (id) all(JSON.stringify({ t: 'host', id })); } }
 
+  /* 한 계정 한 접속 (#303): 같은 계정의 앞 접속에 'bump' 를 보내고 방에서 빼고 닫음(4005). 남은 사람에겐 'l' 로 바로 사라짐. keep 은 남길 접속 */
+  function bump(acct, keep = null) {
+    if (!acct) return 0;
+    let n = 0;
+    for (const p of [...peers.values()]) {
+      if (p.acct !== acct || p === keep) continue;
+      n++; st.bumped = (st.bumped || 0) + 1;
+      out(p, '{"t":"bump"}');
+      leave(p); try { p.close?.(4005, 'bump'); } catch (e) { /* 이미 끊김 */ }
+    }
+    return n;
+  }
+
   function join(send, info = {}) {
     const t = now();
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
+    if (info.acct) bump(info.acct); /* 같은 방의 앞 접속은 여기서 바로 (다른 방은 room.js 가 계정 객체에 물어 봄). 정원 셈보다 먼저 */
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sentCk: new Map(), ck: '', ckAt: 0, sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
       key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, caveTok: NET.cavePerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, tubeT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
@@ -397,7 +411,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   }
 
   return {
-    join, leave, message, step, setCap(n) { cap = n; },
+    join, leave, message, step, bump, setCap(n) { cap = n; },
     get size() { return peers.size; }, get host() { return host; },
     takeEarned() { if (!earned.size) return null; const a = [...earned]; earned.clear(); return a; },
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },

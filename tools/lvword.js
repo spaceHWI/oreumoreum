@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path');
 const D = path.join(__dirname, '..', 'dist');
 const files = ['test.html', ...fs.readdirSync(D).filter((f) => /^main-.*\.js$/.test(f))];
-const BAD = ['장비 점수', '권장 점수', '점수'];
+const BAD = ['장비 점수', '권장 점수', '점수', '지금 Lv'];
 const unesc = (s) => s.replace(/\\u\{([0-9a-fA-F]+)\}/g, (m, h) => String.fromCodePoint(parseInt(h, 16))).replace(/\\u([0-9a-fA-F]{4})/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
 const notes = [...fs.readFileSync(path.join(__dirname, '..', 'src', 'version.js'), 'utf8').matchAll(/'([^'\n]*점수[^'\n]*)'/g)].map((m) => m[1]);
 let bad = 0, hits = 0;

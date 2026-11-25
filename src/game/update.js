@@ -49,6 +49,7 @@ state.ticks.deerPal = 0; // 노루 친구 (#247)
 state.ticks.inn = 0; // 숙소 오피스제주 (#270)
 state.ticks.fire = 0; // 숙소 마당 불멍 (#290)
 state.ticks.villain = 0; // 투기꾼 악당 모습 (#291)
+state.ticks.twoPaths = 0; // 두 길 (#298)
 state.ticks.foes = 0; // 적 역할·정상 설인 (#296)
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
@@ -450,6 +451,7 @@ function step(now) {
   late.tickSummit?.(dt); // 정상 첫 실마리 (#208, game/summit.js): 엔딩 뒤 (cine 자리를 같이 씀)
   late.tickMyst?.(dt); // 4:04·금고 (#212, game/mystery.js)
   late.tickCases?.(dt); // 사건 파일 (#232, game/cases.js): 목격·증거·숨어 보기 장면
+  if (late.tickTwoPaths) { late.tickTwoPaths(dt); state.ticks.twoPaths++; } /* 두 길 (#298, game/twopaths.js): 길 안전·달래는 길·균형 보너스 */
   if (late.tickInn) { late.tickInn(dt); state.ticks.inn++; } /* 숙소 (#270, game/inn.js): 개운함 시간·묵는 연출 */
   if (late.tickFire) { late.tickFire(dt); state.ticks.fire++; } /* 마당 불멍 (#290, game/firepit.js): 화로 불·앉기·버프 '멍' */
   late.tickTube?.(dt); // 수거 관 (#248, game/tube.js): 빨려 들어감·관 속·튀어나옴 (updatePlayer 뒤라 몸 자리·크기를 덮어씀)

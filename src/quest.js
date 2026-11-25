@@ -2,7 +2,7 @@
 // 화면(주는 사람·머리 위 표시·창·추적 줄·지도)은 game/quest.js. 퀘스트 표는 balance.js QUESTS
 // - 줄기(main): 한 번에 하나. 앞에서부터 끝내지 않은 첫 퀘스트(need 가 없는 것은 건너뜀)를 그 퀘스트의 giver 가 줌. 받으면 to(없으면 giver)에게 돌려줌
 // - 곁가지(side): door(감독 문)가 열렸고 after(앞 퀘스트)를 끝냈으면 giver 가 줌. 여럿을 같이 할 수 있음. 그만두기는 없음
-// - 진행: ask.k 셈 값(val)에서 받을 때 값(base)을 뺀 것. ever 면 받기 전 것도 셈(우두머리·구역처럼 다시 못 하는 것)
+// - 진행: ask.k 셈 값(val)에서 받을 때 값(base)을 뺀 것. ever 면 받기 전 것도 셈(우두머리·구역처럼 다시 못 하는 것). ask.or 가 있으면 둘 중 하나(#298)
 // - 옛 저장(save.quest 가 없는데 튜토리얼을 마친 저장): 앞에서부터 이미 한 줄기 퀘스트(oldDone)를 보상 없이 끝낸 것으로 치고, 아직 안 한 첫 것부터 줌
 // 저장 save.quest = { v, cur: { id, base, r } | null, done: [id], side: { id: { base, r } }, cp: { 가게: 할인권 수 }, c: { 셈 이름: 수 }, skip: [옛 저장으로 건너뛴 id] }
 // - 더 채울 수 없음 (#219): hooks.cap(k) = 지금 그 셈이 오를 수 있는 끝(모르면 끝없음). 받을 때 값 + n 에 못 미치면 막힌 것(stuck) → tick 이 hooks.stuck(q) 를 불러 바로 끝냄(보상은 complete 한 번)
@@ -27,14 +27,16 @@ export function createQuests({ save, persist = () => {}, defs, hooks = {} }) {
   const isDone = (id) => S().done.includes(id);
   const has = (q) => !q.need || !!call(hooks.has, q.need);
   const val = (k) => { const v = Number(call(hooks.val, k)); return Number.isFinite(v) ? v : 0; };
-  const baseOf = (q) => { const b = {}; if (!q.ask.ever) b[q.ask.k] = val(q.ask.k); return b; };
-  function prog(q, e) { const n = q.ask.n, v = val(q.ask.k) - (q.ask.ever ? 0 : (+e?.base?.[q.ask.k] || 0)); return Math.max(0, Math.min(n, Math.floor(v))); }
+  const baseOf = (q) => { const b = {}; if (!q.ask.ever) { b[q.ask.k] = val(q.ask.k); if (q.ask.or) b[q.ask.or.k] = val(q.ask.or.k); } return b; };
+  /* 둘 중 하나 (#298): ask.or = { k, n } 를 채워도 끝. 진행은 두 셈 중 더 많이 한 쪽(ask.n 에 맞춰 줄임). 옛 저장의 base 에 or 셈이 없으면 그때 값부터 */
+  const one = (k, n, ever, e, fill) => { if (fill && !ever && e?.base && !(k in e.base)) e.base[k] = val(k); return Math.max(0, Math.min(n, val(k) - (ever ? 0 : (+e?.base?.[k] || 0)))); };
+  function prog(q, e) { const { n, k, ever, or } = q.ask, a = one(k, n, ever, e); return Math.floor(or ? Math.max(a, one(or.k, or.n, ever, e, true) / or.n * n + 1e-9) : a); }
   const entry = (q) => (isMain(q) ? (S().cur?.id === q.id ? S().cur : null) : S().side[q.id] || null);
   const ready = (q) => { const e = entry(q); return !!e && prog(q, e) >= q.ask.n; };
   function stuck(q, e = entry(q)) {
     if (!e || prog(q, e) >= q.ask.n) return false;
-    const c = Number(call(hooks.cap, q.ask.k)); if (!Number.isFinite(c)) return false;
-    return c < (q.ask.ever ? 0 : (+e.base?.[q.ask.k] || 0)) + q.ask.n;
+    const capped = (k, n) => { const c = Number(call(hooks.cap, k)); return Number.isFinite(c) && c < (q.ask.ever ? 0 : (+e.base?.[k] || 0)) + n; };
+    return capped(q.ask.k, q.ask.n) && (!q.ask.or || capped(q.ask.or.k, q.ask.or.n));
   }
   const turnIn = (q) => q.to || q.giver;
 

@@ -200,11 +200,22 @@ export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, 
     const s = getSave(); s._rev = r.rev; lastBody = '';
     return r;
   }
+  /* 밀려났다가 '여기서 다시 하기' (#303): 그사이 다른 기기가 서버 기록을 앞서게 했으면 그 기록으로 다시 열고 true. 아니면 false (그대로 다시 붙음) */
+  async function retake() {
+    if (!sess || going) return false;
+    try {
+      const me = await api('/me'); renew(me);
+      const s = getSave();
+      if (me.save && (me.rev || 0) > (s._rev || 0) && sig(me.save) !== sig(strip(s))) { writeCache(me.save, me.rev, sess.sub); return leave('bump', false); }
+      if (me.rev) { s._rev = Math.max(s._rev || 0, me.rev); writeLocal(); }
+    } catch (e) { /* 서버를 못 읽으면 이 기기 기록으로 */ }
+    return false;
+  }
   // 랭킹 (#11): 로그인했을 때만. 서버가 확인한 치운 양으로 셈
   const rank = (range, srv) => api(`/rank?range=${encodeURIComponent(range)}&srv=${encodeURIComponent(srv)}`);
   const rankMe = (srv) => api(`/rank/me?srv=${encodeURIComponent(srv)}`);
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get mail() { return sess?.m || ''; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
+  return { start, push, dirty, retake, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get mail() { return sess?.m || ''; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
 }
 
 /* ---------- 로그인 화면 ---------- */
@@ -313,11 +324,13 @@ export function createWsLobby({ token = () => null } = {}) {
           } else if (m.t === 'l') { if (known.delete(m.id)) emit([], [], [{ peer: m.id }]); }
           else if (m.t === 'host') { host = m.id; fire('host', m); }
           else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; connect(); } // 정원이 차면 다음 방(채널)
+          else if (m.t === 'bump') { closed = true; drop(); fire('bump', m); } /* 같은 계정이 다른 곳에서 들어옴 (#303): 스스로 다시 붙지 않음 (둘이 서로 밀어내며 되풀이하지 않게). 누르면 wake */
           else if (m.t === 'idle') { closed = true; drop(); fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
           else if (m.t === 'ban' || m.t === 'kick') { backoff = Math.max(backoff, (m.sec || 60) * 1000); fire(m.t, m); } // 끊김 (#84): 풀릴 때까지 기다렸다 다시
           else fire(m.t, m);
         };
         ws.onclose = (e) => {
+          if (e?.code === 4005 && !closed) { closed = true; fire('bump', {}); } /* bump 메시지를 못 받았어도 (#303) */
           if (e?.code === 4004 && !closed) { closed = true; fire('idle', {}); } // idle 메시지를 못 받았어도 닫는 까닭 코드로 (#157)
           gone();
           if (!closed) { clearTimeout(again); again = setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }

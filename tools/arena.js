@@ -68,16 +68,18 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF' })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'f', code: 'KeyF' }));
       await sl(400);
       const st = o.swarm.state(); if (!st) return { tagOn, before, started: false, why: o.swarm.why(z), ctx: document.querySelector('#ctx span, .ctx span')?.textContent };
+      let t1 = -1, d1 = -1; for (let i = 0; i < 60 && t1 < 0; i++) { const s = o.swarm.state(); if (s?.n > 0) { t1 = s.t; d1 = Math.round(Math.min(...o.enemies.list.filter((e) => e.def.swarm).map((e) => Math.hypot(e.pos.x - P.pos.x, e.pos.z - P.pos.z)))); } else await sl(50); } /* #310 징 → 첫 적 */
       o.swarm.speed(3); const n = (await until(() => (o.swarm.state()?.n || 0) > 0 && o.swarm.state().n)) || 0; o.hp.set(o.hp.max);
       o.swarm.t(st.T - 0.5); await until(() => !o.swarm.state()); o.swarm.speed(1);
       const last = o.swarm.last, rest = o.swarm.rest(z), why = o.swarm.why(z);
       await sl(700); const tag = o.arena.ui().tag;
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF' })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'f', code: 'KeyF' })); await sl(300);
-      return { tagOn, before, started: st.zone === z, n, last: last && { why: last.why, bonus: last.bonus }, rest: Math.round(rest), why, tag, again: !!o.swarm.state(), won: o.swarm.won()[z] };
+      return { tagOn, before, started: st.zone === z, n, t1, d1, last: last && { why: last.why, bonus: last.bonus }, rest: Math.round(rest), why, tag, again: !!o.swarm.state(), won: o.swarm.won()[z] };
     }, z);
     ok(!r3.before && r3.started && /서바이벌 시작/.test(r3.tagOn || ''), `구역 ${z}: 징 위 글 '${(r3.tagOn || '').slice(0, 40)}' · F 로 판 시작${r3.started ? '' : ' (안 됨: ' + r3.why + ' / ' + r3.ctx + ')'}`);
     if (!r3.started) continue;
     ok(r3.n > 0, `구역 ${z}: 터 둘레에서 떼가 나옴 (${r3.n}마리)`);
+    ok(r3.t1 >= 0 && r3.t1 <= 1 && r3.d1 <= 20, `구역 ${z}: 징 → 첫 적 ${r3.t1}초(≤1) · 플레이어에서 ${r3.d1}m(≤20, #310 화면에 바로 보임)`);
     ok(r3.last?.why === 'win' && r3.rest > 400 && r3.why === 'rest' && !!r3.won, `구역 ${z}: 버팀 → 덤 ${r3.last?.bonus} · 쉬는 시간 ${r3.rest}초 · 서버 몫 won ${JSON.stringify(r3.won)}`);
     ok(/쉬는 중/.test(r3.tag || '') && !r3.again, `구역 ${z}: 쉬는 동안 징 '${(r3.tag || '').slice(0, 30)}' · 눌러도 시작 안 함`);
   }

@@ -4,7 +4,7 @@
 // - 설인 (ENEMIES.yeti, 모양은 사건 5 의 caseModel('yeti')): 정상(구역 5)에서 멀리서 눈덩이를 SWARM.pat.snow 대로 셋씩. 맞으면 잠깐 느려짐(state.swarmSlow)
 //   쓰러뜨리지 않음: 귤을 맞으면 고개를 갸웃하고 물러나고(shyT), 두 번째엔 눈보라 속으로 사라짐. 다가가도(near) 물러나 사라짐. 한 화면에 하나
 //   사건 5 를 종결하면(late.cases.isClosed('c5')) 오해가 풀려 더는 나오지 않음 (종결 장면 한 줄: src/cases/c5.js face.lines). 사건이 열리기 전에도 나옴 (소문 '설인이 쓰레기를 버린다' 와 맞물림)
-//   들판 떼 판·우두머리·이야기·사건 장면·엔딩 동안은 나오지 않음. 수치 balance.js FOES
+//   들판 떼 판·우두머리·이야기·사건 장면·엔딩 동안은 나오지 않음. 길(탐방로) 위 플레이어에겐 던지지 않음(#298 길 안전, 길가 무리는 e.wild 로 같음). 수치 balance.js FOES
 // - 처음 던지는 놈을 만나면 한 줄 안내 (save.hints.ring)
 // 확인 __oreum.foes (state·yeti·role·why), node tools/foes.js
 import { ENEMIES, ENEMY_SPAWN, SWARM, FOES } from '../balance.js';
@@ -76,7 +76,7 @@ function yetiCtl(e, dt, time, d, to) {
   if (s.aim > 0) { turn(e, face, Math.min(1, dt * 8)); if ((s.aim -= dt) <= 0) { s.n = c.n; s.gapT = 0; } return 0; }
   if (d < c.near) { e.nearT += dt; if (e.nearT > F.yeti.vanish) { gone(e); return 0; } turn(e, face + Math.PI, Math.min(1, dt * 4)); return d0.chase; } /* 다가오면 눈보라 속으로 */
   e.nearT = Math.max(0, e.nearT - dt);
-  if ((s.cd -= dt) <= 0 && d < c.keep[1] + 6 && !player.down) { s.aim = c.aim; s.cd = rnd(c.every[0], c.every[1]); return 0; }
+  if ((s.cd -= dt) <= 0 && d < c.keep[1] + 6 && !player.down && !life.hooks.trailSafe?.()) { s.aim = c.aim; /* 길 위(탐방로)에 있으면 던지지 않음 (#298 길 안전) */ s.cd = rnd(c.every[0], c.every[1]); return 0; }
   if (d > c.keep[1]) { turn(e, face, Math.min(1, dt * 3)); return d0.walk; }
   if (d < c.keep[0]) { turn(e, face + Math.PI, Math.min(1, dt * 3)); return d0.walk; }
   turn(e, face + s.side * Math.PI / 2, Math.min(1, dt * 2)); return d0.walk * 0.5;

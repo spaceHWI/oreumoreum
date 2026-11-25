@@ -60,18 +60,20 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!
     const why = o.foes.state().why;
     let snow = 0, slow = 0, hp0 = o.hp.hp, hit = false;
     const ye = E.list.find((e) => e.kind === 'yeti');
-    const H = o.life.hooks, eh = H.enemyHit; H.enemyHit = function (dir, def, kind) { const h = o.hp.hp; const r = eh.apply(this, arguments); if (kind === 'yeti' && o.hp.hp < h - 0.01) hit = true; return r; };
+    const H = o.life.hooks, eh = H.enemyHit, ts = H.trailSafe;
+    if (ye) { H.trailSafe = () => true; ye.ps = { cd: 0.05, aim: 0, n: 0, gapT: 0, side: 1 }; await sleep(2500); var safeSnow = o.foes.pat.balls().filter((q) => q.type === 'snow').length + (ye.ps.aim > 0 || ye.ps.n > 0 ? 1 : 0); } H.trailSafe = () => false; /* #298 길 위면 안 던짐 → 길 밖으로 */ H.enemyHit = function (dir, def, kind) { const h = o.hp.hp; const r = eh.apply(this, arguments); if (kind === 'yeti' && o.hp.hp < h - 0.01) hit = true; return r; };
     if (ye) { ye.ps = { cd: 0.05, aim: 0, n: 0, gapT: 0, side: 1 }; ye.yLife = 60; for (let t = 0; t < 60; t++) { await sleep(100); const pt = o.foes.pat; snow = Math.max(snow, pt.balls().filter((q) => q.type === 'snow').length); if (o.foes.state().slow > 0) slow = 1; if (hit && snow === 0 && t > 20) break; } }
-    H.enemyHit = eh; const active = E.activeN();
+    H.enemyHit = eh; H.trailSafe = ts; const active = E.activeN();
     let hp1 = null, st1 = null, gone = false;
     if (ye) { const h = ye.hp; E.hurt(ye, 50, false); hp1 = ye.hp === h; st1 = ye.state; await sleep(300); E.hurt(ye, 50, false); for (let t = 0; t < 30; t++) { await sleep(100); if (!E.list.includes(ye)) { gone = true; break; } } }
     /* 사건 5 종결이면 안 나옴 */
     const was = o.cases.isClosed; o.cases.isClosed = (id) => id === 'c5' || was(id); o.foes.cd(0); await sleep(1500); const closed = o.foes.state(); o.cases.isClosed = was;
-    return { zone, y: !!y, why, snow, hit, slow, active, hp1, st1, gone, closedYeti: !!closed.yeti, closedWhy: closed.why };
+    return { zone, y: !!y, why, safeSnow, snow, hit, slow, active, hp1, st1, gone, closedYeti: !!closed.yeti, closedWhy: closed.why };
   });
   console.log('  설인', JSON.stringify(yeti));
   ok(yeti.zone === 5 && yeti.y, '정상에 설인이 나옴');
-  ok(yeti.snow >= 2, '눈덩이를 연달아 던짐 (떨어질 자리 원)');
+  ok(yeti.safeSnow === 0, '길(탐방로) 위 플레이어에겐 던지지 않음 (#298)');
+  ok(yeti.snow >= 2, '길 밖이면 눈덩이를 연달아 던짐 (떨어질 자리 원)');
   ok(yeti.hit && yeti.slow, '눈덩이에 맞으면 기운이 깎이고 느려짐');
   ok(yeti.active === 0, '설인은 싸움으로 세지 않음 (감독·카메라)');
   ok(yeti.hp1 === true && yeti.gone, '귤을 맞으면 기운 그대로 물러나고 두 번째에 사라짐');
