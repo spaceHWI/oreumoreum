@@ -135,7 +135,7 @@ function spawnSpot(zone, all = false, dir = null, near = false) { /* 터 테두�
 }
 // type: 'mob' | 'elite' | 'leader'
 function spawn(type, all = false, dir = null) { /* 떼 몹(mob)은 패턴(#254 swarmpat.js)에 따라. 무리(pack)는 여러 마리 → 나온 수를 돌려줌 */
-  const r = run, kind = pickKind(r.zone), B = ENEMIES[kind], fw = dir == null && r.wave <= 0 && r.t < 6, at = spawnSpot(r.zone, all, fw ? front() : dir, fw && r.t < A.firstN); if (!at || !B) return null;
+  const r = run, pat = type === 'mob' ? pickPat(r.zone, doorOpen() ? r.stage : 0, E.list) : 'base', zk = pickKind(r.zone), kind = pat === 'rock' ? 'bigfoot' : zk, B = ENEMIES[zk], fw = dir == null && r.wave <= 0 && r.t < 6, at = spawnSpot(r.zone, all, fw ? front() : dir, fw && r.t < A.firstN); if (!at || !B) return null;
   const M = S.mob, T = SWARM_TEXT, hk = LOW ? S.cap.lowHp : 1, md = M.dmg[r.zone] ?? M.dmg[1];
   const gk = M.gyul[r.zone] ?? 0.25, rg = (g) => Math.floor(g) + (Math.random() < g % 1 ? 1 : 0); // 귤 보상 (소수 몫은 확률로)
   let over, k;
@@ -144,8 +144,8 @@ function spawn(type, all = false, dir = null) { /* 떼 몹(mob)은 패턴(#254 s
   else { k = M.size; over = { hp: B.hp * M.hp * hk, dmg: B.dmg * md, size: B.size * k, reward: { gyul: 0, rare: 0 }, sg: rg(B.reward.gyul * gk), life: M.life }; }
   Object.assign(over, { swarm: type, zone: r.zone, sight: 80, lose: 90, rootEvery: [1e9, 1e9] });
   if (B.ranged) over.ranged = { ...B.ranged, every: B.ranged.every * (type === 'mob' ? 1.4 : 1) };
-  const pat = type === 'mob' ? pickPat(r.zone, doorOpen() ? r.stage : 0) : 'base', pk2 = patOver(pat, B, over);
-  if (pk2) { k = pk2; over.size = B.size * k; }
+  const pk2 = patOver(pat, B, over); /* #296 빅풋(rock)은 그 구역 적의 기운·피해로, 모양·걸음은 빅풋 */
+  if (pk2) { k = pk2; over.size = B.size * k; } else if (kind !== zk) over.size = ENEMIES[kind].size * k;
   const straight = S.straight.includes(r.zone) && type === 'mob' && pat !== 'pack', pk = pat === 'pack' ? r.pk - 1 - (++packN % 1e5) * 2 : straight ? null : r.pk;
   const N = pat === 'pack' ? S.pat.pack.n : 1; let e = null;
   for (let i = 0; i < N; i++) {
