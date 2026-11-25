@@ -106,7 +106,8 @@ document.body.append(el);
 const sk = el.querySelector('.cc-sk'), lineEl = el.querySelector('.cc-line');
 sk.addEventListener('click', (e) => { e.stopPropagation(); stop(); });
 for (const ev of ['pointerdown', 'pointermove', 'wheel', 'touchstart']) el.addEventListener(ev, (e) => { if (e.target !== sk) e.preventDefault(); }, { passive: false });
-addEventListener('keydown', (e) => { if (run && (e.key === 'Escape' || (run.kind === 'scope' && (e.code === 'KeyF' || e.code === 'KeyE')))) { e.preventDefault(); stop(); } });
+/* #309 F 로 시작한 같은 keydown 이 뒤에 등록된 이 처리에도 와서 바로 꺼졌음: 시작보다 먼저 만들어진 입력은 무시 */
+addEventListener('keydown', (e) => { if (run && !e.repeat && e.timeStamp > run.t0 && (e.key === 'Escape' || (run.kind === 'scope' && (e.code === 'KeyF' || e.code === 'KeyE')))) { e.preventDefault(); stop(); } });
 
 /* ---------- 차례 ---------- */
 let run = null; // { kind 'scene'|'scope', u, len, prev, fov, a0, a1, light }
@@ -121,7 +122,7 @@ function begin(kind) {
   if (state.cine) return false;
   const a0 = Math.atan2(summitOut.x, summitOut.z), a1 = Math.atan2(-toC.x, -toC.z);
   let da = a1 - a0; da = Math.atan2(Math.sin(da), Math.cos(da));
-  run = { kind, u: 0, len: kind === 'scope' ? CLUE.scope.len : CLUE.len, prev: cam.mode, fov: camera.fov, a0, da, light: kind === 'scope' && night() && stage() >= CLUE.scope.light.stage, snap: true };
+  run = { kind, u: 0, len: kind === 'scope' ? CLUE.scope.len : CLUE.len, prev: cam.mode, fov: camera.fov, a0, da, light: kind === 'scope' && night() && stage() >= CLUE.scope.light.stage, snap: true, t0: performance.now() };
   state.cine = run; cam.mode = 'cine'; player.target = null; player.speed = 0;
   el.hidden = false; el.classList.toggle('scope', kind === 'scope'); sk.textContent = kind === 'scope' ? T.scopeOff : T.skip; sk.hidden = kind !== 'scope';
   lineEl.classList.remove('on'); lineEl.textContent = kind === 'scope' ? (run.light ? T.scopeLight : T.scopeNone) : '';
