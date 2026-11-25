@@ -178,7 +178,7 @@ export const sightGyul = (s) => (s ? (s.length > 3 ? FIELD.sight.offGyul : FIELD
 // sack 구역 4 '썩은 귤 자루': 쫓아낸 광견병 들개가 p 확률로 떨굼 → fuse 초 뒤 터져 r m 안 플레이어를 t 초 동안 slow 배로 느리게
 // econ tools/econ.js: 들판 10분 귤이 길가 10분의 max 배를 넘지 않게, 하루 놀이 중 share 만큼 들판에 있다고 셈
 export const SWARM = {
-  firstT: 1.2,
+  firstT: 0.3, /* #310 1.2 → 0.3: 징 울림 연출 동안 이미 달려오게 */
   ring: [18, 26], gap: 0.25,
   /* 한 판 (#202): 서바이벌 터 징으로 시작(#231, 아래 arena), t[구역] 초 동안 물결 waves 번(물결마다 n[0] → n[1] 마리, 구역이 하나 깊을수록 × (1 + deep)). 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결
      시간이 다 되면 '버텼다!' + 그 판에서 번 귤의 bonus 덤(서버는 bonusMax[구역]까지, 쉬는 시간 안에 두 번 인정하지 않음 earn.js). 끝나면 그 구역 들판은 rest 초 조용함(사람마다·구역마다, save.swarm.rest) */
@@ -220,8 +220,9 @@ export const SWARM = {
      at[구역] 터 가운데 [x, z] (길에서 가깝고 덜 기운 곳, 안에 더미·소굴·보물·NPC 없음: node tools/arena.js 가 확인), r 반지름(m, 임의값)
      leave 판 동안 터 밖에 이 초 넘게 있으면 끝(덤 없음, 쉬는 시간 × leaveRest), gongR 징 상호작용 거리, spawn 떼가 나오는 곳 = 터 테두리 밖 [안, 밖] m
      edge 판 동안 테두리에서 이 m 안이면 받혀 밀리는 방향의 바깥쪽 몫을 지우고 edgeIn 만큼 안쪽으로 꺾음 (#265: 비탈 터에서 밀려 나가 돌아오지 못함)
-     hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리 */
-  arena: { r: 22, leave: 8, leaveRest: 0.5, edge: 4, edgeIn: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
+     hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리
+     first 첫 물결 첫머리(판 firstN 초 안)는 테두리 밖이 아니라 플레이어 앞(카메라가 보는 쪽) 이 거리 [안, 밖] m 에서 나옴 (#310: 징 → 3초 안에 보이고 5초 안에 싸움) */
+  arena: { r: 22, first: [12, 17], firstN: 4, leave: 8, leaveRest: 0.5, edge: 4, edgeIn: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
     at: [null, [-16, -540], [-312, 84], [-116, 28], [84, -440], [64, -12]] }, /* #253 자리 다시 잡음: node tools/arenacheck.js 겹침 0 */
 };
 

@@ -1,5 +1,5 @@
 // 서바이벌 터 나오는 텀 (#273): node tools/swarmpace.js [d|m]   (먼저 node build.mjs)
-// 확인: 징 뒤 3초 안에 첫 몹 · 첫 물결 수 · 몹을 다 지우면 당겨 부르기(물결 번호가 시간보다 빨리 늚, 빈 시간 짧음) · 15초에 몰려옴(가장자리 화살표)
+// 확인: 징 뒤 1초 안에 첫 몹(#310, 화면에 보이고 싸움까지는 tools/gongfirst.js) · 첫 물결 수 · 몹을 다 지우면 당겨 부르기(물결 번호가 시간보다 빨리 늚, 빈 시간 짧음) · 15초에 몰려옴(가장자리 화살표)
 //       · 상한에 걸린 몹은 자리가 나면 바로 나옴 · 몹이 적으면 포위·던지기도 다가옴(patMode.few) · 저사양 상한 14 에서도 멈추지 않음 · 30fps(dt 1/30)도 시간 기준 같음
 const { chromium } = require('playwright');
 const MODE = process.argv[2] === 'm' ? 'm' : 'd';
@@ -26,7 +26,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); i
   /* 1. 시작: 3초 안에 첫 몹, 첫 물결 몫 */
   await begin(36);
   const first = await p.evaluate(async () => { const o = window.__oreum; for (let i = 0; i < 200; i++) { const s = o.swarm.state(); if (s.n > 0) return { t: s.t, n: s.n }; await new Promise((r) => setTimeout(r, 50)); } return null; });
-  ok(first && first.t <= 3, `징 뒤 첫 몹 ${first?.t}초 (3초 안)`);
+  ok(first && first.t <= 1, `징 뒤 첫 몹 ${first?.t}초 (1초 안, #310)`);
   await until(6);
   const w1 = await p.evaluate(() => window.__oreum.swarm.state());
   ok(w1.n >= 7, `6초에 첫 물결 첫머리 ${w1.n}마리 (구역 2 몫 16 중 첫머리 9)`);
