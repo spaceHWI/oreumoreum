@@ -1715,6 +1715,8 @@ export const NET = {
   idleRestSec: 360,   // 6분: 저장하고 방에서 나감 (누르면 다시 들어옴)
   idleHiddenSec: 120, // 탭이 뒤로 가 있으면 2분에 바로 쉬러 감 (창 없이)
   idleKickSec: 480,   // 서버 안전장치: 마지막 조작 표시 뒤 8분이면 연결을 닫음 (4004)
+  liveMax: 5000,      // 한 계정 한 접속 (#303): 계정 객체가 기억하는 '계정 → 방' 이 이보다 많으면 오래된 것(liveKeepMs)을 지움
+  liveKeepMs: 12 * 3600e3,
   idleBeatMs: 30000,  // 조작 표시(presence a:1)는 조작이 있었을 때 이 간격에 한 번만 실음
 };
 

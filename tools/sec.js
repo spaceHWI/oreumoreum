@@ -612,6 +612,20 @@ async function startServers() {
     await sleep(500);
     ok(F.msgs.some((m) => m.t === 'kick' && m.why === 'flood') && F.closed, '메시지 폭주는 끊음');
     for (const s of [Q, W, X, fast]) s.close();
+    { /* 한 계정 한 접속 (#303): 같은 계정이 또 들어오면 앞 접속은 bump·4005 로 끊기고 남은 사람에게 바로 사라짐. 다른 채널(방)도. 손님은 해당 없음. 방 연결 수 제한(wsPerMin)에 걸리지 않게 plain 서버에서 */
+      const RMB = 'oreum-namsongi-battle', B = await login('plain', 'bump303');
+      const b1 = await sock('plain', RMB, { ch: 14, token: B.token }), w = await sock('plain', RMB, { ch: 14 });
+      b1.send(presence(-860, 0)); w.send(presence(-860, 3)); await sleep(400);
+      const b2 = await sock('plain', RMB, { ch: 14, token: B.token }); await sleep(500);
+      ok(b2.msgs[0]?.t === 'hi' && b1.msgs.some((m) => m.t === 'bump') && b1.closed === 4005, `같은 방에 같은 계정: 앞 접속 bump·4005 (${b1.closed})`);
+      ok(w.msgs.some((m) => m.t === 'l' && m.id === b1.msgs[0]?.id), '남은 사람에게 앞 접속은 바로 사라짐 (방에 하나만)');
+      const b3 = await sock('plain', RMB, { ch: 15, token: B.token }); await sleep(1200);
+      ok(b3.msgs[0]?.t === 'hi' && !b3.closed && b2.msgs.some((m) => m.t === 'bump') && b2.closed === 4005, `다른 채널로 들어와도 앞 접속 끊김 (${b2.closed})`);
+      ok(w.msgs.some((m) => m.t === 'l' && m.id === b2.msgs[0]?.id), '다른 채널 접속에 밀린 사람도 남은 사람에게 사라짐');
+      const g1 = await sock('plain', RMB, { ch: 14 }); await sleep(400);
+      ok(g1.msgs[0]?.t === 'hi' && !w.closed && !g1.closed && !b3.closed, '손님 둘·새 접속은 그대로');
+      for (const s of [b3, w, g1]) s.close();
+    }
 
     /* ---------- 어드민 ---------- */
     ok((await req('plain', '/feedback')).status === 403, '손님은 받은 의견 못 봄');
