@@ -4,7 +4,7 @@
 // 터 밖으로 밀리면 가운데 쪽으로 달리며 뛰어넘음. --fast: 그리지 않음(셈만, 빠름). --runs N: 구역마다 N 판 (버틴 비율), --down N: 장비를 구역보다 N 단계 낮게 (#254). 기본 상한 --cap 36 (PC)
 // --eco: 설정 '화면 부드럽게' 절약(30fps 상한, #271)으로
 // --t0 N: 물결 시간 N 초에서 시작 (예: 170 이면 3분 단계부터, 130초 뒤 떼 대장)
-// 움직임: 0.4초마다 적이 적고 귤 조각이 있는 쪽(서바이벌 터 안 #231·지나갈 수 있는 곳)으로 달림 (조이스틱 흉내, W 누른 채 방향만 바꿈). --still: 서 있음
+// 움직임: 0.4초마다 적이 적고 귤 조각이 있는 쪽(던진 것이 떨어질 원·남은 돌은 피함 #296)(서바이벌 터 안 #231·지나갈 수 있는 곳)으로 달림 (조이스틱 흉내, W 누른 채 방향만 바꿈). --still: 서 있음
 // 탄창(#274): 다 쏘면 저절로 재장전, 둘레 9m 에 적이 없고 탄창이 절반 아래면 손 재장전(기록 '손장전'). 증강은 레벨업 창이 뜨면 첫 카드. 기록: 버틴 시간(게임 초)·쫓아낸 수·최고 물결·잃은 기운(최대의 %)·번 귤·조각·레벨업 횟수·대장. 목표: 권장 장비로 3분은 무난히, 5분 대장은 아슬아슬
 const { chromium } = require('playwright');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : +args[i + 1]; };
@@ -47,23 +47,25 @@ const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--spee
     if (!ok) { console.log('구역', zn, '들판 자리를 못 찾음'); continue; }
     if (!STILL) await p.keyboard.down('w');
     if (ok === 'hold') await p.keyboard.down('f');
-    let t = 0;
+    let t = 0; const PS = {}; /* #296 패턴별 마릿수 합 (판 동안 몇 % 가 무엇이었나) */
     for (let i = 0; i < 20000; i++) {
       const r = await p.evaluate(({ STILL }) => {
         const o = window.__oreum, P = o.player, tr = o.trash.api.trail, za = o.trash.api.zoneAt, z0 = o.swarm.state()?.zone;
         if (!STILL && z0) { // 적이 적은 쪽으로
-          let best = P.heading, bs = -1e9;
+          let best = P.heading, bs = -1e9; const BL = o.foes ? [...o.foes.pat.balls().filter((q) => q.t < 1.3), ...o.foes.pat.stays().map((q) => ({ x: q.x, z: q.z, r: 1.3 }))] : [];
           for (let k = 0; k < 16; k++) { const a = k / 16 * 6.283, x = P.pos.x + Math.sin(a) * 4, z = P.pos.z + Math.cos(a) * 4;
             const c = o.swarm.at(z0), R = o.arena.list()[0].r; if (Math.hypot(x - c[0], z - c[1]) > R - 3 || (o.life.hooks.enemyPass && !o.life.hooks.enemyPass(x, z, 0.6)) || (o.spots.clamp && o.spots.clamp(x, z))) continue; /* 서바이벌 터 안에서만 (#231) */
             let sc = 0; for (const e of o.enemies.list) { if (e.state === 'flee' || e.state === 'leave') continue; const d = Math.hypot(e.pos.x - x, e.pos.z - z); sc -= 30 / Math.max(1.5, d); }
+            for (const q of BL) if (Math.hypot(q.x - x, q.z - z) < q.r + 0.8) sc -= 80; /* #296 떨어질 원·남은 돌을 피함 */
             sc -= Math.abs(Math.atan2(Math.sin(a - P.heading), Math.cos(a - P.heading))) * 0.4; for (const [qx, qz] of o.swarm.shardsAt()) sc += 4 / Math.max(2, Math.hypot(qx - x, qz - z)); if (sc > bs) { bs = sc; best = a; } }
           P.heading = best;
           { const c = o.swarm.at(z0), R = o.arena.list()[0].r, dc = Math.hypot(P.pos.x - c[0], P.pos.z - c[1]); if (dc > R - 4) P.heading = Math.atan2(c[0] - P.pos.x, c[1] - P.pos.z); P.moveH = P.heading; o.cam.yaw = P.heading + Math.PI; } /* W 는 카메라 앞으로 가므로 카메라도 같은 쪽 */ /* 터 가장자리면 가운데로 (#254: 밀려 나가 '터 밖' 으로 끝나지 않게) */
         }
-        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n, kn: !!P.knock, aim: P.pose === 'aim', low: Math.round(window.__c.low) };
+        const st = o.swarm.state(), c0 = z0 && o.swarm.at(z0); return { t: o.weapon.t() - window.__c.t0, on: !!st && st.zone === window.__zn, down: window.__c.down, out: !!st && !st.inside, dc: c0 ? +Math.hypot(P.pos.x - c0[0], P.pos.z - c0[1]).toFixed(1) : null, y: +P.pos.y.toFixed(1), n: st?.n, pats: st?.pats, kn: !!P.knock, aim: P.pose === 'aim', low: Math.round(window.__c.low) };
       }, { STILL });
       if (TRACE && (i % 25 === 0 || r.out)) console.log('  trace', JSON.stringify({ t: +r.t.toFixed(1), dc: r.dc, y: r.y, out: r.out, n: r.n, low: r.low })); /* --trace: 터 가운데에서 거리 (#243) */
       if (r.out && !STILL) await p.keyboard.press(' '); /* 터 밖으로 밀렸으면 떼를 뛰어넘어 돌아옴 (#254) */
+      for (const [k, v] of Object.entries(r.pats || {})) PS[k] = (PS[k] || 0) + v;
       t = r.t; if (t >= SEC || !r.on || r.down) break;
       await p.waitForTimeout(120);
     }
@@ -72,7 +74,7 @@ const ECO = args.includes('--eco'), SEC = arg('--sec', 300), SPEED = arg('--spee
     const c = await p.evaluate(() => { const o = window.__oreum, C = window.__c; o.swarm.speed(1); return { ...C, coins: o.save.coins - C.coins0, lvUp: o.level.state().lv - C.lv0, sc: o.gearScore?.()?.total ?? null }; });
     const s = c.s || {};
     const why = await p.evaluate(() => window.__oreum.swarm.last?.why || (window.__oreum.swarm.state() ? '시간' : '-'));
-    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader, '3 아래(초)': Math.round(c.low), 물결수: s.wave ?? null, 손장전: c.rl || 0 };
+    const row = { 구역: zn, 점수: c.sc, 끝: why, '버틴(초)': Math.round(t), 쓰러짐: c.down, 쫓아냄: s.kills, 물결: s.stage, '최대 마릿수': c.peak, '잃은 기운%': Math.round(100 * c.lost / c.max), '번 귤(판)': s.gyul, '귤 차이': Math.round(c.coins), 조각: s.shards, 레벨업: c.lvUp, 고른: c.augs, 대장: c.leader, '3 아래(초)': Math.round(c.low), 물결수: s.wave ?? null, 손장전: c.rl || 0, 패턴: (() => { const S = Object.values(PS).reduce((a, b) => a + b, 0) || 1; return Object.entries(PS).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(100 * v / S)}`).join(' '); })() };
     console.log(JSON.stringify(row)); res.push(row);
     await p.evaluate(() => { const o = window.__oreum; o.swarm.stop(); o.enemies.test.clear(); });
     await p.waitForFunction(() => { const h = window.__oreum.hp; return !h.isDown && !h.pending && h.hp > 0; }, null, { timeout: 120000, polling: 500 }).catch(() => {});

@@ -201,8 +201,21 @@ export const SWARM = {
      pack 무리: n 마리가 한 덩어리로, 크기 × k(그 구역 적 크기 기준)·빠르기 × speed·기운 × hp·귤 × gyul (한 마리씩 물결 수에 셈)
      shield 방패: 앞(플레이어 쪽과 cos > cos)에서 맞으면 피해 × front, 옆·뒤는 × side. 걸음 × walk */
   pat: {
-    zone: { 1: [['base', 1, 0], ['rush', 0.6, 1]], 2: [['base', 1, 0], ['rush', 0.5, 0], ['circle', 0.6, 2]], 3: [['base', 1, 0], ['rush', 0.5, 0], ['circle', 0.5, 1], ['throw', 0.45, 2]],
-      4: [['base', 0.8, 0], ['rush', 0.5, 0], ['circle', 0.5, 1], ['throw', 0.4, 2], ['pack', 0.3, 3]], 5: [['base', 0.8, 0], ['rush', 0.5, 0], ['circle', 0.5, 1], ['throw', 0.4, 2], ['shield', 0.35, 3]] },
+    /* #296 판 초반부터 섞임(예전: 포위·던지기는 물결 2~3 부터라 3분 판의 첫 1분은 돌진만), 잽싼(zip)·묵직한(heavy)·빅풋 돌(rock) 더함. 던지기는 구역 2 부터 */
+    zone: { 1: [['base', 0.8, 0], ['zip', 0.35, 0], ['heavy', 0.15, 0], ['rush', 0.5, 1]], 2: [['base', 0.8, 0], ['rush', 0.45, 0], ['zip', 0.35, 0], ['heavy', 0.2, 0], ['throw', 0.35, 1], ['circle', 0.5, 1]],
+      3: [['base', 0.7, 0], ['rush', 0.45, 0], ['zip', 0.3, 0], ['heavy', 0.25, 0], ['circle', 0.45, 1], ['throw', 0.25, 1], ['rock', 0.25, 1]],
+      4: [['base', 0.6, 0], ['rush', 0.45, 0], ['zip', 0.3, 0], ['heavy', 0.25, 0], ['circle', 0.45, 1], ['throw', 0.25, 1], ['rock', 0.3, 1], ['pack', 0.3, 2]], 5: [['base', 0.7, 0], ['rush', 0.45, 0], ['zip', 0.25, 0], ['heavy', 0.18, 0], ['circle', 0.45, 1], ['throw', 0.4, 1], ['shield', 0.35, 2]] }, /* 5: 묵직한 놈을 줄여 잃는 기운 ±20% 안 */
+    /* #296 역할 (귤 × gyul 은 기운 × hp 와 맞춤: 오래 맞혀야 하는 놈은 그만큼 더 줌, tools/swarm.js 판 귤 ±10%)
+       zip 잽싼 놈: 기운 × hp·쫓는 빠르기 × speed(돌진은 그대로), 멀리선 zig rad 로 zigW rad/초 지그재그, 가까우면 windT 조짐. 피해 × dmgK, 모양 크기 × k
+       heavy 묵직한 놈: 기운 × hp·빠르기 × speed·크기 × k, 맞아도 밀리지 않음. windD m 안이면 windT 초 크게 휘두르는 조짐(고리) → 짧게 내지름(dashK·dashT) → 피하면 staggerT 초 큰 빈틈. 피해 × dmgK, 귤 × gyul
+       rock 빅풋 돌 던지기: keep m 거리, every 초마다 aim 초 돌을 들어 올림 → fly 초 포물선(떨어질 자리 r m 그림자 원), 맞으면 피해 × dmgK. 떨어진 돌은 stay 초 동안 반지름 block m 로 길을 막음
+       snow 설인 눈덩이(game/foes.js): every 초마다 aim 초 멈췄다 n 개를 gap 초 간격으로(fly 초, r m 원), 맞으면 피해 × dmgK·slowT 초 느려짐. keep m 거리, near m 안이면 물러남
+       throwMax 던지는 놈(throw·rock·설인)이 한 화면(살아 있는 것)에 동시에 이만큼까지 (폰·저사양 phone). mark 머리 위 표시 높이(m) */
+    zip: { hp: 0.25, speed: 1.6, k: 0.8, zig: 0.6, zigW: 4.5, windT: 0.6, dmgK: 0.7, gyul: 0.25, tint: '#ffe08a' },
+    heavy: { hp: 5.5, speed: 0.5, k: 1.35, windD: 3.8, windT: 0.8, dashK: 1.4, dashT: 0.35, staggerT: 1.6, dmgK: 1.25, gyul: 5.5, tint: '#8c7b70' },
+    rock: { hp: 1.6, keep: [11, 16], every: [4.2, 5.6], aim: 1.2, fly: 1.05, r: 2.0, dmgK: 1.4, stay: 3, block: 1.0, gyul: 1.6 },
+    snow: { keep: [15, 22], near: 8, every: [4.5, 6], aim: 0.6, n: 3, gap: 0.28, fly: 0.85, r: 1.3, dmgK: 0.6, slowT: 1.5 },
+    throwMax: { pc: 3, phone: 2 }, mark: 0.55,
     rush: { windD: 11, windT: 0.6, dashK: 2.1, dashT: 0.85, tint: '#ffb39a' },
     circle: { R: 7.5, w: 0.9, behind: -0.35, max: 7, tint: '#b9c8ff' },
     throw: { keep: [8, 12], every: [2.6, 3.6], aim: 0.45, fly: 1.15, r: 1.5, dmgK: 0.8, tint: '#c9e07a' },
@@ -263,7 +276,7 @@ export const ZONE_BOSS = {
   charge: { warn: 0.95, len: 18, w: 2.6, speed: 1.7, rest: 1.1 },
   call: { n: [2, 3], every: 16, max: 3 },
   beam: { warn: 1.15, r: 2.6, n: 3, spread: 5, dmgK: 0.8, every: 7 },
-  walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
+  walk: 1.4, // 다가갈 때 바탕 적 walk × 이만큼 (#296 졸개 walk 를 0.82 배로 낮춰 1.15 → 1.4: 우두머리 걸음은 그대로)
   slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
   netMs: 200, netHold: 10, // netHold: 받는 쪽은 방장 알림이 끊겨도 이 초까지 제자리에 둠 (#181: 끊긴 방장이 빠지고 다음 방장이 이어받는 동안. 예전 3초에 사라졌다 가득 찬 채 다시 나왔음)
   // 싸움이 풀린 뒤 (#183, enemies.js restRegen): 기운은 남고 delay 초 동안 그대로, 그 뒤 초당 최대 기운의 rate 씩 참 (다시 맞거나 싸움이 붙으면 멈춤)
@@ -575,19 +588,29 @@ export const BOAR = {
 // rush 조짐 뒤 돌진·우두머리 돌진의 바탕 빠르기(#149: chase 를 낮추며 예전 값을 지킴), rest 한 번 공격(받기·비껴감)한 뒤 다음 조짐까지 쉬는 초(그동안 COMBAT.ringR 둘레를 돎)
 // ranged: 멀리서 쏘는 적. keep 이 거리를 지키며 every 초마다 광선, range 쏘는 거리, speed 광선 속도, r 맞는 반경
 // #137: 기운(hp)·귤이 구역마다 약 2.4~2.5배 (notes/growth-loop.md 3절). 귤은 dropMax 개까지 알갱이로 흩뿌리고 나눠 담음 (ENEMY_DROP)
+// #296: 들판·길가 적 walk·chase 를 예전의 0.82 배로 (rush·우두머리 걸음은 그대로). 역할(잽싼·묵직한·던지는)은 SWARM.pat·ENEMY_SPAWN.role 로 섞음
 export const ENEMIES = {
-  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.8, chase: 4.6, rush: 4.6, rest: 2.5, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
-  dog: { name: '들개', hp: 8, walk: 3.0, chase: 6.5, rush: 9.5, rest: 2.0, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
-  boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 6, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
-  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 7.5, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
-  alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
+  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.5, chase: 3.8, rush: 4.6, rest: 2.5, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
+  dog: { name: '들개', hp: 8, walk: 2.5, chase: 5.3, rush: 9.5, rest: 2.0, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
+  boar: { name: '멧돼지', hp: 20, walk: 2.0, chase: 4.9, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.0, chase: 6.2, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
+  alien: { name: '외계인', hp: 120, walk: 2.1, chase: 3.6, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
   // 들판 떼 전용 (#173, src/game/swarm.js): 구역 3 까마귀(하늘에서 내려와 쪼고 올라감), 구역 5 외계인 드론(작은 비행 접시, 약한 광선). 표의 값은 '보통 적' 기준이고 떼는 SWARM.mob 비율로 낮춤
-  crow: { name: '까마귀', hp: 16, walk: 3.4, chase: 7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
-  drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
+  crow: { name: '까마귀', hp: 16, walk: 2.8, chase: 5.7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
+  drone: { name: '외계인 드론', hp: 100, walk: 2.6, chase: 4.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
   // 동굴 전용 (#195, game/cavelife.js): 박쥐(약하고 많음, 낮게 날아 쪼고 올라감) · 눈먼 동굴 게(느리지만 단단, 가까이 와서 집게로 받음). 땅 헤집기 없음
   bat: { name: '동굴 박쥐', hp: 30, walk: 3.2, chase: 7.5, rush: 10, rest: 2.0, flee: 12, dmg: 14, reward: { gyul: 60, rare: 0.02 }, sight: 12, lose: 26, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.6, fly: 2.2 },
   robot: { name: '거대한 분리수거 로봇', hp: 5200, walk: 1.1, chase: 2.6, rush: 6.5, rest: 3.0, flee: 6, dmg: 48, reward: { gyul: 0, rare: 0 }, sight: 30, lose: 60, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.3, ranged: { keep: 9, range: 20, every: 3.2, speed: 12, r: 1.1 } }, /* #195 동굴의 주인 (값은 CAVE.owner 가 덮음) */
   crab: { name: '눈먼 동굴 게', hp: 150, walk: 1.6, chase: 3.6, rush: 7.5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 320, rare: 0.05 }, sight: 9, lose: 22, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.0 },
+  // #296 던지는 놈: 빅풋(구역 3 능선~4 굼부리, 돌을 들어 올리는 예고가 길고 한 방이 큼, 떨어진 돌은 잠깐 길을 막음 SWARM.pat.rock) · 설인(정상, 사건 5 의 그 설인 caseModel('yeti'). 쓰러뜨리지 않음 shy: 맞으면 갸웃하고 물러남, game/foes.js)
+  bigfoot: { name: '빅풋', hp: 34, walk: 1.6, chase: 3.4, rush: 5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 90, rare: 0.06 }, sight: 26, lose: 40, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.35 },
+  yeti: { name: '설인', hp: 1e6, walk: 1.5, chase: 3.2, flee: 7, dmg: 14, reward: { gyul: 0, rare: 0 }, sight: 40, lose: 60, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.2, shy: true },
+};
+/* #296 설인 (game/foes.js): 정상에서 플레이어 둘레 at m 에 나옴. first 들어온 뒤 첫 등장까지 초(1초마다 셈), again 사라진 뒤 다음까지 [최소, 최대] 초, life 한 번 머무는 초
+   shyT 맞으면 이 초 동안 물러남(그중 처음 tilt 초 남을 때까지는 갸웃하며 멈춤), hits 이만큼 맞으면 사라짐, vanish near 안에 이 초 넘게 있으면 사라짐, fade 사라지는 초, away 정상을 떠난 플레이어와 이만큼 멀면 사라짐 */
+export const FOES = {
+  yeti: { at: [22, 30], first: 20, again: [50, 90], life: 60, shyT: 2.2, tilt: 1.4, hits: 2, vanish: 1.5, fade: 0.9, away: 60 },
+  text: { ring: '바닥의 동그라미를 피해요', snow: '눈덩이! 잠깐 느려져요', shy: '설인이 고개를 갸웃하고 물러나요' },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 // 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
@@ -620,6 +643,9 @@ export const ENEMY_SPAWN = {
   near: [12, 26],
   max: 4, // 동시에 최대
   byZone: { 1: 'piglet', 2: 'dog', 3: 'boar', 4: 'rabid', 5: 'alien' }, // 구역별 몹 (#48). 들머리(0)·다 핀 구역에는 안 나옴
+  /* #296 길가 무리에 섞는 역할 (game/foes.js): role[구역] = [[역할, 확률], ...] 한 마리마다 하나 뽑음(아니면 보통). 역할 값은 SWARM.pat (zip·heavy·throw·rock)
+     rock 은 빅풋(ENEMIES.bigfoot)으로 바꿔 나옴. 튜토리얼 뒤 첫 적·우두머리·이야기·레이드가 부르는 무리는 섞지 않음. 던지는 놈은 SWARM.pat.throwMax 까지 */
+  role: { 1: [['zip', 0.2], ['heavy', 0.1]], 2: [['zip', 0.2], ['heavy', 0.12], ['throw', 0.18]], 3: [['zip', 0.18], ['heavy', 0.12], ['throw', 0.1], ['rock', 0.14]], 4: [['zip', 0.18], ['heavy', 0.12], ['throw', 0.08], ['rock', 0.16]], 5: [['zip', 0.15], ['heavy', 0.12]] },
   kinds: ['boar'], // 구역이 없는 맵에서 나올 수 있는 종류
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐

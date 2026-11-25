@@ -10,6 +10,7 @@ import { unpackProp, propGeometry, propMaterial, glowSprite } from './propmodel.
 import { reportCrash } from './crash.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { whenAsset, placeholderGeo, placeholderMat } from './assets.js'; // #85: 들개·외계인 모델은 따로 받음
+import { caseModel } from './casemodels.js';
 
 const matCache = new Map();
 const glow = (c, o = {}) => { const k = 'g' + c + JSON.stringify(o); let m = matCache.get(k); if (!m) { m = new THREE.MeshBasicMaterial({ color: c, ...o }); matCache.set(k, m); } return m; };
@@ -268,6 +269,47 @@ function buildRobot() {
   };
 }
 
+// 빅풋 (#296): 갈색 털 큰 덩치(몸·머리·팔·다리는 따로 메시, 재질 셋). 돌을 던지려 할 때(e.ps.aim > 0) 두 팔로 돌을 머리 위로 들어 올림
+function buildBigfoot() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const s = BOAR.scale * ENEMIES.bigfoot.size * 0.5, fur = lamb('#6e4a32'), dark = lamb('#4a3122'), face = lamb('#b88a6a');
+  const trunk = new THREE.Mesh(geo('bfTrunk', () => mergeGeometries([bx(1.0, 1.1, 0.7, 0, 1.45, 0), bx(1.15, 0.5, 0.8, 0, 1.95, -0.05), bx(0.8, 0.35, 0.6, 0, 0.92, 0)])), fur);
+  trunk.scale.setScalar(s); trunk.castShadow = !LOW; body.add(trunk);
+  const headG = new THREE.Group(); headG.position.set(0, 2.25 * s, 0.12 * s); body.add(headG);
+  const hm = new THREE.Mesh(geo('bfHead', () => bx(0.55, 0.5, 0.5, 0, 0.2, 0)), fur); hm.scale.setScalar(s); headG.add(hm);
+  const fm = new THREE.Mesh(geo('bfFace', () => mergeGeometries([bx(0.38, 0.28, 0.06, 0, 0.16, 0.26), bx(0.36, 0.06, 0.08, 0, 0.36, 0.25)])), face); fm.scale.setScalar(s); headG.add(fm);
+  const armGeo = geo('bfArm', () => bx(0.3, 1.15, 0.32, 0, -0.5, 0));
+  const al = new THREE.Mesh(armGeo, dark), ar = new THREE.Mesh(armGeo, dark);
+  al.scale.setScalar(s); ar.scale.setScalar(s); al.position.set(-0.68 * s, 1.95 * s, 0); ar.position.set(0.68 * s, 1.95 * s, 0); body.add(al, ar);
+  const rock = new THREE.Mesh(geo('bfRock', () => new THREE.DodecahedronGeometry(0.55, 0)), lamb('#7a6f63')); rock.position.set(0, 3.1 * s, 0.1 * s); rock.scale.setScalar(s * 1.5); rock.visible = false; body.add(rock);
+  const legGeo = geo('bfLeg', () => bx(0.36, 0.85, 0.4, 0, -0.42, 0));
+  const ll = new THREE.Mesh(legGeo, dark), lr = new THREE.Mesh(legGeo, dark);
+  ll.scale.setScalar(s); lr.scale.setScalar(s); ll.position.set(-0.28 * s, 0.85 * s, 0); lr.position.set(0.28 * s, 0.85 * s, 0); root.add(ll, lr);
+  const head = new THREE.Object3D(); headG.add(head);
+  const legs = [ll, lr, new THREE.Object3D(), new THREE.Object3D()]; legs[2].visible = legs[3].visible = false; root.add(legs[2], legs[3]);
+  const tail = new THREE.Object3D(); root.add(tail);
+  return {
+    root, legs, head, tail, h: 2.6 * s,
+    fx: (dt, time, e) => {
+      const aim = e.ps?.aim > 0, sw = Math.sin(e.phase) * 0.5 * Math.min(1, e.speed / 2);
+      rock.visible = aim; const up = aim ? Math.PI * 0.92 : e.state === 'wind' || e.state === 'dash' ? 1.4 : 0;
+      al.rotation.x += ((aim || up ? -up : sw) - al.rotation.x) * Math.min(1, dt * 8); ar.rotation.x += ((aim || up ? -up : -sw) - ar.rotation.x) * Math.min(1, dt * 8);
+      body.position.y = Math.abs(Math.sin(e.phase)) * 0.06 * s * Math.min(1, e.speed); headG.rotation.y = aim ? 0 : Math.sin(time * 0.7 + e.phase) * 0.25;
+    },
+  };
+}
+// 설인 (#296): 사건 5 의 그 설인 모델(caseModel 'yeti')을 그대로. 걸으면 walk, 던질 조짐(e.ps.aim)엔 wave, 맞으면(e.shyT) lookback
+function buildYeti() {
+  const root = new THREE.Group(), m = caseModel('yeti'); root.add(m.root);
+  const head = new THREE.Object3D(); head.position.y = 2.4; root.add(head);
+  const legs = [0, 1, 2, 3].map(() => { const o = new THREE.Object3D(); root.add(o); return o; });
+  const tail = new THREE.Object3D(); root.add(tail);
+  return {
+    root, legs, head, tail, h: 2.8, cm: m,
+    fx: (dt, time, e) => { m.play(e.shyT > 0 ? 'lookback' : e.ps?.aim > 0 ? 'wave' : e.speed > 0.4 ? 'walk' : 'idle'); m.update(dt); head.rotation.set(0, 0, 0); },
+  };
+}
+
 // 종류 → 모양. 바꾸려면 여기만
 export const ENEMY_MODELS = {
   piglet: buildPiglet,
@@ -278,6 +320,7 @@ export const ENEMY_MODELS = {
   crow: buildCrowFoe, // #173 들판 떼
   drone: buildDrone,
   bat: buildBat, crab: buildCrab, robot: buildRobot, // #195 동굴
+  bigfoot: buildBigfoot, yeti: buildYeti, // #296 던지는 놈
 };
 // #108: 모양을 만들다 오류가 나면(받은 자료가 깨짐 등) 대신할 모양으로 계속
 export function buildEnemyModel(kind) {
