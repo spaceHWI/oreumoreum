@@ -2222,3 +2222,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
   - 곁가지 x-off1(숲길 3곳)·x-off1b(8곳)·x-off2(사면 3곳)·x-off4(굼부리 1곳), go `off@z` = 안 가 본 칸에 있는 못 찾은 곳부터. 보물 넷을 길 밖 곳 곁으로(`offTreasure`, id·값 그대로), 제보 흔적 `REPORT.wild` 60% 를 길 밖 곳 곁으로, 다음 할 일 `explore`(더미·소굴 뒤, 돌탑 앞)
   - 확인 `node tools/offpath.js`(찾기·귤·퀘스트·추적·보물·다음 할 일), `tools/nexthint.js` 에 explore 단계, `tools/econ.js` 에 길 밖 곳 귤 줄(구역 날 벌이 5% 아래)
   - 노루 무리는 그대로 둠(멀티 노루 메시지 크기 한도 NET.deerMax 와 엮여 있어 무리를 더하지 않음). 능선·정상은 빈 땅이 0% 라 더하지 않음
+- #300 쓰레기는 사람마다, 쓰레기 산만 함께 (사용자 메모 2026-11-24 17:52 '큰 거 아니면 각자'. 앞 실행의 '바닥 보장' 안은 버림)
+  - `HEAP.own`(['s','l','xl']) → heapdefs `HEAP_OWN`. 내 것 더미는 내 저장(save.trash.srv.battle.heaps)이 주인: online.js linkTrash 가 방 값(hi·hs·h)으로 덮지 않고 put·btake 를 보내지 않음. take 는 그대로 보내 방이 줍기 속도·번 몫(#144)만 셈
+  - 방(roomcore): 내 것 더미 칸은 늘 가득(옛 방 저장도), take 는 줄이지 않고 hs 도 안 보냄(못 받으면 {t:'h', no, own:1}), put·btake 무시, 빈 방 채우기·지킴이(zg) 판정은 쓰레기 산만
+  - 처음 방에 붙을 때 한 번(`store.ownInit`, S.own) 방을 따라 줄어 있던 내 것 더미를 가득으로. 손님·혼자 하기는 그대로
+  - 빈 동안 몫: 방에 붙어 있어도 내 것 더미는 기기 시각(`store.localSeen`)으로 채움(dumpers catchUp ownOnly)
+  - 구역 깨끗함·꽃·구역 완료·오름 진행·퀘스트·순위: 내 화면 값(내 것 + 함께 쓰레기 산) 그대로. 방의 돌하르방은 그 구역 쓰레기 산을 다 치울 때
+  - DUMP.hourFrac 0.4 → 0.25(혼자 값으로), crowdExp 1 유지(쓰레기 산에만 닿음). 확인 `tools/crowd.js` 4)(사람 수별 내 것·함께 1시간 셈), `tools/ownmsgs.js [옛 뿌리]`(줍기 메시지 앞·뒤), sec.js 내 것 더미 줄
