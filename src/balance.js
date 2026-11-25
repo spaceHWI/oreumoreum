@@ -21,9 +21,9 @@ export const HEAP = {
     mt: { n: 500, r: 5.2, h: 5.6, name: '쓰레기 산', gv: 1.5 }, // #138 들판 쓰레기 산: 귤 값 × gv (구역 gv 에 곱함)
   },
   stages: [1, 0.66, 0.33, 0.12], // 4단계
-  // #300 내 것인 더미 크기: 작은·큰 더미(s·l)는 사람마다 따로(내 화면·내 저장에만, 남이 주워도 내 것은 그대로). 대형 더미·쓰레기 산(xl·mt)은 방이 주인이라 함께 치움
-  // 방은 내 것 더미의 남은 수를 모르고 줍기 속도·번 몫만 셈 (server roomcore). 바꾸면 HEAP_SIG 는 그대로(옛 방 더미 구성 유지)
-  own: ['s', 'l'],
+  // #300 내 것인 더미 크기: 작은·큰·대형 더미(s·l·xl)는 사람마다 따로(내 화면·내 저장에만, 남이 주워도 내 것은 그대로). 들판 쓰레기 산(mt)만 방이 주인이라 함께 치움
+  // 방은 내 것 더미의 남은 수를 모르고 줍기 속도·번 몫만 셈 (server roomcore). 바꿔도 HEAP_SIG 는 그대로(옛 방 더미 구성 유지). tools/crowd.js 4) 가 사람 수별로 셈
+  own: ['s', 'l', 'xl'],
   colPad: 0.15, // 충돌 반경 = 지금 모양 반경 × 0.85 + 이만큼
   gap: 7, // 더미 가장자리끼리 최소 거리
   trailMin: 3.2, trailMax: 14, // 길 옆 더미: 길 가운데에서 가장자리까지 거리 범위 (길을 막지 않게)
@@ -336,7 +336,7 @@ export const BLOOM_FX = {
 export const DUMP = {
   players: 1,
   every: 180, // 남송이는 연출 감독(#89 PACE)이 부름. every 는 접속 안 한 동안 쌓는 양(DUMP_AMT)의 기준으로만 minEvery: 20,
-  hourFrac: 0.25, // #300 작은·큰 더미가 사람마다 따로라(HEAP.own) 혼자 할 때 값으로 되돌림 (0.55.3 급한 불 0.4)
+  hourFrac: 0.25, // #300 쓰레기 산 말고는 사람마다 따로라(HEAP.own) 혼자 할 때 값으로 되돌림 (0.55.3 급한 불 0.4)
   truckP: 0.4, // 한 번 올 때 트럭일 확률
   zoneBase: 0.3,
   dumpT: 5, // 버리는 데 걸리는 시간(초)
@@ -360,7 +360,7 @@ export const DUMP = {
   // 같이 있는 사람 수 (#131, src/refill.js): 오름 전체 쌓는 속도 = 한 명 기준 × n^crowdExp. 각자 둘레 투기꾼이 한 사람 몫(n^crowdExp ÷ n)씩 쌓음
   // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
   // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
-  // #300: 작은·큰 더미는 사람마다 따로라 이 배율은 함께 더미(대형·쓰레기 산)에만 닿음. 1 이면 한 사람 몫이 늘 혼자일 때와 같음(0.55.3 에 0.8 → 1)
+  // #300: 쓰레기 산 말고는 사람마다 따로라 이 배율은 함께 더미(쓰레기 산)에만 닿음. 1 이면 한 사람 몫이 늘 혼자일 때와 같음(0.55.3 에 0.8 → 1)
   crowdExp: 1, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },

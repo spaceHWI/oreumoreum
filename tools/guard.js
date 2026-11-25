@@ -14,7 +14,7 @@ const shot = process.argv.includes('--shot');
   let T = 1e12; const now = () => T;
   const core = createRoomCore({ now });
   const got = []; const p = core.join((s) => got.push(JSON.parse(s)));
-  const z = 2, hs = HEAP_DEFS.map((d, i) => [d, i]).filter(([d]) => d.zone === z).map(([, i]) => i);
+  const z = 2, hs = HEAP_DEFS.map((d, i) => [d, i]).filter(([d]) => d.zone === z && !d.own).map(([, i]) => i); /* #300 방은 함께 더미(쓰레기 산)만 셈 */
   const empty = () => { for (const h of hs) { let left = core.heaps()[h]; while (left > 0) { T += 1000; core.message(p, JSON.stringify({ t: 'take', h, n: NET.takeMax })); left = core.heaps()[h]; } } core.step(); };
   empty();
   const zg = got.filter((m) => m.t === 'zg');
@@ -69,7 +69,7 @@ const shot = process.argv.includes('--shot');
     const before = G.state().find((s) => s.zone === Z);
     G.clear(Z); await W(200);
     const at = o.save.zg[Z], s0 = G.state().find((s) => s.zone === Z), toasts = [];
-    for (let i = 0; i < 100 && !(i > 30 && G.state().find((s) => s.zone === Z).k >= 1); i++) { await W(200); const t = document.getElementById('toast'); if (!t.hidden && !toasts.includes(t.textContent)) toasts.push(t.textContent); }
+    for (let i = 0; i < 100 && !(i > 30 && G.state().find((s) => s.zone === Z).k >= 1); i++) { await W(200); const t = document.getElementById('toast'); if (!t.hidden && !toasts.includes(t.textContent)) toasts.push(t.textContent); for (const n of document.querySelectorAll('#msg-log > *')) if (!toasts.includes(n.textContent)) toasts.push(n.textContent); } /* #201 뒤 알림은 메시지 줄(#msg-log)로 */
     const s1 = G.state().find((s) => s.zone === Z), hb = G.guards.get(Z).hb.root;
     return { before, at: !!at, s0, s1, toasts, y: hb.position.y, gy: G.guards.get(Z).s.y, vis: hb.visible, glance: !!o.cam };
   }, Z);

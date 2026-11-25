@@ -201,12 +201,15 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const orb = await until(B, () => window.__cv.orb > 0, null, 15000);
     ok(orb && (glow || !ctxOk), `A 의 모으는 빛·모아 쏜 귤이 B 화면에 보임 (빛 ${ctxOk ? glow : '던지기 버튼 아님, 건너뜀'}, 센 귤 ${orb})`);
   }
-  // 더미 줍기: A 가 0번 더미에서 하나 → B 의 0번 더미도 하나 줄어듦
-  const before = await B.p.evaluate(() => window.__oreum.trash.api.store.left(0));
-  await A.p.evaluate(() => { const t = window.__oreum.trash.api; t.store.takeOne(0); });
+  // 더미 줍기: A 가 함께 더미(쓰레기 산)에서 하나 → B 의 그 더미도 하나 줄어듦. 내 것 더미(#300 쓰레기 산 말고)는 A 만 줄고 B 는 그대로
+  const SH = HEAP_DEFS.findIndex((d) => !d.own), OWN = HEAP_DEFS.findIndex((d) => d.own);
+  const LB = (h) => B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h), LA = (h) => A.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
+  const before = await LB(SH), ob = [await LA(OWN), await LB(OWN)];
+  await A.p.evaluate(([s, o]) => { const t = window.__oreum.trash.api; t.store.takeOne(s); t.store.takeOne(o); }, [SH, OWN]);
   await wait(A.p, 600);
-  const after = await B.p.evaluate(() => window.__oreum.trash.api.store.left(0));
-  ok(after === before - 1, `더미 함께 쓰기 (B: ${before} → ${after})`);
+  const after = await LB(SH), oa = [await LA(OWN), await LB(OWN)];
+  ok(after === before - 1, `함께 더미 같이 줄어듦 (B: ${before} → ${after})`);
+  ok(oa[0] === ob[0] - 1 && oa[1] === ob[1], `내 것 더미는 각자 (A ${ob[0]} → ${oa[0]}, B ${ob[1]} → ${oa[1]})`);
   // 동료 (#172): A 화면의 동료 셋은 B 에게 안 보이고(사람 수 그대로), 동료가 줄인 더미는 B 에도 줄어듦(btake)
   {
     const aOn = await A.p.evaluate(() => { const Bd = window.__oreum.buddies; if (!Bd) return -1; ['sunja', 'minsu', 'jenny'].forEach((id) => Bd.come(id)); Bd.sim(0.6); return Bd.list().filter((x) => x.on).length; });
@@ -214,7 +217,7 @@ const wait = (p, ms) => p.waitForTimeout(ms);
     const bSee = await B.p.evaluate(() => ({ n: window.__oreum.net.count, keys: Object.keys([...window.__oreum.net.peersById.values()][0]?.data || {}) }));
     if (aOn === -1) ok(bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료 꺼짐(#190 BUDDIES.on=false): B 가 보는 사람 ${bSee.n}명, 동료 값 없음`); /* 동료를 다시 켜면 아래 줄이 다시 봄 (#193) */
     else ok(aOn >= 1 && bSee.n === 1 && !bSee.keys.some((k) => /mate|bud/i.test(k)), `동료는 내 화면에만: A 동료 ${aOn}명, B 가 보는 사람 ${bSee.n}명`);
-    const h = await A.p.evaluate(() => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); });
+    const h = await A.p.evaluate((own) => { const t = window.__oreum.trash.api; return t.heaps.findIndex((x, i) => !own[i] && t.store.left(i) > Math.ceil(t.store.full(i) * 0.2) + 1); }, HEAP_DEFS.map((d) => d.own)); /* #300 함께 더미 */
     const b0 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
     await A.p.evaluate((h) => window.__oreum.trash.api.buddyTake(h), h); await wait(A.p, 700);
     const b1 = await B.p.evaluate((h) => window.__oreum.trash.api.store.left(h), h);
@@ -222,16 +225,16 @@ const wait = (p, ms) => p.waitForTimeout(ms);
   }
   // 다시 쌓기 (#131): 방장이 아니어도 움직이는 사람 둘레 투기꾼은 쌓고, 가만히 있던 사람이 쌓은 건 방이 되돌림
   {
-    const L = (X) => X.p.evaluate(() => window.__oreum.trash.api.store.left(0));
+    const L = (X) => X.p.evaluate((h) => window.__oreum.trash.api.store.left(h), SH); /* #300 함께 더미 */
     const v0 = await L(A);
-    const still = await B.p.evaluate(() => { const o = window.__oreum; o.player.speed = 0; return o.trash.api.store.putBack(0, 1); });
+    const still = await B.p.evaluate((h) => { const o = window.__oreum; o.player.speed = 0; return o.trash.api.store.putBack(h, 1); }, SH);
     await wait(B.p, 900);
     const [a1, b1] = [await L(A), await L(B)];
     ok(still === 1 && a1 === v0 && b1 === v0, `가만히 있던 B 가 쌓은 건 방이 되돌림 (A ${a1} · B ${b1}, 처음 ${v0})`);
     // B 를 몇 m 씩 걸려 움직인 사람으로 (서버 이동 판정 안쪽으로 나눠 감)
     for (let i = 0; i < 6; i++) { await B.p.evaluate(() => { const o = window.__oreum; o.player.pos.x += 1.2; o.player.pos.y = o.groundAt(o.player.pos.x, o.player.pos.z); }); await wait(B.p, 350); }
-    const moved = await B.p.evaluate(() => window.__oreum.trash.api.store.putBack(0, 1));
-    const got = await until(A, (v) => window.__oreum.trash.api.store.left(0) === v, v0 + 1, 6000);
+    const moved = await B.p.evaluate((h) => window.__oreum.trash.api.store.putBack(h, 1), SH);
+    const got = await until(A, ([h, v]) => window.__oreum.trash.api.store.left(h) === v, [SH, v0 + 1], 6000);
     ok(moved === 1 && got, `움직이는 B 가 쌓은 건 받아 줌 (A: ${await L(A)}, 기대 ${v0 + 1})`);
   }
   // 노루 (#92): 노루 무리는 방장(A) 화면이 주인, 누가 어느 노루를 탔는지는 방이 관리

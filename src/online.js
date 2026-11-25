@@ -346,7 +346,7 @@ export function createWsLobby({ token = () => null } = {}) {
 
 /* ---------- 쓰레기 더미를 방으로 ---------- */
 // 더미 남은 수·마지막 접속 시각은 방이 주인. 다시 쌓기(투기꾼·트럭)는 방장 화면에서만 (다른 사람 화면의 투기꾼은 모양만)
-// #300 내 것 더미(HEAP_OWN, 작은·큰 더미)는 내 저장이 주인: 방 값으로 덮지 않고, 쌓기·동료 줍기도 보내지 않음. 줍기만 보냄(방이 번 몫·속도를 셈)
+// #300 내 것 더미(HEAP_OWN, 쓰레기 산 말고 모두)는 내 저장이 주인: 방 값으로 덮지 않고, 쌓기·동료 줍기도 보내지 않음. 줍기만 보냄(방이 번 몫·속도를 셈)
 export function linkTrash(trash, room) {
   const st = trash.store;
   const o = { takeOne: st.takeOne, putBack: st.putBack, seen: st.seen, setSeen: st.setSeen };

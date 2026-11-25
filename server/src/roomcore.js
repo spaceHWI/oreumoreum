@@ -4,7 +4,7 @@
 //   {t:'take', h, n?}     더미 h 에서 n(없으면 1)개 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}. 로그인한 사람이면 주운 수 × 더미 값(HEAP_GYUL)을 번 몫으로 셈 (#144)
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭·몹). 방장과 움직이는 사람만 (#131), 한 사람 putPerMin·방 전체 putPerMin × crowd^DUMP.crowdExp
 //   {t:'btake', h}        동료(#172)가 더미 h 에서 하나 줄임. 번 몫엔 안 셈, 더미의 마지막 BUDDIES.keep 은 남김
-//   #300 내 것 더미(HEAP_OWN, 작은·큰 더미): 남은 수는 각자 화면이 주인. take 는 줍기 속도(takePerSec)·번 몫만 셈(더미를 줄이지 않고 hs 로 알리지 않음),
+//   #300 내 것 더미(HEAP_OWN, 쓰레기 산 말고 모두): 남은 수는 각자 화면이 주인. take 는 줍기 속도(takePerSec)·번 몫만 셈(더미를 줄이지 않고 hs 로 알리지 않음),
 //        못 받으면 {t:'h', h, n, no, own:1}. put·btake 는 받지 않음. 방의 H 칸은 늘 가득으로 둠(옛 저장·서명 그대로), 빈 방 채우기·지킴이 판정은 함께 더미만
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
