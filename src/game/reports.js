@@ -2,7 +2,7 @@
 // 1. 하루(한국 날짜)에 하나: 레벨 REPORT.lv 부터, 튜토리얼 뒤. 날짜로 정해진 난수로 고르고(reportOf) 가 본 구역(journey.maxZ)까지만.
 //    큰 사건의 실마리(case) 제보는 그 사건이 열린 사람에게만 (late.caseOpen)
 // 2. 쪽지 한 장: 들어오고 조금 뒤 감독 한 줄로 알림. 오늘의 할 일 창(hud.js late.reportRow)과 사건 파일 창(cases.js late.reportBoard)의 '제보' 칸에서 읽음
-// 3. 가서 보면 흔적 하나: 그 구역 길가 더미 곁(날짜로 고름, case 는 사건 목격 자리 곁)에 흔적 모양과 바닥 표시. 다가가 '살펴보기' → 한 줄(find) + 귤 REPORT.gyul
+// 3. 가서 보면 흔적 하나: 그 구역 길 밖 곳 곁(REPORT.wild 비율, #294) 아니면 길가 더미 곁(날짜로 고름, case 는 사건 목격 자리 곁)에 흔적 모양과 바닥 표시. 다가가 '살펴보기' → 한 줄(find) + 귤 REPORT.gyul
 //    헛소문(hoax)은 흔적 없이 바닥 표시만, '둘러보기' → 한 줄 웃음 + 같은 귤. 다음 할 일(nexthint.js AFTER.report)에도 줄이 뜸
 // 4. 서버: 저장 save.report.got 이 오늘(또는 어제) 날짜면 earn.js 가 하루 한 번 그 귤을 인정
 // 저장 save.report = { d 날짜, id 제보, got 끝냄 1, said 알렸으면 1 }. 멀티: 내 화면에서만. dev: __oreum.reports
@@ -61,6 +61,7 @@ function where(r) {
   const key = today() + r.id; if (key === spotKey && spot) return spot;
   const R = dayRand(today(), 7); let base = null;
   if (r.case) { const sp = late.cases?.spots?.(r.case)?.see; if (sp) base = { x: sp[0], z: sp[1], r: 3 }; }
+  if (!base && R() < REPORT.wild) { const os = (late.field?.api?.sights || []).filter((s) => s.off && s.zone === r.z); const s = os[Math.floor(R() * os.length)]; if (s) base = { x: s.x, z: s.z, r: 3 }; } /* #294 길 밖 곳 곁 */
   if (!base && trash) {
     const hs = trash.heaps.filter((h) => !h.field && h.zone === r.z), all = hs.length ? hs : trash.heaps.filter((h) => h.zone === r.z);
     const h = all[Math.floor(R() * all.length)]; if (h) base = { x: h.x, z: h.z, r: h.r || 2 };

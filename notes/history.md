@@ -2212,3 +2212,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - #307 [오류] 방 연결 InvalidStateError (iOS, 0.55.3 `src/online.js` presence): `open`(붙었음)이 옛 연결 것으로 남은 채 `ws` 만 새 연결(붙는 중)로 바뀌어 보내다 난 오류. 길 둘 — ① 서버가 오래 멈춤(idle)으로 내보낸 뒤 닫힘 알림이 오기 전에 화면을 눌러 다시 들어옴(`closed` 가 이미 참이라 `sleep()` 이 아무것도 안 했음) ② 끊겨서 다시 붙기 예약이 남은 채 쉬러 갔다 옴(쉬는 동안에도 붙고, 깨우면 연결이 둘)
   - 고침: 연결은 늘 하나 — `connect()` 가 먼저 `drop()`(옛 연결 알림 떼고 닫기·예약 지움·붙어 있었으면 `gone()`), 서버 idle 도 받는 즉시 `drop()`, 다시 붙기 예약은 `again` 하나로 두고 쉬기·닫기에서 지움
   - 검사 `node tools/wsrace.js`(가짜 WebSocket, 브라우저 없음. 고치기 전 InvalidStateError 재현). `tools/online.js` 의 낡은 '베타 안내 문구'(7일, #281 에서 글이 바뀜) 줄을 지금 글로
+- #294 길 밖 영역: 점검 도구 `tools/usemap.js`(40m 칸·빈 땅 비율·길 거리별 수, `--plan` 은 빈 땅을 덮을 자리 뽑기, 그림 notes/shots/294). 전 빈 땅 숲길 77%·사면 59%·굼부리 31% → 뒤 17%·17%·18% (`notes/journey.md` '맵 쓰임')
+  - 길 밖 곳 30곳 = 볼거리의 연장: `FIELD.sight.off`([구역, 모양, 이름, x, z]), id 는 list 뒤를 이어 `sight:9`~`sight:38` (서버 earn.js 가 `sightDef`·`sightGyul` 로 같이 인정, 계정마다 한 번). 도감엔 안 넣음. 모양 8가지는 src/field.js OFF_GEO(인스턴스, 기존 볼거리와 같은 그리기). 처음 가면 귤 `offGyul`(구역 1 은 5) + `offLine` 한 줄, 퀘스트 셈 `off@구역`(찾은 수, 받기 전 것도 셈)
+  - 곁가지 x-off1(숲길 3곳)·x-off1b(8곳)·x-off2(사면 3곳)·x-off4(굼부리 1곳), go `off@z` = 안 가 본 칸에 있는 못 찾은 곳부터. 보물 넷을 길 밖 곳 곁으로(`offTreasure`, id·값 그대로), 제보 흔적 `REPORT.wild` 60% 를 길 밖 곳 곁으로, 다음 할 일 `explore`(더미·소굴 뒤, 돌탑 앞)
+  - 확인 `node tools/offpath.js`(찾기·귤·퀘스트·추적·보물·다음 할 일), `tools/nexthint.js` 에 explore 단계, `tools/econ.js` 에 길 밖 곳 귤 줄(구역 날 벌이 5% 아래)
+  - 노루 무리는 그대로 둠(멀티 노루 메시지 크기 한도 NET.deerMax 와 엮여 있어 무리를 더하지 않음). 능선·정상은 빈 땅이 0% 라 더하지 않음

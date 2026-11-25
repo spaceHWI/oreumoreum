@@ -1,6 +1,6 @@
 // 다음 할 일 (#142, notes/growth-loop.md 7절): 퀘스트 추적 줄(game/quest.js #quest-track)에 얹는 안내. 파일 순서는 quest 뒤 (src/modules.js)
 // (나) 잠깐 바뀌는 안내 (퀘스트보다 먼저, 주황 !): HP 가 낮으면 '스톤에서 식사' → (#270) 그다음 오늘 안 묵었으면 '오피스제주에서 하룻밤' → 배낭이 차면 '클린하우스로' → 귤이 새로 다음 장비 값에 닿으면 '장비점으로'(그 전엔 권하지 않음)
-// (가) 줄기 퀘스트가 끝난 사람(또는 받을 퀘스트가 없을 때)에게 이어 줄 것 (흰 ›): 그 구역의 사건 → 터 → 우두머리(#256, 여정 2-1절) → 강화 → 전설 우두머리 → 제보 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑. 할 일이 없다는 줄은 없다
+// (가) 줄기 퀘스트가 끝난 사람(또는 받을 퀘스트가 없을 때)에게 이어 줄 것 (흰 ›): 그 구역의 사건 → 터 → 우두머리(#256, 여정 2-1절) → 강화 → 전설 우두머리 → 제보 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 안 가 본 길 밖 곳(#294) → 돌탑. 할 일이 없다는 줄은 없다
 // 안내 하나 = { k, text, prog, mark: 'tmp'|'next', pos() 갈 곳, arrive() 도착하면, tap() 누르면 (갈 곳 없이 창만), near }. 누르면 dump.js startAutoGo 로 걸어감 (quest.js trackGo)
 // 수치는 balance.js NEXT_HINT. dev: __oreum.quest.next (why()·after()·reset())
 import * as THREE from 'three';
@@ -95,6 +95,10 @@ const AFTER = {
     return { text: `오늘의 업적 · ${def.name}`, prog: def.goal > 1 ? `${Math.min(it.prog, def.goal)}/${def.goal}` : '', tap: openAch };
   },
   report: () => late.reportHint?.(), // 매일 미확인 제보 (#238, game/reports.js)
+  explore() { /* #294 가 본 구역에 아직 안 가 본 길 밖 곳 (안 가 본 칸에 있는 것부터) */
+    const s = late.offNext?.(maxZ()); if (!s) return null;
+    return { text: `${zname(s.zone)} 쪽 들판에 아직 안 가 본 곳이 있어요`, prog: '', pos: () => v3(s), near: 5 };
+  },
   heap() {
     if (!trash) return null; const hs = []; trash.heaps.forEach((h, i) => { if (trash.store.left(i) > 0) hs.push(h); });
     const h = nearest(hs); if (!h) return null;
