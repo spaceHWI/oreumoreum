@@ -6,6 +6,8 @@
 //   #149 back·stagger 가 끝나면 rest(ENEMIES.*.rest 초) 동안 쉬며 ringR 둘레를 돎 (덤비는 자리는 지킴)
 // 구역 번호는 hooks.zoneAt(x, z) 로 받음 (없으면 구역 없는 맵: ENEMY_SPAWN.kinds)
 // #254 표 값 덮기(def = ENEMIES + over): windD·windT·dashK·dashT 가 있으면 COMBAT 대신 (들판 떼 돌진 몹), ctl(e, dt, time, d, to) 이 0 이상을 돌려주면 그 빠르기로(쫓는 동안)
+// #296 역할(game/foes.js·game/swarmpat.js): def.heavy 맞아도 밀리지 않고 조짐·돌진이 끊기지 않음, def.staggerT 비틀거림 초(큰 빈틈), def.shy 설인: 피해 없이 hooks.shyHit
+//   길가 무리는 spawnPlan 이 한 마리마다 hooks.roleFor(종류, 구역, i) → { kind, over, pat } 를 받아 섞고 hooks.roleLook(e, pat) 으로 색·표시
 // #146 무리: 같이 나온 적은 e.pack 이 같고, 적끼리 겹치지 않게 밀어내며 플레이어 둘레 자기 자리(e.slotA)로 벌려 에워쌈 → src/enemypack.js
 import * as THREE from 'three';
 import { height } from './world.js';
@@ -118,7 +120,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const r0 = BOAR.bodyR * ENEMIES[P.kind].size, free = (x, z) => list.every((o) => o.state === 'flee' || o.state === 'leave' || Math.hypot(o.pos.x - x, o.pos.z - z) >= r0 + bodyR(o) + ENEMY_PACK.spawnGap); // 처음 자리도 겹치지 않게 (#146)
     let made = 0;
     for (let i = 0; i < n; i++) {
-      for (let k = 0; k < 16; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * (4 + k * 0.3), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if ((k < 12 ? sameZone(x, z) : okAt(x, z)) && (k < 14 ? free(x, z) : true)) { const e = spawnOne(P.kind, x, z, null, pk); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
+      const role = !quiet && !P.forceKind ? hooks.roleFor?.(P.kind, P.zone, i) : null; /* #296 잽싼·묵직한·던지는 놈 섞기 (game/foes.js) */
+      for (let k = 0; k < 16; k++) { const a = rnd() * Math.PI * 2, r = 2 + rnd() * (4 + k * 0.3), x = P.x + Math.sin(a) * r, z = P.z + Math.cos(a) * r; if ((k < 12 ? sameZone(x, z) : okAt(x, z)) && (k < 14 ? free(x, z) : true)) { const e = spawnOne(role?.kind || P.kind, x, z, role?.over || null, pk); if (role) hooks.roleLook?.(e, role.pat); e.heading = Math.atan2(player.pos.x - x, player.pos.z - z) + (rnd() - 0.5); made++; break; } }
     }
     if (!made) return null;
     const info = { kind: P.kind, n: made, x: P.x, z: P.z, zone: P.zone, pack: pk };
@@ -134,13 +137,14 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     return e;
   }
   function spawnWave(force = false, forceKind = null) { return spawnPlan(planWave(force, forceKind)); }
-  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); } /* 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게) */
+  function remove(e) { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); group.remove(e.root); if (e.warn) { group.remove(e.warn); e.warn.geometry.dispose(); } e.bar.fill.material.dispose(); e.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton?.dispose(); }); e.cm?.dispose(); } /* 뼈 텍스처도 GPU 에서 내림 (#108: 무리가 거듭 와도 쌓이지 않게) */
 
   // 귤 맞음 (life.js 귤 날아가는 중에 부름). 맞혔으면 true
   // quiet (#123 머신건·레이저처럼 잦은 맞힘): 맞힌 소리·멈칫(hooks.hit)은 쫓아낼 때만
   // ch: 모아 쏜 정도 0~1 (#129) → 더 멀리 밀림, hooks.chargeHit 이 터지는 효과
   function hurt(e, dmg, quiet, ch = 0) {
     if (e.state === 'calm') { scatter(e); return; } // #168 모여 있던 적은 맞으면 흩어짐
+    if (e.def.shy) { e.flash = 0.25; e.flinch = 0.28; if (!quiet) sound?.beep?.(false); hooks.shyHit?.(e); return; } // #296 설인: 쓰러뜨리지 않음 (갸웃하고 물러남, game/foes.js)
     if (ch > 0) hooks.chargeHit?.(e.pos, ch, e);
     if (!e.remoteHurt) e.mine = true; // 내가 맞힘 (#205 동굴 칸 주인 보상)
     if (e.remoteHurt) { e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; hooks.dmgNum?.(e, dmg, false, ch); if (!quiet) { hooks.hit?.(e.pos, false); sound?.beep?.(false); } e.remoteHurt(dmg); return; } // 멀티 받는 쪽 우두머리 (#139): 기운은 방장이 셈
@@ -149,7 +153,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     const stag = e.state === 'stagger'; if (stag) dmg *= COMBAT.crit; // 비틀거릴 때 급소 (#148)
     hooks.dmgNum?.(e, dmg, stag, ch); // 머리 위 피해 숫자 (#141, game/feel.js)
     e.hp = Math.max(0, e.hp - dmg); e.flash = 0.25; e.bar.t = BAR_SHOW; e.flinch = 0.28; if (!quiet || e.hp <= 0) hooks.hit?.(e.pos, e.hp <= 0); // 움찔 (#89)
-    if (!e.boss && player) { // 멈칫하며 뒤로 밀림 (#148): 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
+    if (!e.boss && player && !e.def.heavy) { // 멈칫하며 뒤로 밀림 (#148). 묵직한 놈(#296)은 밀리지 않음: 큰 적일수록 덜, 잦은 맞힘(머신건·레이저)은 조금씩
       const ux = e.pos.x - player.pos.x, uz = e.pos.z - player.pos.z, L = Math.hypot(ux, uz) || 1;
       e.fl = COMBAT.flinchT; e.flV = COMBAT.flinchDist / e.def.size / COMBAT.flinchT * (quiet ? 0.3 : 1) * (1 + (CHARGE.push - 1) * ch); e.flX = ux / L; e.flZ = uz / L;
       if (e.state === 'wind' || e.state === 'dash') { e.state = 'charge'; e.st = 0; }
@@ -209,6 +213,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
     } else if (e.state === 'boss' && e.ctl) { // 구역 우두머리 (#139): 패턴은 boss.js
       want = e.ctl(e, dt, time, d, to);
     } else if (e.state === 'charge' && d0.ctl && !(e.hold > 0) && (want = d0.ctl(e, dt, time, d, to)) >= 0) { /* 들판 떼 몹 패턴 (#254, game/swarmpat.js): 맴돌기·던지기. 음수면 아래 보통 쫓기 */
+    } else if (e.state === 'shy' && d0.ctl) { /* #296 설인 (game/foes.js): 싸우는 상태가 아님(카메라·감독이 싸움으로 보지 않음) */
+      want = d0.ctl(e, dt, time, d, to);
     } else if (e.state === 'flee' || e.state === 'leave') {
       want = e.state === 'flee' ? d0.flee : d0.walk * 1.6;
       turnTo(e, Math.atan2(-to.x, -to.z) + Math.sin(time * 2 + e.phase) * 0.3, Math.min(1, dt * 3));
@@ -245,7 +251,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       const ahead = to.x * Math.sin(e.heading) + to.z * Math.cos(e.heading);
       if (e.st > (d0.dashT ?? COMBAT.dashT) || ahead < -1.2) { e.state = 'stagger'; e.st = 0; e.speed = 0; want = 0; }
     } else if (e.state === 'stagger') { // 비껴가 비틀거림
-      want = 0; e.speed = 0; if (e.st >= COMBAT.staggerT) { e.state = 'charge'; e.st = 0; e.rest = d0.rest || 0; }
+      want = 0; e.speed = 0; if (e.st >= (d0.staggerT ?? COMBAT.staggerT)) { e.state = 'charge'; e.st = 0; e.rest = d0.rest || 0; }
     } else if (e.state === 'back') { // 받은 뒤 한 걸음 물러남
       want = d0.walk * 1.6; turnTo(e, Math.atan2(-to.x, -to.z), Math.min(1, dt * 6));
       if (e.st >= COMBAT.backT) { e.state = 'charge'; e.st = 0; e.rest = d0.rest || 0; } // 받기·비껴감 뒤 쉼 (#149)
@@ -300,7 +306,7 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
       const tr = Math.atan2(height(px + ch * W, pz - sh * W) - height(px - ch * W, pz + sh * W), 2 * W);
       const k = Math.min(1, dt * 6), lim = 0.6;
       e.pitch += (Math.max(-lim, Math.min(lim, tp)) - e.pitch) * k; e.roll += (Math.max(-lim, Math.min(lim, tr)) - e.roll) * k;
-      e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * (1 - e.st / COMBAT.staggerT) : 0);
+      e.root.rotation.x = e.pitch; e.root.rotation.z = e.roll + (e.state === 'stagger' ? Math.sin(e.st * 14) * 0.18 * Math.max(0, 1 - e.st / (d0.staggerT ?? COMBAT.staggerT)) : 0);
       if (e.rollT > 0 && e.state === 'flee') { const u = 1 - e.rollT / e.rollD, w = u * u * (3 - 2 * u); e.root.rotation.z += w * Math.PI * 2 * e.rollS; e.root.position.y += e.h * 0.5 * (1 - Math.cos(w * Math.PI * 2)) + Math.sin(u * Math.PI) * e.rollH * e.def.size; e.rollT -= dt; } /* 쫓아낸 적이 옆으로 한 바퀴 구름 (#141, hooks.enemyRepel 이 rollT 를 넣음) */
     }
     if (e.state === 'wind' || e.warn?.visible) { // 돌진 조짐: 발밑 붉은 고리가 조여듦 (#148)
@@ -375,8 +381,8 @@ export function createEnemies({ group, spots, rnd, hooks, onToast, legs4 }) {
   return {
     bind(p, s) { player = p; sound = s; },
     update, hitTest, hitArea, aimTargets, list, bolts,
-    active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave'),
-    activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave').length,
+    active: () => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.state !== 'shy'),
+    activeN: () => list.filter((e) => e.state !== 'flee' && e.state !== 'leave' && e.state !== 'shy').length, /* 설인(shy, #296)은 싸움으로 세지 않음 */
     planWave, spawnPlan, spawnBoss, spawnStory, spawnSwarm, remove, hurt, hurtNet, repelNet, hesitate, get stuck() { return stuckT; },
     leaveAll() { for (const e of list) if (e.state !== 'flee' && e.state !== 'leave' && !e.boss && !e.net) { e.state = 'leave'; e.st = 0; e.bar.g.visible = false; } }, // 감독: 공격 시간이 다 됨
     near: (p, r) => list.some((e) => e.state !== 'flee' && e.state !== 'leave' && e.pos.distanceTo(p) < r),

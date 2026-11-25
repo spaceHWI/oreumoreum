@@ -49,6 +49,7 @@ state.ticks.deerPal = 0; // 노루 친구 (#247)
 state.ticks.inn = 0; // 숙소 오피스제주 (#270)
 state.ticks.fire = 0; // 숙소 마당 불멍 (#290)
 state.ticks.villain = 0; // 투기꾼 악당 모습 (#291)
+state.ticks.foes = 0; // 적 역할·정상 설인 (#296)
 
 Object.assign(late, { checkViewpoint, placeRunner }); // 앞 파일에서 부르는 함수
 
@@ -359,6 +360,7 @@ function step(now) {
   life.update(dt, now / 1000); dumpers?.update(dt, now / 1000);
   if (late.villainTick) { late.villainTick(dt); state.ticks.villain++; } /* 투기꾼 악당 (#291, game/villain.js): 던진 자루 */
   if (late.tickDeerPal) { late.tickDeerPal(dt); state.ticks.deerPal++; } /* 노루 친구 (#247) */
+  if (late.tickFoes) { late.tickFoes(dt); state.ticks.foes++; } /* 적 역할·정상 설인 (#296, game/foes.js) */
   social.tickBubbles(); tickQueue(); tickSunWatch(dt); tickBanner(dt);
   if (state.awe > 0) { state.awe -= dt; cam.dist += (24 - cam.dist) * Math.min(1, dt * 1.5); cam.pitch += (0.12 - cam.pitch) * Math.min(1, dt * 1.5); cam.yaw += dt * 0.35; if (state.awe <= 0) state.aweBack = 2; }
   if (state.aweBack > 0 && !ptrs.size) { state.aweBack -= dt; cam.dist += (13 - cam.dist) * Math.min(1, dt * 2); cam.pitch += (0.32 - cam.pitch) * Math.min(1, dt * 2); }
