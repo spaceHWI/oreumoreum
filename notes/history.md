@@ -2229,3 +2229,12 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
   - 빈 동안 몫: 방에 붙어 있어도 내 것 더미는 기기 시각(`store.localSeen`)으로 채움(dumpers catchUp ownOnly)
   - 구역 깨끗함·꽃·구역 완료·오름 진행·퀘스트·순위: 내 화면 값(내 것 + 함께 쓰레기 산) 그대로. 방의 돌하르방은 그 구역 쓰레기 산을 다 치울 때
   - DUMP.hourFrac 0.4 → 0.25(혼자 값으로), crowdExp 1 유지(쓰레기 산에만 닿음). 확인 `tools/crowd.js` 4)(사람 수별 내 것·함께 1시간 셈), `tools/ownmsgs.js [옛 뿌리]`(줍기 메시지 앞·뒤), sec.js 내 것 더미 줄
+- #304 폰 WebGL 잃음(#161): 스스로 되살리기·시작 부담 줄이기
+  - 새 파일 `src/glguard.js`: 이 기기의 잃음 기억(localStorage `oreumoreum.gl`: drop·aaOff·lost·note). 화면이 보이는 동안 잃으면 다음 시작부터 AA 끔(사용자가 원해 기본은 켠 채, 잃은 기기만), `CRASH.gl.twiceS`(180초) 안에 두 번이면 한 칸 낮춤. `CRASH.gl.keepDays`(7일) 동안 안 잃으면 잊음
+  - quality.js: `TIER = 자동/고른 단계 − drop`(주소 ?tier= 는 그대로). 단계 0 아래로 낮추면 픽셀 배율 × `CRASH.gl.prLow`(0.8, `GL_PRLOW`)
+  - scene.js: 잃으면 오류 창 대신 '화면을 다시 불러오는 중…' 한 줄. 되살아나면 감추고 셰이더 다시 준비, 자동 단계면 한 칸 가볍게, '[gl 되살아남] N초 뒤' 알림. `CRASH.glWait`(6초) 안에 안 돌아오면 저장(persist)·한 칸 낮춤 기억·`reloadFor('gl', {auto})` 로 한 번만 다시 불러옴(탭 세션에 `CRASH.gl.reloadOnceS` 600초 안 한 번 + #287 의 reloadGap). 이미 했으면 '다시 불러오기' 단추. 화면이 숨은 동안 잃은 것은 낮춤에 넣지 않고, 다시 보일 때부터 잼
+  - 오류 알림(crash.js `setCrashCtx`): 모든 오류 글 끝(브라우저 이름 앞)에 `켠Ns q단계 [aa0] [gl잃음n/되살m] [낮춤d]`. 다시 불러온 까닭은 다음 시작에 '[gl 다시 불러옴] …' 한 줄(reportNote)
+  - 나눠 받기(assets.js `loadPlan`): 폰·단계 0 은 첫 화면 뒤 `PERF.load.delay`(1.5초) 기다렸다 하나씩, 사이 `gap`(0.7초, 잃은 기기 ×2). 셰이더 다시 준비도 폰은 0.6초 모아서. PC 는 예전대로 두 개씩 바로
+  - 잰 값(`tools/glmem.js`, Pixel 7 흉내·단계 1·배율 1.25, WebGL 호출로 어림): 화면 버퍼 AA 끔 6.2MB / 켬 20.6MB. 시작 10초 안 최고 GPU 어림 dev 70.8MB(모델 14개가 2초 안에 다 오고 들어가기에 텍스처 +20MB) → 54.7MB(모델이 10초에 걸쳐 옴). 단계 0 은 40.5MB
+  - 검사 `tools/glrestore.js <폴더> d|m`(잃고 되살아남·돌아오지 않으면 한 번 다시 불러옴·같은 탭 두 번째는 단추·알림 글), `tools/glmem.js <폴더> m|d [?aa=1&tier=1]`
+  - #287 과: 스스로 다시 불러오기는 reloadFor auto 라 60초 간격·까닭 'gl' 기록이 그대로 걸림. #281 로딩 창·#280 깜박임은 건드리지 않음
