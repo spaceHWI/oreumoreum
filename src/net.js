@@ -106,6 +106,8 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
     e.waitPr = null;
     if (!e.runner.root.visible) { e.pos.set(x, height(x, z), z); e.runner.root.visible = !solo?.(); }
     e.tpos.set(x, groundAt(x, z), z);
+    { const t = performance.now(), g = (t - (e.rt ?? -1e9)) / 1000, ux = e.rx == null ? 0 : (x - e.rx) / g, uz = e.rx == null ? 0 : (z - e.rz) / g, v = Math.hypot(ux, uz); /* #313: 받은 자리 사이 빠르기 */
+      const go = g > 0.02 && g < 0.6 && v > 0.05 && v < NET.predV; e.vx = go ? (e.vx || 0) * 0.4 + ux * 0.6 : 0; e.vz = go ? (e.vz || 0) * 0.4 + uz * 0.6 : 0; e.rx = x; e.rz = z; e.rt = t; }
     e.theading = typeof d.h === 'number' ? d.h : e.theading;
   }
   function removePeer(id) {
@@ -175,6 +177,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       if (e.runner.root.parent !== par) { par.add(e.runner.root); if (par === scene) cull?.()?.add(e.runner.root, { dynamic: true, shadow: false }); else cull?.()?.remove(e.runner.root); } // 동굴 안이면 동굴 장면에 그림 (멀리 감추기는 오름에서만)
       if (alone) { e.runner.root.visible = false; if (e.label) e.label.visible = false; continue; } // #100 튜토리얼 중엔 혼자
       if (!e.runner.root.visible) { e.pos.copy(e.tpos); e.runner.root.visible = true; }
+      if (e.vx || e.vz) { const a = Math.min(NET.predT, (performance.now() - e.rt) / 1000), px = e.rx + e.vx * a, pz = e.rz + e.vz * a; e.tpos.set(px, groundAt(px, pz), pz); } /* #313: 받는 사이에도 걷던 빠르기로 (조금만 앞질러) */
       const k = Math.min(1, dt * 10);
       const prev = prevP.copy(e.pos);
       e.pos.lerp(e.tpos, k);
@@ -197,7 +200,7 @@ export function createNet({ scene, player, save, onToast, onPeersChanged, extra,
       const pose = typeof e.data.pose === 'string' ? e.data.pose : 'move';
       r.setTint(!!e.data.yl);
       const ov = rh && overHook ? overHook(e) : null; // 탈것 위 손동작 (#76)
-      r.animate(dt, { speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, air: (e.data.jy || 0) > 0.05, jumpV: 0, face: fk > 0 ? 'wide' : null, edur: EMOTE_BY[pose]?.dur || 2, over: ov && { ...ov, dur: EMOTE_BY[ov.id].dur } });
+      r.animate(dt, { soft: true, speed: rh?.still ? 0 : e.speed, running: !!e.data.run, pose: rh?.pose || (pose === 'photo-wait' ? 'move' : pose), t: e.poseT, air: (e.data.jy || 0) > 0.05, jumpV: 0, face: fk > 0 ? 'wide' : null, edur: EMOTE_BY[pose]?.dur || 2, over: ov && { ...ov, dur: EMOTE_BY[ov.id].dur } });
     }
   }
 

@@ -23,7 +23,7 @@ const hard = (t) => !bowArmed() && APPROACH.handHard.includes(t.kind);
 const rank = (t) => (t.chase ? 0 : !t.enemy ? 1 : 2); // 쫓는 적 > 투기꾼·트럭·흡연자 > 나머지
 const can = () => state.sessionOn !== false && !late.tut?.active && !busy() && !hp.isDown && !hp.pending && !player.riding && !player.ride && !player.cart;
 const lowHp = () => hp.hp < hp.max * APPROACH.lowHp;
-const moving = () => (joy.active && Math.hypot(joy.x, joy.y) > 0.15) || ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].some((k) => keys.has(k));
+const moving = () => joy.on || ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].some((k) => keys.has(k));
 
 // 감지 거리 안 다음 타겟. { t, onlyHard }
 function pickNext() {
