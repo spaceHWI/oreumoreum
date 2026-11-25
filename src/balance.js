@@ -1368,6 +1368,12 @@ export const STICK = {
   rK: 0.16, rMin: 44, rMax: 72, // 바탕 반지름(px) = 화면 짧은 변 × rK, 이 범위 안. 넘어가면 바탕이 손가락을 따라옴
   tapT: 0.25, tapPx: 8, // 이만큼 짧게(초)·적게(px) 톡 친 건 스틱이 아니라 그 땅으로 걸어가기
   guide: 0.25, faint: 0.12, faintAfter: 5, // 쓰지 않을 때 왼쪽 아래 안내 고리 불투명도. 이만큼 쓴 뒤에는 더 옅게
+  // 죽은 구역·속도 곡선 (#313): 당긴 크기가 dead 를 넘으면 걷기 시작, deadOff 아래로 내려가야 멈춤(여유). 속도 비율 = ((크기 - deadOff) / (full - deadOff)) ^ curve, 0~1
+  // 예전엔 0.15 에서 0 → 4m/s 로 툭 뛰고 0.6 에서 4 → 5 로 또 뛰어, 경계에서 손가락이 떨리면 섰다 걸었다 했음
+  dead: 0.15, deadOff: 0.1, full: 0.75, curve: 1.15,
+  minK: 0.15, // 걷기 시작할 때 속도 비율의 바닥 (너무 느려 제자리걸음처럼 보이지 않게, 그래도 0 → 0.75m/s 는 가속으로 부드럽게)
+  runOn: 0.92, runOff: 0.86, // 단순 화면: 끝까지 당기면 달리기, 이 아래로 내려와야 걷기로 (여유)
+  rideMin: 0.4, // 탈것·노루: 조금 당겨도 이 비율부터 (예전 0.6 한 단계)
 };
 export const TITLE = {
   r: 650,       // 표지석에서 카메라까지 수평 거리(m)
@@ -1575,7 +1581,8 @@ export const PERF = {
   fps: { eco: 30, smooth: 60, fight: 30, idle: 20, cover: 15, idleT: 6, still: 0.3, tol: 2 },
   aaPhone: true,                // 폰·낮음 단계 안티에일리어싱 (렌더러를 만들 때 정함). #271 에서 껐다가 폰에서 어색해 #276 에서 다시 켬. false 면 폰·낮음 단계만 끔
   // 그림자 지도 다시 그리기: 폰은 every 프레임에 한 번, 플레이어가 서 있으면 still 프레임에 한 번, fast(m/s) 넘게 빠르면 매 프레임 (내 그림자가 끊겨 보이지 않게)
-  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7 },
+  // walk: 걷는 동안(F.still 넘게) 폰도 이 프레임에 한 번 (#313: 2 였을 땐 스틱을 조금 당긴 4m/s 걸음에서 내 그림자가 15Hz 로 뚝뚝 따라와 걸음이 버벅여 보임. 끝까지 당긴 달리기는 fast 를 넘어 괜찮았음)
+  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7, walk: 1 },
   // 발열 지킴 (자동 단계일 때만): 이어서 논 시간 at 초마다 한 칸, 프레임 셈 시간이 trendGap 초 사이 trendUp 넘게 늘면 한 칸 (그리는 수가 비슷할 때만), rest 초 쉬면 되돌림
   // 칸: 1 픽셀 배율 × prMul (prMin 아래로는 안 내림) → 2 그림자 끔 → 3 풀·먼지 밀도 × grassK
   heat: { at: [600, 1200], win: 60, trendGap: 180, trendUp: 0.15, trendMin: 0.5, callsSame: 0.2, rest: 300, prMul: 0.8, prMin: 0.85, grassK: 0.5, max: 3 },
@@ -1628,6 +1635,7 @@ export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
   sendMs: 100,        // 내 위치·동작 보내는 간격 (초당 10번 안쪽)
+  predT: 0.15, predV: 25, // 남의 걸음 (#313): 받은 두 자리 사이 빠르기로 이 초까지만 앞질러 그림 (받는 사이 섰다 걸었다 보이지 않게). 이보다 빠르면(순간 이동) 안 함
   identMs: 10000,     // 옷·닉네임은 바뀔 때만 보내되, 이 간격마다 한 번 더 (#115: 서버가 버린 메시지에 실렸을 때 대비)
   tickMs: 100,        // 방이 모아 보내는 간격
   farR: 150,          // 이 거리 밖 사람은 farEvery 틱마다 한 번만 받음

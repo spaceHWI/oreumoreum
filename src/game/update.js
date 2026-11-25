@@ -1,7 +1,7 @@
 // 매 프레임 갱신(updatePlayer·frame), 해돋이 보기, 멀리 있는 작은 물체 감추기 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { shoeSpeed } from '../loot.js';
 import { bootsOn } from '../gearscore.js';
-import { PERF, PLACE, SHOES, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
+import { PERF, PLACE, SHOES, STICK, BOOTS, COLLIDE, BOAR, BOW, BLOOM_FX, HAIR, PACE, DEER, COMBAT, BAG, TEWAK } from '../balance.js';
 import { augV } from '../augments.js';
 import { PERF_LOCK, createFarCull } from '../quality.js';
 import { mt, mtFrame } from '../metrics.js';
@@ -82,14 +82,13 @@ function updatePlayer(dt) {
     if (keys.has('s') || keys.has('arrowdown')) fz += 1;
     if (keys.has('a') || keys.has('arrowleft')) fx -= 1;
     if (keys.has('d') || keys.has('arrowright')) fx += 1;
-    if ((fx || fz || (joy.active && Math.hypot(joy.x, joy.y) > 0.15) || p.target) && (isEmote(p.pose) || p.pose === 'wave' || p.pose === 'cheer')) p.pose = 'move'; // 걷기 시작하면 동작이 끊김 (#76, 앉기·눕기 포함)
-    const jm = Math.hypot(joy.x, joy.y);
-    if (joy.active && jm > 0.15) {
+    if ((fx || fz || joy.on || p.target) && (isEmote(p.pose) || p.pose === 'wave' || p.pose === 'cheer')) p.pose = 'move'; // 걷기 시작하면 동작이 끊김 (#76, 앉기·눕기 포함)
+    if (joy.on) { /* #313: 걷기 켬·속도 비율은 input.js joyShape (여유·곡선) */
       // 조이스틱: 화면 기준 방향 (카메라가 보는 쪽이 위)
       p.target = null; p.onArrive = null; marker.visible = false;
       const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
       dir = new THREE.Vector3(joy.x * c + joy.y * s, 0, -joy.x * s + joy.y * c).normalize();
-      p.joyMag = jm;
+      p.joyMag = joy.mag;
       if (!p.riding && !aiming) { let dh = wrapA(Math.atan2(dir.x, dir.z) - p.heading); p.heading += dh * Math.min(1, dt * 10); }
       if (ptrs.size === 0 && state.camHold <= 0) { const dy = wrapA((p.heading + Math.PI) - cam.yaw); cam.yaw += dy * Math.min(1, dt * 0.8); }
     } else if ((fx || fz) && late.camScreenMove?.()) {
@@ -117,7 +116,7 @@ function updatePlayer(dt) {
   if (dir && state.fishing?.active) state.fishing.stop(); // 움직이면 낚시를 그만둠 (#44)
   if (p.riding) {
     const d = p.riding;
-    let want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (p.joyMag > 0.75 || !joy.active ? 1 : 0.6) * (1 + augV(save, 'deer')) : 0; // 노루 친구 (#159)
+    let want = dir ? (p.running ? DEER.rideRun : DEER.rideWalk) * (joy.active ? STICK.rideMin + (1 - STICK.rideMin) * p.joyMag : 1) * (1 + augV(save, 'deer')) : 0; // 노루 친구 (#159)
     if (d.pal) want = late.deerPalWant(want); /* 내 노루 (#247): 안장·친해짐·배고픔 */
     d.speed += (want - d.speed) * Math.min(1, dt * 5);
     if (dir && (joy.active || p.target)) d.heading += wrapA(Math.atan2(dir.x, dir.z) - d.heading) * Math.min(1, dt * 6);
@@ -140,10 +139,10 @@ function updatePlayer(dt) {
     orientBody(runner.root, p.heading); // 노루 위: 기울기 없이 (#107)
     followLight(); return;
   }
-  const slow = joy.active && p.joyMag < 0.6;
+  const jk = joy.active ? p.joyMag : 1; /* #313: 스틱 당긴 만큼 (곡선). 예전엔 0.6 아래 4m/s·위 5m/s 두 단계 */
   let want, acc = 8;
-  if (p.ride) { const r = rideWant(dt, dir, slow); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
-  else want = dir ? (slow ? 4 : p.running ? 10 : 5) * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.punkSpeed?.() ?? 1) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) * (late.swarmSpeed?.() ?? 1) : 0; /* 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138) */
+  if (p.ride) { const r = rideWant(dt, dir, joy.active ? STICK.rideMin + (1 - STICK.rideMin) * jk : 1); want = r.want; acc = r.acc; if (!dir && r.coast) dir = r.coast; } // 탈것 (#69): 신발·버프 없이 탈것 속도만
+  else want = dir ? (p.running ? 10 : 5) * jk * shoeSpeed(save) * (buff.mul('speed') + (late.augSpeed?.() ?? 0)) * (late.punkSpeed?.() ?? 1) * (late.fieldSlow?.() ?? 1) * (late.chargeSlow?.() ?? 1) * (state.swim ? TEWAK.speed : 1) * (late.swarmSpeed?.() ?? 1) : 0; /* 신발 단계만큼 빨라짐. 오름 위 길 밖 풀밭은 조금 느림 (#138) */
   p.speed += (want - p.speed) * Math.min(1, dt * acc);
   if (dir) {
     if (p.target) p.heading += wrapA(Math.atan2(dir.x, dir.z) - p.heading) * Math.min(1, dt * 12);
@@ -373,7 +372,7 @@ function step(now) {
   const slope = (groundAt(player.pos.x + fx, player.pos.z + fz) - groundAt(player.pos.x - fx, player.pos.z - fz)) / 1.2;
   const rideStill = !!player.cart || rig.still(); rig.tick(dt, player.speed); // 탈것 (#69)
   // 비탈 숙임(뼈)은 맞는 동안 줄여 움찔 기울기(root)와 겹쳐 눕지 않게 (#107)
-  runner.animate(dt, { kick: state.armKick || 0, rl: state.reloadK || 0, speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, edur: EMOTE_BY[player.pose]?.dur || 2, over: state.emo.overlay() && { ...state.emo.overlay(), dur: EMOTE_BY[state.emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)) * (player.knock ? 1 - flinchK(player.knock.t) : 1), tool: save.equip.tool, dur: toolNow().time, rod: state.fishing ? state.fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
+  runner.animate(dt, { soft: true, kick: state.armKick || 0, rl: state.reloadK || 0, speed: rideStill ? 0 : player.speed, running: player.running, pose, t: player.poseT, edur: EMOTE_BY[player.pose]?.dur || 2, over: state.emo.overlay() && { ...state.emo.overlay(), dur: EMOTE_BY[state.emo.overlay().id].dur }, air: player.air && !rideStill, jumpV: player.jumpV, slope: player.riding || rideStill ? 0 : Math.max(-1, Math.min(1, slope)) * (player.knock ? 1 - flinchK(player.knock.t) : 1), tool: save.equip.tool, dur: toolNow().time, rod: state.fishing ? state.fishing.elev : 0.4, face: hp.isDown ? 'shut' : player.knock ? 'wide' : null });
   state.fishing?.update(dt); // 낚싯대·찌는 손 위치를 따라감 (#44)
   marker.rotation.z += dt;
   tickCairnLod(dt);

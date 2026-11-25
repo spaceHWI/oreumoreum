@@ -470,7 +470,7 @@ export function buildRunner(opts = {}) {
     mats.shoes.color.set(of.shoes.color);
   }
 
-  const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0 };
+  const st = { phase: 0, blend: 0, slope: 0, clock: 0, pick: 0, walk: false };
   // pose: 'move' | 'wave' | 'cheer' | 'sit' | 'photo' | 'crouch' | 'carry' | 'flail' | 'fish'
   // slope: 진행 방향 비탈 (높이/거리, 오르막 +)
   // 눈 (#74): 사람마다 박자가 다름(처음 간격 무작위). face: 'shut' 감은 채(쓰러짐), 'wide' 크게(받힘·놀람). lid(0..1) 를 주면 그대로 (확인용)
@@ -557,11 +557,12 @@ export function buildRunner(opts = {}) {
         chest.scale.setScalar(1 + Math.sin(t * 1.1) * 0.025); break; }
     }
   }
-  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2, kick = 0, rl = 0, post = null }) {
+  function animate(dt, { speed, running, pose, t, air, jumpV, slope = 0, tool = 1, dur = 0.9, carry = 1, rod = 0.4, face = null, lid = null, over = null, edur = 2, kick = 0, rl = 0, post = null, soft = false }) {
     if (model) tickEyes(dt, face, lid, pose);
     st.clock += dt; st.pick += ((pose === 'crouch' ? 1 : 0) - st.pick) * Math.min(1, dt * 14);
-    const moving = speed > 0.1 && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'aim' || pose === 'carry');
-    st.blend += ((moving ? 1 : 0) - st.blend) * Math.min(1, dt * 10);
+    st.walk = st.walk ? speed > 0.06 : speed > (soft ? 0.25 : 0.1); /* #313: 서기↔걷기 여유 — 느린 걸음 경계에서 번갈아 바뀌지 않게 */
+    const moving = st.walk && (pose === 'move' || pose === 'throw' || pose === 'bow' || pose === 'aim' || pose === 'carry');
+    st.blend += ((moving ? (soft && !running ? Math.min(1, 0.45 + speed * 0.14) : 1) : 0) - st.blend) * Math.min(1, dt * 10); /* soft: 느린 걸음은 다리를 덜 벌림 (빠르기에 맞춰) */
     // 다리가 길어진 만큼(#177) 걸음은 조금 느리고 덜 벌림: 다리 길이 x 벌림 x 박자가 예전과 같아 발이 미끄러져 보이지 않음
     st.phase += dt * speed * (running ? 1.05 : 1.6) * (model ? STRIDE.rate : 1);
     const amp = (running ? 0.95 : 0.55) * st.blend * (model ? STRIDE.amp : 1);
@@ -723,5 +724,5 @@ export function buildRunner(opts = {}) {
   const setPhase = (ph) => { st.phase = ph; st.blend = 1; };
   // 장비 하나만 바꾸기 (확인용). 저장되는 값은 outfit.gear
   const setGear = (slot, key) => { if (model && ACCESSORIES[key]) model.wear(slot, key); };
-  return { root, apply, animate, setTint, setPhase, setGear, eye: model ? eye : null };
+  return { root, apply, animate, setTint, setPhase, setGear, eye: model ? eye : null, walking: () => st.walk };
 }

@@ -16,6 +16,7 @@ import { player, life } from './place.js';
 import { cam } from './camera.js';
 import { panelOpen, topFit } from './hud.js';
 import { joy, setGait } from './input.js';
+import { STICK } from '../balance.js';
 import { toggleFullscreen, screenInfo } from './screen.js';
 import { director } from './director.js';
 
@@ -62,7 +63,7 @@ function tick() {
   const on = B.classList.contains('simple') && !B.classList.contains('tut');
   for (const [id, t] of flashT) { const n = t - dt; if (n <= 0) { flashT.delete(id); $(id)?.classList.remove('flash'); topFit.dirty(); } else flashT.set(id, n); }
   // 조이스틱 끝까지 = 달리기 (단순 화면에는 달리기 버튼이 없음)
-  if (on && isTouch) { const run = joy.active && Math.hypot(joy.x, joy.y) > 0.92 ? 1 : 0; if (run !== ran) { ran = run; setGait(run); } }
+  if (on && isTouch) { const m = joy.active ? Math.hypot(joy.x, joy.y) : 0, run = m > (ran ? STICK.runOff : STICK.runOn) ? 1 : 0; /* 여유 (#313) */ if (run !== ran) { ran = run; setGait(run); } }
   else if (ran) { ran = 0; setGait(0); }
   if ((tickT -= dt) > 0) return; tickT = 0.25;
   for (const [id, f] of FLASH) { const v = f() || ''; if (seen.has(id) && seen.get(id) !== v && v && on && !$(id).hidden) flash(id); seen.set(id, v); }

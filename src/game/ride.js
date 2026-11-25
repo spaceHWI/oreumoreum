@@ -60,13 +60,12 @@ export function toggleRide() {
 }
 // 이번 프레임 목표 속도. 기울기는 진행 방향 앞뒤 땅 높이로. 스케이트보드는 오르막이면 들고 걷고, 손을 떼도 관성으로 미끄러짐
 const _coast = new THREE.Vector3();
-export function rideWant(dt, dir, slow) {
+export function rideWant(dt, dir, k = 1) { /* k: 스틱 당긴 만큼 속도 비율 (#313, 예전엔 slow 면 0.6) */
   const p = player, R = RIDE_BY[p.ride];
   const hx = dir ? dir.x : Math.sin(p.heading), hz = dir ? dir.z : Math.cos(p.heading);
   const g = (height(p.pos.x + hx * 1.5, p.pos.z + hz * 1.5) - height(p.pos.x - hx * 1.5, p.pos.z - hz * 1.5)) / 3;
   p.rideG = g;
   if (!R.up && dir) { const c = p.rideC ? g > RIDES.carryOut : g > RIDES.carryIn; if (c !== p.rideC) { p.rideC = c; syncRideLook(); late.net.send(true); } }
-  const k = slow ? 0.6 : 1;
   if (p.rideC) return { want: dir ? RIDES.carry * k : 0, acc: 8 };
   const v = rideSpeed(p.ride, g, onRoad(p.pos.x, p.pos.z)) * (1 + augV(save, 'deer')); // 노루 친구 (#159): 탈것 속도
   if (dir) return { want: v * k, acc: R.glide ? RIDES.glideAccel : RIDES.accel };
