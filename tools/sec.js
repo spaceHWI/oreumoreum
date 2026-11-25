@@ -872,6 +872,16 @@ async function startServers() {
       const lost = await put('dev', GB.token, { ...(await meOf('dev', GB.token)), coins: before + (g2?.n || 0) });
       const mB3 = await meOf('dev', GB.token);
       ok(g3?.n === 7 && lost.j.fixed.includes('gift') && lost.j.fix.coins === mB3.coins && mB3.coins === before + (g2?.n || 0) + 7, `못 받은 알림의 귤은 서버가 넣어 줌 (${before} → ${mB3.coins})`);
+      { /* #312: 귤 총량 (주기 앞뒤 두 사람 합이 같음), 귤을 깎는 응답에도 받은·준 누적이 실림 (클라이언트가 그사이 준 귤을 덮어쓰지 않게) */
+        await put('dev', C2.token, await meOf('dev', C2.token)); /* 앞에서 준 7개를 C 저장에 먼저 넣어 둠 */
+        const c0 = await meOf('dev', C2.token), b0 = await meOf('dev', GB.token), sum0 = c0.coins + b0.coins;
+        const g4 = await give(cq, idOf(bq), 4);
+        await put('dev', C2.token, { ...c0 }); await put('dev', GB.token, { ...b0 });
+        const c1 = await meOf('dev', C2.token), b1 = await meOf('dev', GB.token);
+        ok(g4?.n === 4 && c1.coins + b1.coins === sum0 && c1.coins === c0.coins - 4, `주기 앞뒤 두 사람 귤 합이 같음 (${sum0} → ${c1.coins + b1.coins})`);
+        const big = await put('dev', C2.token, { ...c1, coins: c1.coins + NET.earnBurst * 3 });
+        ok(big.j.fixed.includes('coins') && big.j.fix.coins != null && big.j.fix.gift?.out === c1.gift.out && big.j.fix.gift?.in === c1.gift.in, `귤을 깎는 응답에 받은·준 누적도 (${JSON.stringify(big.j.fix.gift)})`);
+      }
       // 받지 않기
       await put('dev', GB.token, { ...mB3, giftOff: 1 });
       ok((await give(cq, idOf(bq), 1))?.no === 'off', "'귤 선물 받지 않기' 면 거절");

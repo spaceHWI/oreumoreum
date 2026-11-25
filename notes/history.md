@@ -2229,3 +2229,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
   - 빈 동안 몫: 방에 붙어 있어도 내 것 더미는 기기 시각(`store.localSeen`)으로 채움(dumpers catchUp ownOnly)
   - 구역 깨끗함·꽃·구역 완료·오름 진행·퀘스트·순위: 내 화면 값(내 것 + 함께 쓰레기 산) 그대로. 방의 돌하르방은 그 구역 쓰레기 산을 다 치울 때
   - DUMP.hourFrac 0.4 → 0.25(혼자 값으로), crowdExp 1 유지(쓰레기 산에만 닿음). 확인 `tools/crowd.js` 4)(사람 수별 내 것·함께 1시간 셈), `tools/ownmsgs.js [옛 뿌리]`(줍기 메시지 앞·뒤), sec.js 내 것 더미 줄
+
+## #312 귤 줄 때 내 귤이 안 줄어듦 (2026-11-25)
+- 원인: 저장 응답이 오는 사이 준 귤. 저장을 보낸 뒤 귤을 주면 'gave' 로 내 귤이 먼저 빠지는데, 그 저장이 귤을 깎아 맞추는(coins/items) 응답이면 `fix.coins` 만 있고 받은·준 누적(gift)이 없어 onFix 가 보낸 때의 귤(주기 전)으로 덮음 → 준 귤이 되살아남. 다음 저장은 서버 몫(earnBurst)으로 그대로 받아 줘 복사로 굳음
+- 서버(`accounts.js put`): `fix.coins` 를 보낼 때는 늘 `fix.gift`(이 저장이 셈한 받은·준 누적)도. 클라이언트(`online.js push`): 옛 서버가 귤만 보내면 보낸 때의 gift 로 채움. start.js onFix 가 그 차이만큼 다시 빼고 더함
+- 검사: `tools/give.js` 저장 응답을 2.5초 늦추고 그사이 1개 주기(고치기 전 FAIL 재현), `tools/sec.js` 주기 앞뒤 두 사람 합·깎는 응답에 gift
