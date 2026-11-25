@@ -5,7 +5,7 @@
 //   --md 면 notes/story-text.md 의 '목록' 표(id · 어디서 · 글)를 찍음
 import fs from 'fs';
 const { STORY_TEXT, MUTTER_TEXT, RADIO, RADIO_SITU, NOTES, CLUE_TEXT } = await import('../src/punktext.js');
-const { QUESTS, MEET, CAVE, SEASON } = await import('../src/balance.js');
+const { QUESTS, MEET, CAVE, SEASON, FIELD } = await import('../src/balance.js');
 const { TASKS } = await import('../src/daily.js');
 
 const rows = []; /* { id, where, t, pre: 단계 3 전에도 나올 수 있음, max: 글자 수 한도, lines: 줄 수 한도 } */
@@ -40,6 +40,8 @@ for (const c of CASES) {
   for (const [g, L] of Object.entries(c.hello || {})) L.forEach((s, i) => add(`case.${c.id}.hello.${g}.${i}`, '사건 종결 뒤 인사 (#233)', s, { pre, max: 28 }));
 }
 const zoneOf = (q) => q.z || 0;
+for (const [k, L] of Object.entries(FIELD.sight.offLine || {})) L.forEach((t, i) => add(`off.${k}.${i}`, '길 밖 곳 처음 갔을 때 한 줄 (#294)', t, { max: 34 }));
+FIELD.sight.off.forEach((o, i) => add(`off.name.${i}`, '길 밖 곳 이름 (#294)', o[2], { pre: o[0] <= 3, max: 18 }));
 for (const [kind, list] of [['main', QUESTS.main], ['side', QUESTS.side]]) for (const q of list) {
   const after3 = zoneOf(q) >= 4 || ['story:ufo'].includes(q.need) || (q.after === 'boss4');
   const pre = !after3;

@@ -1,14 +1,14 @@
 // 맵 전체 쓰기 (#138, notes/growth-loop.md 6절·7-1절) 게임 연결. 자리·모양은 src/field.js, 고리 계산은 src/fieldplan.js, 수치는 balance.js FIELD
 // - 적 소굴: 가까이 가면 그 구역 적 무리가 나오고, 다 쫓아내면 닫히며 귤 묶음(late.denLoot 자리: 재료는 다음 이슈). FIELD.den.reopen 초 뒤 다시 열림
 // - 숨은 보물: 하루(한국 시간) 한 번씩 열기(상호작용). 귤 + 가끔 드문 쓰레기(도감)
-// - 볼거리: 처음 가까이 가면 도감(볼거리 칸) + 귤
+// - 볼거리: 처음 가까이 가면 도감(볼거리 칸) + 귤. 길 밖 곳(#294, FIELD.sight.off)은 도감 없이 귤 + 한 줄, 퀘스트 셈 off@구역 · 다음 할 일 '안 가 본 곳'(late.offNext)
 // - 길 밖 걷기: 오름 위 풀밭은 조금 느림(신발 단계가 높을수록 덜) → update.js 가 late.fieldSlow 를 곱함
 // - 가 본 곳: 지도 격자에 밝혀 save.field.fog 에. 큰 지도(area.js drawMap → late.fieldMap)·미니맵(#minimap)에 가 본 곳·아이콘
 // - 줍기·클린하우스 자동 걷기의 길 밖 구간은 막히면 격자 길 찾기로 (autowalk.js setRoutePass)
 // 저장 save.field = { den: {id: 닫은 ms}, tr: {d: 날 번호, got: [id]}, sight: [id], fog: base64 }
 // (파일 순서는 src/modules.js: dump 뒤)
 import * as THREE from 'three';
-import { FIELD, ENEMY_DROP, ZONES, TRASH_TYPES, BAGS, POCKET } from '../balance.js';
+import { FIELD, ENEMY_DROP, ZONES, TRASH_TYPES, BAGS, POCKET, sightDef, sightGyul } from '../balance.js';
 import { shoeTier } from '../gearscore.js';
 import { createField } from '../field.js';
 import { DEX_LIST } from '../trash.js';
@@ -100,9 +100,10 @@ function tickSights(dt) {
   for (const s of field.sights) {
     if (F.sight.includes(s.id) || Math.hypot(s.x - player.pos.x, s.z - player.pos.z) > FIELD.sight.r + (s.kind === 'sandam' ? 3 : 0)) continue;
     F.sight.push(s.id); persist();
-    const dx = DEX_LIST.find((x) => x.id === s.id);
+    const dx = s.off ? null : DEX_LIST.find((x) => x.id === s.id); /* 길 밖 곳(#294)은 도감에 안 넣음 */
     if (dx) { const isNew = trash.store.dexAdd(dx.id); trash.store.commit(); onDexGet(dx, isNew); }
-    addCoins(FIELD.sight.gyul[s.zone] || 0, `볼거리 · ${s.name}`);
+    addCoins(sightGyul(sightDef(s.i)), `${s.off ? '길 밖' : '볼거리'} · ${s.name}`);
+    if (s.off) { const L = FIELD.sight.offLine?.[s.kind] || []; if (L.length) setTimeout(() => toast(L[s.i % L.length], 3.4), 900); late.questEv?.('off@' + s.zone); late.questTrackDirty?.(true); }
     if (s.kind === 'view') state.awe = 4;
     late.sightFound?.(s);
   }
@@ -227,6 +228,14 @@ late.tickField = (dt) => {
 
 /* ---------- 확인용 (window.__oreum.field) ---------- */
 // report(): 구역마다 놓은 수·길에서 거리·고리 한 바퀴 길이·배낭이 차는 곳에서 구역 클린하우스까지 (tools/field.js)
+/* ---------- 길 밖 곳 (#294): 퀘스트 셈·갈 곳·다음 할 일 ---------- */
+const offs = field ? field.sights.filter((s) => s.off) : [];
+const offGot = (s) => F.sight.includes(s.id);
+late.offFound = (z) => offs.filter((s) => s.zone === z && offGot(s)).length;
+late.offTotal = (z) => offs.filter((s) => s.zone === z).length;
+const offNear = (f) => { let b = null, bd = 1e12; for (const s of offs) { if (offGot(s) || !f(s)) continue; const d = (s.x - player.pos.x) ** 2 + (s.z - player.pos.z) ** 2 + (seenAt(s.x, s.z) ? 1e6 : 0); if (d < bd) { bd = d; b = s; } } return b; }; /* 안 가 본 칸에 있는 것부터 */
+late.offGo = (z) => { const s = offNear((q) => q.zone === z); return s ? new THREE.Vector3(s.x, height(s.x, s.z), s.z) : null; };
+late.offNext = (maxZ) => offNear((q) => q.zone <= maxZ);
 late.field = field && {
   api: field, save: F, seenAt, fog: () => { let n = 0, m = 0; for (let k = 0; k < FN * FN; k++) if (fogZone[k]) { m++; n += seen(k); } return +(n / m).toFixed(3); },
   revealAll() { fogBits.fill(255); fogVer++; fogDirty = true; },

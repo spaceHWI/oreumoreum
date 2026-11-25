@@ -2212,6 +2212,23 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - #307 [오류] 방 연결 InvalidStateError (iOS, 0.55.3 `src/online.js` presence): `open`(붙었음)이 옛 연결 것으로 남은 채 `ws` 만 새 연결(붙는 중)로 바뀌어 보내다 난 오류. 길 둘 — ① 서버가 오래 멈춤(idle)으로 내보낸 뒤 닫힘 알림이 오기 전에 화면을 눌러 다시 들어옴(`closed` 가 이미 참이라 `sleep()` 이 아무것도 안 했음) ② 끊겨서 다시 붙기 예약이 남은 채 쉬러 갔다 옴(쉬는 동안에도 붙고, 깨우면 연결이 둘)
   - 고침: 연결은 늘 하나 — `connect()` 가 먼저 `drop()`(옛 연결 알림 떼고 닫기·예약 지움·붙어 있었으면 `gone()`), 서버 idle 도 받는 즉시 `drop()`, 다시 붙기 예약은 `again` 하나로 두고 쉬기·닫기에서 지움
   - 검사 `node tools/wsrace.js`(가짜 WebSocket, 브라우저 없음. 고치기 전 InvalidStateError 재현). `tools/online.js` 의 낡은 '베타 안내 문구'(7일, #281 에서 글이 바뀜) 줄을 지금 글로
+- #308 정상 물건 흩어 놓기·금고 빼기: 표지석 둘레 표(`node tools/summitmap.js [출력] [이름표] [R]` — 상호작용 자리 out/tan·누르는 범위 겹침·금고가 정상 밖인지·그림 top/walk/back/hut/hare, notes/shots/308 before-*·after-*)
+  - 정상에 남김: 표지석·망원경(표지석 곁 2.9m → 4.3m, `CLUE.scope` out 0.8·tan -4.2)·표지석 뒤 쪽지(#208 이야기 자리)·사진사(인증샷 자리)·정상 돌탑(14m, 그대로)
+  - 옮김(임의값): 금고 관리 초소 → 굼부리 가는 길(toCrater) 190m 지점 왼쪽 6.5m 길가(구역 1, 문은 길을 봄, `MYST.safe` path·d·side·off). 초소 일지(사건 4 k4c)도 초소 곁 [-40.7,-433.5] z 1로. 금고 쪽지 n404 는 z 'hut'(쪽지함에 '굼부리 초소', 숫자 구역이면 그 구역 더미에서 떨어지므로)
+  - 정상 하르방(표지석 6m 옆) → 능선 길목(rim 정상 지점에서 올라오는 쪽 22m, 길가 4.4m, 올라오는 사람을 봄, maps.js). 터 5 망고 좌판 → 문 반대쪽 옆(`TOKEN.stall.sideZ` {5: -4.2}, 표지석 12m → 20m)
+  - 서바이벌 터 5(#253, 가장자리가 표지석 13m)·징 자리는 그대로. 모양이 바뀌는 일이라 기획 세션이 그림을 먼저 보여 준 뒤 배포
+- #294 길 밖 영역: 점검 도구 `tools/usemap.js`(40m 칸·빈 땅 비율·길 거리별 수, `--plan` 은 빈 땅을 덮을 자리 뽑기, 그림 notes/shots/294). 전 빈 땅 숲길 77%·사면 59%·굼부리 31% → 뒤 16%·17%·18% (`notes/journey.md` '맵 쓰임')
+  - 길 밖 곳 30곳 = 볼거리의 연장: `FIELD.sight.off`([구역, 모양, 이름, x, z]), id 는 list 뒤를 이어 `sight:9`~`sight:38` (서버 earn.js 가 `sightDef`·`sightGyul` 로 같이 인정, 계정마다 한 번). 도감엔 안 넣음. 모양 8가지는 src/field.js OFF_GEO(인스턴스, 기존 볼거리와 같은 그리기). 처음 가면 귤 `offGyul`(구역 1 은 5) + `offLine` 한 줄, 퀘스트 셈 `off@구역`(찾은 수, 받기 전 것도 셈)
+  - 곁가지 x-off1(숲길 3곳)·x-off1b(8곳)·x-off2(사면 3곳)·x-off4(굼부리 1곳), go `off@z` = 안 가 본 칸에 있는 못 찾은 곳부터. 보물 넷을 길 밖 곳 곁으로(`offTreasure`, id·값 그대로), 제보 흔적 `REPORT.wild` 60% 를 길 밖 곳 곁으로, 다음 할 일 `explore`(더미·소굴 뒤, 돌탑 앞)
+  - 확인 `node tools/offpath.js`(찾기·귤·퀘스트·추적·보물·다음 할 일), `tools/nexthint.js` 에 explore 단계, `tools/econ.js` 에 길 밖 곳 귤 줄(구역 날 벌이 5% 아래)
+  - 노루 무리는 그대로 둠(멀티 노루 메시지 크기 한도 NET.deerMax 와 엮여 있어 무리를 더하지 않음). 능선·정상은 빈 땅이 0% 라 더하지 않음
+- #300 쓰레기는 사람마다, 쓰레기 산만 함께 (사용자 메모 2026-11-24 17:52 '큰 거 아니면 각자'. 앞 실행의 '바닥 보장' 안은 버림)
+  - `HEAP.own`(['s','l','xl']) → heapdefs `HEAP_OWN`. 내 것 더미는 내 저장(save.trash.srv.battle.heaps)이 주인: online.js linkTrash 가 방 값(hi·hs·h)으로 덮지 않고 put·btake 를 보내지 않음. take 는 그대로 보내 방이 줍기 속도·번 몫(#144)만 셈
+  - 방(roomcore): 내 것 더미 칸은 늘 가득(옛 방 저장도), take 는 줄이지 않고 hs 도 안 보냄(못 받으면 {t:'h', no, own:1}), put·btake 무시, 빈 방 채우기·지킴이(zg) 판정은 쓰레기 산만
+  - 처음 방에 붙을 때 한 번(`store.ownInit`, S.own) 방을 따라 줄어 있던 내 것 더미를 가득으로. 손님·혼자 하기는 그대로
+  - 빈 동안 몫: 방에 붙어 있어도 내 것 더미는 기기 시각(`store.localSeen`)으로 채움(dumpers catchUp ownOnly)
+  - 구역 깨끗함·꽃·구역 완료·오름 진행·퀘스트·순위: 내 화면 값(내 것 + 함께 쓰레기 산) 그대로. 방의 돌하르방은 그 구역 쓰레기 산을 다 치울 때
+  - DUMP.hourFrac 0.4 → 0.25(혼자 값으로), crowdExp 1 유지(쓰레기 산에만 닿음). 확인 `tools/crowd.js` 4)(사람 수별 내 것·함께 1시간 셈), `tools/ownmsgs.js [옛 뿌리]`(줍기 메시지 앞·뒤), sec.js 내 것 더미 줄
 - #296 적 종류 다양화: 예전엔 서바이벌 판 패턴 중 포위·던지기가 물결 2~3(판의 1/3 뒤)부터라 첫 1분은 돌진뿐이고, 길가 적은 구역마다 한 종류(받기 = 조짐 → 돌진)라 '돌진만' 보였음(판 동안 마릿수 비율 base+rush: 구역 1 100%·2 77%·3 56%·4 47%·5 70%, tools/swarm.js 새 '패턴' 칸)
   - 기본 walk·chase 0.82배(rush·우두머리 걸음 그대로, ZONE_BOSS.walk 1.15 → 1.4). 역할 `SWARM.pat` zip 잽싼(기운 0.25·1.6배·지그재그)·heavy 묵직한(기운 5.5·0.5배·밀리지 않음·0.8초 휘두르기 조짐 뒤 1.6초 빈틈)·rock 빅풋(구역 3·4, 돌 1.2초 들어 올림, 떨어진 돌 3초 길을 막음). 판 첫 물결부터 섞임, 던지기는 구역 2 부터. 귤 × gyul 은 기운 배와 맞춤
   - 길가 무리도 한 마리마다 역할(`ENEMY_SPAWN.role`, game/foes.js ← enemies.js spawnPlan `hooks.roleFor`). 첫 싸움 전·우두머리/레이드/이야기 무리는 그대로. 던지는 놈 한 화면 3(폰·저사양 2), 머리 위 역할 색 마름모(InstancedMesh 하나)

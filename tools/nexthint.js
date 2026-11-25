@@ -76,6 +76,12 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
   await ev(() => { const o = window.__oreum; o.trash.api.heaps.forEach((h, i) => o.trash.setHeap(i, 0)); });
   await until(() => window.__oreum.quest.track()?.k !== 'after:heap', 12000); t = await note();
   if (t.k === 'after:den') { await ev(() => { const F = window.__oreum.field; for (const d of F.dens()) F.closeDen(d.id); }); await until(() => window.__oreum.quest.track()?.k !== 'after:den', 12000); t = await note(); }
+  if (t.k === 'after:explore') { /* #294 안 가 본 길 밖 곳: 누르면 그쪽으로 걸어감, 다 찾으면 돌탑 */
+    ok(/들판에 아직 안 가 본 곳/.test(t.text), `길 밖 곳: ${t.text}`); await shot('explore');
+    await ev(() => window.__oreum.quest.go()); await W(600); ok(await ev(() => !!window.__oreum.cleanhouse.autoState()), '길 밖 곳 쪽으로 걸어감'); await ev(() => window.__oreum.cleanhouse.autoStop());
+    await ev(() => { const o = window.__oreum, F = o.field; for (const s of F.api.sights) if (s.off && !F.save.sight.includes(s.id)) F.save.sight.push(s.id); });
+    await until(() => window.__oreum.quest.track()?.k !== 'after:explore', 12000); t = await note();
+  }
   ok(t.k === 'after:cairn' || t.k === 'after:den', `그 뒤에도 할 일: ${t.text}`);
   ok(!!t.text && t.shown, '할 일이 없다는 줄은 없음');
   console.log('\n다음 문구가 바뀐 순서:\n- ' + seq.join('\n- '));

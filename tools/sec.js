@@ -373,6 +373,16 @@ async function startServers() {
         const r3 = checkSave(P, { ...P, report: { d: DL.dateOfDay(DL.kstDayN(t) - 4), id: 'u01', got: 1 } }, acc, t), r4 = checkSave(P, { ...P, report: { d: date, id: 'zz9', got: 1 } }, acc, t);
         ok(r3.rec.why.report === 0 && r4.rec.why.report === 0, '지난 날짜·없는 제보는 인정 안 함');
       }
+      { // 길 밖 곳 (#294): save.field.sight 의 새 'sight:<list 뒤 번호>' 는 offGyul 인정(계정마다 한 번), 지웠다 다시 찾아도·없는 번호는 거절
+        const { FIELD, sightGyul } = await import('../src/balance.js'), L0 = FIELD.sight.list.length, j = FIELD.sight.off.findIndex((o) => o[0] === 2), id = `sight:${L0 + j}`, g = sightGyul(FIELD.sight.off[j]);
+        const f1 = checkSave(P, { ...P, coins: 100 + g, field: { ...(P.field || {}), sight: [id] } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!f1.fixed.length && f1.rec?.why?.sight === g, `길 밖 곳 ${id} 처음 찾음은 귤 ${g} 인정 (${f1.rec?.why?.sight})`);
+        let f2 = checkSave(f1.save, { ...f1.save, field: { ...f1.save.field, sight: [] } }, { ...f1.acc, savedAt: t + 1000 }, t + 2000);
+        f2 = checkSave(f2.save, { ...f2.save, coins: f2.save.coins + g, field: { ...f2.save.field, sight: [id] } }, { ...f2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
+        ok(f2.rec.why.sight === 0 && f2.fixed.includes('coins'), '길 밖 곳을 지웠다 다시 찾아 두 번 받기 거절');
+        const f3 = checkSave(P, { ...P, field: { ...(P.field || {}), sight: [`sight:${L0 + FIELD.sight.off.length}`] } }, acc, t);
+        ok(f3.rec.why.sight === 0, '없는 번호의 볼거리는 인정 안 함');
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };
@@ -513,12 +523,13 @@ async function startServers() {
     await sleep(200);
     ok(!W.last('pos'), '말 속도(19m/s)는 그대로 둠');
     // 줍기: 같은 더미 마지막 하나 동시 줍기·빠른 줍기
-    const hi = W.msgs[0], h = hi.heaps.indexOf(Math.min(...hi.heaps.filter((n) => n > 0))), full = hi.heaps[h];
+    const { HEAP_OWN } = await import('../server/src/heaps.js'); // #300 내 것 더미(쓰레기 산 말고)는 방이 남은 수를 모름 → 함께 더미로
+    const hi = W.msgs[0], h = hi.heaps.indexOf(Math.min(...hi.heaps.filter((n, i) => n > 0 && !HEAP_OWN[i]))), full = hi.heaps[h];
     const X = await sock('dev', 'oreum-namsongi-battle', { ch: 4 });
     let sent = 0;
-    for (let r = 0; r < Math.ceil(full / 4) + 2; r++) { for (const s of [W, X]) { for (let j = 0; j < 3; j++) { s.send({ t: 'take', h }); sent++; } } await sleep(1100); }
+    for (let r = 0; r < Math.ceil(full / (4 * NET.takeMax)) + 2; r++) { for (const s of [W, X]) { for (let j = 0; j < 2; j++) { s.send({ t: 'take', h, n: NET.takeMax }); sent += NET.takeMax; } } await sleep(1100); }
     await sleep(300);
-    const no = [W, X].reduce((n, s) => n + s.msgs.filter((m) => m.t === 'h' && m.h === h && m.no).length, 0);
+    const no = [W, X].reduce((n, s) => n + s.msgs.filter((m) => m.t === 'h' && m.h === h && m.no).reduce((a, m) => a + (m.no | 0), 0), 0);
     ok(sent - no === full, `동시 줍기: 더미 ${full}개에 ${sent}번 → 받아 준 줍기 ${sent - no} (나머지는 되돌리라고 알림)`);
     const fast = await sock('dev', 'oreum-namsongi-battle', { ch: 5 });
     // #137: 줍기는 더미마다 묶어 {t:'take', h, n} 으로 옴. 한 번에 takeMax 개씩 4번 = takePerSec 넘게
@@ -528,10 +539,26 @@ async function startServers() {
     ok(noN >= want - NET.takePerSec - 1, `빠른 줍기(초당 ${NET.takePerSec}개 넘게) 되돌림 (${want}개 중 ${noN}개)`);
     fast.send({ t: 'take', h: h2, n: 9999 }); await sleep(300);
     ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 2, '한 번에 아주 많이 줍기도 한도 안에서만');
+    { // #300 내 것 더미(쓰레기 산 말고 모두): 둘이 같은 더미에서 주워도 방 더미는 그대로·알림 없음, 번 몫은 각자, 줍기 속도 한도는 그대로, 쌓기·동료 줍기는 안 받음
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL, HEAP_GYUL } = await import('../server/src/heaps.js');
+      let T0 = 1e12; const core = createRoomCore({ now: () => T0 }), ms = { a: [], b: [] };
+      const pa = core.join((x) => ms.a.push(JSON.parse(x)), { acct: 'own-a' }), pb = core.join((x) => ms.b.push(JSON.parse(x)), { acct: 'own-b' });
+      const oh = HEAP_OWN.indexOf(true); T0 += 2000;
+      for (let j = 0; j < HEAP_FULL[oh] + 5; j++) { core.message(pa, JSON.stringify({ t: 'take', h: oh })); core.message(pb, JSON.stringify({ t: 'take', h: oh })); }
+      core.step(); const ea = new Map(core.takeEarned() || []);
+      const nA = HEAP_FULL[oh] + 5, gyulA = Math.round((ea.get('own-a') || 0) / HEAP_GYUL[oh]);
+      ok(core.heaps()[oh] === HEAP_FULL[oh] && !ms.b.some((m) => m.t === 'hs') && gyulA === nA && Math.round((ea.get('own-b') || 0) / HEAP_GYUL[oh]) === nA, `내 것 더미: 둘이 ${nA}번씩 주워도 방 더미 그대로·hs 없음·번 몫은 각자 ${gyulA}개`);
+      T0 += 2000; core.message(pa, JSON.stringify({ t: 'take', h: oh, n: 64 })); const no1 = ms.a.filter((m) => m.t === 'h' && m.own && m.no).reduce((a, m) => a + m.no, 0);
+      ok(no1 === 64 - NET.takeMax, `내 것 더미도 한 번에 takeMax(${NET.takeMax})까지만 (되돌림 ${no1})`);
+      core.message(pa, JSON.stringify({ t: 'put', h: oh, n: 3 })); core.message(pa, JSON.stringify({ t: 'btake', h: oh })); core.step();
+      ok(core.heaps()[oh] === HEAP_FULL[oh], '내 것 더미 쌓기·동료 줍기는 방이 받지 않음');
+      const old = HEAP_FULL.map(() => 0), c2 = createRoomCore({ now: () => T0, heaps: old });
+      ok(c2.heaps().every((v, i) => (HEAP_OWN[i] ? v === HEAP_FULL[i] : v === 0)), '옛 방 저장의 내 것 더미 칸은 가득으로 (함께 더미는 그대로)');
+    }
     { // #172 동료 줍기(btake): 더미는 줄지만 번 몫엔 안 셈 → 동료가 주운 몫이 내 귤로 잡히지 않음. 방에서도 마지막 BUDDIES.keep 은 남김
       const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL } = await import('../server/src/heaps.js'); const { BUDDIES } = await import('../src/balance.js');
       let T0 = 1e12; const core = createRoomCore({ now: () => T0 }); const bp = core.join(() => {}, { acct: 'buddy-test' });
-      const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
+      const bh = HEAP_FULL.findIndex((n, i) => n >= 10 && !HEAP_OWN[i]); /* #300 함께 더미 */ for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
       ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
     }
     { // #181 오름 레이드: 방이 기운·기여·보상을 셈. 피해 부풀리기·없는 더미 줍기·보상 두 번·남의 레이드 몸·바로 열기 거절
