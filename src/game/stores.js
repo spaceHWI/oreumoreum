@@ -1,12 +1,13 @@
 // 레스토랑 스톤, 가게 팝업 틀, 루이네 미장원, LEAP, 버프 표시, 가장자리 가게 표시, 상호작용(F)·줍기(E) 키 (#86 에서 main.js 를 나눔. 파일 순서는 src/main.js, 규칙은 notes/prototype-v1.md 코드 구조)
 import { itemScore, scoreDiff, buyGain, slotTier, bootsOn } from '../gearscore.js';
 import { shoeSpeed } from '../loot.js';
-import { SHOES, BOOTS, STONE, MANJOK, INN, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG, GEAR_SHOP, OUTFIT_SETS } from '../balance.js';
+import { SHOES, BOOTS, STONE, MANJOK, INN, BAR, SHOP_ST, HAIR, SALON, LEAP, WEAR, CLOTHES, wearPrice, PHOTOG, GEAR_SHOP, OUTFIT_SETS } from '../balance.js';
 import { SHOP_ICON } from '../shops.js';
 // 장비점·가게 안내 로고 (#128): 둥근 현무암 판에 흰 아이콘 (가게 창 위 칸)
 const iconLogo = (path) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96"><circle cx="12" cy="12" r="11.5" fill="#2f3336"/><g transform="translate(4.2 4.2) scale(.65)" fill="none" stroke="#f3ecdc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`);
 const GEAR_LOGO = iconLogo(SHOP_ICON.gear), MANJOK_LOGO = iconLogo(SHOP_ICON.manjok), INN_LOGO = iconLogo(SHOP_ICON.inn), DIR_LOGO = iconLogo(ic('map'));
 import { leapLogo } from '../leap.js';
+import { barLogo } from '../bar.js';
 import { weeklyNow, weekLeftDays, onShelf } from '../weekly.js';
 import { salonLogo } from '../salon.js';
 import { FOOD_SVG, BUFF_ICON, buffText } from '../stoneicons.js';
@@ -47,6 +48,7 @@ const SHOP_POP = {
   manjok: { head: { logo: MANJOK_LOGO, name: MANJOK.name, tag: MANJOK.tag }, fill: (grid) => buildMealMenu(grid, 'manjok'), when: stoneOpen, can: () => !!MANJ && !mealS.on && !cutS.on }, // #167
   salon: { head: { logo: salonLogo(), name: '루이네 미장원', wide: true }, fill: (grid) => buildSalonMenu(grid), when: stoneOpen, can: () => !!SAL && !!save.look && !cutS.on && !mealS.on },
   inn: { head: { logo: INN_LOGO, name: INN.name, tag: INN.tag, cls: 'inn' }, fill: (grid) => late.fillInn?.(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on && !late.innBusy?.() }, // #270 숙소 (game/inn.js 가 채움)
+  bar: { head: { logo: barLogo(), name: BAR.name, tag: BAR.tag, cls: 'inn' }, fill: (grid) => late.fillBar?.(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on && !late.innBusy?.() && !late.barSit?.() }, // #316 Bar 소설 (game/bar.js 가 채움, 밤에만 엶)
   ride: { head: { logo: RIDE_LOGO, name: '탈것 가게' }, fill: (grid) => buildRideMenu(grid), when: stoneOpen, can: () => !mealS.on && !cutS.on }, // #69
   leap: { head: { logo: leapLogo(), name: 'LEAP', wide: true, cls: 'leap' }, tabs: (el) => buildLeapTabs(el), fill: (grid) => buildLeapCards(grid), onOpen: () => startLeap(), when: stoneOpen, can: () => !!LEAPB && !cutS.on && !mealS.on },
   // 장비점 (#128): 도구·배낭·무기 (game/shop.js 가 채움). #221 튜토리얼 집게·배낭 단계부터 가게 거리 장비점이 먼저 열림 (shopgate 가 셔터를 올림)

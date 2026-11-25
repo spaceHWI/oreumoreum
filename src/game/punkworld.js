@@ -188,7 +188,7 @@ const fightNow = () => !!player.down || !!late.pace?.threat?.() || (state.tensio
 function syncChip() { chip.hidden = !P.unread.length; chip.querySelector('i').textContent = P.unread.length > 1 ? String(P.unread.length) : ''; }
 // 쪽지 창 (#199): 종이 모양·이전/다음 넘기기·그림은 game/noteview.js
 const view = createNoteView({
-  P, NOTES, zoneName: (z) => (z === 'cave' ? '용암 동굴' : z === 'top' ? '정상' : z === 'case' ? '사건 파일' : zoneName(z)), persist, sound: () => late.sound, /* 동굴 쪽지 (#195) */
+  P, NOTES, zoneName: (z) => (z === 'cave' ? '용암 동굴' : z === 'top' ? '정상' : z === 'hut' ? '굼부리 관리 초소' : z === 'case' ? '사건 파일' : zoneName(z)), persist, sound: () => late.sound, /* 동굴 쪽지 (#195) */
   onRead: () => syncChip(),
   // 감독은 창이 닫힐 때까지 기다림 (도감에서 연 것은 도감 위에 뜸)
   onOpen: (dex) => { if (!dex) { closePanels(); holdWin('story', 'note', 'punk-note'); } late.sound?.snip?.(); },
@@ -217,7 +217,7 @@ if (trash) trash.on((ev) => {
   if (ev !== 'trash' || !state.sessionOn || late.tut?.active) return;
   // 하루 쓰레기 수 (칭호 '오늘도 무급')
   const d = kstDate(); if (P.day.d !== d) { P.day.d = d; P.day.n = 0; } P.day.n++; if (P.day.n >= PUNK.unpaid) once('trash-day-500'); else if (P.day.n % 25 === 0) persist();
-  if (Math.random() < PUNK.note.p) { const z = trash.zoneAt(player.pos.x, player.pos.z) || 0; if (z >= 1) dropNote(z); }
+  if (Math.random() < PUNK.note.p * (late.barMul?.('note') ?? 1)) { /* #316 '여운': 쪽지가 더 잘 나옴 */ const z = trash.zoneAt(player.pos.x, player.pos.z) || 0; if (z >= 1) dropNote(z); }
 });
 syncChip();
 // 도감 '주운 쪽지' 칸 (#140 의 재료·전설 칸 뒤)
@@ -228,7 +228,7 @@ syncChip();
     for (const n of NOTES) {
       const got = !!P.notes[n.id], c = document.createElement('div'); c.className = 'dex-cell note' + (got ? '' : ' locked');
       c.innerHTML = `<span class="dex-ic">${iconSvg(BADGE_ICONS['b-notes'])}</span><b></b><small></small>`;
-      c.querySelector('b').textContent = got ? n.t : '???'; c.querySelector('small').textContent = got ? (P.unread.includes(n.id) ? '안 읽음' : n.from) : n.z === 'cave' ? '동굴' : n.z === 'top' ? '정상' : n.z === 'case' ? '사건' : `구역 ${n.z}`; /* 동굴 쪽지 (#195), 정상 첫 쪽지 (#208) */
+      c.querySelector('b').textContent = got ? n.t : '???'; c.querySelector('small').textContent = got ? (P.unread.includes(n.id) ? '안 읽음' : n.from) : n.z === 'cave' ? '동굴' : n.z === 'top' ? '정상' : n.z === 'hut' ? '굼부리 초소' : n.z === 'case' ? '사건' : `구역 ${n.z}`; /* 동굴 쪽지 (#195), 정상 첫 쪽지 (#208), 금고 쪽지 (#308) */
       if (got) c.addEventListener('click', () => openNote(n.id, { dex: true }));
       g.append(c);
     }

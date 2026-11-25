@@ -6,7 +6,7 @@
 // - 퀘스트: save.quest.done 에 새로 들어온 퀘스트의 보상 귤. 계정마다 퀘스트 하나에 한 번 (cred.q, 처음부터 다시 해도 두 번 안 받음)
 // - 우두머리: save.boss.done[구역] 이 늘면 ZONE_BOSS 귤. 구역마다 bossGap 초에 한 번
 // - 소굴: save.field.den[id] 닫은 시각이 새로우면 FIELD.den 귤. 소굴마다 denGap 초에 한 번
-// - 보물: save.field.tr.got 의 새 id (서버 날짜 하루에 한 번), 볼거리: save.field.sight 의 새 id (계정마다 한 번)
+// - 보물: save.field.tr.got 의 새 id (서버 날짜 하루에 한 번), 볼거리: save.field.sight 의 새 id (계정마다 한 번, 길 밖 곳 #294 포함)
 // - 오늘의 할 일 (#125, src/daily.js): save.ach.daily 의 받은 할 일(claimed)·셋 다(all). 서버 날짜(오늘·어제)의 그날 목록에 있는 것만, 할 일마다 하루 한 번
 //   이어 오기: 서버가 저장을 받은 날로 따로 셈(cred.run). save.ach.run.got 에 새로 들어온 날 수가 서버의 연속 날 수 이하면, 이번 연속에서 한 번
 //   보상 구역은 지난 저장의 journey.maxZ (받은 저장은 지난 것 + 1 까지만 믿음)
@@ -17,7 +17,7 @@
 // - 금고 (#212): save.myst.safe 가 새로 1 이 되면 MYST.safe.gyul. 계정마다 한 번 (cred.safe, 처음부터 다시 해도 두 번 안 받음)
 // - 미확인 제보 (#238, src/cases/reports.js): save.report = { d, id, got } 의 got 이 서버 날짜(오늘·어제)면 REPORT.gyul. 날마다 한 번 (cred.rp 날짜)
 // 기록이 없는 것(적·업적·낚시 등)은 지금처럼 credit 에서
-import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM, CAVE, MYST, REPORT } from '../../src/balance.js';
+import { NET, QUESTS, ZONE_BOSS, FIELD, LOOT, SWARM, CAVE, MYST, REPORT, sightDef, sightGyul } from '../../src/balance.js';
 import { REPORT_BY } from '../../src/cases/reports.js';
 import { sellValue, GEAR_SLOTS, curItem, clothId, WEAR_K } from '../../src/loot.js';
 import { slotTier } from '../../src/gearscore.js';
@@ -132,9 +132,9 @@ export function recognize(P, S, sold, cred, t) {
   const sg = Array.isArray(S.field?.sight) ? S.field.sight : [], psg = new Set(Array.isArray(P.field?.sight) ? P.field.sight : []);
   for (const id of sg.slice(0, 40)) {
     const m = /^sight:(\d{1,2})$/.exec(id); if (!m) continue;
-    const s = FIELD.sight.list[+m[1]]; if (!s) continue;
+    const s = sightDef(+m[1]); if (!s) continue; /* 길 밖 곳(#294)은 list 뒤를 이음 */
     if (psg.has(id) || C.sight.includes(id)) continue;
-    C.sight.push(id); why.sight += FIELD.sight.gyul[s[0]] || 0;
+    C.sight.push(id); why.sight += sightGyul(s);
   }
   // 6-2) 금고 (#212): 계정마다 한 번
   if (S.myst?.safe === 1 && P.myst?.safe !== 1 && !C.safe) { C.safe = 1; why.safe = MYST.safe.gyul; }

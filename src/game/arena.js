@@ -157,7 +157,7 @@ function showTag(a, d) {
     tagKey = key; tag.classList.toggle('rest', l > 0);
     tag.firstChild.textContent = l > 0 ? `${T.restTag} ${mmss(l)}` : T.gong;
     const rec = zoneRecLv(a.zone), my = myLv(save), tt = SW()?.runT(a.zone) || 0;
-    tag.lastChild.innerHTML = l > 0 ? '' : `<span title="권장 레벨">권장 Lv ${rec}${my < rec ? ` (지금 Lv ${my})` : ''}</span><span title="버티는 시간">${mmss(tt)} 버티기</span>`;
+    tag.lastChild.innerHTML = l > 0 ? '' : `<span title="권장 레벨">권장 Lv ${rec}</span><span title="버티는 시간">${mmss(tt)} 버티기</span>`;
   }
   tag.hidden = false; tag.style.transform = `translate(${((pv.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-pv.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px) translate(-50%, -100%)`;
 }

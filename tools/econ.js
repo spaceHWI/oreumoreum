@@ -206,8 +206,8 @@ async function main() {
     const skipK = (k) => SKIP && st.tutDone && (k === 'weapon' || GEAR.includes(k));
     const cur = (k) => (k === 'weapon' ? st.weapon : e[k]);
     const next = (k) => {
-      if (skipK(k)) { const L = k === 'weapon' ? (battle ? WEAPONS : []) : LIST[k], i = topOf(k); return cur(k) <= i && L[i] ? { ...L[i], tier: L[i].tier ?? i + 1 } : null; }
-      if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon ? WEAPONS[st.weapon] : null;
+      if (skipK(k)) { const L = k === 'weapon' ? (battle ? WEAPONS : []) : LIST[k], i = topOf(k); return cur(k) <= i && L[i] && !(L[i].lv > st.lv) ? { ...L[i], tier: L[i].tier ?? i + 1 } : null; }
+      if (k === 'weapon') return battle && !WEAPONS[st.weapon]?.soon && !(WEAPONS[st.weapon]?.lv > st.lv) ? WEAPONS[st.weapon] : null; /* 무기 열리는 레벨 (#298) */
       if (WS[k]) { const c = clothOf(k, e[k] + 1); return c && { tier: c.tier, name: c.name, price: wearPrice(c) }; }
       if (k === 'ride') return NORIDE ? null : RIDES.list[e.ride] && { tier: e.ride + 1, ...RIDES.list[e.ride] };
       return LIST[k][k === 'bag' ? e.bag : e[k]];
@@ -410,6 +410,8 @@ async function main() {
       ...[1, 2, 3, 4, 5].flatMap((z) => [[`구역 ${z} 열림`, `장비 점수 ${Math.round(ZONES[z - 1].rec * GROWTH.red)}`, z === 1 ? () => 0 : M('open' + z)], [`구역 ${z} 처음 다 치움`, '', M('clear' + z)], [`구역 ${z} 우두머리`, `${Math.round(ZONE_BOSS.appear * 100)}% 치움`, M('boss' + z)]]),
       ...[2, 3, 4, 5].map((t) => [`장비 ${t}단계 (도구·배낭·신발)`, `${GROWTH.price[t].toLocaleString()} 귤씩`, tierAll(t)]), ['무기 6단계 (마지막 칸)', `${GROWTH.price[6].toLocaleString()} 귤`, M('weapon6')],
       ...['stone', 'salon', 'ride'].map((id) => [`가게: ${id}`, SU[id]?.how || '', shopAt(id)]),
+      ...WEAPONS.filter((w) => w.tier >= 3).map((w) => [`무기 열리는 때: ${w.name} (#298)`, `Lv ${w.lv || 1} · ${w.price.toLocaleString()} 귤 · 산 때 ${w.tier}단계`, w.lv ? M('lv' + w.lv) : () => 0]),
+      ...WEAPONS.filter((w) => w.tier >= 3 && w.tier < 6).map((w) => [`무기 ${w.tier}단계 산 때: ${w.name}`, '', M('weapon' + w.tier)]),
       ['노루 친구', `구역 ${B.DEERPAL.zone} 열림`, M('open' + B.DEERPAL.zone)], ['수거 관 (구역 4 클린하우스까지)', '구역 4 열림', M('open4')],
       ...CASES.map((C) => [`사건 ${C.n} '${C.name}'`, `레벨 ${C.lv} · 구역 ${C.zone}`, mx(M('lv' + C.lv), C.zone === 1 ? () => 0 : M('open' + C.zone))]),
       [`동굴 (어드민만, #195)`, `레벨 ${CAVE.minLv} · 구역 ${CAVE.needZone} 다 치움`, M('cave')],
@@ -475,8 +477,20 @@ async function main() {
   // 흡연자 (#156): 하루 1시간 벌이에서 흡연자 몫이 3% 아래 (가장 적게 버는 1일 기준)
   if (day1Rate) { const pct = SMOKE_H / day1Rate * 100; verdict.push(`흡연자 하루 귤 ${Math.round(SMOKE_H)} = 1일 벌이 ${day1Rate.toLocaleString()} 의 ${pct.toFixed(1)}% → 3% 아래 ${pct < 3 ? '통과' : '넘음'}`); }
   // 노루 친구 (#247): 1시간 내내 타고 달린다고 봄(안장 없음, 가장 많이 먹음) + 사귀기·친해짐 2단계까지 귤 한 번 → 구역 2~3 날 벌이의 5% 아래
+  if (day1Rate && day2Rate) { /* #294 길 밖 곳: 구역마다 찾는 귤 + 길 밖 곁가지 보상 합(한 번)이 그 구역 날 벌이의 5% 아래 (구역 1 은 1일차, 2 는 구역 2~3 날) */
+    const F = B.FIELD.sight, sum = (z) => F.off.filter((o) => o[0] === z).length * (F.offGyul[z] || 0) + B.QUESTS.side.filter((q) => q.ask.k === 'off@' + z).reduce((a, q) => a + (q.reward?.gyul || 0), 0);
+    const p1 = sum(1) / day1Rate * 100, p2 = sum(2) / day2Rate * 100;
+    verdict.push(`길 밖 곳: 구역 1 귤 ${sum(1)} = 1일 벌이의 ${p1.toFixed(1)}% · 구역 2 귤 ${sum(2)} = 구역 2~3 날 벌이의 ${p2.toFixed(1)}% → 5% 아래 ${p1 < 5 && p2 < 5 ? '통과' : '넘음'}`); }
   if (day2Rate) { const DP = B.DEERPAL, perH = Math.ceil(3600 / DP.hungerT / DP.meal), once = DP.bond[DP.bond.length - 1], pct = (perH + once) / day2Rate * 100; verdict.push(`노루 친구: 시간당 먹이 ${perH} + 사귀기·친해짐 ${once} = 구역 2~3 날 벌이 ${day2Rate.toLocaleString()} 의 ${pct.toFixed(2)}% → 5% 아래 ${pct < 5 ? '통과' : '넘음'}`); }
   console.log('\n' + verdict.join('\n'));
+  // 두 길 어림 (#298, balance.js TWO_PATHS): 구역 권장 장비·그 구역 무기로 우두머리가 나오는 구역 점수(ZONE_BOSS.appear)까지 걸리는 놀이 시간
+  //   줍기만 = appear × 다 치우는 시간 · 싸움만 = 적을 찾아다니며(무리 하나 HUNT 초마다) 싸움 몫 appear 까지 · 섞기 = 주우면서 감독이 부르는 무리(ENEMY_SPAWN.every 마다)도 쫓음
+  { const TP = B.TWO_PATHS, A = ZONE_BOSS.appear, HUNT = 40, G = (ENEMY_SPAWN.group[0] + ENEMY_SPAWN.group[1]) / 2, ZW = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 5 }, out = [];
+    for (const Z of ZONES) { const z = zones.find((q) => q.id === Z.id), e = { tool: Z.gear.tool, bag: Z.gear.bag, shoes: Z.gear.shoes, ride: 0, ...START_W, enh: {}, aug: {} }, kind = ENEMY_SPAWN.byZone[Z.id] || 'boar';
+      const W = Math.min(ZW[Z.id], WEAPONS.length), mf = mobFight(kind, { weapon: W }), need = TP.fight.need[Z.id], pts = TP.fight.pts.mob, cT = clearT(z, e);
+      const tp = A * cT, tf = A * need / (G * pts / Math.max(HUNT, G * mf.t)), cyc = ENEMY_SPAWN.every, fT = Math.min(cyc, G * mf.t), sc = (cyc - fT) / cT + G * pts / need, tm = A / (sc / cyc);
+      out.push(`구역 ${Z.id}: 섞기 ${hm(tm)} · 줍기만 ${hm(tp)} (${(tp / tm).toFixed(2)}배) · 싸움만 ${hm(tf)} (${(tf / tm).toFixed(2)}배, ${WEAPONS[W - 1].name})`); }
+    console.log(`\n두 길 어림 (#298): 우두머리가 나오는 구역 점수 ${Math.round(A * 100)}% 까지, 구역 권장 장비 · 싸움만은 무리 하나 ${HUNT}초마다 찾는다고 봄\n` + out.join('\n')); }
   // 낚시: 한 번 = 던지기 + 기다림 + 반응 0.4 + 당기기 + (보여 주기 | 넣기) + 놓아주기/거두기
   const F = FISH, wait = (F.waitMin + F.waitMax) / 2 + 0.4, cyc = F.castT + wait + F.pullT + F.odds.fish * (F.showT + F.releaseT) + (1 - F.odds.fish) * F.stowT;
   const fg = F.odds.fish * F.fishGyul + F.odds.trash * 1 + F.odds.rare * (DEX.rareGyul + 2);

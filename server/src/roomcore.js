@@ -4,6 +4,8 @@
 //   {t:'take', h, n?}     더미 h 에서 n(없으면 1)개 주움 → 남은 수를 다음 틱에 방 전체에 {t:'hs'}. 로그인한 사람이면 주운 수 × 더미 값(HEAP_GYUL)을 번 몫으로 셈 (#144)
 //   {t:'put', h, n}       다시 쌓기 (투기꾼·트럭·몹). 방장과 움직이는 사람만 (#131), 한 사람 putPerMin·방 전체 putPerMin × crowd^DUMP.crowdExp
 //   {t:'btake', h}        동료(#172)가 더미 h 에서 하나 줄임. 번 몫엔 안 셈, 더미의 마지막 BUDDIES.keep 은 남김
+//   #300 내 것 더미(HEAP_OWN, 쓰레기 산 말고 모두): 남은 수는 각자 화면이 주인. take 는 줍기 속도(takePerSec)·번 몫만 셈(더미를 줄이지 않고 hs 로 알리지 않음),
+//        못 받으면 {t:'h', h, n, no, own:1}. put·btake 는 받지 않음. 방의 H 칸은 늘 가득으로 둠(옛 저장·서명 그대로), 빈 방 채우기·지킴이 판정은 함께 더미만
 //   {t:'ping', c}         → {t:'pong', c}
 //   {t:'stats'}           → {t:'stats', …} (STATS_OPEN 일 때만)
 // 노루 (#92):
@@ -39,7 +41,7 @@
 // 보내는 것: {t:'hi', id, host, heaps, sig, seen, now, cap, rides, minVer, zg, np, fill} / {t:'u', p:[[id, presence]…]} (presence 의 o·nick 은 바뀐 때만, 받는 쪽이 앞 값에 덮어씀) / {t:'l', id} / {t:'host', id} / {t:'hs', hs:[[h, n]…]} (틱마다 모아서) / {t:'h', h, n} (보낸 사람에게만 바로잡기) / {t:'full'}
 import { NET, ZONE_GUARD, BUDDIES, LEVEL, STORY, DUMP, GIVE, CAVE } from '../../src/balance.js';
 import { offlineAdds, crowdMul } from '../../src/refill.js';
-import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS } from './heaps.js';
+import { HEAP_FULL, HEAP_SIG, HEAP_GYUL, HEAP_DEFS, HEAP_OWN } from './heaps.js';
 import { cleanText, nickBad } from '../../src/safetext.js';
 import { TITLES } from '../../src/punktext.js';
 import { createRaid } from '../../src/raidcore.js';
@@ -50,7 +52,7 @@ const isDeerId = (v) => typeof v === 'string' && /^[a-z0-9-]{1,12}$/.test(v); //
 
 export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heaps = null, seen = 0, stats = false, guards = null, gift = null } = {}) { // gift(주는 계정, 받는 계정, n) → Promise<{got, why, out, in}> (#175, room.js 가 Accounts.gift 로)
   const peers = new Map(); // id → peer
-  let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => Math.max(0, Math.min(HEAP_FULL[i], v | 0))) : HEAP_FULL.slice();
+  let H = Array.isArray(heaps) && heaps.length === HEAP_FULL.length ? heaps.map((v, i) => (HEAP_OWN[i] ? HEAP_FULL[i] : Math.max(0, Math.min(HEAP_FULL[i], v | 0)))) : HEAP_FULL.slice(); /* #300 내 것 더미 칸은 늘 가득 */
   const heapOut = new Map(); // 이번 틱에 바뀐 더미 → 틱마다 한 번에 알림
   const earned = new Map(); // 계정 → 받아 준 줍기로 번 몫 (#144). room.js 가 earnFlushMs 마다 꺼내 계정(Accounts.earn)에 넘김
   let heapsDirty = false, roomSeen = seen || 0, host = null, nextId = 1, tick = 0;
@@ -68,7 +70,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   function fillEmpty(t) {
     if (!(roomSeen > 0) || t <= roomSeen) return 0;
     let got = 0;
-    for (const [i, n] of offlineAdds(H, HEAP_FULL, HZ, (t - roomSeen) / 1000)) { H[i] = Math.min(HEAP_FULL[i], H[i] + n); got += n; heapOut.set(i, H[i]); }
+    for (const [i, n] of offlineAdds(H, HEAP_FULL, HZ, (t - roomSeen) / 1000)) { if (HEAP_OWN[i]) continue; H[i] = Math.min(HEAP_FULL[i], H[i] + n); got += n; heapOut.set(i, H[i]); }
     if (got) heapsDirty = true;
     return got;
   }
@@ -80,7 +82,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   const guardList = (t) => { for (const [z, at] of G) if (t - at >= holdMs() || at > t + 60000) { G.delete(z); guardsDirty = true; } return [...G]; };
   const guardOut = []; // 이번 틱에 선 것 → hs 뒤에 알림 (꽃이 먼저 피게)
   function zoneEmptied(z, t) {
-    if (!ZH[z] || ZH[z].some((i) => H[i] > 0)) return;
+    if (!ZH[z] || ZH[z].some((i) => !HEAP_OWN[i] && H[i] > 0)) return; /* #300 함께 더미만 (내 것 더미는 각자 화면) */
     raiseGuard(z, t);
   }
   function raiseGuard(z, t) {
@@ -119,9 +121,23 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   }
   function pickHost() { let h = null; for (const p of peers.values()) if (!h || p.joinAt < h.joinAt) h = p; const id = h ? h.id : null; if (id !== host) { host = id; if (id) all(JSON.stringify({ t: 'host', id })); } }
 
+  /* 한 계정 한 접속 (#303): 같은 계정의 앞 접속에 'bump' 를 보내고 방에서 빼고 닫음(4005). 남은 사람에겐 'l' 로 바로 사라짐. keep 은 남길 접속 */
+  function bump(acct, keep = null) {
+    if (!acct) return 0;
+    let n = 0;
+    for (const p of [...peers.values()]) {
+      if (p.acct !== acct || p === keep) continue;
+      n++; st.bumped = (st.bumped || 0) + 1;
+      out(p, '{"t":"bump"}');
+      leave(p); try { p.close?.(4005, 'bump'); } catch (e) { /* 이미 끊김 */ }
+    }
+    return n;
+  }
+
   function join(send, info = {}) {
     const t = now();
     const bs = banned(info, t); if (bs) { try { send(JSON.stringify({ t: 'ban', sec: bs })); } catch (e) { /* 무시 */ } return null; }
+    if (info.acct) bump(info.acct); /* 같은 방의 앞 접속은 여기서 바로 (다른 방은 room.js 가 계정 객체에 물어 봄). 정원 셈보다 먼저 */
     if (peers.size >= cap) { try { send(JSON.stringify({ t: 'full' })); } catch (e) { /* 무시 */ } return null; }
     const p = { id: 'p' + (nextId++), send, acct: info.acct || null, joinAt: t + nextId * 1e-6, d: null, pj: null, x: 0, z: 0, ver: 0, sent: new Map(), sentCk: new Map(), ck: '', ckAt: 0, sj: null, fj: null, sver: 0, sentSlow: new Map(), tok: NET.msgPerSec, tT: t, putTok: NET.putBurst, hitTok: NET.hitPerSec, lastHt: 0,
       key: info.key || null, close: info.close || null, adm: !!info.adm, raidTok: NET.raidPerSec, caveTok: NET.cavePerSec, opT: 0, idleSec: 0, has: false, mx: 0, mz: 0, mT: t, warpT: -1e12, tubeT: -1e12, actT: -1e12, ax: 0, az: 0, tu: false, strikes: [], drops: [], takeTok: NET.takePerSec, deerTok: NET.deerPerSec, bossTok: NET.bossPerSec, giveTok: GIVE.perSec };
@@ -324,6 +340,12 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
       }
       case 'take': { // n: 한 번에 주운 수 (#137 묶어 보냄, 없으면 1)
         const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
+        if (HEAP_OWN[h]) { // #300 내 것 더미: 남은 수는 모르니 줍기 속도·번 몫만 셈. 방 전체에 알리지 않음
+          const ask = Math.max(1, Math.min(NET.takeAsk, m.n | 0 || 1)), got = Math.max(0, Math.min(ask, NET.takeMax, Math.floor(p.takeTok)));
+          if (got) { p.takeTok -= got; if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); }
+          if (got < ask) { st.takeNo += ask - got; out(p, JSON.stringify({ t: 'h', h, n: H[h], no: ask - got, own: 1 })); }
+          break;
+        }
         // 보낸 수(ask)는 그대로 세고 받는 수만 takeMax·남은 수·초당 몫으로 자름 (#144: 예전엔 takeMax 로 먼저 잘라 넘친 몫을 되돌리라고 알리지 않았음)
         const ask = Math.max(1, Math.min(NET.takeAsk, m.n | 0 || 1)), got = Math.max(0, Math.min(ask, NET.takeMax, H[h], Math.floor(p.takeTok)));
         if (got) { p.takeTok -= got; H[h] -= got; heapsDirty = true; heapOut.set(h, H[h]); if (p.acct) earned.set(p.acct, (earned.get(p.acct) || 0) + got * HEAP_GYUL[h]); if (!H[h]) zoneEmptied(HEAP_DEFS[h].zone, t); }
@@ -331,13 +353,13 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
         break;
       }
       case 'btake': { // 동료 줍기 (#172): 하나씩. 줍기 몫(takeTok)을 같이 쓰고 번 몫(earned)엔 안 셈, 더미의 마지막 BUDDIES.keep 은 남김. 못 하면 남은 수만 알림(되돌릴 것 없음)
-        const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
+        const h = m.h | 0; if (!(h >= 0 && h < H.length) || HEAP_OWN[h]) return; /* #300 내 것 더미는 각자 화면 */
         if (H[h] > Math.ceil(HEAP_FULL[h] * BUDDIES.keep) && p.takeTok >= 1) { p.takeTok -= 1; H[h] -= 1; heapsDirty = true; heapOut.set(h, H[h]); }
         else out(p, JSON.stringify({ t: 'h', h, n: H[h] }));
         break;
       }
       case 'put': {
-        const h = m.h | 0; if (!(h >= 0 && h < H.length)) return;
+        const h = m.h | 0; if (!(h >= 0 && h < H.length) || HEAP_OWN[h]) return; /* #300 내 것 더미는 각자 화면이 쌓음 */
         // 방장(옛 클라이언트는 방장만 보냄)과 움직이는 사람(튜토리얼 중 아님)만 (#131). 방 전체 몫은 사람 수로 (클라이언트가 보낸 인원은 믿지 않음)
         if (p.id !== host && (p.tu || t - p.actT >= DUMP.crowdActive * 1000)) { out(p, JSON.stringify({ t: 'h', h, n: H[h] })); return; }
         followCrowd(t); roomPut = Math.min(NET.putBurst, roomPut + (t - roomPutT) / 1000 * NET.putPerMin * crowdMul(crowd) / 60); roomPutT = t;
@@ -389,7 +411,7 @@ export function createRoomCore({ cap = NET.roomCap, now = () => Date.now(), heap
   }
 
   return {
-    join, leave, message, step, setCap(n) { cap = n; },
+    join, leave, message, step, bump, setCap(n) { cap = n; },
     get size() { return peers.size; }, get host() { return host; },
     takeEarned() { if (!earned.size) return null; const a = [...earned]; earned.clear(); return a; },
     heaps: () => H, takeDirty() { const d = heapsDirty; heapsDirty = false; return d; },

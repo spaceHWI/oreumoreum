@@ -200,6 +200,37 @@ async function startServers() {
       r = checkSave(P5, { ...P5, inn: { d: '', n: 0, left: 0, fire: { d: 'x', n: 99, until: 1e9, t: -3 } } }, acc(), t);
       ok(r.save.inn.fire.n === INN.fire.perDay && r.save.inn.fire.until === INN.fire.buffSec + INN.fire.pair && r.save.inn.fire.d === '' && r.save.inn.fire.t === 0, `깨진 불멍 기록은 한도 안으로 (${JSON.stringify(r.save.inn.fire)})`);
     }
+    /* ---------- Bar 소설 (#316): 값을 셈에 넣음·값 없이 읽기·하루 한도·날만 바꾸기·앞날 거절, '여운' 경험치는 읽은 날만 (순수 함수) ---------- */
+    {
+      const { checkSave } = await import('../server/src/validate.js'), { BAR, LEVEL } = await import('../src/balance.js'), { kstDate } = await import('../src/daily.js'), { levelOf } = await import('../src/augments.js');
+      const t = Date.now(), today = kstDate(t), acc = () => ({ credit: 1000, pickCredit: 0, bank: 0, savedAt: t - 60000 });
+      const P = { ...S0, coins: 1000, lv: { xp: 0, v: LEVEL.v } }, price = BAR.price.base + levelOf(0).lv * BAR.price.perLv, B1 = { d: today, n: 1, t: 1, left: 0, read: [], p: 1 };
+      let r = checkSave(P, { ...P, coins: 1000 - price, bar: B1 }, acc(), t);
+      ok(!r.fixed.includes('coins') && !r.fixed.includes('bar') && r.save.bar.t === 1, `한 잔 값 ${price} 받아 줌 (${r.fixed})`);
+      r = checkSave(P, { ...P, coins: 1000 + 50, bar: B1 }, { ...acc(), credit: 0, savedAt: t }, t);
+      ok(r.fixed.includes('coins') && r.save.coins <= 1000 - price, `값을 안 내고 읽으면 귤을 깎음 (${r.save.coins})`);
+      const P1 = { ...P, coins: 1000, bar: { d: today, n: 1, t: 1, left: 0, read: [], p: 1 } };
+      r = checkSave(P1, { ...P1, bar: { d: today, n: 1, t: 1, left: BAR.buffSec, read: [4] } }, acc(), t);
+      ok(!r.fixed.includes('bar') && !r.fixed.includes('coins') && r.save.bar.read[0] === 4 && r.save.bar.left === BAR.buffSec, '책갈피: 값을 낸 뒤 다 읽으면 편·여운이 남음 (귤 없음)');
+      const P2 = { ...P, coins: 1000, bar: { d: today, n: BAR.perDay, t: 5, left: 0, read: [] } };
+      r = checkSave(P2, { ...P2, coins: 1000 - price, bar: { d: today, n: BAR.perDay, t: 6, left: BAR.buffSec, read: [] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.t === 5, `하루 ${BAR.perDay}번 넘기 거절`);
+      const P3 = { ...P, bar: { d: '2026-01-01', n: 2, t: 2, left: 0, read: [] } };
+      r = checkSave(P3, { ...P3, bar: { d: today, n: 0, t: 2, left: BAR.buffSec, read: [] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.d === '2026-01-01', '값 없이 날만 바꾸기 거절');
+      r = checkSave(P3, { ...P3, coins: 0, bar: { d: '2099-01-01', n: 1, t: 3, left: BAR.buffSec, read: [] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.t === 2, '앞날 읽기 거절');
+      r = checkSave(P3, { ...P3, bar: { d: '2026-01-01', n: 2, t: 2, left: 0, read: [0, 1, 2, 3, 4] } }, acc(), t);
+      ok(r.fixed.includes('bar') && r.save.bar.read.length === 2, `읽은 편은 값을 낸 수까지만 (${r.save.bar.read})`);
+      const P4 = { ...P, bar: { d: today, n: 1, t: 1, left: 900, read: [0] } }, gain = 100, xp = Math.floor(gain * (1 + BAR.buff.xp));
+      r = checkSave(P4, { ...P4, coins: P4.coins + gain, lv: { ...P4.lv, xp } }, acc(), t);
+      ok(!r.fixed.includes('lvxp') && r.save.lv.xp === xp, `'여운' 경험치 +${Math.round(BAR.buff.xp * 100)}% 받아 줌 (${r.save.lv.xp})`);
+      const P5 = { ...P, bar: { d: '2026-01-01', n: 1, t: 1, left: 900, read: [0] } };
+      r = checkSave(P5, { ...P5, coins: P5.coins + gain, lv: { ...P5.lv, xp } }, acc(), t);
+      ok(r.fixed.includes('lvxp') && r.save.lv.xp === gain, `읽은 날이 아니면 경험치는 번 만큼만 (${r.save.lv.xp})`);
+      r = checkSave(P, { ...P, bar: { d: 'x', n: 99, t: -3, left: 1e9, read: [1, 1, 'a', 99] } }, acc(), t);
+      ok(r.save.bar.n === 0 && r.save.bar.t === 0 && r.save.bar.d === '' && r.save.bar.left <= BAR.buffSec && r.save.bar.read.length === 0, `깨진 바 기록은 한도 안으로 (${JSON.stringify(r.save.bar)})`);
+    }
     /* ---------- 철 이벤트 (#180): 달력 날짜 속이기·트리 합계 부풀리기 ---------- */
     {
       const { xmasDay, calReward, treeGoal } = await import('../src/seasoncal.js');
@@ -373,6 +404,16 @@ async function startServers() {
         const r3 = checkSave(P, { ...P, report: { d: DL.dateOfDay(DL.kstDayN(t) - 4), id: 'u01', got: 1 } }, acc, t), r4 = checkSave(P, { ...P, report: { d: date, id: 'zz9', got: 1 } }, acc, t);
         ok(r3.rec.why.report === 0 && r4.rec.why.report === 0, '지난 날짜·없는 제보는 인정 안 함');
       }
+      { // 길 밖 곳 (#294): save.field.sight 의 새 'sight:<list 뒤 번호>' 는 offGyul 인정(계정마다 한 번), 지웠다 다시 찾아도·없는 번호는 거절
+        const { FIELD, sightGyul } = await import('../src/balance.js'), L0 = FIELD.sight.list.length, j = FIELD.sight.off.findIndex((o) => o[0] === 2), id = `sight:${L0 + j}`, g = sightGyul(FIELD.sight.off[j]);
+        const f1 = checkSave(P, { ...P, coins: 100 + g, field: { ...(P.field || {}), sight: [id] } }, { ...acc, credit: 0, bank: 0 }, t);
+        ok(!f1.fixed.length && f1.rec?.why?.sight === g, `길 밖 곳 ${id} 처음 찾음은 귤 ${g} 인정 (${f1.rec?.why?.sight})`);
+        let f2 = checkSave(f1.save, { ...f1.save, field: { ...f1.save.field, sight: [] } }, { ...f1.acc, savedAt: t + 1000 }, t + 2000);
+        f2 = checkSave(f2.save, { ...f2.save, coins: f2.save.coins + g, field: { ...f2.save.field, sight: [id] } }, { ...f2.acc, credit: 0, bank: 0, savedAt: t + 2000 }, t + 3000);
+        ok(f2.rec.why.sight === 0 && f2.fixed.includes('coins'), '길 밖 곳을 지웠다 다시 찾아 두 번 받기 거절');
+        const f3 = checkSave(P, { ...P, field: { ...(P.field || {}), sight: [`sight:${L0 + FIELD.sight.off.length}`] } }, acc, t);
+        ok(f3.rec.why.sight === 0, '없는 번호의 볼거리는 인정 안 함');
+      }
       { // 들판 떼 한 판 (#202): 버틴 덤은 save.swarm.won 으로 인정, 쉬는 시간 안 두 번째는 거절, bonusMax 까지
         const { SWARM: SW } = await import('../src/balance.js'), R = SW.run, mx = R.bonusMax[2];
         const P0 = { ...P, swarm: { earn: 0, won: {} } };
@@ -513,12 +554,13 @@ async function startServers() {
     await sleep(200);
     ok(!W.last('pos'), '말 속도(19m/s)는 그대로 둠');
     // 줍기: 같은 더미 마지막 하나 동시 줍기·빠른 줍기
-    const hi = W.msgs[0], h = hi.heaps.indexOf(Math.min(...hi.heaps.filter((n) => n > 0))), full = hi.heaps[h];
+    const { HEAP_OWN } = await import('../server/src/heaps.js'); // #300 내 것 더미(쓰레기 산 말고)는 방이 남은 수를 모름 → 함께 더미로
+    const hi = W.msgs[0], h = hi.heaps.indexOf(Math.min(...hi.heaps.filter((n, i) => n > 0 && !HEAP_OWN[i]))), full = hi.heaps[h];
     const X = await sock('dev', 'oreum-namsongi-battle', { ch: 4 });
     let sent = 0;
-    for (let r = 0; r < Math.ceil(full / 4) + 2; r++) { for (const s of [W, X]) { for (let j = 0; j < 3; j++) { s.send({ t: 'take', h }); sent++; } } await sleep(1100); }
+    for (let r = 0; r < Math.ceil(full / (4 * NET.takeMax)) + 2; r++) { for (const s of [W, X]) { for (let j = 0; j < 2; j++) { s.send({ t: 'take', h, n: NET.takeMax }); sent += NET.takeMax; } } await sleep(1100); }
     await sleep(300);
-    const no = [W, X].reduce((n, s) => n + s.msgs.filter((m) => m.t === 'h' && m.h === h && m.no).length, 0);
+    const no = [W, X].reduce((n, s) => n + s.msgs.filter((m) => m.t === 'h' && m.h === h && m.no).reduce((a, m) => a + (m.no | 0), 0), 0);
     ok(sent - no === full, `동시 줍기: 더미 ${full}개에 ${sent}번 → 받아 준 줍기 ${sent - no} (나머지는 되돌리라고 알림)`);
     const fast = await sock('dev', 'oreum-namsongi-battle', { ch: 5 });
     // #137: 줍기는 더미마다 묶어 {t:'take', h, n} 으로 옴. 한 번에 takeMax 개씩 4번 = takePerSec 넘게
@@ -528,10 +570,26 @@ async function startServers() {
     ok(noN >= want - NET.takePerSec - 1, `빠른 줍기(초당 ${NET.takePerSec}개 넘게) 되돌림 (${want}개 중 ${noN}개)`);
     fast.send({ t: 'take', h: h2, n: 9999 }); await sleep(300);
     ok(fast.msgs.filter((m) => m.t === 'h' && m.no).length >= 2, '한 번에 아주 많이 줍기도 한도 안에서만');
+    { // #300 내 것 더미(쓰레기 산 말고 모두): 둘이 같은 더미에서 주워도 방 더미는 그대로·알림 없음, 번 몫은 각자, 줍기 속도 한도는 그대로, 쌓기·동료 줍기는 안 받음
+      const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL, HEAP_GYUL } = await import('../server/src/heaps.js');
+      let T0 = 1e12; const core = createRoomCore({ now: () => T0 }), ms = { a: [], b: [] };
+      const pa = core.join((x) => ms.a.push(JSON.parse(x)), { acct: 'own-a' }), pb = core.join((x) => ms.b.push(JSON.parse(x)), { acct: 'own-b' });
+      const oh = HEAP_OWN.indexOf(true); T0 += 2000;
+      for (let j = 0; j < HEAP_FULL[oh] + 5; j++) { core.message(pa, JSON.stringify({ t: 'take', h: oh })); core.message(pb, JSON.stringify({ t: 'take', h: oh })); }
+      core.step(); const ea = new Map(core.takeEarned() || []);
+      const nA = HEAP_FULL[oh] + 5, gyulA = Math.round((ea.get('own-a') || 0) / HEAP_GYUL[oh]);
+      ok(core.heaps()[oh] === HEAP_FULL[oh] && !ms.b.some((m) => m.t === 'hs') && gyulA === nA && Math.round((ea.get('own-b') || 0) / HEAP_GYUL[oh]) === nA, `내 것 더미: 둘이 ${nA}번씩 주워도 방 더미 그대로·hs 없음·번 몫은 각자 ${gyulA}개`);
+      T0 += 2000; core.message(pa, JSON.stringify({ t: 'take', h: oh, n: 64 })); const no1 = ms.a.filter((m) => m.t === 'h' && m.own && m.no).reduce((a, m) => a + m.no, 0);
+      ok(no1 === 64 - NET.takeMax, `내 것 더미도 한 번에 takeMax(${NET.takeMax})까지만 (되돌림 ${no1})`);
+      core.message(pa, JSON.stringify({ t: 'put', h: oh, n: 3 })); core.message(pa, JSON.stringify({ t: 'btake', h: oh })); core.step();
+      ok(core.heaps()[oh] === HEAP_FULL[oh], '내 것 더미 쌓기·동료 줍기는 방이 받지 않음');
+      const old = HEAP_FULL.map(() => 0), c2 = createRoomCore({ now: () => T0, heaps: old });
+      ok(c2.heaps().every((v, i) => (HEAP_OWN[i] ? v === HEAP_FULL[i] : v === 0)), '옛 방 저장의 내 것 더미 칸은 가득으로 (함께 더미는 그대로)');
+    }
     { // #172 동료 줍기(btake): 더미는 줄지만 번 몫엔 안 셈 → 동료가 주운 몫이 내 귤로 잡히지 않음. 방에서도 마지막 BUDDIES.keep 은 남김
       const { createRoomCore } = await import('../server/src/roomcore.js'); const { HEAP_FULL } = await import('../server/src/heaps.js'); const { BUDDIES } = await import('../src/balance.js');
       let T0 = 1e12; const core = createRoomCore({ now: () => T0 }); const bp = core.join(() => {}, { acct: 'buddy-test' });
-      const bh = HEAP_FULL.findIndex((n) => n >= 10); for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
+      const bh = HEAP_FULL.findIndex((n, i) => n >= 10 && !HEAP_OWN[i]); /* #300 함께 더미 */ for (let j = 0; j < HEAP_FULL[bh] + 3; j++) { T0 += 200; core.message(bp, JSON.stringify({ t: 'btake', h: bh })); }
       ok(core.takeEarned() === null && core.heaps()[bh] === Math.ceil(HEAP_FULL[bh] * BUDDIES.keep), `동료 줍기(btake)는 번 몫에 안 셈·마지막 ${Math.ceil(HEAP_FULL[bh] * BUDDIES.keep)}개 남김 (#172)`);
     }
     { // #181 오름 레이드: 방이 기운·기여·보상을 셈. 피해 부풀리기·없는 더미 줍기·보상 두 번·남의 레이드 몸·바로 열기 거절
@@ -585,6 +643,20 @@ async function startServers() {
     await sleep(500);
     ok(F.msgs.some((m) => m.t === 'kick' && m.why === 'flood') && F.closed, '메시지 폭주는 끊음');
     for (const s of [Q, W, X, fast]) s.close();
+    { /* 한 계정 한 접속 (#303): 같은 계정이 또 들어오면 앞 접속은 bump·4005 로 끊기고 남은 사람에게 바로 사라짐. 다른 채널(방)도. 손님은 해당 없음. 방 연결 수 제한(wsPerMin)에 걸리지 않게 plain 서버에서 */
+      const RMB = 'oreum-namsongi-battle', B = await login('plain', 'bump303');
+      const b1 = await sock('plain', RMB, { ch: 14, token: B.token }), w = await sock('plain', RMB, { ch: 14 });
+      b1.send(presence(-860, 0)); w.send(presence(-860, 3)); await sleep(400);
+      const b2 = await sock('plain', RMB, { ch: 14, token: B.token }); await sleep(500);
+      ok(b2.msgs[0]?.t === 'hi' && b1.msgs.some((m) => m.t === 'bump') && b1.closed === 4005, `같은 방에 같은 계정: 앞 접속 bump·4005 (${b1.closed})`);
+      ok(w.msgs.some((m) => m.t === 'l' && m.id === b1.msgs[0]?.id), '남은 사람에게 앞 접속은 바로 사라짐 (방에 하나만)');
+      const b3 = await sock('plain', RMB, { ch: 15, token: B.token }); await sleep(1200);
+      ok(b3.msgs[0]?.t === 'hi' && !b3.closed && b2.msgs.some((m) => m.t === 'bump') && b2.closed === 4005, `다른 채널로 들어와도 앞 접속 끊김 (${b2.closed})`);
+      ok(w.msgs.some((m) => m.t === 'l' && m.id === b2.msgs[0]?.id), '다른 채널 접속에 밀린 사람도 남은 사람에게 사라짐');
+      const g1 = await sock('plain', RMB, { ch: 14 }); await sleep(400);
+      ok(g1.msgs[0]?.t === 'hi' && !w.closed && !g1.closed && !b3.closed, '손님 둘·새 접속은 그대로');
+      for (const s of [b3, w, g1]) s.close();
+    }
 
     /* ---------- 어드민 ---------- */
     ok((await req('plain', '/feedback')).status === 403, '손님은 받은 의견 못 봄');
@@ -845,6 +917,16 @@ async function startServers() {
       const lost = await put('dev', GB.token, { ...(await meOf('dev', GB.token)), coins: before + (g2?.n || 0) });
       const mB3 = await meOf('dev', GB.token);
       ok(g3?.n === 7 && lost.j.fixed.includes('gift') && lost.j.fix.coins === mB3.coins && mB3.coins === before + (g2?.n || 0) + 7, `못 받은 알림의 귤은 서버가 넣어 줌 (${before} → ${mB3.coins})`);
+      { /* #312: 귤 총량 (주기 앞뒤 두 사람 합이 같음), 귤을 깎는 응답에도 받은·준 누적이 실림 (클라이언트가 그사이 준 귤을 덮어쓰지 않게) */
+        await put('dev', C2.token, await meOf('dev', C2.token)); /* 앞에서 준 7개를 C 저장에 먼저 넣어 둠 */
+        const c0 = await meOf('dev', C2.token), b0 = await meOf('dev', GB.token), sum0 = c0.coins + b0.coins;
+        const g4 = await give(cq, idOf(bq), 4);
+        await put('dev', C2.token, { ...c0 }); await put('dev', GB.token, { ...b0 });
+        const c1 = await meOf('dev', C2.token), b1 = await meOf('dev', GB.token);
+        ok(g4?.n === 4 && c1.coins + b1.coins === sum0 && c1.coins === c0.coins - 4, `주기 앞뒤 두 사람 귤 합이 같음 (${sum0} → ${c1.coins + b1.coins})`);
+        const big = await put('dev', C2.token, { ...c1, coins: c1.coins + NET.earnBurst * 3 });
+        ok(big.j.fixed.includes('coins') && big.j.fix.coins != null && big.j.fix.gift?.out === c1.gift.out && big.j.fix.gift?.in === c1.gift.in, `귤을 깎는 응답에 받은·준 누적도 (${JSON.stringify(big.j.fix.gift)})`);
+      }
       // 받지 않기
       await put('dev', GB.token, { ...mB3, giftOff: 1 });
       ok((await give(cq, idOf(bq), 1))?.no === 'off', "'귤 선물 받지 않기' 면 거절");

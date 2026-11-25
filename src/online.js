@@ -5,6 +5,7 @@
 // - 쓰레기: 더미 남은 수는 방이 주인. trash 저장소의 takeOne·putBack·seen 을 방으로 이어 줌
 import { NET } from './balance.js';
 import { HEAP_SIG } from './trash.js';
+import { HEAP_OWN } from './heapdefs.js';
 import { bootShow } from './bootbar.js';
 import { reloadFor, canAuto } from './reloadwhy.js';
 
@@ -127,7 +128,7 @@ export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, 
     if (!sess || going) return;
     if (busy && !keepalive) { again = true; return; }
     clearTimeout(timer); timer = 0; busy = true; lastPush = Date.now();
-    const s = getSave(), body = JSON.stringify(strip(s));
+    const s = getSave(), body = JSON.stringify(strip(s)), sg = s.gift && typeof s.gift === 'object' ? { in: s.gift.in | 0, out: s.gift.out | 0 } : { in: 0, out: 0 }; /* #312: 보낸 때의 받은·준 귤 누적 */
     if (body === lastBody) { busy = false; return; } // 바뀐 것이 없으면 보내지 않음
     const nSold = Array.isArray(s.sold) ? s.sold.length : 0; // 판 것 목록 (#188): 서버가 받으면 보낸 만큼 지움 (그사이 판 것은 남김)
     try {
@@ -136,6 +137,7 @@ export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, 
       if (nSold && Array.isArray(s.sold)) { s.sold.splice(0, nSold); if (!s.sold.length) delete s.sold; }
       gifts(r.gifts);
       if (r.fix?.reload && !going && canAuto()) { const me = await api('/me'); if (going) return; writeCache(me.save, me.rev, sess.sub); toast('기록을 서버 값으로 맞췄어요'); leave('fix', true, 1200); return; }
+      if (r.fix && r.fix.coins != null && !r.fix.gift) r.fix.gift = sg; /* #312: 옛 서버가 귤만 맞춰 보내도 그사이 준·받은 귤을 덮어쓰지 않게 (start.js onFix 가 차이만큼 다시 뺌·더함) */
       if (r.fix && (r.fix.coins != null || r.fix.total != null || r.fix.mealFree || 'season' in r.fix || r.fix.nick || r.fix.gift || r.fix.lv || r.fix.tok)) onFix(r.fix);
       writeLocal();
       changed();
@@ -199,11 +201,22 @@ export function createAccount({ getSave, writeLocal: writeLocal0, onFix, toast, 
     const s = getSave(); s._rev = r.rev; lastBody = '';
     return r;
   }
+  /* 밀려났다가 '여기서 다시 하기' (#303): 그사이 다른 기기가 서버 기록을 앞서게 했으면 그 기록으로 다시 열고 true. 아니면 false (그대로 다시 붙음) */
+  async function retake() {
+    if (!sess || going) return false;
+    try {
+      const me = await api('/me'); renew(me);
+      const s = getSave();
+      if (me.save && (me.rev || 0) > (s._rev || 0) && sig(me.save) !== sig(strip(s))) { writeCache(me.save, me.rev, sess.sub); return leave('bump', false); }
+      if (me.rev) { s._rev = Math.max(s._rev || 0, me.rev); writeLocal(); }
+    } catch (e) { /* 서버를 못 읽으면 이 기기 기록으로 */ }
+    return false;
+  }
   // 랭킹 (#11): 로그인했을 때만. 서버가 확인한 치운 양으로 셈
   const rank = (range, srv) => api(`/rank?range=${encodeURIComponent(range)}&srv=${encodeURIComponent(srv)}`);
   const rankMe = (srv) => api(`/rank/me?srv=${encodeURIComponent(srv)}`);
   const daysLeft = () => (keepUntil ? Math.max(0, Math.ceil((keepUntil - Date.now()) / 864e5)) : NET.keepDays);
-  return { start, push, dirty, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get mail() { return sess?.m || ''; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
+  return { start, push, dirty, retake, rename, rank, rankMe, login, logout, deleteMe, daysLeft, on: (f) => listeners.push(f), get loggedIn() { return !!sess; }, get token() { return sess?.t || null; }, get sub() { return sess?.sub || null; }, get mail() { return sess?.m || ''; }, get admin() { return !!sess && admin; }, get checked() { return !sess || checked; } };
 }
 
 /* ---------- 로그인 화면 ---------- */
@@ -312,11 +325,13 @@ export function createWsLobby({ token = () => null } = {}) {
           } else if (m.t === 'l') { if (known.delete(m.id)) emit([], [], [{ peer: m.id }]); }
           else if (m.t === 'host') { host = m.id; fire('host', m); }
           else if (m.t === 'full') { ch = (ch + 1) % NET.maxCh; connect(); } // 정원이 차면 다음 방(채널)
+          else if (m.t === 'bump') { closed = true; drop(); fire('bump', m); } /* 같은 계정이 다른 곳에서 들어옴 (#303): 스스로 다시 붙지 않음 (둘이 서로 밀어내며 되풀이하지 않게). 누르면 wake */
           else if (m.t === 'idle') { closed = true; drop(); fire('idle', m); } // 오래 멈춰 서버가 내보냄 (#157): 다시 붙지 않고 쉬는 화면 (누르면 wake)
           else if (m.t === 'ban' || m.t === 'kick') { backoff = Math.max(backoff, (m.sec || 60) * 1000); fire(m.t, m); } // 끊김 (#84): 풀릴 때까지 기다렸다 다시
           else fire(m.t, m);
         };
         ws.onclose = (e) => {
+          if (e?.code === 4005 && !closed) { closed = true; fire('bump', {}); } /* bump 메시지를 못 받았어도 (#303) */
           if (e?.code === 4004 && !closed) { closed = true; fire('idle', {}); } // idle 메시지를 못 받았어도 닫는 까닭 코드로 (#157)
           gone();
           if (!closed) { clearTimeout(again); again = setTimeout(connect, backoff); backoff = Math.min(30000, backoff * 2); }
@@ -345,18 +360,21 @@ export function createWsLobby({ token = () => null } = {}) {
 
 /* ---------- 쓰레기 더미를 방으로 ---------- */
 // 더미 남은 수·마지막 접속 시각은 방이 주인. 다시 쌓기(투기꾼·트럭)는 방장 화면에서만 (다른 사람 화면의 투기꾼은 모양만)
+// #300 내 것 더미(HEAP_OWN, 쓰레기 산 말고 모두)는 내 저장이 주인: 방 값으로 덮지 않고, 쌓기·동료 줍기도 보내지 않음. 줍기만 보냄(방이 번 몫·속도를 셈)
 export function linkTrash(trash, room) {
   const st = trash.store;
   const o = { takeOne: st.takeOne, putBack: st.putBack, seen: st.seen, setSeen: st.setSeen };
+  st.localSeen = o.seen; // 내 것 더미의 빈 동안 몫은 기기 시각으로 (dumpers.js)
   let seen = 0, live = false, queued = false;
   const relayout = () => { if (queued) return; queued = true; setTimeout(() => { queued = false; trash.relayout(); }, 0); };
   room.on('hi', (m) => {
     seen = m.seen || 0; live = m.sig === HEAP_SIG;
     if (!live) return; // 더미 구성이 다른 서버 → 혼자 하기처럼
-    m.heaps.forEach((n, h) => { if (st.left(h) !== n) st.setLeft(h, n); });
+    st.ownInit?.(); // #300 처음 한 번: 방을 따라 줄어 있던 내 것 더미를 가득으로 (옛 저장 옮기기)
+    m.heaps.forEach((n, h) => { if (!HEAP_OWN[h] && st.left(h) !== n) st.setLeft(h, n); });
     st.commit(); relayout();
   });
-  const one = (h, n) => { if (st.left(h) !== n) { st.setLeft(h, n); relayout(); } };
+  const one = (h, n) => { if (!HEAP_OWN[h] && Number.isFinite(n) && st.left(h) !== n) { st.setLeft(h, n); relayout(); } };
   room.on('h', (m) => { if (!live) return; one(m.h, m.n); const k = Math.min(NET.takeAsk, m.no === true ? 1 : m.no | 0); for (let i = 0; i < k; i++) trash.undoTake?.(m.h); }); // no: 방이 거절한 수 → 배낭에서 그만큼 되돌림 (#84, #137 여럿)
   room.on('hs', (m) => { if (live) for (const [h, n] of m.hs) one(h, n); });
   room.on('close', () => { live = false; });
@@ -365,10 +383,10 @@ export function linkTrash(trash, room) {
   const flush = () => { flushQ = false; if (live) for (const [h, n0] of pend) for (let n = n0; n > 0; n -= NET.takeMax) { const k = Math.min(n, NET.takeMax); room.send(k > 1 ? { t: 'take', h, n: k } : { t: 'take', h }); } pend.clear(); }; // 방이 한 메시지에 takeMax 개까지만 받으므로 나눠 보냄 (#144)
   st.takeOne = (h) => { const ok = o.takeOne(h); if (ok && live) { pend.set(h, (pend.get(h) || 0) + 1); if (!flushQ) { flushQ = true; queueMicrotask(flush); } } return ok; };
   // 동료 줍기 (#172): 방에는 {t:'btake', h} 로 (번 몫에 안 셈, 서버도 마지막 BUDDIES.keep 은 남김). 옛 서버는 모르는 메시지라 넘김 → 다음 hs 로 되돌아옴
-  if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live) room.send({ t: 'btake', h }); return ok; }; }
+  if (st.nibble) { const nib = st.nibble; st.nibble = (h) => { const ok = nib(h); if (ok && live && !HEAP_OWN[h]) room.send({ t: 'btake', h }); return ok; }; }
   // 다시 쌓기 (#131): 방장만이 아니라 각자 둘레 투기꾼·몹이 쌓은 것을 보냄. 받아 줄지는 방이 정함(움직이는 사람·방 전체 한도), 못 받으면 {t:'h'} 로 되돌아옴
   st.putBack = (h, n) => {
-    if (!live) return o.putBack(h, n);
+    if (!live || HEAP_OWN[h]) return o.putBack(h, n); // #300 내 것 더미는 내 화면에만
     const add = o.putBack(h, n); if (add) room.send({ t: 'put', h, n: add }); return add;
   };
   st.seen = () => (live ? seen : o.seen());

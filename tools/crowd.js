@@ -11,7 +11,7 @@ const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) pro
   const imp = (f) => import(path.join(__dirname, '..', f));
   const { DUMP, PACE, NET } = await imp('src/balance.js');
   const { emptyFill, offlineAdds, crowdMul, crowdShare, crowdGap } = await imp('src/refill.js');
-  const { HEAP_DEFS, HEAP_FULL, HEAP_TOTAL } = await imp('src/heapdefs.js');
+  const { HEAP_DEFS, HEAP_FULL, HEAP_TOTAL, HEAP_OWN } = await imp('src/heapdefs.js');
   const { createPacing } = await imp('src/pacing.js');
   const { createRoomCore } = await imp('server/src/roomcore.js');
   const zones = [...new Set(HEAP_DEFS.map((d) => d.zone))];
@@ -38,13 +38,13 @@ const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) pro
   const core = createRoomCore({ now, heaps: half, seen: T - 30 * 60e3 });
   const inbox = new Map(); const mk = (name) => { inbox.set(name, []); return core.join((s) => inbox.get(name).push(JSON.parse(s)), { acct: name }); };
   const a = mk('a'), hi = inbox.get('a')[0];
-  const filled = hi.heaps.reduce((s, v) => s + v, 0) - half.reduce((s, v) => s + v, 0), want = offlineAdds(half, HEAP_FULL, HZ, 1800).reduce((s, x) => s + x[1], 0);
+  const filled = hi.heaps.reduce((s, v, i) => s + (HEAP_OWN[i] ? 0 : v - half[i]), 0), want = offlineAdds(half, HEAP_FULL, HZ, 1800).reduce((s, x) => s + (HEAP_OWN[x[0]] ? 0 : x[1]), 0); /* #300 내 것 더미는 방이 안 채움 */
   ok(hi.fill === filled && filled === want && filled > 0, `빈 방 30분 뒤 첫 사람이 들어오면 방이 채움 (${filled}개, hi.fill ${hi.fill})`);
   const b = mk('b'); ok(!inbox.get('b')[0].fill, '두 번째 사람은 채우지 않음');
   const msg = (p, o) => core.message(p, JSON.stringify(o));
   const walk = (p, x, z) => msg(p, { t: 'p', d: { x, z, h: 0 } });
   // 가만히 있는 b 가 쌓기 → 거절 (방장 a 는 늘 됨)
-  const H = () => core.heaps(); const h0 = HEAP_FULL.findIndex((n, i) => H()[i] + 5 < n);
+  const H = () => core.heaps(); const h0 = HEAP_FULL.findIndex((n, i) => !HEAP_OWN[i] && H()[i] + 5 < n);
   walk(b, 0, 0); T += 1000; const v0 = H()[h0]; msg(b, { t: 'put', h: h0, n: 3 });
   ok(H()[h0] === v0, '가만히 있는 사람(방장 아님)의 다시 쌓기는 거절');
   for (let i = 1; i <= 5; i++) { T += 1000; walk(b, i * 2, 0); }
@@ -101,4 +101,35 @@ const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) pro
     rows.push({ 사람: n, ['쌓는 배율(n^' + DUMP.crowdExp + ')']: +crowdMul(n).toFixed(1), '한 사람 몫': +crowdShare(n).toFixed(2), '간격 배율': +crowdGap(n).toFixed(2), '한 사람 공격(1시간)': +(avg(R.map((r) => r.attacks)) / n).toFixed(1), 쌓인: Math.round(dumped), '한 사람 둘레 쌓인': Math.round(dumped / n), 치운: Math.round(picked), 남은: Math.round(avg(R.map((r) => r.stock))), '거의 다 치움(분)': cl.length < R.length ? '못 함' : +(avg(cl) / 60).toFixed(1) });
   }
   console.table(rows);
+
+  // 4) #300 내 것 더미(HEAP.own)·함께 더미로 나눈 1시간: 사람마다 내 것 더미(가득에서 시작)와 투기꾼(혼자 몫 그대로), 함께 더미는 모두가 같이 줄이고 각자 투기꾼이 빈자리만큼 채움
+  //    줍기는 내 것과 함께 더미 중 남은 비율대로(함께 더미는 사람 수로 나눈 몫으로 봄). '빈 시간' = 내 것도 함께 것도 0 이라 주울 게 없던 초(한 사람 평균)
+  const OWN_T = HEAP_DEFS.reduce((s, d) => s + (d.own ? d.n : 0), 0), SH_T = HEAP_TOTAL - OWN_T;
+  console.log(`\n4) 내 것 더미(${DUMP && (await imp('src/balance.js')).HEAP.own.join('·')}) ${OWN_T}개는 사람마다, 함께 더미 ${SH_T}개는 방 하나 (1시간, 한 사람 줍기 ${PICK}개)`);
+  const rows4 = [];
+  function hour2(n, seed) {
+    const rnd = mul32(seed * 977 + n), per = DUMP_PER_HOUR / 3600 * (1 - CHASE);
+    const own = Array(n).fill(OWN_T); let sh = SH_T, dry = 0, fromSh = 0, fromOwn = 0;
+    for (let t = 0; t < MIN * 60; t++) {
+      for (let k = 0; k < n; k++) {
+        let d = per; const or = OWN_T - own[k], sr = Math.max(0, SH_T - sh) / n; // 투기꾼은 빈자리 비율대로 (함께 더미 빈자리는 사람 수로 나눈 몫)
+        if (or + sr > 0) { const a = Math.min(or, d * or / (or + sr)); own[k] += a; sh = Math.min(SH_T, sh + (d - a)); }
+        let want = PICK / 3600;
+        while (want > 1e-9) {
+          const so = sh / n, tot = own[k] + so; if (tot <= 1e-9) { dry += want / (PICK / 3600) / n; break; }
+          const useO = rnd() < own[k] / tot, take = Math.min(want, useO ? own[k] : sh);
+          if (useO) { own[k] -= take; fromOwn += take; } else { sh -= take; fromSh += take; }
+          want -= take;
+        }
+      }
+    }
+    return { own: own.reduce((a, b) => a + b, 0) / n, sh, dry, fromSh: fromSh / n, fromOwn: fromOwn / n };
+  }
+  for (const n of [1, 10, 30]) {
+    const R = Array.from({ length: 4 }, (_, s) => hour2(n, s));
+    rows4.push({ 사람: n, '내 것 남은(한 사람)': Math.round(avg(R.map((r) => r.own))), '함께 남은': Math.round(avg(R.map((r) => r.sh))), '내 것에서 주움': Math.round(avg(R.map((r) => r.fromOwn))), '함께에서 주움': Math.round(avg(R.map((r) => r.fromSh))), '빈 시간(초/사람)': Math.round(avg(R.map((r) => r.dry))) });
+  }
+  console.table(rows4);
+  const dry10 = rows4[1]['빈 시간(초/사람)'], dry30 = rows4[2]['빈 시간(초/사람)'];
+  ok(dry10 <= 20 && dry30 <= 20, `10명·30명이 한 시간 쉬지 않고 주워도 주울 게 없던 시간 20초 안 (10명 ${dry10}초 · 30명 ${dry30}초)`);
 })();

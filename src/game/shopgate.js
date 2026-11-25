@@ -45,6 +45,7 @@ const USED = {
   leap: () => (life()['clothes-buy'] || 0) > 0,
   ride: () => Array.isArray(save.rides?.own) && save.rides.own.length > 0,
   inn: () => (save.inn?.n | 0) > 0, // 숙소 (#270)
+  bar: () => (save.bar?.t | 0) > 0, // Bar 소설 (#316)
 };
 export const gate = createShopGate({
   save, persist, defs: DEFS,

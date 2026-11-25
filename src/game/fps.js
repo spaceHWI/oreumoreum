@@ -76,7 +76,7 @@ let shN = 0;
 function shadowTick() {
   const S = PERF.shadowUp, sp = player.speed || 0, cine = !!state.cine || cam.mode !== 'follow';
   let every = PHONE ? S.phone : S.pc;
-  if (sp > S.fast || player.cart || cine) every = 1; else if (sp < F.still && every > 1) every = S.still;
+  if (sp > S.fast || player.cart || cine) every = 1; else if (sp > F.still) every = Math.min(every, S.walk); else if (every > 1) every = S.still; /* #313: 걷는 동안 내 그림자가 몸을 늦게 따라와 버벅여 보이지 않게 */
   if (++shN >= every) { shN = 0; renderer.shadowMap.needsUpdate = true; }
 }
 export const shadowNow = () => { renderer.shadowMap.needsUpdate = true; shN = 0; };

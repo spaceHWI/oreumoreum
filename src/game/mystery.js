@@ -2,7 +2,7 @@
 // - 4:04 가 나오는 곳(설명 없이): 오름 방송(관리 안내, punkworld pickLine), 쪽지(영수증·동굴 수거 일정표·금고 인수인계서), 가게 거리 멈춘 시계,
 //   가로등 번호판 '404', 마차 정류장 시간표 한 줄, 그리고 실제 시각 04:04 (그 1분 동안 가까운 더미에서 먼지가 일고, 단계 humStage 부터 먼 웅웅)
 //   본 곳을 save.myst.seen 에 모음. MYST.num.say 곳 이상 보면 혼잣말 '또 4시 4분이네.' 한 번(감독 #176 을 거침). 답을 알려 주는 UI·퀘스트 표시는 없음
-// - 금고: 굼부리 관리 초소(표지석 곁 작은 초소) 안 4자리 다이얼. 답 MYST.safe.code. 틀리면 '딸깍… 아니다.' 만(벌·힌트 없음)
+// - 금고: 굼부리 관리 초소(굼부리 가는 길 끝 길가의 작은 초소, #308 에서 정상에서 옮김) 안 4자리 다이얼. 답 MYST.safe.code. 틀리면 '딸깍… 아니다.' 만(벌·힌트 없음)
 //   열면 귤 MYST.safe.gyul(서버 earn.js 가 save.myst.safe 로 계정마다 한 번 인정, #188) + 전리품 하나(dropLoot 'treasure') + 쪽지 n404 + 칭호 '눈썰미'
 // - 내 화면에만 (멀티로 보내지 않음). 저장 save.myst = { seen: [곳], said, safe, rad: [들은 관리 안내 번호(punkworld)], tr: {흔적, traces.js}, crop }
 // 파일 순서는 summit 뒤 (src/modules.js: 표지석 자리·쪽지·칭호가 다 있음). dev: __oreum.myst
@@ -17,7 +17,7 @@ import { revealStage } from '../ufoveil.js';
 import { state, late } from './state.js';
 import { $, save, persist, MAP_ID } from './save.js';
 import { scene, spots } from './scene.js';
-import { P as PH, summitOut, summitTan, player, trash, col, street } from './place.js';
+import { P as PH, player, trash, col, street } from './place.js';
 import { ach, addCoins, PANELS, panelOpen, openDex } from './hud.js';
 import { interactables } from './stores.js';
 import { dropLoot } from './loot.js';
@@ -100,9 +100,12 @@ if (NS && CART?.stops?.[N.stop]) {
 }
 
 /* ---------- 금고: 굼부리 관리 초소 ---------- */
+/* #308: 정상에서 빼서 굼부리 가는 길(toCrater) 끝, 굼부리 둘레 앞 길가로. 문은 길을 봄 */
 const SAFE_ON = NS && !!PH?.stone;
-const hutPos = SAFE_ON ? PH.stone.clone().addScaledVector(summitOut, SF.out).addScaledVector(summitTan, SF.tan) : new THREE.Vector3(1e9, 0, 1e9);
+const hutQ = SAFE_ON ? nsAlong(SF.path, SF.d, SF.side, SF.off) : null, hutLook = SAFE_ON ? nsAlong(SF.path, SF.d, 0, 0) : null;
+const hutPos = SAFE_ON ? new THREE.Vector3(hutQ.x, 0, hutQ.z) : new THREE.Vector3(1e9, 0, 1e9);
 hutPos.y = height(hutPos.x, hutPos.z);
+const hutFace = SAFE_ON ? new THREE.Vector3(hutLook.x - hutPos.x, 0, hutLook.z - hutPos.z).normalize() : new THREE.Vector3(0, 0, 1);
 let door = null;
 if (SAFE_ON) {
   const g = new THREE.Group(), wall = tm('#b9b2a0'), roof = tm('#56605a'), dark = tm('#2d302e'), steel = tm('#6d7370');
@@ -115,11 +118,11 @@ if (SAFE_ON) {
   const dp = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.7, 0.05), tm('#7d8380')); dp.position.x = 0.35; door.add(dp);
   const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), dark); dial.rotation.x = Math.PI / 2; dial.position.set(0.35, 0.05, 0.04); door.add(dial);
   const sign = plate([T.hut], { w: 1.4, h: 0.26, bg: '#eae3cc', px: 40 }); sign.position.set(0, 1.85, 0.92); g.add(sign);
-  g.position.copy(hutPos); g.rotation.y = Math.atan2(PH.stone.x - hutPos.x, PH.stone.z - hutPos.z); G.add(g);
+  g.position.copy(hutPos); g.rotation.y = Math.atan2(hutFace.x, hutFace.z); G.add(g);
   col?.add(hutPos.x, hutPos.z, 1.3);
   if (mystSave().safe) door.rotation.y = -1.9;
 }
-const safeAt = SAFE_ON ? hutPos.clone().add(new THREE.Vector3(PH.stone.x - hutPos.x, 0, PH.stone.z - hutPos.z).setLength(1.7)) : hutPos;
+const safeAt = SAFE_ON ? hutPos.clone().addScaledVector(hutFace, 1.7) : hutPos;
 
 // 다이얼 창
 const CSS = `
@@ -238,7 +241,7 @@ late.tickMyst = (dt) => {
 };
 
 late.mystApi = {
-  state: () => { const m = mystSave(); return { seen: [...m.seen], said: m.said, safe: m.safe, now404: isNow(), hut: SAFE_ON && { x: +hutPos.x.toFixed(1), z: +hutPos.z.toFixed(1) }, on: !!state.sessionOn, near: spotsSeen.map((x) => +Math.hypot(x.x - player.pos.x, x.z - player.pos.z).toFixed(1)), spots: spotsSeen.map((s) => s.id), notes: NOTE404 }; },
+  state: () => { const m = mystSave(); return { seen: [...m.seen], said: m.said, safe: m.safe, now404: isNow(), hut: SAFE_ON && { x: +hutPos.x.toFixed(1), z: +hutPos.z.toFixed(1), fx: +hutFace.x.toFixed(2), fz: +hutFace.z.toFixed(2) }, on: !!state.sessionOn, near: spotsSeen.map((x) => +Math.hypot(x.x - player.pos.x, x.z - player.pos.z).toFixed(1)), spots: spotsSeen.map((s) => s.id), notes: NOTE404 }; },
   seen: (id) => { const r = seen(id); trySay(); return r; },
   go: (id = 'safe') => { const s = id === 'safe' ? safeAt : spotsSeen.find((x) => x.id === id); if (!s) return null; const x = s.x + 1.2, z = s.z + 1.2; player.pos.set(x, height(x, z), z); player.visY = player.pos.y; return { x, z }; },
   open: openSafe, close: closeSafe, code: (c) => tryCode(String(c)), shown: () => !win.hidden,

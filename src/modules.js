@@ -120,6 +120,7 @@ import './game/ufoseen.js'; // UFO 드러남 단계 (#207): 흔적 → 실루엣
 import './game/swarm.js'; // 들판 떼 (#173)
 import './game/arena.js'; // 서바이벌 터·징 (#231)
 import './game/token.js'; // 징표·좌판·전투 특화 무기·옷 (#255, arena 뒤)
+import './game/foes.js'; // 적 역할 섞기·정상 설인 (#296, swarm 뒤)
 import './game/smoker.js'; // 들머리 흡연자 (#156)
 import './game/mutter.js'; // 캐릭터 혼잣말 (#169)
 import './game/fightcam.js'; // 전투 때 카메라 멀어지기 (#216, camera.js followCam 이 부름)
@@ -128,6 +129,7 @@ import './game/simple.js'; // 화면 단순하게·전체 화면 안내 (#189)
 import './game/punkworld.js'; // 오름펑크 세계 (#165): 오름 방송·쪽지·칭호 (#164 punk.js 와 다른 파일)
 import './game/outfitset.js'; // 한 벌 맞춤 (#179): 겉모습 옷 세 벌 효과·칭호
 import './game/idle.js'; // 오래 멈추면 쉬러 가기 (#157)
+import './game/bump.js'; // 같은 계정이 다른 곳에서 들어오면 밀려남 (#303)
 import './game/metrics.js'; // 이용 통계 (#121): 업적·쓰레기·적 후크를 감싸서 셈 (start.js 전)
 import './game/metricsadmin.js'; // 어드민 '수치' 표 (#121)
 import './game/cave.js'; // 동굴 탐험 (#195): 굼부리 용암 동굴, 별도 동굴 장면
@@ -147,7 +149,9 @@ import './game/casefinale.js'; // 사건 파일 끝 '버리는 자' (#237): 다 
 import './game/tube.js'; // 수거 관 (#248): 클린하우스 사이 바로 이동
 import './game/reports.js'; // 매일 미확인 제보 (#238): 쪽지 한 장 + 흔적 하나 (데이터 src/cases/reports.js)
 import './game/inn.js'; // 숙소 오피스제주 (#270): 숙박·개운함 버프·곁가지 퀘스트 (shopgate 앞: 가게 표가 먼저)
+import './game/twopaths.js'; // 두 길 (#298): 구역 점수(줍기 + 싸움)·달래는 길·길 안전·균형 보너스 (inn 뒤: innMul 을 감쌈, boss 뒤: 후크를 감쌈)
 import './game/firepit.js'; // 숙소 마당 불멍 (#290): 화로·앉기·버프 '멍' (inn 뒤: innExtra·innPeer 를 감쌈)
+import './game/bar.js'; // Bar 소설 (#316): 밤에만 여는 책 읽는 바·버프 '여운' (firepit 뒤: innExtra·innPeer 를 감쌈)
 import './game/shopgate.js'; // 가게를 퀘스트 순서대로 열기 (#206): 셔터·준비 중·열림 알림
 import './game/npctalk.js'; // NPC 대사 (#278): 말버릇·상황 받아치기·가게 창 주인 말 (글은 src/npclines.js)
 import './game/start.js';

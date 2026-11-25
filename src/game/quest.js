@@ -54,8 +54,8 @@ const CAP = {
   upgrade: () => (upLeft() ? Infinity : quests.state().c.upgrade || 0),
   clothes: () => ((LEAP.slots || []).some((k) => { try { return leapItems(k).some((it) => !it.own); } catch { return true; } }) ? Infinity : quests.state().c.clothes || 0),
 };
-export const questCan = (k) => { const c = CAP[k]?.(); return c == null || !Number.isFinite(c) ? Infinity : c; };
-const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; if (k.startsWith('case:')) return +late.caseVal?.(k) || 0; /* #232 사건 파일 */ return quests.state().c[k] || 0; };
+export const questCan = (k) => { const c = k.startsWith('off@') ? late.offTotal?.(+k.slice(4)) : CAP[k]?.(); /* #294 길 밖 곳은 그 구역 수까지 */ return c == null || !Number.isFinite(c) ? Infinity : c; };
+const val = (k) => { if (VAL[k]) return VAL[k](); if (k.startsWith('story:')) return save.story?.done?.includes?.(k.slice(6)) ? 1 : 0; /* #168 이야기 이벤트를 끝냄 */ if (k.startsWith('boss@')) return (save.boss?.done?.[k.slice(5)] > 0) ? 1 : 0; if (k.startsWith('case:')) return +late.caseVal?.(k) || 0; /* #232 사건 파일 */ if (k.startsWith('off@')) return +late.offFound?.(+k.slice(4)) || 0; /* #294 길 밖 곳 찾은 수 */ return quests.state().c[k] || 0; };
 const life = () => save.ach?.life || {};
 // 옛 저장에서 이미 한 것 (catchUp): 그 구역을 끝냈으면 그 구역 퀘스트는 모두, 아니면 평생 기록으로 어림
 function oldDone(q) {
@@ -92,6 +92,7 @@ function onEv(ev, n) {
   const k = EV[ev]; if (k) count(k, n);
   if (ev.startsWith('enemy-repel-')) count('repel:' + ev.slice(12), n);
   if (ev === 'enemy-repel' && buff.now()) count('repelBuff', n);
+  if (ev === 'enemy-repel') count('repel@' + zoneAt(player.pos.x, player.pos.z), n); /* #298 구역에서 쫓은 적 (둘 중 하나 목표) */
   if (ev === 'dumper-repel') count('dumper@' + zoneAt(player.pos.x, player.pos.z), n);
 }
 if (trash) trash.on((ev, d) => {
@@ -203,7 +204,7 @@ function show(g, it) {
   const lines = it.st === 'ready' ? q.fin : q.say;
   talk.lines = splitSay(lines); talk.pages = null; talk.i = 0;
   const p = quests.prog(q.id);
-  $('quest-task').innerHTML = it.st === 'ready' ? '' : `${esc(q.task)}${it.st === 'on' && q.ask.n > 1 && q.ask.k !== 'zone' ? ` <b>(${p}/${q.ask.n})</b>` : ''}${it.st === 'offer' && q.to && q.to !== q.giver ? `<br><small>끝나면 ${esc(whoOf(q.to))}</small>` : ''}`;
+  $('quest-task').innerHTML = it.st === 'ready' ? '' : `${esc(q.task)}${q.ask.or?.task ? ` <small>· 또는 ${esc(q.ask.or.task)}</small>` : ''}${it.st === 'on' && q.ask.n > 1 && q.ask.k !== 'zone' ? ` <b>(${p}/${q.ask.n})</b>` : ''}${it.st === 'offer' && q.to && q.to !== q.giver ? `<br><small>끝나면 ${esc(whoOf(q.to))}</small>` : ''}`;
   $('quest-rew').innerHTML = it.st === 'on' ? '' : rewardHtml(q.reward, q.id);
   const go = $('quest-go'); go.textContent = it.st === 'ready' ? '보상 받기' : it.st === 'offer' ? '받기' : '좋아요'; go.classList.toggle('claim', it.st === 'ready');
   win.el.hidden = false;
@@ -312,6 +313,7 @@ function goPos(go) {
   if (go === 'cairn') { const c = nearest(cairns.map((c) => c.pos)); return c ? c.clone() : null; }
   if (go === 'cave') return late.caveEnt?.() || null; // 용암 동굴 입구 (#195)
   if (go === 'rimLook') return late.summitClue?.rimPos?.() || null; // 굼부리 가장자리 전망 자리 (#208)
+  if (go.startsWith('off@')) return late.offGo?.(+go.slice(4)) || null; // 아직 못 찾은 가장 가까운 길 밖 곳 (#294)
   if (go.startsWith('case:')) return late.casePos?.(go) || null; // 사건 파일 (#232): 아직 못 찾은 가장 가까운 증거·숨는 곳
   if (go === 'ch') { const c = nearest(CHS.map((c) => c.front)); return c ? c.clone() : null; }
   if (!trash) return null;
@@ -390,7 +392,7 @@ function openLog() {
   const by = new Map(); for (const o of l.on) { const g = o.q.to && o.ready ? o.q.to : o.q.giver; if (!by.has(g)) by.set(g, []); by.get(g).push(o); }
   let h = '<h3>하는 중</h3>';
   if (!l.on.length) { const n = quests.tracked(); h += `<p class="q-empty">${n ? esc(`${whoOf(n.q.giver)}에게 가 보세요`) : '지금은 받은 퀘스트가 없어요. 드문 평화예요'}</p>`; }
-  for (const [g, os] of by) for (const o of os) h += row(`${o.main ? 'main' : 'side'}${o.ready ? ' ready' : ''}`, `${esc(o.q.name)}<small>${esc(o.ready ? `${whoOf(g)}에게 보고하기` : o.q.task)} · ${esc(whoOf(g))}</small>`, `<b>${o.ready ? '완료' : `${o.p}/${o.n}`}</b>`);
+  for (const [g, os] of by) for (const o of os) h += row(`${o.main ? 'main' : 'side'}${o.ready ? ' ready' : ''}`, `${esc(o.q.name)}<small>${esc(o.ready ? `${whoOf(g)}에게 보고하기` : o.q.task + (o.q.ask.or?.task ? ` · 또는 ${o.q.ask.or.task}` : ''))} · ${esc(whoOf(g))}</small>`, `<b>${o.ready ? '완료' : `${o.p}/${o.n}`}</b>`);
   const cps = Object.entries(quests.state().cp).filter(([, n]) => n > 0);
   if (cps.length) h += '<h3>할인권</h3>' + cps.map(([k, n]) => row('side', esc(CP_NAME[k] || k), `<b>×${n}</b>`)).join('');
   const done = l.done.filter((q) => !l.skip.includes(q.id)).reverse();

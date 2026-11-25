@@ -5,7 +5,7 @@
 //   --md 면 notes/story-text.md 의 '목록' 표(id · 어디서 · 글)를 찍음
 import fs from 'fs';
 const { STORY_TEXT, MUTTER_TEXT, RADIO, RADIO_SITU, NOTES, CLUE_TEXT } = await import('../src/punktext.js');
-const { QUESTS, MEET, CAVE, SEASON } = await import('../src/balance.js');
+const { QUESTS, MEET, CAVE, SEASON, FIELD } = await import('../src/balance.js');
 const { TASKS } = await import('../src/daily.js');
 
 const rows = []; /* { id, where, t, pre: 단계 3 전에도 나올 수 있음, max: 글자 수 한도, lines: 줄 수 한도 } */
@@ -40,6 +40,8 @@ for (const c of CASES) {
   for (const [g, L] of Object.entries(c.hello || {})) L.forEach((s, i) => add(`case.${c.id}.hello.${g}.${i}`, '사건 종결 뒤 인사 (#233)', s, { pre, max: 28 }));
 }
 const zoneOf = (q) => q.z || 0;
+for (const [k, L] of Object.entries(FIELD.sight.offLine || {})) L.forEach((t, i) => add(`off.${k}.${i}`, '길 밖 곳 처음 갔을 때 한 줄 (#294)', t, { max: 34 }));
+FIELD.sight.off.forEach((o, i) => add(`off.name.${i}`, '길 밖 곳 이름 (#294)', o[2], { pre: o[0] <= 3, max: 18 }));
 for (const [kind, list] of [['main', QUESTS.main], ['side', QUESTS.side]]) for (const q of list) {
   const after3 = zoneOf(q) >= 4 || ['story:ufo'].includes(q.need) || (q.after === 'boss4');
   const pre = !after3;
@@ -79,6 +81,10 @@ for (const r of REPORTS) { add(`report.${r.id}.t`, '미확인 제보 제목', r.
 
 // ---------- 검사 ----------
 let fail = 0;
+/* Bar 소설 (#316, src/bartext.js): 짧은 소설·읽는 동안 혼잣말. 바는 단계 3 전에도 열림 */
+{ const { BAR_STORIES, BAR_MUTTER } = await import('../src/bartext.js');
+  BAR_STORIES.forEach((s, i) => { add(`bar.${i}.t`, 'Bar 소설 짧은 소설 제목', s.t, { max: 14 }); add(`bar.${i}.b`, 'Bar 소설 짧은 소설', s.b, { max: 110 }); });
+  for (const [k, t] of Object.entries(BAR_MUTTER)) add(`bar.mutter.${k}`, 'Bar 소설 읽는 동안 혼잣말', t, { max: 22 }); }
 const bad = (m) => { console.log('실패 ' + m); fail++; };
 const BAN = /외계|UFO|우주선|은하/;
 const CH_NEAR = /지구|하늘|불빛|그들|동그라미/;
@@ -90,7 +96,7 @@ for (const r of rows) {
 }
 /* 구체적으로 (#257): 퀘스트마다 받을 때 글 + 할 일 줄에 '몇 개'(숫자·하나/둘/셋/한/두/세)와 '어디서'(화면에서 찾을 수 있는 장소 이름)가 있는지.
    예외: 셈이 늘 하나인 것(구역 들어서기·이야기 보고·대면·전망 자리)은 수를, 어디서나 되는 것(동작 인사·버프 중 적)은 곳을 안 봄 */
-const PLACE = /숲길|남쪽 사면|사면|능선|굼부리|정상|들머리|들판|개울|클린하우스|가게 거리|장비점|스톤|LEAP|미장원|만족한상회|오피스제주|숙소|돌탑|표지판|안내판|표지석|정낭|돌담|쉼터|터|동굴|소굴|초소|정류장|전망/;
+const PLACE = /숲길|남쪽 사면|사면|능선|굼부리|정상|들머리|들판|개울|클린하우스|가게 거리|장비점|스톤|LEAP|미장원|만족한상회|오피스제주|숙소|Bar 소설|돌탑|표지판|안내판|표지석|정낭|돌담|쉼터|터|동굴|소굴|초소|정류장|전망/;
 const NUM = /\d|하나|둘|셋|한 |두 |세 /;
 const NO_NUM = (q) => ['zone', 'rimLook'].includes(q.ask.k) || /^story:|^case:.*:face$/.test(q.ask.k);
 const NO_PLACE = (q) => ['emote', 'repelBuff'].includes(q.ask.k);

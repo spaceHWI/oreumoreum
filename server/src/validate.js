@@ -9,6 +9,7 @@ import { cleanText, nickOk, nickBad, randomNick } from '../../src/safetext.js';
 import { NET, TOOLS, BAGS, SHOES, BOOTS, WEAPONS, CLOTHES, WEAR_START, wearPrice, RIDES, HAIR, LOOK_COLORS, SEASON, BACK_LOOKS, WEEKLY, LEVEL, SWARM, TOKEN, INN } from '../../src/balance.js';
 import { cleanXmas, calOpenable, calCost, calReward, calClothIds, calFull, CAL_ALL_CLOTHES } from '../../src/seasoncal.js';
 import { normLoot } from '../../src/loot.js';
+import { normBar, barSpent, barCheck, barRevert, barXp } from './bar.js'; // Bar 소설 (#316)
 import { checkLv, levelOf } from '../../src/augments.js';
 import { TITLES, NOTES } from '../../src/punktext.js';
 import { recognize, cleanSold, normCred } from './earn.js';
@@ -84,6 +85,7 @@ function norm(s) {
       day: isObj(k.day) ? { d: typeof k.day.d === 'string' ? k.day.d.slice(0, 10) : '', n: int(k.day.n, 0, 1e6, 0) } : { d: '', n: 0 }, ev: isObj(k.ev) ? Object.fromEntries(Object.keys(k.ev).filter((e) => /^[a-z0-9-]{1,24}$/.test(e)).slice(0, 32).map((e) => [e, 1])) : {} };
   }
   if (s.inn !== undefined) { const o = isObj(s.inn) ? s.inn : {}; s.inn = { d: typeof o.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.d) ? o.d : '', n: int(o.n, 0, 1e6, 0), left: Math.max(0, Math.min(INN.buffSec, Number(o.left) || 0)), ...(isObj(o.fire) ? { fire: fireNorm(o.fire) } : {}) }; } /* 숙소 (#270): 마지막 묵은 날·묵은 수·개운함 남은 초. fire = 마당 불멍 (#290, 귤이 오가지 않아 모양만 바로잡음) */
+  normBar(s); // Bar 소설 (#316, server/src/bar.js): 모양만
   normTok(s); // 징표 (#255, server/src/token.js)
   s._lootFix = normLoot(s); // 재료·등급·강화·안 쓰는 장비 (#140): 강화 +6·없는 등급·재료 음수·없는 칸은 바로잡음
   return s;
@@ -107,6 +109,7 @@ function spentOf(P, S) {
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) sp += HAIR.price[k] || 0;
   for (const id of Object.keys(backOwn(S))) if (!backOwn(P)[id]) sp += BACK[id].price; // 배낭 겉모습 (#164)
   sp += innSpent(P, S); // 숙소 (#270)
+  sp += barSpent(P, S); // Bar 소설 (#316)
   return sp;
 }
 // 숙소 (#270): 새로 묵은 수 × 값 (지난 저장의 레벨로 셈. 첫 숙박은 반값). 값을 셈에 넣어야 같은 저장 사이에 번 귤·경험치 몫이 바로 잡힘
@@ -138,6 +141,7 @@ function revertItems(P, S) {
   if (isObj(S.clothes.tint)) for (const id of Object.keys(S.clothes.tint)) if (!S.clothes.own[id]) delete S.clothes.tint[id];
   if (innN(S) > innN(P)) S.inn = isObj(P.inn) ? { ...P.inn } : undefined; // 숙소 (#270): 값을 못 냈으면 묵지 않은 것으로
   if (S.inn === undefined) delete S.inn;
+  barRevert(P, S); // Bar 소설 (#316): 값을 못 냈으면 읽지 않은 것으로
   S.rides.own = S.rides.own.filter((id) => P.rides.own.includes(id)); if (!S.rides.own.includes(S.rides.cur)) S.rides.cur = S.rides.own[S.rides.own.length - 1] || null;
   for (const k of Object.keys(S.hairs)) if (!P.hairs[k] && !START_HAIR.has(k)) delete S.hairs[k];
   if (S.backs) { for (const id of Object.keys(S.backs.own)) if (!backOwn(P)[id]) delete S.backs.own[id]; if (!S.backs.own[S.backs.cur]) S.backs.cur = null; }
@@ -251,6 +255,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   }
   { const tk = tokenCheck(P, S, cred, t, dt); cred = tk.cred; for (const f of tk.fixed) fixed.push(f); } // 징표 (#255): 귤과 따로
   innCheck(P, S, t, fixed); // 숙소 (#270)
+  barCheck(P, S, t, fixed); // Bar 소설 (#316)
   let spent = spentOf(P, S) + sx.spent;
   if (spent > P.coins + room) { revertItems(P, S); spent = sx.spent; fixed.push('items'); }
   const gain = S.coins + spent - P.coins;
@@ -259,7 +264,7 @@ export function checkSave(prev, next, acc, t, { migrate = false, free = false, x
   bank -= fromBank; credit -= used - fromBank - fromSwarm;
   let lvCut = 0;
   if (isObj(S.lv) && !lvNew) { /* 레벨 (#202): 경험치(번 귤)는 이번에 받아 준 귤 가운데 판 귤을 뺀 만큼만 늘 수 있음 (운영자 귤·철 선물·받은 귤은 used 에 없음) */
-    const cap = (Number(P.lv?.xp) || 0) + Math.max(0, used - Math.min(used, rc.why.sold)) * innXp(P, S, t); /* #270 개운함 경험치 */
+    const cap = (Number(P.lv?.xp) || 0) + Math.max(0, used - Math.min(used, rc.why.sold)) * innXp(P, S, t) * barXp(P, S, t); /* #270 개운함·#316 '여운' 경험치 */
     if (S.lv.xp > cap) { lvCut = S.lv.xp - cap; S.lv.xp = Math.max(0, Math.floor(cap)); checkLv(S); fixed.push('lvxp'); }
   }
   const pg = S.trash.total - P.trash.total;

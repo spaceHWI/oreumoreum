@@ -4,9 +4,10 @@ import { NSMODE } from '../boot.js';
 import { buildNamsongi, nsAlong, nsPaths } from '../namsongi.js';
 import { aimLamps } from '../lampaim.js';
 import { createFootprints } from '../footprints.js';
-import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, INN, SCREEN, CRASH, WEATHER } from '../balance.js';
-import { crashNote, reportCrash } from '../crash.js';
-import { TIER, PERF_AUTO, PERF_PREF } from '../quality.js';
+import { PERF, CLEANHOUSE, SHOP_ST, SHOPS, LEAP, INN, BAR, SCREEN, CRASH, WEATHER } from '../balance.js';
+import { crashNote, reportCrash, reportNote, setCrashCtx } from '../crash.js';
+import { TIER, PERF_AUTO, PERF_PREF, GL_PRLOW } from '../quality.js';
+import { GL_START, noteGlLost, noteGlRestored, glAutoReload, takeGlNote, glCtx } from '../glguard.js';
 import { isMobile } from '../mview.js';
 import { STREET } from '../streetlayout.js';
 import { createRetro } from '../retro.js';
@@ -23,14 +24,14 @@ import { createWeather } from '../weather.js';
 import { sunPosition, sunTimes, sunDir, buildSkyBodies } from '../sun.js';
 import { kstDate } from '../achievements.js';
 import { state, late } from './state.js';
-import { $, clamp, save, MAP_ID } from './save.js';
+import { $, clamp, save, MAP_ID, persist } from './save.js';
 
 // ---------- 렌더러 ----------
 export const canvas = $('view');
 const PHONE_GL = isMobile(); // 폰 (#271): 그림자 거친 PCF (만들 때 정해야 하는 것). 안티에일리어싱은 PERF.aaPhone (#276 기본 켬)
 /* 검사용 스위치 (#286): 주소 ?aa=0 끔·?aa=1 켬. 없으면 file:// (tools/ 가 여는 test.html) 은 끔: 소프트웨어 GL 에서 안티에일리어싱이 프레임을 절반으로 깎아 검사가 2배 느려짐 */
 const AA_Q = (/[?&]aa=([01])/.exec(location.search) || [])[1];
-export const AA_ON = AA_Q ? AA_Q === '1' : location.protocol === 'file:' ? false : PERF.aaPhone || !(PHONE_GL || TIER === 0);
+export const AA_ON = AA_Q ? AA_Q === '1' : location.protocol === 'file:' ? false : GL_START.aaOff ? false : PERF.aaPhone || !(PHONE_GL || TIER === 0); /* WebGL 을 잃은 기기만 끔 (#304) */
 export const renderer = new THREE.WebGLRenderer({ canvas, antialias: AA_ON, powerPreference: 'default' });
 renderer.outputColorSpace = NSMODE ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -46,24 +47,37 @@ renderer.debug.onShaderError = (gl, program, vs, fs) => {
   const log = [vs, fs].map((s) => String(gl.getShaderInfoLog(s) || '').trim()).filter(Boolean).join(' | ') || String(gl.getProgramInfoLog(program) || '').trim();
   console.error('셰이더 컴파일 실패', log); crashNote('검은 NPC 셰이더 실패'); reportCrash({ name: '검은 NPC', message: '셰이더 컴파일 실패 ' + log.slice(0, 140) }, 'gl');
 };
-// WebGL 화면을 잃었을 때 (#108): 휴대폰이 메모리가 모자라면 GPU 문맥을 빼앗기도 함. three 가 되살아난 문맥에 모든 걸 다시 올림.
-// 그동안 안내를 보이고, CRASH.glWait 안에 돌아오지 않으면 '다시 불러오기'. 되살아나면 셰이더를 다시 준비
+// WebGL 화면을 잃었을 때 (#108, #304): 휴대폰이 메모리가 모자라면 GPU 문맥을 빼앗기도 함. 되살아나면 three 가 모든 걸 다시 올리고 셰이더를 다시 준비해 이어서 함.
+// 그동안 '화면을 다시 불러오는 중…' 한 줄. CRASH.glWait 안에 돌아오지 않으면 저장하고 한 칸 낮춰 한 번만 스스로 다시 불러옴(glguard.js). 이미 했으면 '다시 불러오기' 단추
 state.glLost = false;
 {
-  let lostT = 0;
+  let lostT = 0, lostAt = 0;
   canvas.addEventListener('webglcontextlost', (e) => {
-    e.preventDefault(); state.glLost = true; crashNote('WebGL 잃음'); reportCrash({ name: 'ContextLost', message: 'webglcontextlost' }, 'gl');
-    $('gl-lost-t').textContent = '화면을 다시 준비하고 있어요'; $('gl-reload').hidden = true; $('gl-lost').hidden = false;
-    clearTimeout(lostT); lostT = setTimeout(() => { if (!state.glLost) return; $('gl-lost-t').textContent = '화면을 되살리지 못했어요'; $('gl-reload').hidden = false; }, CRASH.glWait);
+    e.preventDefault(); state.glLost = true; lostAt = performance.now(); noteGlLost(!!document.hidden);
+    crashNote('WebGL 잃음'); reportCrash({ name: 'ContextLost', message: 'webglcontextlost' + (document.hidden ? ' (숨김)' : '') }, 'gl');
+    $('gl-lost-t').textContent = '화면을 다시 불러오는 중…'; $('gl-reload').hidden = true; $('gl-lost').hidden = false;
+    clearTimeout(lostT); lostT = setTimeout(() => giveUp(`${Math.round(CRASH.glWait / 1000)}s 안 돌아옴`), CRASH.glWait);
   });
+  /* 돌아오지 않음: 저장하고 한 칸 낮춰 다시 불러옴. 숨은 동안은 기다렸다가 다시 보일 때부터 잼 */
+  function giveUp(why) {
+    if (!state.glLost || document.hidden) return;
+    try { persist(); } catch (err) { /* 저장 실패해도 다시 불러옴 */ }
+    if (glAutoReload(`[gl 다시 불러옴] ${glCtx(quality.level, AA_ON)} · ${why}`) && reloadFor('gl', { auto: true })) { crashNote('WebGL 다시 불러옴'); return; }
+    $('gl-lost-t').textContent = '화면을 되살리지 못했어요'; $('gl-reload').hidden = false;
+  }
+  addEventListener('visibilitychange', () => { if (state.glLost && !document.hidden) { clearTimeout(lostT); lostT = setTimeout(() => giveUp('숨김 뒤 안 돌아옴'), CRASH.glWait); } });
   canvas.addEventListener('webglcontextrestored', () => {
-    state.glLost = false; clearTimeout(lostT); $('gl-lost').hidden = true; crashNote('WebGL 되살아남');
-    setTimeout(() => { try { prepShaders().catch(() => {}); } catch (e) { /* 다음 그릴 때 준비됨 */ } }, 50);
+    state.glLost = false; clearTimeout(lostT); $('gl-lost').hidden = true; noteGlRestored(); crashNote('WebGL 되살아남');
+    reportNote(`[gl 되살아남] ${((performance.now() - lostAt) / 1000).toFixed(1)}s 뒤 · ${glCtx(quality.level, AA_ON)}`);
+    if (quality.auto && quality.level > 0 && !document.hidden) { quality.level--; applyQuality(); } /* 되살아난 뒤 한 칸 가볍게 (자동 단계일 때) */
+    setTimeout(() => { try { prepShaders().catch(() => {}); } catch (err) { /* 다음 그릴 때 준비됨 */ } }, 50);
   });
   $('gl-reload').addEventListener('click', () => reloadFor('gl'));
+  { const n = takeGlNote(); if (n) reportNote(n); } /* 지난번 스스로 다시 불러온 까닭 (#304) */
 }
 state.farCull = null; // 멀리 있는 작은 물체 감추기 (#79), 맨 끝에서 만듦
 export const quality = { pr: 1, level: TIER, tier: TIER, auto: PERF_AUTO, pref: PERF_PREF, heat: 0 }; // 성능 단계 (#79): level 은 지금 쓰는 단계(자동이면 느릴 때 내려감)
+setCrashCtx(() => glCtx(quality.level, AA_ON)); /* 오류 알림마다 켠 지 몇 초·품질·AA·잃음 (#304) */
 export const retro = createRetro(renderer);
 export const post = createPost(renderer, LOW);
 if (!save.gfxV3) { save.gfx = 'smooth'; save.gfxV3 = 1; } retro.on = save.gfx === 'toon' || save.gfx === 'retro'; retro.setMode(save.gfx === 'retro' ? 'retro' : 'toon');
@@ -73,7 +87,8 @@ scene.background = FOG;
 scene.fog = new THREE.Fog(FOG, MAP_ID === 'gate' ? 90 : 220, MAP_ID === 'donnaeko' ? 3200 : MAP_ID === 'gate' ? 900 : 2600);
 const leapLane = (() => { const sh = SHOPS.find((r) => r.id === 'leap'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(LEAP.fore - 0.2), at(LEAP.fore + LEAP.D + 0.2)], w: LEAP.W / 2 + 0.2, floor: 1 }]; })(); /* LEAP 바닥 밑 풀 없앰 (#59) */
 const innLane = (() => { const sh = SHOPS.find((r) => r.id === 'inn'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(0.1), at(INN.fore + INN.D + 0.2)], w: INN.W / 2 + 0.5, floor: 1 }]; })(); /* 숙소 앞마당·유리 1층 밑 풀 없앰 (#270) */
-export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane, ...innLane] }) : null; /* 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목 */
+const barLane = (() => { const sh = SHOPS.find((r) => r.id === 'bar'), l = sh && STREET.lot(sh.lot); if (!l) return []; const at = (k) => [l.front.x + l.back.x * k, l.front.z + l.back.z * k]; return [{ pts: [at(0.1), at(BAR.fore + BAR.D + 0.2)], w: BAR.W / 2 + 0.4, floor: 1 }]; })(); /* Bar 소설 툇마루·바닥 밑 풀 없앰 (#316) */
+export const NSW = NSMODE ? buildNamsongi({ scene, renderer, bound: NSB, clear: [...STREET.clear, ...CLEANHOUSE.mini.map((m) => ({ ...nsAlong(m.path, m.d, m.side, CLEANHOUSE.miniOff), clearR: 5.5 }))], lanes: [{ pts: STREET.alley, w: SHOP_ST.half + 0.3 }, ...leapLane, ...innLane, ...barLane] }) : null; /* 가게 거리(#57) 자리는 나무·바위를 비우고 판석 골목 */
 
 if (NSW) { scene.fog.near = NSW.fogNear; scene.fog.far = NSW.fogFar; }
 export const camera = new THREE.PerspectiveCamera(SCREEN.fov, 1, 0.5, NSW ? NSW.camFar : 14000);
@@ -94,6 +109,7 @@ export function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   const cap = quality.level === 2 ? (w < 700 ? PERF.prNarrow : PERF.pr[2]) : PERF.pr[quality.level];
   quality.pr = Math.min(window.devicePixelRatio || 1, cap);
+  if (GL_PRLOW) quality.pr *= CRASH.gl.prLow; /* WebGL 을 잃은 기기, 단계 0 아래 (#304) */
   if (quality.heat >= 1) quality.pr = Math.max(Math.min(quality.pr, PERF.heat.prMin), quality.pr * PERF.heat.prMul); /* 발열 지킴 1칸 (#271, game/fps.js) */
   renderer.setPixelRatio(quality.pr);
   renderer.setSize(w, h, false);
@@ -191,7 +207,7 @@ export function applySky() {
   const sc = 700 + g * 500; bodies.sunSprite.scale.set(sc, sc, 1);
   bodies.stars.material.opacity = THREE.MathUtils.smoothstep(-el, 6, 14) * 0.85; // 해가 지평선 아래 6° 지나면서 서서히, 14°쯤 다 보임
   nsAfter(); applyWx(el);
-  { const see = late.fireSee?.() || 0; if (see > 0) { hemi.intensity += see * (1 - k) * ex; fogBase.f *= late.fireFog?.() ?? 1; applyZoneFog(); } } /* #290 불멍 '멍': 밤·안개에서 조금 더 보임 */
+  { const see = (late.fireSee?.() || 0) + (late.barSee?.() || 0); if (see > 0) { hemi.intensity += see * (1 - k) * ex; fogBase.f *= late.fireFog?.() ?? 1; applyZoneFog(); } } /* #290 불멍 '멍'·#316 '여운': 밤·안개에서 조금 더 보임 */
   sunState = { el, az, k, golden: g };
   late.sound.setDaylight?.(k);
 }

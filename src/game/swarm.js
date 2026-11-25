@@ -118,15 +118,16 @@ function pickKind(zone) {
 }
 const _f = new THREE.Vector3();
 const front = () => { camera.getWorldDirection(_f); return Math.atan2(_f.x, _f.z); }; /* #273 첫 물결은 카메라 앞에서 (징 뒤 곧 눈에 보이게) */
-function spawnSpot(zone, all = false, dir = null) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
+function spawnSpot(zone, all = false, dir = null, near = false) { /* 터 테두리 밖 (#231): 카메라 뒤쪽(화면 밖)을 먼저, 그다음 사방. 마지막 6번은 그 구역이 아니어도 (구역 경계에 걸친 터) */
   const c = AT(zone); if (!c) return null;
   camera.getWorldDirection(_f); const back = Math.atan2(-_f.x, -_f.z);
   for (let k = 0; k < 24; k++) {
     const a = dir != null && k < 18 ? dir + (Math.random() - 0.5) * 0.9 : k < 8 && !all ? back + (Math.random() - 0.5) * 3.6 : Math.random() * 6.283, r = A.r + A.spawn[0] + Math.random() * (A.spawn[1] - A.spawn[0]);
-    const x = c[0] + Math.sin(a) * r, z = c[1] + Math.cos(a) * r;
+    const nr = near && k < 18, o = nr ? [player.pos.x, player.pos.z] : c, rr = nr ? A.first[0] + Math.random() * (A.first[1] - A.first[0]) : r; /* #310 첫머리: 플레이어 앞 first m */
+    const x = o[0] + Math.sin(a) * rr, z = o[1] + Math.cos(a) * rr;
     if (Math.hypot(x - player.pos.x, z - player.pos.z) < 7) continue; // 바로 옆에서 튀어나오지 않게
     if (spots.enemyOk && !spots.enemyOk(x, z)) continue;
-    if (life.hooks.spawnBlock?.(x, z) || (k < 18 && zoneOf(x, z) !== zone)) continue;
+    if (life.hooks.spawnBlock?.(x, z) || (k < 18 && !nr && zoneOf(x, z) !== zone)) continue; /* 첫머리(nr)는 터 안팎 가까이라 구역 경계에 걸쳐도 됨 */
     if (life.hooks.enemyPass && !life.hooks.enemyPass(x, z, 0.7)) continue;
     return [x, z];
   }
@@ -134,7 +135,7 @@ function spawnSpot(zone, all = false, dir = null) { /* 터 테두리 밖 (#231):
 }
 // type: 'mob' | 'elite' | 'leader'
 function spawn(type, all = false, dir = null) { /* 떼 몹(mob)은 패턴(#254 swarmpat.js)에 따라. 무리(pack)는 여러 마리 → 나온 수를 돌려줌 */
-  const r = run, kind = pickKind(r.zone), B = ENEMIES[kind], at = spawnSpot(r.zone, all, dir ?? (r.wave <= 0 && r.t < 6 ? front() : null)); if (!at || !B) return null;
+  const r = run, pat = type === 'mob' ? pickPat(r.zone, doorOpen() ? r.stage : 0, E.list) : 'base', zk = pickKind(r.zone), kind = pat === 'rock' ? 'bigfoot' : zk, B = ENEMIES[zk], fw = dir == null && r.wave <= 0 && r.t < 6, at = spawnSpot(r.zone, all, fw ? front() : dir, fw && r.t < A.firstN); if (!at || !B) return null;
   const M = S.mob, T = SWARM_TEXT, hk = LOW ? S.cap.lowHp : 1, md = M.dmg[r.zone] ?? M.dmg[1];
   const gk = M.gyul[r.zone] ?? 0.25, rg = (g) => Math.floor(g) + (Math.random() < g % 1 ? 1 : 0); // 귤 보상 (소수 몫은 확률로)
   let over, k;
@@ -143,8 +144,8 @@ function spawn(type, all = false, dir = null) { /* 떼 몹(mob)은 패턴(#254 s
   else { k = M.size; over = { hp: B.hp * M.hp * hk, dmg: B.dmg * md, size: B.size * k, reward: { gyul: 0, rare: 0 }, sg: rg(B.reward.gyul * gk), life: M.life }; }
   Object.assign(over, { swarm: type, zone: r.zone, sight: 80, lose: 90, rootEvery: [1e9, 1e9] });
   if (B.ranged) over.ranged = { ...B.ranged, every: B.ranged.every * (type === 'mob' ? 1.4 : 1) };
-  const pat = type === 'mob' ? pickPat(r.zone, doorOpen() ? r.stage : 0) : 'base', pk2 = patOver(pat, B, over);
-  if (pk2) { k = pk2; over.size = B.size * k; }
+  const pk2 = patOver(pat, B, over); /* #296 빅풋(rock)은 그 구역 적의 기운·피해로, 모양·걸음은 빅풋 */
+  if (pk2) { k = pk2; over.size = B.size * k; } else if (kind !== zk) over.size = ENEMIES[kind].size * k;
   const straight = S.straight.includes(r.zone) && type === 'mob' && pat !== 'pack', pk = pat === 'pack' ? r.pk - 1 - (++packN % 1e5) * 2 : straight ? null : r.pk;
   const N = pat === 'pack' ? S.pat.pack.n : 1; let e = null;
   for (let i = 0; i < N; i++) {

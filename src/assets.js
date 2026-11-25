@@ -6,7 +6,10 @@ import { MeshoptDecoder as WasmDecoder } from 'three/examples/jsm/libs/meshopt_d
 import { MeshoptDecoder as JsDecoder } from 'meshoptimizer/meshopt_decoder_reference.js';
 import { ASSETS } from './assetlist.js';
 import { crashNote, reportCrash } from './crash.js'; // #108 마지막 한 일
-import { NPC_LIGHT } from './balance.js';
+import { NPC_LIGHT, PERF } from './balance.js';
+import { TIER } from './quality.js';
+import { isMobile } from './mview.js';
+import { GL_START } from './glguard.js';
 
 export const assetHooks = { stale: null }; // 받다 404 가 나면(배포로 예전 파일이 지워짐) 새 버전 알림 (#134)
 const cache = new Map(); // 이름 → 풀린 자료 { ...meta, pos: Uint8Array, ..., tex: blob URL }
@@ -82,17 +85,20 @@ export function want(name, now = false) {
   if (!go && !now) { if (!queue.includes(name)) queue.unshift(name); return; }
   load(name);
 }
-// 첫 화면이 그려진 뒤 부름: 먼저 찾은 것(want)부터, 그다음 ORDER 순서로 두 개씩 나란히 받음
+// 첫 화면이 그려진 뒤 부름: 먼저 찾은 것(want)부터, 그다음 ORDER 순서로 받음
 // (받기·풀기는 가볍다. 텍스처 올리기·셰이더 준비는 그릴 때 하나씩 일어남)
+// PC 는 두 개씩 나란히 바로. 폰·낮음 단계는 켠 직후 GPU 에 한꺼번에 올라가 WebGL 을 잃지 않게(#304) PERF.load.delay 뒤 하나씩, 사이 gap (잃은 기기는 × lostK)
+export const loadPlan = () => { const L = PERF.load, slow = isMobile() || TIER === 0; return slow ? { par: 1, delay: L.delay, gap: L.gap * (GL_START.drop || GL_START.aaOff ? L.lostK : 1) } : { par: 2, delay: 0, gap: 0 }; };
 export function startAssets() {
   if (go) return; go = true;
   for (const n of [...ORDER, ...Object.keys(ASSETS)]) if (!queue.includes(n) && !ASSETS[n]?.meta?.lazy) queue.push(n); /* lazy: 가까이 가야 받음 (#262) */
+  const P = loadPlan();
   const next = () => {
     while (queue.length && (cache.has(queue[0]) || loading.has(queue[0]))) queue.shift();
     const n = queue.shift(); if (!n) return;
-    load(n).then(() => setTimeout(next, 0));
+    load(n).then(() => setTimeout(next, P.gap));
   };
-  next(); next();
+  setTimeout(() => { for (let i = 0; i < P.par; i++) next(); }, P.delay);
 }
 // 첫 화면에 꼭 필요한 모델(내 캐릭터)을 받아 둠. 실패하면 조금 있다 다시
 export function loadCore() {

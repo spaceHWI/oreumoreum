@@ -16,6 +16,8 @@ export const BADGES = [
   { id: 'b-deer-friend', ev: 'follower', goal: 5, name: '노루 친구', desc: '동물이 다섯 번 따라왔어요', glyph: '친', color: '#b8865a', reward: 30, item: 'vest:c:#c9a27a' },
   { id: 'b-stones', ev: 'stone', goal: 10, name: '돌탑 쌓는 사람', desc: '소원 돌 10개', glyph: '탑', color: '#4a4744', reward: 30 },
   { id: 'b-nosmoke', ev: 'smoker-repel', goal: 10, name: '금연 구역 지킴이', desc: '들머리 흡연자를 열 번 쫓았어요', glyph: '금', color: '#c4513f', reward: 30 }, // #156
+  { id: 'b-calm', ev: 'zone-pick-only', goal: 1, name: '달래는 사람', desc: '싸우지 않고 우두머리를 달래 보냈어요', glyph: '달', color: '#6c9a5a', reward: 30 }, // 두 길 (#298, game/twopaths.js)
+  { id: 'b-fightonly', ev: 'zone-fight-only', goal: 1, name: '쫓는 사람', desc: '쫓아낸 적만으로 우두머리를 불러냈어요', glyph: '쫓', color: '#b8513a', reward: 30 },
   { id: 'b-boar', ev: 'boar-repel', goal: 5, name: '멧돼지 조련사', desc: '멧돼지를 다섯 번 쫓았어요', glyph: '멧', color: '#4a3a30', reward: 30 },
   // 무기 첫 구매 (#123): 상점이 weapon-buy-<id> 를 알림
   { id: 'b-arm-bow', ev: 'weapon-buy-bow', goal: 1, name: '첫 귤 활', desc: '귤 활을 샀어요', glyph: '활', color: '#9a6b3a', reward: 20 },
@@ -72,6 +74,7 @@ BADGES.push(
   { id: 'b-ending', ev: 'story-end', goal: 1, name: '은하 환경미화원', desc: '외계인의 사과를 받아 냈어요', color: '#3d4a7a', reward: 20 }, // #168 엔딩
   { id: 'b-eye', ev: 'myst-safe', goal: 1, name: '눈썰미', desc: '관리 초소 금고를 열었어요', color: '#5a5f3a', reward: 20 }, // #212 금고
   { id: 'b-inn-5', ev: 'inn-stay', goal: 5, name: '단골 투숙객', desc: '오피스제주에서 다섯 번 묵었어요', color: '#4f7fa8', reward: 30 }, // #270 숙소 (game/inn.js 가 묵을 때마다 사건을 냄)
+  { id: 'b-bar-all', ev: 'bar-all', goal: 1, name: '애독자', desc: 'Bar 소설의 짧은 소설을 모두 읽었어요', color: '#1d2a4a', reward: 30 }, // #316 Bar 소설 (game/bar.js 가 마지막 편을 다 읽으면 사건을 냄)
 );
 BADGES.push(...CASE_BADGES); // 사건 파일 (#232): 사건을 종결하면 game/cases.js 가 late.titles.give 로 사건을 냄
 BADGES.push({ id: 'b-case-all', ev: 'case-all', goal: 1, name: '수석 조사관', desc: '증거 사진 다섯 장을 빨간 실로 이었어요', color: '#8a2a2a', reward: 0 }); // #237 사건 파일 끝 (game/casefinale.js)

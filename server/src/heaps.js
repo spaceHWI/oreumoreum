@@ -1,7 +1,7 @@
 // 쓰레기 더미 목록 (src/trash.js HEAP_DEFS 와 같은 순서·같은 서명). three 를 끌어오지 않으려고 계산만 따로 둠
 import { ZONES, TRASH_TYPES, WEAR, DEX, NET, AUGMENTS, FEEL } from '../../src/balance.js';
-import { HEAP_DEFS, HEAP_FULL, HEAP_SIG } from '../../src/heapdefs.js'; // #138 게임과 같은 목록 (들판 더미·쓰레기 산까지)
-export { HEAP_DEFS, HEAP_FULL, HEAP_SIG };
+import { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_OWN } from '../../src/heapdefs.js'; // #138 게임과 같은 목록 (들판 더미·쓰레기 산까지)
+export { HEAP_DEFS, HEAP_FULL, HEAP_SIG, HEAP_OWN };
 // 더미에서 하나 주울 때 벌 수 있는 귤의 위 끝 (#144): 구역 섞임(mix)의 평균 귤 × NET.earnPickSlack(종류 운 여유) × 구역 배수 gv × 가장 좋은 베스트
 //   (+ 분리수거 달인 증강 #159 최대) + 드문 것 몫(가장 좋은 모자, 2배 여유). 방이 받아 준 줍기마다 이만큼을 계정의 '번 몫'(earn_bank)에 더함 → 버린 귤은 이 몫 + 작은 몫(earnBurst) 안에서만 받아 줌
 const wearTop = (k) => Math.max(...WEAR.slots.find((s) => s.k === k).v);

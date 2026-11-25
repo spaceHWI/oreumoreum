@@ -21,6 +21,9 @@ export const HEAP = {
     mt: { n: 500, r: 5.2, h: 5.6, name: '쓰레기 산', gv: 1.5 }, // #138 들판 쓰레기 산: 귤 값 × gv (구역 gv 에 곱함)
   },
   stages: [1, 0.66, 0.33, 0.12], // 4단계
+  // #300 내 것인 더미 크기: 작은·큰·대형 더미(s·l·xl)는 사람마다 따로(내 화면·내 저장에만, 남이 주워도 내 것은 그대로). 들판 쓰레기 산(mt)만 방이 주인이라 함께 치움
+  // 방은 내 것 더미의 남은 수를 모르고 줍기 속도·번 몫만 셈 (server roomcore). 바꿔도 HEAP_SIG 는 그대로(옛 방 더미 구성 유지). tools/crowd.js 4) 가 사람 수별로 셈
+  own: ['s', 'l', 'xl'],
   colPad: 0.15, // 충돌 반경 = 지금 모양 반경 × 0.85 + 이만큼
   gap: 7, // 더미 가장자리끼리 최소 거리
   trailMin: 3.2, trailMax: 14, // 길 옆 더미: 길 가운데에서 가장자리까지 거리 범위 (길을 막지 않게)
@@ -124,6 +127,33 @@ export const FIELD = {
   sight: {
     r: 7, gyul: [0, 30, 60, 150, 400, 900],
     list: [[1, 'spring', '숲속 샘'], [1, 'sandam', '자락 산담'], [2, 'sandam', '남쪽 산담'], [2, 'view', '남쪽 전망 바위'], [3, 'tower', '능선 방사탑'], [3, 'view', '능선 전망 바위'], [4, 'spring', '굼부리 샘'], [4, 'tower', '굼부리 방사탑'], [5, 'view', '정상 전망 바위']],
+    // 길 밖 곳 (#294, notes/journey.md '맵 쓰임' 절): 길에서 먼 빈 땅에 놓은 작은 볼거리. id 는 list 뒤를 이어 'sight:<list.length + 번호>' (순서·자리를 바꾸지 않음, 서버 earn.js 가 같은 표로 인정)
+    // [구역, 모양, 이름, x, z]. 자리는 tools/usemap.js --plan 이 뽑은 '빈 땅을 가장 많이 덮는 곳'(남송이). 처음 가면 귤 offGyul[구역] + 한 줄(src/offpath.js), 도감엔 안 넣음
+    offGyul: [0, 5, 20, 50, 120, 250], // 처음 찾을 때 귤 (구역 1 은 곳이 많아 작게: 찾는 귤 + 곁가지 보상 합이 그 구역 날 벌이 5% 아래, tools/econ.js)
+    off: [
+      [1, 'camp', '북쪽 자락 버려진 캠핑 자리', -60, -660], [1, 'spring', '북동쪽 자락 숨은 샘', 220, -500], [1, 'bench', '북서쪽 자락 낡은 평상', -300, -460], [1, 'nest', '북동쪽 자락 까마귀 둥지', 220, -380],
+      [1, 'bike', '북서쪽 자락 버려진 자전거', -340, -340], [1, 'flower', '북동쪽 자락 들꽃밭', 140, -260], [1, 'sign', '서쪽 자락 쓰러진 옛 표지판', -420, -220], [1, 'rocks', '북쪽 자락 돌무더기 쉼터', 60, -660],
+      [1, 'tent', '북쪽 자락 찢어진 텐트', -140, -540], [1, 'view', '북동쪽 자락 외딴 전망 바위', 268, -268], [1, 'camp', '북서쪽 자락 버려진 캠핑 자리', -308, -228], [1, 'spring', '서쪽 자락 숨은 샘', -620, -140],
+      [1, 'bench', '서쪽 자락 낡은 평상', -580, -20], [1, 'nest', '남동쪽 자락 까마귀 둥지', 228, 188], [1, 'bike', '북동쪽 자락 버려진 자전거', 108, -588], [1, 'flower', '북쪽 자락 들꽃밭', -196, -468],
+      [1, 'sign', '동쪽 자락 쓰러진 옛 표지판', 284, 52], [1, 'rocks', '남쪽 자락 돌무더기 쉼터', -140, 300], [1, 'tent', '남쪽 자락 찢어진 텐트', -20, 300], [1, 'view', '북서쪽 자락 외딴 전망 바위', -356, -548],
+      [1, 'camp', '서쪽 자락 버려진 캠핑 자리', -492, -188], [1, 'spring', '동쪽 자락 숨은 샘', 172, -188],
+      [2, 'camp', '사면 동쪽 버려진 캠핑 자리', 180, -20], [2, 'flower', '사면 남동쪽 들꽃밭', 140, 100], [2, 'nest', '사면 남동쪽 까마귀 둥지', 20, 180], [2, 'rocks', '사면 남쪽 돌무더기 쉼터', -140, 220],
+      [2, 'sign', '사면 서쪽 쓰러진 옛 표지판', -380, -60], [2, 'bench', '사면 남서쪽 낡은 평상', -260, 140], [2, 'spring', '사면 남쪽 숨은 샘', -44, 212],
+      [4, 'camp', '굼부리 바깥 버려진 캠핑 자리', -180, -180],
+    ],
+    offLine: { // 처음 가면 메시지 한 줄 (모양마다 둘 중 하나, 이름 뒤에 붙음. 안내서 톤)
+      camp: ['불 꺼진 지 오래예요. 의자는 아직 누구를 기다려요', '캔이 네 개. 넷이 왔거나, 한 명이 오래 있었거나'],
+      spring: ['물이 맑아요. 여기까진 아무도 안 버렸어요', '샘은 조용해요. 소문이 안 나서 다행이에요'],
+      bench: ['한쪽 다리가 내려앉았어요. 쉬는 건 아직 돼요', '평상 위에 빈 컵 하나. 경치 값은 공짜였대요'],
+      nest: ['까마귀가 모은 반짝이들. 병뚜껑이 제일 많아요', '둥지가 비었어요. 반짝이는 놓고 갔네요'],
+      bike: ['바퀴가 아직 돌아요. 주인은 걸어갔나 봐요', '자전거로는 못 오는 곳인데. 그래서 두고 갔나 봐요'],
+      flower: ['길에선 안 보이는 꽃밭이에요. 길이 손해예요', '벌이 먼저 와 있었어요. 줄은 안 서도 돼요'],
+      sign: ['글씨가 반쯤 지워졌어요. 옛 길이 여기로 났었대요', '쓰러진 표지판. 가리키던 쪽엔 이제 풀만 있어요'],
+      rocks: ['누가 돌을 쌓아 쉼터를 만들었어요. 앉으면 딱 맞아요', '돌 하나 얹고 가는 게 여기 예의래요'],
+      tent: ['천막이 찢어졌어요. 바람이 먼저 묵고 갔네요', '텐트 안엔 아무도 없어요. 다행이에요, 아마도'],
+      view: ['길에서 안 보이던 오름 뒤편이 보여요', '바람이 세요. 경치는 그 값을 해요'],
+    },
+    offTreasure: { 1: 2, 2: 1, 4: 1 }, // 그 구역 보물 몇 개를 길 밖 곳 곁으로 옮김 (값은 그대로, 자리만. 뒤 번호부터)
   },
   boss: { d: [22, 55], r: 13 },
   off: [0.8, 0.84, 0.88, 0.92, 0.96],
@@ -132,6 +162,9 @@ export const FIELD = {
   fog: { n: 128, r: 42 },
   chD: 80, // 권장 배낭으로 길가 더미를 반쯤 치우면 가득 차는 곳에서 구역 클린하우스까지 (7-1절, tools/field.js 가 잼)
 };
+// 볼거리 i 번 (#294): list 뒤를 길 밖 곳(off)이 이음. [구역, 모양, 이름, x?, z?] · off 면 x·z 가 있음
+export const sightDef = (i) => (i < FIELD.sight.list.length ? FIELD.sight.list[i] : FIELD.sight.off[i - FIELD.sight.list.length]) || null;
+export const sightGyul = (s) => (s ? (s.length > 3 ? FIELD.sight.offGyul : FIELD.sight.gyul)[s[0]] || 0 : 0);
 // 들판 떼 (#173, src/game/swarm.js, notes/growth-loop.md '들판 떼' 절): 서바이벌 터(#231, 아래 arena) 징을 울리면 그 구역 떼가 몰려옴(뱀서류). 모두 임의값
 // firstT 판이 시작된 뒤 첫 적이 보이기까지(초). (#231 전의 offD·backD·backT '길에서 벗어나면 시작·길로 돌아오면 끝' 은 없앰)
 // ring 플레이어 둘레 이 거리(화면 밖 쪽)에서 나옴, gap 한 마리씩 나오는 가장 짧은 간격(초), run 한 판(#202, 아래 주석). 물결 3·5 첫머리에 정예 하나
@@ -145,7 +178,7 @@ export const FIELD = {
 // sack 구역 4 '썩은 귤 자루': 쫓아낸 광견병 들개가 p 확률로 떨굼 → fuse 초 뒤 터져 r m 안 플레이어를 t 초 동안 slow 배로 느리게
 // econ tools/econ.js: 들판 10분 귤이 길가 10분의 max 배를 넘지 않게, 하루 놀이 중 share 만큼 들판에 있다고 셈
 export const SWARM = {
-  firstT: 1.2,
+  firstT: 0.3, /* #310 1.2 → 0.3: 징 울림 연출 동안 이미 달려오게 */
   ring: [18, 26], gap: 0.25,
   /* 한 판 (#202): 서바이벌 터 징으로 시작(#231, 아래 arena), t[구역] 초 동안 물결 waves 번(물결마다 n[0] → n[1] 마리, 구역이 하나 깊을수록 × (1 + deep)). 마지막 bigT 초는 떼 대장 1마리가 섞인 큰 물결
      시간이 다 되면 '버텼다!' + 그 판에서 번 귤의 bonus 덤(서버는 bonusMax[구역]까지, 쉬는 시간 안에 두 번 인정하지 않음 earn.js). 끝나면 그 구역 들판은 rest 초 조용함(사람마다·구역마다, save.swarm.rest) */
@@ -168,8 +201,21 @@ export const SWARM = {
      pack 무리: n 마리가 한 덩어리로, 크기 × k(그 구역 적 크기 기준)·빠르기 × speed·기운 × hp·귤 × gyul (한 마리씩 물결 수에 셈)
      shield 방패: 앞(플레이어 쪽과 cos > cos)에서 맞으면 피해 × front, 옆·뒤는 × side. 걸음 × walk */
   pat: {
-    zone: { 1: [['base', 1, 0], ['rush', 0.6, 1]], 2: [['base', 1, 0], ['rush', 0.5, 0], ['circle', 0.6, 2]], 3: [['base', 1, 0], ['rush', 0.5, 0], ['circle', 0.5, 1], ['throw', 0.45, 2]],
-      4: [['base', 0.8, 0], ['rush', 0.5, 0], ['circle', 0.5, 1], ['throw', 0.4, 2], ['pack', 0.3, 3]], 5: [['base', 0.8, 0], ['rush', 0.5, 0], ['circle', 0.5, 1], ['throw', 0.4, 2], ['shield', 0.35, 3]] },
+    /* #296 판 초반부터 섞임(예전: 포위·던지기는 물결 2~3 부터라 3분 판의 첫 1분은 돌진만), 잽싼(zip)·묵직한(heavy)·빅풋 돌(rock) 더함. 던지기는 구역 2 부터 */
+    zone: { 1: [['base', 0.8, 0], ['zip', 0.35, 0], ['heavy', 0.15, 0], ['rush', 0.5, 1]], 2: [['base', 0.8, 0], ['rush', 0.45, 0], ['zip', 0.35, 0], ['heavy', 0.2, 0], ['throw', 0.35, 1], ['circle', 0.5, 1]],
+      3: [['base', 0.7, 0], ['rush', 0.45, 0], ['zip', 0.3, 0], ['heavy', 0.25, 0], ['circle', 0.45, 1], ['throw', 0.25, 1], ['rock', 0.25, 1]],
+      4: [['base', 0.6, 0], ['rush', 0.45, 0], ['zip', 0.3, 0], ['heavy', 0.25, 0], ['circle', 0.45, 1], ['throw', 0.25, 1], ['rock', 0.3, 1], ['pack', 0.3, 2]], 5: [['base', 0.7, 0], ['rush', 0.45, 0], ['zip', 0.25, 0], ['heavy', 0.18, 0], ['circle', 0.45, 1], ['throw', 0.4, 1], ['shield', 0.35, 2]] }, /* 5: 묵직한 놈을 줄여 잃는 기운 ±20% 안 */
+    /* #296 역할 (귤 × gyul 은 기운 × hp 와 맞춤: 오래 맞혀야 하는 놈은 그만큼 더 줌, tools/swarm.js 판 귤 ±10%)
+       zip 잽싼 놈: 기운 × hp·쫓는 빠르기 × speed(돌진은 그대로), 멀리선 zig rad 로 zigW rad/초 지그재그, 가까우면 windT 조짐. 피해 × dmgK, 모양 크기 × k
+       heavy 묵직한 놈: 기운 × hp·빠르기 × speed·크기 × k, 맞아도 밀리지 않음. windD m 안이면 windT 초 크게 휘두르는 조짐(고리) → 짧게 내지름(dashK·dashT) → 피하면 staggerT 초 큰 빈틈. 피해 × dmgK, 귤 × gyul
+       rock 빅풋 돌 던지기: keep m 거리, every 초마다 aim 초 돌을 들어 올림 → fly 초 포물선(떨어질 자리 r m 그림자 원), 맞으면 피해 × dmgK. 떨어진 돌은 stay 초 동안 반지름 block m 로 길을 막음
+       snow 설인 눈덩이(game/foes.js): every 초마다 aim 초 멈췄다 n 개를 gap 초 간격으로(fly 초, r m 원), 맞으면 피해 × dmgK·slowT 초 느려짐. keep m 거리, near m 안이면 물러남
+       throwMax 던지는 놈(throw·rock·설인)이 한 화면(살아 있는 것)에 동시에 이만큼까지 (폰·저사양 phone). mark 머리 위 표시 높이(m) */
+    zip: { hp: 0.25, speed: 1.6, k: 0.8, zig: 0.6, zigW: 4.5, windT: 0.6, dmgK: 0.7, gyul: 0.25, tint: '#ffe08a' },
+    heavy: { hp: 5.5, speed: 0.5, k: 1.35, windD: 3.8, windT: 0.8, dashK: 1.4, dashT: 0.35, staggerT: 1.6, dmgK: 1.25, gyul: 5.5, tint: '#8c7b70' },
+    rock: { hp: 1.6, keep: [11, 16], every: [4.2, 5.6], aim: 1.2, fly: 1.05, r: 2.0, dmgK: 1.4, stay: 3, block: 1.0, gyul: 1.6 },
+    snow: { keep: [15, 22], near: 8, every: [4.5, 6], aim: 0.6, n: 3, gap: 0.28, fly: 0.85, r: 1.3, dmgK: 0.6, slowT: 1.5 },
+    throwMax: { pc: 3, phone: 2 }, mark: 0.55,
     rush: { windD: 11, windT: 0.6, dashK: 2.1, dashT: 0.85, tint: '#ffb39a' },
     circle: { R: 7.5, w: 0.9, behind: -0.35, max: 7, tint: '#b9c8ff' },
     throw: { keep: [8, 12], every: [2.6, 3.6], aim: 0.45, fly: 1.15, r: 1.5, dmgK: 0.8, tint: '#c9e07a' },
@@ -187,8 +233,9 @@ export const SWARM = {
      at[구역] 터 가운데 [x, z] (길에서 가깝고 덜 기운 곳, 안에 더미·소굴·보물·NPC 없음: node tools/arena.js 가 확인), r 반지름(m, 임의값)
      leave 판 동안 터 밖에 이 초 넘게 있으면 끝(덤 없음, 쉬는 시간 × leaveRest), gongR 징 상호작용 거리, spawn 떼가 나오는 곳 = 터 테두리 밖 [안, 밖] m
      edge 판 동안 테두리에서 이 m 안이면 받혀 밀리는 방향의 바깥쪽 몫을 지우고 edgeIn 만큼 안쪽으로 꺾음 (#265: 비탈 터에서 밀려 나가 돌아오지 못함)
-     hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리 */
-  arena: { r: 22, leave: 8, leaveRest: 0.5, edge: 4, edgeIn: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
+     hintR 터 쪽 가장자리 표시가 뜨는 거리(이보다 가깝고 near 보다 멀 때만, #201), tagR 징 위 글이 보이는 거리
+     first 첫 물결 첫머리(판 firstN 초 안)는 테두리 밖이 아니라 플레이어 앞(카메라가 보는 쪽) 이 거리 [안, 밖] m 에서 나옴 (#310: 징 → 3초 안에 보이고 5초 안에 싸움) */
+  arena: { r: 22, first: [12, 17], firstN: 4, leave: 8, leaveRest: 0.5, edge: 4, edgeIn: 0.5, gongR: 3.2, spawn: [2, 9], hintR: 70, near: 16, tagR: 34,
     at: [null, [-16, -540], [-312, 84], [-116, 28], [84, -440], [64, -12]] }, /* #253 자리 다시 잡음: node tools/arenacheck.js 겹침 0 */
 };
 
@@ -229,7 +276,7 @@ export const ZONE_BOSS = {
   charge: { warn: 0.95, len: 18, w: 2.6, speed: 1.7, rest: 1.1 },
   call: { n: [2, 3], every: 16, max: 3 },
   beam: { warn: 1.15, r: 2.6, n: 3, spread: 5, dmgK: 0.8, every: 7 },
-  walk: 1.15, // 다가갈 때 바탕 적 walk × 이만큼
+  walk: 1.4, // 다가갈 때 바탕 적 walk × 이만큼 (#296 졸개 walk 를 0.82 배로 낮춰 1.15 → 1.4: 우두머리 걸음은 그대로)
   slow: { t: 1.4, k: 0.3 }, loot: 24, summaryAt: 3.2,
   netMs: 200, netHold: 10, // netHold: 받는 쪽은 방장 알림이 끊겨도 이 초까지 제자리에 둠 (#181: 끊긴 방장이 빠지고 다음 방장이 이어받는 동안. 예전 3초에 사라졌다 가득 찬 채 다시 나왔음)
   // 싸움이 풀린 뒤 (#183, enemies.js restRegen): 기운은 남고 delay 초 동안 그대로, 그 뒤 초당 최대 기운의 rate 씩 참 (다시 맞거나 싸움이 붙으면 멈춤)
@@ -303,7 +350,7 @@ export const BLOOM_FX = {
 export const DUMP = {
   players: 1,
   every: 180, // 남송이는 연출 감독(#89 PACE)이 부름. every 는 접속 안 한 동안 쌓는 양(DUMP_AMT)의 기준으로만 minEvery: 20,
-  hourFrac: 0.4, // #300 급한 불: 0.25 → 0.4 (사람이 몰릴 때 모자람)
+  hourFrac: 0.25, // #300 쓰레기 산 말고는 사람마다 따로라(HEAP.own) 혼자 할 때 값으로 되돌림 (0.55.3 급한 불 0.4)
   truckP: 0.4, // 한 번 올 때 트럭일 확률
   zoneBase: 0.3,
   dumpT: 5, // 버리는 데 걸리는 시간(초)
@@ -327,6 +374,7 @@ export const DUMP = {
   // 같이 있는 사람 수 (#131, src/refill.js): 오름 전체 쌓는 속도 = 한 명 기준 × n^crowdExp. 각자 둘레 투기꾼이 한 사람 몫(n^crowdExp ÷ n)씩 쌓음
   // n 은 방(server roomcore)이 셈: 최근 crowdActive 초 안에 crowdMove m 넘게 움직였고 튜토리얼 중이 아닌 사람. crowdFollow 초에 걸쳐 따라감(갑자기 안 바뀜)
   // 몫이 줄면 간격을 먼저 늘리고(crowdGapMax 배까지, PACE.battle.gap·몹 무리 간격 같이), 나머지는 한 번에 쌓는 양을 줄임
+  // #300: 쓰레기 산 말고는 사람마다 따로라 이 배율은 함께 더미(쓰레기 산)에만 닿음. 1 이면 한 사람 몫이 늘 혼자일 때와 같음(0.55.3 에 0.8 → 1)
   crowdExp: 1, crowdActive: 120, crowdMove: 3, crowdFollow: 60, crowdGapMax: 1.5,
   walker: { name: '무단투기꾼', hp: 1, amt: 10, speed: 2.6, flee: 7, reward: 5, hitR: 1.1 },
   truck: { name: '투기 트럭', hp: 6, speed: 7, flee: 10, reward: 30, hitR: 2.4 },
@@ -540,19 +588,29 @@ export const BOAR = {
 // rush 조짐 뒤 돌진·우두머리 돌진의 바탕 빠르기(#149: chase 를 낮추며 예전 값을 지킴), rest 한 번 공격(받기·비껴감)한 뒤 다음 조짐까지 쉬는 초(그동안 COMBAT.ringR 둘레를 돎)
 // ranged: 멀리서 쏘는 적. keep 이 거리를 지키며 every 초마다 광선, range 쏘는 거리, speed 광선 속도, r 맞는 반경
 // #137: 기운(hp)·귤이 구역마다 약 2.4~2.5배 (notes/growth-loop.md 3절). 귤은 dropMax 개까지 알갱이로 흩뿌리고 나눠 담음 (ENEMY_DROP)
+// #296: 들판·길가 적 walk·chase 를 예전의 0.82 배로 (rush·우두머리 걸음은 그대로). 역할(잽싼·묵직한·던지는)은 SWARM.pat·ENEMY_SPAWN.role 로 섞음
 export const ENEMIES = {
-  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.8, chase: 4.6, rush: 4.6, rest: 2.5, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
-  dog: { name: '들개', hp: 8, walk: 3.0, chase: 6.5, rush: 9.5, rest: 2.0, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
-  boar: { name: '멧돼지', hp: 20, walk: 2.4, chase: 6, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
-  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.6, chase: 7.5, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
-  alien: { name: '외계인', hp: 120, walk: 2.6, chase: 4.4, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
+  piglet: { name: '아기 멧돼지', hp: 3, walk: 1.5, chase: 3.8, rush: 4.6, rest: 2.5, flee: 7, dmg: 10, reward: { gyul: 5, rare: 0.03 }, sight: 14, lose: 24, life: 180, rootEvery: [16, 30], rootT: 1.6, rootTrash: [1, 2], rootR: 14, size: 0.62 },
+  dog: { name: '들개', hp: 8, walk: 2.5, chase: 5.3, rush: 9.5, rest: 2.0, flee: 11, dmg: 15, reward: { gyul: 15, rare: 0.04 }, sight: 20, lose: 32, life: 180, rootEvery: [18, 32], rootT: 1.4, rootTrash: [1, 2], rootR: 14, size: 0.85 },
+  boar: { name: '멧돼지', hp: 20, walk: 2.0, chase: 4.9, rush: 7.2, rest: 2.5, flee: 9, dmg: 25, reward: { gyul: 45, rare: 0.05 }, sight: 18, lose: 30, life: 180, rootEvery: [14, 28], rootT: 1.8, rootTrash: [2, 3], rootR: 14, size: 1 },
+  rabid: { name: '광견병 걸린 들개', hp: 50, walk: 3.0, chase: 6.2, rush: 12, rest: 1.6, flee: 12, dmg: 30, reward: { gyul: 130, rare: 0.07 }, sight: 24, lose: 36, life: 200, rootEvery: [16, 30], rootT: 1.4, rootTrash: [2, 3], rootR: 14, size: 0.92 },
+  alien: { name: '외계인', hp: 120, walk: 2.1, chase: 3.6, flee: 10, dmg: 35, reward: { gyul: 400, rare: 0.1 }, sight: 26, lose: 40, life: 220, rootEvery: [20, 34], rootT: 2.2, rootTrash: [2, 4], rootR: 16, size: 1.15, ranged: { keep: 14, range: 24, every: 3, speed: 15, r: 1.0 } },
   // 들판 떼 전용 (#173, src/game/swarm.js): 구역 3 까마귀(하늘에서 내려와 쪼고 올라감), 구역 5 외계인 드론(작은 비행 접시, 약한 광선). 표의 값은 '보통 적' 기준이고 떼는 SWARM.mob 비율로 낮춤
-  crow: { name: '까마귀', hp: 16, walk: 3.4, chase: 7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
-  drone: { name: '외계인 드론', hp: 100, walk: 3.2, chase: 5.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
+  crow: { name: '까마귀', hp: 16, walk: 2.8, chase: 5.7, rush: 10, rest: 2.2, flee: 12, dmg: 20, reward: { gyul: 40, rare: 0.03 }, sight: 30, lose: 44, life: 180, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.75, fly: 2.8 },
+  drone: { name: '외계인 드론', hp: 100, walk: 2.6, chase: 4.5, flee: 12, dmg: 30, reward: { gyul: 360, rare: 0.06 }, sight: 30, lose: 44, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 16, size: 0.8, ranged: { keep: 10, range: 18, every: 2.4, speed: 13, r: 0.8 } },
   // 동굴 전용 (#195, game/cavelife.js): 박쥐(약하고 많음, 낮게 날아 쪼고 올라감) · 눈먼 동굴 게(느리지만 단단, 가까이 와서 집게로 받음). 땅 헤집기 없음
   bat: { name: '동굴 박쥐', hp: 30, walk: 3.2, chase: 7.5, rush: 10, rest: 2.0, flee: 12, dmg: 14, reward: { gyul: 60, rare: 0.02 }, sight: 12, lose: 26, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 0.6, fly: 2.2 },
   robot: { name: '거대한 분리수거 로봇', hp: 5200, walk: 1.1, chase: 2.6, rush: 6.5, rest: 3.0, flee: 6, dmg: 48, reward: { gyul: 0, rare: 0 }, sight: 30, lose: 60, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.3, ranged: { keep: 9, range: 20, every: 3.2, speed: 12, r: 1.1 } }, /* #195 동굴의 주인 (값은 CAVE.owner 가 덮음) */
   crab: { name: '눈먼 동굴 게', hp: 150, walk: 1.6, chase: 3.6, rush: 7.5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 320, rare: 0.05 }, sight: 9, lose: 22, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.0 },
+  // #296 던지는 놈: 빅풋(구역 3 능선~4 굼부리, 돌을 들어 올리는 예고가 길고 한 방이 큼, 떨어진 돌은 잠깐 길을 막음 SWARM.pat.rock) · 설인(정상, 사건 5 의 그 설인 caseModel('yeti'). 쓰러뜨리지 않음 shy: 맞으면 갸웃하고 물러남, game/foes.js)
+  bigfoot: { name: '빅풋', hp: 34, walk: 1.6, chase: 3.4, rush: 5, rest: 2.6, flee: 8, dmg: 30, reward: { gyul: 90, rare: 0.06 }, sight: 26, lose: 40, life: 200, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.35 },
+  yeti: { name: '설인', hp: 1e6, walk: 1.5, chase: 3.2, flee: 7, dmg: 14, reward: { gyul: 0, rare: 0 }, sight: 40, lose: 60, life: 1e9, rootEvery: [1e9, 1e9], rootT: 1, rootTrash: [0, 0], rootR: 14, size: 1.2, shy: true },
+};
+/* #296 설인 (game/foes.js): 정상에서 플레이어 둘레 at m 에 나옴. first 들어온 뒤 첫 등장까지 초(1초마다 셈), again 사라진 뒤 다음까지 [최소, 최대] 초, life 한 번 머무는 초
+   shyT 맞으면 이 초 동안 물러남(그중 처음 tilt 초 남을 때까지는 갸웃하며 멈춤), hits 이만큼 맞으면 사라짐, vanish near 안에 이 초 넘게 있으면 사라짐, fade 사라지는 초, away 정상을 떠난 플레이어와 이만큼 멀면 사라짐 */
+export const FOES = {
+  yeti: { at: [22, 30], first: 20, again: [50, 90], life: 60, shyT: 2.2, tilt: 1.4, hits: 2, vanish: 1.5, fade: 0.9, away: 60 },
+  text: { ring: '바닥의 동그라미를 피해요', snow: '눈덩이! 잠깐 느려져요', shy: '설인이 고개를 갸웃하고 물러나요' },
 };
 export const ENEMY_DROP = { max: 12 }; // 쫓아낸 적이 흩뿌리는 귤 알갱이 수 상한 (귤은 나눠 담음, #137)
 // 귀한 귤 (#130, src/raregyul.js 셈 · src/game/raregyul.js 모양): 쫓아낸 적·투기꾼이 흩뿌리는 귤 알갱이 하나가 가끔 귀한 귤로 바뀜
@@ -585,6 +643,9 @@ export const ENEMY_SPAWN = {
   near: [12, 26],
   max: 4, // 동시에 최대
   byZone: { 1: 'piglet', 2: 'dog', 3: 'boar', 4: 'rabid', 5: 'alien' }, // 구역별 몹 (#48). 들머리(0)·다 핀 구역에는 안 나옴
+  /* #296 길가 무리에 섞는 역할 (game/foes.js): role[구역] = [[역할, 확률], ...] 한 마리마다 하나 뽑음(아니면 보통). 역할 값은 SWARM.pat (zip·heavy·throw·rock)
+     rock 은 빅풋(ENEMIES.bigfoot)으로 바꿔 나옴. 튜토리얼 뒤 첫 적·우두머리·이야기·레이드가 부르는 무리는 섞지 않음. 던지는 놈은 SWARM.pat.throwMax 까지 */
+  role: { 1: [['zip', 0.2], ['heavy', 0.1]], 2: [['zip', 0.2], ['heavy', 0.12], ['throw', 0.18]], 3: [['zip', 0.18], ['heavy', 0.12], ['throw', 0.1], ['rock', 0.14]], 4: [['zip', 0.18], ['heavy', 0.12], ['throw', 0.08], ['rock', 0.16]], 5: [['zip', 0.15], ['heavy', 0.12]] },
   kinds: ['boar'], // 구역이 없는 맵에서 나올 수 있는 종류
   warnT: 3, // 나타날 때 화면 가장자리 경고 표시 시간(초)
   goneD: 90, // 도망·떠나는 적이 이만큼 멀어지면 사라짐
@@ -613,15 +674,27 @@ export const ENEMY_PACK = {
 export const WEAPONS = [
   { tier: 1, id: 'hand', name: '손', dmg: 1, range: 24, price: 0 },
   { tier: 2, id: 'bow', name: '귤 활', dmg: 3, range: 32, speed: 40, grav: 5, perGyul: 1, price: GROWTH.price[2] }, // 활은 한 발에 귤 1개 (#178, 손보다 세니까)
-  { tier: 3, id: 'gun', name: '귤 총', dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, mag: 8, reload: 1.2, price: GROWTH.price[3] },
-  { tier: 4, id: 'mg', name: '귤 머신건', dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, mag: 30, reload: 2.2, price: GROWTH.price[4] },
-  { tier: 5, id: 'laser', name: '귤즙 레이저', dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
+  { tier: 3, id: 'gun', name: '귤 총', lv: 6, dmg: 7, range: 40, speed: 80, grav: 1.5, perGyul: 8, cd: 0.7, mag: 8, reload: 1.2, price: GROWTH.price[3] },
+  { tier: 4, id: 'mg', name: '귤 머신건', lv: 11, dmg: 16, dps: true, range: 35, speed: 70, grav: 1.5, perGyul: 30, rate: 6, spread: 0.035, mag: 30, reload: 2.2, price: GROWTH.price[4] },
+  { tier: 5, id: 'laser', name: '귤즙 레이저', lv: 14, dmg: 40, dps: true, range: 45, gyulPerSec: 0.5, tick: 0.2, price: GROWTH.price[5],
     /* 과열 (#200, src/laserheat.js): full 계속 쏘면 열이 가득 차는 초, wait 쏘기를 멈추고 식기 시작할 때까지 초, cool 그 뒤 초당 식는 몫,
        lock 과열되면 못 쏘는 초(그동안 1 에서 0 으로 식음), hot 이 열부터 피해 × hotMul, shake 이 열부터 고리가 떨림, grade 장비 등급 하나마다 full × (1 + grade).
        full 4→5·lock 2.5→1.5 는 계속 쏠 때 시간당 피해가 과열 전의 80% 쯤 되게 tools/heat.js 로 맞춘 값 */
     heat: { full: 5, wait: 0.5, cool: 0.35, lock: 1.5, hot: 0.7, hotMul: 1.15, shake: 0.7, grade: 0.1 } },
-  { tier: 6, id: 'bomb', name: '귤 폭탄', dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
+  { tier: 6, id: 'bomb', name: '귤 폭탄', lv: 16, dmg: 90, range: 30, r: 6, cd: 2, cost: 2, price: GROWTH.price[6] },
 ];
+/* 무기 열리는 때 (#298): lv 는 장비점에서 살 수 있는 레벨(값과 따로). 목표 놀이 시간 귤 총 1시간쯤·머신건 3~4시간·레이저 6~7시간·폭탄 8시간 뒤 (tools/econ.js '무기 열리는 때'). 이미 가진 무기는 그대로 */
+// 두 길 (#298, src/game/twopaths.js): 구역 점수 = 깨끗함(줍기) + 싸움 몫. 한쪽만으로도 100% 를 채우고, 섞으면 가장 빠름
+// fight.need[구역] 싸움 몫 100% 에 드는 점수, fight.pts 쫓아낸 적 하나의 점수(보통·들판 떼·떼 대장·정예). 몫은 사람마다(save.zfight), 깨끗함은 오름 전체
+// calm: 구역 깨끗함이 이 값 이상이면 우두머리를 싸우지 않고 달래 보냄(빈터 calmR m 안에 calmT 초 머물면 떠남, 때리면 싸움)
+// path: 길 안전 — 탐방로(길 반폭 + side m) 위에서는 보통 적이 생기지 않고 길 위 플레이어를 쫓지 않음. 길에서 먼저 때린 적은 provokeT 초 동안 쫓음. growlT 으르렁 간격
+// balance: 그날 줍기·싸움을 둘 다 일정량(pick 개·fight 마리) 하면 귤 +bonus, sec 초 동안(놀이 시간)
+export const TWO_PATHS = {
+  fight: { need: { 1: 30, 2: 35, 3: 40, 4: 45, 5: 50 }, pts: { mob: 1, swarm: 0.35, leader: 4, elite: 3 } },
+  calm: { clean: 1, calmR: 14, calmT: 3 },
+  path: { side: 6, provokeT: 8, growlT: 2.5 },
+  balance: { pick: 60, fight: 15, bonus: 0.15, sec: 1800 },
+};
 // 무기 3~6단계 연출 (#123, src/weaponfx.js·src/game/arms.js)
 // aimT 총을 겨눈 채로 있는 시간(초), kick 반동 시간, life 탄이 아무것도 안 맞고 날아가는 최대 시간은 range / speed
 // laser: w 줄기 굵기, wet 맞은 적이 젖어 보이는 시간(초), drip 초당 떨어지는 방울 수
@@ -927,6 +1000,24 @@ export const INN = {
   },
   // 주인은 퀘스트 주는 사람 QUESTS.givers['shop:inn'] (안녕 매니저, game/quest.js 가 가게 문 옆에 세움)
 };
+// Bar 소설 (#316): 가게 거리 8번 터의 책 읽는 바 (실제 가게 '책과 사람 그리고 술' 을 본뜸. 로고·사진은 쓰지 않고 이름 글자만). 해 질 무렵부터 밤에만 엶. 수치·이름 모두 임의
+// 건물은 코드로 만든 임시 모양 src/bar.js, 로직 game/bar.js, 짧은 소설·사장 대사는 src/bartext.js·src/npclines.js. 저장 save.bar = { d 마지막 읽은 날(KST), n 그날 읽은 수, t 모두 읽은 수, left '여운' 남은 놀이 초, read 읽은 편 번호[] }
+// [한 잔 하며 읽기]: 값 = base + 레벨 × perLv, 하루 perDay 번. 바에 앉아 read 초 책장을 넘기면 버프 '여운' buffSec 초(놀이 시간). 한 잔(귤 하이볼)·귤 에이드는 효과가 같음
+// buff: xp 경험치 ×(1+v) · mutter 혼잣말 사이 시간 ×(1+v) · note 까마귀·쓰레기 쪽지 나올 확률 ×(1+v) · see 밤 시야(하늘빛 더함). 싸움 수치는 없음. 식사·개운함·멍과 같이 걸림
+// openNight: 밤 정도(scene.js lampNight)가 이 값을 넘으면 엶(해 질 무렵), closeNight 아래로 내려가면 닫음(아침). 앉아 읽는 중엔 끝까지
+export const BAR = {
+  name: 'Bar 소설', short: '소설', tag: '책과 사람 그리고 술', buffName: '여운',
+  price: { base: 60, perLv: 20 }, perDay: 3,
+  read: 15, buffSec: 1500, warnSec: 60,
+  buff: { xp: 0.15, mutter: -0.4, note: 0.5, see: 0.2 },
+  drinks: [{ id: 'highball', name: '한 잔', sub: '귤 하이볼' }, { id: 'ade', name: '귤 에이드', sub: '술 없이' }],
+  openNight: 0.15, closeNight: 0.05,
+  W: 7.4, D: 5.4, H: 3.3, fore: 2.0, // 건물 폭·깊이·높이 (m), 터 앞에서 앞벽까지 (작은 툇마루)
+  r: 4.8, // 툇마루 가운데에서 이 거리 안이면 상호작용 '한 잔'
+  camYaw: 0.12, camPitch: 0.14, camDist: 4.6, // 앉으면 카메라: 앞(오른쪽 유리창 밖)에서 조금 비껴·낮게
+  sayGap: [4, 6], // 읽는 동안 혼잣말 사이(초)
+  title: '애독자', // 모든 편을 읽으면 칭호 (achievements.js b-bar-all)
+};
 export const MEALS = [...STONE.menu.map((m) => ({ ...m, shop: 'stone' })), ...MANJOK.menu.map((m) => ({ ...m, shop: 'manjok' }))]; // 모든 식당 메뉴 (버프 찾기, id 는 겹치지 않게)
 
 // 가게 거리 (#57): 들머리 길(시작~정낭)에서 왼쪽(개울 상류 쪽)으로 갈라지는 짧은 골목. 클린하우스는 길 건너 오른쪽이라 가게들이 등짐
@@ -945,6 +1036,7 @@ export const SHOP_ST = {
     { s: 37, side: 1, w: 17, d: 11 }, // 5 스톤 (앞에 아무것도 없어 개울이 보임)
     { s: 75.1, side: 0, w: 10, d: 9 }, // 6 만족한상회 (#167, 골목 끝. #270 에서 골목을 늘려 끝이 46 → 70)
     { s: 58, side: 1, w: 20, d: 13 }, // 7 숙소 오피스제주 (#270, 다른 가게 2배. 스톤 앞(개울 쪽)을 가리지 않게 오름 쪽 줄)
+    { s: 50, side: -1, w: 9, d: 8 }, // 8 Bar 소설 (#316, 숙소 맞은편 시작 쪽 줄. 스톤 앞 개울 쪽(s 28~46)은 비워 둠)
   ],
   clearPad: 3, // 터·골목 둘레 이만큼 더 나무·바위를 비움
   bound: 12, // 바깥 돌담이 터 둘레 이만큼 바깥으로 돌아감
@@ -952,7 +1044,7 @@ export const SHOP_ST = {
   // 골목 가장자리 꾸밈 [s, 쪽(1 오름 쪽 / -1 시작 쪽)]: 터 앞을 막지 않는 틈에만
   lamps: [[3, 1], [30, -1], [44, -1], [56, -1], [66, -1]],
   benches: [[33.5, -1], [39.5, -1], [61, -1]],
-  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1], [52, -1]],
+  planters: [[4.5, -1], [17, 1], [17, -1], [28.2, -1], [47, 1]], // #316 [52, -1] 은 Bar 소설 터라 뺌
   markFar: 160, markNear: 16, // 화면 가장자리 가게 아이콘: 이 거리 사이, 가장 가까운 가게 하나만
   // 지붕 위 큰 아이콘 간판 (#128·#182): 자리는 건물(모델 경계 상자) 가운데 위, 높이는 건물 꼭대기 + 간판 반지름 + roofGap(m). 크기 roofSize(m). 살 수 있는 새 물건이 있으면 귤색 점
   roofSize: 2.3, roofGap: 0.2, roofPole: 0.07, // roofPole: 간판을 받치는 현무암 기둥 반지름
@@ -974,6 +1066,7 @@ export const SHOP_ST = {
     { id: 'leap', need: [{ zone: 2 }, { lv: 4 }], how: '남쪽 사면에 들어서거나 레벨 4가 되면', say: '미장원 맞은편 LEAP 이 문을 열었어요' },
     { id: 'ride', need: [{ zd2: 1 }], how: '남쪽 사면 우두머리를 쫓아내면', say: '탈것 가게가 문을 열었어요' },
     { id: 'inn', need: [{ zone: 3 }, { lv: 8 }], how: '능선에 들어서거나 레벨 8이 되면', say: '골목 안쪽 숙소 오피스제주가 문을 열었어요 · 하룻밤 묵으면 개운해져요' }, // #270 (#275 레벨 7 → 8: 능선 권장 Lv 에 맞춤)
+    { id: 'bar', need: [{ lv: 9 }, { zone: 4 }], how: '레벨 9가 되거나 굼부리에 들어서면', say: '숙소 맞은편 Bar 소설이 문을 열었어요 · 해가 지면 불이 켜져요' }, // #316 (숙소보다 조금 뒤)
   ],
   gate: {
     fullRoom: 1, // 배낭 남은 칸이 이보다 작으면 '가득' (첫 배낭을 산 뒤)
@@ -996,6 +1089,7 @@ export const SHOPS = [
   { id: 'stone', name: 'Stone', lot: 5, act: '식사', ic: 'eat', pop: 'stone', sells: '식사·버프' },
   { id: 'manjok', name: '만족한상회', lot: 6, act: '식사', ic: 'eat', pop: 'manjok', sells: '갈치 식사·버프' }, // #167 (코드로 만든 임시 모양)
   { id: 'inn', name: '오피스제주', lot: 7, act: '숙박', ic: 'bed', pop: 'inn', sells: '하룻밤·개운함 버프' }, // #270 (코드로 만든 임시 모양 src/inn.js)
+  { id: 'bar', name: '소설', lot: 8, act: '한 잔', ic: 'book', pop: 'bar', sells: '한 잔·책·여운 버프 (밤에만)' }, // #316 (코드로 만든 임시 모양 src/bar.js)
 ];
 
 // 머리 (#51·#58): 처음엔 고른 기본 머리만, 나머지는 루이네 미장원에서 귤로 바꿈 (값은 임시)
@@ -1235,6 +1329,7 @@ export const MUSIC = {
       top: { bpm: 66, oct: 12, fill: 0.4, drop: 0.6, vol: 0.8, lp: 1.2, pad: 0.55, inst: 'bell', decay: 1.6 },     // 정상
       night: { bpm: 60, oct: -12, fill: 0.55, drop: 0.4, vol: 0.8, lp: 0.6, pad: 1.1, inst: 'marimba', decay: 1.5 }, // 밤
       fire: { bpm: 64, oct: -12, fill: 1, drop: 0.15, vol: 0.85, lp: 0.8, pad: 0.5, inst: 'pluck', decay: 1, arp: true }, // 숙소 불멍
+      bar: { bpm: 54, oct: -12, fill: 0.5, drop: 0.35, vol: 0.65, lp: 0.55, pad: 1.2, inst: 'marimba', decay: 1.7 }, // Bar 소설 바에 앉아 읽는 동안 (#316): 낮고 느린 곡
     },
   },
 };
@@ -1334,6 +1429,12 @@ export const STICK = {
   rK: 0.16, rMin: 44, rMax: 72, // 바탕 반지름(px) = 화면 짧은 변 × rK, 이 범위 안. 넘어가면 바탕이 손가락을 따라옴
   tapT: 0.25, tapPx: 8, // 이만큼 짧게(초)·적게(px) 톡 친 건 스틱이 아니라 그 땅으로 걸어가기
   guide: 0.25, faint: 0.12, faintAfter: 5, // 쓰지 않을 때 왼쪽 아래 안내 고리 불투명도. 이만큼 쓴 뒤에는 더 옅게
+  // 죽은 구역·속도 곡선 (#313): 당긴 크기가 dead 를 넘으면 걷기 시작, deadOff 아래로 내려가야 멈춤(여유). 속도 비율 = ((크기 - deadOff) / (full - deadOff)) ^ curve, 0~1
+  // 예전엔 0.15 에서 0 → 4m/s 로 툭 뛰고 0.6 에서 4 → 5 로 또 뛰어, 경계에서 손가락이 떨리면 섰다 걸었다 했음
+  dead: 0.15, deadOff: 0.1, full: 0.75, curve: 1.15,
+  minK: 0.15, // 걷기 시작할 때 속도 비율의 바닥 (너무 느려 제자리걸음처럼 보이지 않게, 그래도 0 → 0.75m/s 는 가속으로 부드럽게)
+  runOn: 0.92, runOff: 0.86, // 단순 화면: 끝까지 당기면 달리기, 이 아래로 내려와야 걷기로 (여유)
+  rideMin: 0.4, // 탈것·노루: 조금 당겨도 이 비율부터 (예전 0.6 한 단계)
 };
 export const TITLE = {
   r: 650,       // 표지석에서 카메라까지 수평 거리(m)
@@ -1410,7 +1511,7 @@ export const CLUE = {
   turn: [1.5, 6.5], flash: { at: 6.8, dur: 0.6, size: 26 }, up: 30, fov: 32,
   note: { out: -1.5, tan: 0.5, r: 2.6 },
   rim: { in: 4, r: 9 },
-  scope: { out: 0.7, tan: -2.8, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
+  scope: { out: 0.8, tan: -4.2, r: 2.4, len: 9, fov: 14, sweep: 0.55, far: 1400, light: { stage: 0, night: -4 } },
 };
 
 // 미스터리 장치 (#212, game/mystery.js·game/traces.js). 단계는 UFO.reveal 의 드러남 단계(#207). 값은 임의
@@ -1418,8 +1519,9 @@ export const MYST = {
   // 1. 되풀이되는 숫자 4:04. 본 곳(방송·쪽지·시계·가로등·시간표·그 시각)이 say 곳 이상이면 혼잣말 한 번. near: 시계·번호판·시간표에 이 m 안이면 본 것
   //   시계: 가게 거리 골목 좌표 clock [s, 쪽] · 번호판: 가로등 lamp 번째 · 시간표: 마차 정류장 stop 번째. 그 시각 1분 동안 dustR m 안 더미에서 dustEvery 초마다 먼지, 단계 humStage 부터 먼 웅웅
   num: { h: 4, m: 4, say: 4, near: 6, dustR: 70, dustEvery: [4, 7], humStage: 1, lamp: 0, clock: [12, -1], stop: 0 },
-  // 금고: 굼부리 관리 초소(표지석 기준 out·tan m). 답 code, 열면 귤 gyul(서버 earn.js 가 계정마다 한 번) + 전리품(lootZ 구역 'treasure') + 쪽지 note + 칭호
-  safe: { out: -7.5, tan: 6.5, r: 2.6, code: '0404', gyul: 300, lootZ: 4, note: 'n404' },
+  // 금고: 굼부리 관리 초소. 자리는 남송이 길 path 의 d m 지점에서 옆(side 1/-1) off m (#308: 정상에서 빼서 굼부리 가는 길 끝·둘레 앞 길가로, 임의값)
+  //   답 code, 열면 귤 gyul(서버 earn.js 가 계정마다 한 번) + 전리품(lootZ 구역 'treasure') + 쪽지 note + 칭호
+  safe: { path: 'toCrater', d: 190, side: -1, off: 6.5, r: 2.6, code: '0404', gyul: 300, lootZ: 4, note: 'n404' },
   // 3. 발자국: 밤(18~6시)에 생겨 아침(6~12시)에 지워짐. 구역마다 한 줄(더미 → 더미 → 다음 쪽으로 가다 cut 비율에서 끊김), 걸음 step m(저사양 stepLow)
   foot: { from: 18, fadeFrom: 6, fadeTo: 12, step: 1.1, stepLow: 1.8, size: 0.5, cut: [0.55, 0.75], max: 3, maxLow: 2, seen: 3 },
   // 크롭서클: 단계 stage 부터, 구역 zones 의 평평한 풀밭. days 일마다 자리가 바뀜. 지름 r·2 m. 땅에선 흐리게(op[0]), 카메라가 high m 넘게 높으면 또렷이(op[1])
@@ -1540,12 +1642,15 @@ export const PERF = {
   fps: { eco: 30, smooth: 60, fight: 30, idle: 20, cover: 15, idleT: 6, still: 0.3, tol: 2 },
   aaPhone: true,                // 폰·낮음 단계 안티에일리어싱 (렌더러를 만들 때 정함). #271 에서 껐다가 폰에서 어색해 #276 에서 다시 켬. false 면 폰·낮음 단계만 끔
   // 그림자 지도 다시 그리기: 폰은 every 프레임에 한 번, 플레이어가 서 있으면 still 프레임에 한 번, fast(m/s) 넘게 빠르면 매 프레임 (내 그림자가 끊겨 보이지 않게)
-  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7 },
+  // walk: 걷는 동안(F.still 넘게) 폰도 이 프레임에 한 번 (#313: 2 였을 땐 스틱을 조금 당긴 4m/s 걸음에서 내 그림자가 15Hz 로 뚝뚝 따라와 걸음이 버벅여 보임. 끝까지 당긴 달리기는 fast 를 넘어 괜찮았음)
+  shadowUp: { phone: 2, pc: 1, still: 3, fast: 7, walk: 1 },
   // 발열 지킴 (자동 단계일 때만): 이어서 논 시간 at 초마다 한 칸, 프레임 셈 시간이 trendGap 초 사이 trendUp 넘게 늘면 한 칸 (그리는 수가 비슷할 때만), rest 초 쉬면 되돌림
   // 칸: 1 픽셀 배율 × prMul (prMin 아래로는 안 내림) → 2 그림자 끔 → 3 풀·먼지 밀도 × grassK
   heat: { at: [600, 1200], win: 60, trendGap: 180, trendUp: 0.15, trendMin: 0.5, callsSame: 0.2, rest: 300, prMul: 0.8, prMin: 0.85, grassK: 0.5, max: 3 },
   start: { battery: 0.2, mem: 4 }, // 처음부터 한 칸 낮게: 충전 안 하는 배터리가 이 아래, deviceMemory 가 이 이하, 움직임 줄이기, 데이터 절약
-  heatLog: { every: 10, total: 1200, base: 120 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
+  heatLog: { every: 10, total: 1200, base: 120 },
+  // 시작 때 나눠 받기 (#304, assets.js): 폰·낮음 단계는 첫 화면 뒤 delay ms 기다렸다 하나씩, 모델 사이 gap ms (WebGL 을 잃은 기기는 × lostK). PC 는 두 개씩 바로
+  load: { delay: 1500, gap: 700, lostK: 2, prepPhone: 600 }, // ?heat=1: 10초마다 한 줄, 20분 뒤 요약, 처음 2분이 기준
 };
 
 // 멀티플레이 (#7): 서버 주소가 비어 있으면 지금처럼 혼자 하기 (claude.ai 아티팩트에서는 room 캐퍼빌리티)
@@ -1593,6 +1698,7 @@ export const NET = {
   server: 'https://oreumoreum.spacehwi.workers.dev',
   googleClientId: '185091365310-fae1ordhatv7quuj3g6ah7cts129d1l2.apps.googleusercontent.com', // 공개 값 (승인된 원본 https://spacehwi.github.io)
   sendMs: 100,        // 내 위치·동작 보내는 간격 (초당 10번 안쪽)
+  predT: 0.15, predV: 25, // 남의 걸음 (#313): 받은 두 자리 사이 빠르기로 이 초까지만 앞질러 그림 (받는 사이 섰다 걸었다 보이지 않게). 이보다 빠르면(순간 이동) 안 함
   identMs: 10000,     // 옷·닉네임은 바뀔 때만 보내되, 이 간격마다 한 번 더 (#115: 서버가 버린 메시지에 실렸을 때 대비)
   tickMs: 100,        // 방이 모아 보내는 간격
   farR: 150,          // 이 거리 밖 사람은 farEvery 틱마다 한 번만 받음
@@ -1668,6 +1774,8 @@ export const NET = {
   idleRestSec: 360,   // 6분: 저장하고 방에서 나감 (누르면 다시 들어옴)
   idleHiddenSec: 120, // 탭이 뒤로 가 있으면 2분에 바로 쉬러 감 (창 없이)
   idleKickSec: 480,   // 서버 안전장치: 마지막 조작 표시 뒤 8분이면 연결을 닫음 (4004)
+  liveMax: 5000,      // 한 계정 한 접속 (#303): 계정 객체가 기억하는 '계정 → 방' 이 이보다 많으면 오래된 것(liveKeepMs)을 지움
+  liveKeepMs: 12 * 3600e3,
   idleBeatMs: 30000,  // 조작 표시(presence a:1)는 조작이 있었을 때 이 간격에 한 번만 실음
 };
 
@@ -1748,7 +1856,10 @@ export const CRASH = {
   perDay: 3,          // 같은 오류는 기기당 하루 이만큼만 서버로
   perRun: 5,          // 한 번 켤 때 보내는 오류 수 상한
   acts: 6,            // '마지막 한 일' 기억하는 수
-  glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 '다시 불러오기' 안내
+  glWait: 6000,       // WebGL 화면을 잃은 뒤 이만큼(ms) 안에 돌아오지 않으면 한 칸 낮춰 스스로 다시 불러옴(#304). 이미 했으면 '다시 불러오기' 단추
+  // WebGL 잃음 기억 (#304, src/glguard.js). 값은 임의: twiceS 초 안에 두 번 잃으면 한 칸 더 낮춤, 낮춤은 maxDrop 칸까지(단계 0 아래는 픽셀 배율 × prLow),
+  // 스스로 다시 불러오기는 탭 세션에 reloadOnceS 초 안 한 번, 기억은 keepDays 일 동안 잃지 않으면 지움
+  gl: { twiceS: 180, maxDrop: 3, prLow: 0.8, reloadOnceS: 600, keepDays: 7 },
 
   reloadGap: 60000,   // 스스로 새로고침(사용자가 누르지 않은 것)은 이 탭에서 이만큼(ms) 안에 두 번 하지 않음 (#287, src/reloadwhy.js)
   reloadRep: 2,       // 하루 새로고침이 이만큼 넘거나 스스로 한 것이 있으면 다음에 열 때 'reload: 까닭' 한 줄을 오류 알림으로
@@ -1983,40 +2094,42 @@ export const QUESTS = {
     'shop:inn': { name: '안녕 매니저', shop: 'inn', look: { shirt: '#e9ecef', pants: '#3a4150', shoes: '#26262b', hat: 'hat:short' }, hello: ['일이 많은 당신의 안녕을 바랍니다', '체크인은 지금, 걱정은 체크아웃 때 두고 가요', '와이파이 비밀번호요? 귤이에요'] }, // #270 숙소 오피스제주
     'shop:ride': { name: '탈것 가게 사장', shop: 'ride', look: { shirt: '#e0443a', pants: '#2b2b30', shoes: '#26262b', hat: 'hat:w-cap' }, hello: ['오늘 바람은 순풍이에요', '빠른 건 우리가, 조심은 당신이'] }, /* #279 탈것 가게에도 주인이 없었음 */
     'shop:satis': { name: '만족한상회 사장', shop: 'manjok', look: { shirt: '#3a6ea8', pants: '#33333a', shoes: '#26262b', hat: 'hat:npc-kerchief', vest: 'vest:npc-apron' }, hello: ['갈치 드실래요?', '뼈는 없고 정만 있어요'] }, /* #279 가게 id 는 manjok (전엔 'satis' 라 주인이 안 섰음). 앞치마·머릿수건은 gear.js NPC 전용 */
+    'shop:bar': { name: '소설 사장', shop: 'bar', look: { shirt: '#2a3550', pants: '#2b2b30', shoes: '#26262b', hat: 'hat:short' }, hello: ['책은 천천히, 잔은 더 천천히', '밤에 와요. 낮엔 저도 책 읽어요'] }, /* #316 Bar 소설 (말수 적고 한마디씩 웃김, 대사 npclines.js bar) */
   },
+  /* #298 두 길: 줄기 퀘스트의 줍기·싸움 목표는 ask.or 로 '둘 중 하나' (줍기만·싸움만으로도 막히지 않게, src/quest.js). 셈 repel@구역 은 game/quest.js */
   main: [
     // ----- 1장 숲길 '이상한 쓰레기' (첫날) -----
-    { id: 'can', z: 1, giver: 'jigi', name: '이상한 쓰레기', say: ['정낭을 넘었네요. 오름은 처음이죠? 당황하지 말아요, 다들 처음이었어요.', '숲길에서 쓰레기 10개만 주워 와요. 상표 없는 캔이 섞여 있으면 따로 챙기고요.', '분류표엔 캔 칸이 다섯이에요. 여섯 번째가 나오면 그게 내 일이에요.'], task: '숲길 쓰레기 10개 줍기', ask: { k: 'trash', n: 10 }, go: 'heapRoad', fin: ['…상표가 없네요. 바닥엔 동그라미 셋.', '여섯 번째 캔이에요. 분류표에 칸이 없으니 오늘부터 내 서랍이 칸이에요. 소문은 내지 말고요.'], got: '상표 없는 캔을 주웠어요 · 분류: 모름', reward: { gyul: 10 } },
-    { id: 'heap1', z: 1, giver: 'jigi', name: '첫 청소', say: ['탐방 안내판 앞 길가에 더미가 있어요. 한 곳만 끝까지, 한 봉지도 남기지 말고요.', '다 치우면 꽃이 펴요. 오름이 아는 고맙다는 말은 그것뿐이거든요.'], task: '숲길 길가 더미 1곳 치우기', ask: { k: 'heapRoad', n: 1 }, go: 'heapRoad', fin: ['봐요, 꽃 폈죠?', '내일 새벽 4시 4분이면 또 쌓여 있을 거예요. 그쪽은 시간 하나는 잘 지켜요.'], reward: { gyul: 20 } },
-    { id: 'dump2', z: 1, giver: 'jigi', name: '클린하우스 단골', say: ['배낭이 차면 가게 거리 옆 클린하우스에 비워요. 두 번만 다녀와요.', '분리만 잘 하면 귤로 바꿔 줘요. 쓰레기가 귤이 되는 곳은 내가 아는 한 거기뿐이에요.'], task: '클린하우스에 2번 비우기', ask: { k: 'recycle', n: 2 }, go: 'ch', fin: ['두 번이면 단골이에요. 클린하우스 아저씨 장부에 이름이 올랐어요. 단골 칸은 원래 비어 있었대요.'], reward: { gyul: 20 } },
-    { id: 'piglet3', z: 1, giver: 'jigi', name: '귤은 던지라고 있는 것', say: ['숲길 들판 소굴 쪽 아기 멧돼지 셋이 길을 헤집어요. 귤로 쫓아 줘요.', '다치진 않아요. 귤이 싫을 뿐이에요. 멧돼지 쪽에서도 같은 부탁을 받았을지 몰라요.'], task: '숲길 아기 멧돼지 3마리 쫓기', ask: { k: 'repel:piglet', n: 3 }, go: 'den@1', fin: ['셋 다 돌아갔어요. 멧돼지 쪽 창구에도 귤 민원이 세 건 들어갔겠네요.'], reward: { gyul: 30 } },
+    { id: 'can', z: 1, giver: 'jigi', name: '이상한 쓰레기', say: ['정낭을 넘었네요. 오름은 처음이죠? 당황하지 말아요, 다들 처음이었어요.', '숲길에서 쓰레기 10개만 주워 와요. 상표 없는 캔이 섞여 있으면 따로 챙기고요.', '분류표엔 캔 칸이 다섯이에요. 여섯 번째가 나오면 그게 내 일이에요.'], task: '숲길 쓰레기 10개 줍기', ask: { k: 'trash', n: 10, or: { k: 'repel', n: 3, task: '적 3마리 쫓기' } }, go: 'heapRoad', fin: ['…상표가 없네요. 바닥엔 동그라미 셋.', '여섯 번째 캔이에요. 분류표에 칸이 없으니 오늘부터 내 서랍이 칸이에요. 소문은 내지 말고요.'], got: '상표 없는 캔을 주웠어요 · 분류: 모름', reward: { gyul: 10 } },
+    { id: 'heap1', z: 1, giver: 'jigi', name: '첫 청소', say: ['탐방 안내판 앞 길가에 더미가 있어요. 한 곳만 끝까지, 한 봉지도 남기지 말고요.', '다 치우면 꽃이 펴요. 오름이 아는 고맙다는 말은 그것뿐이거든요.'], task: '숲길 길가 더미 1곳 치우기', ask: { k: 'heapRoad', n: 1, or: { k: 'repel@1', n: 5, task: '적 5마리 쫓기' } }, go: 'heapRoad', fin: ['봐요, 꽃 폈죠?', '내일 새벽 4시 4분이면 또 쌓여 있을 거예요. 그쪽은 시간 하나는 잘 지켜요.'], reward: { gyul: 20 } },
+    { id: 'dump2', z: 1, giver: 'jigi', name: '클린하우스 단골', say: ['배낭이 차면 가게 거리 옆 클린하우스에 비워요. 두 번만 다녀와요.', '분리만 잘 하면 귤로 바꿔 줘요. 쓰레기가 귤이 되는 곳은 내가 아는 한 거기뿐이에요.'], task: '클린하우스에 2번 비우기', ask: { k: 'recycle', n: 2, or: { k: 'repel', n: 8, task: '적 8마리 쫓기' } }, go: 'ch', fin: ['두 번이면 단골이에요. 클린하우스 아저씨 장부에 이름이 올랐어요. 단골 칸은 원래 비어 있었대요.'], reward: { gyul: 20 } },
+    { id: 'piglet3', z: 1, giver: 'jigi', name: '귤은 던지라고 있는 것', say: ['숲길 들판 소굴 쪽 아기 멧돼지 셋이 길을 헤집어요. 귤로 쫓아 줘요.', '다치진 않아요. 귤이 싫을 뿐이에요. 멧돼지 쪽에서도 같은 부탁을 받았을지 몰라요.'], task: '숲길 아기 멧돼지 3마리 쫓기', ask: { k: 'repel:piglet', n: 3, or: { k: 'trash', n: 20, task: '쓰레기 20개 줍기' } }, go: 'den@1', fin: ['셋 다 돌아갔어요. 멧돼지 쪽 창구에도 귤 민원이 세 건 들어갔겠네요.'], reward: { gyul: 30 } },
     { id: 'gear1', z: 1, giver: 'jigi', name: '장비가 사람을 만든다', say: ['맨손으로만 줍다간 허리가 먼저 그만둬요.', '가게 거리 장비점에서 집게나 배낭 중 하나를 한 단계 올려 봐요.'], task: '장비점에서 집게·배낭 1칸 올리기', ask: { k: 'gearTB', n: 1 }, go: 'shop:gear', fin: ['한 단계 차이가 커요. 허리가 사직서를 도로 넣었대요.'], reward: { gyul: 30 }, need: 'shop:gear' },
-    { id: 'dumper1', z: 1, giver: 'jigi', name: '불청객', say: ['봉투 들고 몰래 오는 사람들이 있어요. 무단 투기꾼.', '숲길 더미 곁에 나타나요. 내려놓기 전에 귤 한 번 맞히면 줄행랑쳐요. 신고서보다 빨라요.'], task: '숲길 투기꾼 1명 쫓아내기', ask: { k: 'dumper', n: 1 }, fin: ['봉투는 끝까지 안 놓더라고요. 버리러 온 사람이 봉투를 아끼다니. 어디로 가져가는 걸까요.'], reward: { gyul: 20 } },
-    { id: 'field1', z: 1, giver: 'jigi', name: '들판 탐사', say: ['길만 다니면 오름의 반도 못 본 거예요. 나머지 반엔 짐승이 살고요.', '숲길 들판 깊숙이 큰 더미가 하나 있어요. 길 밖은 안내판도 책임을 안 져요.'], task: '숲길 들판 더미 1곳 치우기', ask: { k: 'heapField', n: 1 }, go: 'heapField', fin: ['들판에서도 그 캔이 나왔죠? 길에서 그렇게 먼데도. …역시.'], reward: { gyul: 40 } },
-    { id: 'den1', z: 1, giver: 'jigi', name: '소굴 정리', say: ['숲길 들판에 멧돼지들이 모이는 굴이 하나 있어요.', '굴 앞에서 나오는 걸 다 쫓으면 닫혀요. 한동안이요. 한동안이 얼마인지는 멧돼지 마음이고요.'], task: '숲길 들판 소굴 1곳 닫기', ask: { k: 'den@1', n: 1 }, go: 'den@1', fin: ['굴이 조용해졌어요. 그런데 왕관 쓴 큰 녀석은 아직 안 나왔죠?'], reward: { gyul: 50 } },
+    { id: 'dumper1', z: 1, giver: 'jigi', name: '불청객', say: ['봉투 들고 몰래 오는 사람들이 있어요. 무단 투기꾼.', '숲길 더미 곁에 나타나요. 내려놓기 전에 귤 한 번 맞히면 줄행랑쳐요. 신고서보다 빨라요.'], task: '숲길 투기꾼 1명 쫓아내기', ask: { k: 'dumper', n: 1, or: { k: 'heapRoad', n: 1, task: '길가 더미 1곳 치우기' } }, fin: ['봉투는 끝까지 안 놓더라고요. 버리러 온 사람이 봉투를 아끼다니. 어디로 가져가는 걸까요.'], reward: { gyul: 20 } },
+    { id: 'field1', z: 1, giver: 'jigi', name: '들판 탐사', say: ['길만 다니면 오름의 반도 못 본 거예요. 나머지 반엔 짐승이 살고요.', '숲길 들판 깊숙이 큰 더미가 하나 있어요. 길 밖은 안내판도 책임을 안 져요.'], task: '숲길 들판 더미 1곳 치우기', ask: { k: 'heapField', n: 1, or: { k: 'repel@1', n: 8, task: '적 8마리 쫓기' } }, go: 'heapField', fin: ['들판에서도 그 캔이 나왔죠? 길에서 그렇게 먼데도. …역시.'], reward: { gyul: 40 } },
+    { id: 'den1', z: 1, giver: 'jigi', name: '소굴 정리', say: ['숲길 들판에 멧돼지들이 모이는 굴이 하나 있어요.', '굴 앞에서 나오는 걸 다 쫓으면 닫혀요. 한동안이요. 한동안이 얼마인지는 멧돼지 마음이고요.'], task: '숲길 들판 소굴 1곳 닫기', ask: { k: 'den@1', n: 1, or: { k: 'heap@1', n: 2, task: '더미 2곳 치우기' } }, go: 'den@1', fin: ['굴이 조용해졌어요. 그런데 왕관 쓴 큰 녀석은 아직 안 나왔죠?'], reward: { gyul: 50 } },
     { id: 'boss1', z: 1, giver: 'jigi', name: '구역의 주인', say: ['숲길 더미가 거의 다 치워지면 왕관 쓴 멧돼지 1마리가 나와요.', '쫓아내면 숲길 담당 칸에 당신 이름을 적을게요. 칸은 하나, 지원자도 하나예요.'], task: '숲길 우두머리 1마리 쫓기', ask: { k: 'boss@1', n: 1, ever: true }, go: 'boss@1', fin: ['해냈네요! 숲길 담당 칸, 채웠어요.', '하르방은 꼭 치운 자리에만 솟아요. 누가 시킨 것도 아닌데.'], reward: { gyul: 100 } },
     { id: 'z2', z: 1, giver: 'jigi', to: 'b:slope', name: '다음 오름 자락으로', say: ['그 캔 말인데요, 위로 갈수록 더 많이 나와요.', '남쪽 사면 중턱 클린하우스 옆 표지판까지 가 봐요. 레벨 5쯤이면 걸을 만해요.', '거기서부턴 표지판이 내 말을 대신해요. 나보다 말을 잘해요.'], task: '남쪽 사면 표지판 읽기', ask: { k: 'zone', n: 2, ever: true }, go: 'b:slope', fin: ['[표지판] 남쪽 사면. 여기까지 왔으면 반은 오름 사람. 나머지 반은 심사 중.', '— 오름지기. 추신: 투기꾼 봉투 조심.'], reward: { gyul: 20 } },
     // ----- 2장 남쪽 사면 '누가 시켰나' (둘째 날) -----
-    { id: 'note', z: 2, giver: 'b:slope', name: '떨어진 쪽지', say: ['[표지판] 남쪽 사면 투기꾼 1명 쫓아낼 것. 봉투가 전보다 큼.', '쫓으면 뭔가 떨어뜨릴지도. 안 떨어뜨려도 보수는 있음.'], task: '남쪽 사면 투기꾼 1명 쫓기', ask: { k: 'dumper', n: 1 }, fin: ['투기꾼이 쪽지를 떨어뜨렸어요: \'굼부리로 가져오면 귤로 쳐 줌\'', '한 봉지에 귤 셋. 쓰레기를 사 가는 쪽이 있어요. 누가, 왜?'], got: '구겨진 쪽지를 주웠어요 · 조금 축축해요', reward: { gyul: 30 } },
-    { id: 'heap2', z: 2, giver: 'b:slope', name: '사면 대청소', say: ['[표지판] 남쪽 사면 더미 현황: 많음.', '치우는 사람 구함. 사면 더미 3곳. 보수: 귤. 경력 무관, 허리 유관.'], task: '남쪽 사면 더미 3곳 치우기', ask: { k: 'heap@2', n: 3 }, go: 'heap@2', fin: ['[표지판] 더미 현황: 조금 덜 많음. 정확히는 3곳만큼 덜.'], reward: { gyul: 60 } },
-    { id: 'dog5', z: 2, giver: 'b:slope', name: '들개 주의', say: ['[표지판] 남쪽 사면 들개 5마리 쫓아낼 것. 들개 터 둘레에 많음.', '귤을 아주 싫어함. 이 표지판도 싫어함(이빨 자국 3개 참고).'], task: '남쪽 사면 들개 5마리 쫓기', ask: { k: 'repel:dog', n: 5 }, go: 'den@2', fin: ['[표지판] 들개 출몰 → 들개 가끔 출몰. 고쳐 씀. 이빨 자국은 그대로 3개.'], reward: { gyul: 80 } },
+    { id: 'note', z: 2, giver: 'b:slope', name: '떨어진 쪽지', say: ['[표지판] 남쪽 사면 투기꾼 1명 쫓아낼 것. 봉투가 전보다 큼.', '쫓으면 뭔가 떨어뜨릴지도. 안 떨어뜨려도 보수는 있음.'], task: '남쪽 사면 투기꾼 1명 쫓기', ask: { k: 'dumper', n: 1, or: { k: 'heap@2', n: 1, task: '더미 1곳 치우기' } }, fin: ['투기꾼이 쪽지를 떨어뜨렸어요: \'굼부리로 가져오면 귤로 쳐 줌\'', '한 봉지에 귤 셋. 쓰레기를 사 가는 쪽이 있어요. 누가, 왜?'], got: '구겨진 쪽지를 주웠어요 · 조금 축축해요', reward: { gyul: 30 } },
+    { id: 'heap2', z: 2, giver: 'b:slope', name: '사면 대청소', say: ['[표지판] 남쪽 사면 더미 현황: 많음.', '치우는 사람 구함. 사면 더미 3곳. 보수: 귤. 경력 무관, 허리 유관.'], task: '남쪽 사면 더미 3곳 치우기', ask: { k: 'heap@2', n: 3, or: { k: 'repel@2', n: 12, task: '적 12마리 쫓기' } }, go: 'heap@2', fin: ['[표지판] 더미 현황: 조금 덜 많음. 정확히는 3곳만큼 덜.'], reward: { gyul: 60 } },
+    { id: 'dog5', z: 2, giver: 'b:slope', name: '들개 주의', say: ['[표지판] 남쪽 사면 들개 5마리 쫓아낼 것. 들개 터 둘레에 많음.', '귤을 아주 싫어함. 이 표지판도 싫어함(이빨 자국 3개 참고).'], task: '남쪽 사면 들개 5마리 쫓기', ask: { k: 'repel:dog', n: 5, or: { k: 'heap@2', n: 2, task: '더미 2곳 치우기' } }, go: 'den@2', fin: ['[표지판] 들개 출몰 → 들개 가끔 출몰. 고쳐 씀. 이빨 자국은 그대로 3개.'], reward: { gyul: 80 } },
     { id: 'gear2', z: 2, giver: 'b:slope', name: '한 단계 위로', say: ['[표지판] 이 위 능선은 레벨 8 권장. 장비도 점검 권장.', '가게 거리 장비점에서 아무 칸이나 두 번 올리고 오시오. 맨손 등반자 통계는 없음. 없는 게 다행임.'], task: '장비점에서 장비 2칸 올리기', ask: { k: 'gearAll', n: 2 }, go: 'shop:gear', fin: ['[표지판] 장비 점검 끝. 든든함. 표지판도 덩달아 든든함.'], reward: { gyul: 80 }, need: 'shop:gear' },
-    { id: 'den2', z: 2, giver: 'b:slope', name: '들개 무리 터', say: ['[표지판] 남쪽 사면 들개 터 1곳 닫을 것. 들개 5마리가 거기서 나왔음.', '터를 닫으면 사면이 한결 조용해짐. 표지판이 물리는 일도 줆.'], task: '남쪽 사면 소굴 1곳 닫기', ask: { k: 'den@2', n: 1 }, go: 'den@2', fin: ['[표지판] 터 정리 끝. 이제 그 큰 놈만 남음.'], reward: { gyul: 100 } },
+    { id: 'den2', z: 2, giver: 'b:slope', name: '들개 무리 터', say: ['[표지판] 남쪽 사면 들개 터 1곳 닫을 것. 들개 5마리가 거기서 나왔음.', '터를 닫으면 사면이 한결 조용해짐. 표지판이 물리는 일도 줆.'], task: '남쪽 사면 소굴 1곳 닫기', ask: { k: 'den@2', n: 1, or: { k: 'heap@2', n: 2, task: '더미 2곳 치우기' } }, go: 'den@2', fin: ['[표지판] 터 정리 끝. 이제 그 큰 놈만 남음.'], reward: { gyul: 100 } },
     { id: 'boss2', z: 2, giver: 'b:slope', name: '사면의 주인', say: ['[표지판] 사면 더미가 거의 치워지면 우두머리 들개 1마리가 나옴.', '쫓아내면 남쪽 사면도 당신 담당. 담당 구역이 둘이 됨을 축하함(위로함).'], task: '남쪽 사면 우두머리 1마리 쫓기', ask: { k: 'boss@2', n: 1, ever: true }, go: 'boss@2', fin: ['[표지판] 사면의 주인이 바뀜. 전 주인은 이의 신청 안 함.'], reward: { gyul: 200 } },
     { id: 'z3', z: 2, giver: 'b:slope', to: 'b:rest', name: '밤의 불빛', say: ['[표지판] 능선 위에 불빛이 뜬다는 소문. 새벽 4시 4분부터 4분쯤.', '능선 쉼터 표지판에 가 보시오. 레벨 8 권장. 해 지기 전에.'], task: '능선 쉼터 표지판 읽기', ask: { k: 'zone', n: 3, ever: true }, go: 'b:rest', fin: ['[표지판] 능선. 새벽에 하늘을 보면 뭔가 멈춰 있음.', '비행기는 멈추지 않음.'], reward: { gyul: 40 } },
     // ----- 3장 능선 '밤의 불빛' -----
-    { id: 'heap3', z: 3, giver: 'b:rest', name: '내려놓고 간 것', say: ['[표지판] 능선 더미 3곳 치울 것. 불빛이 멈췄던 자리 밑에 생김.', '멧돼지가 사나워진 것도 그 더미 탓이라는 말이 있음. 멧돼지는 말이 없음.'], task: '능선 더미 3곳 치우기', ask: { k: 'heap@3', n: 3 }, go: 'heap@3', fin: ['[표지판] 더미 속에 그 캔이 잔뜩. 누가 하늘에서 버리고 감.', '그럼 그 쪽지의 \'굼부리\'는?'], reward: { gyul: 150 } },
-    { id: 'den3', z: 3, giver: 'b:rest', name: '사나운 굴', say: ['[표지판] 능선 멧돼지 굴 1곳 닫을 것.', '캔 냄새를 맡고 모여든다고 함. 캔에서 무슨 냄새가 나는지는 아무도 모름.'], task: '능선 소굴 1곳 닫기', ask: { k: 'den@3', n: 1 }, go: 'den@3', fin: ['[표지판] 굴이 잠잠해짐. 냄새도 덜 남.'], reward: { gyul: 200 } },
+    { id: 'heap3', z: 3, giver: 'b:rest', name: '내려놓고 간 것', say: ['[표지판] 능선 더미 3곳 치울 것. 불빛이 멈췄던 자리 밑에 생김.', '멧돼지가 사나워진 것도 그 더미 탓이라는 말이 있음. 멧돼지는 말이 없음.'], task: '능선 더미 3곳 치우기', ask: { k: 'heap@3', n: 3, or: { k: 'repel@3', n: 14, task: '적 14마리 쫓기' } }, go: 'heap@3', fin: ['[표지판] 더미 속에 그 캔이 잔뜩. 누가 하늘에서 버리고 감.', '그럼 그 쪽지의 \'굼부리\'는?'], reward: { gyul: 150 } },
+    { id: 'den3', z: 3, giver: 'b:rest', name: '사나운 굴', say: ['[표지판] 능선 멧돼지 굴 1곳 닫을 것.', '캔 냄새를 맡고 모여든다고 함. 캔에서 무슨 냄새가 나는지는 아무도 모름.'], task: '능선 소굴 1곳 닫기', ask: { k: 'den@3', n: 1, or: { k: 'heap@3', n: 2, task: '더미 2곳 치우기' } }, go: 'den@3', fin: ['[표지판] 굴이 잠잠해짐. 냄새도 덜 남.'], reward: { gyul: 200 } },
     { id: 'boss3', z: 3, giver: 'b:rest', name: '능선의 주인', say: ['[표지판] 능선 큰 멧돼지 1마리가 굼부리 가는 길을 막고 있음.', '레벨 7 넘으면 해 볼 만함. 녀석도 굼부리 쪽이 궁금한 눈치.'], task: '능선 우두머리 1마리 쫓기', ask: { k: 'boss@3', n: 1, ever: true }, go: 'boss@3', fin: ['[표지판] 능선이 열림. 굼부리로 가는 길도. 길은 원래 거기 있었음.'], reward: { gyul: 500 } },
     { id: 'z4', z: 3, giver: 'b:rest', to: 'b:crater', name: '굼부리로', say: ['[표지판] 쪽지가 말한 곳, 굼부리. 레벨 11 권장.', '굼부리 들머리 표지판에서 기다리겠음. 표지판은 원래 기다리는 게 일임.'], task: '굼부리 표지판 읽기', ask: { k: 'zone', n: 4, ever: true }, go: 'b:crater', fin: ['[표지판] 굼부리 바닥에 낯선 표지판이 하나 더 있다고 함.', '누가 세웠는지 아무도 모름.'], reward: { gyul: 80 } },
     // ----- 4장 굼부리 '클린하우스' -----
-    { id: 'heap4', z: 4, giver: 'b:crater', name: '굼부리 바닥', say: ['[표지판] 굼부리 바닥 더미 3곳 치울 것. 바닥이 안 보임.', '치우다 보면 낯선 표지판이 보일 것. 겁먹지 말 것. 표지판일 뿐임.'], task: '굼부리 더미 3곳 치우기', ask: { k: 'heap@4', n: 3 }, go: 'heap@4', fin: ['낯선 표지판을 찾았어요. 우리 클린하우스와 똑같은 모양이에요.', '거기 적힌 이름은… \'지구\'. 지구와 오름이 통째로 외계인의 클린하우스였어요.'], reward: { gyul: 400 } },
-    { id: 'den4', z: 4, giver: 'b:crater', name: '착륙 자국', say: ['[표지판] 우리가 귤로 바꿔 주던 클린하우스도 원래 그들이 세운 것.', '굼부리의 굴부터 닫아 버리시오. 그쪽 민원 창구도 늘 닫혀 있었으니 공평함.'], task: '굼부리 소굴 1곳 닫기', ask: { k: 'den@4', n: 1 }, go: 'den@4', fin: ['[표지판] 굴 하나 닫힘. 그들이 알아챘을 것. 답장은 기대하지 말 것.'], reward: { gyul: 500 } },
+    { id: 'heap4', z: 4, giver: 'b:crater', name: '굼부리 바닥', say: ['[표지판] 굼부리 바닥 더미 3곳 치울 것. 바닥이 안 보임.', '치우다 보면 낯선 표지판이 보일 것. 겁먹지 말 것. 표지판일 뿐임.'], task: '굼부리 더미 3곳 치우기', ask: { k: 'heap@4', n: 3, or: { k: 'repel@4', n: 16, task: '적 16마리 쫓기' } }, go: 'heap@4', fin: ['낯선 표지판을 찾았어요. 우리 클린하우스와 똑같은 모양이에요.', '거기 적힌 이름은… \'지구\'. 지구와 오름이 통째로 외계인의 클린하우스였어요.'], reward: { gyul: 400 } },
+    { id: 'den4', z: 4, giver: 'b:crater', name: '착륙 자국', say: ['[표지판] 우리가 귤로 바꿔 주던 클린하우스도 원래 그들이 세운 것.', '굼부리의 굴부터 닫아 버리시오. 그쪽 민원 창구도 늘 닫혀 있었으니 공평함.'], task: '굼부리 소굴 1곳 닫기', ask: { k: 'den@4', n: 1, or: { k: 'heap@4', n: 2, task: '더미 2곳 치우기' } }, go: 'den@4', fin: ['[표지판] 굴 하나 닫힘. 그들이 알아챘을 것. 답장은 기대하지 말 것.'], reward: { gyul: 500 } },
     { id: 'boss4', z: 4, giver: 'b:crater', name: '굼부리의 주인', say: ['[표지판] 굼부리를 지키는 녀석이 1마리 있음.', '이걸 넘으면 정상. 그들이 기다리는 곳. 번호표를 뽑고.'], task: '굼부리 우두머리 1마리 쫓기', ask: { k: 'boss@4', n: 1, ever: true }, go: 'boss@4', fin: ['[표지판] 정상으로 가는 길이 열림. 오름 사람들이 귤을 챙기는 중.'], reward: { gyul: 1200 } },
     { id: 'z5', z: 4, giver: 'b:crater', to: 'b:rest', name: '저항', say: ['[표지판] 오름지기, 가게 주인들, 동료들 모두 정상으로 감.', '능선 쉼터 표지판에서 모이기로 함. 정상은 레벨 14 권장.'], task: '정상 구역에 들어서기', ask: { k: 'zone', n: 5, ever: true }, go: 'b:rest', fin: ['[표지판] 모두 모였음. 귤 장전 완료. 회의는 생략함.'], reward: { gyul: 200 } },
     // ----- 5장 정상 '저항' → 끝 '사과' -----
-    { id: 'heap5', z: 5, giver: 'b:rest', name: '규정대로 버렸을 뿐', say: ['외계인들이 말해요: \'저희는 규정대로 버렸을 뿐이십니다.\'', '규정이 틀렸다는 걸 보여 줘요. 정상 더미부터. 서류는 그쪽이, 청소는 우리가.'], task: '정상 더미 3곳 치우기', ask: { k: 'heap@5', n: 3 }, go: 'heap@5', fin: ['외계인들이 웅성거려요. 깨끗한 클린하우스는 처음 봤대요. 규정에 없는 광경이래요.'], reward: { gyul: 1000 } },
-    { id: 'den5', z: 5, giver: 'b:rest', name: '착륙장 봉쇄', say: ['정상에 그들의 착륙 자국이 1곳 있어요. 그게 소굴이에요.', '거길 막으면 더는 못 내려와요. 주차 위반 딱지도 한 장 붙여 두고요.'], task: '정상 소굴 1곳 닫기', ask: { k: 'den@5', n: 1 }, go: 'den@5', fin: ['착륙장이 막혔어요. 이제 남은 건 대장뿐.'], reward: { gyul: 1200 } },
+    { id: 'heap5', z: 5, giver: 'b:rest', name: '규정대로 버렸을 뿐', say: ['외계인들이 말해요: \'저희는 규정대로 버렸을 뿐이십니다.\'', '규정이 틀렸다는 걸 보여 줘요. 정상 더미부터. 서류는 그쪽이, 청소는 우리가.'], task: '정상 더미 3곳 치우기', ask: { k: 'heap@5', n: 3, or: { k: 'repel@5', n: 18, task: '적 18마리 쫓기' } }, go: 'heap@5', fin: ['외계인들이 웅성거려요. 깨끗한 클린하우스는 처음 봤대요. 규정에 없는 광경이래요.'], reward: { gyul: 1000 } },
+    { id: 'den5', z: 5, giver: 'b:rest', name: '착륙장 봉쇄', say: ['정상에 그들의 착륙 자국이 1곳 있어요. 그게 소굴이에요.', '거길 막으면 더는 못 내려와요. 주차 위반 딱지도 한 장 붙여 두고요.'], task: '정상 소굴 1곳 닫기', ask: { k: 'den@5', n: 1, or: { k: 'heap@5', n: 2, task: '더미 2곳 치우기' } }, go: 'den@5', fin: ['착륙장이 막혔어요. 이제 남은 건 대장뿐.'], reward: { gyul: 1200 } },
     { id: 'boss5', z: 5, giver: 'b:rest', name: '불편을 줘서', say: ['외계인 대장이 내려와요. 손에 든 건 무기가 아니라 결재 서류예요.', '오름 사람 모두가 당신 뒤에 있어요. 귤을 던져요!'], task: '정상 우두머리 1명 쫓기', ask: { k: 'boss@5', n: 1, ever: true }, go: 'boss@5', fin: ['외계인이 자기들 쓰레기를 도로 싣고, 안내서의 \'지구: 클린하우스\' 를 지웠어요.', '그래도 사람들이 버린 쓰레기는 남았어요. 청소는 계속돼요. 다른 오름에도 같은 표지판이 있다는데…'], reward: { gyul: 3000 }, ending: '불편을 줘서 죄송합니다.' },
   ],
   side: [
@@ -2029,6 +2142,11 @@ export const QUESTS = {
     // 정상 첫 쪽지 (#208, game/summit.js): 쪽지를 읽으면 저절로 받음(주는 사람 없음 auto), 전망 자리에 닿으면 바로 끝·보상. 옛 저장은 지난 것으로
     { id: 'x-rim', giver: 'note:top', auto: true, name: '굼부리를 내려다보기', say: [], task: '굼부리 가장자리 전망 자리까지', ask: { k: 'rimLook', n: 1 }, go: 'rimLook', fin: ['굼부리 안쪽은 깊고 조용해요. 지금은.'], reward: { gyul: 15 } },
     { id: 'x-cave', giver: 'b:crater', door: 'cave', after: 'boss4', name: '바람 새는 굴', say: ['[표지판] 굼부리 바닥 굴에서 찬바람이 새어 나옴.', '안에는 클린하우스가 없음. 들고 나온 것만 귤로 침. 못 들고 나온 건 동굴 몫.'], task: '용암 동굴 쓰레기 1번 들고 나오기', ask: { k: 'caveOut', n: 1 }, go: 'cave', fin: ['[표지판] 동굴 벽에도 그들의 글씨가 있다고 함.'], reward: { gyul: 600 } },
+    // 길 밖 곳 (#294): 길에서 먼 빈 땅으로 데려가는 곁가지. 셈 off@z = 그 구역 길 밖 곳을 찾은 수(받기 전 것도 셈), go 는 아직 못 찾은 가장 가까운 곳
+    { id: 'x-off1', giver: 'jigi', after: 'field1', name: '안내판이 모르는 곳', say: ['숲길 자락은 길보다 훨씬 넓어요. 길에서 멀수록 사람 흔적이 오래 남고요.', '숲길 들판 깊은 곳 세 곳만 가 봐요. 캠핑 자리든 샘이든 버려진 자전거든.'], task: '숲길 들판 깊은 곳 3곳 가 보기', ask: { k: 'off@1', n: 3, ever: true }, go: 'off@1', fin: ['세 곳이나요? 그 정도면 안내판보다 자락을 잘 알아요.', '안내판은 길만 알아요. 그래서 안내판이에요.'], reward: { gyul: 30 } },
+    { id: 'x-off1b', giver: 'jigi', after: 'x-off1', name: '자락 한 바퀴', say: ['숲길 자락에 아직 아무도 안 간 곳이 많아요. 지도에 어두운 데가 다 거기예요.', '숲길 들판 깊은 곳 여덟 곳. 서두를 일은 아니에요. 자락은 어디 안 가요.'], task: '숲길 들판 깊은 곳 8곳 가 보기', ask: { k: 'off@1', n: 8, ever: true }, go: 'off@1', fin: ['여덟 곳! 자락 지도를 그려도 되겠어요. 그리면 나도 한 장 줘요.'], reward: { gyul: 60 } },
+    { id: 'x-off2', giver: 'b:slope', after: 'heap2', name: '사면 아래쪽', say: ['[표지판] 남쪽 사면 아래 들판에 아무도 안 치운 자리가 있다는 제보.', '사면 들판 깊은 곳 세 곳을 둘러보고 오시오. 길은 없음. 길이 없어서 깊은 곳임.'], task: '사면 들판 깊은 곳 3곳 가 보기', ask: { k: 'off@2', n: 3, ever: true }, go: 'off@2', fin: ['[표지판] 둘러봄 확인. 들판도 누가 봐 줘야 들판임.'], reward: { gyul: 60 } },
+    { id: 'x-off4', giver: 'b:crater', after: 'heap4', name: '굼부리 바깥 숲', say: ['[표지판] 굼부리 바깥 숲에 버려진 캠핑 자리 1곳.', '누가 오래 머물다 간 듯함. 불 피운 자국이 아직 따뜻하다는 말도 있음.'], task: '굼부리 바깥 캠핑 자리 1곳 가 보기', ask: { k: 'off@4', n: 1, ever: true }, go: 'off@4', fin: ['[표지판] 불 자국은 식어 있었음. 말이 따뜻했던 것으로 정정함.'], reward: { gyul: 150 } },
     // 장비점 주인 (첫 버리기 뒤, 감독 문 shopQuest)
     { id: 'g-tool', giver: 'shop:gear', door: 'shopQuest', name: '손에 맞는 집게', say: ['그 집게, 손에 안 맞지? 딱 보면 알아.', '여기 장비점서 도구 한 단계만 올려 봐. 일은 집게가 허고 손은 쉬는 거여.'], task: '장비점에서 도구 1단계 올리기', ask: { k: 'tool', n: 1 }, go: 'shop:gear', fin: ['거봐, 손목이 안 아프지? 집게가 대신 아파.'], reward: { coupon: ['gear', 1] } },
     { id: 'g-bag', giver: 'shop:gear', door: 'shopQuest', after: 'g-tool', name: '배낭은 클수록 좋다', say: ['배낭 작으면 클린하우스만 들락날락혀. 그것도 운동이긴 허지.', '배낭 한 단계만 키워 봐. 들락날락이 확 줄어.'], task: '장비점에서 배낭 1단계 올리기', ask: { k: 'bag', n: 1 }, go: 'shop:gear', fin: ['이제 좀 오름 사람 같네. 클린하우스 아저씨는 좀 서운허겄다. 덜 오니께.'], reward: { coupon: ['gear', 1] } },
@@ -2049,6 +2167,8 @@ export const QUESTS = {
     // 숙소 오피스제주 안녕 매니저 (#270, 숙소가 열리면). 첫 숙박은 반값(INN.price.first)
     { id: 'i-stay', giver: 'shop:inn', door: 'shopQuests', name: '일이 많은 당신에게', say: ['일이 많아 보이네요. 얼굴에 다 써 있어요.', '오피스제주에서 하룻밤만 묵어 봐요. 첫 숙박은 반값이에요. 안녕은 원래 값이 없지만요.'], task: '오피스제주에서 1번 묵기', ask: { k: 'innStay', n: 1 }, go: 'shop:inn', fin: ['개운하죠? 그 얼굴이 우리 간판이에요.'], reward: { gyul: 20 }, need: 'shop:inn' },
     { id: 'i-run', giver: 'shop:inn', door: 'shopQuests', after: 'i-stay', name: '개운할 때 일하기', say: ['개운함이 남아 있을 때가 일하기 제일 좋아요.', '버프가 있는 동안 아무 구역 서바이벌 터에서 1판 버텨 봐요. 퇴근은 그다음이에요.'], task: '버프 중 서바이벌 터 1판 버티기', ask: { k: 'innRun', n: 1 }, fin: ['역시. 다음 숙박은 우리가 기다릴게요.'], reward: { gyul: 30 }, need: 'shop:inn' },
+    // Bar 소설 소설 사장 (#316, 바가 열리면). 밤에만 엶
+    { id: 'b-read', giver: 'shop:bar', door: 'shopQuests', name: '한 쪽만', say: ['밤엔 책이 잘 읽혀요. 낮엔 오름이 잘 읽히고요.', '한 잔 하면서 한 쪽만 읽어 봐요. 한 쪽은 늘 두 쪽이 되지만요.'], task: '밤에 Bar 소설에서 한 번 읽기', ask: { k: 'barRead', n: 1 }, go: 'shop:bar', fin: ['여운 남죠? 그게 책값이에요.'], reward: { gyul: 20 }, need: 'shop:bar' },
     // ----- 이야기 이벤트 뒤 (#168): '오름지기에게 이야기하기'. 이벤트를 끝냈으면(need·ask 'story:id') 오름지기가 실마리를 한 줄 -----
     { id: 'st-mom', giver: 'jigi', name: '엄마 멧돼지', say: ['엄마 멧돼지 입에 캔 조각이 묻어 있었다고요?', '…그 캔, 짐승들도 먹나 보네요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:mom', n: 1, ever: true }, fin: ['…밤에 능선 쪽을 한번 봐요. 말은 거기까지.'], reward: { gyul: 5 }, need: 'story:mom' },
     { id: 'st-pair', giver: 'jigi', name: '둘이 다니는 투기꾼', say: ['투기꾼이 귤 세 개를 흘리고 갔다고요?', '한 봉지에 귤 셋이라. 누가 그런 장사를 할까요.'], task: '안내판 오름지기에게 말하기', ask: { k: 'story:pair', n: 1, ever: true }, fin: ['쪽지 같은 걸 흘리면 꼭 주워 와요. 쓰레기라도 정보는 정보예요.'], reward: { gyul: 5 }, need: 'story:pair' },
@@ -2065,7 +2185,7 @@ QUESTS.side.push(...CASE_QUESTS); // 사건 파일 (#232): 사건마다 증거·
 // 매일 미확인 제보 (#238, 데이터 src/cases/reports.js, 게임 src/game/reports.js). 값은 임의
 // lv 이 레벨부터(#256: 남쪽 사면 권장 Lv 5, 여정 2-1절) · hoax 헛소문 확률 · caseK 열린 사건 실마리를 고를 확률(진짜 제보일 때) · gyul 끝내면 귤(서버 earn.js 가 하루 한 번 인정)
 // r 상호작용 거리 · off 길가 더미에서 떨어진 거리 [최소, 최대] m · far 흔적·표시가 보이는 거리 · ring 바닥 표시 반지름
-export const REPORT = { lv: 5, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14 };
+export const REPORT = { lv: 5, hoax: 0.3, caseK: 0.5, gyul: 30, r: 2.6, off: [3.5, 6], far: 70, ring: 1.6, delay: 14, wild: 0.6 }; /* wild (#294): 사건 실마리가 아닌 제보는 이 비율로 그 구역 길 밖 곳 곁에 흔적 (날짜로 고름, 없으면 길가 더미 곁) */
 // crop: 사건 1 무늬 반지름(m)·진하기·돌림 (#246) · view: 위에서 찍기 장면 길이(초)·높이·옆 거리 · face: 숨어 보기 장면 (drop 떨어지는 높이 m, dropAt 장면 비율)
 export const CASE = { free: 4, far: 120, r: 2.6, seeT: 0.5, mibTalk: 8, /* 사건 3 목격 검은 양복이 이 m 안이면 talk (#264) */ goneAfter: 4, /* see.blink 목격 모양은 열린 뒤 이 초가 지나야 사라질 수 있음 (#234) */ crop: { r: 6, op: 0.6, rot: 0.4 }, view: { len: 2.8, up: 22, side: 9 }, face: { skipAfter: 1.5, camBack: 8, camSide: 2.2, camUp: 1.4, drop: 30, dropAt: 0.62 } };
 // 흰 옷 따라가기 (#233, game/casechase.js). white 흰 작업복 색·glow 스스로 빛남(색 × glow) · behind 목격 돌담 너머 m · glide 스치는 길이(반, m)·glimT 스치는 초
@@ -2080,7 +2200,7 @@ CASE.fin = { safe: 2, thread: 2.4, up: 1.6, hold: 2.2 };
 // shopT 귤이 새로 다음 장비 값에 닿으면 이만큼 '장비점으로' (장비점 창을 열거나 문 shopR m 안에 오면 끝, 같은 장비로 다시 권하지 않음)
 // bagRoom 배낭 남은 칸이 이보다 작으면 '클린하우스로'
 // after: 줄기 퀘스트가 끝난 뒤 차례 (강화 → 전설 우두머리 → 오늘의 업적 → 다시 쌓인 더미 → 소굴 → 돌탑). 모두 임의값
-export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['case', 'arena', 'boss', 'forge', 'legend', 'report', 'daily', 'heap', 'den', 'cairn'] }; /* #256: 그 구역 사건 → 터 → 우두머리가 먼저 */
+export const NEXT_HINT = { hpLow: 0.35, hpOk: 0.7, hpT: 60, calm: 0.5, shopT: 45, shopR: 6, bagRoom: 1, after: ['case', 'arena', 'boss', 'forge', 'legend', 'report', 'daily', 'heap', 'den', 'explore', 'cairn'] }; /* #256: 그 구역 사건 → 터 → 우두머리가 먼저 · #294 explore: 더미·소굴이 없을 때 가 본 구역에 아직 안 가 본 길 밖 곳 */
 
 // 철 이벤트 (#180): 기간 안에만 켜짐(한국 시각). 꾸밈·연결은 src/season.js(모양)·src/seasoncal.js(날짜·달력·트리, 서버와 같이 씀)·src/game/season.js(게임)
 // 다음 철(설·여름)은 여기 한 묶음을 더하고 season.js 에 모양을 더하면 됨. 기간이 끝나도 얻은 옷은 남고, 눈덩이는 기간에만 던짐
@@ -2301,7 +2421,7 @@ export const TALK = { bubble: { ch: 14, lines: 2, chatLines: 3, pages: 2 }, win:
   /* 화자: bg 프로필 바탕색, p '톡' 높이(1 = 520Hz), ic 얼굴 대신 아이콘 (3D 모델이 없는 화자) */
   who: {
     jigi: { bg: '#cfe0a6', p: 0.9 }, 'shop:gear': { bg: '#b9c6d8', p: 0.75 }, 'shop:leap': { bg: '#e9e9ef', p: 1.25 }, 'shop:salon': { bg: '#f1c9d5', p: 1.35 },
-    'shop:stone': { bg: '#f4e6c4', p: 1.05 }, 'shop:satis': { bg: '#bcd6f0', p: 0.85 },
+    'shop:stone': { bg: '#f4e6c4', p: 1.05 }, 'shop:satis': { bg: '#bcd6f0', p: 0.85 }, 'shop:bar': { bg: '#c9cfe6', p: 0.8 }, /* #316 */
     'b:slope': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'b:rest': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'b:crater': { bg: '#e8d9b0', p: 1, ic: 'sign' }, 'note:top': { bg: '#f3ead2', p: 1, ic: 'notes' },
     guide: { bg: '#ffd9a8', p: 1.1, ic: 'notes' }, radio: { bg: '#ffe08a', p: 0.8, ic: 'radio' }, me: { bg: '#ffcf8a', p: 1.15 }, mate: { bg: '#c8e6ff', p: 1.2 }, peer: { bg: '#d7d2f4', p: 1.1 }, hidden: { bg: '#3b3d45', p: 0.7 },
   } };
@@ -2403,7 +2523,7 @@ export const TOKEN = {
     { id: 'vest:t-gong', slot: 'vest', z: 5, price: 30, name: '망고 띠', tok: { dmg: 0.08 }, look: { kind: 'vest', main: '#45464b', acc: '#f08a24', pockets: 1 } },
   ],
   suit: { hp: 0.5 },
-  stall: { side: 4.2, out: 2.2, near: 40, npc: '터지기', r: 2.6, mangoY: 1.06, mangoZ: 0.34 }, /* mangoY·Z: 판 위 망고 한 알 자리 (#305) */
+  stall: { side: 4.2, sideZ: { 5: -4.2 }, out: 2.2, near: 40, npc: '터지기', r: 2.6, mangoY: 1.06, mangoZ: 0.34 }, /* mangoY·Z: 판 위 망고 한 알 자리 (#305). sideZ: 구역별 옆 m (#308 터 5 좌판은 문 반대쪽 옆, 표지석에서 멀리) */
   pop: { max: 5, t: 1.1, scale: 1.6 }, /* 받을 때 튀는 망고 (#305): 몇 알까지·한 알 시간(초)·크기 배수 */
   quest: { n: 10, gyul: 20 },
 };

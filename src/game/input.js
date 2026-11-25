@@ -50,7 +50,13 @@ state.camHold = 0;
 
 // 조이스틱 (터치). 떠다님(#211, 기본): 왼쪽 아래 구역 어디든 누른 자리에 바탕이 생기고, 반지름 밖으로 끌면 바탕이 따라옴. 고정: 예전처럼 제자리 스틱
 // 이동은 처음 구역에 닿은 손가락(joy.id) 하나에만 묶음. 떼기 전까지는 구역 밖으로 나가도 이동. 버튼 위에서 시작한 터치는 버튼이 받으므로 이동이 안 됨
-export const joy = { active: false, id: null, x: 0, y: 0, cx: 0, cy: 0, float: false };
+export const joy = { active: false, id: null, x: 0, y: 0, cx: 0, cy: 0, float: false, on: false, mag: 0 };
+/* #313: on = 걷기 켬(dead 를 넘으면 켜고 deadOff 아래로 내려가야 끔), mag = 속도 비율 0~1 (곡선). 손가락이 경계에서 떨려도 섰다 걸었다 하지 않음 */
+export function joyShape(m) {
+  joy.on = joy.active && (joy.on ? m > STICK.deadOff : m > STICK.dead);
+  const t = clamp((m - STICK.deadOff) / (STICK.full - STICK.deadOff), 0, 1);
+  joy.mag = joy.on ? STICK.minK + (1 - STICK.minK) * Math.pow(t, STICK.curve) : 0;
+}
 export const stickFloat = () => isTouch && save.stick !== 'fixed';
 {
   const el = $('joy'), knob = $('joy-knob');
@@ -77,13 +83,13 @@ export const stickFloat = () => isTouch && save.stick !== 'fixed';
     if (Math.hypot(e.clientX - sx, e.clientY - sy) > STICK.tapPx) far = true;
     let dx = (e.clientX - joy.cx) / R, dy = (e.clientY - joy.cy) / R; const m = Math.hypot(dx, dy);
     if (m > 1) { dx /= m; dy /= m; if (joy.float) { joy.cx = e.clientX - dx * R; joy.cy = e.clientY - dy * R; place(); } } /* 끌려오는 바탕 */
-    joy.x = dx; joy.y = dy; setKnob();
+    joy.x = dx; joy.y = dy; joyShape(Math.min(1, m)); setKnob();
   };
   const end = (e) => {
     if (!joy.active || e.pointerId !== joy.id) return;
     const tap = joy.float && from === 'view' && !far && performance.now() - t0 < STICK.tapT * 1000 && e.type === 'pointerup';
     if (joy.float && far) { save.joyN = Math.min(99, (save.joyN || 0) + 1); if (save.joyN === STICK.faintAfter) persist(); }
-    joy.active = false; joy.id = null; joy.x = joy.y = 0; joy.float = false; setKnob();
+    joy.active = false; joy.id = null; joy.x = joy.y = 0; joy.float = false; joyShape(0); setKnob();
     el.classList.remove('float', 'on'); el.style.left = el.style.top = ''; guide();
     if (tap) tapGround(e.clientX, e.clientY); /* 구역 안을 톡 친 건 예전처럼 그 땅으로 걸어가기 */
   };
@@ -102,7 +108,7 @@ export const stickFloat = () => isTouch && save.stick !== 'fixed';
   const seg = $('menu-stick');
   const drawSeg = () => { if (!seg) return; seg.hidden = !isTouch; optSeg(seg, [['float', '떠다님'], ['fixed', '고정']], save.stick === 'fixed' ? 'fixed' : 'float', (v) => { save.stick = v === 'fixed' ? 'fixed' : undefined; persist(); drawSeg(); guide(); }); };
   drawSeg();
-  late.stickApi = { STICK, guide, drawSeg };
+  late.stickApi = { STICK, guide, drawSeg, joyShape };
 }
 
 // 멀티터치 (#42): 화면의 손가락은 pointerId 로 따로 추적한다 — 조이스틱(joy.id), 시점·핀치(ptrs: 캔버스에 닿은 손가락만), 버튼(각 버튼이 자기 손가락만 캡처).

@@ -17,6 +17,8 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
     await p.click('#enter').catch(() => {}); await W(4000);
     if (await ev(() => !document.getElementById('look')?.hidden)) { await p.click('#look-ok').catch(() => {}); await W(1200); }
     await ev(() => { const o = window.__oreum; o.tut.skipAll(); o.setTod(14); });
+    /* 정상(구역 5)은 권장 Lv 14: 레벨 1로 순간이동하면 '권장 레벨' 경고(감독 msg, 10초)가 이야기를 막음 → 정상에 오를 만한 레벨로 (#308 에서 낡은 검사 고침) */
+    await ev(() => { const o = window.__oreum; for (let x = o.level.state().xp, g = 0; o.level.state().lv < 14 && g < 300; g++) { x += Math.max(50, Math.ceil(o.level.state().need / 4)); o.level.setXp(x); } });
     await W(1500);
     const S = () => ev(() => window.__oreum.summit.state());
     const go = (v) => ev((v) => { const o = window.__oreum; o.player.pos.set(v[0], o.groundAt(v[0], v[2]), v[2]); o.player.target = null; o.snap(); }, v);
@@ -30,7 +32,7 @@ let fails = 0; const ok = (c, msg) => { console.log(c ? 'ok  ' : 'FAIL', msg); i
     await W(800);
     let s = await S();
     if (!old) {
-      const fov0 = s.fov; ok(await until(() => !!window.__oreum.summit.state().run, 6000), '표지석에 닿으면 장면 시작');
+      const fov0 = s.fov; ok(await until(() => !!window.__oreum.summit.state().run, 90000), '표지석에 닿으면 장면 시작'); /* 레벨을 올리면 가게 열림 안내가 먼저 지나감(감독 시계 ~10초, 소프트웨어 GL 에선 실제 시간이 더 걸림) */
       await W(2500); s = await S(); ok(s.cam === 'cine' && s.run?.kind === 'scene', `장면 중 카메라 cine (u ${s.run?.u})`); await shot('turn');
       await ev(() => window.__oreum.summit.jump(6.9)); await W(150); s = await S(); ok(s.flash, '굼부리 안 빛 깜빡임'); await shot('flash');
       ok(await ev(() => !document.querySelector('#clue-cine .cc-sk').hidden), '건너뛰기 단추');
