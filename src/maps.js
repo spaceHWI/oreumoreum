@@ -191,7 +191,7 @@ function namsongiSpots() {
       { pos: T1.hare, heading: T1.hare.dir + Math.PI - 0.5 },
       { pos: at('approach', G0 + 6, -1, 4.4), heading: T1.hare.dir + Math.PI + 0.5 },
       { pos: at('approach', LA - 14, -1, 4.4), heading: at('approach', LA - 14).dir + Math.PI + 0.4 },
-      { pos: V(stone.x - smOut.z * 6, stone.z + smOut.x * 6), heading: Math.atan2(-smOut.x, -smOut.z) },
+      { pos: at('rim', rimD + 22, 1, 4.4), heading: at('rim', rimD + 22).dir + 0.4 }, // #308 정상(표지석 곁)에서 능선 길목으로: 올라오는 쪽 22m 앞 길가
     ],
     sign: { pos: at('approach', G0 + 12, 1, 5), rot: at('approach', G0 + 12).dir + Math.PI - 0.35, // #114 하르방(왼쪽)에 가리지 않게 맞은편으로
        html: NS_SIGN_TEXT, board: { title: '남송이오름 탐방로', sub: '서귀포시 안덕면 서광리', l1: '능선 · 정상(339m)', go: '▲ 정상까지 솔숲길' } },
