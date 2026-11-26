@@ -30,7 +30,7 @@ async function run(b, name, base) {
   if (DEAD) await ctx.route(/\/a\/.*\.bin/, (r) => (/runner/.test(r.request().url()) ? r.continue() : r.abort()));
   let testing = false; const bad = [], log = (k, m) => { if (testing && /시험|오름오름 오류|ContextLost/.test(String(m))) return; bad.push(k + ' ' + m); console.log(name, k, String(m).slice(0, 300)); };
   p.on('pageerror', (e) => log('ERR', e.message));
-  p.on('console', (m) => { if (m.type() === 'error' && !/모델을 받지 못함|WebSocket|onestore|ERR_|net::|Failed to load resource|googleapis|gsi/i.test(m.text())) log('CON', m.text()); });
+  p.on('console', (m) => { if (m.type() === 'error' && !/모델을 받지 못함|WebSocket|onestore|ERR_|net::|Failed to load resource|googleapis|gsi|blocked by CORS policy/i.test(m.text())) log('CON', m.text()); });
   p.on('crash', () => log('CRASH', '페이지가 죽음'));
   const cdp = await ctx.newCDPSession(p); await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu }); await cdp.send('Performance.enable');
   await p.addInitScript(() => {
@@ -63,9 +63,17 @@ async function run(b, name, base) {
     for (let w = 0; w < 3; w++) {
       const at = await p.evaluate((zn) => {
         const O = window.__oreum, i = O.trash.api.heaps.findIndex((h) => h.zone === zn);
-        if (i >= 0) { O.trash.goHeap(i); O.player.pos.x += 6; O.player.pos.y = O.groundAt(O.player.pos.x, O.player.pos.z); O.snap(); }
-        O.pace.pacing.test.soon(0); return i;
+        if (i >= 0) {
+          O.trash.goHeap(i); const x0 = O.player.pos.x, z0 = O.player.pos.z; let put = false;
+          /* #298 길(탐방로) 위에서는 들판 적이 안 생김: 더미 곁에서 길 밖·같은 구역인 자리를 찾아 섬 */
+          for (let r = 6; r <= 30 && !put; r += 4) for (let a = 0; a < 16 && !put; a++) { const x = x0 + Math.sin(a * 0.39) * r, z = z0 + Math.cos(a * 0.39) * r; if (!O.twopaths.onTrail(x, z) && O.trash.zoneAt(x, z) === zn) { O.player.pos.x = x; O.player.pos.z = z; put = true; } }
+          if (!put) O.player.pos.x += 6;
+          O.player.pos.y = O.groundAt(O.player.pos.x, O.player.pos.z); O.snap();
+        }
+        return i;
       }, ZONES[w]);
+      await p.waitForTimeout(1000); // 길 안전 판정(twopaths safe)이 새 자리를 읽을 때까지 (#298: 낡은 판정이면 무리 대신 투기꾼이 나옴)
+      await p.evaluate(() => window.__oreum.pace.pacing.test.soon(0));
       // 조짐(3초) → 공격: 게임 루프가 스스로 감독을 돌림. 적이 나오면 12초 버팀
       let seen = false;
       for (let s = 0; s < 60; s++) {
@@ -75,7 +83,7 @@ async function run(b, name, base) {
         if (seen) enT += 0.5;
         if (seen && enT >= (w + 1) * 12) break;
       }
-      if (seen) waves++; else log('NOWAVE', `${w + 1}번째 무리가 나오지 않음`);
+      if (seen) waves++; else { log('NOWAVE', `${w + 1}번째 무리가 나오지 않음`); console.log(name, '감독 기록', JSON.stringify(await p.evaluate(() => { const O = window.__oreum, P = O.pace.pacing; return { 길안전: O.twopaths.safe(), 구역: O.trash.zoneAt(O.player.pos.x, O.player.pos.z), phase: P.phase, ev: (P.events || P.log || []).slice(-8) }; }).catch((e) => String(e)))); }
       console.log(name, `무리 ${w + 1} (구역 ${ZONES[w]}, 더미 ${at})`, seen ? 'ok' : '없음', '힙', await heap(), '프레임', await frames(), await p.evaluate(() => window.__oreum.enemies.list.map((e) => e.kind).join(',') + ' 음악 ' + JSON.stringify(window.__oreum.sound.music?.state?.() || null)));
       await p.evaluate(() => { const O = window.__oreum; O.enemies.leaveAll(); O.dumpers?.state().forEach((d, i) => O.dumpers.hit(i)); });
       await p.waitForTimeout(1500);

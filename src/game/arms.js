@@ -17,7 +17,7 @@ import { scene } from './scene.js';
 import { life, buff, runner, player } from './place.js';
 import { updateStats, busy, toast, ui } from './hud.js';
 import { keys, marker } from './input.js';
-import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, aimHeading, setHoldBow, fireWeapon, twinRoll, TWIN_YAW, TWIN_MS } from './throw.js';
+import { weaponNow, bowReady, bowArmed, armedFor, aimTarget, shotTarget, aimHeading, setHoldBow, fireWeapon, twinRoll, TWIN_YAW, TWIN_MS } from './throw.js';
 import { augV } from '../augments.js';
 import { slotUp } from '../gearscore.js';
 import { heatNew, heatStep, heatCanFire, heatMul } from '../laserheat.js';
@@ -65,7 +65,7 @@ function startAim(t) {
 }
 // 한 발 (총·머신건)
 function shot(w, spread = 0, ch = null) { // ch: 모아 쏘기 { k, mul, size } (#129)
-  const t = aimTarget(); startAim(t);
+  const t = shotTarget(); startAim(t);
   if (t) player.heading = aimHeading(t); // 겨눈 쪽을 바로 봄 (빠른 탄)
   const from = muzzle(w.id);
   let v;
@@ -93,7 +93,7 @@ function fireArm() {
   else if (w.id === 'bomb') {
     if (A.bombCd > 0) { toast('폭탄을 다시 쥐는 중이에요'); return; }
     if (save.coins < w.cost) return;
-    const t = aimTarget();
+    const t = shotTarget();
     save.coins -= w.cost; updateStats(); persist(); A.bombCd = w.cd;
     setHoldBow(true); state.emo?.stop();
     player.target = null; player.onArrive = null; marker.visible = false;
@@ -195,7 +195,7 @@ export function chargedArm(w, ch) {
     if (!A.lasing) { A.lasing = true; A.held = true; A.tick = 0; A.seq++; }
     A.burstT = A.thick.t; sfx()?.chargeShot?.(ch.k);
   } else if (w.id === 'bomb') {
-    const t = aimTarget(); A.bombCd = w.cd;
+    const t = shotTarget(); A.bombCd = w.cd;
     setHoldBow(true); state.emo?.stop();
     player.target = null; player.onArrive = null; marker.visible = false;
     state.chargeShot = ch; state.throwAim = t; state.throwPending = true; state.lobPending = true;

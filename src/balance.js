@@ -885,6 +885,7 @@ export const GYUL_PICK = { r: 3.5, perBag: 0.5, suckT: 0.3 };
 export const COMBAT = {
   detectHand: 28, detectPad: 8, losePad: 6, // 타겟을 잡는 거리: 손은 28m, 무기는 사거리 + detectPad. 잡은 타겟은 이만큼 더 멀어지면 놓음
   pickPx: 70, // 화면에서 적을 누를 때 이 픽셀 안이면 그 적으로 바꿈
+  nearHys: 0.5, pickHold: 4, // 쏠 때마다 가장 가까운 적 (#319): 거리 차이가 이 m 안이면 지금 타겟 유지. 직접 고른 타겟은 이 초 동안 유지
   homeRate: Math.PI, homeT: 1.6, // 유도: 탄이 초당 도는 각(rad, 180°), 날아가는 동안 유도하는 시간 상한(초)
   homeRateBow: Math.PI * 1.5, // 활·총·머신건은 빨라서 조금 더 세게 돌림
   knockDist: 1.2, // 받혀 밀려나는 거리 (BOAR.knockSpeed ÷ knockDrag 로 맞춤)
