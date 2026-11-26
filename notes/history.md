@@ -2292,3 +2292,4 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티: 앉아 읽는 동안 presence `bs`(의자 번호 + 1) → 남의 화면에서 앉아 읽는 모습(innExtra·innPeer 감쌈)
 - 아이콘 Tabler `book`·`glass-full`·`moon` (icongen.mjs). 검사: 새 `tools/barrun.js d|m`, `tools/barshot.js`, `oldsave.js` barBad·barStr, `smoke.js` LOOP 'bar', `storytext.mjs` 바 글
 - 남은 것: 모양이 바뀌는 일이라 기획 세션이 그림을 사용자에게 보인 뒤 배포. 다음 할 일(nexthint) '밤이면 소설' 줄은 넣지 않음(퀘스트·저니 표로 대신). econ 표에 바 값 줄 없음(그날 벌이 대비 작음)
+- #318 enemyrun: 구역 2 첫 무리 실패는 게임이 아니라 검사 탓. 자리를 옮긴 직후 길 안전(twopaths, 0.2초마다 갱신) 판정이 낡아 planWave 가 null → 투기꾼만 나옴. 검사가 더미 곁 길 밖 자리에 서고 1초 기다린 뒤 감독을 부르게 고침. 로컬 주소 CORS 오류는 무시. gllost·give 는 인자·서버 없으면 쓰는 법 안내 후 exit 2.
