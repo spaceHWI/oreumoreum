@@ -1,6 +1,7 @@
 // WebGL 을 잃은 바로 그 프레임 확인 (#197): node tools/gllost.js $PWD [lose|null]  (먼저 node build.mjs)
 // lose: 진짜로 잃게 한 뒤(WEBGL_lose_context) 같은 프레임에 새 재질을 그림 → 'threw' 가 null 이고 안내가 뜨고, 되살리면 다시 그려야 함. null: iOS 처럼 getShaderInfoLog 만 null
 const { chromium } = require('playwright');
+if (!process.argv[2] || !require('fs').existsSync(process.argv[2] + '/dist/test.html')) { console.log('쓰는 법: node tools/gllost.js <저장소 폴더 절대경로> [lose|null]  (먼저 node build.mjs 로 dist/test.html 을 만든 뒤, 예: node tools/gllost.js $PWD)'); process.exit(2); }
 (async()=>{
  const b = await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const p = await b.newPage({viewport:{width:480,height:300}});

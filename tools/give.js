@@ -1,4 +1,5 @@
 // 귤 주기 확인 (#175): node tools/give.js [서버주소=http://127.0.0.1:8787]
+// 쓰는 법: 먼저 node build.mjs, 그리고 로컬 서버를 띄워 둔다(cd server && npm run dev). 서버가 없으면 바로 안내하고 끝남(exit 2)
 // 로컬 서버(cd server && npm run dev: FAKE_AUTH·GIFT_NEW_SEC 0)에 브라우저 둘을 가짜 로그인으로 붙이고, A 가 B 옆에서 상호작용을 누르고 있으면 B 귤이 늘고 A 는 준 만큼 주는지 본다
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -8,6 +9,9 @@ const web = http.createServer((q, r) => { const f = path.join(ROOT, q.url.split(
 const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) process.exitCode = 1; };
 const wait = (p, ms) => p.waitForTimeout(ms);
 (async () => {
+  if (!fs.existsSync(path.join(ROOT, 'test.html'))) { console.log('dist/test.html 이 없음: 먼저 node build.mjs 를 돌리세요'); process.exit(2); }
+  const up = await fetch(SRV, { signal: AbortSignal.timeout(4000) }).then(() => true, () => false);
+  if (!up) { console.log(`서버(${SRV})에 닿지 않음. 쓰는 법: cd server && npm run dev 로 로컬 서버를 띄운 뒤 node tools/give.js [서버주소]`); process.exit(2); }
   await new Promise((r) => web.listen(0, '127.0.0.1', r));
   const URL0 = `http://127.0.0.1:${web.address().port}/test.html?server=${encodeURIComponent(SRV)}#namsongi`;
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

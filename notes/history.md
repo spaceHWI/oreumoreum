@@ -2299,3 +2299,4 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 직접 고른 타겟(화면 누르기·Tab·setLock)은 죽거나 감지 거리 + losePad 밖으로 나가거나 `COMBAT.pickHold`(4초) 지나면 다시 가장 가까운 적. 다가가서 쏘기(approach.js)는 lockPick=false 라 가까운 적을 따라감
 - 쏘지 않을 때 고리(aimMark)도 같은 `refreshLock` 이라 표시된 적 = 맞는 적. 몸 돌리기는 예전 그대로(update.js 부드럽게, 총은 바로)
 - 검사: 새 `tools/nearaim.js`(다가온 적·직접 고른 타겟 유지·연사 중 바뀐 횟수 0·연사 중 가까운 적으로·표시). `__oreum.aim.shot/swaps/picked`
+- #318 enemyrun: 구역 2 첫 무리 실패는 게임이 아니라 검사 탓. 자리를 옮긴 직후 길 안전(twopaths, 0.2초마다 갱신) 판정이 낡아 planWave 가 null → 투기꾼만 나옴. 검사가 더미 곁 길 밖 자리에 서고 1초 기다린 뒤 감독을 부르게 고침. 로컬 주소 CORS 오류는 무시. gllost·give 는 인자·서버 없으면 쓰는 법 안내 후 exit 2.
