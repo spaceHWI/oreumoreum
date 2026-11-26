@@ -310,3 +310,4 @@
 | 213 | #316 Bar 소설 | opus |
 | 214 | #318 enemyrun 낡은 검사 정리 | sonnet |
 | 215 | #319 쏠 때마다 가까운 적 타겟 | opus |
+| 216 | #320 dumperrun 날짜 의존 고침 | sonnet |
