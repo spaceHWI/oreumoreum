@@ -2292,3 +2292,10 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 - 멀티: 앉아 읽는 동안 presence `bs`(의자 번호 + 1) → 남의 화면에서 앉아 읽는 모습(innExtra·innPeer 감쌈)
 - 아이콘 Tabler `book`·`glass-full`·`moon` (icongen.mjs). 검사: 새 `tools/barrun.js d|m`, `tools/barshot.js`, `oldsave.js` barBad·barStr, `smoke.js` LOOP 'bar', `storytext.mjs` 바 글
 - 남은 것: 모양이 바뀌는 일이라 기획 세션이 그림을 사용자에게 보인 뒤 배포. 다음 할 일(nexthint) '밤이면 소설' 줄은 넣지 않음(퀘스트·저니 표로 대신). econ 표에 바 값 줄 없음(그날 벌이 대비 작음)
+
+## #319 쏠 때마다 가장 가까운 적을 타겟으로
+- `throw.js pickTarget`: '쫓는 적 > 화면 가운데' 점수 대신 평면 거리로 가장 가까운 적. 지금 타겟보다 `COMBAT.nearHys`(0.5m) 넘게 가까워야 바꿈(떨림 막기)
+- 쏘는 순간 `shotTarget()` 이 0.1초 묶음을 건너뛰고 바로 다시 고름: 손 던지기·활(누를 때), 총·머신건(한 발마다, arms.js shot), 폭탄, 모아 쏘기(charge.js fireCharged). 레이저는 프레임마다 `aimTarget()`(0.1초마다 다시 고름)
+- 직접 고른 타겟(화면 누르기·Tab·setLock)은 죽거나 감지 거리 + losePad 밖으로 나가거나 `COMBAT.pickHold`(4초) 지나면 다시 가장 가까운 적. 다가가서 쏘기(approach.js)는 lockPick=false 라 가까운 적을 따라감
+- 쏘지 않을 때 고리(aimMark)도 같은 `refreshLock` 이라 표시된 적 = 맞는 적. 몸 돌리기는 예전 그대로(update.js 부드럽게, 총은 바로)
+- 검사: 새 `tools/nearaim.js`(다가온 적·직접 고른 타겟 유지·연사 중 바뀐 횟수 0·연사 중 가까운 적으로·표시). `__oreum.aim.shot/swaps/picked`
