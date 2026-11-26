@@ -25,38 +25,36 @@ export function setHoldBow(v) {
   if (state.holdBow === v) return; state.holdBow = v;
   syncEquipGear(); runner.apply(save.outfit); late.net.send(true);
 }
-const aimFwd = new THREE.Vector3();
-// 타겟 고정 (#148): 감지 거리 안에서 가장 위험한 것 하나를 잡아 두고, 쫓아내거나(목록에서 빠짐) 멀어질 때까지 바꾸지 않음
-// 순서: 나를 쫓는 적 > 가까운 것 > 화면 가운데. 하르방은 겨누지 않음 (#249). 화면에서 누르거나 Tab 으로 바꿈
+// 타겟 (#148 → #319): 쏠 때마다 사거리 안 가장 가까운 적(평면 거리)을 다시 고름. 차이가 COMBAT.nearHys(m) 안이면 지금 타겟 유지(떨림 막기)
+// 화면에서 누르거나(pickLock) Tab(cycleLock)으로 직접 고른 타겟은 죽거나 감지 거리 밖으로 나가거나 COMBAT.pickHold 초가 지날 때까지 유지. 하르방은 겨누지 않음 (#249)
 // state.lock: life.aimTargets() 의 한 항목. 사거리(fireR) 밖이면 aimTarget() 은 null 이고 버튼에 '멀어요'. 누르면 다가가서 쏨 (#132, game/approach.js)
-state.lock = null; state.lockPick = false;
+state.lock = null; state.lockPick = false; state.lockPickAt = 0; state.lockSwaps = 0;
 export const fireR = () => (bowArmed() ? weaponNow().range : THROW_AIM.range) * (late.chargeRange?.() ?? 1); // 모으는 중엔 더 멀리 (#129)
 const detectR = () => Math.max(bowArmed() ? weaponNow().range + COMBAT.detectPad : COMBAT.detectHand, late.approachR?.() || 0); // 다가가는 중엔 더 멀리까지 잡아 둠 (#132)
 const flat = (t) => Math.hypot(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
-function aimScore(t, fl) {
-  const dx = t.pos.x - player.pos.x, dz = t.pos.z - player.pos.z, d = Math.hypot(dx, dz);
-  const cos = (dx * aimFwd.x + dz * aimFwd.z) / (Math.max(d, 0.01) * fl); // 화면 가운데에 가까울수록 작게
-  return (t.chase ? 0 : 1000) + d * (1.6 - 0.6 * cos);
-}
-let lockAt = -1, lockOut = null; // 고르기는 0.1초에 한 번 (사라진 것은 바로 놓음)
+let lockAt = -1, lockOut = null; // 고르기는 0.1초에 한 번 (사라진 것은 바로 놓음). 쏘는 순간은 shotTarget() 이 바로 다시 고름
 export function refreshLock(force = false) {
   const now = performance.now();
   if (!force && now - lockAt < 100 && (!lockOut || !lockOut.ok || lockOut.ok()) && (!state.lock || !state.lock.ok || state.lock.ok())) return lockOut;
-  lockAt = now; return (lockOut = pickTarget());
+  lockAt = now; return (lockOut = pickTarget(now));
 }
-function pickTarget() {
-  const list = life.aimTargets(), R = detectR();
-  let L = state.lock;
+function pickTarget(now) {
+  const list = life.aimTargets(), R = detectR(), prev = state.lock;
+  let L = prev;
   if (L && (!list.includes(L) || (L.ok && !L.ok()) || flat(L) > R + COMBAT.losePad)) { L = null; state.lockPick = false; }
-  camera.getWorldDirection(aimFwd); const fl = Math.hypot(aimFwd.x, aimFwd.z) || 1;
-  let best = null, bs = Infinity;
-  for (const t of list) { if (flat(t) >= R) continue; const sc = aimScore(t, fl); if (sc < bs) { bs = sc; best = t; } }
-  if (!L || (!state.lockPick && !L.chase && best?.chase)) L = best; // 쫓아오는 적이 생기면 그쪽으로 (직접 고른 것은 그대로)
+  if (state.lockPick && now - state.lockPickAt > COMBAT.pickHold * 1000) state.lockPick = false; // 직접 고른 것도 이 시간이 지나면 다시 '가장 가까운 적'
+  if (!L || !state.lockPick) {
+    let best = null, bd = Infinity;
+    for (const t of list) { const d = flat(t); if (d < R && d < bd) { bd = d; best = t; } }
+    if (!L || flat(L) >= R || (best && bd < flat(L) - COMBAT.nearHys)) L = best;
+  }
+  if (L !== prev && prev && L) state.lockSwaps++; // 검사용: 타겟이 바뀐 횟수 (tools/nearaim.js)
   state.lock = L;
-  if (L) return L;
-  return null; // 하르방은 겨누지 않음 (#249)
+  return L || null;
 }
 export function aimTarget() { const t = refreshLock(); return t && flat(t) < fireR() ? t : null; }
+// 쏘는 순간 (#319): 가장 가까운 적을 바로 다시 고름 (총·머신건은 한 발마다)
+export function shotTarget() { const t = refreshLock(true); return t && flat(t) < fireR() ? t : null; }
 export const lockFar = () => !!state.lock && flat(state.lock) >= fireR();
 // 다음 타겟 (Tab): 감지 거리 안 것들을 가까운 순으로 돌아가며
 export function cycleLock() {
@@ -64,7 +62,7 @@ export function cycleLock() {
   const R = detectR(), list = life.aimTargets().filter((t) => flat(t) < R).sort((a, b) => flat(a) - flat(b));
   if (list.length < 2 && list[0] === state.lock) return !!list.length;
   if (!list.length) return false;
-  state.lock = list[(list.indexOf(state.lock) + 1) % list.length]; state.lockPick = true; lockAt = -1; return true;
+  state.lock = list[(list.indexOf(state.lock) + 1) % list.length]; state.lockPick = true; state.lockPickAt = performance.now(); lockAt = -1; return true;
 }
 // 화면을 누른 자리 (x, y px) 가까이 적이 있으면 그 적으로 바꿈 → true (땅 누르기로 걷지 않음)
 const pv = new THREE.Vector3();
@@ -77,15 +75,15 @@ export function pickLock(x, y) {
     if (d < bd) { bd = d; best = t; }
   }
   if (!best) return false;
-  state.lock = best; state.lockPick = true; lockAt = -1; return true;
+  state.lock = best; state.lockPick = true; state.lockPickAt = performance.now(); lockAt = -1; return true;
 }
-export function setLock(t) { state.lock = t || null; state.lockPick = !!t; lockAt = -1; }
+export function setLock(t) { state.lock = t || null; state.lockPick = !!t; state.lockPickAt = performance.now(); lockAt = -1; }
 Object.assign(late, { pickLock, cycleLock });
 export const aimHeading = (t) => Math.atan2(t.pos.x - player.pos.x, t.pos.z - player.pos.z);
 export function throwTangerine() {
   if (busy() || player.knock || player.pose === 'throw' || player.pose === 'bow') return;
   state.emo?.stop();
-  state.throwAim = aimTarget() || state.lock; // 사거리 밖 타겟도 그쪽으로 던져 휘게 함 (#148). 노루 위에서도 같게
+  state.throwAim = shotTarget() || state.lock; // 사거리 밖 타겟도 그쪽으로 던져 휘게 함 (#148). 노루 위에서도 같게
   if (player.riding) { releaseTangerine(); return; }
   player.target = null; player.onArrive = null; marker.visible = false;
   player.pose = 'throw'; player.poseT = 0; state.throwPending = true; late.sound.beep(false);
@@ -141,7 +139,7 @@ function shootBow() {
   else { if (save.coins < 1) { throwTangerine(); return; } save.coins -= 1; save.bowAmmo = 0; updateStats(); }
   persist(); updateAmmo();
   setHoldBow(true);
-  state.throwAim = aimTarget() || state.lock;
+  state.throwAim = shotTarget() || state.lock;
   player.target = null; player.onArrive = null; marker.visible = false;
   player.pose = 'bow'; player.poseT = 0; state.bowPending = true;
 }

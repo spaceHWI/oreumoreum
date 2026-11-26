@@ -14,7 +14,7 @@ import { save } from './save.js';
 import { scene, camera } from './scene.js';
 import { life, runner, player, hp } from './place.js';
 import { busy, ui } from './hud.js';
-import { weaponNow, bowArmed, aimTarget, setHoldBow, fireWeapon } from './throw.js';
+import { weaponNow, bowArmed, aimTarget, shotTarget, setHoldBow, fireWeapon } from './throw.js';
 import { holding, chargedArm, spend, units, holdAim } from './arms.js';
 import { marker } from './input.js';
 
@@ -90,7 +90,7 @@ function release() {
 export function fireCharged(w, k) {
   const ch = chargeOf(k);
   tmpRng = ch.rng;
-  const t = aimTarget() || state.lock;
+  const t = shotTarget() || state.lock;
   if (w.id === 'mg' || w.id === 'laser') { chargedArm(w, ch); tmpRng = 1; return true; }
   if (!spend(w, w.id === 'hand' ? CHARGE.cost * k : w.id === 'bow' ? Math.round(1 + (CHARGE.cost - 1) * k) : 1 + (CHARGE.cost - 1) * k)) { tmpRng = 1; unpin(); fireWeapon(); return false; } // 활은 귤 1~3개 통으로 (#178)
   C.shots.push({ w: w.id, k: +k.toFixed(2) }); if (C.shots.length > 20) C.shots.shift();
