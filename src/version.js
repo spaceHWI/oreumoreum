@@ -1,6 +1,9 @@
 // 버전·릴리스 노트 (새 버전은 맨 위에 추가)
-export const VERSION = '0.56.1';
+export const VERSION = '0.56.2';
 export const RELEASE_NOTES = [
+  { v: '0.56.2', date: '2026-11-27', items: [
+    '능선이나 정상에서 가끔 배경 음악이 멈추던 문제를 고쳤어요',
+  ] },
   { v: '0.56.1', date: '2026-11-26', items: [
     '쏠 때마다 가장 가까운 적을 겨눠요. 직접 고른 적은 잠깐 동안 그대로 겨눠요',
   ] },
