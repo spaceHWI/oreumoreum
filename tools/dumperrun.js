@@ -12,6 +12,8 @@ const mode = process.argv[2] || 'd'; let fails = 0; const ok = (c, m) => { conso
   if (await ev(() => !document.getElementById('look').hidden)) { await p.click('#look-ok'); await W(1500); }
   await ev(() => { const o = window.__oreum; o.setTod(14); o.tut.skipAll(); o.quest.next?.off(true); }); await W(4000);
   await ev(() => { const t = document.getElementById('fs-tip'); if (t && !t.hidden) document.getElementById('fs-tip-x')?.click(); }); await W(800); // 폰: 전체 화면 안내 닫기 (#189)
+  // 오늘의 일일 목표를 모두 끝난 것으로 고정: 투기꾼 쫓기 목표가 뽑히는 날에도 left() 가 같은 값 (#320)
+  await ev(() => { const d = window.__oreum.ach.ensureDaily(); for (const x of d.items) { x.done = true; x.claimed = true; } });
   // 구역 1 길 위: 더미 하나 옆
   await ev(() => { const o = window.__oreum; const i = o.trash.api.heaps.findIndex((h) => h.zone === 1 && !h.field); o.trash.goHeap(i); o.snap(); });
   ok(await ev(() => { const q = window.__oreum.save.quest; q.cur = { id: 'dumper1', base: { dumper: q.c.dumper || 0 }, r: 0 }; return window.__oreum.quest.api.list().on.some((o) => o.q.id === 'dumper1'); }), '퀘스트 dumper1 걸림 (저장에 직접 넣음)');
