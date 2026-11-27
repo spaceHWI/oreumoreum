@@ -35,10 +35,12 @@ export const ARP = [0, 1, 2, 3, 2, 1, 3, 1];
 const ARP_ST = [0, 7, 12, 16];
 
 // 다음 마디 가락 고르기: 최근 3개는 피하고, 앞 마디 끝음에서 가까운 첫음을 고름. 가끔 한 칸 옮김
+// 피하는 것은 그 묶음(가락·맺는 조각) 것만, 많아야 '묶음 수 - 1' 개: 맺는 조각은 3개뿐이라 가락 없이 맺기만 세 번 이으면 고를 것이 없었음 (#321)
 export function pickFrag(recent, lastDeg, cad) {
-  const pool = cad ? CADS : FRAGS, list = [];
+  const pool = cad ? CADS : FRAGS, list = [], pre = cad ? 'c' : 'f';
+  const avoid = recent.filter((id) => id[0] === pre).slice(1 - pool.length);
   for (let i = 0; i < pool.length; i++) {
-    const id = (cad ? 'c' : 'f') + i; if (recent.includes(id)) continue;
+    const id = pre + i; if (avoid.includes(id)) continue;
     const first = pool[i].find((d) => d != null), w = lastDeg == null ? 1 : 1 / (1 + Math.abs(first - lastDeg));
     list.push([id, pool[i], w]);
   }

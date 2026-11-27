@@ -165,6 +165,16 @@ window.wav = (buf) => { const d = buf.getChannelData(0), n = d.length, ab = new 
   ok(again && rest && Math.abs(again.t - rest.t - 60) <= 1, `1분 쉬고 다시 (${again?.t}초)`);
   ok(tr.rep === 0 && tr.frags >= 8, `같은 4마디가 이어 되풀이되지 않음 (되풀이 ${tr.rep}/${tr.groups}, 조각 ${tr.frags}개)`);
   ok(tr.maxV <= 8, `동시에 울리는 음 8개 안 (싸움 전환 포함 ${tr.maxV})`);
+  // ---- 4. 가락 없이 맺는 마디만 이어질 때 (#321): 가락이 한 번도 안 뽑히게 하고 100초 ----
+  const cad = await p.evaluate(() => {
+    const c = new OfflineAudioContext(1, 8000, 8000), music = new K.Music(c, c.destination, noiseBuf(c)); music.active = true; music.log = []; music.place = 'top';
+    const rnd = Math.random; Math.random = () => 0.99; let err = '';
+    try { drive(c, music, null, 100); } catch (e) { err = e.message; } finally { Math.random = rnd; }
+    const ids = music.log.filter((e) => e.k === 'bar').map((e) => e.id);
+    return { err, bars: ids.length, cads: ids.filter((x) => x[0] === 'c'), frags: ids.filter((x) => x[0] === 'f').length };
+  });
+  const cadRep = cad.cads.some((x, i) => i && x === cad.cads[i - 1]);
+  ok(!cad.err && cad.cads.length >= 5 && cad.frags === 0 && !cadRep, `맺는 마디만 이어져도 멈추지 않음 (마디 ${cad.bars}, 맺음 ${cad.cads.join(' ')}${cad.err ? ', ' + cad.err : ''})`);
   ok(!errs.length, `페이지 오류 없음 ${errs.slice(0, 2).join(' | ')}`);
   await b.close();
   console.log(fails.length ? `실패 ${fails.length}` : '모두 통과');

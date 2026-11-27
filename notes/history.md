@@ -2304,3 +2304,8 @@ Tripo: 사업자 카드로 잘못 결제한 계정(spacehwi, Pro 연간)은 환�
 ## #320 dumperrun 날짜 의존 고침
 - `tools/dumperrun.js` 가 시작할 때 오늘의 일일 목표를 모두 끝난 것으로 고정(`ensureDaily` 항목 done·claimed). 투기꾼 쫓기 목표가 뽑히는 날도 `dumperQ.left()` 가 1.
 - 훑어 본 결과: `dumperQ.left()` 를 쓰는 검사는 dumperrun 뿐. nexthint 는 스스로 일일 목표를 끝냄, sec·econ 은 날짜를 인자로 받아 날짜 무관.
+
+## #321 음악 맺는 마디에서 멈춤 (실서버 오류 알림)
+- 원인: `musiccalm.js pickFrag` 가 최근 3개를 피하는데 맺는 조각(CADS)은 3개뿐. 가락 없이(fill 이 빗나가) 맺는 마디만 세 번 이어지면 고를 것이 없어 undefined → `_bar` 의 `const [id, f] =` 에서 TypeError (능선·정상처럼 fill 이 낮은 곳에서 드물게)
+- 고침: 피하는 것은 그 묶음 것만, 많아야 '묶음 수 - 1' 개(가장 최근 것부터). 맺는 조각은 바로 앞 두 개를 피해 돌아가며 나옴. 가락(FRAGS)은 예전과 같음
+- 검사: `tools/musicrun.js` 4) 가락이 한 번도 안 뽑히게 하고 100초 (고치기 전 코드로 같은 오류 글)
